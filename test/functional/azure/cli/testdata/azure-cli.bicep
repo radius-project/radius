@@ -6,6 +6,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: 'radius.azurecr.io/magpie:latest'
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+        }
       }
     }
   }
@@ -15,6 +20,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: 'radius.azurecr.io/magpie:latest'
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+        }
       }
     }
   }

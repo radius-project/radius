@@ -1,28 +1,14 @@
 import express, { json } from 'express';
 import * as http from 'http';
 import { loadBindings, BindingStatus, BindingProvider } from './binding'
-import { DaprPubSubBinding } from './bindings/daprpubsub';
-import { DaprStateStoreBinding } from './bindings/daprstatestore';
-import { KeyVaultBinding } from './bindings/keyvault'
-import { MicrosoftSqlBinding } from './bindings/microsoftsql'
-import { MongoBinding } from './bindings/mongo'
-import { ServiceBusBinding } from './bindings/servicebus'
-import { RedisBinding } from './bindings/redis'
-import { RabbitMQBinding } from './bindings/rabbitmq'
+import { BackendBinding } from './bindings/backend'
 
 const app: express.Application = express();
 const server: http.Server = http.createServer(app);
 const port = 3000;
 
 const providers: {[key: string]: BindingProvider }= {
-    'DAPRPUBSUB': (map) => new DaprPubSubBinding(map),
-    'KEYVAULT': (map) => new KeyVaultBinding(map),
-    'MONGODB': (map) => new MongoBinding(map),
-    'SERVICEBUS': (map) => new ServiceBusBinding(map),
-    'SQL': (map) => new MicrosoftSqlBinding(map),
-    'REDIS': (map) => new RedisBinding(map),
-    'DAPRSTATESTORE': (map) => new DaprStateStoreBinding(map),
-    'RABBITMQ' : (map) => new RabbitMQBinding(map),
+    'BACKEND' : (map) => new BackendBinding(map),
 };
 
 let bindings = loadBindings(process.env, providers)
