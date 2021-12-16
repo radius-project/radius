@@ -114,7 +114,7 @@ func RequireRadYAML(cmd *cobra.Command) (string, error) {
 	}
 
 	if radFile == "" {
-		return path.Join(".", "rad", "rad.yaml"), nil
+		return path.Join(".", "rad.yaml"), nil
 	}
 
 	return radFile, nil

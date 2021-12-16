@@ -40,7 +40,7 @@ func WriteApplication(options Options) ([]string, error) {
 		}
 	}
 
-	err := os.MkdirAll(path.Join(options.BaseDirectory, "rad"), 0755)
+	err := os.MkdirAll(path.Join(options.BaseDirectory, "iac"), 0755)
 	if err != nil {
 		return nil, err
 	}
