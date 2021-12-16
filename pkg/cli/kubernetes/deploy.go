@@ -32,8 +32,9 @@ import (
 )
 
 const (
-	ConditionReady = "Ready"
-	TimeoutSeconds = int64(3600) // 1 hour
+	ConditionReady         = "Ready"
+	TimeoutSeconds         = int64(3600) // 1 hour
+	DeploymentTemplateKind = "DeploymentTemplate"
 )
 
 type KubernetesDeploymentClient struct {
@@ -59,9 +60,11 @@ func init() {
 }
 
 func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
-	kind := "DeploymentTemplate"
+	if options.ProgressChan != nil {
+		defer close(options.ProgressChan)
+	}
 
-	// Unmarhsal the content into a deployment template
+	// Unmarshal the content into a deployment template
 	// rather than a string.
 	armJson := armtemplate.DeploymentTemplate{}
 
@@ -83,7 +86,7 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.
 	deployment := bicepv1alpha3.DeploymentTemplate{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "bicep.dev/v1alpha3",
-			Kind:       kind,
+			Kind:       DeploymentTemplateKind,
 		},
 		ObjectMeta: v1.ObjectMeta{
 			GenerateName: "deploymenttemplate-",
@@ -101,10 +104,10 @@ func (c KubernetesDeploymentClient) Deploy(ctx context.Context, options clients.
 		return clients.DeploymentResult{}, err
 	}
 
-	return c.waitForDeploymentCompletion(ctx, kind, deployment)
+	return c.waitForDeploymentCompletion(ctx, DeploymentTemplateKind, deployment, options.ProgressChan)
 }
 
-func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Context, kind string, deployment bicepv1alpha3.DeploymentTemplate) (clients.DeploymentResult, error) {
+func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Context, kind string, deployment bicepv1alpha3.DeploymentTemplate, progressChan chan<- clients.ResourceProgress) (clients.DeploymentResult, error) {
 
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(c.Typed.DiscoveryClient))
 	mapping, err := restMapper.RESTMapping(schema.GroupKind{Group: bicepv1alpha3.GroupVersion.Group, Kind: kind}, bicepv1alpha3.GroupVersion.Version)
@@ -123,6 +126,9 @@ func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Cont
 	}
 
 	defer watcher.Stop()
+
+	// We need to track the status so we can report the deltas
+	status := map[string]clients.ResourceStatus{}
 
 	for {
 		select {
@@ -145,6 +151,32 @@ func (c KubernetesDeploymentClient) waitForDeploymentCompletion(ctx context.Cont
 			}
 
 			if event.Type == watch.Added || event.Type == watch.Modified {
+				for _, resourceStatus := range deploymentTemplate.Status.ResourceStatuses {
+					current := status[resourceStatus.ResourceID]
+
+					next := clients.StatusStarted
+					if resourceStatus.Status == v1.ConditionTrue {
+						next = clients.StatusCompleted
+					} else if resourceStatus.Status == v1.ConditionFalse {
+						// NOTE: right now Kubernetes doesn't actually report failures, so we'll
+						// never actually encounter this.
+						next = clients.StatusFailed
+					}
+
+					if current != next && progressChan != nil {
+						id, err := azresources.Parse(resourceStatus.ResourceID)
+						if err != nil {
+							continue
+						}
+
+						status[resourceStatus.ResourceID] = next
+						progressChan <- clients.ResourceProgress{
+							Resource: id,
+							Status:   next,
+						}
+					}
+				}
+
 				templateCondition := meta.FindStatusCondition(deploymentTemplate.Status.Conditions, ConditionReady)
 				if templateCondition != nil && templateCondition.Status == v1.ConditionTrue {
 					// Done with deployment
