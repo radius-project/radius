@@ -16,9 +16,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           kind:'httpGet'
           containerPort:3000
           path: '/healthz'
-          initialDelaySeconds:3
-          failureThreshold:4
-          periodSeconds:10
         }
       }
     }
@@ -33,9 +30,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           kind:'httpGet'
           containerPort:3000
           path: '/healthz'
-          initialDelaySeconds:3
-          failureThreshold:4
-          periodSeconds:10
         }
       }
     }
