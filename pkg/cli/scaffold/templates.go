@@ -34,15 +34,15 @@ var RADYaml ScaffoldTemplate
 func GetApplicationTemplates() []TemplateWorkItem {
 	return []TemplateWorkItem{
 		{
-			FilePath: path.Join("rad", "rad.yaml"),
+			FilePath: path.Join("rad.yaml"),
 			Template: template.Must(template.New("rad.yaml").Parse(RADYaml)),
 		},
 		{
-			FilePath: path.Join("rad", "infra.bicep"),
+			FilePath: path.Join("iac", "infra.bicep"),
 			Template: template.Must(template.New("infra.bicep").Parse(InfrastructureStage)),
 		},
 		{
-			FilePath: path.Join("rad", "app.bicep"),
+			FilePath: path.Join("iac", "app.bicep"),
 			Template: template.Must(template.New("app.bicep").Parse(ApplicationStage)),
 		},
 	}

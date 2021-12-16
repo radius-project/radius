@@ -4,7 +4,7 @@ name: {{.ApplicationName}}
 stages:
 - name: infra
   bicep:
-    template: infra.bicep
+    template: iac/infra.bicep
 - name: app
   bicep:
-    template: app.bicep
+    template: iac/app.bicep
