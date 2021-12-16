@@ -18,6 +18,7 @@ type Options struct {
 	BaseDirectory string
 	Manifest      radyaml.Manifest
 	FinalStage    string
+	Profile       string
 	Parameters    clients.DeploymentParameters
 
 	// BicepBuildFunc supports overriding the build build process for testing.

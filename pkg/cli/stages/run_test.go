@@ -38,7 +38,7 @@ func Test_EmptyRadYaml_DoesNotCrash(t *testing.T) {
 	tempDir := t.TempDir()
 	options := Options{
 		Environment:    &MockEnvironment{},
-		BaseDirectory:  path.Join(tempDir, "rad"),
+		BaseDirectory:  tempDir,
 		Manifest:       manifest,
 		FinalStage:     "",
 		BicepBuildFunc: SkipBicepBuild,
@@ -61,7 +61,7 @@ func Test_MissingStage_ReturnsError(t *testing.T) {
 	tempDir := t.TempDir()
 	options := Options{
 		Environment:    &MockEnvironment{},
-		BaseDirectory:  path.Join(tempDir, "rad"),
+		BaseDirectory:  tempDir,
 		Manifest:       manifest,
 		FinalStage:     "missing",
 		BicepBuildFunc: SkipBicepBuild,
@@ -89,7 +89,7 @@ func Test_CanSkipStageWithNothingToDo(t *testing.T) {
 	tempDir := t.TempDir()
 	options := Options{
 		Environment:    &MockEnvironment{},
-		BaseDirectory:  path.Join(tempDir, "rad"),
+		BaseDirectory:  tempDir,
 		Manifest:       manifest,
 		FinalStage:     "",
 		BicepBuildFunc: SkipBicepBuild,
@@ -130,7 +130,7 @@ func Test_CanRunAllStages(t *testing.T) {
 	tempDir := t.TempDir()
 	options := Options{
 		Environment:    &MockEnvironment{},
-		BaseDirectory:  path.Join(tempDir, "rad"),
+		BaseDirectory:  tempDir,
 		Manifest:       manifest,
 		FinalStage:     "",
 		BicepBuildFunc: SkipBicepBuild,
@@ -181,7 +181,7 @@ func Test_CanSpecifyLastStage(t *testing.T) {
 	tempDir := t.TempDir()
 	options := Options{
 		Environment:    &MockEnvironment{},
-		BaseDirectory:  path.Join(tempDir, "rad"),
+		BaseDirectory:  tempDir,
 		Manifest:       manifest,
 		FinalStage:     "third",
 		BicepBuildFunc: SkipBicepBuild,
@@ -232,7 +232,7 @@ func Test_CanSpecifyStage(t *testing.T) {
 	tempDir := t.TempDir()
 	options := Options{
 		Environment:    &MockEnvironment{},
-		BaseDirectory:  path.Join(tempDir, "rad"),
+		BaseDirectory:  tempDir,
 		Manifest:       manifest,
 		FinalStage:     "second",
 		BicepBuildFunc: SkipBicepBuild,
@@ -266,26 +266,26 @@ func Test_CanPropagateParameters(t *testing.T) {
 			{
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("first.bicep"),
+					Template: to.StringPtr("iac/first.bicep"),
 				},
 			},
 			{
 				Name: "second",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("second.bicep"),
+					Template: to.StringPtr("iac/first.bicep"),
 				},
 			},
 		},
 	}
 
 	tempDir := t.TempDir()
-	err := os.MkdirAll(path.Join(tempDir, "rad"), 0755)
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "rad", "first.bicep"), []byte(""), 0644)
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "rad", "second.bicep"), []byte(""), 0644)
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
 	options := Options{
@@ -311,7 +311,7 @@ func Test_CanPropagateParameters(t *testing.T) {
 				},
 			},
 		},
-		BaseDirectory: path.Join(tempDir, "rad"),
+		BaseDirectory: tempDir,
 		Manifest:      manifest,
 		FinalStage:    "second",
 		Parameters: map[string]map[string]interface{}{
@@ -363,6 +363,68 @@ func Test_CanPropagateParameters(t *testing.T) {
 					"value": "value3",
 				},
 			},
+		},
+	}
+	require.Equal(t, expected, results)
+}
+
+func Test_CanOverrideStage(t *testing.T) {
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	manifest := radyaml.Manifest{
+		Name: "test",
+		Stages: []radyaml.Stage{
+			{
+				Name: "first",
+				Bicep: &radyaml.BicepStage{
+					// NOTE: we don't create this file, so the test will fail
+					// if the code tries to use it.
+					Template: to.StringPtr("iac/first.bicep"),
+				},
+				Profiles: map[string]radyaml.Profile{
+					"dev": {
+						Bicep: &radyaml.BicepStage{
+							Template: to.StringPtr("iac/first-dev.bicep"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tempDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first-dev.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	options := Options{
+		Environment: &MockEnvironment{
+			DeploymentClient: &MockDeploymentClient{},
+		},
+		BaseDirectory:  tempDir,
+		Manifest:       manifest,
+		FinalStage:     "first",
+		Profile:        "dev",
+		BicepBuildFunc: SkipBicepBuild,
+	}
+
+	results, err := Run(ctx, options)
+	require.NoError(t, err)
+
+	expected := []StageResult{
+		{
+			Stage: &radyaml.Stage{
+				Name:     "first",
+				Profiles: manifest.Stages[0].Profiles,
+				Bicep: &radyaml.BicepStage{
+					Template: to.StringPtr("iac/first-dev.bicep"),
+				},
+			},
+			Input:  map[string]map[string]interface{}{},
+			Output: map[string]map[string]interface{}{},
 		},
 	}
 	require.Equal(t, expected, results)
