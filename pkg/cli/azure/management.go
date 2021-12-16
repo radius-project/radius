@@ -81,9 +81,6 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	errChan := make(chan error)
-	defer close(errChan)
-
 	for _, resource := range resp.RadiusResourceList.Value {
 		r := *resource // prevent loopclouse issues
 		g.Go(func() error {
