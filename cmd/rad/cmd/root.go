@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,9 +16,7 @@ import (
 
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/bicep"
 	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -77,11 +76,11 @@ func init() {
 	})
 
 	// Initialize support for --version
-	RootCmd.Version = version.Release()
-	template := fmt.Sprintf("Release: %s \nVersion: %s\nBicep version: %s\nCommit: %s\n", version.Release(), version.Version(), bicep.Version(), version.Commit())
-	RootCmd.SetVersionTemplate(template)
+	RootCmd.Version = "foo" // needs to be set to non-empty string, actual version is set via SetVersionTemplate()
+	buf := new(bytes.Buffer)
+	writeVersionString(output.FormatList, buf)
+	RootCmd.SetVersionTemplate(buf.String())
 
-	RootCmd.Flags().BoolP("version", "v", false, "version for radius")
 	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 
 	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))

@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	sigclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -162,7 +161,7 @@ var envInitKubernetesCmd = &cobra.Command{
 	},
 }
 
-func applyGatewayClass(ctx context.Context, runtimeClient sigclient.Client) error {
+func applyGatewayClass(ctx context.Context, runtimeClient client.Client) error {
 	gateway := gatewayv1alpha1.GatewayClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GatewayClass",
@@ -177,7 +176,7 @@ func applyGatewayClass(ctx context.Context, runtimeClient sigclient.Client) erro
 		},
 	}
 
-	err := runtimeClient.Patch(ctx, &gateway, sigclient.Apply, &client.PatchOptions{FieldManager: k8slabels.FieldManager})
+	err := runtimeClient.Patch(ctx, &gateway, client.Apply, &client.PatchOptions{FieldManager: k8slabels.FieldManager})
 	return err
 }
 
