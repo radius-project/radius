@@ -12,6 +12,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
         env: {
           COOL_SETTING: env
         }
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+          initialDelaySeconds:3
+          failureThreshold:4
+          periodSeconds:10
+        }
       }
     }
   }
@@ -21,6 +29,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: '${registry}/magpie:latest'
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+          initialDelaySeconds:3
+          failureThreshold:4
+          periodSeconds:10
+        }
       }
     }
   }

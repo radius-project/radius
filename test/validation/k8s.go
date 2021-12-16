@@ -502,6 +502,7 @@ type PodMonitor struct {
 
 func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	if pm.Pod.Status.Phase == corev1.PodRunning {
+		checkReadiness(t, &pm.Pod)
 		return
 	}
 
@@ -533,6 +534,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 
 			if pod.Status.Phase == corev1.PodRunning {
 				t.Logf("success! pod %v has status: %v", pod.Name, pod.Status)
+				checkReadiness(t, pod)
 				return
 			} else if pod.Status.Phase == corev1.PodFailed {
 				assert.Failf(t, "pod %v entered a failing state", pod.Name)
@@ -544,6 +546,17 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 		case <-ctx.Done():
 			assert.Failf(t, "timed out after waiting for pod %v to enter running status", pm.Pod.Name)
 			return
+		}
+	}
+}
+
+func checkReadiness(t *testing.T, pod *corev1.Pod) {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type != corev1.ContainersReady {
+			continue
+		}
+		if condition.Status != corev1.ConditionTrue {
+			assert.Failf(t, "pod %v failed readiness checks", pod.Name)
 		}
 	}
 }
