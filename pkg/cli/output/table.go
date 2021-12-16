@@ -8,9 +8,7 @@ package output
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
-	"reflect"
 	"strings"
 	"text/tabwriter"
 
@@ -29,41 +27,12 @@ const (
 type TableFormatter struct {
 }
 
-func (f *TableFormatter) convertToSlice(obj interface{}) ([]interface{}, error) {
-	// We use reflection here because we're building a table and thus need to handle both scalars (structs)
-	// and slices/arrays of structs.
-	values := []interface{}{}
-	value := reflect.ValueOf(obj)
-
-	// Follow pointers at the top level
-	for value.Kind() == reflect.Ptr {
-		if value.IsNil() {
-			return nil, fmt.Errorf("value is nil")
-		}
-
-		value = value.Elem()
-	}
-
-	if value.Kind() == reflect.Struct || value.Kind() == reflect.Interface {
-		values = append(values, value.Interface())
-	} else if value.Kind() == reflect.Slice || value.Kind() == reflect.Array {
-		for i := 0; i < value.Len(); i++ {
-			item := value.Index(i)
-			values = append(values, item.Interface())
-		}
-	} else {
-		return nil, fmt.Errorf("unsupported value kind: %v", value.Kind())
-	}
-
-	return values, nil
-}
-
 func (f *TableFormatter) Format(obj interface{}, writer io.Writer, options FormatterOptions) error {
 	if len(options.Columns) == 0 {
 		return errors.New("no columns were defined, table format is not supported for this command")
 	}
 
-	rows, err := f.convertToSlice(obj)
+	rows, err := convertToSlice(obj)
 	if err != nil {
 		return err
 	}
