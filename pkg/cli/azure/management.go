@@ -82,7 +82,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, resource := range resp.RadiusResourceList.Value {
-		r := *resource // prevent loopclouse issues
+		r := *resource // prevent loopclouse issues (see https://pkg.go.dev/cmd/vet for more info)
 		g.Go(func() error {
 			types := strings.Split(*r.Type, "/")
 			resourceType := types[len(types)-1]
