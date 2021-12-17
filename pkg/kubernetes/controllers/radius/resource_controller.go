@@ -441,7 +441,8 @@ func (r *ResourceReconciler) ApplyState(
 				Resource: *or,
 				Status: radiusv1alpha3.OutputResourceStatus{
 					ProvisioningState: kubernetes.ProvisioningStateProvisioned,
-					HealthState:       healthcontract.HealthStateHealthy,
+					// Kubernetes Secrets are always healthy after they are created.
+					HealthState: healthcontract.HealthStateHealthy,
 				},
 			}
 
