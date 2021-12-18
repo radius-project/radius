@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-tutorial'
 
   //SAMPLE
-  resource backend 'ContainerComponent' = {
+  resource backend 'Container' = {
     name: 'backend'
     properties: {
       //RUN
@@ -36,7 +36,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
 
   //STATESTORE
-  resource statestore 'dapr.io.StateStoreComponent' = {
+  resource statestore 'dapr.io.StateStore' = {
     name: 'statestore'
     properties: {
       kind: 'any'
@@ -46,7 +46,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //STATESTORE
   //SAMPLE
 
-  resource daprBackend 'dapr.io.DaprHttpRoute' = {
+  resource daprBackend 'dapr.io.InvokeHttpRoute' = {
     name: 'dapr-backend'
     properties: {
       appId: 'backend'

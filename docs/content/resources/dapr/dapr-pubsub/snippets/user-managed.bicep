@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-pubsub'
 
-  resource nodesubscriber 'ContainerComponent' = {
+  resource nodesubscriber 'Container' = {
     name: 'nodesubscriber'
     properties: {
       container: {
@@ -27,7 +27,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource pythonpublisher 'ContainerComponent' = {
+  resource pythonpublisher 'Container' = {
     name: 'pythonpublisher'
     properties: {
       container: {
@@ -53,7 +53,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
   
   //SAMPLE
-  resource pubsub 'dapr.io.PubSubTopicComponent' = {
+  resource pubsub 'dapr.io.PubSubTopic' = {
     name: 'pubsub'
     properties: {
       kind: 'pubsub.azure.servicebus'

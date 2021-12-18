@@ -26,7 +26,7 @@ func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, workload renderers
 }
 
 func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := radclient.RedisComponentProperties{}
+	properties := radclient.RedisCacheResourceProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
@@ -56,7 +56,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	}, nil
 }
 
-func RenderManaged(resourceName string, properties radclient.RedisComponentProperties) outputresource.OutputResource {
+func RenderManaged(resourceName string, properties radclient.RedisCacheResourceProperties) outputresource.OutputResource {
 	redisCacheOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureRedis,
 		ResourceKind: resourcekinds.AzureRedis,
@@ -70,7 +70,7 @@ func RenderManaged(resourceName string, properties radclient.RedisComponentPrope
 	return redisCacheOutputResource
 }
 
-func RenderUnmanaged(resourceName string, properties radclient.RedisComponentProperties) (outputresource.OutputResource, error) {
+func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourceProperties) (outputresource.OutputResource, error) {
 	if properties.Resource == nil || *properties.Resource == "" {
 		return outputresource.OutputResource{}, renderers.ErrResourceMissingForUnmanagedResource
 	}

@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-servicebus-managed'
 
-  resource sender 'ContainerComponent' = {
+  resource sender 'Container' = {
     name: 'sender'
     properties: {
       connections: {
@@ -16,7 +16,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource sbq 'azure.com.ServiceBusQueueComponent' = {
+  resource sbq 'azure.com.ServiceBusQueue' = {
     name: 'sbq'
     properties: {
       managed: true

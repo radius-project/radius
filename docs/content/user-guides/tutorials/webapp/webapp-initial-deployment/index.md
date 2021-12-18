@@ -21,7 +21,7 @@ Next you'll add resources for the website's frontend.
 
 Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The `todoapp` and `todoRoute` resource in your template.bicep file will contain everything needed for the website frontend to run and expose a port to the internet.
 
-Your `todoapp`, which is a ContainerComponent resource, will specify:
+Your `todoapp`, which is a Container resource, will specify:
 - **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives.
 - **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).[]
 
@@ -51,7 +51,7 @@ Now you are ready to deploy the application for the first time.
    ```sh
    Resources:
       Application          webapp
-      ContainerComponent   todoapp
+      Container   todoapp
       HttpRoute            todo-route
    ```
 

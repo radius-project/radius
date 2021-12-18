@@ -77,15 +77,15 @@ webhooks:
     - UPDATE
     - DELETE
     resources:
-    - containercomponents
-    - dapriodaprhttproutes
-    - mongodbcomponents
-    - rediscomponents
+    - containers
+    - daprioinvokehttproutes
+    - mongodbdatabases
+    - rediscachess
     - grpcroutes
-    - dapriopubsubtopiccomponents
-    - rabbitmqcomponents
+    - dapriopubsubtopics
+    - rabbitmqmessagequeues
     - httproutes
-    - dapriostatestorecomponents
+    - dapriostatestores
   sideEffects: None
 - admissionReviewVersions:
   - v1

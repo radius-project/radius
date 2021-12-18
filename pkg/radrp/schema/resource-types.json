@@ -2,21 +2,21 @@
   "_comment": "A mapping from resource type -> schema location for the types we need to validate.",
   "resources": {
     "Application": "application.json#/definitions/ApplicationResource",
-    "RadiusResource": "components/radius.json#/definitions/RadiusResource",
-    "ContainerComponent": "components/container-component.json#/definitions/ContainerComponentResource",
-    "azure.com.KeyVaultComponent": "components/azure-keyvault.json#/definitions/AzureKeyVaultComponentResource",
-    "azure.com.ServiceBusQueueComponent": "components/azure-servicebus.json#/definitions/AzureServiceBusComponentResource",
-    "dapr.io.PubSubTopicComponent": "components/dapr-pubsubtopic.json#/definitions/DaprPubSubTopicComponentResource",
-    "dapr.io.StateStoreComponent": "components/dapr-statestore.json#/definitions/DaprStateStoreComponentResource",
-    "microsoft.com.SQLComponent": "components/microsoft-sql.json#/definitions/MicrosoftSQLComponentResource",
-    "mongodb.com.MongoDBComponent": "components/mongodb.json#/definitions/MongoDBComponentResource",
-    "rabbitmq.com.MessageQueueComponent": "components/rabbitmq.json#/definitions/RabbitMQComponentResource",
-    "redislabs.com.RedisComponent": "components/redis.json#/definitions/RedisComponentResource",
+    "RadiusResource": "resources/radius.json#/definitions/RadiusResource",
+    "Container": "resources/container.json#/definitions/ContainerResource",
+    "azure.com.KeyVault": "resources/azure-keyvault.json#/definitions/AzureKeyVaultResource",
+    "azure.com.ServiceBusQueue": "resources/azure-servicebus.json#/definitions/AzureServiceBusResource",
+    "dapr.io.PubSubTopic": "resources/dapr-pubsubtopic.json#/definitions/DaprPubSubTopicResource",
+    "dapr.io.StateStore": "resources/dapr-statestore.json#/definitions/DaprStateStoreResource",
+    "microsoft.com.SQLDatabase": "resources/microsoft-sql.json#/definitions/MicrosoftSQLDatabaseResource",
+    "mongo.com.MongoDatabase": "resources/mongodb.json#/definitions/MongoDatabaseResource",
+    "rabbitmq.com.MessageQueue": "resources/rabbitmq.json#/definitions/RabbitMQMessageQueueResource",
+    "redislabs.com.RedisCache": "resources/redis.json#/definitions/RedisCacheResource",
 
-    "HttpRoute": "routes/httproute.json#/definitions/HttpRouteResource",
-    "dapr.io.DaprHttpRoute": "routes/dapr-daprhttproute.json#/definitions/DaprHttpRouteResource",
-    "Volume": "components/volume.json#/definitions/VolumeResource",
+    "HttpRoute": "resources/httproute.json#/definitions/HttpRouteResource",
+    "dapr.io.InvokeHttpRoute": "resources/dapr-daprhttproute.json#/definitions/DaprInvokeHttpRouteResource",
+    "Volume": "resources/volume.json#/definitions/VolumeResource",
 
-    "Gateway": "components/gateway.json#/definitions/GatewayResource"
+    "Gateway": "resources/gateway.json#/definitions/GatewayResource"
   }
 }

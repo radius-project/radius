@@ -10,7 +10,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource todoapplication 'ContainerComponent' = {
+  resource todoapplication 'Container' = {
     name: 'todoapp'
     properties: {
       container: {

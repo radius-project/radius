@@ -1,14 +1,14 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-hello'
 
-  resource nodeapplication_dapr 'dapr.io.DaprHttpRoute' = {
+  resource nodeapplication_dapr 'dapr.io.InvokeHttpRoute' = {
     name: 'nodeapp'
     properties: {
       appId: 'nodeapp'
     }
   }
 
-  resource nodeapplication 'ContainerComponent' = {
+  resource nodeapplication 'Container' = {
     name: 'nodeapp'
     properties: {
       connections: {
@@ -36,12 +36,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource pythonapplication 'ContainerComponent' = {
+  resource pythonapplication 'Container' = {
     name: 'pythonapp'
     properties: {
       connections: {
         nodeapp: {
-          kind: 'dapr.io/DaprHttp'
+          kind: 'dapr.io/InvokeHttp'
           source: nodeapplication_dapr.id
         }
       }
@@ -57,7 +57,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource statestore 'dapr.io.StateStoreComponent' = {
+  resource statestore 'dapr.io.StateStore' = {
     name: 'statestore'
     properties: {
       kind: 'any'

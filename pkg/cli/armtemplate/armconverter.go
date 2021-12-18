@@ -147,17 +147,17 @@ func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructur
 }
 
 var kindMap = map[string]string{
-	"Application":                        "Application",
-	"ContainerComponent":                 "ContainerComponent",
-	"dapr.io.PubSubTopicComponent":       "DaprIOPubSubTopicComponent",
-	"dapr.io.StateStoreComponent":        "DaprIOStateStoreComponent",
-	"dapr.io.DaprHttpRoute":              "DaprIODaprHttpRoute",
-	"mongodb.com.MongoDBComponent":       "MongoDBComponent",
-	"rabbitmq.com.MessageQueueComponent": "RabbitMQComponent",
-	"redislabs.com.RedisComponent":       "RedisComponent",
-	"HttpRoute":                          "HttpRoute",
-	"GrpcRoute":                          "GrpcRoute",
-	"Gateway":                            "Gateway",
+	"Application":               "Application",
+	"Container":                 "Container",
+	"dapr.io.PubSubTopic":       "DaprIOPubSubTopic",
+	"dapr.io.StateStore":        "DaprIOStateStore",
+	"dapr.io.InvokeHttpRoute":   "DaprIOInvokeHttpRoute",
+	"mongo.com.MongoDatabase":   "MongoDatabase",
+	"rabbitmq.com.MessageQueue": "RabbitMQMessageQueue",
+	"redislabs.com.RedisCache":  "RedisCache",
+	"HttpRoute":                 "HttpRoute",
+	"GrpcRoute":                 "GrpcRoute",
+	"Gateway":                   "Gateway",
 }
 
 // TODO this should be removed and instead we should use the CR definitions to know about the arm mapping

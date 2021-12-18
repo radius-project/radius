@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'shopping-app'
 
   //CONTAINER
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       container: {
@@ -13,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //CONTAINER
 
   //STATESTORE
-  resource inventory 'dapr.io.StateStoreComponent' = {
+  resource inventory 'dapr.io.StateStore' = {
     name: 'inventorystore'
     properties: {
       kind: 'state.azure.tablestorage'

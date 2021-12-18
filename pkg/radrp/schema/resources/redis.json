@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "RedisCacheResource": {
+      "description": "The RedisCache resource is a portable resource which can be deployed to any Radius platform.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RedisCacheResourceProperties"
+        }
+      }
+    },
+    "RedisCacheResourceProperties": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "basic-resource.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified.",
+          "type": "boolean"
+        },
+        "resource": {
+          "description": "The ID of the user-managed Redis cache to use for this resource",
+          "type": "string",
+          "example": [
+            "account::redis.id"
+          ]
+        },
+        "host": {
+          "description": "The host name of the redis cache to which you are connecting",
+          "type": "string",
+          "example": [
+            "myrediscache.redis.cache.windows.net",
+            "redis.default.svc.cluster.local"
+          ]
+        },
+        "port": {
+          "description": "The port value of the redis cache to which you are connecting",
+          "type": "integer",
+          "example": [
+            6380,
+            6379
+          ]
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "connectionString": {
+              "description": "The Redis connection string used to connect to the redis cache",
+              "type": "string",
+              "example": [
+                "myrediscache.redis.cache.windows.net:6380",
+                "redis.default.svc.cluster.local:6379"
+              ]
+            },
+            "password": {
+              "description": "The password for this Redis instance",
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

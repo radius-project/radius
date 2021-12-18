@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "RabbitMQMessageQueueResource": {
+      "description": "The RabbitMQMessageQueue resource is a Kubernetes specific resource for message brokering.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RabbitMQMessageQueueResourceProperties"
+        }
+      }
+    },
+    "RabbitMQMessageQueueResourceProperties": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "basic-resource.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "required": [
+        "queue"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed.",
+          "type": "boolean",
+          "example": [
+            true,
+            false
+          ]
+        },
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secrets provided by unmanaged resources,",
+          "additionalProperties": false,
+          "properties": {
+            "connectionString": {
+              "description": "The connection string used to connect to this RabbitMQ instance",
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

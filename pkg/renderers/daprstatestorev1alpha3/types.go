@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ResourceType = "dapr.io.StateStoreComponent"
+	ResourceType = "dapr.io.StateStore"
 )
 
 var StorageAccountResourceType = azresources.KnownType{

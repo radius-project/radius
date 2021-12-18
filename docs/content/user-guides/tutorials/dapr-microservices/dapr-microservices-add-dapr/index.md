@@ -21,9 +21,9 @@ The `traits` section is used to configure cross-cutting behaviors of components.
 
 ## Add a Dapr Invoke Route
 
-Here you are describing how the `backend` Component will provide the `DaprHttpRoute` for other Components to consume.
+Here you are describing how the `backend` Component will provide the `InvokeHttpRoute` for other Components to consume.
 
-Add a [`dapr.io.DaprHttpRoute`]({{< ref dapr >}}) resource to the app, and specify that the `backend` Component will provide the Route as part of the `dapr` port.
+Add a [`dapr.io.InvokeHttpRoute`]({{< ref dapr >}}) resource to the app, and specify that the `backend` Component will provide the Route as part of the `dapr` port.
 
 {{< rad file="snippets/invoke.bicep" embed=true marker="//SAMPLE" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" >}}
 
@@ -51,7 +51,7 @@ The [`connections` section]({{< ref "connections-model" >}}) is used to configur
 
 Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from the `backend` component via the [`connections` section]({{< ref "connections-model" >}}). This declares the *intention* from the `backend` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
 
-{{< rad file="snippets/app.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-statestore="//STATESTORE" replace-value-statestore="resource statestore 'dapr.io.StateStoreComponent' = {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
+{{< rad file="snippets/app.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-statestore="//STATESTORE" replace-value-statestore="resource statestore 'dapr.io.StateStore' = {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
 
 ### Injected settings from connections
 
@@ -95,14 +95,14 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 
    ```
    RESOURCE   TYPE
-   backend     ContainerComponent
-   statestore  dapr.io.StateStoreComponent
+   backend     Container
+   statestore  dapr.io.StateStore
    ```
 
 1. To test out the state store, open a local tunnel on port 3000 again:
 
    ```sh
-   rad resource expose ContainerComponent backend --application dapr-tutorial --port 3000
+   rad resource expose Container backend --application dapr-tutorial --port 3000
    ```
 
 1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:

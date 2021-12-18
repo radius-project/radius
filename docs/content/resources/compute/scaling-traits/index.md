@@ -26,4 +26,4 @@ In this example, a [container Component]({{< ref container >}}) adds a manual sc
 
 | Component | Azure | Kubernetes |
 |-----------|:-----:|:----------:|
-| [`ContainerComponent`]({{< ref container >}}) | ✅ | ✅ |
+| [`Container`]({{< ref container >}}) | ✅ | ✅ |

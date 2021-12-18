@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'myapp'
 
   //CONTAINER
-  resource frontend 'ContainerComponent' = {
+  resource frontend 'Container' = {
     name: 'frontend'
     properties: {
       container: {
@@ -67,7 +67,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'http'
   }
 
-  resource db 'mongodb.com.MongoDBComponent' = {
+  resource db 'mongo.com.MongoDatabase' = {
     name: 'database'
     properties: {
       managed: true

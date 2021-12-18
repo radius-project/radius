@@ -9,7 +9,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   //REST
   //REST
 
-  resource rabbitmq 'rabbitmq.com.MessageQueueComponent' = {
+  resource rabbitmq 'rabbitmq.com.MessageQueue' = {
     name: 'rabbitmq'
     properties: {
       managed: true

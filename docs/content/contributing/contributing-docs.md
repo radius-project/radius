@@ -167,7 +167,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'storefront-app'
 
   //SAMPLE
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       container: {
@@ -182,7 +182,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 Will result in the following output:
 
 ```bicep
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       container: {
@@ -204,7 +204,7 @@ resource app 'radius.dev/Application@v1alpha1' = {
   name: 'storefront-app'
 
   //SAMPLE
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       //RUN
@@ -229,7 +229,7 @@ resource app 'radius.dev/Application@v1alpha1' = {
 Will result in the following output:
 
 ```bicep
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       container: {...}

@@ -11,7 +11,7 @@
   "functions": [],
   "resources": [
     {
-      "type": "Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisComponent",
+      "type": "Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisCache",
       "apiVersion": "2018-09-01-preview",
       "name": "[format('{0}/{1}/{2}', 'radiusv3', 'kubernetes-resources-redis-unmanaged', 'redis')]",
       "properties": {

@@ -141,7 +141,7 @@ func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resour
 		"resource",
 		"logs",
 		"-a", applicationName,
-		"ContainerComponent",
+		"Container",
 		resourceName,
 	}
 	return cli.RunCommand(ctx, args)
@@ -154,7 +154,7 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 		"-a", applicationName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
-		"ContainerComponent",
+		"Container",
 		resourceName,
 	}
 	return cli.RunCommand(ctx, args)

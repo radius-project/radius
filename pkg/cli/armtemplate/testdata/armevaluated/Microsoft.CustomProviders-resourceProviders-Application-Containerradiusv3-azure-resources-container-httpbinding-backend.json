@@ -1,0 +1,23 @@
+{
+    "id": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding/Container/backend",
+    "type": "Microsoft.CustomProviders/resourceProviders/Application/Container",
+    "apiVersion": "2018-09-01-preview",
+    "name": "radiusv3/azure-resources-container-httpbinding/backend",
+    "dependsOn": [
+        "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding",
+        "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding/HttpRoute/backend"
+    ],
+    "body": {
+        "properties": {
+            "container": {
+                "image": "rynowak/backend:0.5.0-dev",
+                "ports": {
+                    "web": {
+                        "containerPort": 81,
+                        "provides": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding/HttpRoute/backend"
+                    }
+                }
+            }
+        }
+    }
+}

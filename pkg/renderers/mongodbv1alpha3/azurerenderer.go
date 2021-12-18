@@ -31,7 +31,7 @@ func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers
 }
 
 func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := radclient.MongoDBComponentProperties{}
+	properties := radclient.MongoDBResourceProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
@@ -64,7 +64,7 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 	}, nil
 }
 
-func RenderManaged(name string, properties radclient.MongoDBComponentProperties) ([]outputresource.OutputResource, error) {
+func RenderManaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != nil && *properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
@@ -96,7 +96,7 @@ func RenderManaged(name string, properties radclient.MongoDBComponentProperties)
 	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
 
-func RenderUnmanaged(name string, properties radclient.MongoDBComponentProperties) ([]outputresource.OutputResource, error) {
+func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}

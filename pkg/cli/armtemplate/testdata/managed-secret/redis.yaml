@@ -4,14 +4,14 @@ metadata:
   annotations:
     radius.dev/application: kubernetes-resources-redis-unmanaged
     radius.dev/resource: redis
-    radius.dev/resource-type: redislabs.com.RedisComponent
+    radius.dev/resource-type: redislabs.com.RedisCache
   labels:
     app.kubernetes.io/managed-by: radius-rp
     app.kubernetes.io/name: redis
     app.kubernetes.io/part-of: kubernetes-resources-redis-unmanaged
     radius.dev/application: kubernetes-resources-redis-unmanaged
     radius.dev/resource: redis
-    radius.dev/resource-type: redislabs.com.RedisComponent
+    radius.dev/resource-type: redislabs.com.RedisCache
   name: kubernetes-resources-redis-unmanaged-redis
   namespace: default
 spec:
@@ -27,6 +27,6 @@ spec:
           connectionString: '*****'
           password: '*****'
     dependsOn: []
-    id: /subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/kubernetes-resources-redis-unmanaged/redislabs.com.RedisComponent/redis
+    id: /subscriptions//resourceGroups//providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/kubernetes-resources-redis-unmanaged/redislabs.com.RedisCache/redis
     name: radiusv3/kubernetes-resources-redis-unmanaged/redis
-    type: Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisComponent
+    type: Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisCache

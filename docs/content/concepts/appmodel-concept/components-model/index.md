@@ -20,7 +20,7 @@ When a Component describes your code, data, or infrastructure it needs to concep
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| **Resource type** | What type of thing is this? | `ContainerComponent`
+| **Resource type** | What type of thing is this? | `Container`
 | **Name** | The logical name of the Component, must be unique per-Application and resource type | `my-container`
 | **Essentials** | How do I run this? | Container image and tag (`my-container:latest`)
 | **Connections** | What other Components will I interact with? | Need to read from `my-db` 
@@ -42,7 +42,7 @@ It's up to your discretion as the user to decide which details of your software 
 
 ## Runnable Components
 
-Runnable components capture the details of your code and its requirements. For example, a [ContainerComponent]({{< ref container >}}) describes your container and how to run it.
+Runnable components capture the details of your code and its requirements. For example, a [Container]({{< ref container >}}) describes your container and how to run it.
 
 #### Bicep example
 
@@ -52,7 +52,7 @@ Within the shopping app example, each node is a Radius Component. Taking a look 
 
 ### Runtime
 
-Each [Radius platform]({{< ref platforms >}}) has a different implementation of a runtime for runnable Components such as a `ContainerComponent`. For example, Azure environments use Azure Kubernetes Service, while Kubernetes environments run containers directly on the cluster.
+Each [Radius platform]({{< ref platforms >}}) has a different implementation of a runtime for runnable Components such as a `Container`. For example, Azure environments use Azure Kubernetes Service, while Kubernetes environments run containers directly on the cluster.
 
 {{% alert title="🚧 Under construction" color="info" %}}
 As additional runnable Component types are designed and implemented, additional runtimes will be added to Azure environments. Stay tuned for more information.
@@ -108,7 +108,7 @@ We'd love to hear your feedback on User-managed resources. Please visit [GitHub 
 
 Non-runnable Components can work across hosting models without any configuration changes, and will be satisfied using the best means available by the host. They are generally OSS services that are not tied to any particular SaaS or hosting platform and usually have multiple implementations.
 
-For example the resource type [`mongodb.com.MongoDBComponent`]({{< ref mongodb >}}) specifies a generic MongoDB-compatible database. From the point-of-view of application code, it does not matter if the database is hosted using Kubernetes primitives like a `StatefulSet`, or a MongoDB operator, or a cloud-provider hosted offering like Azure CosmosDB. Radius will provision (or connect to) the appropriate implementation depending on the environment where the application is deployed.
+For example the resource type [`mongo.com.MongoDatabase`]({{< ref mongodb >}}) specifies a generic MongoDB-compatible database. From the point-of-view of application code, it does not matter if the database is hosted using Kubernetes primitives like a `StatefulSet`, or a MongoDB operator, or a cloud-provider hosted offering like Azure CosmosDB. Radius will provision (or connect to) the appropriate implementation depending on the environment where the application is deployed.
 
 ## Platform-specific resources
 

@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "ComponentTrait": {
-      "description": "Trait of a component.",
+    "ResourceTrait": {
+      "description": "Trait of a resource.",
       "type": "object",
       "oneOf": [{
         "$ref": "traits/dapr-sidecar.json#/definitions/DaprSidecarTrait"

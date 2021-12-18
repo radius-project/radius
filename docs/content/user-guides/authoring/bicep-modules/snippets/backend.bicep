@@ -11,7 +11,7 @@ resource myapp 'radius.dev/Application@v1alpha3' existing = {
     }
   }
   
-  resource backend 'ContainerComponent' = {
+  resource backend 'Container' = {
     name: 'backend'
     properties: {
       container: {

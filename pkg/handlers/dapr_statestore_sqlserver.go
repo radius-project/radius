@@ -90,7 +90,7 @@ func (handler *daprStateStoreSQLServerHandler) Put(ctx context.Context, options 
 		return nil, err
 	}
 
-	// Translate into Dapr SQL Server component schema
+	// Translate into Dapr SQL Server schema
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],

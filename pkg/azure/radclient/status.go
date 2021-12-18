@@ -13,7 +13,7 @@ import (
 
 // GetStatus returns the `.properties.status` element of a Radius resource. Will return null if it
 // is not found.
-func (r RadiusResource) GetStatus() (*rest.ComponentStatus, error) {
+func (r RadiusResource) GetStatus() (*rest.ResourceStatus, error) {
 	obj, ok := r.Properties["status"]
 	if !ok {
 		return nil, nil
@@ -24,7 +24,7 @@ func (r RadiusResource) GetStatus() (*rest.ComponentStatus, error) {
 		return nil, err
 	}
 
-	status := rest.ComponentStatus{}
+	status := rest.ResourceStatus{}
 	err = json.Unmarshal(b, &status)
 	if err != nil {
 		return nil, err

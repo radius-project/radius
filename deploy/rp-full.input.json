@@ -620,21 +620,6 @@
                                         "name": "Applications",
                                         "routingType": "Proxy",
                                         "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-                                    },
-                                    {
-                                        "name": "Applications/Components",
-                                        "routingType": "Proxy",
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-                                    },
-                                    {
-                                        "name": "Applications/Scopes",
-                                        "routingType": "Proxy",
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-                                    },
-                                    {
-                                        "name": "Applications/Deployments",
-                                        "routingType": "Proxy",
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
                                     }
                                 ]
                             }

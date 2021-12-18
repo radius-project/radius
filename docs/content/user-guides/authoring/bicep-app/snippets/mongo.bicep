@@ -11,7 +11,7 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' existing = {
 resource myapp 'radius.dev/Application@v1alpha3' = {
   name: 'my-application'
 
-  resource mongo 'mongodb.com.MongoDBComponent' = {
+  resource mongo 'mongo.com.MongoDatabase' = {
     name: 'mongo-db'
     properties: {
       resource: cosmos::db.id

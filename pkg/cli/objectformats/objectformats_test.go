@@ -54,11 +54,11 @@ func Test_FormatResourceTable(t *testing.T) {
 			ProxyResource: radclient.ProxyResource{
 				Resource: radclient.Resource{
 					Name: to.StringPtr("test-resource"),
-					Type: to.StringPtr("Microsoft.CustomProviders/resourceProviders/Application/mongodb.com.MongoDBComponent"),
+					Type: to.StringPtr("Microsoft.CustomProviders/resourceProviders/Application/mongo.com.MongoDatabase"),
 				},
 			},
 			Properties: map[string]interface{}{
-				"status": &radclient.ComponentStatus{
+				"status": &radclient.ResourceStatus{
 					HealthState:       to.StringPtr("Healthy"),
 					ProvisioningState: to.StringPtr("Provisioned"),
 				},
@@ -72,7 +72,7 @@ func Test_FormatResourceTable(t *testing.T) {
 				},
 			},
 			Properties: map[string]interface{}{
-				"status": &radclient.ComponentStatus{
+				"status": &radclient.ResourceStatus{
 					HealthState:       to.StringPtr("Healthy"),
 					ProvisioningState: to.StringPtr("Provisioned"),
 				},
@@ -85,7 +85,7 @@ func Test_FormatResourceTable(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := `RESOURCE             TYPE                             PROVISIONING_STATE  HEALTH_STATE
-test-resource        mongodb.com.MongoDBComponent     Provisioned         Healthy
+test-resource        mongo.com.MongoDatabase          Provisioned         Healthy
 test-azure-resource  Microsoft.ServiceBus/namespaces  Provisioned         Healthy
 `
 

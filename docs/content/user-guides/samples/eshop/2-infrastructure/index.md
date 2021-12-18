@@ -52,7 +52,7 @@ You can also connect to already deployed SQL instances with the [existing keywor
 {{< /codetab >}}
 
 {{< codetab >}}
-Radius-managed SQL via microsoft.com.SQLComponent is still in development.
+Radius-managed SQL via microsoft.com.SQLDatabase is still in development.
 
 {{% alert title="📋 Feedback" color="info" %}}
 Want to see a SQL managed component? Let us know over in the [GitHub discussions](https://github.com/Azure/radius/discussions/1269).
@@ -60,18 +60,18 @@ Want to see a SQL managed component? Let us know over in the [GitHub discussions
 {{< /codetab >}}
 
 {{< codetab >}}
-Containerized SQL can run on any Radius environment. In Radius you can create a ContainerComponent to run the SQL server container, and an HttpRoute for other services to connect to.
+Containerized SQL can run on any Radius environment. In Radius you can create a Container to run the SQL server container, and an HttpRoute for other services to connect to.
 <br /><br>
-Note that this option mimics the built-in behavior of the microsoft.com.SQLComponent resource, which currently only supports Azure SQL. In the future, we will add support for other SQL providers.
+Note that this option mimics the built-in behavior of the microsoft.com.SQLDatabase resource, which currently only supports Azure SQL. In the future, we will add support for other SQL providers.
 <br /><br>
 Update your eshop.bicep file with:
 <ul>
-<li><b>1 ContainerComponent with the SQL image</b> - the SQL server that will host the SQL databases.</li>
+<li><b>1 Container with the SQL image</b> - the SQL server that will host the SQL databases.</li>
 <li><b>1 HttpRoute</b> - What your containers will connect to in order to communicate with the SQL server.</li>
 </ul>
 
 {{% alert title="💡 Concept" color="info" %}}
-Here you are manually defining a ContainerComponent which will provide a SQL database. Other services can communicate with this server through the `sqlRoute` [HttpRoute]({{< ref http-route >}}).
+Here you are manually defining a Container which will provide a SQL database. Other services can communicate with this server through the `sqlRoute` [HttpRoute]({{< ref http-route >}}).
 {{% /alert %}}
 
 {{< rad file="snippets/sql-containers.bicep" embed=true marker="//SQL" >}}
@@ -84,7 +84,7 @@ Here you are manually defining a ContainerComponent which will provide a SQL dat
 {{< tabs "Radius-managed" "User-managed Azure" >}}
 
 {{< codetab >}}
-The redislabs.com.RedisComponent Radius resource will deploy an Azure Redis Cache in Azure environments, and a Redis container in Kubernetes environments.
+The redislabs.com.RedisCache Radius resource will deploy an Azure Redis Cache in Azure environments, and a Redis container in Kubernetes environments.
 
 {{% alert title="💡 Concept" color="info" %}}
 Here you are defining two <a href="{{< ref "components-model#radius-managed" >}}">Radius-managed Redis Components</a>, where Radius manages the deployment and deletion of the resources as part of the Application.
@@ -109,7 +109,7 @@ Here you are using <a href="{{< ref "components-model#user-managed" >}}">user-ma
 {{< tabs "Radius-managed" "User-managed Azure" >}}
 
 {{< codetab >}}
-The mongodb.com.MongoDBComponent Radius resource will deploy an Azure CosmosDB with Mongo API in Azure environments, and a Mongo container in Kubernetes environments.
+The mongo.com.MongoDatabase Radius resource will deploy an Azure CosmosDB with Mongo API in Azure environments, and a Mongo container in Kubernetes environments.
 
 {{< rad file="snippets/mongo-managed.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
 {{< /codetab >}}

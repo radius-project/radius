@@ -43,7 +43,7 @@ Radius offers communication between runnable Components via [Communication Route
 
 ### Dapr service invocation
 
-In this tutorial, we will be using `dapr.io.DaprHttpRoute` to model the Dapr sidecar running alongside `frontend` and `backend`. This allows `frontend` to use Dapr service invocation to interact with `backend`.
+In this tutorial, we will be using `dapr.io.InvokeHttpRoute` to model the Dapr sidecar running alongside `frontend` and `backend`. This allows `frontend` to use Dapr service invocation to interact with `backend`.
 
 <img src="./invoke.png" alt="A diagram of the Dapr service invocation" width=500 />
 

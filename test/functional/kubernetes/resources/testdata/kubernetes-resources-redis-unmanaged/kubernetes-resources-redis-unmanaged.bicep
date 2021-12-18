@@ -15,7 +15,7 @@ resource redisSecret 'kubernetes.core/Secret@v1' existing = {
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-redis-unmanaged'
 
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       container: {
@@ -32,7 +32,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource redis 'redislabs.com.RedisComponent' = {
+  resource redis 'redislabs.com.RedisCache' = {
     name: 'redis'
     properties: {
       host: '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local'

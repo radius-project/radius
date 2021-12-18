@@ -31,7 +31,7 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' = {
 resource myapp 'radius.dev/Application@v1alpha3' = {
   name: 'my-application'
 
-  resource mongo 'mongodb.com.MongoDBComponent' = {
+  resource mongo 'mongo.com.MongoDatabase' = {
     name: 'mongo'
     properties: {
       resource: cosmos::db.id
@@ -48,7 +48,7 @@ resource myapp 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource frontend 'ContainerComponent' = {
+  resource frontend 'Container' = {
     name: 'frontend'
     properties: {
       container: {
@@ -70,7 +70,7 @@ resource myapp 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource backend 'ContainerComponent' = {
+  resource backend 'Container' = {
     name: 'backend'
     properties: {
       container: {

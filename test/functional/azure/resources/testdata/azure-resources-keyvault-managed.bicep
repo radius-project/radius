@@ -1,14 +1,14 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-keyvault-managed'
 
-  resource kv 'azure.com.KeyVaultComponent' = {
+  resource kv 'azure.com.KeyVault' = {
     name: 'kv'
     properties: {
       managed: true
     }
   }
 
-  resource kvaccessor 'ContainerComponent' = {
+  resource kvaccessor 'Container' = {
     name: 'kvaccessor'
     properties: {
       connections: {

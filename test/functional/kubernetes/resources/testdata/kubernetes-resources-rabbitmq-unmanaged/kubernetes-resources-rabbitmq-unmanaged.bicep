@@ -15,7 +15,7 @@ resource rabbitmqSecret 'kubernetes.core/Secret@v1' existing = {
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-rabbitmq-unmanaged'
 
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       container: {
@@ -30,7 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource rabbitmq 'rabbitmq.com.MessageQueueComponent' = {
+  resource rabbitmq 'rabbitmq.com.MessageQueue' = {
     name: 'rabbitmq'
     properties: {
 			queue: 'queue'

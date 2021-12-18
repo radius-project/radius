@@ -29,4 +29,4 @@ In this example, a [container Component]({{< ref container >}}) adds a Dapr trai
 
 | Component | Azure | Kubernetes |
 |-----------|:-----:|:----------:|
-| [`ContainerComponent`]({{< ref container >}}) | ✅ | ✅ |
+| [`Container`]({{< ref container >}}) | ✅ | ✅ |

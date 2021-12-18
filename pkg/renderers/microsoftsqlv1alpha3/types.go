@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ResourceType          = "microsoft.com.SQLComponent"
+	ResourceType          = "microsoft.com.SQLDatabase"
 	ConnectionStringValue = "connectionString"
 )
 

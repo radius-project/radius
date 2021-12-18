@@ -7,7 +7,7 @@
             "radius.dev/resourceproviders": "radius"
         },
         "name": "radius-frontend-backend-backend",
-        "namespace": "invalidcomponent"
+        "namespace": "invalidresource"
     },
     "spec": {
         "template": {

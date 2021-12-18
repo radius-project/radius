@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	ResourceType = "ContainerComponent"
+	ResourceType = "Container"
 )
 
 // Liveness/Readiness constants
@@ -152,8 +152,8 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	return renderers.RendererOutput{Resources: outputResources}, nil
 }
 
-func (r Renderer) convert(resource renderers.RendererResource) (*radclient.ContainerComponentProperties, error) {
-	properties := &radclient.ContainerComponentProperties{}
+func (r Renderer) convert(resource renderers.RendererResource) (*radclient.ContainerProperties, error) {
+	properties := &radclient.ContainerProperties{}
 	err := resource.ConvertDefinition(properties)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (r Renderer) convert(resource renderers.RendererResource) (*radclient.Conta
 	return properties, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOptions, cc *radclient.ContainerComponentProperties) ([]outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOptions, cc *radclient.ContainerProperties) ([]outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string

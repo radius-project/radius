@@ -25,9 +25,9 @@ func Test_ArmToK8sConversion(t *testing.T) {
 
 	applicationUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "Application-azure-resources-container-httpbinding.json"))
 	require.NoError(t, err)
-	backendUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "ContainerComponent-backend.json"))
+	backendUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "Container-backend.json"))
 	require.NoError(t, err)
-	frontendUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "ContainerComponent-frontend.json"))
+	frontendUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "Container-frontend.json"))
 	require.NoError(t, err)
 
 	frontendRouteUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "HttpRoute-frontend.json"))
@@ -36,11 +36,11 @@ func Test_ArmToK8sConversion(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := map[string]*unstructured.Unstructured{
-		"HttpRoute-azure-resources-container-httpbinding-frontend":          frontendRouteUnstructured,
-		"Application-azure-resources-container-httpbinding":                 applicationUnstructured,
-		"HttpRoute-azure-resources-container-httpbinding-backend":           backendRouteUnstructured,
-		"ContainerComponent-azure-resources-container-httpbinding-backend":  backendUnstructured,
-		"ContainerComponent-azure-resources-container-httpbinding-frontend": frontendUnstructured,
+		"HttpRoute-azure-resources-container-httpbinding-frontend": frontendRouteUnstructured,
+		"Application-azure-resources-container-httpbinding":        applicationUnstructured,
+		"HttpRoute-azure-resources-container-httpbinding-backend":  backendRouteUnstructured,
+		"Container-azure-resources-container-httpbinding-backend":  backendUnstructured,
+		"Container-azure-resources-container-httpbinding-frontend": frontendUnstructured,
 	}
 
 	template, err := Parse(string(content))

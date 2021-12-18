@@ -244,16 +244,16 @@ func (at ApplicationTest) Test(t *testing.T) {
 			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 
 			if step.RadiusResources == nil && step.SkipOutputResources {
-				t.Logf("skipping validation of components...")
+				t.Logf("skipping validation of resources...")
 			} else if step.RadiusResources == nil {
-				require.Fail(t, "no component set was specified and SkipComponents == false, either specify a component set or set SkipComponents = true ")
+				require.Fail(t, "no resource set was specified and SkipOutputResources == false, either specify a resource set or set SkipOutputResources = true ")
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
 
 				// TODO: create k8s client for validating output resources
 				// https://github.com/Azure/radius/issues/778
-				// validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.Components)
+				// validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.RadiusResources)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 

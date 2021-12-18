@@ -15,14 +15,14 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   //REST
   //REST
 
-  resource redisKeystore 'redislabs.com.RedisComponent' = {
+  resource redisKeystore 'redislabs.com.RedisCache' = {
     name: 'redis-keystore'
     properties: {
       resource: redisCacheKeystore.id
     }
   }
 
-  resource redisBasket 'redislabs.com.RedisComponent' = {
+  resource redisBasket 'redislabs.com.RedisCache' = {
     name: 'redis-basket'
     properties: {
       resource: redisCacheBasket.id

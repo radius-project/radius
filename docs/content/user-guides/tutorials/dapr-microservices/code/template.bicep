@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-tutorial'
 
-  resource frontend 'ContainerComponent' = {
+  resource frontend 'Container' = {
     name: 'frontend'
     properties: {
       container: {
@@ -14,7 +14,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
       connections: {
         backend: {
-          kind: 'dapr.io/DaprHttp'
+          kind: 'dapr.io/InvokeHttp'
           source: backendDapr.id
         }
       }
@@ -27,7 +27,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource backend 'ContainerComponent' = {
+  resource backend 'Container' = {
     name: 'backend'
     properties: {
       container: {
@@ -50,14 +50,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource backendDapr 'dapr.io.DaprHttpRoute' = {
+  resource backendDapr 'dapr.io.InvokeHttpRoute' = {
     name: 'backend-dapr'
     properties: {
       appId: 'backend'
     }
   }
 
-  resource statestore 'dapr.io.StateStoreComponent' = {
+  resource statestore 'dapr.io.StateStore' = {
     name: 'statestore'
     properties: {
       kind: 'any'

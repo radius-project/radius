@@ -15,7 +15,7 @@ Again, we'll discuss changes to template.bicep and then provide the full, update
 
 Another container component is used to specify a few properties about the order generator:
 
-- **resource type**: `ContainerComponent` indicates you are using a generic container.
+- **resource type**: `Container` indicates you are using a generic container.
 - **container image**: `radius.azurecr.io/daprtutorial-frontend` is a Docker image the container will run.
 - **connections**: `daprBackend.id` declares the intention for `frontend` to communicate with `backend` through the `daprBackend` Dapr HTTP Route.
 - **traits**: `dapr.io/Sidecar` configures Dapr on the container.

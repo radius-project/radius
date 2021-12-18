@@ -204,7 +204,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	// GET ..../Application/{applicationName}/{resourceType}
 	// GET ..../Application/{applicationName}/{resourceType}/{resourceName}
 
-	// // ..../Application/hello/ContainerComponent
+	// // ..../Application/hello/Container
 	items, err := r.db.ListV3Resources(ctx, id)
 
 	if err == db.ErrNotFound {

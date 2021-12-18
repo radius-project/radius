@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-storage-app'
 
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storage-service'
     properties: {
       container: {

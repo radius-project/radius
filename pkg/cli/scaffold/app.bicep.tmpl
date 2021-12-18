@@ -9,7 +9,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
   // Creates a container to run the radius.azurecr.io/webapptutorial-todoapp
   // image
-  resource demo 'ContainerComponent' = {
+  resource demo 'Container' = {
     name: 'demo'
     properties: {
       container: {

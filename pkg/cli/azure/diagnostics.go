@@ -54,7 +54,7 @@ func (dc *AKSDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 			continue // Ignore non-kubernetes
 		}
 
-		// If the component has a Kubernetes HTTPRoute then it's using gateways. Look up the IP address
+		// If the container has a Kubernetes HTTPRoute then it's using gateways. Look up the IP address
 		if gvk.Kind != resourcekinds.KubernetesHTTPRoute {
 			continue
 		}

@@ -34,7 +34,7 @@ func Test_ListApplication(t *testing.T) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	app1Name := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	resource1 := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -96,7 +96,7 @@ func Test_GetApplication(t *testing.T) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	app1Name := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	resource1 := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -149,7 +149,7 @@ func Test_DeleteApplication(t *testing.T) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	app1Name := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	resource1 := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -192,7 +192,7 @@ func Test_ListResources(t *testing.T) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	appName := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	app := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -219,13 +219,13 @@ func Test_ListResources(t *testing.T) {
 		Namespace,
 		azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 		azresources.ResourceType{Type: "Application", Name: appName},
-		azresources.ResourceType{Type: "ContainerComponent", Name: resource1Name}))
+		azresources.ResourceType{Type: "Container", Name: resource1Name}))
 	require.NoError(t, err)
-	// Simulate a *rendered* component
-	resource1 := radiusv1alpha3.ContainerComponent{
+	// Simulate a *rendered* resource
+	resource1 := radiusv1alpha3.Container{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
-			Kind:       "ContainerComponent",
+			Kind:       "Container",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      resource1Name,
@@ -254,13 +254,13 @@ func Test_ListResources(t *testing.T) {
 		Namespace,
 		azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 		azresources.ResourceType{Type: "Application", Name: appName},
-		azresources.ResourceType{Type: "ContainerComponent", Name: resource2Name}))
+		azresources.ResourceType{Type: "Container", Name: resource2Name}))
 	require.NoError(t, err)
 
-	resource2 := radiusv1alpha3.ContainerComponent{
+	resource2 := radiusv1alpha3.Container{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
-			Kind:       "ContainerComponent",
+			Kind:       "Container",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      resource2Name,
@@ -288,7 +288,7 @@ func Test_ListResources(t *testing.T) {
 		Namespace,
 		azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 		azresources.ResourceType{Type: "Application", Name: appName},
-		azresources.ResourceType{Type: "ContainerComponent"}))
+		azresources.ResourceType{Type: "Container"}))
 	require.NoError(t, err)
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1, &resource2).Build()
@@ -328,7 +328,7 @@ func Test_ListAllV3ResourcesByApplication(t *testing.T) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	appName := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	app := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -357,7 +357,7 @@ func Test_ListAllV3ResourcesByApplication(t *testing.T) {
 		azresources.ResourceType{Type: "Application", Name: appName},
 		azresources.ResourceType{Type: "HttpRoute", Name: resource1Name}))
 	require.NoError(t, err)
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	resource1 := radiusv1alpha3.HttpRoute{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -420,7 +420,7 @@ func Test_GetResource(t *testing.T) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	appName := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	app := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -449,7 +449,7 @@ func Test_GetResource(t *testing.T) {
 		azresources.ResourceType{Type: "Application", Name: appName},
 		azresources.ResourceType{Type: "HttpRoute", Name: resource1Name}))
 	require.NoError(t, err)
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	resource1 := radiusv1alpha3.HttpRoute{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -482,13 +482,13 @@ func Test_GetResource(t *testing.T) {
 		Namespace,
 		azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 		azresources.ResourceType{Type: "Application", Name: appName},
-		azresources.ResourceType{Type: "ContainerComponent", Name: resource2Name}))
+		azresources.ResourceType{Type: "Container", Name: resource2Name}))
 	require.NoError(t, err)
 
-	resource2 := radiusv1alpha3.ContainerComponent{
+	resource2 := radiusv1alpha3.Container{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
-			Kind:       "ContainerComponent",
+			Kind:       "Container",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(appName, resource2Name),
@@ -516,7 +516,7 @@ func Test_GetResource(t *testing.T) {
 		Namespace,
 		azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 		azresources.ResourceType{Type: "Application", Name: appName},
-		azresources.ResourceType{Type: "ContainerComponent", Name: resource2Name}))
+		azresources.ResourceType{Type: "Container", Name: resource2Name}))
 	require.NoError(t, err)
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1, &resource2).Build()
@@ -543,7 +543,7 @@ func Test_DeleteResource(t *testing.T) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	appName := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	app := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -572,7 +572,7 @@ func Test_DeleteResource(t *testing.T) {
 		azresources.ResourceType{Type: "Application", Name: appName},
 		azresources.ResourceType{Type: "HttpRoute", Name: resource1Name}))
 	require.NoError(t, err)
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	resource1 := radiusv1alpha3.HttpRoute{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -635,7 +635,7 @@ func Test_ListSecrets(t *testing.T) {
 	}
 
 	appName := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	app := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -740,7 +740,7 @@ func Test_GetOperation(t *testing.T) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	appName := "my-app"
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	app := radiusv1alpha3.Application{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -769,7 +769,7 @@ func Test_GetOperation(t *testing.T) {
 		azresources.ResourceType{Type: "Application", Name: appName},
 		azresources.ResourceType{Type: "HttpRoute", Name: resource1Name}))
 	require.NoError(t, err)
-	// Simulate a *rendered* component
+	// Simulate a *rendered* resource
 	resource1 := radiusv1alpha3.HttpRoute{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
@@ -828,7 +828,7 @@ func Test_GetOperation(t *testing.T) {
 		Name: resource1Name,
 		Properties: map[string]interface{}{
 			"definition-property": "definition-value",
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources: []rest.OutputResource{

@@ -13,7 +13,7 @@ resource myapp 'radius.dev/Application@v1alpha3' = {
   name: 'my-application'
 
   //MONGO
-  resource mongo 'mongodb.com.MongoDBComponent' = {
+  resource mongo 'mongo.com.MongoDatabase' = {
     name: 'mongo-db'
     properties: {
       resource: cosmos::db.id
@@ -21,7 +21,7 @@ resource myapp 'radius.dev/Application@v1alpha3' = {
   }
   //MONGO
 
-  resource frontend 'ContainerComponent' = {
+  resource frontend 'Container' = {
     name: 'frontend-service'
     properties: {
       //CONTAINER

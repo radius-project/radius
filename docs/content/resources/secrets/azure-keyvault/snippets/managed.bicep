@@ -3,7 +3,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
   //SAMPLE
   //KEYVAULT
-  resource kv 'azure.com.KeyVaultComponent' = {
+  resource kv 'azure.com.KeyVault' = {
     name: 'kv'
     properties: {
       managed: true
@@ -12,7 +12,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //KEYVAULT
 
   //ACCESSOR
-  resource kvaccessor 'ContainerComponent' = {
+  resource kvaccessor 'Container' = {
     name: 'kvaccessor'
     properties: {
       container: {

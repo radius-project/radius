@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-mongodb-unmanaged'
   
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       connections: {
@@ -16,7 +16,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource db 'mongodb.com.MongoDBComponent' = {
+  resource db 'mongo.com.MongoDatabase' = {
     name: 'db'
     properties: {
       resource: account::db.id

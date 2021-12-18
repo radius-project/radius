@@ -27,8 +27,8 @@ func TestSchemaUnmarshalJSON(t *testing.T) {
 		name: "traits",
 		input: `{
 		  "definitions": {
-		    "ComponentTrait": {
-		      "description": "Trait of a component",
+		    "ResourceTrait": {
+		      "description": "Trait of a resource",
 		      "type": "object",
 		      "oneOf": [{
 		        "$ref": "#/definitions/DaprTrait"
@@ -36,7 +36,7 @@ func TestSchemaUnmarshalJSON(t *testing.T) {
 		    },
 		    "DaprTrait": {
 		      "type": "object",
-		      "description": "Dapr ComponentTrait",
+		      "description": "Dapr Sidecar Trait",
 		      "properties": {
 		        "kind": {
 		          "description": "Trait kind",
@@ -58,13 +58,13 @@ func TestSchemaUnmarshalJSON(t *testing.T) {
 		}`,
 		expected: Schema{
 			Definitions: map[string]*TypeSpec{
-				"ComponentTrait": {
+				"ResourceTrait": {
 					OneOf: []*TypeRef{
 						NewTypeRef("#/definitions/DaprTrait"),
 					},
 					AdditionalProperties: map[string]interface{}{
 						"type":        "object",
-						"description": "Trait of a component",
+						"description": "Trait of a resource",
 					},
 				},
 				"DaprTrait": {
@@ -85,7 +85,7 @@ func TestSchemaUnmarshalJSON(t *testing.T) {
 					},
 					AdditionalProperties: map[string]interface{}{
 						"type":                 "object",
-						"description":          "Dapr ComponentTrait",
+						"description":          "Dapr Sidecar Trait",
 						"additionalProperties": false,
 					},
 				}},

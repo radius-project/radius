@@ -33,7 +33,7 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := radclient.MicrosoftSQLSQLComponentProperties{}
+	properties := radclient.MicrosoftSQLDatabaseProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
@@ -41,7 +41,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}
 
 	if properties.Managed != nil && *properties.Managed {
-		return renderers.RendererOutput{}, errors.New("only 'managed: false' SQL components are supported")
+		return renderers.RendererOutput{}, errors.New("only 'managed: false' SQL databases are supported")
 	}
 
 	if properties.Resource == nil || *properties.Resource == "" {

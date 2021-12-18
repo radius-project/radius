@@ -60,7 +60,7 @@ func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, op
 	//
 	// When that change goes in we'll be able to work with the route type directly to get this information.
 	for _, output := range httproute.Status.Resources {
-		// If the component has a Kubernetes HTTPRoute then it's using gateways. Look up the IP address
+		// If the resource has a Kubernetes HTTPRoute then it's using gateways. Look up the IP address
 		if output.Resource.Kind != resourcekinds.KubernetesHTTPRoute {
 			continue
 		}
@@ -174,29 +174,29 @@ func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *Kube
 	return streams, nil
 }
 
-func getSpecificReplica(ctx context.Context, client *k8s.Clientset, namespace string, component string, replica string) (*corev1.Pod, error) {
-	// Right now this connects to a pod related to a component. We can find the pods with the labels
+func getSpecificReplica(ctx context.Context, client *k8s.Clientset, namespace string, resource string, replica string) (*corev1.Pod, error) {
+	// Right now this connects to a pod related to a resource. We can find the pods with the labels
 	// and then choose one that's in the running state.
 	pod, err := client.CoreV1().Pods(namespace).Get(ctx, replica, v1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get replica %v for component %v: %w", replica, component, err)
+		return nil, fmt.Errorf("failed to get replica %v for resource %v: %w", replica, resource, err)
 	}
 
 	if pod.Status.Phase != corev1.PodRunning {
-		return nil, fmt.Errorf("replica %v for component %v is not running", replica, component)
+		return nil, fmt.Errorf("replica %v for resource %v is not running", replica, resource)
 	}
 
 	return pod, nil
 }
 
-func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace string, application string, component string) (*corev1.Pod, error) {
-	// Right now this connects to a pod related to a component. We can find the pods with the labels
+func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace string, application string, resource string) (*corev1.Pod, error) {
+	// Right now this connects to a pod related to a resource. We can find the pods with the labels
 	// and then choose one that's in the running state.
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
-		LabelSelector: labels.FormatLabels(kubernetes.MakeSelectorLabels(application, component)),
+		LabelSelector: labels.FormatLabels(kubernetes.MakeSelectorLabels(application, resource)),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list running replicas for component %v: %w", component, err)
+		return nil, fmt.Errorf("failed to list running replicas for resource %v: %w", resource, err)
 	}
 
 	for _, p := range pods.Items {
@@ -205,17 +205,17 @@ func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace str
 		}
 	}
 
-	return nil, fmt.Errorf("failed to find a running replica for component %v", component)
+	return nil, fmt.Errorf("failed to find a running replica for resource %v", resource)
 }
 
-func getRunningReplicas(ctx context.Context, client *k8s.Clientset, namespace string, application string, component string) ([]corev1.Pod, error) {
-	// Right now this connects to a pod related to a component. We can find the pods with the labels
+func getRunningReplicas(ctx context.Context, client *k8s.Clientset, namespace string, application string, resource string) ([]corev1.Pod, error) {
+	// Right now this connects to a pod related to a resource. We can find the pods with the labels
 	// and then choose one that's in the running state.
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
-		LabelSelector: labels.FormatLabels(kubernetes.MakeSelectorLabels(application, component)),
+		LabelSelector: labels.FormatLabels(kubernetes.MakeSelectorLabels(application, resource)),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list running replicas for component %v: %w", component, err)
+		return nil, fmt.Errorf("failed to list running replicas for resource %v: %w", resource, err)
 	}
 	var running []corev1.Pod
 	for _, p := range pods.Items {
@@ -224,7 +224,7 @@ func getRunningReplicas(ctx context.Context, client *k8s.Clientset, namespace st
 		}
 	}
 	if len(running) == 0 {
-		return nil, fmt.Errorf("failed to find a running replica for component %v", component)
+		return nil, fmt.Errorf("failed to find a running replica for resource %v", resource)
 	}
 
 	return running, nil

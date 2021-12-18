@@ -43,7 +43,7 @@ func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, resource rend
 }
 
 func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := radclient.MongoDBComponentProperties{}
+	properties := radclient.MongoDBResourceProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {

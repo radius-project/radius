@@ -15,7 +15,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   //REST
   //REST
 
-  resource mongo 'mongodb.com.MongoDBComponent' = {
+  resource mongo 'mongo.com.MongoDatabase' = {
     name: 'mongo'
     properties: {
       resource: cosmos::db.id

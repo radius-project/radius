@@ -436,7 +436,7 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 	}
 
 	// Check if the resource is provisioned and ready
-	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ComponentStatus).ProvisioningState)) {
+	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ResourceStatus).ProvisioningState)) {
 		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
@@ -518,7 +518,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return nil, err
 	}
 
-	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ComponentStatus).ProvisioningState)) {
+	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ResourceStatus).ProvisioningState)) {
 		// Operation is still processing.
 		// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
 		return rest.NewAcceptedAsyncResponse(output, id.ID), nil

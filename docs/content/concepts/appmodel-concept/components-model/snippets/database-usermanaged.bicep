@@ -36,7 +36,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'myapp'
 
-  resource db 'mongodb.com.MongoDBComponent' = {
+  resource db 'mongo.com.MongoDatabase' = {
     name: 'db'
     properties: {
       resource: account::mongodb.id

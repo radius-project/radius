@@ -6,7 +6,7 @@ description: "Learn about Radius persistent volumes"
 weight: 201
 ---
 
-Persistent volumes have lifecycles that are separate from the container. ContainerComponents "attach" to another resource which contains the persistent volume.
+Persistent volumes have lifecycles that are separate from the container. Containers "attach" to another resource which contains the persistent volume.
 
 ## Properties
 
