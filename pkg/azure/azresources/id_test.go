@@ -112,21 +112,21 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 		},
 		{
-			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Components",
-			expected: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Components",
+			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers",
+			expected: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers",
 			types: []ResourceType{
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 				{Type: "Applications", Name: "test-app"},
-				{Type: "Components"},
+				{Type: "Containers"},
 			},
 		},
 		{
-			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Components/test",
-			expected: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Components/test",
+			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers/test",
+			expected: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers/test",
 			types: []ResourceType{
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 				{Type: "Applications", Name: "test-app"},
-				{Type: "Components", Name: "test"},
+				{Type: "Containers", Name: "test"},
 			},
 		},
 	}

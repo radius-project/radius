@@ -4,7 +4,7 @@ param env string
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-cli-parameters'
 
-  resource a 'ContainerComponent' = {
+  resource a 'Container' = {
     name: 'a'
     properties: {
       container: {
@@ -16,7 +16,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource b 'ContainerComponent' = {
+  resource b 'Container' = {
     name: 'b'
     properties: {
       container: {

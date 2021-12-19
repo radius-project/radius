@@ -55,8 +55,8 @@ type OutputResourceStatus struct {
 	Replicas                 []Replica `json:"replicas,omitempty"`
 }
 
-// ComponentStatus represents the status of the Radius Component
-type ComponentStatus struct {
+// ResourceStatus represents the status of the Radius Resource
+type ResourceStatus struct {
 	ProvisioningState        string           `json:"provisioningState"`
 	ProvisioningErrorDetails string           `json:"provisioningErrorDetails"`
 	HealthState              string           `json:"healthState"`

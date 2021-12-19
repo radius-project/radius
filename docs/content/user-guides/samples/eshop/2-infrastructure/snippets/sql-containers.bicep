@@ -4,7 +4,7 @@ param adminPassword string
 resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 
-  resource sqlIdentity 'ContainerComponent' = {
+  resource sqlIdentity 'Container' = {
     name: 'IdentityDb'
     properties: {
       container: {

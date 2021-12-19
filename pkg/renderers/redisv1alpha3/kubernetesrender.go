@@ -33,7 +33,7 @@ func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload rend
 func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource := options.Resource
 
-	properties := radclient.RedisComponentProperties{}
+	properties := radclient.RedisCacheResourceProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -107,7 +107,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 	return output, nil
 }
 
-func GetKubernetesRedis(resource renderers.RendererResource, properties radclient.RedisComponentProperties) ([]outputresource.OutputResource, error) {
+func GetKubernetesRedis(resource renderers.RendererResource, properties radclient.RedisCacheResourceProperties) ([]outputresource.OutputResource, error) {
 	resources := []outputresource.OutputResource{}
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{

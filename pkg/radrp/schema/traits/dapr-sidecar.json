@@ -3,7 +3,7 @@
   "definitions": {
     "DaprSidecarTrait": {
       "type": "object",
-      "description": "The specifies that the component should have a Dapr sidecar injected",
+      "description": "The specifies that the resource should have a Dapr sidecar injected",
       "required": [
         "appId",
         "kind"
@@ -23,11 +23,11 @@
           "type": "string"
         },
         "config": {
-          "description": "Specifies the Dapr configuration to use for the component.",
+          "description": "Specifies the Dapr configuration to use for the resource.",
           "type": "string"
         },
         "protocol": {
-          "description": "Specifies the Dapr app-protocol to use for the component.",
+          "description": "Specifies the Dapr app-protocol to use for the resource.",
           "type": "string",
           "enum": [
             "http",
@@ -35,7 +35,7 @@
           ]
         },
         "provides": {
-          "description": "Specifies the resource id of a dapr.io.DaprHttpRoute that can route traffic to this component.",
+          "description": "Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.",
           "type": "string"
         }
       },

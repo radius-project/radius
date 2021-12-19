@@ -127,7 +127,7 @@ const (
 	ContainerConnectionKindAzure ContainerConnectionKind = "azure"
 	ContainerConnectionKindAzureComKeyVault ContainerConnectionKind = "azure.com/KeyVault"
 	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
-	ContainerConnectionKindDaprIoDaprHTTP ContainerConnectionKind = "dapr.io/DaprHttp"
+	ContainerConnectionKindDaprIoInvokeHTTP ContainerConnectionKind = "dapr.io/InvokeHttp"
 	ContainerConnectionKindDaprIoPubSubTopic ContainerConnectionKind = "dapr.io/PubSubTopic"
 	ContainerConnectionKindDaprIoStateStore ContainerConnectionKind = "dapr.io/StateStore"
 	ContainerConnectionKindGrpc ContainerConnectionKind = "Grpc"
@@ -144,7 +144,7 @@ func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
 		ContainerConnectionKindAzure,
 		ContainerConnectionKindAzureComKeyVault,
 		ContainerConnectionKindAzureComServiceBusQueue,
-		ContainerConnectionKindDaprIoDaprHTTP,
+		ContainerConnectionKindDaprIoInvokeHTTP,
 		ContainerConnectionKindDaprIoPubSubTopic,
 		ContainerConnectionKindDaprIoStateStore,
 		ContainerConnectionKindGrpc,
@@ -207,28 +207,28 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
-// DaprPubSubTopicComponentPropertiesKind - The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.
-type DaprPubSubTopicComponentPropertiesKind string
+// DaprPubSubTopicResourcePropertiesKind - The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes configuration format.
+type DaprPubSubTopicResourcePropertiesKind string
 
 const (
-	DaprPubSubTopicComponentPropertiesKindAny DaprPubSubTopicComponentPropertiesKind = "any"
-	DaprPubSubTopicComponentPropertiesKindPubsubAzureServicebus DaprPubSubTopicComponentPropertiesKind = "pubsub.azure.servicebus"
+	DaprPubSubTopicResourcePropertiesKindAny DaprPubSubTopicResourcePropertiesKind = "any"
+	DaprPubSubTopicResourcePropertiesKindPubsubAzureServicebus DaprPubSubTopicResourcePropertiesKind = "pubsub.azure.servicebus"
 )
 
-// PossibleDaprPubSubTopicComponentPropertiesKindValues returns the possible values for the DaprPubSubTopicComponentPropertiesKind const type.
-func PossibleDaprPubSubTopicComponentPropertiesKindValues() []DaprPubSubTopicComponentPropertiesKind {
-	return []DaprPubSubTopicComponentPropertiesKind{	
-		DaprPubSubTopicComponentPropertiesKindAny,
-		DaprPubSubTopicComponentPropertiesKindPubsubAzureServicebus,
+// PossibleDaprPubSubTopicResourcePropertiesKindValues returns the possible values for the DaprPubSubTopicResourcePropertiesKind const type.
+func PossibleDaprPubSubTopicResourcePropertiesKindValues() []DaprPubSubTopicResourcePropertiesKind {
+	return []DaprPubSubTopicResourcePropertiesKind{	
+		DaprPubSubTopicResourcePropertiesKindAny,
+		DaprPubSubTopicResourcePropertiesKindPubsubAzureServicebus,
 	}
 }
 
-// ToPtr returns a *DaprPubSubTopicComponentPropertiesKind pointing to the current value.
-func (c DaprPubSubTopicComponentPropertiesKind) ToPtr() *DaprPubSubTopicComponentPropertiesKind {
+// ToPtr returns a *DaprPubSubTopicResourcePropertiesKind pointing to the current value.
+func (c DaprPubSubTopicResourcePropertiesKind) ToPtr() *DaprPubSubTopicResourcePropertiesKind {
 	return &c
 }
 
-// DaprSidecarTraitProtocol - Specifies the Dapr app-protocol to use for the component.
+// DaprSidecarTraitProtocol - Specifies the Dapr app-protocol to use for the resource.
 type DaprSidecarTraitProtocol string
 
 const (
@@ -249,28 +249,28 @@ func (c DaprSidecarTraitProtocol) ToPtr() *DaprSidecarTraitProtocol {
 	return &c
 }
 
-// DaprStateStoreComponentPropertiesKind - The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.
-type DaprStateStoreComponentPropertiesKind string
+// DaprStateStoreResourcePropertiesKind - The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes configuration format.
+type DaprStateStoreResourcePropertiesKind string
 
 const (
-	DaprStateStoreComponentPropertiesKindAny DaprStateStoreComponentPropertiesKind = "any"
-	DaprStateStoreComponentPropertiesKindStateAzureTablestorage DaprStateStoreComponentPropertiesKind = "state.azure.tablestorage"
-	DaprStateStoreComponentPropertiesKindStateRedis DaprStateStoreComponentPropertiesKind = "state.redis"
-	DaprStateStoreComponentPropertiesKindStateSqlserver DaprStateStoreComponentPropertiesKind = "state.sqlserver"
+	DaprStateStoreResourcePropertiesKindAny DaprStateStoreResourcePropertiesKind = "any"
+	DaprStateStoreResourcePropertiesKindStateAzureTablestorage DaprStateStoreResourcePropertiesKind = "state.azure.tablestorage"
+	DaprStateStoreResourcePropertiesKindStateRedis DaprStateStoreResourcePropertiesKind = "state.redis"
+	DaprStateStoreResourcePropertiesKindStateSqlserver DaprStateStoreResourcePropertiesKind = "state.sqlserver"
 )
 
-// PossibleDaprStateStoreComponentPropertiesKindValues returns the possible values for the DaprStateStoreComponentPropertiesKind const type.
-func PossibleDaprStateStoreComponentPropertiesKindValues() []DaprStateStoreComponentPropertiesKind {
-	return []DaprStateStoreComponentPropertiesKind{	
-		DaprStateStoreComponentPropertiesKindAny,
-		DaprStateStoreComponentPropertiesKindStateAzureTablestorage,
-		DaprStateStoreComponentPropertiesKindStateRedis,
-		DaprStateStoreComponentPropertiesKindStateSqlserver,
+// PossibleDaprStateStoreResourcePropertiesKindValues returns the possible values for the DaprStateStoreResourcePropertiesKind const type.
+func PossibleDaprStateStoreResourcePropertiesKindValues() []DaprStateStoreResourcePropertiesKind {
+	return []DaprStateStoreResourcePropertiesKind{	
+		DaprStateStoreResourcePropertiesKindAny,
+		DaprStateStoreResourcePropertiesKindStateAzureTablestorage,
+		DaprStateStoreResourcePropertiesKindStateRedis,
+		DaprStateStoreResourcePropertiesKindStateSqlserver,
 	}
 }
 
-// ToPtr returns a *DaprStateStoreComponentPropertiesKind pointing to the current value.
-func (c DaprStateStoreComponentPropertiesKind) ToPtr() *DaprStateStoreComponentPropertiesKind {
+// ToPtr returns a *DaprStateStoreResourcePropertiesKind pointing to the current value.
+func (c DaprStateStoreResourcePropertiesKind) ToPtr() *DaprStateStoreResourcePropertiesKind {
 	return &c
 }
 
@@ -314,7 +314,7 @@ func (c Enum2) ToPtr() *Enum2 {
 	return &c
 }
 
-// Enum3 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component
+// Enum3 - Indicates if the resource is Radius-managed. For now only true is accepted for this resource.
 type Enum3 bool
 
 const (
@@ -330,6 +330,25 @@ func PossibleEnum3Values() []Enum3 {
 
 // ToPtr returns a *Enum3 pointing to the current value.
 func (c Enum3) ToPtr() *Enum3 {
+	return &c
+}
+
+// Enum6 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
+type Enum6 bool
+
+const (
+	Enum6True Enum6 = true
+)
+
+// PossibleEnum6Values returns the possible values for the Enum6 const type.
+func PossibleEnum6Values() []Enum6 {
+	return []Enum6{	
+		Enum6True,
+	}
+}
+
+// ToPtr returns a *Enum6 pointing to the current value.
+func (c Enum6) ToPtr() *Enum6 {
 	return &c
 }
 

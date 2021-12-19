@@ -209,7 +209,7 @@ func (ct ControllerTest) Test(t *testing.T) error {
 			return fmt.Errorf("failed to initialize find objects : %w", err)
 		}
 		for _, gvk := range gvks {
-			// Get GVR for corresponding component.
+			// Get GVR for corresponding resource.
 			gvr, err := ct.Options.Mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			require.NoError(t, err, "failed to marshal json")
 

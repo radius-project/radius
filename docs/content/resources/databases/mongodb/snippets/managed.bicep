@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'cosmos-container'
   
   //SAMPLE
-  resource db 'mongodb.com.MongoDBComponent' = {
+  resource db 'mongo.com.MongoDatabase' = {
     name: 'db'
     properties: {
       managed: true
@@ -10,7 +10,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
   //SAMPLE
 
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       //HIDE

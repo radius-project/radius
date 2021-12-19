@@ -35,18 +35,18 @@ var resourceID = azresources.MakeID(
 	Namespace,
 	azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 	azresources.ResourceType{Type: "Application", Name: ApplicationName},
-	azresources.ResourceType{Type: "ContainerComponent", Name: ResourceName})
+	azresources.ResourceType{Type: "Container", Name: ResourceName})
 
 func Test_GetRenderDependency(t *testing.T) {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 
-	// Simulate a *rendered* component
-	resource := radiusv1alpha3.ContainerComponent{
+	// Simulate a *rendered* resource
+	resource := radiusv1alpha3.Container{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
-			Kind:       "ContainerComponent",
+			Kind:       "Container",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(ApplicationName, ResourceName),

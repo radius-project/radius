@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'redis-container'
 
   //SAMPLE
-  resource redis 'redislabs.com.RedisComponent' = {
+  resource redis 'redislabs.com.RedisCache' = {
     name: 'redis'
     properties: {
       managed: true
@@ -10,7 +10,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
   //SAMPLE
 
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       //HIDE

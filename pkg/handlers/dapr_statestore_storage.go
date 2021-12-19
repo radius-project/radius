@@ -145,7 +145,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
-		return fmt.Errorf("failed to create/update Dapr Component: %w", err)
+		return fmt.Errorf("failed to create/update Dapr State Store: %w", err)
 	}
 
 	return err
@@ -189,7 +189,7 @@ func (handler *daprStateStoreAzureStorageHandler) DeleteDaprStateStore(ctx conte
 
 	err := client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 	if err != nil {
-		return fmt.Errorf("failed to delete Dapr Component: %w", err)
+		return fmt.Errorf("failed to delete Dapr state store: %w", err)
 	}
 
 	return nil

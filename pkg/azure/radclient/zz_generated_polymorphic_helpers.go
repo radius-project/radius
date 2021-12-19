@@ -10,64 +10,6 @@ package radclient
 
 import "encoding/json"
 
-func unmarshalComponentTraitClassification(rawMsg json.RawMessage) (ComponentTraitClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]interface{}
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b ComponentTraitClassification
-	switch m["kind"] {
-	case "dapr.io/Sidecar@v1alpha1":
-		b = &DaprSidecarTrait{}
-	case "radius.dev/ManualScaling@v1alpha1":
-		b = &ManualScalingTrait{}
-	default:
-		b = &ComponentTrait{}
-	}
-	return b, json.Unmarshal(rawMsg, b)
-}
-
-func unmarshalComponentTraitClassificationArray(rawMsg json.RawMessage) ([]ComponentTraitClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var rawMessages []json.RawMessage
-	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
-		return nil, err
-	}
-	fArray := make([]ComponentTraitClassification, len(rawMessages))
-	for index, rawMessage := range rawMessages {
-		f, err := unmarshalComponentTraitClassification(rawMessage)
-		if err != nil {
-			return nil, err
-		}
-		fArray[index] = f
-	}
-	return fArray, nil
-}
-
-func unmarshalComponentTraitClassificationMap(rawMsg json.RawMessage) (map[string]ComponentTraitClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var rawMessages map[string]json.RawMessage
-	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
-		return nil, err
-	}
-	fMap := make(map[string]ComponentTraitClassification, len(rawMessages))
-	for key, rawMessage := range rawMessages {
-		f, err := unmarshalComponentTraitClassification(rawMessage)
-		if err != nil {
-			return nil, err
-		}
-		fMap[key] = f
-	}
-	return fMap, nil
-}
-
 func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (HealthProbePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
@@ -120,6 +62,64 @@ func unmarshalHealthProbePropertiesClassificationMap(rawMsg json.RawMessage) (ma
 	fMap := make(map[string]HealthProbePropertiesClassification, len(rawMessages))
 	for key, rawMessage := range rawMessages {
 		f, err := unmarshalHealthProbePropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
+func unmarshalResourceTraitClassification(rawMsg json.RawMessage) (ResourceTraitClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b ResourceTraitClassification
+	switch m["kind"] {
+	case "dapr.io/Sidecar@v1alpha1":
+		b = &DaprSidecarTrait{}
+	case "radius.dev/ManualScaling@v1alpha1":
+		b = &ManualScalingTrait{}
+	default:
+		b = &ResourceTrait{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalResourceTraitClassificationArray(rawMsg json.RawMessage) ([]ResourceTraitClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]ResourceTraitClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalResourceTraitClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalResourceTraitClassificationMap(rawMsg json.RawMessage) (map[string]ResourceTraitClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]ResourceTraitClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalResourceTraitClassification(rawMessage)
 		if err != nil {
 			return nil, err
 		}

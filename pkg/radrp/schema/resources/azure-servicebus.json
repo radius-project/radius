@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "AzureServiceBusResource": {
+      "description": "Azure ServiceBus",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AzureServiceBusProperties"
+        }
+      }
+    },
+    "AzureServiceBusProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "basic-resource.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "required": [
+        "managed",
+        "queue"
+      ],
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this resource.",
+          "type": "boolean",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ]
+        },
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

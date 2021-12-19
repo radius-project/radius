@@ -29,9 +29,9 @@ func IsARMExpression(text string) (bool, error) {
 func Parse(text string) (*SyntaxTree, error) {
 	// The input string is expected to use either the form:
 	//
-	// [reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'app', 'backend')).bindings.web]'
+	// [reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Containers', 'radius', 'app', 'backend')).bindings.web]'
 	// OR
-	// '[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'app', 'backend')).bindings.web]'
+	// '[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Containers', 'radius', 'app', 'backend')).bindings.web]'
 	//
 	// That is, we parse ARM's expression syntax, but also accecpt it with an extra '[' in the front. This allows us escape expresssions and pass
 	// them through the deployment engine.

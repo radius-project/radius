@@ -11,7 +11,7 @@ param connections object
 resource myapp 'radius.dev/Application@v1alpha3' existing = {
   name: app.name
 
-  resource container 'ContainerComponent' = {
+  resource container 'Container' = {
     name: name
     properties: {
       container: {

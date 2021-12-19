@@ -9,6 +9,8 @@ controller-run: generate-k8s-manifests generate-controller ## Run the controller
 	SKIP_WEBHOOKS=true go run ./cmd/radius-controller/main.go
 
 controller-crd-install: generate-k8s-manifests  ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	kubectl kustomize "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" | kubectl apply -f -
+	
 	kubectl apply -f deploy/Chart/crds/
 	kubectl wait --for condition="established" -f deploy/Chart/crds/
 

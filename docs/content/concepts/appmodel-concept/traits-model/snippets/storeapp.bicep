@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'shopping-app'
 
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       container: {
@@ -30,7 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource storefrontDapr 'dapr.io.DaprHttpRoute' = {
+  resource storefrontDapr 'dapr.io.InvokeHttpRoute' = {
     name: 'storefront-dapr'
     properties: {
       appId: 'storefront'
@@ -46,7 +46,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource cart 'ContainerComponent' = {
+  resource cart 'Container' = {
     name: 'cart-api'
     properties: {
       container: {
@@ -57,7 +57,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
       connections: {
         store: {
-          kind: 'dapr.io/DaprHttp'
+          kind: 'dapr.io/InvokeHttp'
           source: storefrontDapr.id
         }
       }
@@ -70,7 +70,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource inventory 'dapr.io.StateStoreComponent' = {
+  resource inventory 'dapr.io.StateStore' = {
     name: 'inventorystore'
     properties: {
       kind: 'state.azure.tablestorage'

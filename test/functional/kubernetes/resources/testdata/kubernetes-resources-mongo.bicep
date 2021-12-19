@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-mongo'
   
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todomongo'
     properties: {
       container: {
@@ -21,7 +21,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource mongodb 'mongodb.com.MongoDBComponent' = {
+  resource mongodb 'mongo.com.MongoDatabase' = {
     name: 'mongodb'
     properties: {
         managed: true

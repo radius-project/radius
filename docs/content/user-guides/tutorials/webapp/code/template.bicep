@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'webapp'
 
-  resource todoapplication 'ContainerComponent' = {
+  resource todoapplication 'Container' = {
     name: 'todoapp'
     properties: {
       container: {
@@ -29,7 +29,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'http-route'
   }
 
-  resource db 'mongodb.com.MongoDBComponent' = {
+  resource db 'mongo.com.MongoDatabase' = {
     name: 'db'
     properties: {
       managed: true

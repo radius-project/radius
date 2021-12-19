@@ -27,7 +27,7 @@ func TestTypeSpecUnmarshalJSON(t *testing.T) {
 		name: "valid properties",
 		input: `{
                   "type": "object",
-                  "description": "Dapr ComponentTrait",
+                  "description": "Dapr Sidecar Trait",
                   "properties": {
                     "kind": {
                       "description": "Trait kind",
@@ -63,14 +63,14 @@ func TestTypeSpecUnmarshalJSON(t *testing.T) {
 			},
 			AdditionalProperties: map[string]interface{}{
 				"type":                 "object",
-				"description":          "Dapr ComponentTrait",
+				"description":          "Dapr Sidecar Trait",
 				"additionalProperties": false,
 			},
 		},
 	}, {
 		name: "valid oneOf",
 		input: `{
-                  "description": "Trait of a component",
+                  "description": "Trait of a resource",
                   "type": "object",
                   "oneOf": [{
                     "$ref": "#/definitions/DaprTrait"
@@ -88,7 +88,7 @@ func TestTypeSpecUnmarshalJSON(t *testing.T) {
 			},
 			AdditionalProperties: map[string]interface{}{
 				"type":        "object",
-				"description": "Trait of a component",
+				"description": "Trait of a resource",
 			},
 		},
 	}} {

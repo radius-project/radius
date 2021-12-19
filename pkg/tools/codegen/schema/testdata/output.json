@@ -53,13 +53,13 @@
       "type": "object",
       "description": "List of Application resources."
     },
-    "AwesomeComponentList": {
+    "AwesomeThingList": {
       "properties": {
         "value": {
           "items": {
-            "$ref": "#/definitions/AwesomeComponentResource"
+            "$ref": "#/definitions/AwesomeThingResource"
           },
-          "description": "List of radius.com.AwesomeComponent resources.",
+          "description": "List of radius.com.AwesomeThing resources.",
           "type": "array"
         }
       },
@@ -67,7 +67,7 @@
         "value"
       ],
       "type": "object",
-      "description": "List of radius.com.AwesomeComponent resources."
+      "description": "List of radius.com.AwesomeThing resources."
     },
     "RadiusResourceList": {
       "properties": {
@@ -95,13 +95,13 @@
       "in": "path",
       "name": "applicationName"
     },
-    "AwesomeComponentNameParameter": {
+    "AwesomeThingNameParameter": {
       "x-ms-parameter-location": "method",
-      "description": "The name of the radius.com.AwesomeComponent resource.",
+      "description": "The name of the radius.com.AwesomeThing resource.",
       "type": "string",
       "required": true,
       "in": "path",
-      "name": "awesomeComponentName"
+      "name": "awesomeThingName"
     },
     "RadiusResourceTypeParameter": {
       "x-ms-parameter-location": "method",
@@ -209,10 +209,10 @@
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/radius.com.AwesomeComponent/{awesomeComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/radius.com.AwesomeThing/{awesomeThingName}": {
       "delete": {
-        "description": "Deletes a radius.com.AwesomeComponent resource.",
-        "operationId": "radius.com.AwesomeComponent_Delete",
+        "description": "Deletes a radius.com.AwesomeThing resource.",
+        "operationId": "radius.com.AwesomeThing_Delete",
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options" : {
           "final-state-via" : "location"
@@ -228,7 +228,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AwesomeComponentNameParameter"
+            "$ref": "#/parameters/AwesomeThingNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -236,10 +236,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the radius.com.AwesomeComponent will complete asynchronously."
+            "description": "The request to delete the radius.com.AwesomeThing will complete asynchronously."
           },
           "204": {
-            "description": "The radius.com.AwesomeComponent resource was successfully deleted."
+            "description": "The radius.com.AwesomeThing resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -249,12 +249,12 @@
           }
         },
         "tags": [
-          "radius.com.AwesomeComponent"
+          "radius.com.AwesomeThing"
         ]
       },
       "get": {
-        "description": "Gets a radius.com.AwesomeComponent resource by name.",
-        "operationId": "radius.com.AwesomeComponent_Get",
+        "description": "Gets a radius.com.AwesomeThing resource by name.",
+        "operationId": "radius.com.AwesomeThing_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -266,7 +266,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AwesomeComponentNameParameter"
+            "$ref": "#/parameters/AwesomeThingNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -274,9 +274,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The radius.com.AwesomeComponent resource was retrieved successfully.",
+            "description": "The radius.com.AwesomeThing resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             }
           },
           "default": {
@@ -287,12 +287,12 @@
           }
         },
         "tags": [
-          "radius.com.AwesomeComponent"
+          "radius.com.AwesomeThing"
         ]
       },
       "put": {
-        "description": "Creates or updates a radius.com.AwesomeComponent resource.",
-        "operationId": "radius.com.AwesomeComponent_CreateOrUpdate",
+        "description": "Creates or updates a radius.com.AwesomeThing resource.",
+        "operationId": "radius.com.AwesomeThing_CreateOrUpdate",
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options" : {
           "final-state-via" : "location"
@@ -308,12 +308,12 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AwesomeComponentNameParameter"
+            "$ref": "#/parameters/AwesomeThingNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a radius.com.AwesomeComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a radius.com.AwesomeThing resource.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             },
             "required": true,
             "in": "body",
@@ -325,21 +325,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing radius.com.AwesomeComponent resource was successfully updated.",
+            "description": "The existing radius.com.AwesomeThing resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             }
           },
           "201": {
-            "description": "The new radius.com.AwesomeComponent resource was successfully created.",
+            "description": "The new radius.com.AwesomeThing resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             }
           },
           "202": {
-            "description": "The existing radius.com.AwesomeComponent resource was successfully updated.",
+            "description": "The existing radius.com.AwesomeThing resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             }
           },
           "default": {
@@ -350,14 +350,14 @@
           }
         },
         "tags": [
-          "radius.com.AwesomeComponent"
+          "radius.com.AwesomeThing"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/radius.com.AwesomeComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/radius.com.AwesomeThing": {
       "get": {
-        "description": "List the radius.com.AwesomeComponent resources deployed in the application.",
-        "operationId": "radius.com.AwesomeComponent_List",
+        "description": "List the radius.com.AwesomeThing resources deployed in the application.",
+        "operationId": "radius.com.AwesomeThing_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -374,9 +374,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of radius.com.AwesomeComponent resources was retrieved successfully.",
+            "description": "The list of radius.com.AwesomeThing resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentList"
+              "$ref": "#/definitions/AwesomeThingList"
             }
           },
           "default": {
@@ -387,7 +387,7 @@
           }
         },
         "tags": [
-          "radius.com.AwesomeComponent"
+          "radius.com.AwesomeThing"
         ]
       }
     },
@@ -600,8 +600,8 @@
     }
   },
   "definitions": {
-    "ComponentTrait": {
-      "description": "Trait of a component.",
+    "ResourceTrait": {
+      "description": "Trait of a resource.",
       "discriminator": "kind",
       "required": [
         "kind"
@@ -609,7 +609,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "The ComponentTrait kind"
+          "description": "The ResourceTrait kind"
         }
       },
       "type": "object"
@@ -618,10 +618,10 @@
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/ComponentTrait"
+          "$ref": "#/definitions/ResourceTrait"
         }
       ],
-      "description": "Dapr ComponentTrait",
+      "description": "Dapr Sidecar Trait",
       "properties": {
         "appId": {
           "description": "Dapr appId.",
@@ -635,35 +635,14 @@
       "type": "object",
       "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
     },
-    "InboundRouteTrait": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/ComponentTrait"
-        }
-      ],
-      "description": "InboundRoute ComponentTrait",
-      "properties": {
-        "binding": {
-          "description": "Binding name.",
-          "type": "string"
-        },
-        "hostName": {
-          "description": "Host name.",
-          "type": "string"
-        }
-      },
-      "type": "object",
-      "x-ms-discriminator-value": "radius.dev/InboundRoute@v1alpha1"
-    },
     "ManualScalingTrait": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/ComponentTrait"
+          "$ref": "#/definitions/ResourceTrait"
         }
       ],
-      "description": "ManualScaling ComponentTrait",
+      "description": "ManualScaling Trait",
       "properties": {
         "replicas": {
           "description": "Replica count.",

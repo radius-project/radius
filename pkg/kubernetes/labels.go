@@ -77,7 +77,7 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 // Kubernetes object.
 //
 // This function differs from MakeSelectorLablels in that it's intended to *cross* resources. eg: The Service created by
-// an HttpRoute and the Deployment created by a ContainerComponent.
+// an HttpRoute and the Deployment created by a Container.
 func MakeRouteSelectorLabels(application string, resourceType string, route string) map[string]string {
 	return map[string]string{
 		LabelRadiusApplication: application,
@@ -99,7 +99,7 @@ func MakeAADPodIdentityBindingLabels(podIdentityName string) map[string]string {
 // Kubernetes object.
 //
 // This function differs from MakeSelectorLablels in that it's intended to *cross* resources. eg: The Service created by
-// an HttpRoute and the Deployment created by a ContainerComponent.
+// an HttpRoute and the Deployment created by a Container.
 func MakeResourceCRDLabels(application string, resourceType string, resource string) map[string]string {
 	if resourceType != "" && resource != "" {
 		return map[string]string{

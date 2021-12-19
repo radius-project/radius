@@ -9,7 +9,7 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
-const ResourceType = "azure.com.KeyVaultComponent"
+const ResourceType = "azure.com.KeyVault"
 
 var KeyVaultResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{

@@ -21,11 +21,11 @@ import (
 	"github.com/Azure/radius/test/validation"
 )
 
-// Tests that we can add a component to a deployed application
-// by redeploying with more components.
-func Test_RedeployWithAnotherComponent(t *testing.T) {
-	application := "azure-mechanics-redeploy-withanothercomponent"
-	templateFmt := "testdata/azure-mechanics-redeploy-withanothercomponent.step%d.bicep"
+// Tests that we can add a resource to a deployed application
+// by redeploying with more resource.
+func Test_RedeployWithAnotherResource(t *testing.T) {
+	application := "azure-mechanics-redeploy-withanotherresource"
+	templateFmt := "testdata/azure-mechanics-redeploy-withanotherresource.step%d.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1)),

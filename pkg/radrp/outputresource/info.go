@@ -17,7 +17,7 @@ import (
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	// LocalID is a logical identifier scoped to the owning Radius resource (Component/Route/Scope).
+	// LocalID is a logical identifier scoped to the owning Radius resource.
 	LocalID string
 
 	// Identity uniquely identifies the underlying resource within its platform..

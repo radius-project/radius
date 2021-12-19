@@ -55,7 +55,7 @@ Another benefit of traits is that for operational behaviors like the *number of 
 
 For an example, consider a trait that applies [Kubernetes labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/) when a Component is deployed to a Kubernetes environment. For many organizations using Kubernetes in production, they require workloads to be tagged with labels according to an internal convention. This is useful for consistency and governance across the organization.
 
-This could create a problem when using Radius on Kubernetes, because Kubernetes labels are not part of the definition of any type of Radius Component. For instance the *generic container primitive* (`ContainerComponent`) does not include Kubernetes concepts like labels.
+This could create a problem when using Radius on Kubernetes, because Kubernetes labels are not part of the definition of any type of Radius Component. For instance the *generic container primitive* (`Container`) does not include Kubernetes concepts like labels.
 
 To solve this, you could define a *Kubernetes label trait* that *extends* the definition of a container with additional data. This is desirable because the labels are additional data - the addition of labels does not *change the nature* of the Component - it is still a container.
 

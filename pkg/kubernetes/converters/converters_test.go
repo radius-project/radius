@@ -19,7 +19,7 @@ import (
 )
 
 func Test_ConvertToRenderResource(t *testing.T) {
-	original, err := ioutil.ReadFile(path.Join("testdata", "frontend-component.json"))
+	original, err := ioutil.ReadFile(path.Join("testdata", "frontend-resource.json"))
 	require.NoError(t, err)
 
 	resource := radiusv1alpha3.Resource{}
@@ -30,7 +30,7 @@ func Test_ConvertToRenderResource(t *testing.T) {
 	expected := renderers.RendererResource{
 		ResourceName:    "frontend",
 		ApplicationName: "azure-resources-container-httpbinding",
-		ResourceType:    "ContainerComponent",
+		ResourceType:    "Container",
 		Definition: map[string]interface{}{
 			"connections": map[string]interface{}{
 				"backend": map[string]interface{}{
@@ -55,13 +55,13 @@ func Test_ConvertToRenderResource(t *testing.T) {
 	}
 
 	err = ConvertToRenderResource(&resource, &actual)
-	require.NoError(t, err, "failed to convert component")
+	require.NoError(t, err, "failed to convert resource")
 
 	require.Equal(t, expected, actual)
 }
 
 func Test_ConvertToARMResource(t *testing.T) {
-	original, err := ioutil.ReadFile(path.Join("testdata", "frontend-component.json"))
+	original, err := ioutil.ReadFile(path.Join("testdata", "frontend-resource.json"))
 	require.NoError(t, err)
 
 	resource := radiusv1alpha3.Resource{}

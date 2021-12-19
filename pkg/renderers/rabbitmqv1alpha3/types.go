@@ -5,6 +5,6 @@
 
 package rabbitmqv1alpha3
 
-const ResourceType = "rabbitmq.com.MessageQueueComponent"
+const ResourceType = "rabbitmq.com.MessageQueue"
 
 const QueueNameKey = "queue"

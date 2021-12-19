@@ -22,11 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// Tests that we can add a component to a deployed application
-// by redeploying with more components.
-func Test_RedeployWithAnotherComponent(t *testing.T) {
-	application := "kubernetes-mechanics-redeploy-withanothercomponent"
-	templateFmt := "testdata/kubernetes-mechanics-redeploy-withanothercomponent.step%d.bicep"
+// Tests that we can add a resource to a deployed application
+// by redeploying with more resource.
+func Test_RedeployWithAnotherResource(t *testing.T) {
+	application := "kubernetes-mechanics-redeploy-withanotherresource"
+	templateFmt := "testdata/kubernetes-mechanics-redeploy-withanotherresource.step%d.bicep"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1)),
@@ -86,9 +86,9 @@ func Test_RedeployWithAnotherComponent(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_RedeployWithUpdatedComponentUpdatesComponent(t *testing.T) {
-	application := "kubernetes-mechanics-redeploy-withupdatedcomponent"
-	templateFmt := "testdata/kubernetes-mechanics-redeploy-withupdatedcomponent.step%d.bicep"
+func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
+	application := "kubernetes-mechanics-redeploy-withupdatedresource"
+	templateFmt := "testdata/kubernetes-mechanics-redeploy-withupdatedresource.step%d.bicep"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1)),
@@ -152,9 +152,9 @@ func Test_RedeployWithUpdatedComponentUpdatesComponent(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_RedeployWitTwoSeparateComponentsKeepsComponent(t *testing.T) {
-	application := "kubernetes-mechanics-redeploy-withtwoseparatecomponent"
-	templateFmt := "testdata/kubernetes-mechanics-redeploy-withtwoseparatecomponent.step%d.bicep"
+func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
+	application := "kubernetes-mechanics-redeploy-withtwoseparateresource"
+	templateFmt := "testdata/kubernetes-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1)),

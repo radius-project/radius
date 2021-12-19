@@ -40,7 +40,7 @@ Relationships between Radius services and other resources can be defined through
 - Managed identities and role based acces control (where applicable)
 - Scoping and least-privilege communication (where applicable)
 
-{{< rad file="snippets/connection.bicep" embed=true replace-key-mongo="//MONGO" replace-value-mongo="resource mongo 'mongodb.com.MongoDBComponent' = {...}" replace-key-cosmos="//COSMOS" replace-value-cosmos="resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' existing = {...}" replace-key-container="//CONTAINER" replace-value-container="container: {...}" >}}
+{{< rad file="snippets/connection.bicep" embed=true replace-key-mongo="//MONGO" replace-value-mongo="resource mongo 'mongo.com.MongoDatabase' = {...}" replace-key-cosmos="//COSMOS" replace-value-cosmos="resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' existing = {...}" replace-key-container="//CONTAINER" replace-value-container="container: {...}" >}}
 
 ## Next steps
 

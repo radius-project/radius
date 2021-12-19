@@ -100,7 +100,7 @@
           "type": "boolean"
         },
         "resource": {
-          "description": "The ID of the user-managed volume to use for this component",
+          "description": "The ID of the user-managed volume to use for this resource",
           "type": "string"
         }
       },
@@ -110,13 +110,13 @@
       "type": "object",
       "x-ms-discriminator-value": "azure.com.fileshare"
     },
-    "AzureKeyVaultComponentList": {
-      "description": "List of azure.com.KeyVaultComponent resources.",
+    "AzureKeyVaultList": {
+      "description": "List of azure.com.KeyVault resources.",
       "properties": {
         "value": {
-          "description": "List of azure.com.KeyVaultComponent resources.",
+          "description": "List of azure.com.KeyVault resources.",
           "items": {
-            "$ref": "#/definitions/AzureKeyVaultComponentResource"
+            "$ref": "#/definitions/AzureKeyVaultResource"
           },
           "type": "array"
         }
@@ -126,11 +126,11 @@
       ],
       "type": "object"
     },
-    "AzureKeyVaultComponentProperties": {
+    "AzureKeyVaultProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
@@ -151,16 +151,16 @@
       },
       "type": "object"
     },
-    "AzureKeyVaultComponentResource": {
+    "AzureKeyVaultResource": {
       "allOf": [
         {
           "$ref": "#/definitions/ProxyResource"
         }
       ],
-      "description": "Component for Azure KeyVault",
+      "description": "Azure KeyVault",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/AzureKeyVaultComponentProperties"
+          "$ref": "#/definitions/AzureKeyVaultProperties"
         }
       },
       "required": [
@@ -196,7 +196,7 @@
           "type": "boolean"
         },
         "resource": {
-          "description": "The ID of the user-managed keyvault to use for this volume component",
+          "description": "The ID of the user-managed keyvault to use for this volume resource",
           "type": "string"
         },
         "secrets": {
@@ -213,13 +213,13 @@
       "type": "object",
       "x-ms-discriminator-value": "azure.com.keyvault"
     },
-    "AzureServiceBusComponentList": {
-      "description": "List of azure.com.ServiceBusQueueComponent resources.",
+    "AzureServiceBusList": {
+      "description": "List of azure.com.ServiceBusQueue resources.",
       "properties": {
         "value": {
-          "description": "List of azure.com.ServiceBusQueueComponent resources.",
+          "description": "List of azure.com.ServiceBusQueue resources.",
           "items": {
-            "$ref": "#/definitions/AzureServiceBusComponentResource"
+            "$ref": "#/definitions/AzureServiceBusResource"
           },
           "type": "array"
         }
@@ -229,16 +229,16 @@
       ],
       "type": "object"
     },
-    "AzureServiceBusComponentProperties": {
+    "AzureServiceBusProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
         "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this resource.",
           "enum": [
             true
           ],
@@ -258,16 +258,16 @@
       ],
       "type": "object"
     },
-    "AzureServiceBusComponentResource": {
+    "AzureServiceBusResource": {
       "allOf": [
         {
           "$ref": "#/definitions/ProxyResource"
         }
       ],
-      "description": "Component for Azure ServiceBus",
+      "description": "Azure ServiceBus",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/AzureServiceBusComponentProperties"
+          "$ref": "#/definitions/AzureServiceBusProperties"
         }
       },
       "required": [
@@ -276,12 +276,12 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
-    "BasicComponentProperties": {
-      "description": "Basic properties of a component.",
+    "BasicResourceProperties": {
+      "description": "Basic properties of a Radius resource.",
       "properties": {
         "status": {
-          "$ref": "#/definitions/ComponentStatus",
-          "description": "Status of the component"
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of the resource"
         }
       },
       "type": "object"
@@ -291,7 +291,7 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/RouteStatus",
-          "description": "Status of the component"
+          "description": "Status of the resource"
         }
       },
       "type": "object"
@@ -385,51 +385,53 @@
       },
       "type": "object"
     },
-    "ComponentOutputResource": {
-      "description": "Properties of an output resource.",
-      "type": "object"
-    },
-    "ComponentStatus": {
-      "description": "Status of a component.",
+    "ContainerConnection": {
+      "additionalProperties": false,
+      "description": "Specifies a connection from the container to another resource",
       "properties": {
-        "healthState": {
-          "description": "Health state of the component",
+        "kind": {
+          "description": "The kind of connection",
+          "enum": [
+            "azure",
+            "azure.com/KeyVault",
+            "azure.com/ServiceBusQueue",
+            "dapr.io/InvokeHttp",
+            "dapr.io/PubSubTopic",
+            "dapr.io/StateStore",
+            "Grpc",
+            "Http",
+            "microsoft.com/SQL",
+            "mongo.com/MongoDB",
+            "rabbitmq.com/MessageQueue",
+            "redislabs.com/Redis"
+          ],
           "type": "string"
         },
-        "outputResources": {
+        "role": {
+          "description": "RBAC permissions to be assigned on the source resource",
           "items": {
-            "$ref": "#/definitions/ComponentOutputResource"
+            "type": "string"
           },
           "type": "array"
         },
-        "provisioningState": {
-          "description": "Provisioning state of the component",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "ComponentTrait": {
-      "description": "Trait of a component.",
-      "discriminator": "kind",
-      "properties": {
-        "kind": {
-          "description": "The ComponentTrait kind",
+        "source": {
+          "description": "The source of the connection",
           "type": "string"
         }
       },
       "required": [
-        "kind"
+        "kind",
+        "source"
       ],
       "type": "object"
     },
-    "ContainerComponentList": {
-      "description": "List of ContainerComponent resources.",
+    "ContainerList": {
+      "description": "List of Container resources.",
       "properties": {
         "value": {
-          "description": "List of ContainerComponent resources.",
+          "description": "List of Container resources.",
           "items": {
-            "$ref": "#/definitions/ContainerComponentResource"
+            "$ref": "#/definitions/ContainerResource"
           },
           "type": "array"
         }
@@ -439,11 +441,37 @@
       ],
       "type": "object"
     },
-    "ContainerComponentProperties": {
+    "ContainerPort": {
+      "additionalProperties": false,
+      "description": "Specifies a listening port for the container",
+      "properties": {
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "integer"
+        },
+        "protocol": {
+          "description": "Protocol in use by the port",
+          "enum": [
+            "TCP",
+            "UDP"
+          ],
+          "type": "string"
+        },
+        "provides": {
+          "description": "Specifies a route provided by this port",
+          "type": "string"
+        }
+      },
+      "required": [
+        "containerPort"
+      ],
+      "type": "object"
+    },
+    "ContainerProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
@@ -491,25 +519,25 @@
           "type": "object"
         },
         "traits": {
-          "description": "Traits spec of the component",
+          "description": "Traits spec of the resource",
           "items": {
-            "$ref": "#/definitions/ComponentTrait"
+            "$ref": "#/definitions/ResourceTrait"
           },
           "type": "array"
         }
       },
       "type": "object"
     },
-    "ContainerComponentResource": {
+    "ContainerResource": {
       "allOf": [
         {
           "$ref": "#/definitions/ProxyResource"
         }
       ],
-      "description": "The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform",
+      "description": "The radius.dev/Container resource provides an abstraction for a container workload that can be run on any Radius platform",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/ContainerComponentProperties"
+          "$ref": "#/definitions/ContainerProperties"
         }
       },
       "required": [
@@ -517,88 +545,6 @@
       ],
       "type": "object",
       "x-ms-azure-resource": true
-    },
-    "ContainerConnection": {
-      "additionalProperties": false,
-      "description": "Specifies a connection from the container to another resource",
-      "properties": {
-        "kind": {
-          "description": "The kind of connection",
-          "enum": [
-            "azure",
-            "azure.com/KeyVault",
-            "azure.com/ServiceBusQueue",
-            "dapr.io/DaprHttp",
-            "dapr.io/PubSubTopic",
-            "dapr.io/StateStore",
-            "Grpc",
-            "Http",
-            "microsoft.com/SQL",
-            "mongo.com/MongoDB",
-            "rabbitmq.com/MessageQueue",
-            "redislabs.com/Redis"
-          ],
-          "type": "string"
-        },
-        "role": {
-          "description": "RBAC permissions to be assigned on the source resource",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "source": {
-          "description": "The source of the connection",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "source"
-      ],
-      "type": "object"
-    },
-    "ContainerPort": {
-      "additionalProperties": false,
-      "description": "Specifies a listening port for the container",
-      "properties": {
-        "containerPort": {
-          "description": "The listening port number",
-          "type": "integer"
-        },
-        "protocol": {
-          "description": "Protocol in use by the port",
-          "enum": [
-            "TCP",
-            "UDP"
-          ],
-          "type": "string"
-        },
-        "provides": {
-          "description": "Specifies a route provided by this port",
-          "type": "string"
-        }
-      },
-      "required": [
-        "containerPort"
-      ],
-      "type": "object"
-    },
-    "DaprHttpRouteList": {
-      "description": "List of dapr.io.DaprHttpRoute resources.",
-      "properties": {
-        "value": {
-          "description": "List of dapr.io.DaprHttpRoute resources.",
-          "items": {
-            "$ref": "#/definitions/DaprHttpRouteResource"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "value"
-      ],
-      "type": "object"
     },
     "DaprHttpRouteProperties": {
       "additionalProperties": false,
@@ -618,13 +564,29 @@
       ],
       "type": "object"
     },
-    "DaprHttpRouteResource": {
+    "DaprInvokeHttpRouteList": {
+      "description": "List of dapr.io.InvokeHttpRoute resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.InvokeHttpRoute resources.",
+          "items": {
+            "$ref": "#/definitions/DaprInvokeHttpRouteResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "DaprInvokeHttpRouteResource": {
       "allOf": [
         {
           "$ref": "#/definitions/ProxyResource"
         }
       ],
-      "description": "Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between components.",
+      "description": "Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between resources.",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprHttpRouteProperties"
@@ -636,13 +598,13 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
-    "DaprPubSubTopicComponentList": {
-      "description": "List of dapr.io.PubSubTopicComponent resources.",
+    "DaprPubSubTopicList": {
+      "description": "List of dapr.io.PubSubTopic resources.",
       "properties": {
         "value": {
-          "description": "List of dapr.io.PubSubTopicComponent resources.",
+          "description": "List of dapr.io.PubSubTopic resources.",
           "items": {
-            "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+            "$ref": "#/definitions/DaprPubSubTopicResource"
           },
           "type": "array"
         }
@@ -652,16 +614,34 @@
       ],
       "type": "object"
     },
-    "DaprPubSubTopicComponentProperties": {
+    "DaprPubSubTopicResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource for Dapr Pub/Sub",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubTopicResourceProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "DaprPubSubTopicResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
         "kind": {
-          "description": "The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.",
+          "description": "The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes configuration format.",
           "enum": [
             "any",
             "pubsub.azure.servicebus"
@@ -686,32 +666,14 @@
       ],
       "type": "object"
     },
-    "DaprPubSubTopicComponentResource": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProxyResource"
-        }
-      ],
-      "description": "Component for Dapr Pub/Sub",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/DaprPubSubTopicComponentProperties"
-        }
-      },
-      "required": [
-        "properties"
-      ],
-      "type": "object",
-      "x-ms-azure-resource": true
-    },
     "DaprSidecarTrait": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/ComponentTrait"
+          "$ref": "#/definitions/ResourceTrait"
         }
       ],
-      "description": "The specifies that the component should have a Dapr sidecar injected",
+      "description": "The specifies that the resource should have a Dapr sidecar injected",
       "properties": {
         "appId": {
           "description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation.",
@@ -722,11 +684,11 @@
           "type": "integer"
         },
         "config": {
-          "description": "Specifies the Dapr configuration to use for the component.",
+          "description": "Specifies the Dapr configuration to use for the resource.",
           "type": "string"
         },
         "protocol": {
-          "description": "Specifies the Dapr app-protocol to use for the component.",
+          "description": "Specifies the Dapr app-protocol to use for the resource.",
           "enum": [
             "http",
             "grpc"
@@ -734,7 +696,7 @@
           "type": "string"
         },
         "provides": {
-          "description": "Specifies the resource id of a dapr.io.DaprHttpRoute that can route traffic to this component.",
+          "description": "Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.",
           "type": "string"
         }
       },
@@ -745,13 +707,13 @@
       "type": "object",
       "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
     },
-    "DaprStateStoreComponentList": {
-      "description": "List of dapr.io.StateStoreComponent resources.",
+    "DaprStateStoreList": {
+      "description": "List of dapr.io.StateStore resources.",
       "properties": {
         "value": {
-          "description": "List of dapr.io.StateStoreComponent resources.",
+          "description": "List of dapr.io.StateStore resources.",
           "items": {
-            "$ref": "#/definitions/DaprStateStoreComponentResource"
+            "$ref": "#/definitions/DaprStateStoreResource"
           },
           "type": "array"
         }
@@ -761,16 +723,34 @@
       ],
       "type": "object"
     },
-    "DaprStateStoreComponentProperties": {
+    "DaprStateStoreResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource for Dapr state store",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "DaprStateStoreResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
         "kind": {
-          "description": "The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.",
+          "description": "The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes configuration format.",
           "enum": [
             "any",
             "state.sqlserver",
@@ -780,7 +760,7 @@
           "type": "string"
         },
         "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Component",
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
           "enum": [
             true
           ],
@@ -795,24 +775,6 @@
         "kind"
       ],
       "type": "object"
-    },
-    "DaprStateStoreComponentResource": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProxyResource"
-        }
-      ],
-      "description": "Component for Dapr state store",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/DaprStateStoreComponentProperties"
-        }
-      },
-      "required": [
-        "properties"
-      ],
-      "type": "object",
-      "x-ms-azure-resource": true
     },
     "EphemeralVolume": {
       "additionalProperties": false,
@@ -1150,7 +1112,7 @@
           "type": "number"
         },
         "url": {
-          "description": "A stable URL that that can be used to route traffic to a component. Readonly.",
+          "description": "A stable URL that that can be used to route traffic to a resource. Readonly.",
           "type": "number"
         }
       },
@@ -1162,7 +1124,7 @@
           "$ref": "#/definitions/ProxyResource"
         }
       ],
-      "description": "Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a component.",
+      "description": "Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a resource.",
       "properties": {
         "properties": {
           "$ref": "#/definitions/HttpRouteProperties"
@@ -1234,10 +1196,10 @@
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/ComponentTrait"
+          "$ref": "#/definitions/ResourceTrait"
         }
       ],
-      "description": "ManualScaling ComponentTrait",
+      "description": "ManualScaling Trait",
       "properties": {
         "replicas": {
           "description": "Replica count.",
@@ -1247,13 +1209,13 @@
       "type": "object",
       "x-ms-discriminator-value": "radius.dev/ManualScaling@v1alpha1"
     },
-    "MicrosoftSQLComponentList": {
-      "description": "List of microsoft.com.SQLComponent resources.",
+    "MicrosoftSQLDatabaseList": {
+      "description": "List of microsoft.com.SQLDatabase resources.",
       "properties": {
         "value": {
-          "description": "List of microsoft.com.SQLComponent resources.",
+          "description": "List of microsoft.com.SQLDatabase resources.",
           "items": {
-            "$ref": "#/definitions/MicrosoftSQLComponentResource"
+            "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
           },
           "type": "array"
         }
@@ -1263,29 +1225,11 @@
       ],
       "type": "object"
     },
-    "MicrosoftSQLComponentResource": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProxyResource"
-        }
-      ],
-      "description": "Component for a Microsoft SQL compatible database.",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/MicrosoftSQLSQLComponentProperties"
-        }
-      },
-      "required": [
-        "properties"
-      ],
-      "type": "object",
-      "x-ms-azure-resource": true
-    },
-    "MicrosoftSQLSQLComponentProperties": {
+    "MicrosoftSQLDatabaseProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
@@ -1294,33 +1238,35 @@
           "type": "boolean"
         },
         "resource": {
-          "description": "The ID of the user-managed SQL database to use for this Component",
+          "description": "The ID of the user-managed SQL database to use for this resource.",
           "type": "string"
         }
       },
       "type": "object"
     },
-    "MongoDBComponentList": {
-      "description": "List of mongodb.com.MongoDBComponent resources.",
+    "MicrosoftSQLDatabaseResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Microsoft SQL compatible database.",
       "properties": {
-        "value": {
-          "description": "List of mongodb.com.MongoDBComponent resources.",
-          "items": {
-            "$ref": "#/definitions/MongoDBComponentResource"
-          },
-          "type": "array"
+        "properties": {
+          "$ref": "#/definitions/MicrosoftSQLDatabaseProperties"
         }
       },
       "required": [
-        "value"
+        "properties"
       ],
-      "type": "object"
+      "type": "object",
+      "x-ms-azure-resource": true
     },
-    "MongoDBComponentProperties": {
+    "MongoDBResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
@@ -1340,7 +1286,7 @@
           "type": "integer"
         },
         "resource": {
-          "description": "The ID of the user-managed DB with Mongo API to use for this Component",
+          "description": "The ID of the user-managed DB with Mongo API to use for this resource.",
           "example": [
             "account::mongodb.id"
           ],
@@ -1368,16 +1314,32 @@
       },
       "type": "object"
     },
-    "MongoDBComponentResource": {
+    "MongoDatabaseList": {
+      "description": "List of mongo.com.MongoDatabase resources.",
+      "properties": {
+        "value": {
+          "description": "List of mongo.com.MongoDatabase resources.",
+          "items": {
+            "$ref": "#/definitions/MongoDatabaseResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "MongoDatabaseResource": {
       "allOf": [
         {
           "$ref": "#/definitions/ProxyResource"
         }
       ],
-      "description": "The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.",
+      "description": "The mongo database resource is a portable resource which can be deployed to any Radius platform.",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/MongoDBComponentProperties"
+          "$ref": "#/definitions/MongoDBResourceProperties"
         }
       },
       "type": "object",
@@ -1517,6 +1479,10 @@
       ],
       "type": "object"
     },
+    "OutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object"
+    },
     "PersistentVolume": {
       "additionalProperties": false,
       "allOf": [
@@ -1591,13 +1557,13 @@
       "title": "Proxy Resource",
       "type": "object"
     },
-    "RabbitMQComponentList": {
-      "description": "List of rabbitmq.com.MessageQueueComponent resources.",
+    "RabbitMQMessageQueueList": {
+      "description": "List of rabbitmq.com.MessageQueue resources.",
       "properties": {
         "value": {
-          "description": "List of rabbitmq.com.MessageQueueComponent resources.",
+          "description": "List of rabbitmq.com.MessageQueue resources.",
           "items": {
-            "$ref": "#/definitions/RabbitMQComponentResource"
+            "$ref": "#/definitions/RabbitMQMessageQueueResource"
           },
           "type": "array"
         }
@@ -1607,11 +1573,29 @@
       ],
       "type": "object"
     },
-    "RabbitMQComponentProperties": {
+    "RabbitMQMessageQueueResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The RabbitMQMessageQueue resource is a Kubernetes specific resource for message brokering.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RabbitMQMessageQueueResourceProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "RabbitMQMessageQueueResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
@@ -1643,24 +1627,6 @@
         "queue"
       ],
       "type": "object"
-    },
-    "RabbitMQComponentResource": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProxyResource"
-        }
-      ],
-      "description": "The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/RabbitMQComponentProperties"
-        }
-      },
-      "required": [
-        "properties"
-      ],
-      "type": "object",
-      "x-ms-azure-resource": true
     },
     "RadiusResource": {
       "allOf": [
@@ -1696,13 +1662,13 @@
       ],
       "type": "object"
     },
-    "RedisComponentList": {
-      "description": "List of redislabs.com.RedisComponent resources.",
+    "RedisCacheList": {
+      "description": "List of redislabs.com.RedisCache resources.",
       "properties": {
         "value": {
-          "description": "List of redislabs.com.RedisComponent resources.",
+          "description": "List of redislabs.com.RedisCache resources.",
           "items": {
-            "$ref": "#/definitions/RedisComponentResource"
+            "$ref": "#/definitions/RedisCacheResource"
           },
           "type": "array"
         }
@@ -1712,11 +1678,29 @@
       ],
       "type": "object"
     },
-    "RedisComponentProperties": {
+    "RedisCacheResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The RedisCache resource is a portable resource which can be deployed to any Radius platform.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RedisCacheResourceProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "RedisCacheResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
@@ -1741,7 +1725,7 @@
           "type": "integer"
         },
         "resource": {
-          "description": "The ID of the user-managed Redis cache to use for this Component",
+          "description": "The ID of the user-managed Redis cache to use for this resource",
           "example": [
             "account::redis.id"
           ],
@@ -1767,24 +1751,6 @@
         }
       },
       "type": "object"
-    },
-    "RedisComponentResource": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProxyResource"
-        }
-      ],
-      "description": "The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/RedisComponentProperties"
-        }
-      },
-      "required": [
-        "properties"
-      ],
-      "type": "object",
-      "x-ms-azure-resource": true
     },
     "Resource": {
       "description": "Common fields that are returned in the response for all Azure Resource Manager resources",
@@ -1899,6 +1865,40 @@
         }
       },
       "x-ms-azure-resource": true
+    },
+    "ResourceStatus": {
+      "description": "Status of a resources.",
+      "properties": {
+        "healthState": {
+          "description": "Health state of the resources",
+          "type": "string"
+        },
+        "outputResources": {
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "type": "array"
+        },
+        "provisioningState": {
+          "description": "Provisioning state of the resources",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ResourceTrait": {
+      "description": "Trait of a resource.",
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The ResourceTrait kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
     },
     "RouteOutputResource": {
       "description": "Properties of an output resource.",
@@ -2091,7 +2091,7 @@
     "VolumeProperties": {
       "allOf": [
         {
-          "$ref": "#/definitions/BasicComponentProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "discriminator": "kind",
@@ -2252,50 +2252,50 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "AzureKeyVaultComponentNameParameter": {
-      "description": "The name of the azure.com.KeyVaultComponent resource.",
+    "AzureKeyVaultNameParameter": {
+      "description": "The name of the azure.com.KeyVault resource.",
       "in": "path",
-      "name": "azureKeyVaultComponentName",
+      "name": "azureKeyVaultName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "AzureServiceBusComponentNameParameter": {
-      "description": "The name of the azure.com.ServiceBusQueueComponent resource.",
+    "AzureServiceBusNameParameter": {
+      "description": "The name of the azure.com.ServiceBusQueue resource.",
       "in": "path",
-      "name": "azureServiceBusComponentName",
+      "name": "azureServiceBusName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "ContainerComponentNameParameter": {
-      "description": "The name of the ContainerComponent resource.",
+    "ContainerNameParameter": {
+      "description": "The name of the Container resource.",
       "in": "path",
-      "name": "containerComponentName",
+      "name": "containerName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "DaprHttpRouteNameParameter": {
-      "description": "The name of the dapr.io.DaprHttpRoute resource.",
+    "DaprInvokeHttpRouteNameParameter": {
+      "description": "The name of the dapr.io.InvokeHttpRoute resource.",
       "in": "path",
-      "name": "daprHttpRouteName",
+      "name": "daprInvokeHttpRouteName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "DaprPubSubTopicComponentNameParameter": {
-      "description": "The name of the dapr.io.PubSubTopicComponent resource.",
+    "DaprPubSubTopicNameParameter": {
+      "description": "The name of the dapr.io.PubSubTopic resource.",
       "in": "path",
-      "name": "daprPubSubTopicComponentName",
+      "name": "daprPubSubTopicName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "DaprStateStoreComponentNameParameter": {
-      "description": "The name of the dapr.io.StateStoreComponent resource.",
+    "DaprStateStoreNameParameter": {
+      "description": "The name of the dapr.io.StateStore resource.",
       "in": "path",
-      "name": "daprStateStoreComponentName",
+      "name": "daprStateStoreName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -2325,18 +2325,18 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "MicrosoftSQLComponentNameParameter": {
-      "description": "The name of the microsoft.com.SQLComponent resource.",
+    "MicrosoftSQLDatabaseNameParameter": {
+      "description": "The name of the microsoft.com.SQLDatabase resource.",
       "in": "path",
-      "name": "microsoftSQLComponentName",
+      "name": "microsoftSQLDatabaseName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "MongoDBComponentNameParameter": {
-      "description": "The name of the mongodb.com.MongoDBComponent resource.",
+    "MongoDatabaseNameParameter": {
+      "description": "The name of the mongo.com.MongoDatabase resource.",
       "in": "path",
-      "name": "mongoDBComponentName",
+      "name": "mongoDatabaseName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -2350,10 +2350,10 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "RabbitMQComponentNameParameter": {
-      "description": "The name of the rabbitmq.com.MessageQueueComponent resource.",
+    "RabbitMQMessageQueueNameParameter": {
+      "description": "The name of the rabbitmq.com.MessageQueue resource.",
       "in": "path",
-      "name": "rabbitMQComponentName",
+      "name": "rabbitMQMessageQueueName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -2374,10 +2374,10 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
-    "RedisComponentNameParameter": {
-      "description": "The name of the redislabs.com.RedisComponent resource.",
+    "RedisCacheNameParameter": {
+      "description": "The name of the redislabs.com.RedisCache resource.",
       "in": "path",
-      "name": "redisComponentName",
+      "name": "redisCacheName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -2581,10 +2581,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/ContainerComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container": {
       "get": {
-        "description": "List the ContainerComponent resources deployed in the application.",
-        "operationId": "ContainerComponent_List",
+        "description": "List the Container resources deployed in the application.",
+        "operationId": "Container_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -2601,9 +2601,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of ContainerComponent resources was retrieved successfully.",
+            "description": "The list of Container resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/ContainerComponentList"
+              "$ref": "#/definitions/ContainerList"
             }
           },
           "default": {
@@ -2614,14 +2614,14 @@
           }
         },
         "tags": [
-          "ContainerComponent"
+          "Container"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/ContainerComponent/{containerComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}": {
       "delete": {
-        "description": "Deletes a ContainerComponent resource.",
-        "operationId": "ContainerComponent_Delete",
+        "description": "Deletes a Container resource.",
+        "operationId": "Container_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -2633,7 +2633,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/ContainerComponentNameParameter"
+            "$ref": "#/parameters/ContainerNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -2641,10 +2641,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the ContainerComponent will complete asynchronously."
+            "description": "The request to delete the Container will complete asynchronously."
           },
           "204": {
-            "description": "The ContainerComponent resource was successfully deleted."
+            "description": "The Container resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -2654,7 +2654,7 @@
           }
         },
         "tags": [
-          "ContainerComponent"
+          "Container"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -2662,8 +2662,8 @@
         }
       },
       "get": {
-        "description": "Gets a ContainerComponent resource by name.",
-        "operationId": "ContainerComponent_Get",
+        "description": "Gets a Container resource by name.",
+        "operationId": "Container_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -2675,7 +2675,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/ContainerComponentNameParameter"
+            "$ref": "#/parameters/ContainerNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -2683,9 +2683,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The ContainerComponent resource was retrieved successfully.",
+            "description": "The Container resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/ContainerComponentResource"
+              "$ref": "#/definitions/ContainerResource"
             }
           },
           "default": {
@@ -2696,12 +2696,12 @@
           }
         },
         "tags": [
-          "ContainerComponent"
+          "Container"
         ]
       },
       "put": {
-        "description": "Creates or updates a ContainerComponent resource.",
-        "operationId": "ContainerComponent_CreateOrUpdate",
+        "description": "Creates or updates a Container resource.",
+        "operationId": "Container_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -2713,15 +2713,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/ContainerComponentNameParameter"
+            "$ref": "#/parameters/ContainerNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a ContainerComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Container resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ContainerComponentResource"
+              "$ref": "#/definitions/ContainerResource"
             }
           },
           {
@@ -2730,21 +2730,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing ContainerComponent resource was successfully updated.",
+            "description": "The existing Container resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/ContainerComponentResource"
+              "$ref": "#/definitions/ContainerResource"
             }
           },
           "201": {
-            "description": "The new ContainerComponent resource was successfully created.",
+            "description": "The new Container resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/ContainerComponentResource"
+              "$ref": "#/definitions/ContainerResource"
             }
           },
           "202": {
-            "description": "The existing ContainerComponent resource was successfully updated.",
+            "description": "The existing Container resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/ContainerComponentResource"
+              "$ref": "#/definitions/ContainerResource"
             }
           },
           "default": {
@@ -2755,7 +2755,7 @@
           }
         },
         "tags": [
-          "ContainerComponent"
+          "Container"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3346,10 +3346,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVaultComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVault": {
       "get": {
-        "description": "List the azure.com.KeyVaultComponent resources deployed in the application.",
-        "operationId": "azure.com.KeyVaultComponent_List",
+        "description": "List the azure.com.KeyVault resources deployed in the application.",
+        "operationId": "azure.com.KeyVault_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3366,9 +3366,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of azure.com.KeyVaultComponent resources was retrieved successfully.",
+            "description": "The list of azure.com.KeyVault resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/AzureKeyVaultComponentList"
+              "$ref": "#/definitions/AzureKeyVaultList"
             }
           },
           "default": {
@@ -3379,14 +3379,14 @@
           }
         },
         "tags": [
-          "azure.com.KeyVaultComponent"
+          "azure.com.KeyVault"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVaultComponent/{azureKeyVaultComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.KeyVault/{azureKeyVaultName}": {
       "delete": {
-        "description": "Deletes a azure.com.KeyVaultComponent resource.",
-        "operationId": "azure.com.KeyVaultComponent_Delete",
+        "description": "Deletes a azure.com.KeyVault resource.",
+        "operationId": "azure.com.KeyVault_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3398,7 +3398,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AzureKeyVaultComponentNameParameter"
+            "$ref": "#/parameters/AzureKeyVaultNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3406,10 +3406,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the azure.com.KeyVaultComponent will complete asynchronously."
+            "description": "The request to delete the azure.com.KeyVault will complete asynchronously."
           },
           "204": {
-            "description": "The azure.com.KeyVaultComponent resource was successfully deleted."
+            "description": "The azure.com.KeyVault resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -3419,7 +3419,7 @@
           }
         },
         "tags": [
-          "azure.com.KeyVaultComponent"
+          "azure.com.KeyVault"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3427,8 +3427,8 @@
         }
       },
       "get": {
-        "description": "Gets a azure.com.KeyVaultComponent resource by name.",
-        "operationId": "azure.com.KeyVaultComponent_Get",
+        "description": "Gets a azure.com.KeyVault resource by name.",
+        "operationId": "azure.com.KeyVault_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3440,7 +3440,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AzureKeyVaultComponentNameParameter"
+            "$ref": "#/parameters/AzureKeyVaultNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3448,9 +3448,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The azure.com.KeyVaultComponent resource was retrieved successfully.",
+            "description": "The azure.com.KeyVault resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/AzureKeyVaultComponentResource"
+              "$ref": "#/definitions/AzureKeyVaultResource"
             }
           },
           "default": {
@@ -3461,12 +3461,12 @@
           }
         },
         "tags": [
-          "azure.com.KeyVaultComponent"
+          "azure.com.KeyVault"
         ]
       },
       "put": {
-        "description": "Creates or updates a azure.com.KeyVaultComponent resource.",
-        "operationId": "azure.com.KeyVaultComponent_CreateOrUpdate",
+        "description": "Creates or updates a azure.com.KeyVault resource.",
+        "operationId": "azure.com.KeyVault_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3478,15 +3478,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AzureKeyVaultComponentNameParameter"
+            "$ref": "#/parameters/AzureKeyVaultNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a azure.com.KeyVaultComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a azure.com.KeyVault resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/AzureKeyVaultComponentResource"
+              "$ref": "#/definitions/AzureKeyVaultResource"
             }
           },
           {
@@ -3495,21 +3495,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing azure.com.KeyVaultComponent resource was successfully updated.",
+            "description": "The existing azure.com.KeyVault resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/AzureKeyVaultComponentResource"
+              "$ref": "#/definitions/AzureKeyVaultResource"
             }
           },
           "201": {
-            "description": "The new azure.com.KeyVaultComponent resource was successfully created.",
+            "description": "The new azure.com.KeyVault resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/AzureKeyVaultComponentResource"
+              "$ref": "#/definitions/AzureKeyVaultResource"
             }
           },
           "202": {
-            "description": "The existing azure.com.KeyVaultComponent resource was successfully updated.",
+            "description": "The existing azure.com.KeyVault resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/AzureKeyVaultComponentResource"
+              "$ref": "#/definitions/AzureKeyVaultResource"
             }
           },
           "default": {
@@ -3520,7 +3520,7 @@
           }
         },
         "tags": [
-          "azure.com.KeyVaultComponent"
+          "azure.com.KeyVault"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3528,10 +3528,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueue": {
       "get": {
-        "description": "List the azure.com.ServiceBusQueueComponent resources deployed in the application.",
-        "operationId": "azure.com.ServiceBusQueueComponent_List",
+        "description": "List the azure.com.ServiceBusQueue resources deployed in the application.",
+        "operationId": "azure.com.ServiceBusQueue_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3548,9 +3548,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of azure.com.ServiceBusQueueComponent resources was retrieved successfully.",
+            "description": "The list of azure.com.ServiceBusQueue resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/AzureServiceBusComponentList"
+              "$ref": "#/definitions/AzureServiceBusList"
             }
           },
           "default": {
@@ -3561,14 +3561,14 @@
           }
         },
         "tags": [
-          "azure.com.ServiceBusQueueComponent"
+          "azure.com.ServiceBusQueue"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueueComponent/{azureServiceBusComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/azure.com.ServiceBusQueue/{azureServiceBusName}": {
       "delete": {
-        "description": "Deletes a azure.com.ServiceBusQueueComponent resource.",
-        "operationId": "azure.com.ServiceBusQueueComponent_Delete",
+        "description": "Deletes a azure.com.ServiceBusQueue resource.",
+        "operationId": "azure.com.ServiceBusQueue_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3580,7 +3580,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AzureServiceBusComponentNameParameter"
+            "$ref": "#/parameters/AzureServiceBusNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3588,10 +3588,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the azure.com.ServiceBusQueueComponent will complete asynchronously."
+            "description": "The request to delete the azure.com.ServiceBusQueue will complete asynchronously."
           },
           "204": {
-            "description": "The azure.com.ServiceBusQueueComponent resource was successfully deleted."
+            "description": "The azure.com.ServiceBusQueue resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -3601,7 +3601,7 @@
           }
         },
         "tags": [
-          "azure.com.ServiceBusQueueComponent"
+          "azure.com.ServiceBusQueue"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3609,8 +3609,8 @@
         }
       },
       "get": {
-        "description": "Gets a azure.com.ServiceBusQueueComponent resource by name.",
-        "operationId": "azure.com.ServiceBusQueueComponent_Get",
+        "description": "Gets a azure.com.ServiceBusQueue resource by name.",
+        "operationId": "azure.com.ServiceBusQueue_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3622,7 +3622,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AzureServiceBusComponentNameParameter"
+            "$ref": "#/parameters/AzureServiceBusNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3630,9 +3630,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The azure.com.ServiceBusQueueComponent resource was retrieved successfully.",
+            "description": "The azure.com.ServiceBusQueue resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/AzureServiceBusComponentResource"
+              "$ref": "#/definitions/AzureServiceBusResource"
             }
           },
           "default": {
@@ -3643,12 +3643,12 @@
           }
         },
         "tags": [
-          "azure.com.ServiceBusQueueComponent"
+          "azure.com.ServiceBusQueue"
         ]
       },
       "put": {
-        "description": "Creates or updates a azure.com.ServiceBusQueueComponent resource.",
-        "operationId": "azure.com.ServiceBusQueueComponent_CreateOrUpdate",
+        "description": "Creates or updates a azure.com.ServiceBusQueue resource.",
+        "operationId": "azure.com.ServiceBusQueue_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3660,15 +3660,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AzureServiceBusComponentNameParameter"
+            "$ref": "#/parameters/AzureServiceBusNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a azure.com.ServiceBusQueueComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a azure.com.ServiceBusQueue resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/AzureServiceBusComponentResource"
+              "$ref": "#/definitions/AzureServiceBusResource"
             }
           },
           {
@@ -3677,21 +3677,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing azure.com.ServiceBusQueueComponent resource was successfully updated.",
+            "description": "The existing azure.com.ServiceBusQueue resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/AzureServiceBusComponentResource"
+              "$ref": "#/definitions/AzureServiceBusResource"
             }
           },
           "201": {
-            "description": "The new azure.com.ServiceBusQueueComponent resource was successfully created.",
+            "description": "The new azure.com.ServiceBusQueue resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/AzureServiceBusComponentResource"
+              "$ref": "#/definitions/AzureServiceBusResource"
             }
           },
           "202": {
-            "description": "The existing azure.com.ServiceBusQueueComponent resource was successfully updated.",
+            "description": "The existing azure.com.ServiceBusQueue resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/AzureServiceBusComponentResource"
+              "$ref": "#/definitions/AzureServiceBusResource"
             }
           },
           "default": {
@@ -3702,7 +3702,7 @@
           }
         },
         "tags": [
-          "azure.com.ServiceBusQueueComponent"
+          "azure.com.ServiceBusQueue"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3710,10 +3710,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.DaprHttpRoute": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute": {
       "get": {
-        "description": "List the dapr.io.DaprHttpRoute resources deployed in the application.",
-        "operationId": "dapr.io.DaprHttpRoute_List",
+        "description": "List the dapr.io.InvokeHttpRoute resources deployed in the application.",
+        "operationId": "dapr.io.InvokeHttpRoute_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3730,9 +3730,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of dapr.io.DaprHttpRoute resources was retrieved successfully.",
+            "description": "The list of dapr.io.InvokeHttpRoute resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprHttpRouteList"
+              "$ref": "#/definitions/DaprInvokeHttpRouteList"
             }
           },
           "default": {
@@ -3743,14 +3743,14 @@
           }
         },
         "tags": [
-          "dapr.io.DaprHttpRoute"
+          "dapr.io.InvokeHttpRoute"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.DaprHttpRoute/{daprHttpRouteName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}": {
       "delete": {
-        "description": "Deletes a dapr.io.DaprHttpRoute resource.",
-        "operationId": "dapr.io.DaprHttpRoute_Delete",
+        "description": "Deletes a dapr.io.InvokeHttpRoute resource.",
+        "operationId": "dapr.io.InvokeHttpRoute_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3762,7 +3762,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprHttpRouteNameParameter"
+            "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3770,10 +3770,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the dapr.io.DaprHttpRoute will complete asynchronously."
+            "description": "The request to delete the dapr.io.InvokeHttpRoute will complete asynchronously."
           },
           "204": {
-            "description": "The dapr.io.DaprHttpRoute resource was successfully deleted."
+            "description": "The dapr.io.InvokeHttpRoute resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -3783,7 +3783,7 @@
           }
         },
         "tags": [
-          "dapr.io.DaprHttpRoute"
+          "dapr.io.InvokeHttpRoute"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3791,8 +3791,8 @@
         }
       },
       "get": {
-        "description": "Gets a dapr.io.DaprHttpRoute resource by name.",
-        "operationId": "dapr.io.DaprHttpRoute_Get",
+        "description": "Gets a dapr.io.InvokeHttpRoute resource by name.",
+        "operationId": "dapr.io.InvokeHttpRoute_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3804,7 +3804,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprHttpRouteNameParameter"
+            "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3812,9 +3812,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The dapr.io.DaprHttpRoute resource was retrieved successfully.",
+            "description": "The dapr.io.InvokeHttpRoute resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprHttpRouteResource"
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
             }
           },
           "default": {
@@ -3825,12 +3825,12 @@
           }
         },
         "tags": [
-          "dapr.io.DaprHttpRoute"
+          "dapr.io.InvokeHttpRoute"
         ]
       },
       "put": {
-        "description": "Creates or updates a dapr.io.DaprHttpRoute resource.",
-        "operationId": "dapr.io.DaprHttpRoute_CreateOrUpdate",
+        "description": "Creates or updates a dapr.io.InvokeHttpRoute resource.",
+        "operationId": "dapr.io.InvokeHttpRoute_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3842,15 +3842,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprHttpRouteNameParameter"
+            "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.DaprHttpRoute resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.InvokeHttpRoute resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/DaprHttpRouteResource"
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
             }
           },
           {
@@ -3859,21 +3859,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing dapr.io.DaprHttpRoute resource was successfully updated.",
+            "description": "The existing dapr.io.InvokeHttpRoute resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprHttpRouteResource"
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
             }
           },
           "201": {
-            "description": "The new dapr.io.DaprHttpRoute resource was successfully created.",
+            "description": "The new dapr.io.InvokeHttpRoute resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/DaprHttpRouteResource"
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
             }
           },
           "202": {
-            "description": "The existing dapr.io.DaprHttpRoute resource was successfully updated.",
+            "description": "The existing dapr.io.InvokeHttpRoute resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprHttpRouteResource"
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
             }
           },
           "default": {
@@ -3884,7 +3884,7 @@
           }
         },
         "tags": [
-          "dapr.io.DaprHttpRoute"
+          "dapr.io.InvokeHttpRoute"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3892,10 +3892,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic": {
       "get": {
-        "description": "List the dapr.io.PubSubTopicComponent resources deployed in the application.",
-        "operationId": "dapr.io.PubSubTopicComponent_List",
+        "description": "List the dapr.io.PubSubTopic resources deployed in the application.",
+        "operationId": "dapr.io.PubSubTopic_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3912,9 +3912,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of dapr.io.PubSubTopicComponent resources was retrieved successfully.",
+            "description": "The list of dapr.io.PubSubTopic resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubTopicComponentList"
+              "$ref": "#/definitions/DaprPubSubTopicList"
             }
           },
           "default": {
@@ -3925,14 +3925,14 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubTopicComponent"
+          "dapr.io.PubSubTopic"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopicComponent/{daprPubSubTopicComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}": {
       "delete": {
-        "description": "Deletes a dapr.io.PubSubTopicComponent resource.",
-        "operationId": "dapr.io.PubSubTopicComponent_Delete",
+        "description": "Deletes a dapr.io.PubSubTopic resource.",
+        "operationId": "dapr.io.PubSubTopic_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3944,7 +3944,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
+            "$ref": "#/parameters/DaprPubSubTopicNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3952,10 +3952,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the dapr.io.PubSubTopicComponent will complete asynchronously."
+            "description": "The request to delete the dapr.io.PubSubTopic will complete asynchronously."
           },
           "204": {
-            "description": "The dapr.io.PubSubTopicComponent resource was successfully deleted."
+            "description": "The dapr.io.PubSubTopic resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -3965,7 +3965,7 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubTopicComponent"
+          "dapr.io.PubSubTopic"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -3973,8 +3973,8 @@
         }
       },
       "get": {
-        "description": "Gets a dapr.io.PubSubTopicComponent resource by name.",
-        "operationId": "dapr.io.PubSubTopicComponent_Get",
+        "description": "Gets a dapr.io.PubSubTopic resource by name.",
+        "operationId": "dapr.io.PubSubTopic_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -3986,7 +3986,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
+            "$ref": "#/parameters/DaprPubSubTopicNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -3994,9 +3994,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The dapr.io.PubSubTopicComponent resource was retrieved successfully.",
+            "description": "The dapr.io.PubSubTopic resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicResource"
             }
           },
           "default": {
@@ -4007,12 +4007,12 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubTopicComponent"
+          "dapr.io.PubSubTopic"
         ]
       },
       "put": {
-        "description": "Creates or updates a dapr.io.PubSubTopicComponent resource.",
-        "operationId": "dapr.io.PubSubTopicComponent_CreateOrUpdate",
+        "description": "Creates or updates a dapr.io.PubSubTopic resource.",
+        "operationId": "dapr.io.PubSubTopic_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4024,15 +4024,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprPubSubTopicComponentNameParameter"
+            "$ref": "#/parameters/DaprPubSubTopicNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.PubSubTopicComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.PubSubTopic resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicResource"
             }
           },
           {
@@ -4041,21 +4041,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing dapr.io.PubSubTopicComponent resource was successfully updated.",
+            "description": "The existing dapr.io.PubSubTopic resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicResource"
             }
           },
           "201": {
-            "description": "The new dapr.io.PubSubTopicComponent resource was successfully created.",
+            "description": "The new dapr.io.PubSubTopic resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicResource"
             }
           },
           "202": {
-            "description": "The existing dapr.io.PubSubTopicComponent resource was successfully updated.",
+            "description": "The existing dapr.io.PubSubTopic resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprPubSubTopicComponentResource"
+              "$ref": "#/definitions/DaprPubSubTopicResource"
             }
           },
           "default": {
@@ -4066,7 +4066,7 @@
           }
         },
         "tags": [
-          "dapr.io.PubSubTopicComponent"
+          "dapr.io.PubSubTopic"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4074,10 +4074,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore": {
       "get": {
-        "description": "List the dapr.io.StateStoreComponent resources deployed in the application.",
-        "operationId": "dapr.io.StateStoreComponent_List",
+        "description": "List the dapr.io.StateStore resources deployed in the application.",
+        "operationId": "dapr.io.StateStore_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4094,9 +4094,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of dapr.io.StateStoreComponent resources was retrieved successfully.",
+            "description": "The list of dapr.io.StateStore resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprStateStoreComponentList"
+              "$ref": "#/definitions/DaprStateStoreList"
             }
           },
           "default": {
@@ -4107,14 +4107,14 @@
           }
         },
         "tags": [
-          "dapr.io.StateStoreComponent"
+          "dapr.io.StateStore"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStoreComponent/{daprStateStoreComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}": {
       "delete": {
-        "description": "Deletes a dapr.io.StateStoreComponent resource.",
-        "operationId": "dapr.io.StateStoreComponent_Delete",
+        "description": "Deletes a dapr.io.StateStore resource.",
+        "operationId": "dapr.io.StateStore_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4126,7 +4126,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprStateStoreComponentNameParameter"
+            "$ref": "#/parameters/DaprStateStoreNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4134,10 +4134,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the dapr.io.StateStoreComponent will complete asynchronously."
+            "description": "The request to delete the dapr.io.StateStore will complete asynchronously."
           },
           "204": {
-            "description": "The dapr.io.StateStoreComponent resource was successfully deleted."
+            "description": "The dapr.io.StateStore resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -4147,7 +4147,7 @@
           }
         },
         "tags": [
-          "dapr.io.StateStoreComponent"
+          "dapr.io.StateStore"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4155,8 +4155,8 @@
         }
       },
       "get": {
-        "description": "Gets a dapr.io.StateStoreComponent resource by name.",
-        "operationId": "dapr.io.StateStoreComponent_Get",
+        "description": "Gets a dapr.io.StateStore resource by name.",
+        "operationId": "dapr.io.StateStore_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4168,7 +4168,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprStateStoreComponentNameParameter"
+            "$ref": "#/parameters/DaprStateStoreNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4176,9 +4176,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The dapr.io.StateStoreComponent resource was retrieved successfully.",
+            "description": "The dapr.io.StateStore resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/DaprStateStoreComponentResource"
+              "$ref": "#/definitions/DaprStateStoreResource"
             }
           },
           "default": {
@@ -4189,12 +4189,12 @@
           }
         },
         "tags": [
-          "dapr.io.StateStoreComponent"
+          "dapr.io.StateStore"
         ]
       },
       "put": {
-        "description": "Creates or updates a dapr.io.StateStoreComponent resource.",
-        "operationId": "dapr.io.StateStoreComponent_CreateOrUpdate",
+        "description": "Creates or updates a dapr.io.StateStore resource.",
+        "operationId": "dapr.io.StateStore_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4206,15 +4206,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/DaprStateStoreComponentNameParameter"
+            "$ref": "#/parameters/DaprStateStoreNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.StateStoreComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.StateStore resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/DaprStateStoreComponentResource"
+              "$ref": "#/definitions/DaprStateStoreResource"
             }
           },
           {
@@ -4223,21 +4223,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing dapr.io.StateStoreComponent resource was successfully updated.",
+            "description": "The existing dapr.io.StateStore resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprStateStoreComponentResource"
+              "$ref": "#/definitions/DaprStateStoreResource"
             }
           },
           "201": {
-            "description": "The new dapr.io.StateStoreComponent resource was successfully created.",
+            "description": "The new dapr.io.StateStore resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/DaprStateStoreComponentResource"
+              "$ref": "#/definitions/DaprStateStoreResource"
             }
           },
           "202": {
-            "description": "The existing dapr.io.StateStoreComponent resource was successfully updated.",
+            "description": "The existing dapr.io.StateStore resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/DaprStateStoreComponentResource"
+              "$ref": "#/definitions/DaprStateStoreResource"
             }
           },
           "default": {
@@ -4248,7 +4248,7 @@
           }
         },
         "tags": [
-          "dapr.io.StateStoreComponent"
+          "dapr.io.StateStore"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4256,10 +4256,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase": {
       "get": {
-        "description": "List the microsoft.com.SQLComponent resources deployed in the application.",
-        "operationId": "microsoft.com.SQLComponent_List",
+        "description": "List the microsoft.com.SQLDatabase resources deployed in the application.",
+        "operationId": "microsoft.com.SQLDatabase_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4276,9 +4276,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of microsoft.com.SQLComponent resources was retrieved successfully.",
+            "description": "The list of microsoft.com.SQLDatabase resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/MicrosoftSQLComponentList"
+              "$ref": "#/definitions/MicrosoftSQLDatabaseList"
             }
           },
           "default": {
@@ -4289,14 +4289,14 @@
           }
         },
         "tags": [
-          "microsoft.com.SQLComponent"
+          "microsoft.com.SQLDatabase"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLComponent/{microsoftSQLComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}": {
       "delete": {
-        "description": "Deletes a microsoft.com.SQLComponent resource.",
-        "operationId": "microsoft.com.SQLComponent_Delete",
+        "description": "Deletes a microsoft.com.SQLDatabase resource.",
+        "operationId": "microsoft.com.SQLDatabase_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4308,7 +4308,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/MicrosoftSQLComponentNameParameter"
+            "$ref": "#/parameters/MicrosoftSQLDatabaseNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4316,10 +4316,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the microsoft.com.SQLComponent will complete asynchronously."
+            "description": "The request to delete the microsoft.com.SQLDatabase will complete asynchronously."
           },
           "204": {
-            "description": "The microsoft.com.SQLComponent resource was successfully deleted."
+            "description": "The microsoft.com.SQLDatabase resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -4329,7 +4329,7 @@
           }
         },
         "tags": [
-          "microsoft.com.SQLComponent"
+          "microsoft.com.SQLDatabase"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4337,8 +4337,8 @@
         }
       },
       "get": {
-        "description": "Gets a microsoft.com.SQLComponent resource by name.",
-        "operationId": "microsoft.com.SQLComponent_Get",
+        "description": "Gets a microsoft.com.SQLDatabase resource by name.",
+        "operationId": "microsoft.com.SQLDatabase_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4350,7 +4350,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/MicrosoftSQLComponentNameParameter"
+            "$ref": "#/parameters/MicrosoftSQLDatabaseNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4358,9 +4358,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The microsoft.com.SQLComponent resource was retrieved successfully.",
+            "description": "The microsoft.com.SQLDatabase resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/MicrosoftSQLComponentResource"
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
             }
           },
           "default": {
@@ -4371,12 +4371,12 @@
           }
         },
         "tags": [
-          "microsoft.com.SQLComponent"
+          "microsoft.com.SQLDatabase"
         ]
       },
       "put": {
-        "description": "Creates or updates a microsoft.com.SQLComponent resource.",
-        "operationId": "microsoft.com.SQLComponent_CreateOrUpdate",
+        "description": "Creates or updates a microsoft.com.SQLDatabase resource.",
+        "operationId": "microsoft.com.SQLDatabase_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4388,15 +4388,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/MicrosoftSQLComponentNameParameter"
+            "$ref": "#/parameters/MicrosoftSQLDatabaseNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a microsoft.com.SQLComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a microsoft.com.SQLDatabase resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/MicrosoftSQLComponentResource"
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
             }
           },
           {
@@ -4405,21 +4405,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing microsoft.com.SQLComponent resource was successfully updated.",
+            "description": "The existing microsoft.com.SQLDatabase resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/MicrosoftSQLComponentResource"
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
             }
           },
           "201": {
-            "description": "The new microsoft.com.SQLComponent resource was successfully created.",
+            "description": "The new microsoft.com.SQLDatabase resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/MicrosoftSQLComponentResource"
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
             }
           },
           "202": {
-            "description": "The existing microsoft.com.SQLComponent resource was successfully updated.",
+            "description": "The existing microsoft.com.SQLDatabase resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/MicrosoftSQLComponentResource"
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
             }
           },
           "default": {
@@ -4430,7 +4430,7 @@
           }
         },
         "tags": [
-          "microsoft.com.SQLComponent"
+          "microsoft.com.SQLDatabase"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4438,10 +4438,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase": {
       "get": {
-        "description": "List the mongodb.com.MongoDBComponent resources deployed in the application.",
-        "operationId": "mongodb.com.MongoDBComponent_List",
+        "description": "List the mongo.com.MongoDatabase resources deployed in the application.",
+        "operationId": "mongo.com.MongoDatabase_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4458,9 +4458,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of mongodb.com.MongoDBComponent resources was retrieved successfully.",
+            "description": "The list of mongo.com.MongoDatabase resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/MongoDBComponentList"
+              "$ref": "#/definitions/MongoDatabaseList"
             }
           },
           "default": {
@@ -4471,14 +4471,14 @@
           }
         },
         "tags": [
-          "mongodb.com.MongoDBComponent"
+          "mongo.com.MongoDatabase"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongodb.com.MongoDBComponent/{mongoDBComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}": {
       "delete": {
-        "description": "Deletes a mongodb.com.MongoDBComponent resource.",
-        "operationId": "mongodb.com.MongoDBComponent_Delete",
+        "description": "Deletes a mongo.com.MongoDatabase resource.",
+        "operationId": "mongo.com.MongoDatabase_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4490,7 +4490,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/MongoDBComponentNameParameter"
+            "$ref": "#/parameters/MongoDatabaseNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4498,10 +4498,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the mongodb.com.MongoDBComponent will complete asynchronously."
+            "description": "The request to delete the mongo.com.MongoDatabase will complete asynchronously."
           },
           "204": {
-            "description": "The mongodb.com.MongoDBComponent resource was successfully deleted."
+            "description": "The mongo.com.MongoDatabase resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -4511,7 +4511,7 @@
           }
         },
         "tags": [
-          "mongodb.com.MongoDBComponent"
+          "mongo.com.MongoDatabase"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4519,8 +4519,8 @@
         }
       },
       "get": {
-        "description": "Gets a mongodb.com.MongoDBComponent resource by name.",
-        "operationId": "mongodb.com.MongoDBComponent_Get",
+        "description": "Gets a mongo.com.MongoDatabase resource by name.",
+        "operationId": "mongo.com.MongoDatabase_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4532,7 +4532,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/MongoDBComponentNameParameter"
+            "$ref": "#/parameters/MongoDatabaseNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4540,9 +4540,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The mongodb.com.MongoDBComponent resource was retrieved successfully.",
+            "description": "The mongo.com.MongoDatabase resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/MongoDBComponentResource"
+              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "default": {
@@ -4553,12 +4553,12 @@
           }
         },
         "tags": [
-          "mongodb.com.MongoDBComponent"
+          "mongo.com.MongoDatabase"
         ]
       },
       "put": {
-        "description": "Creates or updates a mongodb.com.MongoDBComponent resource.",
-        "operationId": "mongodb.com.MongoDBComponent_CreateOrUpdate",
+        "description": "Creates or updates a mongo.com.MongoDatabase resource.",
+        "operationId": "mongo.com.MongoDatabase_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4570,15 +4570,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/MongoDBComponentNameParameter"
+            "$ref": "#/parameters/MongoDatabaseNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a mongodb.com.MongoDBComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a mongo.com.MongoDatabase resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/MongoDBComponentResource"
+              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           {
@@ -4587,21 +4587,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing mongodb.com.MongoDBComponent resource was successfully updated.",
+            "description": "The existing mongo.com.MongoDatabase resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/MongoDBComponentResource"
+              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "201": {
-            "description": "The new mongodb.com.MongoDBComponent resource was successfully created.",
+            "description": "The new mongo.com.MongoDatabase resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/MongoDBComponentResource"
+              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "202": {
-            "description": "The existing mongodb.com.MongoDBComponent resource was successfully updated.",
+            "description": "The existing mongo.com.MongoDatabase resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/MongoDBComponentResource"
+              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "default": {
@@ -4612,7 +4612,7 @@
           }
         },
         "tags": [
-          "mongodb.com.MongoDBComponent"
+          "mongo.com.MongoDatabase"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4620,10 +4620,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueueComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue": {
       "get": {
-        "description": "List the rabbitmq.com.MessageQueueComponent resources deployed in the application.",
-        "operationId": "rabbitmq.com.MessageQueueComponent_List",
+        "description": "List the rabbitmq.com.MessageQueue resources deployed in the application.",
+        "operationId": "rabbitmq.com.MessageQueue_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4640,9 +4640,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of rabbitmq.com.MessageQueueComponent resources was retrieved successfully.",
+            "description": "The list of rabbitmq.com.MessageQueue resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/RabbitMQComponentList"
+              "$ref": "#/definitions/RabbitMQMessageQueueList"
             }
           },
           "default": {
@@ -4653,14 +4653,14 @@
           }
         },
         "tags": [
-          "rabbitmq.com.MessageQueueComponent"
+          "rabbitmq.com.MessageQueue"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueueComponent/{rabbitMQComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}": {
       "delete": {
-        "description": "Deletes a rabbitmq.com.MessageQueueComponent resource.",
-        "operationId": "rabbitmq.com.MessageQueueComponent_Delete",
+        "description": "Deletes a rabbitmq.com.MessageQueue resource.",
+        "operationId": "rabbitmq.com.MessageQueue_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4672,7 +4672,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/RabbitMQComponentNameParameter"
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4680,10 +4680,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the rabbitmq.com.MessageQueueComponent will complete asynchronously."
+            "description": "The request to delete the rabbitmq.com.MessageQueue will complete asynchronously."
           },
           "204": {
-            "description": "The rabbitmq.com.MessageQueueComponent resource was successfully deleted."
+            "description": "The rabbitmq.com.MessageQueue resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -4693,7 +4693,7 @@
           }
         },
         "tags": [
-          "rabbitmq.com.MessageQueueComponent"
+          "rabbitmq.com.MessageQueue"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4701,8 +4701,8 @@
         }
       },
       "get": {
-        "description": "Gets a rabbitmq.com.MessageQueueComponent resource by name.",
-        "operationId": "rabbitmq.com.MessageQueueComponent_Get",
+        "description": "Gets a rabbitmq.com.MessageQueue resource by name.",
+        "operationId": "rabbitmq.com.MessageQueue_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4714,7 +4714,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/RabbitMQComponentNameParameter"
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4722,9 +4722,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The rabbitmq.com.MessageQueueComponent resource was retrieved successfully.",
+            "description": "The rabbitmq.com.MessageQueue resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/RabbitMQComponentResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "default": {
@@ -4735,12 +4735,12 @@
           }
         },
         "tags": [
-          "rabbitmq.com.MessageQueueComponent"
+          "rabbitmq.com.MessageQueue"
         ]
       },
       "put": {
-        "description": "Creates or updates a rabbitmq.com.MessageQueueComponent resource.",
-        "operationId": "rabbitmq.com.MessageQueueComponent_CreateOrUpdate",
+        "description": "Creates or updates a rabbitmq.com.MessageQueue resource.",
+        "operationId": "rabbitmq.com.MessageQueue_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4752,15 +4752,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/RabbitMQComponentNameParameter"
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a rabbitmq.com.MessageQueueComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a rabbitmq.com.MessageQueue resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/RabbitMQComponentResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           {
@@ -4769,21 +4769,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing rabbitmq.com.MessageQueueComponent resource was successfully updated.",
+            "description": "The existing rabbitmq.com.MessageQueue resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/RabbitMQComponentResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "201": {
-            "description": "The new rabbitmq.com.MessageQueueComponent resource was successfully created.",
+            "description": "The new rabbitmq.com.MessageQueue resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/RabbitMQComponentResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "202": {
-            "description": "The existing rabbitmq.com.MessageQueueComponent resource was successfully updated.",
+            "description": "The existing rabbitmq.com.MessageQueue resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/RabbitMQComponentResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "default": {
@@ -4794,7 +4794,7 @@
           }
         },
         "tags": [
-          "rabbitmq.com.MessageQueueComponent"
+          "rabbitmq.com.MessageQueue"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4802,10 +4802,10 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache": {
       "get": {
-        "description": "List the redislabs.com.RedisComponent resources deployed in the application.",
-        "operationId": "redislabs.com.RedisComponent_List",
+        "description": "List the redislabs.com.RedisCache resources deployed in the application.",
+        "operationId": "redislabs.com.RedisCache_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4822,9 +4822,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The list of redislabs.com.RedisComponent resources was retrieved successfully.",
+            "description": "The list of redislabs.com.RedisCache resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/RedisComponentList"
+              "$ref": "#/definitions/RedisCacheList"
             }
           },
           "default": {
@@ -4835,14 +4835,14 @@
           }
         },
         "tags": [
-          "redislabs.com.RedisComponent"
+          "redislabs.com.RedisCache"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisComponent/{redisComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}": {
       "delete": {
-        "description": "Deletes a redislabs.com.RedisComponent resource.",
-        "operationId": "redislabs.com.RedisComponent_Delete",
+        "description": "Deletes a redislabs.com.RedisCache resource.",
+        "operationId": "redislabs.com.RedisCache_Delete",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4854,7 +4854,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/RedisComponentNameParameter"
+            "$ref": "#/parameters/RedisCacheNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4862,10 +4862,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the redislabs.com.RedisComponent will complete asynchronously."
+            "description": "The request to delete the redislabs.com.RedisCache will complete asynchronously."
           },
           "204": {
-            "description": "The redislabs.com.RedisComponent resource was successfully deleted."
+            "description": "The redislabs.com.RedisCache resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -4875,7 +4875,7 @@
           }
         },
         "tags": [
-          "redislabs.com.RedisComponent"
+          "redislabs.com.RedisCache"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
@@ -4883,8 +4883,8 @@
         }
       },
       "get": {
-        "description": "Gets a redislabs.com.RedisComponent resource by name.",
-        "operationId": "redislabs.com.RedisComponent_Get",
+        "description": "Gets a redislabs.com.RedisCache resource by name.",
+        "operationId": "redislabs.com.RedisCache_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4896,7 +4896,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/RedisComponentNameParameter"
+            "$ref": "#/parameters/RedisCacheNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -4904,9 +4904,9 @@
         ],
         "responses": {
           "200": {
-            "description": "The redislabs.com.RedisComponent resource was retrieved successfully.",
+            "description": "The redislabs.com.RedisCache resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/RedisComponentResource"
+              "$ref": "#/definitions/RedisCacheResource"
             }
           },
           "default": {
@@ -4917,12 +4917,12 @@
           }
         },
         "tags": [
-          "redislabs.com.RedisComponent"
+          "redislabs.com.RedisCache"
         ]
       },
       "put": {
-        "description": "Creates or updates a redislabs.com.RedisComponent resource.",
-        "operationId": "redislabs.com.RedisComponent_CreateOrUpdate",
+        "description": "Creates or updates a redislabs.com.RedisCache resource.",
+        "operationId": "redislabs.com.RedisCache_CreateOrUpdate",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -4934,15 +4934,15 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/RedisComponentNameParameter"
+            "$ref": "#/parameters/RedisCacheNameParameter"
           },
           {
-            "description": "Parameters supplied to the CreateOrUpdate operation of a redislabs.com.RedisComponent resource.",
+            "description": "Parameters supplied to the CreateOrUpdate operation of a redislabs.com.RedisCache resource.",
             "in": "body",
             "name": "parameters",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/RedisComponentResource"
+              "$ref": "#/definitions/RedisCacheResource"
             }
           },
           {
@@ -4951,21 +4951,21 @@
         ],
         "responses": {
           "200": {
-            "description": "The existing redislabs.com.RedisComponent resource was successfully updated.",
+            "description": "The existing redislabs.com.RedisCache resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/RedisComponentResource"
+              "$ref": "#/definitions/RedisCacheResource"
             }
           },
           "201": {
-            "description": "The new redislabs.com.RedisComponent resource was successfully created.",
+            "description": "The new redislabs.com.RedisCache resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/RedisComponentResource"
+              "$ref": "#/definitions/RedisCacheResource"
             }
           },
           "202": {
-            "description": "The existing redislabs.com.RedisComponent resource was successfully updated.",
+            "description": "The existing redislabs.com.RedisCache resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/RedisComponentResource"
+              "$ref": "#/definitions/RedisCacheResource"
             }
           },
           "default": {
@@ -4976,7 +4976,7 @@
           }
         },
         "tags": [
-          "redislabs.com.RedisComponent"
+          "redislabs.com.RedisCache"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {

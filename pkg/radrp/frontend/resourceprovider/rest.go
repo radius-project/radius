@@ -33,7 +33,7 @@ type RadiusResource struct {
 	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 
-type RadiusResourceStatus = rest.ComponentStatus
+type RadiusResourceStatus = rest.ResourceStatus
 
 // RadiusResourceList represents a list of a child resource type of Application in the ARM wire-format.
 type RadiusResourceList struct {

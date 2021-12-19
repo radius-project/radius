@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'myapp'
 
   //BACKEND
-  resource backend 'ContainerComponent' = {
+  resource backend 'Container' = {
     name: 'backend'
     properties: {
       container: {
@@ -51,7 +51,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
 
   //FRONTEND
-  resource frontend 'ContainerComponent' = {
+  resource frontend 'Container' = {
     name: 'frontend'
     properties: {
       container: {

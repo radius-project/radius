@@ -9,8 +9,6 @@ const (
 	LogFieldAction             = "action"
 	LogFieldAppID              = "applicationID"
 	LogFieldAppName            = "applicationName"
-	LogFieldComponentKind      = "componentKind"
-	LogFieldComponentName      = "componentName"
 	LogFieldDeploymentID       = "deploymentID"
 	LogFieldDeploymentName     = "deploymentName"
 	LogFieldKind               = "kind"

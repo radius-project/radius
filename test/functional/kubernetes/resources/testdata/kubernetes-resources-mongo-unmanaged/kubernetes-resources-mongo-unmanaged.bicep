@@ -15,7 +15,7 @@ resource mongoSecret 'kubernetes.core/Secret@v1' existing = {
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-mongo-unmanaged'
 
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       container: {
@@ -30,7 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource mongo 'mongodb.com.MongoDBComponent' = {
+  resource mongo 'mongo.com.MongoDatabase' = {
     name: 'mongo'
     properties: {
       secrets: {

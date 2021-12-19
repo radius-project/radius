@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'shopping-app'
 
   //SAMPLE
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       //CONTAINER
@@ -19,7 +19,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource inventory 'dapr.io.StateStoreComponent' = {
+  resource inventory 'dapr.io.StateStore' = {
     name: 'inventorystore'
     //PROPERTIES
     properties: {

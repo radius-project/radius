@@ -55,18 +55,18 @@ func Test_ConvertApplication_RoundTrips(t *testing.T) {
 
 func Test_ConvertResource_RoundTrips(t *testing.T) {
 	namespace := "default"
-	id, err := azresources.Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/ContainerComponent/frontend")
+	id, err := azresources.Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/Container/frontend")
 	require.NoError(t, err)
 	original := radiusv1alpha3.Resource{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "radius.dev/v1alpha3",
-			Kind:       "ContainerComponent",
+			Kind:       "Container",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "frontend-backend-frontend",
 			Namespace:   namespace,
-			Annotations: kubernetes.MakeResourceCRDLabels("frontend-backend", "ContainerComponent", "frontend"),
-			Labels:      kubernetes.MakeResourceCRDLabels("frontend-backend", "ContainerComponent", "frontend"),
+			Annotations: kubernetes.MakeResourceCRDLabels("frontend-backend", "Container", "frontend"),
+			Labels:      kubernetes.MakeResourceCRDLabels("frontend-backend", "Container", "frontend"),
 		},
 		Spec: radiusv1alpha3.ResourceSpec{
 			Application: "frontend-backend",
@@ -75,7 +75,7 @@ func Test_ConvertResource_RoundTrips(t *testing.T) {
 				Raw: marshalJSONIgnoreErr(map[string]interface{}{
 					"name": "kata-container",
 					"id":   id.ID,
-					"type": "ContainerComponent",
+					"type": "Container",
 					"body": map[string]interface{}{
 						"properties": map[string]string{
 							"image": "the-best",
@@ -96,7 +96,7 @@ func Test_ConvertResource_RoundTrips(t *testing.T) {
 	gvk := k8sschema.GroupVersionKind{
 		Group:   "radius.dev",
 		Version: "v1alpha3",
-		Kind:    "ContainerComponent",
+		Kind:    "Container",
 	}
 
 	final, err := NewKubernetesRadiusResource(id, res, namespace, gvk)
@@ -123,13 +123,13 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 		expectedErr string
 	}{{
 		name: "has all fields",
-		original: &radiusv1alpha3.ContainerComponent{
+		original: &radiusv1alpha3.Container{
 			Spec: radiusv1alpha3.ResourceSpec{
 				Template: &runtime.RawExtension{
 					Raw: marshalJSONIgnoreErr(map[string]interface{}{
 						"name": "kata-container",
 						"id":   "/very/long/path/container-01",
-						"type": "/very/long/path/radius.dev/ContainerComponent",
+						"type": "/very/long/path/radius.dev/Container",
 						"body": map[string]interface{}{
 							"properties": map[string]string{
 								"image": "the-best",
@@ -152,10 +152,10 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 		expected: resourceprovider.RadiusResource{
 			Name: "kata-container",
 			ID:   "/very/long/path/container-01",
-			Type: "/very/long/path/radius.dev/ContainerComponent",
+			Type: "/very/long/path/radius.dev/Container",
 			Properties: map[string]interface{}{
 				"image": "the-best",
-				"status": rest.ComponentStatus{
+				"status": rest.ResourceStatus{
 					ProvisioningState: "Provisioned",
 					HealthState:       healthcontract.HealthStateHealthy,
 					OutputResources: []rest.OutputResource{
@@ -199,7 +199,7 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 			ID:   "/the/long/and/winding/route",
 			Type: "/very/long/path/radius.dev/HttpRoute",
 			Properties: map[string]interface{}{
-				"status": rest.ComponentStatus{
+				"status": rest.ResourceStatus{
 					ProvisioningState: "Provisioned",
 					HealthState:       healthcontract.HealthStateHealthy,
 					OutputResources: []rest.OutputResource{

@@ -47,7 +47,7 @@ webhooks:
     - UPDATE
     - DELETE
     resources:
-    - containercomponents
+    - containers
     - dapriodaprhttproutes
     - mongodbcomponents
     - rediscomponents

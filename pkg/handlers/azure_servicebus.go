@@ -211,7 +211,7 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 		Location: location,
 
 		// NOTE: this is a special case, we currently share servicebus resources per-application
-		// they are not directly associated with a component. See: #176
+		// they are not directly associated with a radius resource. See: #176
 		Tags: map[string]*string{
 			keys.TagRadiusApplication: &application,
 		},

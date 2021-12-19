@@ -28,7 +28,7 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, workload renderers.Rend
 }
 
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := radclient.AzureKeyVaultComponentProperties{}
+	properties := radclient.AzureKeyVaultProperties{}
 	err := options.Resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err

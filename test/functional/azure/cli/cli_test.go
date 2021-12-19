@@ -76,24 +76,24 @@ azure-cli
 		require.NoError(t, err)
 
 		// Resource ordering can vary so we don't assert exact output.
-		require.Regexp(t, `a\s+ContainerComponent`, output)
-		require.Regexp(t, `b\s+ContainerComponent`, output)
+		require.Regexp(t, `a\s+Container`, output)
+		require.Regexp(t, `b\s+Container`, output)
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		output, err := cli.ResourceShow(ctx, application, "ContainerComponent", "a")
+		output, err := cli.ResourceShow(ctx, application, "Container", "a")
 		require.NoError(t, err)
 		// We are more interested in the content and less about the formatting, which
 		// is already covered by unit tests. The spaces change depending on the input
 		// and it takes very long to get a feedback from CI.
 		expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
-a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+a\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
 		match := expected.MatchString(output)
 		require.Equal(t, true, match)
 	})
 
-	t.Run("Validate rad resoure logs ContainerComponent", func(t *testing.T) {
+	t.Run("Validate rad resoure logs Container", func(t *testing.T) {
 		output, err := cli.ResourceLogs(ctx, application, "a")
 		require.NoError(t, err)
 
@@ -101,7 +101,7 @@ a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 		require.Contains(t, output, "Server running at http://localhost:3000")
 	})
 
-	t.Run("Validate rad resource expose ContainerComponent", func(t *testing.T) {
+	t.Run("Validate rad resource expose Container", func(t *testing.T) {
 		port, err := GetAvailablePort()
 		require.NoError(t, err)
 

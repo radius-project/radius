@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'text-translation-app'
 
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'translation-service'
     properties: {
       container: {

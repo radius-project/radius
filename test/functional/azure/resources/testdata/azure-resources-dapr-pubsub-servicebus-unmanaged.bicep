@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-dapr-pubsub-servicebus-unmanaged'
 
-  resource publisher 'ContainerComponent' = {
+  resource publisher 'Container' = {
     name: 'publisher'
     properties: {
       connections: {
@@ -27,7 +27,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
   
-  resource pubsub 'dapr.io.PubSubTopicComponent' = {
+  resource pubsub 'dapr.io.PubSubTopic' = {
     name: 'pubsub'
     properties: {
       kind: 'pubsub.azure.servicebus'

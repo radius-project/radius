@@ -34,7 +34,7 @@ const (
 	resourceGroup   = "test-resource-group"
 	providerName    = "radiusv3"
 	applicationName = "test-application"
-	resourceType    = "ContainerComponent" // Need to use a real resource type
+	resourceType    = "Container" // Need to use a real resource type
 	resourceName    = "test-resource"
 	operationName   = "test-operation"
 )
@@ -528,7 +528,7 @@ func Test_ListAllResources_Success(t *testing.T) {
 				Properties: map[string]interface{}{
 					"data":              true,
 					"provisioningState": string(rest.SuccededStatus),
-					"status": rest.ComponentStatus{
+					"status": rest.ResourceStatus{
 						ProvisioningState: "Provisioned",
 						HealthState:       "Healthy",
 						OutputResources:   []rest.OutputResource{},
@@ -593,7 +593,7 @@ func Test_ListResources_Success(t *testing.T) {
 				Properties: map[string]interface{}{
 					"data":              true,
 					"provisioningState": "Succeeded",
-					"status": rest.ComponentStatus{
+					"status": rest.ResourceStatus{
 						ProvisioningState: "Provisioned",
 						HealthState:       "Healthy",
 						OutputResources:   []rest.OutputResource{},
@@ -635,7 +635,7 @@ func Test_GetResource_Success(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": "Succeeded",
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -699,7 +699,7 @@ func Test_UpdateResource_Success(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.DeployingStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -773,7 +773,7 @@ func Test_DeleteResource_Success(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.DeletingStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -889,7 +889,7 @@ func Test_GetOperation_SuccessfulDeploy(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.SuccededStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -931,7 +931,7 @@ func Test_GetOperation_DeployInProgress(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.DeployingStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -990,7 +990,7 @@ func Test_OutputResponseWithHealthStatus(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.SuccededStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: rest.ProvisioningStateProvisioned,
 				HealthState:       healthcontract.HealthStateHealthy, // Aggregation should show Healthy
 				OutputResources: []rest.OutputResource{

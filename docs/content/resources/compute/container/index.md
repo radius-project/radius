@@ -6,7 +6,7 @@ description: "Learn about the Radius container component"
 weight: 100
 ---
 
-`ContainerComponent` provides an abstraction for a container workload that can be run on any [Radius platform]({{< ref platforms >}}).
+`Container` provides an abstraction for a container workload that can be run on any [Radius platform]({{< ref platforms >}}).
 
 ## Platform resources
 

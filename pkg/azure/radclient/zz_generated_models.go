@@ -107,44 +107,43 @@ type ApplicationStatus struct {
 	ProvisioningState *string `json:"provisioningState,omitempty"`
 }
 
-// AzureComKeyVaultComponentBeginCreateOrUpdateOptions contains the optional parameters for the AzureComKeyVaultComponent.BeginCreateOrUpdate method.
-type AzureComKeyVaultComponentBeginCreateOrUpdateOptions struct {
+// AzureComKeyVaultBeginCreateOrUpdateOptions contains the optional parameters for the AzureComKeyVault.BeginCreateOrUpdate method.
+type AzureComKeyVaultBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComKeyVaultComponentBeginDeleteOptions contains the optional parameters for the AzureComKeyVaultComponent.BeginDelete method.
-type AzureComKeyVaultComponentBeginDeleteOptions struct {
+// AzureComKeyVaultBeginDeleteOptions contains the optional parameters for the AzureComKeyVault.BeginDelete method.
+type AzureComKeyVaultBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComKeyVaultComponentGetOptions contains the optional parameters for the AzureComKeyVaultComponent.Get method.
-type AzureComKeyVaultComponentGetOptions struct {
+// AzureComKeyVaultGetOptions contains the optional parameters for the AzureComKeyVault.Get method.
+type AzureComKeyVaultGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComKeyVaultComponentListOptions contains the optional parameters for the AzureComKeyVaultComponent.List method.
-type AzureComKeyVaultComponentListOptions struct {
+// AzureComKeyVaultListOptions contains the optional parameters for the AzureComKeyVault.List method.
+type AzureComKeyVaultListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions contains the optional parameters for the AzureComServiceBusQueueComponent.BeginCreateOrUpdate
-// method.
-type AzureComServiceBusQueueComponentBeginCreateOrUpdateOptions struct {
+// AzureComServiceBusQueueBeginCreateOrUpdateOptions contains the optional parameters for the AzureComServiceBusQueue.BeginCreateOrUpdate method.
+type AzureComServiceBusQueueBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComServiceBusQueueComponentBeginDeleteOptions contains the optional parameters for the AzureComServiceBusQueueComponent.BeginDelete method.
-type AzureComServiceBusQueueComponentBeginDeleteOptions struct {
+// AzureComServiceBusQueueBeginDeleteOptions contains the optional parameters for the AzureComServiceBusQueue.BeginDelete method.
+type AzureComServiceBusQueueBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComServiceBusQueueComponentGetOptions contains the optional parameters for the AzureComServiceBusQueueComponent.Get method.
-type AzureComServiceBusQueueComponentGetOptions struct {
+// AzureComServiceBusQueueGetOptions contains the optional parameters for the AzureComServiceBusQueue.Get method.
+type AzureComServiceBusQueueGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureComServiceBusQueueComponentListOptions contains the optional parameters for the AzureComServiceBusQueueComponent.List method.
-type AzureComServiceBusQueueComponentListOptions struct {
+// AzureComServiceBusQueueListOptions contains the optional parameters for the AzureComServiceBusQueue.List method.
+type AzureComServiceBusQueueListOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -191,7 +190,7 @@ type AzureFileShareVolumeProperties struct {
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
 	Managed *bool `json:"managed,omitempty"`
 
-	// The ID of the user-managed volume to use for this component
+	// The ID of the user-managed volume to use for this resource
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -230,21 +229,21 @@ func (a *AzureFileShareVolumeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// AzureKeyVaultComponentList - List of azure.com.KeyVaultComponent resources.
-type AzureKeyVaultComponentList struct {
-	// REQUIRED; List of azure.com.KeyVaultComponent resources.
-	Value []*AzureKeyVaultComponentResource `json:"value,omitempty"`
+// AzureKeyVaultList - List of azure.com.KeyVault resources.
+type AzureKeyVaultList struct {
+	// REQUIRED; List of azure.com.KeyVault resources.
+	Value []*AzureKeyVaultResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultComponentList.
-func (a AzureKeyVaultComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultList.
+func (a AzureKeyVaultList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", a.Value)
 	return json.Marshal(objectMap)
 }
 
-type AzureKeyVaultComponentProperties struct {
-	BasicComponentProperties
+type AzureKeyVaultProperties struct {
+	BasicResourceProperties
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
 	Managed *Enum2 `json:"managed,omitempty"`
 
@@ -252,17 +251,17 @@ type AzureKeyVaultComponentProperties struct {
 	Resource *string `json:"resource,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultComponentProperties.
-func (a AzureKeyVaultComponentProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultProperties.
+func (a AzureKeyVaultProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	a.BasicComponentProperties.marshalInternal(objectMap)
+	a.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "managed", a.Managed)
 	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AzureKeyVaultComponentProperties.
-func (a *AzureKeyVaultComponentProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureKeyVaultProperties.
+func (a *AzureKeyVaultProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -281,29 +280,29 @@ func (a *AzureKeyVaultComponentProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := a.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := a.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
 }
 
-// AzureKeyVaultComponentResource - Component for Azure KeyVault
-type AzureKeyVaultComponentResource struct {
+// AzureKeyVaultResource - Azure KeyVault
+type AzureKeyVaultResource struct {
 	ProxyResource
 	// REQUIRED
-	Properties *AzureKeyVaultComponentProperties `json:"properties,omitempty"`
+	Properties *AzureKeyVaultProperties `json:"properties,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultComponentResource.
-func (a AzureKeyVaultComponentResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultResource.
+func (a AzureKeyVaultResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	a.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AzureKeyVaultComponentResource.
-func (a *AzureKeyVaultComponentResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureKeyVaultResource.
+func (a *AzureKeyVaultResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -336,7 +335,7 @@ type AzureKeyVaultVolumeProperties struct {
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
 	Managed *bool `json:"managed,omitempty"`
 
-	// The ID of the user-managed keyvault to use for this volume component
+	// The ID of the user-managed keyvault to use for this volume resource
 	Resource *string `json:"resource,omitempty"`
 
 	// The KeyVault secrets that this volume exposes
@@ -390,39 +389,39 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// AzureServiceBusComponentList - List of azure.com.ServiceBusQueueComponent resources.
-type AzureServiceBusComponentList struct {
-	// REQUIRED; List of azure.com.ServiceBusQueueComponent resources.
-	Value []*AzureServiceBusComponentResource `json:"value,omitempty"`
+// AzureServiceBusList - List of azure.com.ServiceBusQueue resources.
+type AzureServiceBusList struct {
+	// REQUIRED; List of azure.com.ServiceBusQueue resources.
+	Value []*AzureServiceBusResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AzureServiceBusComponentList.
-func (a AzureServiceBusComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AzureServiceBusList.
+func (a AzureServiceBusList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", a.Value)
 	return json.Marshal(objectMap)
 }
 
-type AzureServiceBusComponentProperties struct {
-	BasicComponentProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component
+type AzureServiceBusProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this resource.
 	Managed *Enum3 `json:"managed,omitempty"`
 
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AzureServiceBusComponentProperties.
-func (a AzureServiceBusComponentProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AzureServiceBusProperties.
+func (a AzureServiceBusProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	a.BasicComponentProperties.marshalInternal(objectMap)
+	a.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "managed", a.Managed)
 	populate(objectMap, "queue", a.Queue)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AzureServiceBusComponentProperties.
-func (a *AzureServiceBusComponentProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureServiceBusProperties.
+func (a *AzureServiceBusProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -441,29 +440,29 @@ func (a *AzureServiceBusComponentProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := a.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := a.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
 }
 
-// AzureServiceBusComponentResource - Component for Azure ServiceBus
-type AzureServiceBusComponentResource struct {
+// AzureServiceBusResource - Azure ServiceBus
+type AzureServiceBusResource struct {
 	ProxyResource
 	// REQUIRED
-	Properties *AzureServiceBusComponentProperties `json:"properties,omitempty"`
+	Properties *AzureServiceBusProperties `json:"properties,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AzureServiceBusComponentResource.
-func (a AzureServiceBusComponentResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AzureServiceBusResource.
+func (a AzureServiceBusResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	a.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", a.Properties)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AzureServiceBusComponentResource.
-func (a *AzureServiceBusComponentResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureServiceBusResource.
+func (a *AzureServiceBusResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -485,21 +484,21 @@ func (a *AzureServiceBusComponentResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// BasicComponentProperties - Basic properties of a component.
-type BasicComponentProperties struct {
-	// Status of the component
-	Status *ComponentStatus `json:"status,omitempty"`
+// BasicResourceProperties - Basic properties of a Radius resource.
+type BasicResourceProperties struct {
+	// Status of the resource
+	Status *ResourceStatus `json:"status,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type BasicComponentProperties.
-func (b BasicComponentProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
+func (b BasicResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	b.marshalInternal(objectMap)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type BasicComponentProperties.
-func (b *BasicComponentProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type BasicResourceProperties.
+func (b *BasicResourceProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -507,11 +506,11 @@ func (b *BasicComponentProperties) UnmarshalJSON(data []byte) error {
 	return b.unmarshalInternal(rawMsg)
 }
 
-func (b BasicComponentProperties) marshalInternal(objectMap map[string]interface{}) {
+func (b BasicResourceProperties) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "status", b.Status)
 }
 
-func (b *BasicComponentProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+func (b *BasicResourceProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
@@ -528,7 +527,7 @@ func (b *BasicComponentProperties) unmarshalInternal(rawMsg map[string]json.RawM
 
 // BasicRouteProperties - Basic properties of a route.
 type BasicRouteProperties struct {
-	// Status of the component
+	// Status of the resource
 	Status *RouteStatus `json:"status,omitempty"`
 }
 
@@ -573,127 +572,94 @@ type CheckNameAvailabilityResponse struct {
 	Reason *CheckNameAvailabilityReason `json:"reason,omitempty"`
 }
 
-// ComponentStatus - Status of a component.
-type ComponentStatus struct {
-	// Health state of the component
-	HealthState *string `json:"healthState,omitempty"`
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
-
-	// Provisioning state of the component
-	ProvisioningState *string `json:"provisioningState,omitempty"`
+// ContainerBeginCreateOrUpdateOptions contains the optional parameters for the Container.BeginCreateOrUpdate method.
+type ContainerBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ComponentStatus.
-func (c ComponentStatus) MarshalJSON() ([]byte, error) {
+// ContainerBeginDeleteOptions contains the optional parameters for the Container.BeginDelete method.
+type ContainerBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ContainerConnection - Specifies a connection from the container to another resource
+type ContainerConnection struct {
+	// REQUIRED; The kind of connection
+	Kind *ContainerConnectionKind `json:"kind,omitempty"`
+
+	// REQUIRED; The source of the connection
+	Source *string `json:"source,omitempty"`
+
+	// RBAC permissions to be assigned on the source resource
+	Role []*string `json:"role,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ContainerConnection.
+func (c ContainerConnection) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "healthState", c.HealthState)
-	populate(objectMap, "outputResources", c.OutputResources)
-	populate(objectMap, "provisioningState", c.ProvisioningState)
+	populate(objectMap, "kind", c.Kind)
+	populate(objectMap, "role", c.Role)
+	populate(objectMap, "source", c.Source)
 	return json.Marshal(objectMap)
 }
 
-// ComponentTraitClassification provides polymorphic access to related types.
-// Call the interface's GetComponentTrait() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *ComponentTrait, *DaprSidecarTrait, *ManualScalingTrait
-type ComponentTraitClassification interface {
-	// GetComponentTrait returns the ComponentTrait content of the underlying type.
-	GetComponentTrait() *ComponentTrait
-}
-
-// ComponentTrait - Trait of a component.
-type ComponentTrait struct {
-	// REQUIRED; The ComponentTrait kind
-	Kind *string `json:"kind,omitempty"`
-}
-
-// GetComponentTrait implements the ComponentTraitClassification interface for type ComponentTrait.
-func (c *ComponentTrait) GetComponentTrait() *ComponentTrait { return c }
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ComponentTrait.
-func (c *ComponentTrait) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	return c.unmarshalInternal(rawMsg)
-}
-
-func (c ComponentTrait) marshalInternal(objectMap map[string]interface{}, discValue string) {
-	c.Kind = &discValue
-	objectMap["kind"] = c.Kind
-}
-
-func (c *ComponentTrait) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "kind":
-				err = unpopulate(val, &c.Kind)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ContainerComponentBeginCreateOrUpdateOptions contains the optional parameters for the ContainerComponent.BeginCreateOrUpdate method.
-type ContainerComponentBeginCreateOrUpdateOptions struct {
+// ContainerGetOptions contains the optional parameters for the Container.Get method.
+type ContainerGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ContainerComponentBeginDeleteOptions contains the optional parameters for the ContainerComponent.BeginDelete method.
-type ContainerComponentBeginDeleteOptions struct {
-	// placeholder for future optional parameters
+// ContainerList - List of Container resources.
+type ContainerList struct {
+	// REQUIRED; List of Container resources.
+	Value []*ContainerResource `json:"value,omitempty"`
 }
 
-// ContainerComponentGetOptions contains the optional parameters for the ContainerComponent.Get method.
-type ContainerComponentGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ContainerComponentList - List of ContainerComponent resources.
-type ContainerComponentList struct {
-	// REQUIRED; List of ContainerComponent resources.
-	Value []*ContainerComponentResource `json:"value,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ContainerComponentList.
-func (c ContainerComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ContainerList.
+func (c ContainerList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", c.Value)
 	return json.Marshal(objectMap)
 }
 
-// ContainerComponentListOptions contains the optional parameters for the ContainerComponent.List method.
-type ContainerComponentListOptions struct {
+// ContainerListOptions contains the optional parameters for the Container.List method.
+type ContainerListOptions struct {
 	// placeholder for future optional parameters
 }
 
-type ContainerComponentProperties struct {
-	BasicComponentProperties
-	// Dictionary of
-	Connections map[string]*ContainerConnection `json:"connections,omitempty"`
-	Container *ContainerComponentPropertiesContainer `json:"container,omitempty"`
+// ContainerPort - Specifies a listening port for the container
+type ContainerPort struct {
+	// REQUIRED; The listening port number
+	ContainerPort *int32 `json:"containerPort,omitempty"`
 
-	// Traits spec of the component
-	Traits []ComponentTraitClassification `json:"traits,omitempty"`
+	// Protocol in use by the port
+	Protocol *ContainerPortProtocol `json:"protocol,omitempty"`
+
+	// Specifies a route provided by this port
+	Provides *string `json:"provides,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ContainerComponentProperties.
-func (c ContainerComponentProperties) MarshalJSON() ([]byte, error) {
+type ContainerProperties struct {
+	BasicResourceProperties
+	// Dictionary of
+	Connections map[string]*ContainerConnection `json:"connections,omitempty"`
+	Container *ContainerPropertiesContainer `json:"container,omitempty"`
+
+	// Traits spec of the resource
+	Traits []ResourceTraitClassification `json:"traits,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ContainerProperties.
+func (c ContainerProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	c.BasicComponentProperties.marshalInternal(objectMap)
+	c.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "connections", c.Connections)
 	populate(objectMap, "container", c.Container)
 	populate(objectMap, "traits", c.Traits)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerComponentProperties.
-func (c *ContainerComponentProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerProperties.
+func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -708,20 +674,20 @@ func (c *ContainerComponentProperties) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, &c.Container)
 				delete(rawMsg, key)
 		case "traits":
-				c.Traits, err = unmarshalComponentTraitClassificationArray(val)
+				c.Traits, err = unmarshalResourceTraitClassificationArray(val)
 				delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
 		}
 	}
-	if err := c.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := c.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
 }
 
-type ContainerComponentPropertiesContainer struct {
+type ContainerPropertiesContainer struct {
 	// REQUIRED; The registry and image to download and run in your container
 	Image *string `json:"image,omitempty"`
 
@@ -741,8 +707,8 @@ type ContainerComponentPropertiesContainer struct {
 	Volumes map[string]VolumeClassification `json:"volumes,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ContainerComponentPropertiesContainer.
-func (c ContainerComponentPropertiesContainer) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ContainerPropertiesContainer.
+func (c ContainerPropertiesContainer) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "env", c.Env)
 	populate(objectMap, "image", c.Image)
@@ -753,8 +719,8 @@ func (c ContainerComponentPropertiesContainer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerComponentPropertiesContainer.
-func (c *ContainerComponentPropertiesContainer) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerPropertiesContainer.
+func (c *ContainerPropertiesContainer) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -788,23 +754,23 @@ func (c *ContainerComponentPropertiesContainer) UnmarshalJSON(data []byte) error
 	return nil
 }
 
-// ContainerComponentResource - The radius.dev/Container component provides an abstraction for a container workload that can be run on any Radius platform
-type ContainerComponentResource struct {
+// ContainerResource - The radius.dev/Container resource provides an abstraction for a container workload that can be run on any Radius platform
+type ContainerResource struct {
 	ProxyResource
 	// REQUIRED
-	Properties *ContainerComponentProperties `json:"properties,omitempty"`
+	Properties *ContainerProperties `json:"properties,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ContainerComponentResource.
-func (c ContainerComponentResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ContainerResource.
+func (c ContainerResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	c.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", c.Properties)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerComponentResource.
-func (c *ContainerComponentResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerResource.
+func (c *ContainerResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -826,76 +792,43 @@ func (c *ContainerComponentResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ContainerConnection - Specifies a connection from the container to another resource
-type ContainerConnection struct {
-	// REQUIRED; The kind of connection
-	Kind *ContainerConnectionKind `json:"kind,omitempty"`
-
-	// REQUIRED; The source of the connection
-	Source *string `json:"source,omitempty"`
-
-	// RBAC permissions to be assigned on the source resource
-	Role []*string `json:"role,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ContainerConnection.
-func (c ContainerConnection) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "kind", c.Kind)
-	populate(objectMap, "role", c.Role)
-	populate(objectMap, "source", c.Source)
-	return json.Marshal(objectMap)
-}
-
-// ContainerPort - Specifies a listening port for the container
-type ContainerPort struct {
-	// REQUIRED; The listening port number
-	ContainerPort *int32 `json:"containerPort,omitempty"`
-
-	// Protocol in use by the port
-	Protocol *ContainerPortProtocol `json:"protocol,omitempty"`
-
-	// Specifies a route provided by this port
-	Provides *string `json:"provides,omitempty"`
-}
-
-// DaprHTTPRouteList - List of dapr.io.DaprHttpRoute resources.
-type DaprHTTPRouteList struct {
-	// REQUIRED; List of dapr.io.DaprHttpRoute resources.
-	Value []*DaprHTTPRouteResource `json:"value,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprHTTPRouteList.
-func (d DaprHTTPRouteList) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "value", d.Value)
-	return json.Marshal(objectMap)
-}
-
 type DaprHTTPRouteProperties struct {
 	BasicRouteProperties
 	// REQUIRED; The Dapr appId used for the route
 	AppID *string `json:"appId,omitempty"`
 }
 
-// DaprHTTPRouteResource - Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication
-// between components.
-type DaprHTTPRouteResource struct {
+// DaprInvokeHTTPRouteList - List of dapr.io.InvokeHttpRoute resources.
+type DaprInvokeHTTPRouteList struct {
+	// REQUIRED; List of dapr.io.InvokeHttpRoute resources.
+	Value []*DaprInvokeHTTPRouteResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprInvokeHTTPRouteList.
+func (d DaprInvokeHTTPRouteList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
+// DaprInvokeHTTPRouteResource - Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern
+// of communication between resources.
+type DaprInvokeHTTPRouteResource struct {
 	ProxyResource
 	// REQUIRED
 	Properties *DaprHTTPRouteProperties `json:"properties,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type DaprHTTPRouteResource.
-func (d DaprHTTPRouteResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type DaprInvokeHTTPRouteResource.
+func (d DaprInvokeHTTPRouteResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	d.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", d.Properties)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprHTTPRouteResource.
-func (d *DaprHTTPRouteResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprInvokeHTTPRouteResource.
+func (d *DaprInvokeHTTPRouteResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -917,83 +850,121 @@ func (d *DaprHTTPRouteResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoDaprHTTPRoute.BeginCreateOrUpdate method.
-type DaprIoDaprHTTPRouteBeginCreateOrUpdateOptions struct {
+// DaprIoInvokeHTTPRouteBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoInvokeHTTPRoute.BeginCreateOrUpdate method.
+type DaprIoInvokeHTTPRouteBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoDaprHTTPRouteBeginDeleteOptions contains the optional parameters for the DaprIoDaprHTTPRoute.BeginDelete method.
-type DaprIoDaprHTTPRouteBeginDeleteOptions struct {
+// DaprIoInvokeHTTPRouteBeginDeleteOptions contains the optional parameters for the DaprIoInvokeHTTPRoute.BeginDelete method.
+type DaprIoInvokeHTTPRouteBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoDaprHTTPRouteGetOptions contains the optional parameters for the DaprIoDaprHTTPRoute.Get method.
-type DaprIoDaprHTTPRouteGetOptions struct {
+// DaprIoInvokeHTTPRouteGetOptions contains the optional parameters for the DaprIoInvokeHTTPRoute.Get method.
+type DaprIoInvokeHTTPRouteGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoDaprHTTPRouteListOptions contains the optional parameters for the DaprIoDaprHTTPRoute.List method.
-type DaprIoDaprHTTPRouteListOptions struct {
+// DaprIoInvokeHTTPRouteListOptions contains the optional parameters for the DaprIoInvokeHTTPRoute.List method.
+type DaprIoInvokeHTTPRouteListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubTopicComponentBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoPubSubTopicComponent.BeginCreateOrUpdate method.
-type DaprIoPubSubTopicComponentBeginCreateOrUpdateOptions struct {
+// DaprIoPubSubTopicBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoPubSubTopic.BeginCreateOrUpdate method.
+type DaprIoPubSubTopicBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubTopicComponentBeginDeleteOptions contains the optional parameters for the DaprIoPubSubTopicComponent.BeginDelete method.
-type DaprIoPubSubTopicComponentBeginDeleteOptions struct {
+// DaprIoPubSubTopicBeginDeleteOptions contains the optional parameters for the DaprIoPubSubTopic.BeginDelete method.
+type DaprIoPubSubTopicBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubTopicComponentGetOptions contains the optional parameters for the DaprIoPubSubTopicComponent.Get method.
-type DaprIoPubSubTopicComponentGetOptions struct {
+// DaprIoPubSubTopicGetOptions contains the optional parameters for the DaprIoPubSubTopic.Get method.
+type DaprIoPubSubTopicGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoPubSubTopicComponentListOptions contains the optional parameters for the DaprIoPubSubTopicComponent.List method.
-type DaprIoPubSubTopicComponentListOptions struct {
+// DaprIoPubSubTopicListOptions contains the optional parameters for the DaprIoPubSubTopic.List method.
+type DaprIoPubSubTopicListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoStateStoreComponentBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoStateStoreComponent.BeginCreateOrUpdate method.
-type DaprIoStateStoreComponentBeginCreateOrUpdateOptions struct {
+// DaprIoStateStoreBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoStateStore.BeginCreateOrUpdate method.
+type DaprIoStateStoreBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoStateStoreComponentBeginDeleteOptions contains the optional parameters for the DaprIoStateStoreComponent.BeginDelete method.
-type DaprIoStateStoreComponentBeginDeleteOptions struct {
+// DaprIoStateStoreBeginDeleteOptions contains the optional parameters for the DaprIoStateStore.BeginDelete method.
+type DaprIoStateStoreBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoStateStoreComponentGetOptions contains the optional parameters for the DaprIoStateStoreComponent.Get method.
-type DaprIoStateStoreComponentGetOptions struct {
+// DaprIoStateStoreGetOptions contains the optional parameters for the DaprIoStateStore.Get method.
+type DaprIoStateStoreGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprIoStateStoreComponentListOptions contains the optional parameters for the DaprIoStateStoreComponent.List method.
-type DaprIoStateStoreComponentListOptions struct {
+// DaprIoStateStoreListOptions contains the optional parameters for the DaprIoStateStore.List method.
+type DaprIoStateStoreListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprPubSubTopicComponentList - List of dapr.io.PubSubTopicComponent resources.
-type DaprPubSubTopicComponentList struct {
-	// REQUIRED; List of dapr.io.PubSubTopicComponent resources.
-	Value []*DaprPubSubTopicComponentResource `json:"value,omitempty"`
+// DaprPubSubTopicList - List of dapr.io.PubSubTopic resources.
+type DaprPubSubTopicList struct {
+	// REQUIRED; List of dapr.io.PubSubTopic resources.
+	Value []*DaprPubSubTopicResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicComponentList.
-func (d DaprPubSubTopicComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicList.
+func (d DaprPubSubTopicList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", d.Value)
 	return json.Marshal(objectMap)
 }
 
-type DaprPubSubTopicComponentProperties struct {
-	BasicComponentProperties
-	// REQUIRED; The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.
-	Kind *DaprPubSubTopicComponentPropertiesKind `json:"kind,omitempty"`
+// DaprPubSubTopicResource - Resource for Dapr Pub/Sub
+type DaprPubSubTopicResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *DaprPubSubTopicResourceProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicResource.
+func (d DaprPubSubTopicResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.ProxyResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", d.Properties)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicResource.
+func (d *DaprPubSubTopicResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &d.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+type DaprPubSubTopicResourceProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes configuration format.
+	Kind *DaprPubSubTopicResourcePropertiesKind `json:"kind,omitempty"`
 
 	// Indicates if the resource is Radius-managed. If false, a resource is required
 	Managed *bool `json:"managed,omitempty"`
@@ -1005,10 +976,10 @@ type DaprPubSubTopicComponentProperties struct {
 	Topic *string `json:"topic,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicComponentProperties.
-func (d DaprPubSubTopicComponentProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicResourceProperties.
+func (d DaprPubSubTopicResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.BasicComponentProperties.marshalInternal(objectMap)
+	d.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "kind", d.Kind)
 	populate(objectMap, "managed", d.Managed)
 	populate(objectMap, "resource", d.Resource)
@@ -1016,8 +987,8 @@ func (d DaprPubSubTopicComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicComponentProperties.
-func (d *DaprPubSubTopicComponentProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicResourceProperties.
+func (d *DaprPubSubTopicResourceProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -1042,73 +1013,35 @@ func (d *DaprPubSubTopicComponentProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := d.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := d.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
 }
 
-// DaprPubSubTopicComponentResource - Component for Dapr Pub/Sub
-type DaprPubSubTopicComponentResource struct {
-	ProxyResource
-	// REQUIRED
-	Properties *DaprPubSubTopicComponentProperties `json:"properties,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicComponentResource.
-func (d DaprPubSubTopicComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.ProxyResource.marshalInternal(objectMap)
-	populate(objectMap, "properties", d.Properties)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicComponentResource.
-func (d *DaprPubSubTopicComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &d.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := d.ProxyResource.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-// DaprSidecarTrait - The specifies that the component should have a Dapr sidecar injected
+// DaprSidecarTrait - The specifies that the resource should have a Dapr sidecar injected
 type DaprSidecarTrait struct {
-	ComponentTrait
+	ResourceTrait
 	// REQUIRED; The Dapr appId. Specifies the identifier used by Dapr for service invocation.
 	AppID *string `json:"appId,omitempty"`
 
 	// The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
 	AppPort *int32 `json:"appPort,omitempty"`
 
-	// Specifies the Dapr configuration to use for the component.
+	// Specifies the Dapr configuration to use for the resource.
 	Config *string `json:"config,omitempty"`
 
-	// Specifies the Dapr app-protocol to use for the component.
+	// Specifies the Dapr app-protocol to use for the resource.
 	Protocol *DaprSidecarTraitProtocol `json:"protocol,omitempty"`
 
-	// Specifies the resource id of a dapr.io.DaprHttpRoute that can route traffic to this component.
+	// Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
 	Provides *string `json:"provides,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprSidecarTrait.
 func (d DaprSidecarTrait) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.ComponentTrait.marshalInternal(objectMap, "dapr.io/Sidecar@v1alpha1")
+	d.ResourceTrait.marshalInternal(objectMap, "dapr.io/Sidecar@v1alpha1")
 	populate(objectMap, "appId", d.AppID)
 	populate(objectMap, "appPort", d.AppPort)
 	populate(objectMap, "config", d.Config)
@@ -1146,45 +1079,83 @@ func (d *DaprSidecarTrait) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := d.ComponentTrait.unmarshalInternal(rawMsg); err != nil {
+	if err := d.ResourceTrait.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
 }
 
-// DaprStateStoreComponentList - List of dapr.io.StateStoreComponent resources.
-type DaprStateStoreComponentList struct {
-	// REQUIRED; List of dapr.io.StateStoreComponent resources.
-	Value []*DaprStateStoreComponentResource `json:"value,omitempty"`
+// DaprStateStoreList - List of dapr.io.StateStore resources.
+type DaprStateStoreList struct {
+	// REQUIRED; List of dapr.io.StateStore resources.
+	Value []*DaprStateStoreResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentList.
-func (d DaprStateStoreComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreList.
+func (d DaprStateStoreList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", d.Value)
 	return json.Marshal(objectMap)
 }
 
-type DaprStateStoreComponentProperties struct {
-	BasicComponentProperties
-	// REQUIRED; The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.
-	Kind *DaprStateStoreComponentPropertiesKind `json:"kind,omitempty"`
-
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-	Managed *Enum3 `json:"managed,omitempty"`
+// DaprStateStoreResource - Resource for Dapr state store
+type DaprStateStoreResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *DaprStateStoreResourceProperties `json:"properties,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentProperties.
-func (d DaprStateStoreComponentProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreResource.
+func (d DaprStateStoreResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.BasicComponentProperties.marshalInternal(objectMap)
+	d.ProxyResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", d.Properties)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreResource.
+func (d *DaprStateStoreResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &d.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+type DaprStateStoreResourceProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes configuration format.
+	Kind *DaprStateStoreResourcePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
+	Managed *Enum6 `json:"managed,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreResourceProperties.
+func (d DaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "kind", d.Kind)
 	populate(objectMap, "managed", d.Managed)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreComponentProperties.
-func (d *DaprStateStoreComponentProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreResourceProperties.
+func (d *DaprStateStoreResourceProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -1203,45 +1174,7 @@ func (d *DaprStateStoreComponentProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := d.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-// DaprStateStoreComponentResource - Component for Dapr state store
-type DaprStateStoreComponentResource struct {
-	ProxyResource
-	// REQUIRED
-	Properties *DaprStateStoreComponentProperties `json:"properties,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreComponentResource.
-func (d DaprStateStoreComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.ProxyResource.marshalInternal(objectMap)
-	populate(objectMap, "properties", d.Properties)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreComponentResource.
-func (d *DaprStateStoreComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &d.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := d.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+	if err := d.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
@@ -1663,12 +1596,12 @@ type HTTPRouteProperties struct {
 	// The scheme used for traffic. Readonly.
 	Scheme *float32 `json:"scheme,omitempty"`
 
-	// A stable URL that that can be used to route traffic to a component. Readonly.
+	// A stable URL that that can be used to route traffic to a resource. Readonly.
 	URL *float32 `json:"url,omitempty"`
 }
 
 // HTTPRouteResource - Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal
-// traffic to a component.
+// traffic to a resource.
 type HTTPRouteResource struct {
 	ProxyResource
 	Properties *HTTPRouteProperties `json:"properties,omitempty"`
@@ -1798,9 +1731,9 @@ type LocationData struct {
 	District *string `json:"district,omitempty"`
 }
 
-// ManualScalingTrait - ManualScaling ComponentTrait
+// ManualScalingTrait - ManualScaling Trait
 type ManualScalingTrait struct {
-	ComponentTrait
+	ResourceTrait
 	// Replica count.
 	Replicas *int32 `json:"replicas,omitempty"`
 }
@@ -1808,7 +1741,7 @@ type ManualScalingTrait struct {
 // MarshalJSON implements the json.Marshaller interface for type ManualScalingTrait.
 func (m ManualScalingTrait) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	m.ComponentTrait.marshalInternal(objectMap, "radius.dev/ManualScaling@v1alpha1")
+	m.ResourceTrait.marshalInternal(objectMap, "radius.dev/ManualScaling@v1alpha1")
 	populate(objectMap, "replicas", m.Replicas)
 	return json.Marshal(objectMap)
 }
@@ -1830,62 +1763,106 @@ func (m *ManualScalingTrait) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := m.ComponentTrait.unmarshalInternal(rawMsg); err != nil {
+	if err := m.ResourceTrait.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
 }
 
-// MicrosoftComSQLComponentBeginCreateOrUpdateOptions contains the optional parameters for the MicrosoftComSQLComponent.BeginCreateOrUpdate method.
-type MicrosoftComSQLComponentBeginCreateOrUpdateOptions struct {
+// MicrosoftComSQLDatabaseBeginCreateOrUpdateOptions contains the optional parameters for the MicrosoftComSQLDatabase.BeginCreateOrUpdate method.
+type MicrosoftComSQLDatabaseBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MicrosoftComSQLComponentBeginDeleteOptions contains the optional parameters for the MicrosoftComSQLComponent.BeginDelete method.
-type MicrosoftComSQLComponentBeginDeleteOptions struct {
+// MicrosoftComSQLDatabaseBeginDeleteOptions contains the optional parameters for the MicrosoftComSQLDatabase.BeginDelete method.
+type MicrosoftComSQLDatabaseBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MicrosoftComSQLComponentGetOptions contains the optional parameters for the MicrosoftComSQLComponent.Get method.
-type MicrosoftComSQLComponentGetOptions struct {
+// MicrosoftComSQLDatabaseGetOptions contains the optional parameters for the MicrosoftComSQLDatabase.Get method.
+type MicrosoftComSQLDatabaseGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MicrosoftComSQLComponentListOptions contains the optional parameters for the MicrosoftComSQLComponent.List method.
-type MicrosoftComSQLComponentListOptions struct {
+// MicrosoftComSQLDatabaseListOptions contains the optional parameters for the MicrosoftComSQLDatabase.List method.
+type MicrosoftComSQLDatabaseListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MicrosoftSQLComponentList - List of microsoft.com.SQLComponent resources.
-type MicrosoftSQLComponentList struct {
-	// REQUIRED; List of microsoft.com.SQLComponent resources.
-	Value []*MicrosoftSQLComponentResource `json:"value,omitempty"`
+// MicrosoftSQLDatabaseList - List of microsoft.com.SQLDatabase resources.
+type MicrosoftSQLDatabaseList struct {
+	// REQUIRED; List of microsoft.com.SQLDatabase resources.
+	Value []*MicrosoftSQLDatabaseResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLComponentList.
-func (m MicrosoftSQLComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLDatabaseList.
+func (m MicrosoftSQLDatabaseList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", m.Value)
 	return json.Marshal(objectMap)
 }
 
-// MicrosoftSQLComponentResource - Component for a Microsoft SQL compatible database.
-type MicrosoftSQLComponentResource struct {
-	ProxyResource
-	// REQUIRED
-	Properties *MicrosoftSQLSQLComponentProperties `json:"properties,omitempty"`
+type MicrosoftSQLDatabaseProperties struct {
+	BasicResourceProperties
+	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
+	Managed *bool `json:"managed,omitempty"`
+
+	// The ID of the user-managed SQL database to use for this resource.
+	Resource *string `json:"resource,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLComponentResource.
-func (m MicrosoftSQLComponentResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLDatabaseProperties.
+func (m MicrosoftSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	m.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "managed", m.Managed)
+	populate(objectMap, "resource", m.Resource)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MicrosoftSQLDatabaseProperties.
+func (m *MicrosoftSQLDatabaseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managed":
+				err = unpopulate(val, &m.Managed)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &m.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := m.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MicrosoftSQLDatabaseResource - Microsoft SQL compatible database.
+type MicrosoftSQLDatabaseResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *MicrosoftSQLDatabaseProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLDatabaseResource.
+func (m MicrosoftSQLDatabaseResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	m.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", m.Properties)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MicrosoftSQLComponentResource.
-func (m *MicrosoftSQLComponentResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type MicrosoftSQLDatabaseResource.
+func (m *MicrosoftSQLDatabaseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -1907,65 +1884,28 @@ func (m *MicrosoftSQLComponentResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type MicrosoftSQLSQLComponentProperties struct {
-	BasicComponentProperties
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
-	Managed *bool `json:"managed,omitempty"`
-
-	// The ID of the user-managed SQL database to use for this Component
-	Resource *string `json:"resource,omitempty"`
+// MongoComMongoDatabaseBeginCreateOrUpdateOptions contains the optional parameters for the MongoComMongoDatabase.BeginCreateOrUpdate method.
+type MongoComMongoDatabaseBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLSQLComponentProperties.
-func (m MicrosoftSQLSQLComponentProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	m.BasicComponentProperties.marshalInternal(objectMap)
-	populate(objectMap, "managed", m.Managed)
-	populate(objectMap, "resource", m.Resource)
-	return json.Marshal(objectMap)
+// MongoComMongoDatabaseBeginDeleteOptions contains the optional parameters for the MongoComMongoDatabase.BeginDelete method.
+type MongoComMongoDatabaseBeginDeleteOptions struct {
+	// placeholder for future optional parameters
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MicrosoftSQLSQLComponentProperties.
-func (m *MicrosoftSQLSQLComponentProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "managed":
-				err = unpopulate(val, &m.Managed)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, &m.Resource)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := m.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
+// MongoComMongoDatabaseGetOptions contains the optional parameters for the MongoComMongoDatabase.Get method.
+type MongoComMongoDatabaseGetOptions struct {
+	// placeholder for future optional parameters
 }
 
-// MongoDBComponentList - List of mongodb.com.MongoDBComponent resources.
-type MongoDBComponentList struct {
-	// REQUIRED; List of mongodb.com.MongoDBComponent resources.
-	Value []*MongoDBComponentResource `json:"value,omitempty"`
+// MongoComMongoDatabaseListOptions contains the optional parameters for the MongoComMongoDatabase.List method.
+type MongoComMongoDatabaseListOptions struct {
+	// placeholder for future optional parameters
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MongoDBComponentList.
-func (m MongoDBComponentList) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "value", m.Value)
-	return json.Marshal(objectMap)
-}
-
-type MongoDBComponentProperties struct {
-	BasicComponentProperties
+type MongoDBResourceProperties struct {
+	BasicResourceProperties
 	// The host name of the MongoDB to which you are connecting
 	Host *string `json:"host,omitempty"`
 
@@ -1975,17 +1915,17 @@ type MongoDBComponentProperties struct {
 	// The port value of the MongoDB to which you are connecting
 	Port *int32 `json:"port,omitempty"`
 
-	// The ID of the user-managed DB with Mongo API to use for this Component
+	// The ID of the user-managed DB with Mongo API to use for this resource.
 	Resource *string `json:"resource,omitempty"`
 
 	// Secrets provided by unmanaged resources,
-	Secrets *MongoDBComponentPropertiesSecrets `json:"secrets,omitempty"`
+	Secrets *MongoDBResourcePropertiesSecrets `json:"secrets,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MongoDBComponentProperties.
-func (m MongoDBComponentProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type MongoDBResourceProperties.
+func (m MongoDBResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	m.BasicComponentProperties.marshalInternal(objectMap)
+	m.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "host", m.Host)
 	populate(objectMap, "managed", m.Managed)
 	populate(objectMap, "port", m.Port)
@@ -1994,8 +1934,8 @@ func (m MongoDBComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDBComponentProperties.
-func (m *MongoDBComponentProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDBResourceProperties.
+func (m *MongoDBResourceProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -2023,14 +1963,14 @@ func (m *MongoDBComponentProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := m.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := m.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
 }
 
-// MongoDBComponentPropertiesSecrets - Secrets provided by unmanaged resources,
-type MongoDBComponentPropertiesSecrets struct {
+// MongoDBResourcePropertiesSecrets - Secrets provided by unmanaged resources,
+type MongoDBResourcePropertiesSecrets struct {
 	// The connection string used to connect to this DB
 	ConnectionString *string `json:"connectionString,omitempty"`
 
@@ -2041,22 +1981,35 @@ type MongoDBComponentPropertiesSecrets struct {
 	Username *string `json:"username,omitempty"`
 }
 
-// MongoDBComponentResource - The mongodb.com/MongoDB component is a portable component which can be deployed to any Radius platform.
-type MongoDBComponentResource struct {
-	ProxyResource
-	Properties *MongoDBComponentProperties `json:"properties,omitempty"`
+// MongoDatabaseList - List of mongo.com.MongoDatabase resources.
+type MongoDatabaseList struct {
+	// REQUIRED; List of mongo.com.MongoDatabase resources.
+	Value []*MongoDatabaseResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MongoDBComponentResource.
-func (m MongoDBComponentResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseList.
+func (m MongoDatabaseList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", m.Value)
+	return json.Marshal(objectMap)
+}
+
+// MongoDatabaseResource - The mongo database resource is a portable resource which can be deployed to any Radius platform.
+type MongoDatabaseResource struct {
+	ProxyResource
+	Properties *MongoDBResourceProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResource.
+func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	m.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", m.Properties)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDBComponentResource.
-func (m *MongoDBComponentResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResource.
+func (m *MongoDatabaseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -2076,26 +2029,6 @@ func (m *MongoDBComponentResource) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
-}
-
-// MongodbComMongoDBComponentBeginCreateOrUpdateOptions contains the optional parameters for the MongodbComMongoDBComponent.BeginCreateOrUpdate method.
-type MongodbComMongoDBComponentBeginCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongodbComMongoDBComponentBeginDeleteOptions contains the optional parameters for the MongodbComMongoDBComponent.BeginDelete method.
-type MongodbComMongoDBComponentBeginDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongodbComMongoDBComponentGetOptions contains the optional parameters for the MongodbComMongoDBComponent.Get method.
-type MongodbComMongoDBComponentGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongodbComMongoDBComponentListOptions contains the optional parameters for the MongodbComMongoDBComponent.List method.
-type MongodbComMongoDBComponentListOptions struct {
-	// placeholder for future optional parameters
 }
 
 // Operation - Details of a REST API operation, returned from the Resource Provider Operations API
@@ -2322,93 +2255,36 @@ func (p *ProxyResource) unmarshalInternal(rawMsg map[string]json.RawMessage) err
 	return nil
 }
 
-// RabbitMQComponentList - List of rabbitmq.com.MessageQueueComponent resources.
-type RabbitMQComponentList struct {
-	// REQUIRED; List of rabbitmq.com.MessageQueueComponent resources.
-	Value []*RabbitMQComponentResource `json:"value,omitempty"`
+// RabbitMQMessageQueueList - List of rabbitmq.com.MessageQueue resources.
+type RabbitMQMessageQueueList struct {
+	// REQUIRED; List of rabbitmq.com.MessageQueue resources.
+	Value []*RabbitMQMessageQueueResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentList.
-func (r RabbitMQComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueList.
+func (r RabbitMQMessageQueueList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", r.Value)
 	return json.Marshal(objectMap)
 }
 
-type RabbitMQComponentProperties struct {
-	BasicComponentProperties
-	// REQUIRED; The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
-	// Indicates if the resource is Radius-managed.
-	Managed *bool `json:"managed,omitempty"`
-
-	// Secrets provided by unmanaged resources,
-	Secrets *RabbitMQComponentPropertiesSecrets `json:"secrets,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentProperties.
-func (r RabbitMQComponentProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	r.BasicComponentProperties.marshalInternal(objectMap)
-	populate(objectMap, "managed", r.Managed)
-	populate(objectMap, "queue", r.Queue)
-	populate(objectMap, "secrets", r.Secrets)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQComponentProperties.
-func (r *RabbitMQComponentProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "managed":
-				err = unpopulate(val, &r.Managed)
-				delete(rawMsg, key)
-		case "queue":
-				err = unpopulate(val, &r.Queue)
-				delete(rawMsg, key)
-		case "secrets":
-				err = unpopulate(val, &r.Secrets)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := r.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-// RabbitMQComponentPropertiesSecrets - Secrets provided by unmanaged resources,
-type RabbitMQComponentPropertiesSecrets struct {
-	// The connection string used to connect to this RabbitMQ instance
-	ConnectionString *string `json:"connectionString,omitempty"`
-}
-
-// RabbitMQComponentResource - The rabbitmq.com/MessageQueue component is a Kubernetes specific component for message brokering.
-type RabbitMQComponentResource struct {
+// RabbitMQMessageQueueResource - The RabbitMQMessageQueue resource is a Kubernetes specific resource for message brokering.
+type RabbitMQMessageQueueResource struct {
 	ProxyResource
 	// REQUIRED
-	Properties *RabbitMQComponentProperties `json:"properties,omitempty"`
+	Properties *RabbitMQMessageQueueResourceProperties `json:"properties,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RabbitMQComponentResource.
-func (r RabbitMQComponentResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResource.
+func (r RabbitMQMessageQueueResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	r.ProxyResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", r.Properties)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQComponentResource.
-func (r *RabbitMQComponentResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResource.
+func (r *RabbitMQMessageQueueResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -2430,24 +2306,80 @@ func (r *RabbitMQComponentResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.BeginCreateOrUpdate
-// method.
-type RabbitmqComMessageQueueComponentBeginCreateOrUpdateOptions struct {
+type RabbitMQMessageQueueResourceProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// Indicates if the resource is Radius-managed.
+	Managed *bool `json:"managed,omitempty"`
+
+	// Secrets provided by unmanaged resources,
+	Secrets *RabbitMQMessageQueueResourcePropertiesSecrets `json:"secrets,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResourceProperties.
+func (r RabbitMQMessageQueueResourceProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "managed", r.Managed)
+	populate(objectMap, "queue", r.Queue)
+	populate(objectMap, "secrets", r.Secrets)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResourceProperties.
+func (r *RabbitMQMessageQueueResourceProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "managed":
+				err = unpopulate(val, &r.Managed)
+				delete(rawMsg, key)
+		case "queue":
+				err = unpopulate(val, &r.Queue)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, &r.Secrets)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RabbitMQMessageQueueResourcePropertiesSecrets - Secrets provided by unmanaged resources,
+type RabbitMQMessageQueueResourcePropertiesSecrets struct {
+	// The connection string used to connect to this RabbitMQ instance
+	ConnectionString *string `json:"connectionString,omitempty"`
+}
+
+// RabbitmqComMessageQueueBeginCreateOrUpdateOptions contains the optional parameters for the RabbitmqComMessageQueue.BeginCreateOrUpdate method.
+type RabbitmqComMessageQueueBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitmqComMessageQueueComponentBeginDeleteOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.BeginDelete method.
-type RabbitmqComMessageQueueComponentBeginDeleteOptions struct {
+// RabbitmqComMessageQueueBeginDeleteOptions contains the optional parameters for the RabbitmqComMessageQueue.BeginDelete method.
+type RabbitmqComMessageQueueBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitmqComMessageQueueComponentGetOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.Get method.
-type RabbitmqComMessageQueueComponentGetOptions struct {
+// RabbitmqComMessageQueueGetOptions contains the optional parameters for the RabbitmqComMessageQueue.Get method.
+type RabbitmqComMessageQueueGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitmqComMessageQueueComponentListOptions contains the optional parameters for the RabbitmqComMessageQueueComponent.List method.
-type RabbitmqComMessageQueueComponentListOptions struct {
+// RabbitmqComMessageQueueListOptions contains the optional parameters for the RabbitmqComMessageQueue.List method.
+type RabbitmqComMessageQueueListOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -2517,21 +2449,59 @@ type RadiusResourceListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedisComponentList - List of redislabs.com.RedisComponent resources.
-type RedisComponentList struct {
-	// REQUIRED; List of redislabs.com.RedisComponent resources.
-	Value []*RedisComponentResource `json:"value,omitempty"`
+// RedisCacheList - List of redislabs.com.RedisCache resources.
+type RedisCacheList struct {
+	// REQUIRED; List of redislabs.com.RedisCache resources.
+	Value []*RedisCacheResource `json:"value,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RedisComponentList.
-func (r RedisComponentList) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheList.
+func (r RedisCacheList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "value", r.Value)
 	return json.Marshal(objectMap)
 }
 
-type RedisComponentProperties struct {
-	BasicComponentProperties
+// RedisCacheResource - The RedisCache resource is a portable resource which can be deployed to any Radius platform.
+type RedisCacheResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *RedisCacheResourceProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheResource.
+func (r RedisCacheResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.ProxyResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", r.Properties)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheResource.
+func (r *RedisCacheResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+type RedisCacheResourceProperties struct {
+	BasicResourceProperties
 	// The host name of the redis cache to which you are connecting
 	Host *string `json:"host,omitempty"`
 
@@ -2541,15 +2511,15 @@ type RedisComponentProperties struct {
 	// The port value of the redis cache to which you are connecting
 	Port *int32 `json:"port,omitempty"`
 
-	// The ID of the user-managed Redis cache to use for this Component
+	// The ID of the user-managed Redis cache to use for this resource
 	Resource *string `json:"resource,omitempty"`
-	Secrets *RedisComponentPropertiesSecrets `json:"secrets,omitempty"`
+	Secrets *RedisCacheResourcePropertiesSecrets `json:"secrets,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RedisComponentProperties.
-func (r RedisComponentProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheResourceProperties.
+func (r RedisCacheResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	r.BasicComponentProperties.marshalInternal(objectMap)
+	r.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "managed", r.Managed)
 	populate(objectMap, "port", r.Port)
@@ -2558,8 +2528,8 @@ func (r RedisComponentProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RedisComponentProperties.
-func (r *RedisComponentProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheResourceProperties.
+func (r *RedisCacheResourceProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -2587,13 +2557,13 @@ func (r *RedisComponentProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := r.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
 }
 
-type RedisComponentPropertiesSecrets struct {
+type RedisCacheResourcePropertiesSecrets struct {
 	// The Redis connection string used to connect to the redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
 
@@ -2601,61 +2571,23 @@ type RedisComponentPropertiesSecrets struct {
 	Password *string `json:"password,omitempty"`
 }
 
-// RedisComponentResource - The redislabs.com/Redis component is a portable component which can be deployed to any Radius platform.
-type RedisComponentResource struct {
-	ProxyResource
-	// REQUIRED
-	Properties *RedisComponentProperties `json:"properties,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type RedisComponentResource.
-func (r RedisComponentResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	r.ProxyResource.marshalInternal(objectMap)
-	populate(objectMap, "properties", r.Properties)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RedisComponentResource.
-func (r *RedisComponentResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &r.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := r.ProxyResource.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-// RedislabsComRedisComponentBeginCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedisComponent.BeginCreateOrUpdate method.
-type RedislabsComRedisComponentBeginCreateOrUpdateOptions struct {
+// RedislabsComRedisCacheBeginCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedisCache.BeginCreateOrUpdate method.
+type RedislabsComRedisCacheBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedislabsComRedisComponentBeginDeleteOptions contains the optional parameters for the RedislabsComRedisComponent.BeginDelete method.
-type RedislabsComRedisComponentBeginDeleteOptions struct {
+// RedislabsComRedisCacheBeginDeleteOptions contains the optional parameters for the RedislabsComRedisCache.BeginDelete method.
+type RedislabsComRedisCacheBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedislabsComRedisComponentGetOptions contains the optional parameters for the RedislabsComRedisComponent.Get method.
-type RedislabsComRedisComponentGetOptions struct {
+// RedislabsComRedisCacheGetOptions contains the optional parameters for the RedislabsComRedisCache.Get method.
+type RedislabsComRedisCacheGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedislabsComRedisComponentListOptions contains the optional parameters for the RedislabsComRedisComponent.List method.
-type RedislabsComRedisComponentListOptions struct {
+// RedislabsComRedisCacheListOptions contains the optional parameters for the RedislabsComRedisCache.List method.
+type RedislabsComRedisCacheListOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -2780,6 +2712,72 @@ type ResourceModelWithAllowedPropertySetPlan struct {
 
 type ResourceModelWithAllowedPropertySetSKU struct {
 	SKU
+}
+
+// ResourceStatus - Status of a resources.
+type ResourceStatus struct {
+	// Health state of the resources
+	HealthState *string `json:"healthState,omitempty"`
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+
+	// Provisioning state of the resources
+	ProvisioningState *string `json:"provisioningState,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
+func (r ResourceStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "healthState", r.HealthState)
+	populate(objectMap, "outputResources", r.OutputResources)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	return json.Marshal(objectMap)
+}
+
+// ResourceTraitClassification provides polymorphic access to related types.
+// Call the interface's GetResourceTrait() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *DaprSidecarTrait, *ManualScalingTrait, *ResourceTrait
+type ResourceTraitClassification interface {
+	// GetResourceTrait returns the ResourceTrait content of the underlying type.
+	GetResourceTrait() *ResourceTrait
+}
+
+// ResourceTrait - Trait of a resource.
+type ResourceTrait struct {
+	// REQUIRED; The ResourceTrait kind
+	Kind *string `json:"kind,omitempty"`
+}
+
+// GetResourceTrait implements the ResourceTraitClassification interface for type ResourceTrait.
+func (r *ResourceTrait) GetResourceTrait() *ResourceTrait { return r }
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceTrait.
+func (r *ResourceTrait) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return r.unmarshalInternal(rawMsg)
+}
+
+func (r ResourceTrait) marshalInternal(objectMap map[string]interface{}, discValue string) {
+	r.Kind = &discValue
+	objectMap["kind"] = r.Kind
+}
+
+func (r *ResourceTrait) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, &r.Kind)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RouteStatus - Status of a route.
@@ -3107,7 +3105,7 @@ type VolumePropertiesClassification interface {
 }
 
 type VolumeProperties struct {
-	BasicComponentProperties
+	BasicResourceProperties
 	// REQUIRED; The VolumeProperties kind
 	Kind *string `json:"kind,omitempty"`
 }
@@ -3125,7 +3123,7 @@ func (v *VolumeProperties) UnmarshalJSON(data []byte) error {
 }
 
 func (v VolumeProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
-	v.BasicComponentProperties.marshalInternal(objectMap)
+	v.BasicResourceProperties.marshalInternal(objectMap)
 	v.Kind = &discValue
 	objectMap["kind"] = v.Kind
 }
@@ -3142,7 +3140,7 @@ func (v *VolumeProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) 
 			return err
 		}
 	}
-	if err := v.BasicComponentProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := v.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil

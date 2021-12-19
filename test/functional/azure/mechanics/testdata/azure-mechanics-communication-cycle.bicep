@@ -5,7 +5,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'a'
   }
 
-  resource a 'ContainerComponent' = {
+  resource a 'Container' = {
     name: 'a'
     properties: {
       connections: {
@@ -30,7 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'b'
   }
 
-  resource b 'ContainerComponent' = {
+  resource b 'Container' = {
     name: 'b'
     properties: {
       connections: {

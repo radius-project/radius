@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "DaprInvokeHttpRouteResource": {
+      "description": "Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between resources.",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprHttpRouteProperties"
+        }
+      }
+    },
+    "DaprHttpRouteProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "basic-route.json#/definitions/BasicRouteProperties"
+        }
+      ],
+      "required": [
+        "appId"
+      ],
+      "properties": {
+        "appId": {
+          "description": "The Dapr appId used for the route",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

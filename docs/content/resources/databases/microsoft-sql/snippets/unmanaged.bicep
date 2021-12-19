@@ -10,7 +10,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'cosmos-container'
   
   //DATABASE
-  resource db 'microsoft.com.SQLComponent' = {
+  resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
       resource: sqldb
@@ -19,7 +19,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //DATABASE
 
   //CONTAINER
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       connections: {

@@ -35,15 +35,15 @@ var DefaultResourceTypes = []struct {
 	client.Object
 	client.ObjectList
 }{
-	{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
-	{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
-	{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
-	{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
+	{&radiusv1alpha3.Container{}, &radiusv1alpha3.ContainerList{}},
+	{&radiusv1alpha3.DaprIOInvokeHttpRoute{}, &radiusv1alpha3.DaprIOInvokeHttpRouteList{}},
+	{&radiusv1alpha3.DaprIOPubSubTopic{}, &radiusv1alpha3.DaprIOPubSubTopicList{}},
+	{&radiusv1alpha3.DaprIOStateStore{}, &radiusv1alpha3.DaprIOStateStoreList{}},
 	{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
 	{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
-	{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
-	{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
-	{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
+	{&radiusv1alpha3.MongoDatabase{}, &radiusv1alpha3.MongoDatabaseList{}},
+	{&radiusv1alpha3.RabbitMQMessageQueue{}, &radiusv1alpha3.RabbitMQMessageQueueList{}},
+	{&radiusv1alpha3.RedisCache{}, &radiusv1alpha3.RedisCacheList{}},
 	{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 }
 
@@ -162,7 +162,7 @@ func (c *RadiusController) Run(ctx context.Context) error {
 				continue
 			}
 
-			// Get GVR for corresponding component.
+			// Get GVR for corresponding resource.
 			gvr, err := c.options.RestMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
 				return fmt.Errorf("unable to get GVR for resource Kind: %s: %w", gvk.Kind, err)

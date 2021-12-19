@@ -1,14 +1,14 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-statestore-managed'
 
-  resource daprroute 'dapr.io.DaprHttpRoute' ={
+  resource daprroute 'dapr.io.InvokeHttpRoute' ={
     name: 'daprroute'
     properties: {
       appId: 'receiver'
     }
   }
   
-  resource receiverapplication 'ContainerComponent' = {
+  resource receiverapplication 'Container' = {
     name: 'sender'
     properties: {
       connections: {
@@ -36,7 +36,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource statestore 'dapr.io.StateStoreComponent' = {
+  resource statestore 'dapr.io.StateStore' = {
     name: 'statestore'
     properties: {
       kind: 'any'

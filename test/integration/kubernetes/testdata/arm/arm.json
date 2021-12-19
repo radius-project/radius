@@ -30,7 +30,7 @@
                     ]
                 },
                 {
-                    "type": "Microsoft.CustomProviders/resourceProviders/Application/ContainerComponent",
+                    "type": "Microsoft.CustomProviders/resourceProviders/Application/Container",
                     "apiVersion": "2018-09-01-preview",
                     "name": "[format('{0}/{1}/{2}', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'frontend')]",
                     "properties": {
@@ -69,7 +69,7 @@
                     ]
                 },
                 {
-                    "type": "Microsoft.CustomProviders/resourceProviders/Application/ContainerComponent",
+                    "type": "Microsoft.CustomProviders/resourceProviders/Application/Container",
                     "apiVersion": "2018-09-01-preview",
                     "name": "[format('{0}/{1}/{2}', 'radiusv3', 'kubernetes-resources-container-httpbinding', 'backend')]",
                     "properties": {

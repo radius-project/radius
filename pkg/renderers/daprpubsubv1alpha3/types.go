@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ResourceType = "dapr.io.PubSubTopicComponent"
+	ResourceType = "dapr.io.PubSubTopic"
 )
 
 var TopicResourceType = azresources.KnownType{

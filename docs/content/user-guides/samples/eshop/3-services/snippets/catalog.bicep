@@ -200,7 +200,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 
   //CATALOG
-  resource catalog 'ContainerComponent' = {
+  resource catalog 'Container' = {
     name: 'catalog-api'
     properties: {
       container: {
@@ -251,28 +251,28 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
     }
   }
   //ROUTE
-  resource sqlIdentity 'microsoft.com.SQLComponent' = {
+  resource sqlIdentity 'microsoft.com.SQLDatabase' = {
     name: 'IdentityDb'
     properties: {
       resource: sql::identity.id
     }
   }
 
-  resource sqlCatalog 'microsoft.com.SQLComponent' = {
+  resource sqlCatalog 'microsoft.com.SQLDatabase' = {
     name: 'CatalogDb'
     properties: {
       resource: sql::catalog.id
     }
   }
 
-  resource sqlOrdering 'microsoft.com.SQLComponent' = {
+  resource sqlOrdering 'microsoft.com.SQLDatabase' = {
     name: 'OrderingDb'
     properties: {
       resource: sql::ordering.id
     }
   }
 
-  resource sqlWebhooks 'microsoft.com.SQLComponent' = {
+  resource sqlWebhooks 'microsoft.com.SQLDatabase' = {
     name: 'WebhooksDb'
     properties: {
       resource: sql::webhooks.id

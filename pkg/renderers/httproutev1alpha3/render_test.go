@@ -33,7 +33,7 @@ var resourceID = azresources.MakeID(
 	namespace,
 	azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 	azresources.ResourceType{Type: "Application", Name: applicationName},
-	azresources.ResourceType{Type: "ContainerComponent", Name: resourceName})
+	azresources.ResourceType{Type: "Container", Name: resourceName})
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}

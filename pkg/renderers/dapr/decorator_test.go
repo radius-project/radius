@@ -157,5 +157,5 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "the appId specified on a \"dapr.io.DaprHttpRoute\" must match the appId specified on the \"dapr.io/Sidecar@v1alpha1\" trait. Route: \"routeappId\", Trait: \"testappId\"", err.Error())
+	require.Equal(t, "the appId specified on a \"dapr.io.InvokeHttpRoute\" must match the appId specified on the \"dapr.io/Sidecar@v1alpha1\" trait. Route: \"routeappId\", Trait: \"testappId\"", err.Error())
 }

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ResourceType = "azure.com.ServiceBusQueueComponent"
+	ResourceType = "azure.com.ServiceBusQueue"
 )
 
 var QueueResourceType = azresources.KnownType{

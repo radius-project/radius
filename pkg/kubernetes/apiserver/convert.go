@@ -206,17 +206,17 @@ func NewRestOutputResources(objRef string, original map[string]interface{}) ([]r
 	return rrs, nil
 }
 
-func NewRestRadiusResourceStatus(objRef string, ors map[string]interface{}) (rest.ComponentStatus, error) {
+func NewRestRadiusResourceStatus(objRef string, ors map[string]interface{}) (rest.ResourceStatus, error) {
 	restOutputResources, err := NewRestOutputResources(objRef, ors)
 	if err != nil {
-		return rest.ComponentStatus{}, err
+		return rest.ResourceStatus{}, err
 	}
 
 	// Aggregate the resource status
 	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingHealthState(restOutputResources)
 	aggregateProvisiongState := rest.GetUserFacingProvisioningState(restOutputResources)
 
-	status := rest.ComponentStatus{
+	status := rest.ResourceStatus{
 		ProvisioningState:  aggregateProvisiongState,
 		HealthState:        aggregateHealthState,
 		HealthErrorDetails: aggregateHealthStateErrorDetails,

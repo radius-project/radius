@@ -37,7 +37,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	}
 	resource := options.Resource
 
-	container := radclient.ContainerComponentProperties{}
+	container := radclient.ContainerProperties{}
 	err = resource.ConvertDefinition(&container)
 	if err != nil {
 		return renderers.RendererOutput{}, nil

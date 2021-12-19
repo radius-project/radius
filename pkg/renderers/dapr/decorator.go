@@ -123,7 +123,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 }
 
 func (r *Renderer) FindTrait(resource renderers.RendererResource) (*radclient.DaprSidecarTrait, error) {
-	container := radclient.ContainerComponentProperties{}
+	container := radclient.ContainerProperties{}
 	err := resource.ConvertDefinition(&container)
 	if err != nil {
 		return nil, err

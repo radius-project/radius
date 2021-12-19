@@ -111,13 +111,13 @@ func Test_CLI(t *testing.T) {
 				cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 				t.Run("resource show", func(t *testing.T) {
-					output, err := cli.ResourceShow(ctx, application, "ContainerComponent", "a")
+					output, err := cli.ResourceShow(ctx, application, "Container", "a")
 					require.NoError(t, err)
 					// We are more interested in the content and less about the formatting, which
 					// is already covered by unit tests. The spaces change depending on the input
 					// and it takes very long to get a feedback from CI.
 					expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
-a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+a\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
 					match := expected.MatchString(output)
 					require.Equal(t, true, match)
@@ -126,8 +126,8 @@ a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
 					output, err := cli.ResourceList(ctx, application)
 					require.NoError(t, err)
 					expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
-a\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
-b\s+ContainerComponent\s+.*Provisioned\s+.*[h|H]ealthy\s*
+a\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
+b\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
 					match := expected.MatchString(output)
 					require.Equal(t, true, match)

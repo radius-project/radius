@@ -42,7 +42,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		// Example of how to read this data:
 		//
 		// For a KeyVault connection...
-		// - Look up the dependency based on the connection.Source (azure.com.KeyVaultComponent)
+		// - Look up the dependency based on the connection.Source (azure.com.KeyVault)
 		// - Find the output resource matching LocalID of that dependency (Microsoft.KeyVault/vaults)
 		// - Apply the roles in RoleNames (Key Vault Secrets User, Key Vault Crypto User)
 		radclient.ContainerConnectionKindAzureComKeyVault: {

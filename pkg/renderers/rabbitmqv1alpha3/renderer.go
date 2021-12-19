@@ -38,7 +38,7 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rend
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource := options.Resource
 
-	properties := &radclient.RabbitMQComponentProperties{}
+	properties := &radclient.RabbitMQMessageQueueResourceProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -85,7 +85,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	}, nil
 }
 
-func GetRabbitMQ(resource renderers.RendererResource, properties *radclient.RabbitMQComponentProperties) ([]outputresource.OutputResource, error) {
+func GetRabbitMQ(resource renderers.RendererResource, properties *radclient.RabbitMQMessageQueueResourceProperties) ([]outputresource.OutputResource, error) {
 	resources := []outputresource.OutputResource{}
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
