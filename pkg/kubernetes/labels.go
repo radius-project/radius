@@ -23,6 +23,7 @@ const (
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
 	LabelManagedByRadiusRP  = "radius-rp"
 	LabelAADPodIdentity     = "aadpodidbinding"
+	Test                    = "sure"
 
 	FieldManager      = "radius-rp"
 	AnnotationLocalID = "radius.dev/local-id"
