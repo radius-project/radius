@@ -29,6 +29,7 @@ import (
 	radazure "github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/prompt"
+	"github.com/Azure/radius/pkg/handlers"
 	"github.com/Azure/radius/pkg/keys"
 	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
@@ -73,14 +74,26 @@ rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NA
 		}
 
 		if a.Interactive {
-			a.SubscriptionID, a.ResourceGroup, err = choose(cmd.Context())
+			authorizer, err := auth.NewAuthorizerFromCLI()
 			if err != nil {
 				return err
 			}
-		}
 
-		if a.Name == "" {
-			a.Name = a.ResourceGroup
+			selectedSub, err := selectSubscription(cmd.Context(), authorizer)
+			if err != nil {
+				return err
+			}
+			a.SubscriptionID = selectedSub.SubscriptionID
+
+			a.ResourceGroup, err = selectResourceGroup(cmd.Context(), authorizer, selectedSub)
+			if err != nil {
+				return err
+			}
+
+			a.Name, err = selectEnvironmentName(cmd.Context(), a.ResourceGroup)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry, a.LogAnalyticsWorkspaceID)
@@ -123,11 +136,6 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
-	name, err := cmd.Flags().GetString("environment")
-	if err != nil {
-		return arguments{}, err
-	}
-
 	subscriptionID, err := cmd.Flags().GetString("subscription-id")
 	if err != nil {
 		return arguments{}, err
@@ -136,6 +144,14 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	resourceGroup, err := cmd.Flags().GetString("resource-group")
 	if err != nil {
 		return arguments{}, err
+	}
+
+	name, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return arguments{}, err
+	}
+	if name == "" {
+		name = resourceGroup
 	}
 
 	location, err := cmd.Flags().GetString("location")
@@ -189,25 +205,6 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	}, nil
 }
 
-func choose(ctx context.Context) (string, string, error) {
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		return "", "", err
-	}
-
-	sub, err := selectSubscription(ctx, authorizer)
-	if err != nil {
-		return "", "", err
-	}
-
-	resourceGroup, err := selectResourceGroup(ctx, authorizer, sub)
-	if err != nil {
-		return "", "", err
-	}
-
-	return sub.SubscriptionID, resourceGroup, nil
-}
-
 func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (radazure.Subscription, error) {
 	subs, err := radazure.LoadSubscriptionsFromProfile()
 	if err != nil {
@@ -244,13 +241,12 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 }
 
 func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (string, error) {
-	rgc := clients.NewGroupsClient(sub.SubscriptionID, authorizer)
 
-	name, err := prompt.Text("Enter a Resource Group name:", prompt.EmptyValidator)
+	rgc := clients.NewGroupsClient(sub.SubscriptionID, authorizer)
+	name, err := promptUserForRgName(ctx, rgc)
 	if err != nil {
 		return "", err
 	}
-
 	resp, err := rgc.CheckExistence(ctx, name)
 	if err != nil {
 		return "", err
@@ -258,38 +254,12 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 		// already exists
 		return name, nil
 	}
-
 	output.LogInfo("Resource Group '%v' will be created...", name)
 
-	subc := clients.NewSubscriptionClient(authorizer)
-
-	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
-	if err != nil {
-		return "", fmt.Errorf("cannot list locations: %w", err)
-	}
-
-	names := []string{}
-	nameToLocation := map[string]subscription.Location{}
-	for _, loc := range *locations.Value {
-		if !isSupportedLocation(*loc.Name) {
-			continue
-		}
-
-		// Use the display name for the prompt
-		names = append(names, *loc.DisplayName)
-		nameToLocation[*loc.DisplayName] = loc
-	}
-
-	// alphabetize so the list is stable and scannable
-	sort.Strings(names)
-
-	index, err := prompt.Select("Select a location:", names)
+	location, err := promptUserForLocation(ctx, authorizer, sub)
 	if err != nil {
 		return "", err
 	}
-
-	selected := names[index]
-	location := nameToLocation[selected]
 	_, err = rgc.CreateOrUpdate(ctx, name, resources.Group{
 		Location: to.StringPtr(*location.Name),
 	})
@@ -297,6 +267,78 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 		return "", err
 	}
 
+	return name, nil
+}
+
+func selectEnvironmentName(ctx context.Context, defaultName string) (string, error) {
+	promptStr := fmt.Sprintf("Enter a Environment name [%s]:", defaultName)
+	return prompt.Text(promptStr, prompt.EmptyValidator)
+}
+
+func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (subscription.Location, error) {
+	// Use the display name for the prompt
+	// alphabetize so the list is stable and scannable
+	subc := clients.NewSubscriptionClient(authorizer)
+
+	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
+	if err != nil {
+		return subscription.Location{}, fmt.Errorf("cannot list locations: %w", err)
+	}
+
+	names := make([]string, 0, len(*locations.Value))
+	nameToLocation := map[string]subscription.Location{}
+	for _, loc := range *locations.Value {
+		if !isSupportedLocation(*loc.Name) {
+			continue
+		}
+
+		names = append(names, *loc.DisplayName)
+		nameToLocation[*loc.DisplayName] = loc
+	}
+	sort.Strings(names)
+
+	index, err := prompt.Select("Select a location:", names)
+	if err != nil {
+		return subscription.Location{}, err
+	}
+	selected := names[index]
+	return nameToLocation[selected], nil
+}
+
+func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (string, error) {
+	var name string
+	createNewRg, err := prompt.Confirm("Create a new Resource Group? [y/n]")
+	if err != nil {
+		return "", err
+	}
+	if createNewRg {
+		defaultRgName, err := radazure.LoadDefaultResourceGroupFromConfig()
+		if err != nil {
+			defaultRgName = handlers.GenerateRandomName("rad", "rg")
+		}
+
+		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
+		name, err = prompt.Text(promptStr, prompt.EmptyValidator)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		rgListResp, err := rgc.List(ctx, "", nil)
+		if err != nil {
+			return "", err
+		}
+		rgList := rgListResp.Values()
+
+		names := make([]string, 0, len(rgList))
+		for _, s := range rgList {
+			names = append(names, *s.Name)
+		}
+		index, err := prompt.Select("Select ResourceGroup:", names)
+		if err != nil {
+			return "", err
+		}
+		name = *rgList[index].Name
+	}
 	return name, nil
 }
 
