@@ -230,11 +230,11 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 	}
 
 	// build prompt to select from list
-	names := []string{}
+	names := make([]string, 0, len(subs.Subscriptions))
 	for _, s := range subs.Subscriptions {
 		names = append(names, s.DisplayName)
 	}
-
+	sort.Slice(names, func(i, j int) bool { return strings.ToLower(names[i]) < strings.ToLower(names[j]) })
 	index, err := prompt.Select("Select Subscription:", names)
 	if err != nil {
 		return radazure.Subscription{}, err
