@@ -6,9 +6,10 @@
 package azure
 
 import (
+	"fmt"
 	"github.com/Azure/go-autorest/autorest/azure/cli"
 	"gopkg.in/ini.v1"
-	"fmt"
+	"path/filepath"
 )
 
 func GetControlPlaneResourceGroup(resourceGroup string) string {
@@ -16,16 +17,17 @@ func GetControlPlaneResourceGroup(resourceGroup string) string {
 }
 
 func LoadDefaultResourceGroupFromConfig() (string, error) {
-	path, err := cli.ProfilePath()
+	profilePath, err := cli.ProfilePath()
 	if err != nil {
 		return "", fmt.Errorf("cannot load azure-cli config: %v", err)
 	}
+	configPath := filepath.Join(filepath.Dir(profilePath), "config")
 
-	cfg, err := ini.Load(path)
+	cfg, err := ini.Load(configPath)
 	if err != nil {
-        return "", fmt.Errorf("failed to read config file: %v", err)
-       
-    }
+		return "", fmt.Errorf("failed to read config file: %v", err)
+
+	}
 
 	return cfg.Section("defaults").Key("group").String(), nil
 }
