@@ -11,7 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         translationresource: {
           kind:'azure'
           source: cognitiveServicesAccount.id
-          role: [
+          roles: [
             'Cognitive Services User'
           ]
         }

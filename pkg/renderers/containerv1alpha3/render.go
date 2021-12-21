@@ -627,10 +627,10 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 	var roleNames []string
 	var armResourceIdentifier string
 	if *connection.Kind == radclient.ContainerConnectionKindAzure {
-		if len(connection.Role) < 1 {
+		if len(connection.Roles) < 1 {
 			return nil, fmt.Errorf("rbac permissions are required to access Azure connections")
 		}
-		for _, role := range connection.Role {
+		for _, role := range connection.Roles {
 			roleNames = append(roleNames, *role)
 		}
 		armResourceIdentifier = *connection.Source
