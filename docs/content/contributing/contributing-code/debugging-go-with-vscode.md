@@ -77,8 +77,8 @@ Here's an example alias (`.vscode/launch.json`):
         ...
 
         {
-            "name": "Debug rad interactive mode",
-            "preLaunchTask": "start dlv-dap",
+            "name": "Debug: rad init azure (interactive mode)",
+            "preLaunchTask": "start dlv-dap debugger",
             "type": "go",
             "request": "launch",
             "mode": "debug",
@@ -93,6 +93,7 @@ Here's an example alias (`.vscode/launch.json`):
 }
 ```
 With the corresponding task definition (`.vscode/tasks.json`)
+PS: Make sure you have `$GOPATH` set in your shell environment.
 
 ```json
 {
@@ -101,9 +102,9 @@ With the corresponding task definition (`.vscode/tasks.json`)
         ...
 
         {
-            "label": "start dlv-dap",
+            "label": "start dlv-dap debugger",
             "type": "shell",
-            "command": "~/go/bin/dlv-dap dap --headless --listen=:2345 --log --api-version=2",
+            "command": "${env:GOPATH}/bin/dlv-dap dap --headless --listen=:2345 --log --api-version=2",
             "problemMatcher": ["$go"],
             "group": {
                 "kind": "build",
