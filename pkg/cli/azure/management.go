@@ -79,6 +79,11 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 		return err
 	}
 	for _, resource := range resp.RadiusResourceList.Value {
+		if strings.HasPrefix(*resource.Type, "Microsoft.") {
+			// Connection to Azure resources is returned as a part of radius resource list response, but lifecycle of these resources is not managed by Radius RP
+			continue
+		}
+
 		types := strings.Split(*resource.Type, "/")
 		resourceType := types[len(types)-1]
 		poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
