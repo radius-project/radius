@@ -591,14 +591,14 @@ type ContainerConnection struct {
 	Source *string `json:"source,omitempty"`
 
 	// RBAC permissions to be assigned on the source resource
-	Role []*string `json:"role,omitempty"`
+	Roles []*string `json:"roles,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ContainerConnection.
 func (c ContainerConnection) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "kind", c.Kind)
-	populate(objectMap, "role", c.Role)
+	populate(objectMap, "roles", c.Roles)
 	populate(objectMap, "source", c.Source)
 	return json.Marshal(objectMap)
 }

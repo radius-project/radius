@@ -407,7 +407,7 @@
           ],
           "type": "string"
         },
-        "role": {
+        "roles": {
           "description": "RBAC permissions to be assigned on the source resource",
           "items": {
             "type": "string"

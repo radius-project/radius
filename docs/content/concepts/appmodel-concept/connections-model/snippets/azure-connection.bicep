@@ -11,7 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         storageresource: {
           kind:'azure'
           source: storageAccount.id
-          role: [
+          roles: [
             'Reader and Data Access'
             'Storage Blob Data Contributor'
           ]

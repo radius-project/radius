@@ -96,7 +96,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			"testAzureConnection": {
 				Kind:   radclient.ContainerConnectionKindAzure.ToPtr(),
 				Source: to.StringPtr(testAzureResourceID.ID),
-				Role:   []*string{to.StringPtr("administrator")},
+				Roles:  []*string{to.StringPtr("administrator")},
 			},
 		},
 		Container: &radclient.ContainerPropertiesContainer{
@@ -180,7 +180,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 			"AzureResourceTest": {
 				Kind:   radclient.ContainerConnectionKindAzure.ToPtr(),
 				Source: to.StringPtr("/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace"),
-				Role:   []*string{to.StringPtr("reader")},
+				Roles:  []*string{to.StringPtr("reader")},
 			},
 		},
 		Container: &radclient.ContainerPropertiesContainer{
@@ -580,7 +580,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 			"testAzureResourceConnection": {
 				Kind:   radclient.ContainerConnectionKindAzure.ToPtr(),
 				Source: to.StringPtr(testARMID),
-				Role:   []*string{to.StringPtr(expectedRole)},
+				Roles:  []*string{to.StringPtr(expectedRole)},
 			},
 		},
 		Container: &radclient.ContainerPropertiesContainer{
