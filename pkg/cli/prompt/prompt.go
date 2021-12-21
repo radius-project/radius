@@ -11,13 +11,21 @@ import (
 	"strings"
 )
 
+type BinaryAnswer int
+
+const (
+	unknown = -1
+	Yes BinaryAnswer = iota
+	No
+)
+
 // EmptyValidator is a validation func that always returns true.
 func EmptyValidator(string) (bool, error) {
 	return true, nil
 }
 
 // Confirm prompts the user to confirm the answer to a yes/no question.
-func Confirm(prompt string) (bool, error) {
+func ConfirmWithDefault(prompt string, defaultAns BinaryAnswer) (bool, error) {
 	confirmed := false
 	for {
 		fmt.Print(prompt)
@@ -25,9 +33,9 @@ func Confirm(prompt string) (bool, error) {
 
 		input := ""
 		count, err := fmt.Scanln(&input)
-		if err != nil {
-			return false, err
-		} else if count == 0 {
+		if count == 0 && defaultAns != unknown {
+			return defaultAns == Yes, nil
+		} else if err != nil {
 			return false, errors.New("nothing enterted")
 		}
 
@@ -41,6 +49,11 @@ func Confirm(prompt string) (bool, error) {
 	}
 
 	return confirmed, nil
+}
+
+// Confirm prompts the user to confirm the answer to a yes/no question.
+func Confirm(prompt string) (bool, error) {
+	return ConfirmWithDefault(prompt, unknown)
 }
 
 // Text prompts the user to enter some freeform text.

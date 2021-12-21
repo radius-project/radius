@@ -216,7 +216,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 	}
 
 	if subs.Default != nil {
-		confirmed, err := prompt.Confirm(fmt.Sprintf("Use Subscription '%v' [y/n]?", subs.Default.DisplayName))
+		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Use Subscription '%v' [Yn]?",  subs.Default.DisplayName), prompt.Yes)
 		if err != nil {
 			return radazure.Subscription{}, err
 		}
@@ -307,7 +307,7 @@ func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, 
 
 func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (string, error) {
 	var name string
-	createNewRg, err := prompt.Confirm("Create a new Resource Group? [y/n]")
+	createNewRg, err := prompt.ConfirmWithDefault("Create a new Resource Group? [Yn]", prompt.Yes)
 	if err != nil {
 		return "", err
 	}
