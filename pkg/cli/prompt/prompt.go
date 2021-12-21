@@ -45,15 +45,24 @@ func Confirm(prompt string) (bool, error) {
 
 // Text prompts the user to enter some freeform text.
 func Text(prompt string, validator func(string) (bool, error)) (string, error) {
+	return textHelper(prompt, nil, validator)
+}
+
+// TextWithDefault prompts the user to enter some freeform text while offering a default value to set when the user doesn't enter any input (sends '\n')
+func TextWithDefault(prompt string, defaultValue *string, validator func(string) (bool, error)) (string, error) {
+	return textHelper(prompt, defaultValue, validator)
+}
+
+func textHelper(prompt string, defaultValue *string, validator func(string) (bool, error)) (string, error) {
 	input := ""
 	for {
 		fmt.Print(prompt)
 		fmt.Print(" ")
 
 		count, err := fmt.Scanln(&input)
-		if err != nil {
-			return "", err
-		} else if count == 0 {
+		if count == 0 && defaultValue != nil {
+			return *defaultValue, nil
+		} else if err != nil {
 			return "", errors.New("nothing entered")
 		}
 
@@ -64,7 +73,6 @@ func Text(prompt string, validator func(string) (bool, error)) (string, error) {
 			break
 		}
 	}
-
 	return input, nil
 }
 

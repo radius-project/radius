@@ -272,7 +272,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 
 func selectEnvironmentName(ctx context.Context, defaultName string) (string, error) {
 	promptStr := fmt.Sprintf("Enter a Environment name [%s]:", defaultName)
-	return prompt.Text(promptStr, prompt.EmptyValidator)
+	return prompt.TextWithDefault(promptStr, &defaultName, prompt.EmptyValidator)
 }
 
 func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (subscription.Location, error) {
@@ -318,7 +318,7 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		}
 
 		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
-		name, err = prompt.Text(promptStr, prompt.EmptyValidator)
+		name, err = prompt.TextWithDefault(promptStr, &defaultRgName, prompt.EmptyValidator)
 		if err != nil {
 			return "", err
 		}
