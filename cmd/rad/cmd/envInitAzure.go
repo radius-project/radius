@@ -312,11 +312,7 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		return "", err
 	}
 	if createNewRg {
-		defaultRgName, err := radazure.LoadDefaultResourceGroupFromConfig()
-		if err != nil {
-			defaultRgName = handlers.GenerateRandomName("rad", "rg")
-		}
-
+		defaultRgName := handlers.GenerateRandomName("rad", "rg")
 		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
 		name, err = prompt.TextWithDefault(promptStr, &defaultRgName, prompt.EmptyValidator)
 		if err != nil {
@@ -328,12 +324,14 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 			return "", err
 		}
 		rgList := rgListResp.Values()
-
+		sort.Slice(rgList, func(i, j int) bool { return strings.ToLower(*rgList[i].Name) < strings.ToLower(*rgList[j].Name) })
 		names := make([]string, 0, len(rgList))
 		for _, s := range rgList {
 			names = append(names, *s.Name)
 		}
-		index, err := prompt.Select("Select ResourceGroup:", names)
+
+		defaultRgName, _ := radazure.LoadDefaultResourceGroupFromConfig() // ignore errors resulting from being unable to read the config ini file
+		index, err := prompt.SelectWithDefault("Select ResourceGroup:", &defaultRgName, names)
 		if err != nil {
 			return "", err
 		}

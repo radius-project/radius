@@ -72,23 +72,26 @@ func TextWithDefault(prompt string, defaultValue *string, validator func(string)
 	return input, nil
 }
 
-// Select prompts the user to choose from the possible options
-func Select(prompt string, choices []string) (int, error) {
+// Select prompts the user to choose from the possible options while offering a default value when the user doesn't enter any input (sends '\n')
+func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (int, error) {
 	fmt.Println(prompt)
 	fmt.Println("")
-
+	var defaultSelection int
 	for i, c := range choices {
+		if c == *defaultChoice {
+			defaultSelection = i
+		}
 		fmt.Printf("\t%3d: %v\n", i, c)
 	}
 
 	selected := 0
 	for {
-		fmt.Print("Enter a # to make your choice: ")
+		fmt.Printf("Enter a # to make your choice [%d]: ", defaultSelection)
 
 		count, err := fmt.Scanln(&selected)
-		if err != nil {
-			return 0, err
-		} else if count == 0 {
+		if count == 0 && defaultChoice != nil {
+			return defaultSelection, nil
+		} else if err != nil {
 			return 0, errors.New("nothing selected")
 		}
 
@@ -100,4 +103,9 @@ func Select(prompt string, choices []string) (int, error) {
 	}
 
 	return selected, nil
+}
+
+// Select prompts the user to choose from the possible options
+func Select(prompt string, choices []string) (int, error) {
+	return SelectWithDefault(prompt, nil, choices)
 }
