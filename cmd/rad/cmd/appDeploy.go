@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/builders"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/radyaml"
 	"github.com/Azure/radius/pkg/cli/stages"
@@ -173,9 +174,13 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 		Environment:   env,
 		BaseDirectory: baseDir,
 		Manifest:      manifest,
+		Builders:      builders.DefaultBuilders(),
 		Parameters:    parameters,
 		Profile:       profile,
 		FinalStage:    stage,
+
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
 	}
 
 	_, err = stages.Run(cmd.Context(), options)

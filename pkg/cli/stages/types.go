@@ -7,7 +7,9 @@ package stages
 
 import (
 	"context"
+	"io"
 
+	"github.com/Azure/radius/pkg/cli/builders"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/cli/radyaml"
@@ -19,6 +21,9 @@ type Options struct {
 	Manifest      radyaml.Manifest
 	FinalStage    string
 	Profile       string
+	Stdout        io.Writer
+	Stderr        io.Writer
+	Builders      map[string]builders.Builder
 	Parameters    clients.DeploymentParameters
 
 	// BicepBuildFunc supports overriding the build build process for testing.

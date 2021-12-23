@@ -11,10 +11,40 @@ import (
 	"path"
 
 	"github.com/Azure/radius/pkg/cli/bicep"
+	"github.com/Azure/radius/pkg/cli/builders"
 	"github.com/Azure/radius/pkg/cli/deploy"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/cli/radyaml"
 )
+
+func (p *processor) ProcessBuild(ctx context.Context, stage radyaml.BuildStage) error {
+	for name, target := range stage {
+		step := output.BeginStep("Processing build %s", name)
+
+		builder := p.Options.Builders[target.Builder]
+		if builder == nil {
+			return fmt.Errorf("no builder named %s was found", target.Builder)
+		}
+
+		result, err := builder.Build(ctx, builders.Options{
+			BaseDirectory: p.BaseDirectory,
+			Stderr:        p.Stderr,
+			Stdout:        p.Stdout,
+			Values:        target.Values,
+		})
+		if err != nil {
+			return fmt.Errorf("build of %s failed: %w", target.Builder, err)
+		}
+
+		p.Parameters[name] = map[string]interface{}{
+			"value": result.Result,
+		}
+
+		output.CompleteStep(step)
+	}
+
+	return nil
+}
 
 func (p *processor) BuildBicep(ctx context.Context, deployFile string) (string, error) {
 	err := deploy.ValidateBicepFile(deployFile)

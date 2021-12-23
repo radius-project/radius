@@ -81,13 +81,20 @@ func Run(ctx context.Context, options Options) ([]StageResult, error) {
 		output.LogInfo("")
 		step := output.BeginStep("Processing stage %s: %d of %d", processor.CurrrentStage.Name, processor.CurrrentStage.DisplayIndex, processor.CurrrentStage.TotalCount)
 
+		if stage.Build != nil {
+			err := processor.ProcessBuild(ctx, stage.Build)
+			if err != nil {
+				return nil, fmt.Errorf("stage %s failed: %w", processor.CurrrentStage.Name, err)
+			}
+		}
+
 		if stage.Bicep != nil {
 			err := processor.ProcessDeploy(ctx, *stage.Bicep)
 			if err != nil {
 				return nil, fmt.Errorf("stage %s failed: %w", processor.CurrrentStage.Name, err)
 			}
 		} else {
-			output.LogInfo("Nothing to do for stage %s...", processor.CurrrentStage.Name)
+			output.LogInfo("No deployment step for stage %s...", processor.CurrrentStage.Name)
 		}
 
 		output.CompleteStep(step)
