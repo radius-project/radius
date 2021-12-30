@@ -12,6 +12,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -121,4 +122,11 @@ func ShallowCopy(params DeploymentParameters) DeploymentParameters {
 	}
 
 	return copy
+}
+
+type ServerLifecycleClient interface {
+	GetStatus(ctx context.Context) (interface{}, []output.Column, error)
+	IsRunning(ctx context.Context) (bool, error)
+	EnsureStarted(ctx context.Context) error
+	EnsureStopped(ctx context.Context) error
 }

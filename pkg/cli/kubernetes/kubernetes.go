@@ -11,20 +11,30 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"k8s.io/client-go/discovery"
+	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const APIServerBasePath = "/apis/api.radius.dev/v1alpha3"
 
 func ReadKubeConfig() (*api.Config, error) {
 	var kubeConfig string
@@ -56,7 +66,11 @@ func CreateExtensionClient(context string) (clientset.Interface, error) {
 	return client, err
 }
 
-func CreateRestRoundTripper(context string) (http.RoundTripper, error) {
+func CreateRestRoundTripper(context string, overrideURL string) (http.RoundTripper, error) {
+	if overrideURL != "" {
+		return http.DefaultTransport, nil
+	}
+
 	merged, err := GetConfig(context)
 	if err != nil {
 		return nil, err
@@ -72,6 +86,28 @@ func CreateRestRoundTripper(context string) (http.RoundTripper, error) {
 	}
 
 	return client, err
+}
+
+func CreateAPIServerConnection(context string, overrideURL string) (string, *arm.Connection, error) {
+	if overrideURL != "" {
+		baseURL := strings.TrimSuffix(overrideURL, "/") + APIServerBasePath
+		return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{}), nil
+	}
+
+	restConfig, err := GetConfig(context)
+	if err != nil {
+		return "", nil, err
+	}
+
+	roundTripper, err := CreateRestRoundTripper(context, overrideURL)
+	if err != nil {
+		return "", nil, err
+	}
+
+	baseURL := strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
+		HTTPClient: &KubernetesTransporter{Client: roundTripper},
+	}), nil
 }
 
 func CreateRestConfig(context string) (*rest.Config, error) {
@@ -125,7 +161,21 @@ func CreateRuntimeClient(context string, scheme *runtime.Scheme) (client.Client,
 	return c, nil
 }
 
-func EnsureNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
+func CreateRESTMapper(context string) (meta.RESTMapper, error) {
+	merged, err := GetConfig(context)
+	if err != nil {
+		return nil, err
+	}
+
+	d, err := discovery.NewDiscoveryClientForConfig(merged)
+	if err != nil {
+		return nil, err
+	}
+
+	return restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(d)), nil
+}
+
+func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	namespaceApply := applycorev1.Namespace(namespace)
 
 	// Use Apply instead of Create to avoid failures on a namespace already existing.
@@ -155,4 +205,15 @@ func homeDir() string {
 		return h
 	}
 	return os.Getenv("USERPROFILE") // windows
+}
+
+var _ policy.Transporter = &KubernetesTransporter{}
+
+type KubernetesTransporter struct {
+	Client http.RoundTripper
+}
+
+func (t *KubernetesTransporter) Do(req *http.Request) (*http.Response, error) {
+	resp, err := t.Client.RoundTrip(req)
+	return resp, err
 }

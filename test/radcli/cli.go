@@ -116,6 +116,14 @@ func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) e
 	return err
 }
 
+func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
+	args := []string{
+		"env",
+		"status",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) ResourceShow(ctx context.Context, applicationName string, resourceType string, resourceName string) (string, error) {
 	args := []string{
 		"resource",
