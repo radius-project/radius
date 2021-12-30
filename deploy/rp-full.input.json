@@ -43,7 +43,7 @@
         },
         "siteName": {
             "type": "string",
-            "defaultValue": "[concat('radius-rp-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-rp-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of your Web Site."
             }
@@ -64,7 +64,7 @@
         },
         "accountName": {
             "type": "string",
-            "defaultValue": "[concat('radius-rp-', uniquestring(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-rp-', uniquestring(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The unique name of the cosmos db account."
             }
@@ -78,7 +78,7 @@
         },
         "clusterName": {
             "type": "string",
-            "defaultValue": "[concat('radius-aks-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-aks-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of the Managed Cluster resource."
             }
@@ -99,7 +99,7 @@
         },
         "deploymentScriptIdentityName": {
             "type": "string",
-            "defaultValue": "[concat('radius-deployment-id-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-deployment-id-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The identity name to use for the deployment script."
             }
