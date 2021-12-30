@@ -22,7 +22,8 @@ import (
 	"github.com/Azure/radius/pkg/version"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	client_go "k8s.io/client-go/kubernetes"
+	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -73,64 +74,14 @@ var envInitKubernetesCmd = &cobra.Command{
 			}
 		}
 
-		k8sconfig, err := kubernetes.ReadKubeConfig()
-		if err != nil {
-			return err
-		}
-
-		if k8sconfig.CurrentContext == "" {
-			return errors.New("no kubernetes context is set")
-		}
-
-		context := k8sconfig.Contexts[k8sconfig.CurrentContext]
-		if context == nil {
-			return fmt.Errorf("kubernetes context '%s' could not be found", k8sconfig.CurrentContext)
-		}
-
 		step := output.BeginStep("Installing Radius...")
 
-		client, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
+		client, runtimeClient, contextName, err := createKubernetesClients("")
 		if err != nil {
 			return err
 		}
 
-		// Make sure namespace passed in exists.
-		err = kubernetes.EnsureNamespace(cmd.Context(), client, namespace)
-		if err != nil {
-			return err
-		}
-
-		// Do note: the namespace passed in to rad env init kubernetes
-		// doesn't match the namespace where we deploy the controller to.
-		// The controller and other resources are all deployed to the
-		// 'radius-system' namespace. The namespace passed in will be
-		// where pods/services/deployments will be put for rad deploy.
-		err = kubernetes.EnsureNamespace(cmd.Context(), client, helm.RadiusSystemNamespace)
-		if err != nil {
-			return err
-		}
-
-		err = kubectl.RunCLICommandSilent("apply", "--kustomize", fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GatewayCRDVersion))
-		if err != nil {
-			return err
-		}
-
-		err = helm.ApplyHAProxyHelmChart(HAProxyVersion)
-		if err != nil {
-			return err
-		}
-
-		runtimeClient, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
-		if err != nil {
-			return err
-		}
-
-		err = applyGatewayClass(cmd.Context(), runtimeClient)
-		if err != nil {
-			return err
-		}
-
-		err = helm.ApplyRadiusHelmChart(chartPath, version.NewVersionInfo().Channel, image, tag)
+		err = installRadius(cmd.Context(), client, runtimeClient, namespace, chartPath, image, tag)
 		if err != nil {
 			return err
 		}
@@ -145,12 +96,12 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		if environmentName == "" {
-			environmentName = k8sconfig.CurrentContext
+			environmentName = contextName
 		}
 
 		env.Items[environmentName] = map[string]interface{}{
 			"kind":      environments.KindKubernetes,
-			"context":   k8sconfig.CurrentContext,
+			"context":   contextName,
 			"namespace": namespace,
 		}
 
@@ -167,7 +118,77 @@ var envInitKubernetesCmd = &cobra.Command{
 	},
 }
 
-func applyGatewayClass(ctx context.Context, runtimeClient client.Client) error {
+func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
+	k8sconfig, err := kubernetes.ReadKubeConfig()
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	if contextName == "" && k8sconfig.CurrentContext == "" {
+		return nil, nil, "", errors.New("no kubernetes context is set")
+	} else if contextName == "" {
+		contextName = k8sconfig.CurrentContext
+	}
+
+	context := k8sconfig.Contexts[contextName]
+	if context == nil {
+		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+	}
+
+	client, _, err := kubernetes.CreateTypedClient(contextName)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	runtimeClient, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	return client, runtimeClient, contextName, nil
+}
+
+func installRadius(ctx context.Context, client client_go.Interface, runtimeClient runtime_client.Client, namespace string, chartPath string, image string, tag string) error {
+	// Make sure namespace passed in exists.
+	err := kubernetes.EnsureNamespace(ctx, client, namespace)
+	if err != nil {
+		return err
+	}
+
+	// Do note: the namespace passed in to rad env init kubernetes
+	// doesn't match the namespace where we deploy the controller to.
+	// The controller and other resources are all deployed to the
+	// 'radius-system' namespace. The namespace passed in will be
+	// where pods/services/deployments will be put for rad deploy.
+	err = kubernetes.EnsureNamespace(ctx, client, helm.RadiusSystemNamespace)
+	if err != nil {
+		return err
+	}
+
+	err = kubectl.RunCLICommandSilent("apply", "--kustomize", fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GatewayCRDVersion))
+	if err != nil {
+		return err
+	}
+
+	err = helm.ApplyHAProxyHelmChart(HAProxyVersion)
+	if err != nil {
+		return err
+	}
+
+	err = applyGatewayClass(ctx, runtimeClient)
+	if err != nil {
+		return err
+	}
+
+	err = helm.ApplyRadiusHelmChart(chartPath, version.NewVersionInfo().Channel, image, tag)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client) error {
 	gateway := gatewayv1alpha1.GatewayClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GatewayClass",
@@ -182,7 +203,7 @@ func applyGatewayClass(ctx context.Context, runtimeClient client.Client) error {
 		},
 	}
 
-	err := runtimeClient.Patch(ctx, &gateway, client.Apply, &client.PatchOptions{FieldManager: k8slabels.FieldManager})
+	err := runtimeClient.Patch(ctx, &gateway, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: k8slabels.FieldManager})
 	return err
 }
 

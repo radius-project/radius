@@ -122,3 +122,10 @@ func ShallowCopy(params DeploymentParameters) DeploymentParameters {
 
 	return copy
 }
+
+type ServerLifecycleClient interface {
+	GetStatus(ctx context.Context) (string, error)
+	IsRunning(ctx context.Context) (bool, error)
+	EnsureStarted(ctx context.Context) error
+	EnsureStopped(ctx context.Context) error
+}

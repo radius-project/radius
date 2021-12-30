@@ -119,28 +119,24 @@ func main() {
 
 	controller := radcontroller.NewRadiusController(&options)
 
+	apiServerCertDir := certDir
+	if os.Getenv("SKIP_APISERVICE_TLS") == "true" {
+		apiServerCertDir = ""
+	}
+
 	apiServerOptions := apiserver.APIServerExtensionOptions{
 		KubeConfig: ctrl.GetConfigOrDie(),
 		Scheme:     scheme,
-		TLSCertDir: certDir,
+		TLSCertDir: apiServerCertDir,
 		Port:       7443,
 	}
 	apiServer := apiserver.NewAPIServerExtension(setupLog, apiServerOptions)
 
-	var host hosting.Host
-	if os.Getenv("SKIP_WEBHOOKS") != "true" {
-		host = hosting.Host{
-			Services: []hosting.Service{
-				apiServer,
-				controller,
-			},
-		}
-	} else {
-		host = hosting.Host{
-			Services: []hosting.Service{
-				controller,
-			},
-		}
+	host := hosting.Host{
+		Services: []hosting.Service{
+			apiServer,
+			controller,
+		},
 	}
 
 	// Create a channel to handle the shutdown

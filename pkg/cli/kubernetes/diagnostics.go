@@ -50,7 +50,12 @@ func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, op
 	httproute := radiusv1alpha3.HttpRoute{}
 
 	name := options.ResourceID.Types[1].Name + "-" + options.ResourceID.Types[2].Name
-	err := dc.Client.Get(ctx, types.NamespacedName{Namespace: options.ResourceID.ResourceGroup, Name: name}, &httproute)
+	namespace := dc.Namespace
+	if namespace == "" {
+		namespace = options.ResourceID.ResourceGroup
+	}
+
+	err := dc.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &httproute)
 	if err != nil {
 		return nil, err
 	}

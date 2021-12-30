@@ -125,7 +125,7 @@ func CreateRuntimeClient(context string, scheme *runtime.Scheme) (client.Client,
 	return c, nil
 }
 
-func EnsureNamespace(ctx context.Context, client *k8s.Clientset, namespace string) error {
+func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	namespaceApply := applycorev1.Namespace(namespace)
 
 	// Use Apply instead of Create to avoid failures on a namespace already existing.

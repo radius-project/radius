@@ -185,6 +185,21 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		}
 
 		return decoded, nil
+	} else if kind == environments.KindDev {
+		decoded := &environments.LocalEnvironment{}
+		err := mapstructure.Decode(raw, decoded)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
+		}
+
+		decoded.Name = name
+
+		err = validate(decoded)
+		if err != nil {
+			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
+		}
+
+		return decoded, nil
 	} else if kind == environments.KindKubernetes {
 		decoded := &environments.KubernetesEnvironment{}
 		err := mapstructure.Decode(raw, decoded)

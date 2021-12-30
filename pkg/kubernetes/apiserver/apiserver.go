@@ -46,10 +46,6 @@ func (api *APIServerExtension) Name() string {
 func (api *APIServerExtension) Run(ctx context.Context) error {
 	logger := api.log
 
-	if api.options.TLSCertDir == "" {
-		return fmt.Errorf("TLSCertDir must be set")
-	}
-
 	logger.Info("API Server Extension waiting for API Server...")
 
 	c, err := client.New(api.options.KubeConfig, client.Options{Scheme: api.options.Scheme})
@@ -74,7 +70,11 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", fmt.Sprintf(":%v", api.options.Port)))
-	err = s.ListenAndServeTLS(api.options.TLSCertDir+"/tls.crt", api.options.TLSCertDir+"/tls.key")
+	if api.options.TLSCertDir == "" {
+		err = s.ListenAndServe()
+	} else {
+		err = s.ListenAndServeTLS(api.options.TLSCertDir+"/tls.crt", api.options.TLSCertDir+"/tls.key")
+	}
 
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
