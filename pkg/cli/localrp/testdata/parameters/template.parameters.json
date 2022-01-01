@@ -1,0 +1,5 @@
+{
+  "image": {
+    "value": "radius.azurecr.io/magpie:latest"
+  }
+}

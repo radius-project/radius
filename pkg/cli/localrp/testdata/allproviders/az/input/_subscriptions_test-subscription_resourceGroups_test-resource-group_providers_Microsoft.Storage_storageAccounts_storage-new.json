@@ -1,0 +1,7 @@
+{
+    "kind": "BlobStorage",
+    "location": "westus2",
+    "sku": {
+        "name": "Premium_LRS"
+    }
+}

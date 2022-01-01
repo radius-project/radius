@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/radius/pkg/azure/aks"
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
 	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
@@ -59,15 +60,17 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	azcred := &radclient.AnonymousCredential{}
-	connection := arm.NewConnection(e.URL, azcred, nil)
-
 	return &localrp.LocalRPDeploymentClient{
-		Authorizer:     nil,
-		BaseURL:        e.URL,
-		Connection:     connection,
 		SubscriptionID: e.SubscriptionID,
 		ResourceGroup:  e.ResourceGroup,
+		Providers: map[string]providers.Provider{
+			providers.AzureProviderImport: &providers.AzureProvider{
+				Authorizer:     nil,
+				BaseURL:        e.URL,
+				SubscriptionID: e.SubscriptionID,
+				ResourceGroup:  e.ResourceGroup,
+			},
+		},
 	}, nil
 }
 

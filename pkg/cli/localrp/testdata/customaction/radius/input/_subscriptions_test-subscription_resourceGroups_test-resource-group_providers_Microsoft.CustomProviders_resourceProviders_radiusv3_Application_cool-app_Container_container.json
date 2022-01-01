@@ -1,0 +1,10 @@
+{
+    "properties": {
+        "container": {
+            "image": "radius.azurecr.io/magpie:latest",
+            "env": {
+                "DB_CONNECTION": "superSecret"
+            }
+        }
+    }
+}

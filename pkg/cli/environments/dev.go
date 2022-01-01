@@ -11,12 +11,15 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
 	"github.com/Azure/radius/pkg/cli/azure"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/k3d"
 	"github.com/Azure/radius/pkg/cli/kubernetes"
 	"github.com/Azure/radius/pkg/cli/localrp"
+	"github.com/go-logr/logr"
 )
 
 var _ ServerLifecycleEnvironment = (*LocalEnvironment)(nil)
@@ -69,29 +72,45 @@ func (e *LocalEnvironment) GetAzureProviderDetails() (string, string) {
 	return "test-subscription", "test-resource-group"
 }
 
-func (e *LocalEnvironment) CreateAPIServiceConnection() (string, *arm.Connection, error) {
-	restConfig, err := kubernetes.CreateRestConfig(e.Context)
-	if err != nil {
-		return "", nil, err
+func (e *LocalEnvironment) CreateRoundTripper() (http.RoundTripper, error) {
+	if e.URL != "" {
+		// We're not using TLS here, so just use the default roundTripper
+		return http.DefaultTransport, nil
 	}
 
 	roundTripper, err := kubernetes.CreateRestRoundTripper(e.Context)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
+
+	return roundTripper, nil
+}
+
+func (e *LocalEnvironment) GetBaseURL() (string, error) {
 	if e.URL != "" {
-		// We're not using TLS here, so just use the default roundTripper
-		roundTripper = http.DefaultTransport
+		return e.URL, nil
+	}
+
+	restConfig, err := kubernetes.CreateRestConfig(e.Context)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", restConfig.Host+restConfig.APIPath), nil
+}
+
+func (e *LocalEnvironment) CreateAPIServiceConnection() (*arm.Connection, error) {
+	baseURL, err := e.GetBaseURL()
+	if err != nil {
+		return nil, err
+	}
+
+	roundTripper, err := e.CreateRoundTripper()
+	if err != nil {
+		return nil, err
 	}
 
 	azcred := &radclient.AnonymousCredential{}
-
-	baseURL := restConfig.Host + restConfig.APIPath
-	if e.URL != "" {
-		baseURL = e.URL
-	}
-
-	baseURL = fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", baseURL)
 	connection := arm.NewConnection(
 		baseURL,
 		azcred,
@@ -99,25 +118,65 @@ func (e *LocalEnvironment) CreateAPIServiceConnection() (string, *arm.Connection
 			HTTPClient: &KubernetesRoundTripper{Client: roundTripper},
 		})
 
-	return baseURL, connection, nil
+	return connection, nil
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	// TODO: this will not support Azure resources just yet. Will need to bring in support from radius-local-dev
-	// to support multiple providers in the deployment engine.
-	baseURL, connection, err := e.CreateAPIServiceConnection()
+	baseURL, err := e.GetBaseURL()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create connection: %w", err)
+		return nil, err
+	}
+
+	roundTripper, err := e.CreateRoundTripper()
+	if err != nil {
+		return nil, err
+	}
+
+	dynamic, err := kubernetes.CreateDynamicClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	runtimeClient, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+	if err != nil {
+		return nil, err
 	}
 
 	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
-	return &localrp.LocalRPDeploymentClient{
-		Authorizer:     nil,
-		BaseURL:        baseURL,
-		Connection:     connection,
+	client := &localrp.LocalRPDeploymentClient{
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,
-	}, nil
+		Providers: map[string]providers.Provider{
+			providers.KubernetesProviderImport: providers.NewK8sProvider(logr.Discard(), dynamic, runtimeClient.RESTMapper()),
+			providers.RadiusProviderImport: &providers.AzureProvider{
+				Authorizer:     nil,
+				BaseURL:        baseURL,
+				SubscriptionID: subscriptionID,
+				ResourceGroup:  resourceGroup,
+				RoundTripper:   roundTripper,
+			},
+		},
+	}
+
+	client.Providers[providers.DeploymentProviderImport] = &providers.DeploymentProvider{DeployFunc: client.DeployNested}
+
+	// Azure is optional
+	if e.Providers != nil && e.Providers.AzureProvider != nil {
+		auth, err := armauth.GetArmAuthorizer()
+		if err != nil {
+			return nil, err
+		}
+
+		client.Providers[providers.AzureProviderImport] = &providers.AzureProvider{
+			Authorizer:     auth,
+			BaseURL:        "", // Use Azure
+			SubscriptionID: subscriptionID,
+			ResourceGroup:  resourceGroup,
+			RoundTripper:   nil,
+		}
+	}
+
+	return client, nil
 }
 
 func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
@@ -139,7 +198,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 }
 
 func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := e.CreateAPIServiceConnection()
+	connection, err := e.CreateAPIServiceConnection()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connection: %w", err)
 	}

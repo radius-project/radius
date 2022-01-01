@@ -108,9 +108,20 @@ type TemplateOptions struct {
 
 func Eval(template DeploymentTemplate, options TemplateOptions) ([]Resource, error) {
 	eva := &DeploymentEvaluator{
-		Template: template,
-		Options:  options,
+		Template:  template,
+		Options:   options,
+		Variables: map[string]interface{}{},
 	}
+
+	for name, variable := range template.Variables {
+		value, err := eva.VisitValue(variable)
+		if err != nil {
+			return nil, err
+		}
+
+		eva.Variables[name] = value
+	}
+
 	resources := map[string]Resource{}
 	for _, j := range template.Resources {
 		resource, err := eva.VisitResource(j)
