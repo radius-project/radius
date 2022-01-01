@@ -18,32 +18,32 @@ After tests run, you should see a big list of all of the project's packages:
 
 ```txt
 go test ./pkg/...
-ok  	github.com/Azure/radius/pkg/radrp	0.328s
-?   	github.com/Azure/radius/pkg/radrp/armerrors	[no test files]
-?   	github.com/Azure/radius/pkg/radrp/certs	[no test files]
-?   	github.com/Azure/radius/pkg/radrp/db	[no test files]
-?   	github.com/Azure/radius/pkg/radrp/k8sauth	[no test files]
-?   	github.com/Azure/radius/pkg/radrp/metadata	[no test files]
-ok  	github.com/Azure/radius/pkg/radrp/resources	0.283s
-?   	github.com/Azure/radius/pkg/radrp/rest	[no test files]
-?   	github.com/Azure/radius/pkg/radrp/revision	[no test files]
-ok  	github.com/Azure/radius/pkg/cli	0.250s
-?   	github.com/Azure/radius/pkg/azure/azcli	[no test files]
-?   	github.com/Azure/radius/pkg/cli/azure	[no test files]
-?   	github.com/Azure/radius/pkg/cli/bicep	[no test files]
-?   	github.com/Azure/radius/pkg/cli/environments	[no test files]
-?   	github.com/Azure/radius/pkg/cli/logger	[no test files]
-?   	github.com/Azure/radius/pkg/cli/namegenerator	[no test files]
-?   	github.com/Azure/radius/pkg/cli/prompt	[no test files]
-?   	github.com/Azure/radius/pkg/cli/util	[no test files]
-?   	github.com/Azure/radius/pkg/azure/radclient	[no test files]
-?   	github.com/Azure/radius/pkg/renderers	[no test files]
-ok  	github.com/Azure/radius/pkg/renderers/containerv1alpha3
-ok   	github.com/Azure/radius/pkg/renderers/cosmosdbmongov1alpha3
-ok   	github.com/Azure/radius/pkg/renderers/dapr
-ok   	github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha3
-ok   	github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha3
-ok   	github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha3
+ok  	github.com/project-radius/radius/pkg/radrp	0.328s
+?   	github.com/project-radius/radius/pkg/radrp/armerrors	[no test files]
+?   	github.com/project-radius/radius/pkg/radrp/certs	[no test files]
+?   	github.com/project-radius/radius/pkg/radrp/db	[no test files]
+?   	github.com/project-radius/radius/pkg/radrp/k8sauth	[no test files]
+?   	github.com/project-radius/radius/pkg/radrp/metadata	[no test files]
+ok  	github.com/project-radius/radius/pkg/radrp/resources	0.283s
+?   	github.com/project-radius/radius/pkg/radrp/rest	[no test files]
+?   	github.com/project-radius/radius/pkg/radrp/revision	[no test files]
+ok  	github.com/project-radius/radius/pkg/cli	0.250s
+?   	github.com/project-radius/radius/pkg/azure/azcli	[no test files]
+?   	github.com/project-radius/radius/pkg/cli/azure	[no test files]
+?   	github.com/project-radius/radius/pkg/cli/bicep	[no test files]
+?   	github.com/project-radius/radius/pkg/cli/environments	[no test files]
+?   	github.com/project-radius/radius/pkg/cli/logger	[no test files]
+?   	github.com/project-radius/radius/pkg/cli/namegenerator	[no test files]
+?   	github.com/project-radius/radius/pkg/cli/prompt	[no test files]
+?   	github.com/project-radius/radius/pkg/cli/util	[no test files]
+?   	github.com/project-radius/radius/pkg/azure/radclient	[no test files]
+?   	github.com/project-radius/radius/pkg/renderers	[no test files]
+ok  	github.com/project-radius/radius/pkg/renderers/containerv1alpha3
+ok   	github.com/project-radius/radius/pkg/renderers/cosmosdbmongov1alpha3
+ok   	github.com/project-radius/radius/pkg/renderers/dapr
+ok   	github.com/project-radius/radius/pkg/renderers/daprpubsubv1alpha3
+ok   	github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3
+ok   	github.com/project-radius/radius/pkg/renderers/servicebusqueuev1alpha3
 ```
 
 The Go test tools do not make much fanfare when all the tests pass - it just says `ok` for every package that has tests.

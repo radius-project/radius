@@ -1,0 +1,7 @@
+{
+    "properties": {
+        "container": {
+            "image": "radius.azurecr.io/magpie:latest"
+        }
+    }
+}

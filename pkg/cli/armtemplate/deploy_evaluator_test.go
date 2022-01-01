@@ -62,11 +62,11 @@ func Test_DeploymentEvaluator_KubernetesReference(t *testing.T) {
 			require.NoError(t, err)
 
 			evaluator := &DeploymentEvaluator{
-				Template:      template,
-				Options:       options,
-				Deployed:      map[string]map[string]interface{}{},
-				Variables:     map[string]interface{}{},
-				ProviderStore: loadFakeK8sStore(tc.resourceDir),
+				Template:  template,
+				Options:   options,
+				Deployed:  map[string]map[string]interface{}{},
+				Variables: map[string]interface{}{},
+				Providers: loadFakeK8sProvider(tc.resourceDir),
 			}
 			output := map[string]interface{}{}
 			errs := []string{}
@@ -188,7 +188,7 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 	}
 }
 
-func loadFakeK8sStore(dir string) providers.Store {
+func loadFakeK8sProvider(dir string) map[string]providers.Provider {
 	objects := []runtime.Object{}
 	_ = filepath.Walk(dir, func(path string, info os.FileInfo, _ error) error {
 		if !strings.HasSuffix(info.Name(), ".yaml") {
@@ -201,11 +201,14 @@ func loadFakeK8sStore(dir string) providers.Store {
 		return nil
 	})
 	fakeDynamicClient := fake.NewSimpleDynamicClient(fakeScheme(), objects...)
-	return providers.NewK8sStore(
+	provider := providers.NewK8sProvider(
 		logr.FromContext(context.Background()),
 		fakeDynamicClient,
-		fakeRestMapper(),
-	)
+		fakeRestMapper())
+
+	return map[string]providers.Provider{
+		providers.KubernetesProviderImport: provider,
+	}
 }
 
 func fakeScheme() *runtime.Scheme {

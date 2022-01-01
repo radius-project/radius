@@ -5,11 +5,12 @@
 
 package providers
 
-import "context"
+import (
+	"context"
+)
 
-// A providers.Store can provide more resources that we don't deploy ourselves.
-//
-// For example, K8s resources deployed in a Kubernetes cluster.
-type Store interface {
-	GetDeployedResource(ctx context.Context, ref string, version string) (map[string]interface{}, error)
+type Provider interface {
+	GetDeployedResource(ctx context.Context, id string, version string) (map[string]interface{}, error)
+	DeployResource(ctx context.Context, id string, version string, body map[string]interface{}) (map[string]interface{}, error)
+	InvokeCustomAction(ctx context.Context, id string, version string, action string, body interface{}) (map[string]interface{}, error)
 }

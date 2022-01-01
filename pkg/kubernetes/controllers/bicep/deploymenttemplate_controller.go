@@ -127,7 +127,12 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		CustomActionCallback: func(id string, apiVersion string, action string, payload interface{}) (interface{}, error) {
 			return r.InvokeCustomAction(ctx, req.Namespace, id, apiVersion, action, payload)
 		},
-		ProviderStore: providers.NewK8sStore(r.Log, r.DynamicClient, r.RESTMapper),
+		Providers: map[string]providers.Provider{
+			// TODO(rynowak): right now this is only used for GETs on existing resources
+			// it only supports Radius types.
+			providers.KubernetesProviderImport: providers.NewK8sProvider(r.Log, r.DynamicClient, r.RESTMapper),
+			providers.RadiusProviderImport:     providers.NewK8sProvider(r.Log, r.DynamicClient, r.RESTMapper),
+		},
 	}
 
 	for name, variable := range template.Variables {
