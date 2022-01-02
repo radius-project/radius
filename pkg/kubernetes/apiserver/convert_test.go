@@ -53,7 +53,7 @@ func Test_ConvertApplication_RoundTrips(t *testing.T) {
 	require.Equal(t, original, final)
 }
 
-func Test_ConvertResource_RoundTrips(t *testing.T) {
+func Test_ConvertResource_RoundTripsWithoutSecrets(t *testing.T) {
 	namespace := "default"
 	id, err := azresources.Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend/Container/frontend")
 	require.NoError(t, err)
@@ -73,12 +73,15 @@ func Test_ConvertResource_RoundTrips(t *testing.T) {
 			Resource:    "frontend",
 			Template: &runtime.RawExtension{
 				Raw: marshalJSONIgnoreErr(map[string]interface{}{
-					"name": "kata-container",
+					"name": "frontend",
 					"id":   id.ID,
 					"type": "Container",
 					"body": map[string]interface{}{
-						"properties": map[string]string{
+						"properties": map[string]interface{}{
 							"image": "the-best",
+							"secrets": map[string]interface{}{
+								"super-secret-value": "yep. totally",
+							},
 						},
 					},
 				}),
@@ -87,6 +90,7 @@ func Test_ConvertResource_RoundTrips(t *testing.T) {
 	}
 
 	unstMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&original)
+
 	require.NoError(t, err)
 	unst := unstructured.Unstructured{Object: unstMap}
 
@@ -99,19 +103,26 @@ func Test_ConvertResource_RoundTrips(t *testing.T) {
 		Kind:    "Container",
 	}
 
-	final, err := NewKubernetesRadiusResource(id, res, namespace, gvk)
+	final, secrets, err := NewKubernetesRadiusResource(id, res, namespace, gvk)
 	require.NoError(t, err)
 
 	// Unstructured comparison causes a comparison between interface{} and a string
 	// so we need to convert to JSON
 	expectedUns, err := json.Marshal(unst)
-
 	require.NoError(t, err)
+
+	// (remove the secrets from expected set since they aren't part of the output)
+	delete(unst.Object["spec"].(map[string]interface{})["template"].(map[string]interface{})["body"].(map[string]interface{})["properties"].(map[string]interface{}), "secrets")
 
 	actualUns, err := json.Marshal(final)
 	require.NoError(t, err)
 
+	expectedSecrets := map[string]string{
+		"super-secret-value": "yep. totally",
+	}
+
 	require.JSONEq(t, string(expectedUns), string(actualUns))
+	require.Equal(t, expectedSecrets, secrets)
 }
 
 func Test_ConvertK8sResourceToARM(t *testing.T) {

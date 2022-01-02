@@ -27,6 +27,7 @@ import (
 
 const (
 	Namespace = "mynamespace"
+	BaseURL   = "/apis/api.radius.dev/v1alpha3/fake"
 )
 
 func Test_ListApplication(t *testing.T) {
@@ -64,7 +65,7 @@ func Test_ListApplication(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&resource1).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.ListApplications(context.Background(), id)
 	require.NoError(t, err)
@@ -126,7 +127,7 @@ func Test_GetApplication(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&resource1).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.GetApplication(context.Background(), id)
 	require.NoError(t, err)
@@ -179,7 +180,7 @@ func Test_DeleteApplication(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&resource1).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.DeleteApplication(context.Background(), id)
 	require.NoError(t, err)
@@ -293,7 +294,7 @@ func Test_ListResources(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1, &resource2).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.ListResources(context.Background(), id)
 	require.NoError(t, err)
@@ -394,7 +395,7 @@ func Test_ListAllV3ResourcesByApplication(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.ListAllV3ResourcesByApplication(context.Background(), id)
 	require.NoError(t, err)
@@ -521,7 +522,7 @@ func Test_GetResource(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1, &resource2).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.GetResource(context.Background(), id)
 	require.NoError(t, err)
@@ -608,7 +609,7 @@ func Test_DeleteResource(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.DeleteResource(context.Background(), id)
 	require.NoError(t, err)
@@ -724,7 +725,7 @@ func Test_ListSecrets(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1, &secret).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.ListSecrets(context.Background(), resourceprovider.ListSecretsInput{TargetID: id.ID})
 	require.NoError(t, err)
@@ -817,7 +818,7 @@ func Test_GetOperation(t *testing.T) {
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(&app, &resource1).Build()
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, BaseURL)
 
 	response, err := rp.GetOperation(context.Background(), id)
 	require.NoError(t, err)
