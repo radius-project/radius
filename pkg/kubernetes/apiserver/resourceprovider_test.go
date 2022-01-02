@@ -685,6 +685,7 @@ func Test_ListSecrets(t *testing.T) {
 			Labels: map[string]string{
 				kubernetes.LabelRadiusApplication: appName,
 			},
+			Generation: 1,
 		},
 		Spec: radiusv1alpha3.ResourceSpec{
 			Template: rawOrPanic(map[string]interface{}{
@@ -699,6 +700,8 @@ func Test_ListSecrets(t *testing.T) {
 			}),
 		},
 		Status: radiusv1alpha3.ResourceStatus{
+			ObservedGeneration: 1,
+			Phrase:             "Deployed",
 			Resources: map[string]*radiusv1alpha3.OutputResource{
 				"SecretLocalID": {
 					Resource: corev1.ObjectReference{
@@ -790,6 +793,7 @@ func Test_GetOperation(t *testing.T) {
 			Labels: map[string]string{
 				kubernetes.LabelRadiusApplication: appName,
 			},
+			Generation: 1,
 		},
 		Spec: radiusv1alpha3.ResourceSpec{
 			Template: rawOrPanic(map[string]interface{}{
@@ -804,6 +808,8 @@ func Test_GetOperation(t *testing.T) {
 			}),
 		},
 		Status: radiusv1alpha3.ResourceStatus{
+			Phrase:             "Deployed",
+			ObservedGeneration: 1,
 			Resources: map[string]*radiusv1alpha3.OutputResource{
 				"LocalID": {
 					Status: radiusv1alpha3.OutputResourceStatus{

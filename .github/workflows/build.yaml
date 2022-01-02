@@ -328,6 +328,12 @@ jobs:
         export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-localdev
+    - name: Run Local Dev Kubernetes tests (PR)
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
+        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+        make test-functional-kubernetes
     - name: Run 'rad env delete'
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH

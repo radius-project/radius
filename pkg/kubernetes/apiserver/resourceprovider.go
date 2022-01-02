@@ -526,13 +526,8 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		return nil, err
 	}
 
-	output, err := NewRestRadiusResource(resource)
-	if err != nil {
-		return nil, err
-	}
-
 	// Check if the resource is provisioned and ready
-	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ResourceStatus).ProvisioningState)) {
+	if resource.Status.Phrase != "Deployed" || resource.Generation != resource.Status.ObservedGeneration {
 		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
@@ -551,7 +546,6 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 
 	values := map[string]interface{}{}
 	for k, v := range secretValues {
-
 		_, ok := resource.Status.Resources[v.LocalID]
 		if ok {
 			// This is an Kubernetes secret
@@ -615,7 +609,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return nil, err
 	}
 
-	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ResourceStatus).ProvisioningState)) {
+	if resource.Status.Phrase != "Deployed" || resource.Generation != resource.Status.ObservedGeneration {
 		// Operation is still processing.
 		// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
 		return rest.NewAcceptedAsyncResponse(output, r.baseURL+id.ID), nil

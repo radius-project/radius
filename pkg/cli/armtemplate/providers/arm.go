@@ -127,6 +127,9 @@ func (p *AzureProvider) InvokeCustomAction(ctx context.Context, id string, versi
 	client := azclients.NewCustomActionClient(p.SubscriptionID, p.Authorizer)
 	client.BaseURI = strings.TrimSuffix(p.BaseURL, "/")
 	client.PollingDelay = PollInterval
+	client.RetryAttempts = 10
+	client.RetryDuration = 3 * time.Second
+
 	if p.RoundTripper != nil {
 		client.Sender = &sender{RoundTripper: p.RoundTripper}
 	}

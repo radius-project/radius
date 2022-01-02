@@ -30,9 +30,9 @@ func CreateCluster(ctx context.Context, name string) (*ClusterConfig, error) {
 		// Create a registry for local images to avoid server roundtrips
 		"--registry-create", config.Registry,
 
-		// Add a new kubernetes context to the config, but don't switch to it
+		// Add a new kubernetes context to the config and switch to it
 		"--kubeconfig-update-default=true",
-		"--kubeconfig-switch-context=false",
+		"--kubeconfig-switch-context=true",
 
 		// Skip the built-in ingress since we're providing our own
 		"--k3s-arg", "--disable=traefik@server:*",

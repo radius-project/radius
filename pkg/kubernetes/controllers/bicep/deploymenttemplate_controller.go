@@ -88,30 +88,6 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 }
 
 func (r *DeploymentTemplateReconciler) evaluateNestedDeployment(req ctrl.Request, evaluator *armtemplate.DeploymentEvaluator, resource armtemplate.Resource, parentName string) (*unstructured.Unstructured, error) {
-	// Before calling this function we would have a resource looking like:
-	// ```
-	// properties:
-	//   template:
-	//     foo: bar
-	//   parameters:
-	//     param1: value1
-	//     param2: value2
-	// ```
-	// `
-	// After calling, the resource would look like
-	// ```
-	// template:
-	//   foo: bar
-	// parameters:
-	//   param1: value1
-	//   param2: value2
-	// ```
-	//
-	// Generally this is not needed when calling VisitResourceBody because VisitMap is recursive.
-	// However, for nested deployment, VisitResourceBody pre-process the "parameters" map at the
-	// root level, therefore we want to make sure the "parameters" map is where it is expected.
-	resource.Body, _ = resource.Body["properties"].(map[string]interface{})
-
 	body, err := evaluator.VisitResourceBody(resource)
 	if err != nil {
 		return nil, err

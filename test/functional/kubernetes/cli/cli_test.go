@@ -119,18 +119,16 @@ func Test_CLI(t *testing.T) {
 					expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
 a\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
-					match := expected.MatchString(output)
-					require.Equal(t, true, match)
+					require.Regexp(t, expected, output)
 				})
 				t.Run("resource list", func(t *testing.T) {
 					output, err := cli.ResourceList(ctx, application)
 					require.NoError(t, err)
 					expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
-a\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
-b\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
+(a|b)\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
+(a|b)\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
-					match := expected.MatchString(output)
-					require.Equal(t, true, match)
+					require.Regexp(t, expected, output)
 				})
 
 				t.Run("application show", func(t *testing.T) {
@@ -139,8 +137,7 @@ b\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
 					expected := regexp.MustCompile(`APPLICATION\s+PROVISIONING_STATE\s+HEALTH_STATE
 kubernetes-cli\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
-					match := expected.MatchString(output)
-					require.Equal(t, true, match)
+					require.Regexp(t, expected, output)
 				})
 			},
 		},

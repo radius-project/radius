@@ -118,6 +118,7 @@ func (dc *LocalRPDeploymentClient) deployTemplate(ctx context.Context, template 
 
 	deployed := map[string]map[string]interface{}{}
 	evaluator := &armtemplate.DeploymentEvaluator{
+		Context:   ctx,
 		Providers: dc.Providers,
 		Template:  template,
 		Options: armtemplate.TemplateOptions{

@@ -218,7 +218,17 @@ func (eva *DeploymentEvaluator) VisitResourceBody(resource Resource) (map[string
 	// For a nested deployment we need special evaluation rules, just evaluate the
 	// parameters.
 	if resource.Type == DeploymentResourceType {
-		obj, ok := resource.Body["parameters"]
+		obj, ok := resource.Body["properties"]
+		if !ok {
+			return nil, fmt.Errorf("deployment must define properties, got %v", resource.Body)
+		}
+
+		properties, ok := obj.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("deployment properties should be a map, got %T", obj)
+		}
+
+		obj, ok = properties["parameters"]
 		if !ok {
 			// Parameters can be optional
 			return resource.Body, nil
@@ -234,12 +244,18 @@ func (eva *DeploymentEvaluator) VisitResourceBody(resource Resource) (map[string
 			return nil, fmt.Errorf("failed to evaluate deployment parameters: %w", err)
 		}
 
+		propertiesCopy := map[string]interface{}{}
+		for k, v := range properties {
+			propertiesCopy[k] = v
+		}
+		propertiesCopy["parameters"] = parameters
+
 		output := map[string]interface{}{}
 		for k, v := range resource.Body {
 			output[k] = v
 		}
 
-		output["parameters"] = parameters
+		output["properties"] = propertiesCopy
 		return output, nil
 	}
 
@@ -584,11 +600,12 @@ func (eva *DeploymentEvaluator) EvaluateReference(id interface{}, version string
 			return nil, err
 		}
 
-		return provider.GetDeployedResource(eva.Context, id.(string), version)
+		obj, err = provider.GetDeployedResource(eva.Context, id.(string), version)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Note: we assume 'full' mode for references
-	// see: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/template-functions-resource#reference
 	if full {
 		return obj, nil
 	}
