@@ -181,6 +181,17 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 		location.Scheme = "http"
 	}
 
+	// In Kubernetes we need a side-channel to configure the APIServer scheme/host
+	apiServerScheme := req.Header.Get(textproto.CanonicalMIMEHeaderKey("Radius-APIServer-Scheme"))
+	if apiServerScheme != "" {
+		location.Scheme = apiServerScheme
+	}
+
+	apiServerHost := req.Header.Get(textproto.CanonicalMIMEHeaderKey("Radius-APIServer-Host"))
+	if apiServerHost != "" {
+		location.Host = apiServerHost
+	}
+
 	logger.Info(fmt.Sprintf("Returning location: %s", location.String()))
 
 	w.Header().Add("Content-Type", "application/json")

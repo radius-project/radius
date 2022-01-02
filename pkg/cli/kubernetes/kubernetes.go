@@ -9,8 +9,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/textproto"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,7 +74,7 @@ func CreateRestRoundTripper(context string) (http.RoundTripper, error) {
 		return nil, err
 	}
 
-	return client, err
+	return NewAPIServiceHeaderTransport(merged.Host, client), err
 }
 
 func CreateRestConfig(context string) (*rest.Config, error) {
@@ -155,4 +158,38 @@ func homeDir() string {
 		return h
 	}
 	return os.Getenv("USERPROFILE") // windows
+}
+
+var _ http.RoundTripper = (*APIServiceHeaderTransport)(nil)
+
+func NewAPIServiceHeaderTransport(input string, inner http.RoundTripper) *APIServiceHeaderTransport {
+	// The input value might be a URL or a hostname.
+	if strings.Contains(input, "://") {
+		u, err := url.Parse(input)
+		if err != nil {
+			return &APIServiceHeaderTransport{Inner: inner, Host: input}
+		}
+
+		return &APIServiceHeaderTransport{Inner: inner, Host: u.Host, Scheme: u.Scheme}
+	} else {
+		return &APIServiceHeaderTransport{Inner: inner, Host: input}
+	}
+}
+
+type APIServiceHeaderTransport struct {
+	Inner  http.RoundTripper
+	Host   string
+	Scheme string
+}
+
+func (t *APIServiceHeaderTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if t.Host != "" {
+		request.Header[textproto.CanonicalMIMEHeaderKey("Radius-APIServer-Scheme")] = []string{t.Scheme}
+	}
+
+	if t.Scheme != "" {
+		request.Header[textproto.CanonicalMIMEHeaderKey("Radius-APIServer-Host")] = []string{t.Host}
+	}
+
+	return t.Inner.RoundTrip(request)
 }

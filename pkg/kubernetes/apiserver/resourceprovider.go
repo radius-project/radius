@@ -17,6 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/Azure/radius/pkg/kubernetes/converters"
+	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/Azure/radius/pkg/radrp/rest"
@@ -526,6 +527,8 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 }
 
 func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+	logger := radlogger.GetLogger(ctx)
+
 	err := r.validateOperationType(id)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -574,9 +577,11 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ResourceStatus).ProvisioningState)) {
 		// Operation is still processing.
 		// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
+		logger.Info("resource is not ready", "resource", targetID.ID, "status", state.(rest.ResourceStatus))
 		return rest.NewAcceptedAsyncResponse(output, r.baseURL+id.ID), nil
 	}
 
+	logger.Info("resource is ready", "resource", targetID.ID)
 	return rest.NewOKResponse(output), nil
 
 }
