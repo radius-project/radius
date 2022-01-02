@@ -12,6 +12,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -85,6 +86,13 @@ var envInitLocalCmd = &cobra.Command{
 
 		namespace := "default"
 		err = installRadius(cmd.Context(), client, runtimeClient, namespace, chartPath, image, tag)
+		if err != nil {
+			return err
+		}
+
+		// We don't want to use the host network option with HA Proxy on K3d. K3d supports LoadBalancer services,
+		// using the host network would cause a conflict.
+		err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: false})
 		if err != nil {
 			return err
 		}
