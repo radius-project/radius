@@ -70,7 +70,7 @@ func addHAProxyValues(helmChart *chart.Chart) error {
 		return fmt.Errorf("controller node not found in chart values")
 	}
 
-	controllerNode["hostNetwork"] = true
+	//controllerNode["hostNetwork"] = true
 	extraArgsNode := controllerNode["extraArgs"].(map[string]interface{})
 	if extraArgsNode == nil {
 		return fmt.Errorf("extraArgs node not found in chart values")
