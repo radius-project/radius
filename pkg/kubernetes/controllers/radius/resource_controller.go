@@ -115,17 +115,17 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	log := r.Log.WithValues("resource", req.NamespacedName)
 
 	unst, err := r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).Get(ctx, req.Name, v1.GetOptions{})
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	resource := &radiusv1alpha3.Resource{}
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, resource)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Resource was deleted - we don't need to handle this because it will cascade
 		return ctrl.Result{}, nil
 	} else if err != nil {
 		log.Error(err, "failed to retrieve resource")
+		return ctrl.Result{}, err
+	}
+
+	resource := &radiusv1alpha3.Resource{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, resource)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 

@@ -33,7 +33,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	_ = r.Log.WithValues("application", req.NamespacedName)
 	app := &radiusv1alpha3.Application{}
 	err := r.Client.Get(ctx, req.NamespacedName, app)
-	if err != nil {
+	if err != nil && client.IgnoreNotFound(err) == nil {
+		return ctrl.Result{}, nil
+	} else if err != nil {
 		return ctrl.Result{}, err
 	}
 
