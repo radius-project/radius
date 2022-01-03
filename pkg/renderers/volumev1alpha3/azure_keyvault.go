@@ -17,7 +17,7 @@ import (
 	"github.com/Azure/radius/pkg/renderers"
 	"github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider"
 	"github.com/gofrs/uuid"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
 )
