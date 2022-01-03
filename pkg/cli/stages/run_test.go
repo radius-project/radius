@@ -393,6 +393,10 @@ type MockDeploymentClient struct {
 }
 
 func (dc *MockDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
+	if options.ProgressChan != nil {
+		close(options.ProgressChan)
+	}
+
 	result := clients.DeploymentResult{}
 	if len(dc.Results) > dc.count {
 		result = dc.Results[dc.count]

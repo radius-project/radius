@@ -220,6 +220,13 @@ func NewFileSharesClient(subscriptionID string, authorizer autorest.Authorizer) 
 	return fc
 }
 
+func NewOperationsClient(subscriptionID string, authorizer autorest.Authorizer) resources.DeploymentOperationsClient {
+	doc := resources.NewDeploymentOperationsClient(subscriptionID)
+	doc.Authorizer = authorizer
+	doc.PollingDuration = 0
+	return doc
+}
+
 func NewRoleDefinitionsClient(subscriptionID string, authorizer autorest.Authorizer) authorization.RoleDefinitionsClient {
 	rc := authorization.NewRoleDefinitionsClient(subscriptionID)
 	rc.Authorizer = authorizer

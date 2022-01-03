@@ -41,6 +41,10 @@ type LocalRPDeploymentClient struct {
 var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
 
 func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
+	if options.ProgressChan != nil {
+		defer close(options.ProgressChan)
+	}
+
 	template, err := armtemplate.Parse(options.Template)
 	if err != nil {
 		return clients.DeploymentResult{}, err
@@ -93,19 +97,40 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 
 		resource.Body = body
 
+		parsed, err := azresources.Parse(resource.ID)
+		if err != nil {
+			// We don't expect this to fail, but just in case...
+			return clients.DeploymentResult{}, err
+		}
+
+		if options.ProgressChan != nil {
+			options.ProgressChan <- clients.ResourceProgress{
+				Resource: parsed,
+				Status:   clients.StatusStarted,
+			}
+		}
+
 		fmt.Printf("Deploying %s %s...\n", resource.Type, resource.Name)
 		response, result, err := dc.deployResource(ctx, dc.Connection, resource)
 		if err != nil {
+			if options.ProgressChan != nil {
+				options.ProgressChan <- clients.ResourceProgress{
+					Resource: parsed,
+					Status:   clients.StatusFailed,
+				}
+			}
+
 			return clients.DeploymentResult{}, fmt.Errorf("failed to PUT resource %s %s: %w", resource.Type, resource.Name, err)
 		}
 
 		fmt.Printf("succeed with status code %d\n", response.StatusCode)
 		evaluator.Deployed[resource.ID] = result
 
-		parsed, err := azresources.Parse(resource.ID)
-		if err != nil {
-			// We don't expect this to fail, but just in case...
-			return clients.DeploymentResult{}, err
+		if options.ProgressChan != nil {
+			options.ProgressChan <- clients.ResourceProgress{
+				Resource: parsed,
+				Status:   clients.StatusCompleted,
+			}
 		}
 
 		ids = append(ids, parsed)

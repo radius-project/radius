@@ -79,9 +79,10 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	dc.PollingDelay = 5 * time.Second
 
 	return &azure.ARMDeploymentClient{
-		Client:         dc,
-		SubscriptionID: e.SubscriptionID,
-		ResourceGroup:  e.ResourceGroup,
+		Client:           dc,
+		OperationsClient: azclients.NewOperationsClient(e.SubscriptionID, armauth),
+		SubscriptionID:   e.SubscriptionID,
+		ResourceGroup:    e.ResourceGroup,
 	}, nil
 }
 
