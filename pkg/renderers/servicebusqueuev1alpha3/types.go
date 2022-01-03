@@ -25,9 +25,3 @@ var QueueResourceType = azresources.KnownType{
 		},
 	},
 }
-
-type Properties struct {
-	Managed  bool   `json:"managed"`
-	Queue    string `json:"queue"`
-	Resource string `json:"resource"`
-}

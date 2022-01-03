@@ -409,6 +409,9 @@ type AzureServiceBusProperties struct {
 
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
+
+	// The ID of the user-managed ServiceBus queue to use
+	Resource *string `json:"resource,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type AzureServiceBusProperties.
@@ -417,6 +420,7 @@ func (a AzureServiceBusProperties) MarshalJSON() ([]byte, error) {
 	a.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "managed", a.Managed)
 	populate(objectMap, "queue", a.Queue)
+	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
 
@@ -434,6 +438,9 @@ func (a *AzureServiceBusProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "queue":
 				err = unpopulate(val, &a.Queue)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &a.Resource)
 				delete(rawMsg, key)
 		}
 		if err != nil {
