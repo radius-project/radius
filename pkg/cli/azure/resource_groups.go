@@ -26,7 +26,6 @@ func LoadDefaultResourceGroupFromConfig() (string, error) {
 	cfg, err := ini.Load(configPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read config file: %v", err)
-
 	}
 
 	return cfg.Section("defaults").Key("group").String(), nil
