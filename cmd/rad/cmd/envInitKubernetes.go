@@ -94,6 +94,12 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
+		// Make sure namespace passed in exists.
+		err = kubernetes.CreateNamespace(cmd.Context(), client, namespace)
+		if err != nil {
+			return err
+		}
+
 		// Do note: the namespace passed in to rad env init kubernetes
 		// doesn't match the namespace where we deploy the controller to.
 		// The controller and other resources are all deployed to the
