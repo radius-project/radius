@@ -89,6 +89,8 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 			poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
 				ctx, rg, appName, resourceType, *r.Name, nil)
 			if err != nil {
+				err = fmt.Errorf("Hit LOC:92 with error: %w", err)
+				fmt.Println(err)
 				return err
 			}
 
@@ -97,8 +99,11 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 				if isNotFound(err) {
 					errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
 						resourceType, *r.Name, appName, dm.EnvironmentName)
-					return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+					err = fmt.Errorf("Hit LOC:102 with error: %w", radclient.NewRadiusError("ResourceNotFound", errorMessage))
+					return err
 				}
+				err = fmt.Errorf("Hit LOC:103 with error: %w", err)
+				fmt.Println(err)
 				return err
 			}
 			return nil
@@ -106,7 +111,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 	}
 
 	if err := g.Wait(); err != nil {
-		return ctx.Err()
+		return err
 	}
 
 	poller, err := radclient.NewApplicationClient(con, sub).BeginDelete(ctx, rg, appName, nil)
