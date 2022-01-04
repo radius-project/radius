@@ -106,7 +106,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 	}
 
 	if err := g.Wait(); err != nil {
-		return err
+		return ctx.Err()
 	}
 
 	poller, err := radclient.NewApplicationClient(con, sub).BeginDelete(ctx, rg, appName, nil)
