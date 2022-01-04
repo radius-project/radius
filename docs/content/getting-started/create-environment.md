@@ -12,7 +12,7 @@ weight: 30
 
 {{% codetab %}}
 
-Note that while the custom resource provider and container runtime are optimized for cost, you are responsible for any costs incurred in your subscription.
+Note that while the custom resource provider (App Service and CosmosDB) and container runtime (AKS cluster) are optimized for cost, **you are responsible for any costs incurred in your subscription**.
 
 1. Use the `az` CLI to authenticate with Azure your Azure account:
 
@@ -30,7 +30,7 @@ Note that while the custom resource provider and container runtime are optimized
    rad env init azure -i
    ```
 
-   This will prompt you for several inputs and then go create assets in your subscription (~5-10 mins). 
+   **This will prompt you for several inputs and then create assets in your subscription (~5-10 mins).**
 
    For more info about what's being created as part of an environment, see [Azure environments]({{< ref azure>}}).
 
@@ -40,11 +40,21 @@ Note that while the custom resource provider and container runtime are optimized
    rad env list
    ```
 
+1. If environment creation was unsuccessful manually delete the '[ENVNAME]' resource group and 'RE-[ENVNAME]' resource groups in your Azure subscription:
+
+   ```sh
+   az group delete --name [ENVNAME] --yes
+   az group delete --name RE-[ENVNAME] --yes
+   ```
+
 {{% /codetab %}}
 
 {{% codetab %}}
-1. Verify that you have a Kubernetes cluster configured with a local `kubectl` context set as the default.
-   To verify this, run `kubectl config current-context` and verify that it returns the name of your cluster.
+1. Verify that you have a Kubernetes cluster configured with a local `kubectl` context set as the default:
+
+   ```sh
+   kubectl config current-context
+   ```
 
 1. Create a Radius environment:
 
