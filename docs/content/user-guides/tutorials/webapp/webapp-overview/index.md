@@ -16,7 +16,7 @@ You will be deploying a *To-Do List* website. It will have two Radius *component
 
 ## Website frontend
 
-The example website (`todoapp`) is a containerized single-page-application (SPA) with a Node.JS backend. The SPA sends requests HTTP requests to the Node.JS backend to read and store *todo* items.
+The example website (`todoapp`) is a containerized single-page-application (SPA) with a Node.JS backend. The SPA sends HTTP requests to the Node.JS backend to read and store *todo* items.
 
 The website listens on port 3000 for HTTP requests. 
 
@@ -36,12 +36,12 @@ In Kubernetes environments Radius uses the `mongodb` container image to run the 
 
 The diagrams shown so far document the communication flows, but a Radius application also describes additional details. 
 
-A Radius template includes 
+A Radius application includes 
 
 - The logical relationships of an application 
 - The operational details associated with those relationships 
 
-Here is an updated diagram that shows what the Radius template captures:
+Here is an updated diagram that shows what the Radius application captures:
 
 <img src="todoapp-appdiagram.png" width=800 alt="App diagram with descriptions of all the details and relationships."><br />
 
@@ -56,7 +56,7 @@ In addition to this high level information, the Radius model also uses typical d
 - Listening ports
 - Configuration like connection strings
 
-Keep the diagram in mind as you proceed through the following steps. Your Radius deployment template will aim to match it. 
+Keep the diagram in mind as you proceed through the following steps. Your Radius application will aim to match it. 
 
 
 <br>{{< button text="Next: Deploy the website frontend" page="webapp-initial-deployment.md" >}}

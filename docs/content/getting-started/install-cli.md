@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Download and install the Radius CLI"
-linkTitle: "Install Radius CLI"
+linkTitle: "Install rad CLI"
 description: "How to download and install the Radius CLI on your local machine"
 weight: 10
 ---
@@ -10,7 +10,7 @@ These steps will setup the required tools and extensions to get you up and runni
 
 ## Pre-requisites
 
-- [Az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+- [Az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (version 2.25.0 or later)
 
 ## Install CLI
 
@@ -135,14 +135,6 @@ PowerShell for Cloud Shell is currently not supported.
 {{% /codetab %}}
 
 {{< /tabs >}}
-
-## Install Bicep
-
-To ensure you have the latest version of Bicep, run the following command:
-
-```bash
-rad bicep download
-```
 
 ## Test it out
 
