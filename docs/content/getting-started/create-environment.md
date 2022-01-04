@@ -40,7 +40,12 @@ Note that while the custom resource provider (App Service and CosmosDB) and cont
    rad env list
    ```
 
-1. If environment creation was unsuccessful manually delete the '[ENVNAME]' resource group and 'RE-[ENVNAME]' resource groups in your Azure subscription.
+1. If environment creation was unsuccessful manually delete the '[ENVNAME]' resource group and 'RE-[ENVNAME]' resource groups in your Azure subscription:
+
+   ```sh
+   az group delete --name [ENVNAME] --yes
+   az group delete --name RE-[ENVNAME] --yes
+   ```
 
 {{% /codetab %}}
 
