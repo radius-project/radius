@@ -38,12 +38,11 @@ const (
 
 // NewResourceProvider creates a new ResourceProvider.
 func NewResourceProvider(client controller_runtime.Client) resourceprovider.ResourceProvider {
-	return &rp{client: client, namespace: "default"}
+	return &rp{client: client}
 }
 
 type rp struct {
-	client    controller_runtime.Client
-	namespace string
+	client controller_runtime.Client
 }
 
 // As a general design principle, returning an error from the RP signals an internal error (500).
@@ -55,8 +54,9 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	items := radiusv1alpha3.ApplicationList{}
-	err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace))
+	err = r.client.List(ctx, &items, controller_runtime.InNamespace(namespace))
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +83,9 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	item := radiusv1alpha3.Application{}
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: id.Name()}, &item)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: id.Name()}, &item)
 	if err != nil && controller_runtime.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -105,13 +106,14 @@ func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, b
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	application := resourceprovider.ApplicationResource{}
 	err = json.Unmarshal(body, &application)
 	if err != nil {
 		return nil, err // Unexpected error, the payload has already been validated.
 	}
 
-	converted, err := NewKubernetesApplicationResource(id, application, r.namespace)
+	converted, err := NewKubernetesApplicationResource(id, application, namespace)
 	if err != nil {
 		return nil, err // Unexpected error, the payload has already been validated.
 	}
@@ -135,9 +137,10 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	item := radiusv1alpha3.Application{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: r.namespace,
+			Namespace: namespace,
 			Name:      r.getApplicationNameFromApplicationResourceId(id),
 		},
 	}
@@ -157,8 +160,9 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	application := radiusv1alpha3.Application{}
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -178,7 +182,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 			Version: RadiusVersion,
 			Kind:    kubernetesType + "List",
 		})
-		err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
+		err = r.client.List(ctx, &items, controller_runtime.InNamespace(namespace), controller_runtime.MatchingLabels{
 			kubernetes.LabelRadiusApplication: r.getApplicationNameFromResourceId(id),
 		})
 		if err != nil {
@@ -210,8 +214,9 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 }
 
 func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+	namespace := id.ResourceGroup
 	application := radiusv1alpha3.Application{}
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -231,7 +236,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 		Version: RadiusVersion,
 		Kind:    kindlist,
 	})
-	err = r.client.List(ctx, &items, controller_runtime.InNamespace(r.namespace), controller_runtime.MatchingLabels{
+	err = r.client.List(ctx, &items, controller_runtime.InNamespace(namespace), controller_runtime.MatchingLabels{
 		kubernetes.LabelRadiusApplication: r.getApplicationNameFromResourceId(id),
 	})
 	if err != nil {
@@ -262,9 +267,10 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 }
 
 func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+	namespace := id.ResourceGroup
 	application := radiusv1alpha3.Application{}
 
-	err := r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
+	err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
@@ -283,7 +289,7 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 		Kind:    kind,
 	})
 
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id))}, &item)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id))}, &item)
 	if err != nil {
 		return nil, err
 	}
@@ -313,6 +319,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	resource := resourceprovider.RadiusResource{}
 	err = json.Unmarshal(body, &resource)
 	if err != nil {
@@ -323,7 +330,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 	if !ok {
 		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
-	item, err := NewKubernetesRadiusResource(id, resource, r.namespace, k8sschema.GroupVersionKind{
+	item, err := NewKubernetesRadiusResource(id, resource, namespace, k8sschema.GroupVersionKind{
 		Group:   RadiusGroup,
 		Version: RadiusVersion,
 		Kind:    kind,
@@ -365,13 +372,14 @@ func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (res
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	kind, ok := armtemplate.GetKindFromArmType(r.getResourceTypeFromResourceId(id))
 	if !ok {
 		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
 
 	item := unstructured.Unstructured{}
-	item.SetNamespace(r.namespace)
+	item.SetNamespace(namespace)
 	item.SetName(kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id)))
 	item.SetGroupVersionKind(k8sschema.GroupVersionKind{
 		Group:   RadiusGroup,
@@ -393,6 +401,7 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	err = r.validateResourceType(id)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -409,7 +418,7 @@ func (r *rp) ListSecrets(ctx context.Context, input resourceprovider.ListSecrets
 		Version: RadiusVersion,
 		Kind:    kind,
 	})
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id))}, &item)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(id), r.getResourceNameFromResourceId(id))}, &item)
 	if err != nil {
 		return nil, err
 	}
@@ -479,6 +488,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	namespace := id.ResourceGroup
 	targetID := id.Truncate()
 
 	kind, ok := armtemplate.GetKindFromArmType(targetID.Types[len(targetID.Types)-1].Type)
@@ -492,7 +502,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 		Version: RadiusVersion,
 		Kind:    kind,
 	})
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: r.namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(targetID), r.getResourceNameFromResourceId(targetID))}, &item)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: kubernetes.MakeResourceName(r.getApplicationNameFromResourceId(targetID), r.getResourceNameFromResourceId(targetID))}, &item)
 	if err != nil {
 		return nil, err
 	}
