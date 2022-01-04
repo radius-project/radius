@@ -95,7 +95,7 @@ var envInitKubernetesCmd = &cobra.Command{
 		}
 
 		// Make sure namespace passed in exists.
-		err = kubernetes.CreateNamespace(cmd.Context(), client, namespace)
+		err = kubernetes.EnsureNamespace(cmd.Context(), client, namespace)
 		if err != nil {
 			return err
 		}
@@ -105,7 +105,7 @@ var envInitKubernetesCmd = &cobra.Command{
 		// The controller and other resources are all deployed to the
 		// 'radius-system' namespace. The namespace passed in will be
 		// where pods/services/deployments will be put for rad deploy.
-		err = kubernetes.CreateNamespace(cmd.Context(), client, helm.RadiusSystemNamespace)
+		err = kubernetes.EnsureNamespace(cmd.Context(), client, helm.RadiusSystemNamespace)
 		if err != nil {
 			return err
 		}
