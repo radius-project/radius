@@ -80,30 +80,25 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 		return err
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, errGroupCtx := errgroup.WithContext(ctx)
 	for _, resource := range resp.RadiusResourceList.Value {
 		r := *resource // prevent loopclouse issues (see https://pkg.go.dev/cmd/vet for more info)
 		g.Go(func() error {
 			types := strings.Split(*r.Type, "/")
 			resourceType := types[len(types)-1]
 			poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
-				ctx, rg, appName, resourceType, *r.Name, nil)
+				errGroupCtx, rg, appName, resourceType, *r.Name, nil)
 			if err != nil {
-				err = fmt.Errorf("Hit LOC:92 with error: %w", err)
-				fmt.Println(err)
 				return err
 			}
 
-			_, err = poller.PollUntilDone(ctx, radclient.PollInterval)
+			_, err = poller.PollUntilDone(errGroupCtx, radclient.PollInterval)
 			if err != nil {
 				if isNotFound(err) {
 					errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
 						resourceType, *r.Name, appName, dm.EnvironmentName)
-					err = fmt.Errorf("Hit LOC:102 with error: %w", radclient.NewRadiusError("ResourceNotFound", errorMessage))
-					return err
+					return radclient.NewRadiusError("ResourceNotFound", errorMessage)
 				}
-				err = fmt.Errorf("Hit LOC:103 with error: %w", err)
-				fmt.Println(err)
 				return err
 			}
 			return nil
