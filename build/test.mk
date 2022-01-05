@@ -15,7 +15,7 @@ test: ## Runs unit tests, excluding kubernetes controller tests
 
 .PHONY: test-functional-azure
 test-functional-azure: ## Runs Azure functional tests
-	CGO_ENABLED=1 go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20 $(GOTEST_OPTS)
 
 test-functional-kubernetes: ## Runs Kubernetes functional tests
 	CGO_ENABLED=1 go test ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
