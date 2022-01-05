@@ -79,8 +79,11 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 		return err
 	}
 	for _, resource := range resp.RadiusResourceList.Value {
-		if strings.HasPrefix(*resource.Type, "Microsoft.") {
-			// Connection to Azure resources is returned as a part of radius resource list response, but lifecycle of these resources is not managed by Radius RP
+		if !strings.HasPrefix(*resource.Type, "Microsoft.CustomProviders") {
+			// Only Radius resource types are deleted by Radius RP. Example of a Radius resource type: Microsoft.CustomProviders/mongo.com.MongoDatabase
+			// Connection to Azure resources is returned as a part of radius resource list response, but lifecycle of these resources is not managed by Radius RP and should be explicitly deleted separately.
+			// TODO: "Microsoft.CustomProviders" should be updated to reflect Radius RP name once we move out of custom RP mode:
+			// https://github.com/Azure/radius/issues/1637
 			continue
 		}
 

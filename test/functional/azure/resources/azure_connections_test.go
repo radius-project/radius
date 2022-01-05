@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package resources_test
 
 import (
@@ -23,7 +28,8 @@ func Test_AzureConnectionCognitiveService(t *testing.T) {
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{
-						Type: "Microsoft.CognitiveServices/accounts",
+						Type:            "Microsoft.CognitiveServices/accounts",
+						AzureConnection: true,
 					},
 					{
 						Type: azresources.ManagedIdentityUserAssignedIdentities,
