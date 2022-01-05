@@ -216,7 +216,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 	}
 
 	if subs.Default != nil {
-		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Use Subscription '%v' [Yn]?",  subs.Default.DisplayName), prompt.Yes)
+		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Use Subscription '%v' [Yn]?", subs.Default.DisplayName), prompt.Yes)
 		if err != nil {
 			return radazure.Subscription{}, err
 		}
@@ -312,7 +312,13 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		return "", err
 	}
 	if createNewRg {
-		defaultRgName := handlers.GenerateRandomName("rad", "rg")
+	
+		defaultRgName := "radius-rg"
+		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
+			// only generate a random name if the default doesn't exist already or existence check fails
+			defaultRgName = handlers.GenerateRandomName("rad", "rg")
+		}
+
 		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
 		name, err = prompt.TextWithDefault(promptStr, &defaultRgName, prompt.EmptyValidator)
 		if err != nil {
