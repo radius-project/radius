@@ -1,6 +1,6 @@
 version: 2
 registries:
-  mcr: # Define access for a private registry 
+  microsoft-container-registry: # Define access for a private registry 
     type: docker-registry
     url: https://mcr.microsoft.com
     username: anonymous
@@ -12,7 +12,9 @@ updates:
     schedule:
       interval: "daily"
  # Maintain dependencies for Docker
-  - package-ecosystem: "mcr"
+  - package-ecosystem: "docker"
+    registries:
+      - microsoft-container-registry
     directory: "/"
     schedule:
       interval: "daily"
