@@ -12,7 +12,7 @@ updates:
     schedule:
       interval: "daily"
  # Maintain dependencies for Docker
-  - package-ecosystem: "docker"
+  - package-ecosystem: "dockerhub"
     directory: "/"
     schedule:
       interval: "daily"
