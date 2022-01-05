@@ -316,7 +316,7 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		defaultRgName := "radius-rg"
 		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
 			// only generate a random name if the default doesn't exist already or existence check fails
-			defaultRgName = handlers.GenerateRandomName("rad", "rg")
+			defaultRgName = handlers.GenerateRandomName("radius", "rg")
 		}
 
 		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
