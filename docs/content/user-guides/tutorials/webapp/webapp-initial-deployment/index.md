@@ -19,11 +19,11 @@ Create a new file named `template.bicep` and paste the following:
 
 Next you'll add resources for the website's frontend.
 
-Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The `todoapp` and `todoRoute` resource in your template.bicep file will contain everything needed for the website frontend to run and expose a port to the internet.
+Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The `todoapp` and `todoRoute` resources in your template.bicep file will contain everything needed for the website frontend to run and expose a port to the internet.
 
 Your `todoapp`, which is a Container resource, will specify:
 - **container image:** `radiusteam/tutorial-todoapp`, a Docker image the container will run. This is where your website's front end code lives.
-- **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).[]
+- **bindings:** `http`, a Radius binding that adds the ability to listen for HTTP traffic (on port 3000 here).
 
 Your `todoRoute`, which is a HttpRoute resource, will specify:
 - **hostname:** `*`, the hostname that the container will be exposed to the internet on. `*` means that all hostnames will be accepted.

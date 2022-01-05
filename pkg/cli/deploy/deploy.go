@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
@@ -48,10 +49,25 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 
 	step := output.BeginStep(options.ProgressText)
 	output.LogInfo("")
+
+	// Watch for progress while we're deploying.
+	progressChan := make(chan clients.ResourceProgress, 1)
+	listener := NewProgressListener(progressChan)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		listener.Run()
+		wg.Done()
+	}()
+
 	result, err := deploymentClient.Deploy(ctx, clients.DeploymentOptions{
-		Template:   options.Template,
-		Parameters: options.Parameters,
+		Template:     options.Template,
+		Parameters:   options.Parameters,
+		ProgressChan: progressChan,
 	})
+
+	// Drain any UI progress updates before we process the results of the deployment.
+	wg.Wait()
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}

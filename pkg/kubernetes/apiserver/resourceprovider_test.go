@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	Namespace = "default"
+	Namespace = "mynamespace"
 )
 
 func Test_ListApplication(t *testing.T) {

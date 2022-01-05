@@ -14,6 +14,7 @@ In this step you will learn how to add a database and connect to it from the app
 We'll discuss template.bicep changes and then provide the full, updated file before deployment. 
 
 ## Add db component
+
 A `db` database component is used to specify a few properties about the database: 
 
 - **resource type:** `mongo.com.MongoDatabase` represents a MongoDB compatible database.
@@ -39,7 +40,7 @@ Radius captures both logical relationships and related operational details. Exam
 
 Once the database is defined as a Component, you can connect to it by referencing the `db` component from within the `todoapp` Component via the [`connections`]({{< ref connections-model >}}) section. 
 
-[`connections`]({{< ref connections-model >}}) is used to configure relationships between two components. The `db` is of kind `mongo.com.MongoDatabase`, which supports the `mongodb.com/Mongo` MongoDB protocol. Configuring a dependency on this protocal is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db`.
+[`connections`]({{< ref connections-model >}}) is used to configure relationships between two components. The `db` is of kind `mongo.com.MongoDatabase`, which supports the `mongodb.com/Mongo` MongoDB protocol. Configuring a dependency on this protocol is the other part of specifying a relationship. This declares the *intention* from the `todoapp` component to communicate with the `db`.
 
 Here's what the `todoapp` component will look like with the `connections` section added within its properties:
 
@@ -65,7 +66,7 @@ Update your `template.bicep` file to match the full application definition:
 
 ## Deploy application with database
 
-1. Now you are ready to re-deploy the application, including the Azure CosmosDB database. Switch to the command-line and run: 
+1. Now you are ready to re-deploy the application, including the Mongo database. Switch to the command-line and run: 
 
    ```sh
    rad deploy template.bicep

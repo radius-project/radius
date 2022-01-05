@@ -11,6 +11,13 @@ import (
 	"github.com/Azure/radius/pkg/azure/azresources"
 )
 
+const (
+	ProgressFailed    = "Failed"
+	ProgressCompleted = "Completed"
+)
+
+var ProgressDefaultSpinner = []string{".  ", ".. ", "..."}
+
 // ShowResource returns true if the resource should be displayed to the user.
 func ShowResource(id azresources.ResourceID) bool {
 	if len(id.Types) == 1 && id.Types[0].Name == "radiusv3" {
@@ -23,7 +30,14 @@ func ShowResource(id azresources.ResourceID) bool {
 
 // FormatResourceForDisplay returns a display string for the resource type and name.
 func FormatResourceForDisplay(id azresources.ResourceID) string {
-	return fmt.Sprintf("%-20s %-15s", FormatResourceTypeForDisplay(id), FormatResourceNameForDisplay(id))
+	return fmt.Sprintf("%-15s %-20s", FormatResourceNameForDisplay(id), FormatResourceTypeForDisplay(id))
+}
+
+// FormatResourceForProgressDisplay returns a display string for a progress spinner, resource type, and name.
+func FormatResourceForProgressDisplay(id azresources.ResourceID) string {
+	// NOTE: this format string creates ... a format string! That's intentional
+	// because the progress tracker needs somewhere to put the progress.
+	return fmt.Sprintf("%s %-15s %-20s", "%-20s", FormatResourceNameForDisplay(id), FormatResourceTypeForDisplay(id))
 }
 
 // FormatResourceNameForDisplay returns a display string for the resource name.

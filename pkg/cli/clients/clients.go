@@ -38,6 +38,23 @@ type DeploymentOptions struct {
 
 	// Parameters is the set of parameters passed to the deployment.
 	Parameters DeploymentParameters
+
+	// ProgressChan is a channel used to signal progress of the deployment operation.
+	// The deployment client MUST close the channel if it was provided.
+	ProgressChan chan<- ResourceProgress
+}
+
+type ResourceStatus string
+
+const (
+	StatusStarted   ResourceStatus = "Started"
+	StatusFailed    ResourceStatus = "Failed"
+	StatusCompleted ResourceStatus = "Completed"
+)
+
+type ResourceProgress struct {
+	Resource azresources.ResourceID
+	Status   ResourceStatus
 }
 
 type DeploymentOutput struct {
