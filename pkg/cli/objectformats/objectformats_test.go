@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/stretchr/testify/require"
