@@ -1,8 +1,8 @@
 version: 2
 registries:
-  dockerhub: # Define access for a private registry 
+  mcr: # Define access for a private registry 
     type: docker-registry
-    url: mcr.microsoft.com
+    url: https://mcr.microsoft.com
     username: anonymous
     password: anonymous
 updates:
@@ -12,7 +12,7 @@ updates:
     schedule:
       interval: "daily"
  # Maintain dependencies for Docker
-  - package-ecosystem: "dockerhub"
+  - package-ecosystem: "mcr"
     directory: "/"
     schedule:
       interval: "daily"
