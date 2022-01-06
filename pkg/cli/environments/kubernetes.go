@@ -100,7 +100,7 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 	}
 	azcred := &radclient.AnonymousCredential{}
 
-	connection := arm.NewConnection(fmt.Sprintf("%s%s/apis/api.radius.dev/v1alpha3", restConfig.Host, restConfig.APIPath), azcred, &arm.ConnectionOptions{
+	connection := arm.NewConnection(fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", restConfig.Host+restConfig.APIPath), azcred, &arm.ConnectionOptions{
 		HTTPClient: &KubernetesRoundTripper{Client: roundTripper},
 	})
 	return &azure.ARMManagementClient{
