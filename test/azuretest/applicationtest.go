@@ -193,7 +193,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	} else {
 		t.Logf("validating deletion of resources for %s", at.Description)
 		for _, ns := range at.CollectAllNamespaces() {
-			validation.ValidateNoPodsInNamespace(ctx, t, at.Options.K8sClient, ns)
+			validation.ValidateNoPodsInApplication(ctx, t, at.Options.K8sClient, ns, at.Application)
 		}
 		t.Logf("finished deletion of resources for %s", at.Description)
 	}
