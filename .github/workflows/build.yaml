@@ -240,7 +240,7 @@ jobs:
       run: chmod +x rad
       working-directory: dist
     - name: Create KinD Cluster
-      uses: helm/kind-action@v1.0.0
+      uses: helm/kind-action@v1.2.0
       with:
         cluster_name: radius
         version:  v0.11.0
