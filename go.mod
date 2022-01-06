@@ -8,9 +8,8 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.11.0
 	github.com/Azure/azure-sdk-for-go/sdk/to v0.1.4
 	github.com/Azure/go-autorest/autorest v0.11.19
-	github.com/Azure/go-autorest/autorest/adal v0.9.14 // indirect
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
-	github.com/Azure/go-autorest/autorest/azure/cli v0.4.2
+	github.com/Azure/go-autorest/autorest/azure/cli v0.4.4
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/Azure/secrets-store-csi-driver-provider-azure v1.0.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
@@ -28,7 +27,7 @@ require (
 	github.com/gosuri/uilive v0.0.4
 	github.com/klauspost/compress v1.11.12 // indirect
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-isatty v0.0.14
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4 // indirect
