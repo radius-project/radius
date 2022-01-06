@@ -322,7 +322,7 @@ jobs:
     # We create a new test environment in the background so they get cycled through
     # If there are no enviroments available we'll wait for this one to succeed and take it.
     - name: Create new test environment (async)
-      uses: actions/github-script@v4
+      uses: actions/github-script@v5
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
@@ -400,7 +400,7 @@ jobs:
     # dirtying state in a preserved environment
     - name: Delete test environment (async)
       if: ${{ success() || steps.reserve.outcome == 'success' }}
-      uses: actions/github-script@v4
+      uses: actions/github-script@v5
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
