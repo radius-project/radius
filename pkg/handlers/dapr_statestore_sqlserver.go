@@ -15,7 +15,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/healthcontract"

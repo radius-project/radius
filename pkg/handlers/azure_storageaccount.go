@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2021-04-01/storage"
 	"github.com/Azure/radius/pkg/azure/armauth"
 	"github.com/Azure/radius/pkg/azure/azresources"
