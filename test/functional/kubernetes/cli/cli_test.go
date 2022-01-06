@@ -136,8 +136,8 @@ b\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
 				t.Run("application show", func(t *testing.T) {
 					output, err := cli.ApplicationShow(ctx, application)
 					require.NoError(t, err)
-					expected := regexp.MustCompile(`APPLICATION
-kubernetes-cli
+					expected := regexp.MustCompile(`APPLICATION\s+PROVISIONING_STATE\s+HEALTH_STATE
+kubernetes-cli\s+.*Provisioned\s+.*[h|H]ealthy\s*
 `)
 					match := expected.MatchString(output)
 					require.Equal(t, true, match)
