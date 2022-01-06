@@ -25,7 +25,7 @@ resource cognitiveServicesAccount 'Microsoft.CognitiveServices/accounts@2017-04-
   location: resourceGroup().location
   kind: 'TextTranslation'
   sku: {
-    name: 'F0'
+    name: 'S1'
   }
 }
 
