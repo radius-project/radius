@@ -53,7 +53,7 @@ jobs:
             return
           }
 
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
@@ -64,7 +64,7 @@ jobs:
           };
       
           // Fire repository_dispatch event to trigger e2e test
-          await github.repos.createDispatchEvent({
+          await github.rest.repos.createDispatchEvent({
             owner: context.issue.owner,
             repo: context.issue.repo,
             event_type: "create-environment",
@@ -84,7 +84,7 @@ jobs:
             return
           }
 
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
@@ -117,7 +117,7 @@ jobs:
           };
       
           // Fire repository_dispatch event to trigger e2e test
-          await github.repos.createDispatchEvent({
+          await github.rest.repos.createDispatchEvent({
             owner: context.issue.owner,
             repo: context.issue.repo,
             event_type: "delete-environment",

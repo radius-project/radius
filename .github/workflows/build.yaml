@@ -326,14 +326,14 @@ jobs:
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
           });
 
           // Fire repository_dispatch event to trigger environment creation
-          await github.repos.createDispatchEvent({
+          await github.rest.repos.createDispatchEvent({
             owner: context.issue.owner,
             repo: context.issue.repo,
             event_type: "create-environment",
@@ -404,14 +404,14 @@ jobs:
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
           });
 
           // Fire repository_dispatch event delete environment
-          await github.repos.createDispatchEvent({
+          await github.rest.repos.createDispatchEvent({
             owner: context.issue.owner,
             repo: context.issue.repo,
             event_type: "delete-environment",
