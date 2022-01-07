@@ -1,4 +1,4 @@
-module github.com/Azure/radius
+module github.com/project-radius/radius
 
 go 1.16
 

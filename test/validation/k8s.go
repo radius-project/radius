@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	kuberneteskeys "github.com/Azure/radius/pkg/kubernetes"
 	"github.com/google/go-cmp/cmp"
+	kuberneteskeys "github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"

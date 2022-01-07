@@ -6,10 +6,10 @@
 package cmd
 
 import (
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/cli/objectformats"
-	"github.com/Azure/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 

@@ -12,7 +12,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
 var (

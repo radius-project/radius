@@ -29,14 +29,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/Azure/radius/pkg/cli/kubernetes"
-	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	controllers "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	controllers "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
+	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
+	kubernetesmodel "github.com/project-radius/radius/pkg/model/kubernetes"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -251,7 +251,7 @@ func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
 }
 
 func getEnvTestBinaryPath() (string, error) {
-	// TODO https://github.com/Azure/radius/issues/698, remove hard coded version
+	// TODO https://github.com/project-radius/radius/issues/698, remove hard coded version
 	cmd := exec.Command("setup-envtest", "use", "-p", "path", "1.19.x", "--arch", "amd64")
 	var out bytes.Buffer
 	cmd.Stdout = &out

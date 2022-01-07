@@ -9,9 +9,9 @@ import (
 	"context"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/renderers"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)

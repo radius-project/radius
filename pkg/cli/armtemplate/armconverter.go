@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Azure/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

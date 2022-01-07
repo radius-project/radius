@@ -5,7 +5,7 @@
 
 package volumev1alpha3
 
-import "github.com/Azure/radius/pkg/azure/azresources"
+import "github.com/project-radius/radius/pkg/azure/azresources"
 
 const (
 	StorageKeyValue    = "azurestorageaccountkey"

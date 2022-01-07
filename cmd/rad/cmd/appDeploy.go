@@ -10,13 +10,13 @@ import (
 	"os"
 	"path"
 
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/bicep"
-	"github.com/Azure/radius/pkg/cli/builders"
-	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/cli/radyaml"
-	"github.com/Azure/radius/pkg/cli/stages"
-	"github.com/Azure/radius/pkg/version"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/builders"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/radyaml"
+	"github.com/project-radius/radius/pkg/cli/stages"
+	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
 

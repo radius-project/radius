@@ -8,7 +8,7 @@ package handler
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
 type ValidatorFactory = func(resourceType string) (schema.Validator, error)

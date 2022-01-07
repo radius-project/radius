@@ -12,10 +12,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/cli/azure"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 )
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.

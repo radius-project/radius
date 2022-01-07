@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 )
 
 func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer autorest.Authorizer, resourceType string) (string, error) {

@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Azure/radius/pkg/tools/codegen/schema"
+	"github.com/project-radius/radius/pkg/tools/codegen/schema"
 )
 
 func checkFlags(inputFiles []string, outputFile string) {

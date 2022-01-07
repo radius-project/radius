@@ -10,10 +10,10 @@ import (
 	"path"
 	"testing"
 
-	"github.com/Azure/radius/pkg/cli/bicep"
-	"github.com/Azure/radius/pkg/cli/radyaml"
-	"github.com/Azure/radius/test/radcli"
-	"github.com/Azure/radius/test/testcontext"
+	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/radyaml"
+	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 

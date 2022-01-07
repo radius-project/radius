@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/kubernetes"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,7 +45,7 @@ func (dc *AKSDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 	}
 
 	// TODO: Right now this is VERY coupled to how we do resource creation on the server.
-	// This will be improved as part of https://github.com/Azure/radius/issues/1247 .
+	// This will be improved as part of https://github.com/project-radius/radius/issues/1247 .
 	//
 	// When that change goes in we'll be able to work with the route type directly to get this information.
 	for _, output := range status.OutputResources {

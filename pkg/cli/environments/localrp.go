@@ -9,12 +9,12 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/radius/pkg/azure/aks"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/cli/azure"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/kubernetes"
-	"github.com/Azure/radius/pkg/cli/localrp"
+	"github.com/project-radius/radius/pkg/azure/aks"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/localrp"
 	k8s "k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

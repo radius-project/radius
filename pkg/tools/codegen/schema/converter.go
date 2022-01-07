@@ -9,7 +9,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
 //go:embed boilerplate.json

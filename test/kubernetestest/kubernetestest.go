@@ -13,11 +13,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/kubernetes"
-	"github.com/Azure/radius/test/radcli"
-	"github.com/Azure/radius/test/testcontext"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/testcontext"
+	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -252,7 +252,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
 
 				// TODO: create k8s client for validating output resources
-				// https://github.com/Azure/radius/issues/778
+				// https://github.com/project-radius/radius/issues/778
 				// validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.RadiusResources)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}

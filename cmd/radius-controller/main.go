@@ -27,13 +27,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/Azure/radius/pkg/hosting"
-	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/kubernetes/apiserver"
-	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/hosting"
+	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/kubernetes/apiserver"
+	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
+	kubernetesmodel "github.com/project-radius/radius/pkg/model/kubernetes"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )

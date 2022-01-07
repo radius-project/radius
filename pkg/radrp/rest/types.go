@@ -6,7 +6,7 @@
 package rest
 
 import (
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 // Represents the possible ProvisioningState values

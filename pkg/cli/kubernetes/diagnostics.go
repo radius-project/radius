@@ -15,10 +15,10 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,7 +56,7 @@ func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, op
 	}
 
 	// TODO: Right now this is VERY coupled to how we do resource creation on the server.
-	// This will be improved as part of https://github.com/Azure/radius/issues/1247 .
+	// This will be improved as part of https://github.com/project-radius/radius/issues/1247 .
 	//
 	// When that change goes in we'll be able to work with the route type directly to get this information.
 	for _, output := range httproute.Status.Resources {

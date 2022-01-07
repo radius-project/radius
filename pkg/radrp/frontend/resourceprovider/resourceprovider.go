@@ -12,20 +12,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/backend/deployment"
-	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
 var ErrUnsupportedResourceType = errors.New("unsupported resource type")
 
-//go:generate mockgen -destination=./mock_resourceprovider.go -package=resourceprovider -self_package github.com/Azure/radius/pkg/radrp/frontend/resourceprovider github.com/Azure/radius/pkg/radrp/frontend/resourceprovider ResourceProvider
+//go:generate mockgen -destination=./mock_resourceprovider.go -package=resourceprovider -self_package github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider ResourceProvider
 
 // ResourceProvider defines the business logic of the resource provider for Radius.
 type ResourceProvider interface {

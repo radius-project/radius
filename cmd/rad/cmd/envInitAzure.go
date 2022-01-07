@@ -23,16 +23,16 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/cli"
-	radazure "github.com/Azure/radius/pkg/cli/azure"
-	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/cli/prompt"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/version"
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/cli"
+	radazure "github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -312,7 +312,7 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		return "", err
 	}
 	if createNewRg {
-	
+
 		defaultRgName := "radius-rg"
 		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
 			// only generate a random name if the default doesn't exist already or existence check fails
@@ -517,7 +517,7 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 			return fmt.Errorf("failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
 		}
 
-		// See: https://github.com/Azure/radius/issues/520
+		// See: https://github.com/project-radius/radius/issues/520
 		// We've seen users still hitting issues where they see the error:
 		// "PodIdentity addon is not allowed since feature 'Microsoft.ContainerService/EnablePodIdentityPreview' is not enabled"
 		// Our working theory is that we need to force the provider to be registered again,

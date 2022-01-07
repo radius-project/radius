@@ -8,7 +8,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

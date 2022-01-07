@@ -8,9 +8,9 @@ package outputresource
 import (
 	"errors"
 
-	"github.com/Azure/radius/pkg/algorithm/graph"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/algorithm/graph"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )

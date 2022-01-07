@@ -13,8 +13,8 @@ import (
 	"path"
 	"runtime"
 
-	"github.com/Azure/radius/pkg/version"
 	"github.com/mitchellh/go-homedir"
+	"github.com/project-radius/radius/pkg/version"
 )
 
 const radBicepEnvVar = "RAD_BICEP"

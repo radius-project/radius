@@ -10,11 +10,11 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/health/db"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/health/db"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) HealthHandler {

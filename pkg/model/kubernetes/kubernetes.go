@@ -6,19 +6,19 @@
 package kubernetes
 
 import (
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/dapr"
-	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/gateway"
-	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/rabbitmqv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/dapr"
+	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/gateway"
+	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/rabbitmqv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/redisv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

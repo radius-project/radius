@@ -8,7 +8,7 @@ package healthcontract
 import (
 	"time"
 
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 // ChannelBufferSize defines the buffer size for health registration channel

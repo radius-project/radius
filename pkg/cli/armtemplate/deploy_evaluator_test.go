@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"

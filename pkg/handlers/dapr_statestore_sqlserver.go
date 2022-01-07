@@ -16,14 +16,14 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/gofrs/uuid"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -184,7 +184,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 	// Generate unique server name
 	// This logic is repeated all over the place in the code today
 	// and it doesn't consider max length allowed for the resource or the length of the base string,
-	// tracking issue to improve this: https://github.com/Azure/radius/issues/467
+	// tracking issue to improve this: https://github.com/project-radius/radius/issues/467
 	for i := 0; i < retryAttempts; i++ {
 		// 3-24 characters - all alphanumeric
 		uid, err := uuid.NewV4()

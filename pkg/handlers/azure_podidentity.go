@@ -14,12 +14,12 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 const (
@@ -82,8 +82,8 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 	identities = append(identities, clusterPodIdentity)
 
 	// Handling of eventual consistency here can really use some work and improvements, more details:
-	// https://github.com/Azure/radius/issues/1010
-	// https://github.com/Azure/radius/issues/660
+	// https://github.com/project-radius/radius/issues/1010
+	// https://github.com/project-radius/radius/issues/660
 	// For now just moving it over as is from renderer to limit the scope of changes.
 	MaxRetries := 100
 	var resultFuture containerservice.ManagedClustersCreateOrUpdateFuture

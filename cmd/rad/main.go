@@ -6,7 +6,7 @@
 package main
 
 import (
-	"github.com/Azure/radius/cmd/rad/cmd"
+	"github.com/project-radius/radius/cmd/rad/cmd"
 )
 
 func main() {

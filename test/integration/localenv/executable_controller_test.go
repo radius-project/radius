@@ -28,9 +28,9 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	"github.com/Azure/radius/test/testcontext"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
+	"github.com/project-radius/radius/test/testcontext"
 )
 
 var (
@@ -120,7 +120,7 @@ func getKubeAssetsDir() (string, error) {
 		return assetsDirectory, nil
 	}
 
-	// TODO https://github.com/Azure/radius/issues/698, remove hard coded version
+	// TODO https://github.com/project-radius/radius/issues/698, remove hard coded version
 	cmd := exec.Command("setup-envtest", "use", "-p", "path", "1.19.x", "--arch", "amd64")
 	var out bytes.Buffer
 	cmd.Stdout = &out

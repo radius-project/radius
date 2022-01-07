@@ -14,9 +14,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

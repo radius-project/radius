@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 const ShutdownTimeout = time.Second * 10

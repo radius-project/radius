@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/radius/test/radcli"
+	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
 

@@ -12,10 +12,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 

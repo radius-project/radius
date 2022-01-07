@@ -8,8 +8,8 @@ package controllers
 import (
 	"testing"
 
-	"github.com/Azure/radius/test/kubernetestest"
-	"github.com/Azure/radius/test/testcontext"
+	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 

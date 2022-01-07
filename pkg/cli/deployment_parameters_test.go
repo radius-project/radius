@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
 )
 

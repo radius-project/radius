@@ -9,10 +9,10 @@ import (
 	context "context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-openapi/jsonpointer"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 func NewSecretValueClient(arm armauth.ArmConfig) SecretValueClient {

@@ -14,8 +14,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -87,7 +87,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 			// Only Radius resource types are deleted by Radius RP. Example of a Radius resource type: Microsoft.CustomProviders/mongo.com.MongoDatabase
 			// Connection to Azure resources is returned as a part of radius resource list response, but lifecycle of these resources is not managed by Radius RP and should be explicitly deleted separately.
 			// TODO: "Microsoft.CustomProviders" should be updated to reflect Radius RP name once we move out of custom RP mode:
-			// https://github.com/Azure/radius/issues/1637
+			// https://github.com/project-radius/radius/issues/1637
 			continue
 		}
 

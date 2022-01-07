@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-BASE_PACKAGE_NAME := github.com/Azure/radius
+BASE_PACKAGE_NAME := github.com/project-radius/radius
 OUT_DIR := ./dist
 
 GOOS ?= $(shell go env GOOS)

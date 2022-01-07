@@ -10,8 +10,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/cli/scaffold"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/scaffold"
 	"github.com/spf13/cobra"
 )
 

@@ -10,8 +10,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -42,7 +42,7 @@ func NewRadrpDB(m *mongo.Database) RadrpDB {
 	}
 }
 
-//go:generate mockgen -destination=./mock_db.go -package=db -self_package github.com/Azure/radius/pkg/radrp/db github.com/Azure/radius/pkg/radrp/db RadrpDB
+//go:generate mockgen -destination=./mock_db.go -package=db -self_package github.com/project-radius/radius/pkg/radrp/db github.com/project-radius/radius/pkg/radrp/db RadrpDB
 
 // RadrpDB is our database abstraction.
 //

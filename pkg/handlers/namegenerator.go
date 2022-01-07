@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/gofrs/uuid"
 	"github.com/marstr/randname"
+	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 // GenerateRandomName generates a string with the specified prefix and a random 5-character suffix.

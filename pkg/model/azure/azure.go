@@ -6,28 +6,28 @@
 package azure
 
 import (
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/dapr"
-	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/gateway"
-	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/microsoftsqlv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/dapr"
+	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/daprpubsubv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/gateway"
+	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/keyvaultv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/manualscalev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/microsoftsqlv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 
-	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/renderers/redisv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/servicebusqueuev1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -54,7 +54,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 		radclient.ContainerConnectionKindAzure: {
 			// RBAC for non-Radius Azure resources. Supports user specified roles.
-			// More information can be found here: https://github.com/Azure/radius/issues/1321
+			// More information can be found here: https://github.com/project-radius/radius/issues/1321
 		},
 	}
 

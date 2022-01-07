@@ -12,12 +12,12 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/test/kubernetestest"
-	"github.com/Azure/radius/test/radcli"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/google/go-cmp/cmp"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )

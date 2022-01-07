@@ -11,12 +11,12 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/cli/prompt"
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/keys"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
