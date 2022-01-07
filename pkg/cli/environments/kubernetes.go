@@ -25,6 +25,7 @@ type KubernetesEnvironment struct {
 	Context            string `mapstructure:"context" validate:"required"`
 	Namespace          string `mapstructure:"namespace" validate:"required"`
 	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
+	ApiServerBaseURL   string `mapstructure:"apiserverbaseurl,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
@@ -100,9 +101,16 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 	}
 	azcred := &radclient.AnonymousCredential{}
 
-	connection := arm.NewConnection(fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", restConfig.Host+restConfig.APIPath), azcred, &arm.ConnectionOptions{
-		HTTPClient: &KubernetesRoundTripper{Client: roundTripper},
-	})
+	// ApiServerBaseURL will change the
+	var connection *arm.Connection
+	if e.ApiServerBaseURL != "" {
+		connection = arm.NewConnection(fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", e.ApiServerBaseURL), azcred, &arm.ConnectionOptions{})
+	} else {
+		connection = arm.NewConnection(fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", restConfig.Host+restConfig.APIPath), azcred, &arm.ConnectionOptions{
+			HTTPClient: &KubernetesRoundTripper{Client: roundTripper},
+		})
+	}
+
 	return &azure.ARMManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
