@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/output"
+	"github.com/Azure/radius/pkg/cli/radyaml"
 )
 
 // Run processes the stages of a rad.yaml. This is expected to be used from the CLI and thus writes
@@ -36,6 +37,19 @@ func Run(ctx context.Context, options Options) ([]StageResult, error) {
 		}
 	}
 
+	// Validate and process stages up front so we can report errors eagerly.
+	// Note: we process all stages here so we can validate the ones
+	// that aren't running.
+	stages := []radyaml.Stage{}
+	for _, raw := range options.Manifest.Stages {
+		stage, err := raw.ApplyProfile(options.Profile)
+		if err != nil {
+			return nil, err
+		}
+
+		stages = append(stages, stage)
+	}
+
 	if length == 0 {
 		output.LogInfo("Nothing to do...")
 		return nil, nil
@@ -51,7 +65,8 @@ func Run(ctx context.Context, options Options) ([]StageResult, error) {
 	}
 
 	for i := 0; i < length; i++ {
-		stage := options.Manifest.Stages[i]
+		stage := stages[i]
+
 		processor.CurrrentStage = stageInfo{
 			Name:         stage.Name,
 			DisplayIndex: i + 1,

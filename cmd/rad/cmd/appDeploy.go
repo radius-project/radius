@@ -34,6 +34,11 @@ By default 'rad app deploy' will run all stages. You can specify a stage at the 
 which stages run. If you specify a stage at the command line all stages before and including the specified
 stage are run. Stages after the specified stage are skipped.
 
+A named profile can be specified using the '--profile' command line option. Profiles allow you to define
+overrides in rad.yaml for specific deployment profiles of the application. For example, you could replace
+the infrastructure used by the application in development scenarios by defining a 'dev' profile that overrides
+the infra phase with a different file.
+
 You can specify parameters at the command line using the '--parameter' flag ('-p' for short). Parameters
 specified at the command line apply to all stages and must therefore exist in the template file for every stage. 
 
@@ -59,6 +64,11 @@ rad app deploy
 # deploy to a specific environment
 
 rad app deploy --environment production
+
+
+# deploy a profile of the application
+
+rad app deploy --profile staging
 
 
 # specify the 'infra' stage
@@ -92,8 +102,9 @@ rad app deploy --parameters @myfile.json --parameters version=latest
 func init() {
 	applicationCmd.AddCommand(appDeployCmd)
 	appDeployCmd.Flags().StringP("environment", "e", "", "The environment name")
-	appDeployCmd.Flags().StringP("radfile", "r", "", "The path to rad.yaml. The default is './rad/rad.yaml'")
+	appDeployCmd.Flags().StringP("radfile", "r", "", "The path to rad.yaml. The default is './rad.yaml'")
 	appDeployCmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
+	appDeployCmd.Flags().String("profile", "", "Specify profile of the application for deployment")
 }
 
 func deployApplication(cmd *cobra.Command, args []string) error {
@@ -114,6 +125,11 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
+	if err != nil {
+		return err
+	}
+
+	profile, err := cmd.Flags().GetString("profile")
 	if err != nil {
 		return err
 	}
@@ -158,6 +174,7 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 		BaseDirectory: baseDir,
 		Manifest:      manifest,
 		Parameters:    parameters,
+		Profile:       profile,
 		FinalStage:    stage,
 	}
 
