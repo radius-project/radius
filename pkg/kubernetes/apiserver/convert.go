@@ -266,14 +266,14 @@ func mapDeepGet(input map[string]interface{}, fields ...string) (interface{}, er
 
 // NewKubernetesRadiusResource converts a radius resource to a kubernetes resource.
 // Ignores the status field.
-func NewKubernetesRadiusResource(id azresources.ResourceID, input resourceprovider.RadiusResource, namespace string, gvk k8sschema.GroupVersionKind) (unstructured.Unstructured, error) {
+func NewKubernetesRadiusResource(id azresources.ResourceID, input resourceprovider.RadiusResource, namespace string, gvk k8sschema.GroupVersionKind) (unstructured.Unstructured, map[string]string, error) {
 	properties := input.Properties
 	if properties == nil {
 		properties = map[string]interface{}{}
 	}
 
 	template := map[string]interface{}{
-		"name": input.Name,
+		"name": id.Types[len(id.Types)-1].Name,
 		"id":   id.ID,
 		"type": id.Types[len(id.Types)-1].Type,
 		"body": map[string]interface{}{
@@ -281,9 +281,31 @@ func NewKubernetesRadiusResource(id azresources.ResourceID, input resourceprovid
 		},
 	}
 
+	// In the conversion we remove secrets from the resource body and store them
+	// as a separate secret object.
+	secrets := map[string]string{}
+	obj, hasSecrets := properties["secrets"]
+	if hasSecrets {
+		rawSecrets, rightType := obj.(map[string]interface{})
+		if !rightType {
+			return unstructured.Unstructured{}, nil, fmt.Errorf("the secrets field should be a map, got %T", obj)
+		}
+
+		for k, v := range rawSecrets {
+			str, isString := v.(string)
+			if !isString {
+				return unstructured.Unstructured{}, nil, fmt.Errorf("secrets must be strings, got %T", v)
+			}
+			secrets[k] = str
+		}
+
+		// Redact the secrets
+		delete(properties, "secrets")
+	}
+
 	b, err := json.Marshal(template)
 	if err != nil {
-		return unstructured.Unstructured{}, err
+		return unstructured.Unstructured{}, nil, err
 	}
 
 	application := id.Types[len(id.Types)-2].Name
@@ -307,5 +329,5 @@ func NewKubernetesRadiusResource(id azresources.ResourceID, input resourceprovid
 	}
 
 	unst.SetGroupVersionKind(gvk)
-	return unst, err
+	return unst, secrets, err
 }

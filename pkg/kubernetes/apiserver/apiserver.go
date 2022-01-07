@@ -57,7 +57,7 @@ func (api *APIServerExtension) Run(ctx context.Context) error {
 		return err
 	}
 
-	rp := NewResourceProvider(c)
+	rp := NewResourceProvider(c, "/apis/api.radius.dev/v1alpha3")
 	s := server.NewServer(ctx, server.ServerOptions{
 		Address:      fmt.Sprintf(":%v", api.options.Port),
 		Authenticate: false,

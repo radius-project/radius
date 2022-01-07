@@ -25,8 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var ErrUnsupportedResourceType = errors.New("unsupported resource type")
@@ -37,12 +37,13 @@ const (
 )
 
 // NewResourceProvider creates a new ResourceProvider.
-func NewResourceProvider(client controller_runtime.Client) resourceprovider.ResourceProvider {
-	return &rp{client: client}
+func NewResourceProvider(client controller_runtime.Client, baseURL string) resourceprovider.ResourceProvider {
+	return &rp{client: client, baseURL: baseURL}
 }
 
 type rp struct {
-	client controller_runtime.Client
+	client  controller_runtime.Client
+	baseURL string
 }
 
 // As a general design principle, returning an error from the RP signals an internal error (500).
@@ -145,7 +146,7 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 		},
 	}
 	err = r.client.Delete(ctx, &item)
-	if err != nil && client.IgnoreNotFound(err) != nil {
+	if err != nil && controller_runtime.IgnoreNotFound(err) != nil {
 		return nil, err
 	}
 
@@ -163,7 +164,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 	namespace := id.ResourceGroup
 	application := radiusv1alpha3.Application{}
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
-	if err != nil && client.IgnoreNotFound(err) == nil {
+	if err != nil && controller_runtime.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
@@ -217,7 +218,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	namespace := id.ResourceGroup
 	application := radiusv1alpha3.Application{}
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
-	if err != nil && client.IgnoreNotFound(err) == nil {
+	if err != nil && controller_runtime.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
@@ -271,7 +272,7 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.R
 	application := radiusv1alpha3.Application{}
 
 	err := r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: r.getApplicationNameFromResourceId(id)}, &application)
-	if err != nil && client.IgnoreNotFound(err) == nil {
+	if err != nil && controller_runtime.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
@@ -330,7 +331,16 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 	if !ok {
 		return nil, fmt.Errorf("unsupported resource type %s", r.getResourceTypeFromResourceId(id))
 	}
-	item, err := NewKubernetesRadiusResource(id, resource, namespace, k8sschema.GroupVersionKind{
+
+	application := radiusv1alpha3.Application{}
+	err = r.client.Get(ctx, types.NamespacedName{Name: r.getApplicationNameFromResourceId(id), Namespace: namespace}, &application)
+	if err != nil && controller_runtime.IgnoreNotFound(err) == nil {
+		return rest.NewNotFoundResponse(id), nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	item, secrets, err := NewKubernetesRadiusResource(id, resource, namespace, k8sschema.GroupVersionKind{
 		Group:   RadiusGroup,
 		Version: RadiusVersion,
 		Kind:    kind,
@@ -339,21 +349,54 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, err // Unexpected error, the payload has already been validated.
 	}
 
+	// Resources created in Radius are 'owned' by their application for deletion purposes.
+	//
+	// Ignore already owned error as if the resource is already created, it will be owned
+	err = controllerutil.SetControllerReference(&application, &item, r.client.Scheme())
+	_, ok = err.(*controllerutil.AlreadyOwnedError)
+	if err != nil && !ok {
+		return nil, err
+	}
+
 	err = r.client.Patch(ctx, &item, controller_runtime.Apply, controller_runtime.FieldOwner("rad-api-server"))
 	if err != nil {
 		return nil, err
 	}
 
+	// Create a secret as backing storage for any secret values the resource may contain.
+	//
+	// The secret is 'owned' by the Radius resource.
+	secret := kubernetes.MakeScrapedSecret(r.getApplicationNameFromResourceId(id), r.getResourceTypeFromResourceId(id), r.getResourceNameFromResourceId(id))
+	secret.SetNamespace(item.GetNamespace())
+	secret.StringData = secrets
+	err = controllerutil.SetControllerReference(&item, secret, r.client.Scheme())
+	if err != nil {
+		return nil, err
+	}
+
+	if len(secrets) > 0 {
+		err = r.client.Patch(ctx, secret, controller_runtime.Apply, controller_runtime.FieldOwner("rad-api-server"))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Ensure the secret is deleted if it would be empty.
+		err = controller_runtime.IgnoreNotFound(r.client.Delete(ctx, secret))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	generation := item.GetGeneration()
 	oid := id.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: fmt.Sprintf("%d", generation)})
 
-	k8sOutput := radiusv1alpha3.Resource{}
 	b, err := item.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(b, &resource)
+	k8sOutput := radiusv1alpha3.Resource{}
+	err = json.Unmarshal(b, &k8sOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +406,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, err
 	}
 
-	return rest.NewAcceptedAsyncResponse(output, oid.ID), nil
+	return rest.NewAcceptedAsyncResponse(output, r.baseURL+oid.ID), nil
 }
 
 func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
@@ -531,7 +574,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 	if state, ok := output.Properties["state"]; ok && !rest.IsTeminalStatus(rest.OperationStatus(state.(rest.ResourceStatus).ProvisioningState)) {
 		// Operation is still processing.
 		// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
-		return rest.NewAcceptedAsyncResponse(output, id.ID), nil
+		return rest.NewAcceptedAsyncResponse(output, r.baseURL+id.ID), nil
 	}
 
 	return rest.NewOKResponse(output), nil
