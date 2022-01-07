@@ -72,8 +72,7 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 		if err != nil {
 			return nil, err
 		}
-		converted, err := NewRestApplicationResource(newId, item)
-		converted.Properties["status"] = applicationStatus
+		converted, err := NewRestApplicationResource(newId, item, applicationStatus)
 		if err != nil {
 			return nil, err
 		}
@@ -103,8 +102,7 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 	if err != nil {
 		return nil, err
 	}
-	output, err := NewRestApplicationResource(id, item)
-	output.Properties["status"] = applicationStatus
+	output, err := NewRestApplicationResource(id, item, applicationStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +156,7 @@ func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, b
 		return nil, err
 	}
 
-	output, err := NewRestApplicationResource(id, converted)
+	output, err := NewRestApplicationResource(id, converted, rest.ApplicationStatus{})
 	if err != nil {
 		return nil, err
 	}

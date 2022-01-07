@@ -27,6 +27,17 @@ func Test_ConvertApplication_RoundTrips(t *testing.T) {
 	namespace := "default"
 	id, err := azresources.Parse("/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/frontend-backend")
 	require.NoError(t, err)
+	var raw *runtime.RawExtension
+	properties := map[string]interface{}{}
+	properties["status"] = rest.ApplicationStatus{}
+	template := map[string]interface{}{
+		"body": map[string]interface{}{
+			"properties": properties,
+		},
+	}
+	b, err := json.Marshal(template)
+	require.NoError(t, err)
+	raw = &runtime.RawExtension{Raw: b}
 	original := radiusv1alpha3.Application{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "radius.dev/v1alpha3",
@@ -41,10 +52,11 @@ func Test_ConvertApplication_RoundTrips(t *testing.T) {
 		},
 		Spec: radiusv1alpha3.ApplicationSpec{
 			Application: "frontend-backend",
+			Template:    raw,
 		},
 	}
 
-	res, err := NewRestApplicationResource(id, original)
+	res, err := NewRestApplicationResource(id, original, rest.ApplicationStatus{})
 	require.NoError(t, err)
 
 	final, err := NewKubernetesApplicationResource(id, res, namespace)

@@ -401,9 +401,9 @@ func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.Response
 	return nil
 }
 
-// GetUserFacingHealthState computes the aggregate health state to be shown to the user
+// GetUserFacingResourceHealthState computes the aggregate health state to be shown to the user
 // It also modifies the state of the individual output resources to the user facing value as needed
-func GetUserFacingHealthState(restOutputResources []OutputResource) (string, string) {
+func GetUserFacingResourceHealthState(restOutputResources []OutputResource) (string, string) {
 	aggregateHealthState := HealthStateHealthy
 	aggregateHealthStateErrorDetails := ""
 	foundNotSupported := false
@@ -449,49 +449,7 @@ func GetUserFacingHealthState(restOutputResources []OutputResource) (string, str
 	return aggregateHealthState, aggregateHealthStateErrorDetails
 }
 
-func GetUserFacingAppHealthState(resourceStatuses map[string]ResourceStatus) (string, string) {
-	aggregateHealthState := HealthStateHealthy
-	aggregateHealthStateErrorDetails := ""
-	foundNotSupported := false
-	foundHealthyOrUnhealthy := false
-
-	for r, rs := range resourceStatuses {
-		userHealthState := InternalToUserHealthStateTranslation[rs.HealthState]
-
-		switch rs.HealthState {
-		case HealthStateUnknown:
-			aggregateHealthState = userHealthState
-			aggregateHealthStateErrorDetails = "Health state unknown"
-		case HealthStateHealthy:
-			foundHealthyOrUnhealthy = true
-		case HealthStateUnhealthy:
-			// If any one of the resources is unhealthy, the aggregate is unhealthy
-			aggregateHealthState = userHealthState
-			foundHealthyOrUnhealthy = true
-		case HealthStateNotSupported:
-			// If any one of the resources is not supported, the user facing aggregate is ""
-			aggregateHealthState = userHealthState
-			foundNotSupported = true
-		case HealthStateNotApplicable:
-			// This case is ignored and has no effect on the aggregate state
-		default:
-			// Unexpected state
-			rs.HealthState = InternalToUserHealthStateTranslation[HealthStateUnhealthy]
-			aggregateHealthStateErrorDetails = fmt.Sprintf("Output resource %s found in unexpected state: %s", r, rs.HealthState)
-		}
-	}
-
-	if foundNotSupported && foundHealthyOrUnhealthy {
-		// We do not expect a combination of not supported and supported health reporting for output resources
-		// This will result in an aggregation logic error
-		aggregateHealthState = InternalToUserHealthStateTranslation[HealthStateError]
-		aggregateHealthStateErrorDetails = "Health aggregation error"
-	}
-
-	return aggregateHealthState, aggregateHealthStateErrorDetails
-}
-
-func GetUserFacingProvisioningState(restOutputResources []OutputResource) string {
+func GetUserFacingResourceProvisioningState(restOutputResources []OutputResource) string {
 	var aggregateProvisiongState = ProvisioningStateProvisioned
 forLoop:
 	for _, or := range restOutputResources {
@@ -508,6 +466,41 @@ forLoop:
 	return aggregateProvisiongState
 }
 
+// GetUserFacingAppHealthState computes the aggregate application health based on the input child resource status
+// It accepts a map with key as resource name and status as the resource status and returns the aggregate health
+// state and health state error details
+func GetUserFacingAppHealthState(resourceStatuses map[string]ResourceStatus) (string, string) {
+	aggregateHealthState := HealthStateHealthy
+	aggregateHealthStateErrorDetails := ""
+
+	for r, rs := range resourceStatuses {
+		userHealthState := InternalToUserHealthStateTranslation[rs.HealthState]
+
+		switch rs.HealthState {
+		case HealthStateUnknown:
+			aggregateHealthState = userHealthState
+			aggregateHealthStateErrorDetails = fmt.Sprintf("Resource %s has unknown health state", r)
+		case HealthStateHealthy:
+			// No change since default aggregated value is Healthy
+		case HealthStateUnhealthy:
+			// If any one of the resources is unhealthy, the aggregate is unhealthy
+			aggregateHealthState = userHealthState
+			aggregateHealthStateErrorDetails = fmt.Sprintf("Resource %s is unhealthy", r)
+		case HealthStateNotSupported:
+			// Will ignore NotSupported state for aggregation at application level
+		default:
+			// Unexpected state
+			rs.HealthState = InternalToUserHealthStateTranslation[HealthStateUnhealthy]
+			aggregateHealthStateErrorDetails = fmt.Sprintf("Resource %s found in unexpected state: %s", r, rs.HealthState)
+		}
+	}
+
+	return aggregateHealthState, aggregateHealthStateErrorDetails
+}
+
+// GetUserFacingAppProvisioningState computes the aggregate application provisioning state based on the input
+// child resource status. It accepts a map with key as resource name and status as the resource status and
+// returns the aggregate provisioning state and provisioning state error details
 func GetUserFacingAppProvisioningState(statuses map[string]ResourceStatus) (string, string) {
 	var aggregateProvisiongState = ProvisioningStateProvisioned
 	var aggregateProvisiongStateErrorDetails string
@@ -515,12 +508,12 @@ forLoop:
 	for r, rs := range statuses {
 		switch rs.ProvisioningState {
 		case ProvisioningStateFailed:
-			// If any of the output resources is Failed, then the aggregate is Failed
+			// If any of the resources is Failed, then the aggregate is Failed
 			aggregateProvisiongState = ProvisioningStateFailed
 			aggregateProvisiongStateErrorDetails = fmt.Sprintf("Resource %s is in Failed state", r)
 			break forLoop
 		case ProvisioningStateProvisioning, ProvisioningStateNotProvisioned:
-			// If any of the output resources is not in Provisioned state, the aggregate is Provisioning
+			// If any of the resources is not in Provisioned state, the aggregate is Provisioning
 			aggregateProvisiongState = ProvisioningStateProvisioning
 			aggregateProvisiongStateErrorDetails = fmt.Sprintf("Resource %s is in %s state", r, rs.ProvisioningState)
 		}

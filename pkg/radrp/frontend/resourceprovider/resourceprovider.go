@@ -126,26 +126,20 @@ func (r *rp) computeApplicationHealthState(ctx context.Context, id azresources.R
 		return rest.ApplicationStatus{}, err
 	}
 
-	// List non-radius azure resources that are referenced from the application
-	azureResources, err := r.db.ListAllAzureResourcesForApplication(ctx, id.Name(), id.SubscriptionID, id.ResourceGroup)
-	if err != nil {
-		return rest.ApplicationStatus{}, err
-	}
-
 	outputResourceList := RadiusResourceList{}
 	for _, radiusResource := range radiusResources {
 		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResource(radiusResource))
 	}
-	for _, azureResource := range azureResources {
-		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResourceFromAzureResource(azureResource))
+	// Aggregate application status over all resource statuses
+	statuses := map[string]rest.ResourceStatus{}
+	for _, resource := range outputResourceList.Value {
+		statuses[resource.Name] = resource.Properties["status"].(rest.ResourceStatus)
 	}
 
-	statuses := map[string]rest.ResourceStatus{}
-	// Aggregate application status over all resource statuses
-	for _, resource := range outputResourceList.Value {
-		resourceStatus := resource.Properties["status"].(rest.ResourceStatus)
-		statuses[resource.Name] = resourceStatus
-	}
+	// Health and Provisioning State for Azure resources is not implemented and therefore
+	// not accounted for in the aggregate health
+	// https: //github.com/Azure/radius/issues/1683
+
 	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingAppHealthState(statuses)
 	aggregateProvisiongState, aggregateProvisiongStateErrorDetails := rest.GetUserFacingAppProvisioningState(statuses)
 
