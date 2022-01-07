@@ -23,6 +23,7 @@ import (
 )
 
 func main() {
+
 	options, err := hostoptions.NewHostOptionsFromEnvironment()
 	if err != nil {
 		log.Println(err.Error())
