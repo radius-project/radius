@@ -53,7 +53,7 @@ category = "categories"
 copyright = "Project Radius"
 
 # GitHub Information
-github_repo = "https://github.com/Azure/radius"
+github_repo = "https://github.com/project-radius/radius"
 github_subdir = "docs"
 github_branch = "main"
 
