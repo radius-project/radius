@@ -101,7 +101,10 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 	}
 	azcred := &radclient.AnonymousCredential{}
 
-	// ApiServerBaseURL will change the
+	// ApiServerBaseURL is primarily a debug/local only setting
+	// which overrides the URL for the API server. This is useful when
+	// running the radius controller locally and wanting to still be able
+	// to query the status of applications, resources, etc.
 	var connection *arm.Connection
 	if e.ApiServerBaseURL != "" {
 		connection = arm.NewConnection(fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", e.ApiServerBaseURL), azcred, &arm.ConnectionOptions{})
