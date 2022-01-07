@@ -322,18 +322,18 @@ jobs:
     # We create a new test environment in the background so they get cycled through
     # If there are no enviroments available we'll wait for this one to succeed and take it.
     - name: Create new test environment (async)
-      uses: actions/github-script@v4
+      uses: actions/github-script@v5
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
           });
 
           // Fire repository_dispatch event to trigger environment creation
-          await github.repos.createDispatchEvent({
+          await github.rest.repos.createDispatchEvent({
             owner: context.issue.owner,
             repo: context.issue.repo,
             event_type: "create-environment",
@@ -400,18 +400,18 @@ jobs:
     # dirtying state in a preserved environment
     - name: Delete test environment (async)
       if: ${{ success() || steps.reserve.outcome == 'success' }}
-      uses: actions/github-script@v4
+      uses: actions/github-script@v5
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
           });
 
           // Fire repository_dispatch event delete environment
-          await github.repos.createDispatchEvent({
+          await github.rest.repos.createDispatchEvent({
             owner: context.issue.owner,
             repo: context.issue.repo,
             event_type: "delete-environment",
