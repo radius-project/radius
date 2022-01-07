@@ -82,8 +82,8 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 	identities = append(identities, clusterPodIdentity)
 
 	// Handling of eventual consistency here can really use some work and improvements, more details:
-	// https://github.com/Azure/radius/issues/1010
-	// https://github.com/Azure/radius/issues/660
+	// https://github.com/project-radius/radius/issues/1010
+	// https://github.com/project-radius/radius/issues/660
 	// For now just moving it over as is from renderer to limit the scope of changes.
 	MaxRetries := 100
 	var resultFuture containerservice.ManagedClustersCreateOrUpdateFuture

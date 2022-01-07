@@ -56,7 +56,7 @@ func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, op
 	}
 
 	// TODO: Right now this is VERY coupled to how we do resource creation on the server.
-	// This will be improved as part of https://github.com/Azure/radius/issues/1247 .
+	// This will be improved as part of https://github.com/project-radius/radius/issues/1247 .
 	//
 	// When that change goes in we'll be able to work with the route type directly to get this information.
 	for _, output := range httproute.Status.Resources {

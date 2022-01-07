@@ -181,7 +181,7 @@ fail_trap() {
     result=$?
     if [ "$result" != "0" ]; then
         echo "Failed to install Radius CLI"
-        echo "For support, go to https://github.com/Azure/radius"
+        echo "For support, go to https://github.com/project-radius/radius"
     fi
     cleanup
     exit $result

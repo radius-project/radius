@@ -120,7 +120,7 @@ func getKubeAssetsDir() (string, error) {
 		return assetsDirectory, nil
 	}
 
-	// TODO https://github.com/Azure/radius/issues/698, remove hard coded version
+	// TODO https://github.com/project-radius/radius/issues/698, remove hard coded version
 	cmd := exec.Command("setup-envtest", "use", "-p", "path", "1.19.x", "--arch", "amd64")
 	var out bytes.Buffer
 	cmd.Stdout = &out

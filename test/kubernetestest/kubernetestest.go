@@ -252,7 +252,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
 
 				// TODO: create k8s client for validating output resources
-				// https://github.com/Azure/radius/issues/778
+				// https://github.com/project-radius/radius/issues/778
 				// validation.ValidateOutputResources(t, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.RadiusResources)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}

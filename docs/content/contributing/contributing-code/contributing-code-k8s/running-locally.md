@@ -22,7 +22,7 @@ Note, these tests don't actually run against a kubernetes cluster. Therefore ser
 
 ## Debugging integration tests in VSCode
 
-Running the integration/controller tests should work by just running run test/debug test in VSCode. Tests are located in [the controllertests subdirectory](https://github.com/Azure/radius/blob/main/test/integration/kubernetes). By default, the tests require setup-envtest, a tool to get the necessary components for controller tests.
+Running the integration/controller tests should work by just running run test/debug test in VSCode. Tests are located in [the controllertests subdirectory](https://github.com/project-radius/radius/blob/main/test/integration/kubernetes). By default, the tests require setup-envtest, a tool to get the necessary components for controller tests.
 
 The tests will try to install envtest on your behalf, or you may run:
 

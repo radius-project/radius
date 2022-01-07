@@ -488,7 +488,7 @@ We currrently build an ordering of all components and apply their desired state 
 {{% alert title="🚀 Future State 🚀" color="success" %}}
 In the future we will use the output of the rendering phase to apply state in the dependency order of the output resources, not the dependency order of the components.
 
-[This issue](https://github.com/Azure/radius/issues/300) describes the future state.
+[This issue](https://github.com/project-radius/radius/issues/300) describes the future state.
 {{% /alert %}}
 
 ### Hosting platform

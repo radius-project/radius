@@ -16,7 +16,7 @@ import (
 )
 
 func NewAzureHealthModel(arm armauth.ArmConfig, k8s kubernetes.Interface, wg *sync.WaitGroup) model.HealthModel {
-	// Add health check handlers for the resource types: https://github.com/Azure/radius/issues/827
+	// Add health check handlers for the resource types: https://github.com/project-radius/radius/issues/827
 	handlers := map[string]handlers.HealthHandler{
 		// TODO: Add health check handler for all resource kinds
 		resourcekinds.AzureServiceBusQueue: handlers.NewAzureServiceBusQueueHandler(arm),

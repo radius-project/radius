@@ -12,7 +12,7 @@ The Project Radius docs are built on [Hugo](https://gohugo.io) with the [Docsy](
 
 1. Clone repo
    ```
-   git clone https://github.com/Azure/radius.git
+   git clone https://github.com/project-radius/radius.git
    cd ./radius/docs
    ```
 1. Clone submodules (Docsy, Bootstrap, FontAwesome)

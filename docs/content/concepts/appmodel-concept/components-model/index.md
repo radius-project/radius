@@ -99,7 +99,7 @@ When `managed` is set to `false` or omitted, you can explicitly specify an exist
 When `managed` is set to `true`, like in the example above, Radius will manage the lifecycle of the underlying resource, meaning it will deploy and manage the resource itself on the [hosting platform]({{< ref platforms >}}).
 
 {{% alert title="📋 Feedback" color="primary" %}}
-We'd love to hear your feedback on User-managed resources. Please visit [GitHub Discussions](https://github.com/Azure/radius/discussions/1269) and let us know how you currently use and want to use them!
+We'd love to hear your feedback on User-managed resources. Please visit [GitHub Discussions](https://github.com/project-radius/radius/discussions/1269) and let us know how you currently use and want to use them!
 {{% /alert %}}
 
 {{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}

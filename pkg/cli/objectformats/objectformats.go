@@ -37,7 +37,7 @@ func GetResourceTableFormat() output.FormatterOptions {
 					// For Radius resource types only show last part of the resource type. Example: mongo.com.MongoDatabase instead of Microsoft.CustomProviders/mongo.com.MongoDatabase
 					// For non-Radius resources types, show full resource type, Microsoft.ServiceBus/namespaces for example.
 					// TODO: "Microsoft.CustomProviders" should be updated to reflect Radius RP name once we move out of custom RP mode:
-					// https://github.com/Azure/radius/issues/1534
+					// https://github.com/project-radius/radius/issues/1534
 					if tokens[0] == "Microsoft.CustomProviders" {
 						return tokens[len(tokens)-1]
 					}

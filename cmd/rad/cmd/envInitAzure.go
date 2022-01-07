@@ -312,7 +312,7 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		return "", err
 	}
 	if createNewRg {
-	
+
 		defaultRgName := "radius-rg"
 		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
 			// only generate a random name if the default doesn't exist already or existence check fails
@@ -517,7 +517,7 @@ func registerSubscription(ctx context.Context, authorizer autorest.Authorizer, s
 			return fmt.Errorf("failed to register subscription: %v for feature: %v/%v: %w", subscriptionID, namespace, feature, err)
 		}
 
-		// See: https://github.com/Azure/radius/issues/520
+		// See: https://github.com/project-radius/radius/issues/520
 		// We've seen users still hitting issues where they see the error:
 		// "PodIdentity addon is not allowed since feature 'Microsoft.ContainerService/EnablePodIdentityPreview' is not enabled"
 		// Our working theory is that we need to force the provider to be registered again,

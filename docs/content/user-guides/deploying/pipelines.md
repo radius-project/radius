@@ -7,7 +7,7 @@ weight: 500
 ---
 
 {{% alert title="💬 Feedback" color="primary" %}}
-Let us know your feedback on deploying Radius apps in our [GitHub Discussions Issue](https://github.com/Azure/radius/discussions/1516).
+Let us know your feedback on deploying Radius apps in our [GitHub Discussions Issue](https://github.com/project-radius/radius/discussions/1516).
 {{% /alert %}}
 
 ## GitHub Actions

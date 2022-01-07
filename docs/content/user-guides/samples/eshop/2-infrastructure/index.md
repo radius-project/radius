@@ -55,7 +55,7 @@ You can also connect to already deployed SQL instances with the [existing keywor
 Radius-managed SQL via microsoft.com.SQLDatabase is still in development.
 
 {{% alert title="📋 Feedback" color="info" %}}
-Want to see a SQL managed component? Let us know over in the [GitHub discussions](https://github.com/Azure/radius/discussions/1269).
+Want to see a SQL managed component? Let us know over in the [GitHub discussions](https://github.com/project-radius/radius/discussions/1269).
 {{% /alert %}}
 {{< /codetab >}}
 

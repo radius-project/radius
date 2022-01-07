@@ -90,7 +90,7 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 	if healthHandler == nil {
 		// No health handler was found. Return NotSupported state to distinguish from Unhealthy
 		// TODO: Convert this log to error once health checks are implemented for all resource kinds
-		// https://github.com/Azure/radius/issues/827
+		// https://github.com/project-radius/radius/issues/827
 		kind := registerMsg.Resource.ResourceKind
 		if registerMsg.Resource.ResourceKind == resourcekinds.Kubernetes {
 			kID := registerMsg.Resource.Identity.Data.(resourcemodel.KubernetesIdentity)

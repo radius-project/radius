@@ -54,7 +54,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 		radclient.ContainerConnectionKindAzure: {
 			// RBAC for non-Radius Azure resources. Supports user specified roles.
-			// More information can be found here: https://github.com/Azure/radius/issues/1321
+			// More information can be found here: https://github.com/project-radius/radius/issues/1321
 		},
 	}
 

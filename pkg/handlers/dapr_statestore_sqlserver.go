@@ -184,7 +184,7 @@ func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context,
 	// Generate unique server name
 	// This logic is repeated all over the place in the code today
 	// and it doesn't consider max length allowed for the resource or the length of the base string,
-	// tracking issue to improve this: https://github.com/Azure/radius/issues/467
+	// tracking issue to improve this: https://github.com/project-radius/radius/issues/467
 	for i := 0; i < retryAttempts; i++ {
 		// 3-24 characters - all alphanumeric
 		uid, err := uuid.NewV4()

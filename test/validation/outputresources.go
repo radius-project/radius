@@ -127,7 +127,7 @@ func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armCo
 				t.Logf("found a match for expected resource %+v", expectedResource)
 
 				// TODO: Remove this check once health checks are implemented for all kinds of output resources
-				// https://github.com/Azure/radius/issues/827.
+				// https://github.com/project-radius/radius/issues/827.
 				// Till then, we will selectively verify the health/provisioning state for output resources that
 				// have the functionality implemented.
 				if expectedResource.VerifyStatus {
