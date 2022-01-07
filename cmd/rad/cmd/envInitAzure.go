@@ -216,7 +216,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 	}
 
 	if subs.Default != nil {
-		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Use Subscription '%v' [Yn]?", subs.Default.DisplayName), prompt.Yes)
+		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Use Subscription '%v'? [Yn]", subs.Default.DisplayName), prompt.Yes)
 		if err != nil {
 			return radazure.Subscription{}, err
 		}
