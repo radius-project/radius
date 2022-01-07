@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	watchk8s "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -455,8 +456,12 @@ func ValidateResourcesCreated(ctx context.Context, t *testing.T, k8s *kubernetes
 	}
 }
 
-func ValidateNoPodsInNamespace(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string) {
-	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string, application string) {
+	labelset := kuberneteskeys.MakeSelectorLabels(application, "")
+
+	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labelset).String(),
+	})
 	assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
 
 	logPods(t, actualPods.Items)
@@ -474,14 +479,16 @@ func ValidateNoPodsInNamespace(ctx context.Context, t *testing.T, k8s *kubernete
 			return
 
 		case <-time.After(IntervalForPodShutdown):
-			t.Logf("at %s waiting for pods in namespace %s to shut down.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
+			t.Logf("at %s waiting for pods in namespace %s for application %s to shut down.. ", time.Now().Format("2006-01-02 15:04:05"), namespace, application)
 
-			actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
-			assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
+			actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(labelset).String(),
+			})
+			assert.NoErrorf(t, err, "failed to list pods in namespace %s for application %s", namespace, application)
 
 			logPods(t, actualPods.Items)
 			if len(actualPods.Items) == 0 {
-				t.Logf("success! no pods found in namespace %s", namespace)
+				t.Logf("success! no pods found in namespace %s for application %s", namespace, application)
 				return
 			}
 		}

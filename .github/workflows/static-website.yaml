@@ -8,7 +8,7 @@ on:
       - 'docs/**'
       - 'cmd/rad/**'
       - 'cmd/docgen/**'
-      - '.github/workflows/**'
+      - '.github/workflows/*website.yaml'
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
@@ -17,7 +17,7 @@ on:
       - 'docs/**'
       - 'cmd/rad/**'
       - 'cmd/docgen/**'
-      - '.github/workflows/**'
+      - '.github/workflows/*website.yaml'
 
 jobs:
   build_and_deploy_docs:
