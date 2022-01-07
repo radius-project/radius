@@ -14,7 +14,7 @@ These tests automatically run for every PR in the `build.yaml` github workflow.
 
 The Kubernetes functional tests leverage KinD to create a kubernetes cluster for tests.
 
-### How this works 
+### How this works
 
 For each PR we run the following set of steps:
 
@@ -33,13 +33,37 @@ The tests use our product functionality (the Radius config file) to configure th
 ## Running the tests locally
 
 1. Create a Kubernetes cluster (KinD, AKS, etc.).
-1. Add CRDs to the cluster via `make controller-crd-install`.
-1. Build and install the controller to the cluster by running `make controller-deploy`. 
+1. Add CRDs to the cluster via
+
+    ```sh
+    make controller-crd-install
+    ```
+
+1. Build and install the controller to the cluster by running
+
+    ```sh
+    make controller-deploy
+    ```
+
 1. Place `rad` on your path.
 1. Make sure `rad-bicep` is downloaded (`rad bicep download`).
-1. Add the kubernetes configuration to your config.yaml file by running `rad env init kubernetes`.
-1. Install dapr into the cluster by running `dapr init -k --wait`.
-1. Run: `make test-functional-kubernetes`
+1. Add the kubernetes configuration to your config.yaml file by running
+
+   ```sh
+   rad env init kubernetes
+   ```
+
+1. Install dapr into the cluster by running
+
+   ```sh
+   dapr init -k --wait
+   ```
+
+1. Run:
+
+   ```sh
+   make test-functional-kubernetes
+   ```
 
 When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`.
 
@@ -58,9 +82,10 @@ Instead of building and installing the Radius Kubernetes controller, you can run
 1. Install dapr into the cluster by running `dapr init -k --wait`.
 1. Run `make test-functional-kubernetes`
 
-### Cleanup 
+### Cleanup
 
 To cleanup the Kubernetes cluster, you'll need to do the following:
+
 - `kubectl delete all`
 - `helm uninstall radius -n radius-system`
 - You can verify that all the resources are deleted by running `kubectl get all -A` and verifying that all resources are cleaned up.

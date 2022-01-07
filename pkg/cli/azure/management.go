@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/Azure/radius/pkg/cli/clients"
+	"golang.org/x/sync/errgroup"
 )
 
 type ARMManagementClient struct {
@@ -78,7 +79,10 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 		}
 		return err
 	}
+
+	g, errGroupCtx := errgroup.WithContext(ctx)
 	for _, resource := range resp.RadiusResourceList.Value {
+
 		if !strings.HasPrefix(*resource.Type, "Microsoft.CustomProviders") {
 			// Only Radius resource types are deleted by Radius RP. Example of a Radius resource type: Microsoft.CustomProviders/mongo.com.MongoDatabase
 			// Connection to Azure resources is returned as a part of radius resource list response, but lifecycle of these resources is not managed by Radius RP and should be explicitly deleted separately.
@@ -87,24 +91,33 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 			continue
 		}
 
-		types := strings.Split(*resource.Type, "/")
-		resourceType := types[len(types)-1]
-		poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
-			ctx, rg, appName, resourceType, *resource.Name, nil)
-		if err != nil {
-			return err
-		}
-
-		_, err = poller.PollUntilDone(ctx, radclient.PollInterval)
-		if err != nil {
-			if isNotFound(err) {
-				errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
-					resourceType, *resource.Name, appName, dm.EnvironmentName)
-				return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		r := *resource // prevent loopclouse issues (see https://pkg.go.dev/cmd/vet for more info)
+		g.Go(func() error {
+			types := strings.Split(*r.Type, "/")
+			resourceType := types[len(types)-1]
+			poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
+				errGroupCtx, rg, appName, resourceType, *r.Name, nil)
+			if err != nil {
+				return err
 			}
-			return err
-		}
+
+			_, err = poller.PollUntilDone(errGroupCtx, radclient.PollInterval)
+			if err != nil {
+				if isNotFound(err) {
+					errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
+						resourceType, *r.Name, appName, dm.EnvironmentName)
+					return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+				}
+				return err
+			}
+			return nil
+		})
 	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
 	poller, err := radclient.NewApplicationClient(con, sub).BeginDelete(ctx, rg, appName, nil)
 	if err != nil {
 		return err
