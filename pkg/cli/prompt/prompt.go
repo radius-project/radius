@@ -91,7 +91,7 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 	fmt.Println("")
 	var defaultSelection int
 	for i, c := range choices {
-		if c == *defaultChoice {
+		if defaultChoice != nil && c == *defaultChoice {
 			defaultSelection = i
 		}
 		fmt.Printf("\t%3d: %v\n", i, c)
