@@ -96,8 +96,8 @@ func NewRestRadiusResourceFromAzureResource(azResource db.AzureResource) RadiusR
 func NewRestRadiusResourceStatus(resourceName string, original db.RadiusResourceStatus) RadiusResourceStatus {
 	ors := NewRestOutputResourceStatus(original.OutputResources)
 
-	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingHealthState(ors)
-	aggregateProvisioningState := rest.GetUserFacingProvisioningState(ors)
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingResourceHealthState(ors)
+	aggregateProvisioningState := rest.GetUserFacingResourceProvisioningState(ors)
 
 	status := RadiusResourceStatus{
 		ProvisioningState:  aggregateProvisioningState,

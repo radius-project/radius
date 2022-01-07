@@ -28,15 +28,17 @@ import (
 )
 
 const (
-	testLocation    = "test-location"
-	testID          = "test-id"
-	subscriptionID  = "test-subscription"
-	resourceGroup   = "test-resource-group"
-	providerName    = "radiusv3"
-	applicationName = "test-application"
-	resourceType    = "Container" // Need to use a real resource type
-	resourceName    = "test-resource"
-	operationName   = "test-operation"
+	testLocation      = "test-location"
+	testID            = "test-id"
+	testAzureID       = "test-azure-id"
+	subscriptionID    = "test-subscription"
+	resourceGroup     = "test-resource-group"
+	providerName      = "radiusv3"
+	applicationName   = "test-application"
+	resourceType      = "Container" // Need to use a real resource type
+	resourceName      = "test-resource"
+	azureResourceName = "test-azure-resource"
+	operationName     = "test-operation"
 )
 
 type testcase struct {
@@ -45,6 +47,26 @@ type testcase struct {
 	invoke      func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 	setupDB     func(database *db.MockRadrpDB, err error)
 	id          azresources.ResourceID
+}
+
+var id azresources.ResourceID = parseOrPanic(applicationListID())
+var resource []db.RadiusResource = []db.RadiusResource{
+	{
+		ID:                testID,
+		Type:              id.Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: "string(rest.SuccededStatus)",
+		Status: db.RadiusResourceStatus{
+			ProvisioningState: "Provisioned",
+			HealthState:       "Healthy",
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	},
 }
 
 // Cases where we want to implement functionality consistently (like validation)
@@ -316,7 +338,8 @@ func Test_ListApplications_Success(t *testing.T) {
 	test := createRPTest(t)
 
 	id := parseOrPanic(applicationListID())
-	appID := "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app"
+	appID := applicationID(applicationName)
+
 	data := []db.ApplicationResource{
 		{
 			ID:              appID,
@@ -352,7 +375,54 @@ func Test_ListApplications_Success(t *testing.T) {
 
 	test.db.EXPECT().ListV3Applications(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
 	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resource, nil)
-	test.db.EXPECT().ListAllAzureResourcesForApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]db.AzureResource{}, nil)
+
+	response, err := test.rp.ListApplications(ctx, id)
+	require.NoError(t, err)
+
+	expected := ApplicationResourceList{
+		Value: []ApplicationResource{
+			{
+				ID:   appID,
+				Type: id.Type(),
+				Name: applicationName,
+				Tags: map[string]string{
+					"tag": "value",
+				},
+				Location: testLocation,
+				Properties: map[string]interface{}{
+					"status": rest.ApplicationStatus{
+						ProvisioningState: "Provisioned",
+						HealthState:       "Healthy",
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expected), response)
+}
+
+func Test_ListApplicationsWithAzureResources_Success(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(applicationListID())
+	appID := applicationID(applicationName)
+	data := []db.ApplicationResource{
+		{
+			ID:              appID,
+			Type:            id.Type(),
+			SubscriptionID:  subscriptionID,
+			ResourceGroup:   resourceGroup,
+			ApplicationName: applicationName,
+			Tags: map[string]string{
+				"tag": "value",
+			},
+			Location: testLocation,
+		},
+	}
+
+	test.db.EXPECT().ListV3Applications(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resource, nil)
 
 	response, err := test.rp.ListApplications(ctx, id)
 	require.NoError(t, err)
@@ -396,28 +466,8 @@ func Test_GetApplication_Success(t *testing.T) {
 		Location: testLocation,
 	}
 
-	resource := []db.RadiusResource{
-		{
-			ID:                testID,
-			Type:              id.Type(),
-			SubscriptionID:    subscriptionID,
-			ResourceGroup:     resourceGroup,
-			ApplicationName:   applicationName,
-			ResourceName:      resourceName,
-			ProvisioningState: "string(rest.SuccededStatus)",
-			Status: db.RadiusResourceStatus{
-				ProvisioningState: "Provisioned",
-				HealthState:       "Healthy",
-			},
-			Definition: map[string]interface{}{
-				"data": true,
-			},
-		},
-	}
-
 	test.db.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
 	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resource, nil)
-	test.db.EXPECT().ListAllAzureResourcesForApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]db.AzureResource{}, nil)
 
 	response, err := test.rp.GetApplication(ctx, id)
 	require.NoError(t, err)
