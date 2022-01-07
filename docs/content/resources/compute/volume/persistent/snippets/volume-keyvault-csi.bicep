@@ -38,7 +38,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 param secretValue string
 
 resource key_vault 'Microsoft.KeyVault/vaults@2021-04-01-preview' = {
-  name: uniqueString('kv', resourceGroup().id)
+  name: 'kv-${uniqueString('kv', resourceGroup().id)}'
   location: resourceGroup().location
   properties: {
     enabledForTemplateDeployment: true
