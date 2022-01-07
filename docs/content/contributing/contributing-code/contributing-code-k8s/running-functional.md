@@ -83,7 +83,7 @@ environment:
       namespace: default
       apiserverbaseurl: http://localhost:7443
 ```
-
+1. Set the environment variables `SKIP_APISERVICE_TLS` and `SKIP_WEBHOOKS` to `true` to skip TLS validation and skip webhooks (or in VSCode).
 1. Run the controller locally on command line or VSCode (cmd/radius-controller/main.go).
 1. Run `make test-functional-kubernetes`
 
@@ -97,7 +97,8 @@ You can also debug the controller in VSCode by running the cmd/radius-controller
     "mode": "debug",
     "program": "${workspaceFolder}/cmd/radius-controller/main.go",
     "env": {
-        "SKIP_WEBHOOKS": "true" // Don't enable webhooks when running locally as they require a cert.
+        "SKIP_WEBHOOKS": "true", // Don't enable webhooks when running locally as they require a cert.
+        "SKIP_APISERVICE_TLS": "true" // Don't enable TLS when running locally as it requires a cert.
     }
 },
 ```

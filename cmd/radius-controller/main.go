@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"os/signal"
@@ -120,6 +121,12 @@ func main() {
 	controller := radcontroller.NewRadiusController(&options)
 
 	apiServerCertDir := certDir
+	if os.Getenv("SKIP_APISERVICE_TLS") != "true" && certDir == "" {
+		// Must explicitly set SKIP_APISERVICE_TLS=true to be able to run with no TLS.
+		setupLog.Error(errors.New("unable to setup apiserver"), "either set SKIP_APISERVICE_TLS=true or set TLS_CERT_DIR")
+		os.Exit(1)
+	}
+
 	if os.Getenv("SKIP_APISERVICE_TLS") == "true" {
 		apiServerCertDir = ""
 	}
