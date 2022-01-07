@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/radius/pkg/cli/builders"
 	"github.com/Azure/radius/pkg/cli/clients"
 	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/Azure/radius/pkg/cli/radyaml"
@@ -466,4 +467,121 @@ func (dc *MockDeploymentClient) Deploy(ctx context.Context, options clients.Depl
 
 	dc.count++
 	return result, nil
+}
+
+var _ builders.Builder = (*MockBuilder)(nil)
+
+type MockBuilder struct {
+	count   int
+	Results []builders.Output
+}
+
+func (mb *MockBuilder) Build(ctx context.Context, options builders.Options) (builders.Output, error) {
+	result := builders.Output{}
+	if len(mb.Results) > mb.count {
+		result = mb.Results[mb.count]
+	}
+
+	mb.count++
+	return result, nil
+}
+
+func Test_CanUseBuildResults(t *testing.T) {
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	manifest := radyaml.Manifest{
+		Name: "test",
+		Stages: []radyaml.Stage{
+			{
+				Name: "first",
+				Bicep: &radyaml.BicepStage{
+					Template: to.StringPtr("iac/first.bicep"),
+				},
+			},
+			{
+				Name: "second",
+				Build: map[string]*radyaml.BuildTarget{
+					"todoapp": {
+						Builder: "test-builder",
+						Values:  map[string]interface{}{},
+					},
+				},
+				Bicep: &radyaml.BicepStage{
+					Template: to.StringPtr("iac/second.bicep"),
+				},
+			},
+		},
+	}
+
+	tempDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	options := Options{
+		Environment: &MockEnvironment{
+			DeploymentClient: &MockDeploymentClient{
+				Results: []clients.DeploymentResult{
+					{
+						Outputs: map[string]clients.DeploymentOutput{
+							"param1": {
+								Type:  "string",
+								Value: "value1",
+							},
+						},
+					},
+				},
+			},
+		},
+		BaseDirectory: tempDir,
+		Manifest:      manifest,
+		Builders: map[string]builders.Builder{
+			"test-builder": &MockBuilder{
+				Results: []builders.Output{
+					{
+						Result: "build-result",
+					},
+				},
+			},
+		},
+		BicepBuildFunc: SkipBicepBuild,
+	}
+
+	results, err := Run(ctx, options)
+	require.NoError(t, err)
+
+	expected := []StageResult{
+		{
+			Stage: &manifest.Stages[0],
+			Input: map[string]map[string]interface{}{},
+			Output: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+			},
+		},
+		{
+			Stage: &manifest.Stages[1],
+			Input: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+			},
+			Output: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"todoapp": {
+					"value": "build-result",
+				},
+			},
+		},
+	}
+	require.Equal(t, expected, results)
 }

@@ -8,7 +8,7 @@ package radyaml
 import (
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -123,6 +123,75 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 				Name: "test-stage",
 				Bicep: &BicepStage{
 					Template: to.StringPtr("override.bicep"),
+				},
+			},
+		},
+		{
+			Description: "OverrideBuild",
+			Main: Stage{
+				Name:  "test-stage",
+				Bicep: nil,
+				Build: map[string]*BuildTarget{
+					"project1": { // Profile uses a different builder, will be replaced
+						Builder: "build1",
+						Values: map[string]interface{}{
+							"key1": "value1",
+						},
+					},
+					"project2": { // Profile uses the same builder, will be merged
+						Builder: "build2",
+						Values: map[string]interface{}{
+							"key2": "value2",
+						},
+					},
+					"project3": { // Profile does not contain this, will be unchanged
+						Builder: "build3",
+						Values: map[string]interface{}{
+							"key3": "value3",
+						},
+					},
+				},
+				Profiles: map[string]Profile{
+					"test": {
+						Build: map[string]*BuildTarget{
+							"project1": {
+								Builder: "overridebuild1",
+								Values: map[string]interface{}{
+									"overridekey1": "overridevalue1",
+								},
+							},
+							"project2": {
+								Builder: "build2",
+								Values: map[string]interface{}{
+									"additionalkey2": "additionalvalue2",
+								},
+							},
+						},
+					},
+				},
+			},
+			Expected: Stage{
+				Name: "test-stage",
+				Build: map[string]*BuildTarget{
+					"project1": {
+						Builder: "overridebuild1",
+						Values: map[string]interface{}{
+							"overridekey1": "overridevalue1",
+						},
+					},
+					"project2": {
+						Builder: "build2",
+						Values: map[string]interface{}{
+							"key2":           "value2",
+							"additionalkey2": "additionalvalue2",
+						},
+					},
+					"project3": {
+						Builder: "build3",
+						Values: map[string]interface{}{
+							"key3": "value3",
+						},
+					},
 				},
 			},
 		},

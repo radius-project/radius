@@ -32,6 +32,48 @@ stages:
 	require.Equal(t, parsed, Manifest{})
 }
 
+func Test_Parse_Failure_NoBuilder(t *testing.T) {
+	reader := strings.NewReader(`
+name: todo
+stages:
+- name: infra
+  build: 
+    frontend: {}
+  bicep:
+    template: infra.bicep
+- name: app
+  bicep:
+    template: app.bicep
+`)
+
+	parsed, err := Parse(reader)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "a build target should specify a single builder")
+	require.Equal(t, parsed, Manifest{})
+}
+
+func Test_Parse_Failure_ExtraBuilder(t *testing.T) {
+	reader := strings.NewReader(`
+name: todo
+stages:
+- name: infra
+  build: 
+    frontend:
+      docker: {}
+      npm: {}
+  bicep:
+    template: infra.bicep
+- name: app
+  bicep:
+    template: app.bicep
+`)
+
+	parsed, err := Parse(reader)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "a build target should specify a single builder")
+	require.Equal(t, parsed, Manifest{})
+}
+
 func Test_Parse_Success(t *testing.T) {
 	reader := strings.NewReader(`
 name: todo
@@ -47,6 +89,11 @@ stages:
       bicep:
         template: infra-staging.bicep
 - name: app
+  build:
+    backend:
+      docker:
+        context: src
+        image: 'radius.azurecr.io/backend:latest'
   bicep:
     template: app.bicep
 `)
@@ -77,6 +124,15 @@ stages:
 			},
 			{
 				Name: "app",
+				Build: map[string]*BuildTarget{
+					"backend": {
+						Builder: "docker",
+						Values: map[string]interface{}{
+							"context": "src",
+							"image":   "radius.azurecr.io/backend:latest",
+						},
+					},
+				},
 				Bicep: &BicepStage{
 					Template: to.StringPtr("app.bicep"),
 				},

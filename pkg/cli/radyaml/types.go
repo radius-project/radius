@@ -14,12 +14,22 @@ type Manifest struct {
 // Stage represents a stage of processing inside rad.yaml.
 type Stage struct {
 	Name     string             `yaml:"name"`
+	Build    BuildStage         `yaml:"build,omitempty"`
 	Profiles map[string]Profile `yaml:"profiles,omitempty"`
 	Bicep    *BicepStage        `yaml:"bicep,omitempty"`
 }
 
+type BuildStage = map[string]*BuildTarget
+
+// BuildTarget implements its own serialization so we can enforce some constraints.
+type BuildTarget struct {
+	Builder string
+	Values  map[string]interface{}
+}
+
 // Profile represents an override profile for a stage.
 type Profile struct {
+	Build BuildStage  `yaml:"build,omitempty"`
 	Bicep *BicepStage `yaml:"bicep,omitempty"`
 }
 
