@@ -268,6 +268,42 @@ func Test_ContainerManualScale(t *testing.T) {
 					},
 				},
 			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_ContainerReadinessLiveness(t *testing.T) {
+	application := "azure-resources-container-readiness-liveness"
+	template := "testdata/azure-resources-container-readiness-liveness.bicep"
+	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+		{
+			Executor: azuretest.NewDeployStepExecutor(template),
+			AzureResources: &validation.AzureResourceSet{
+				Resources: []validation.ExpectedResource{
+					// Intentionally Empty
+				},
+			},
+			Pods: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					application: {
+						validation.NewK8sObjectForResource(application, "backend"),
+					},
+				},
+			},
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
+					{
+						ApplicationName: application,
+						ResourceName:    "backend",
+						ResourceType:    containerv1alpha3.ResourceType,
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+				},
+			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
 				// Verify there are two pods created for backend.
 				labelset := kubernetes.MakeSelectorLabels(application, "backend")
