@@ -20,7 +20,7 @@ import (
 )
 
 // Translation of internal representation of health state to user facing values
-var internalToUserHealthStateTranslation = map[string]string{
+var InternalToUserHealthStateTranslation = map[string]string{
 	HealthStateUnknown:       HealthStateUnhealthy,
 	HealthStateHealthy:       HealthStateHealthy,
 	HealthStateUnhealthy:     HealthStateUnhealthy,
@@ -410,7 +410,7 @@ func GetUserFacingHealthState(restOutputResources []OutputResource) (string, str
 	foundHealthyOrUnhealthy := false
 
 	for i, or := range restOutputResources {
-		userHealthState := internalToUserHealthStateTranslation[or.Status.HealthState]
+		userHealthState := InternalToUserHealthStateTranslation[or.Status.HealthState]
 		if userHealthState != or.Status.HealthState {
 			// Set the individual output resource to the user facing value
 			restOutputResources[i].Status.HealthState = userHealthState
@@ -434,7 +434,7 @@ func GetUserFacingHealthState(restOutputResources []OutputResource) (string, str
 			// This case is ignored and has no effect on the aggregate state
 		default:
 			// Unexpected state
-			or.Status.HealthState = internalToUserHealthStateTranslation[HealthStateUnhealthy]
+			or.Status.HealthState = InternalToUserHealthStateTranslation[HealthStateUnhealthy]
 			aggregateHealthStateErrorDetails = fmt.Sprintf("output resource found in unexpected state: %s", or.Status.HealthState)
 		}
 	}
@@ -442,7 +442,49 @@ func GetUserFacingHealthState(restOutputResources []OutputResource) (string, str
 	if foundNotSupported && foundHealthyOrUnhealthy {
 		// We do not expect a combination of not supported and supported health reporting for output resources
 		// This will result in an aggregation logic error
-		aggregateHealthState = internalToUserHealthStateTranslation[HealthStateError]
+		aggregateHealthState = InternalToUserHealthStateTranslation[HealthStateError]
+		aggregateHealthStateErrorDetails = "Health aggregation error"
+	}
+
+	return aggregateHealthState, aggregateHealthStateErrorDetails
+}
+
+func GetUserFacingAppHealthState(resourceStatuses map[string]ResourceStatus) (string, string) {
+	aggregateHealthState := HealthStateHealthy
+	aggregateHealthStateErrorDetails := ""
+	foundNotSupported := false
+	foundHealthyOrUnhealthy := false
+
+	for r, rs := range resourceStatuses {
+		userHealthState := InternalToUserHealthStateTranslation[rs.HealthState]
+
+		switch rs.HealthState {
+		case HealthStateUnknown:
+			aggregateHealthState = userHealthState
+			aggregateHealthStateErrorDetails = "Health state unknown"
+		case HealthStateHealthy:
+			foundHealthyOrUnhealthy = true
+		case HealthStateUnhealthy:
+			// If any one of the resources is unhealthy, the aggregate is unhealthy
+			aggregateHealthState = userHealthState
+			foundHealthyOrUnhealthy = true
+		case HealthStateNotSupported:
+			// If any one of the resources is not supported, the user facing aggregate is ""
+			aggregateHealthState = userHealthState
+			foundNotSupported = true
+		case HealthStateNotApplicable:
+			// This case is ignored and has no effect on the aggregate state
+		default:
+			// Unexpected state
+			rs.HealthState = InternalToUserHealthStateTranslation[HealthStateUnhealthy]
+			aggregateHealthStateErrorDetails = fmt.Sprintf("Output resource %s found in unexpected state: %s", r, rs.HealthState)
+		}
+	}
+
+	if foundNotSupported && foundHealthyOrUnhealthy {
+		// We do not expect a combination of not supported and supported health reporting for output resources
+		// This will result in an aggregation logic error
+		aggregateHealthState = InternalToUserHealthStateTranslation[HealthStateError]
 		aggregateHealthStateErrorDetails = "Health aggregation error"
 	}
 
@@ -464,4 +506,24 @@ forLoop:
 		}
 	}
 	return aggregateProvisiongState
+}
+
+func GetUserFacingAppProvisioningState(statuses map[string]ResourceStatus) (string, string) {
+	var aggregateProvisiongState = ProvisioningStateProvisioned
+	var aggregateProvisiongStateErrorDetails string
+forLoop:
+	for r, rs := range statuses {
+		switch rs.ProvisioningState {
+		case ProvisioningStateFailed:
+			// If any of the output resources is Failed, then the aggregate is Failed
+			aggregateProvisiongState = ProvisioningStateFailed
+			aggregateProvisiongStateErrorDetails = fmt.Sprintf("Resource %s is in Failed state", r)
+			break forLoop
+		case ProvisioningStateProvisioning, ProvisioningStateNotProvisioned:
+			// If any of the output resources is not in Provisioned state, the aggregate is Provisioning
+			aggregateProvisiongState = ProvisioningStateProvisioning
+			aggregateProvisiongStateErrorDetails = fmt.Sprintf("Resource %s is in %s state", r, rs.ProvisioningState)
+		}
+	}
+	return aggregateProvisiongState, aggregateProvisiongStateErrorDetails
 }

@@ -80,7 +80,17 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 
 	output := ApplicationResourceList{}
 	for _, item := range items {
-		output.Value = append(output.Value, NewRestApplicationResource(item))
+		applicationID, err := azresources.Parse(item.ID)
+		if err != nil {
+			return nil, err
+		}
+		applicationStatus, err := r.computeApplicationHealthState(ctx, applicationID)
+		if err != nil {
+			return nil, err
+		}
+		applicationResource := NewRestApplicationResource(item)
+		applicationResource.Properties["status"] = applicationStatus
+		output.Value = append(output.Value, applicationResource)
 	}
 
 	return rest.NewOKResponse(output), nil
@@ -100,7 +110,51 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 	}
 
 	output := NewRestApplicationResource(item)
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// Update the status as per computed aggregate values
+	output.Properties["status"] = applicationStatus
 	return rest.NewOKResponse(output), nil
+}
+
+func (r *rp) computeApplicationHealthState(ctx context.Context, id azresources.ResourceID) (rest.ApplicationStatus, error) {
+	/// List radius resources
+	radiusResources, err := r.db.ListAllV3ResourcesByApplication(ctx, id, id.Name())
+	if err != nil {
+		return rest.ApplicationStatus{}, err
+	}
+
+	// List non-radius azure resources that are referenced from the application
+	azureResources, err := r.db.ListAllAzureResourcesForApplication(ctx, id.Name(), id.SubscriptionID, id.ResourceGroup)
+	if err != nil {
+		return rest.ApplicationStatus{}, err
+	}
+
+	outputResourceList := RadiusResourceList{}
+	for _, radiusResource := range radiusResources {
+		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResource(radiusResource))
+	}
+	for _, azureResource := range azureResources {
+		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResourceFromAzureResource(azureResource))
+	}
+
+	statuses := map[string]rest.ResourceStatus{}
+	// Aggregate application status over all resource statuses
+	for _, resource := range outputResourceList.Value {
+		resourceStatus := resource.Properties["status"].(rest.ResourceStatus)
+		statuses[resource.Name] = resourceStatus
+	}
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingAppHealthState(statuses)
+	aggregateProvisiongState, aggregateProvisiongStateErrorDetails := rest.GetUserFacingAppProvisioningState(statuses)
+
+	return rest.ApplicationStatus{
+		ProvisioningState:        aggregateProvisiongState,
+		ProvisioningErrorDetails: aggregateProvisiongStateErrorDetails,
+		HealthState:              aggregateHealthState,
+		HealthErrorDetails:       aggregateHealthStateErrorDetails,
+	}, nil
 }
 
 func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {

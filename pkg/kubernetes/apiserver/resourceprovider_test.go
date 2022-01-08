@@ -85,6 +85,10 @@ func Test_ListApplication(t *testing.T) {
 				Name: app1Name,
 				Properties: map[string]interface{}{
 					"definition-property": "definition-value",
+					"status": rest.ApplicationStatus{
+						ProvisioningState: "Provisioned",
+						HealthState:       "Healthy",
+					},
 				},
 			},
 		},
@@ -140,6 +144,10 @@ func Test_GetApplication(t *testing.T) {
 		Name: app1Name,
 		Properties: map[string]interface{}{
 			"definition-property": "definition-value",
+			"status": rest.ApplicationStatus{
+				ProvisioningState: "Provisioned",
+				HealthState:       "Healthy",
+			},
 		},
 	}
 	require.Equal(t, rest.NewOKResponse(expected), response)
