@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radrp/k8sauth"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radrp/k8sauth"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	corev1 "k8s.io/api/core/v1"

@@ -6,10 +6,10 @@
 package daprstatestorev1alpha3
 
 import (
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
 func GetDaprStateStoreAzureStorage(resource renderers.RendererResource, properties Properties) ([]outputresource.OutputResource, error) {

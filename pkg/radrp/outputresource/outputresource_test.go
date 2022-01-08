@@ -8,7 +8,7 @@ package outputresource
 import (
 	"testing"
 
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 )
 

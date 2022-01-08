@@ -24,7 +24,7 @@ func NewRadHealthDB(m *mongo.Database) RadHealthDB {
 	}
 }
 
-//go:generate mockgen -destination=./mock_db.go -package=db -self_package github.com/Azure/radius/pkg/health/db github.com/Azure/radius/pkg/health/db RadHealthDB
+//go:generate mockgen -destination=./mock_db.go -package=db -self_package github.com/project-radius/radius/pkg/health/db github.com/project-radius/radius/pkg/health/db RadHealthDB
 
 // RadHealthDB is our database abstraction.
 type RadHealthDB interface {

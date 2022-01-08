@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"go.mongodb.org/mongo-driver/bson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

@@ -13,10 +13,10 @@ import (
 	"net/textproto"
 	"net/url"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
 	"github.com/go-playground/validator/v10"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
 // Translation of internal representation of health state to user facing values

@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/radrp/rest"
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/radrp/rest"
 )
 
 // OperationPollInterval is the interval used for polling of deployment operations for progress.

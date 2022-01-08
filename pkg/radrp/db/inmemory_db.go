@@ -10,7 +10,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 )
 
 // NewInMemoryRadrpDB returns an in-memory implementation of RadrpDB

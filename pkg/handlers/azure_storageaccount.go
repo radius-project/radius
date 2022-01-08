@@ -12,12 +12,12 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2021-04-01/storage"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/gofrs/uuid"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 func getStorageAccountByID(ctx context.Context, arm armauth.ArmConfig, accountID string) (*storage.Account, error) {

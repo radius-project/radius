@@ -9,9 +9,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )

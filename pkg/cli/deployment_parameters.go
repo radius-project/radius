@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clients"
 )
 
 // ParameterParser is used to parse the parameters as part of the `rad deploy` command. See the docs for `rad deploy` for examples

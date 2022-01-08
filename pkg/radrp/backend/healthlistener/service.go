@@ -9,11 +9,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/db"
 )
 
 type Service struct {

@@ -13,7 +13,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 

@@ -9,9 +9,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
 )
 

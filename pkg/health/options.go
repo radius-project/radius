@@ -8,9 +8,9 @@ package health
 import (
 	"context"
 
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radrp/hostoptions"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radrp/hostoptions"
 	"go.mongodb.org/mongo-driver/mongo"
 	"k8s.io/client-go/rest"
 )

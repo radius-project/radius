@@ -9,10 +9,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/Azure/radius/pkg/health/handlers"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/health/handlers"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 type HealthModel interface {

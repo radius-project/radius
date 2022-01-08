@@ -12,11 +12,11 @@ import (
 
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"

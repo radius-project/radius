@@ -9,10 +9,10 @@ import (
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azcli"
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azcli"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
 )
 

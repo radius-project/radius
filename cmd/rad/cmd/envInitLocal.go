@@ -6,7 +6,7 @@
 package cmd
 
 import (
-	"github.com/Azure/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/spf13/cobra"
 )
 

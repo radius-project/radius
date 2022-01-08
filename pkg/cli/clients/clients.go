@@ -10,8 +10,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 )
 
 // NOTE: parameters in the template engine follow the structure:

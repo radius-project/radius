@@ -13,12 +13,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
 // A brief note on error handling... The handler is responsible for all of the direct actions

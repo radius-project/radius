@@ -10,11 +10,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/cli/armtemplate"
-	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/cli/armtemplate"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

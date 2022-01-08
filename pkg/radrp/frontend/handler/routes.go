@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
 func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory, swaggerDocRoute string) {

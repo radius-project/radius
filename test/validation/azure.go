@@ -13,8 +13,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/keys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

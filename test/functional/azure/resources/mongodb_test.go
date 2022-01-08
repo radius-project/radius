@@ -8,15 +8,15 @@ package resources_test
 import (
 	"testing"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/test/azuretest"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_MongoDBManaged(t *testing.T) {

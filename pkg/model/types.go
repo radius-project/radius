@@ -8,9 +8,9 @@ package model
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 // ApplicationModel defines the set of supported resource types and related features.

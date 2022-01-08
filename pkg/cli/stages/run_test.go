@@ -13,11 +13,11 @@ import (
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/cli/builders"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/cli/radyaml"
-	"github.com/Azure/radius/test/testcontext"
+	"github.com/project-radius/radius/pkg/cli/builders"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/radyaml"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 

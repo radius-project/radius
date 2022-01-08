@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/radius/test/kubernetestest"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/validation"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

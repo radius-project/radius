@@ -13,13 +13,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Azure/radius/pkg/health"
-	"github.com/Azure/radius/pkg/hosting"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/backend/healthlistener"
-	"github.com/Azure/radius/pkg/radrp/frontend"
-	"github.com/Azure/radius/pkg/radrp/hostoptions"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/health"
+	"github.com/project-radius/radius/pkg/hosting"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/backend/healthlistener"
+	"github.com/project-radius/radius/pkg/radrp/frontend"
+	"github.com/project-radius/radius/pkg/radrp/hostoptions"
 )
 
 func main() {

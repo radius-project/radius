@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // Values for these are injected by the build.

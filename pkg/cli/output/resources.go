@@ -8,7 +8,7 @@ package output
 import (
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 )
 
 const (

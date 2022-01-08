@@ -5,7 +5,7 @@
 
 package resourceprovider
 
-import "github.com/Azure/radius/pkg/radrp/rest"
+import "github.com/project-radius/radius/pkg/radrp/rest"
 
 // ApplicationResource represents a Radius Application in the ARM wire-format.
 type ApplicationResource struct {

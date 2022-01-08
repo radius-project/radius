@@ -18,12 +18,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/Azure/radius/pkg/cli/armtemplate"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/kubernetes/converters"
-	"github.com/Azure/radius/pkg/kubernetes/webhook/external"
-	"github.com/Azure/radius/pkg/radrp/schema"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/cli/armtemplate"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/kubernetes/converters"
+	"github.com/project-radius/radius/pkg/kubernetes/webhook/external"
+	"github.com/project-radius/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/renderers"
 )
 
 type ResourceWebhook struct {

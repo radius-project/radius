@@ -6,9 +6,9 @@
 package resourceprovider
 
 import (
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radrp/db"
-	rest "github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radrp/db"
+	rest "github.com/project-radius/radius/pkg/radrp/rest"
 )
 
 func NewDBApplicationResource(id azresources.ResourceID, application ApplicationResource) db.ApplicationResource {

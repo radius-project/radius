@@ -11,7 +11,7 @@ import (
 	"path"
 	"text/template"
 
-	"github.com/Azure/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli"
 )
 
 type Options struct {

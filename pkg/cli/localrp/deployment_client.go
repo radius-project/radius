@@ -19,10 +19,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/cli/armtemplate"
-	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/cli/armtemplate"
+	"github.com/project-radius/radius/pkg/cli/clients"
 )
 
 // We use a shorted poll interval for local testing to make it faster.

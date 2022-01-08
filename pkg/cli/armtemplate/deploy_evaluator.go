@@ -13,9 +13,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
-	"github.com/Azure/radius/pkg/radrp/armexpr"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
+	"github.com/project-radius/radius/pkg/radrp/armexpr"
 )
 
 type DeploymentEvaluator struct {

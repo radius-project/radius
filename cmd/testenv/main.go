@@ -5,7 +5,7 @@
 
 package main
 
-import "github.com/Azure/radius/cmd/testenv/cmd"
+import "github.com/project-radius/radius/cmd/testenv/cmd"
 
 func main() {
 	cmd.Execute()

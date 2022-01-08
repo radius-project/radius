@@ -9,8 +9,8 @@ import (
 	"flag"
 	"os"
 
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

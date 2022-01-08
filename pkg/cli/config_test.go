@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )

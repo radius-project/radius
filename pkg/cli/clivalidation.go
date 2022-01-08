@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

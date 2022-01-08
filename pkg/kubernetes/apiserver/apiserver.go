@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Azure/radius/pkg/radrp/frontend/handler"
-	"github.com/Azure/radius/pkg/radrp/frontend/server"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/radrp/frontend/handler"
+	"github.com/project-radius/radius/pkg/radrp/frontend/server"
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"

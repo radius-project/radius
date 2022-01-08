@@ -12,13 +12,13 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 )

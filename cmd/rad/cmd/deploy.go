@@ -9,11 +9,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/bicep"
-	"github.com/Azure/radius/pkg/cli/deploy"
-	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/version"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/deploy"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
 

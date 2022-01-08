@@ -9,8 +9,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -23,11 +23,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
-	"github.com/Azure/radius/pkg/kubernetes/webhook"
-	"github.com/Azure/radius/pkg/model"
+	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	bicepcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/bicep"
+	"github.com/project-radius/radius/pkg/kubernetes/webhook"
+	"github.com/project-radius/radius/pkg/model"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
