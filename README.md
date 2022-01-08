@@ -18,7 +18,7 @@ Radius consists of:
 
 Visit the Project Radius [docs site](https://docs.radapp.dev/getting-started/) to get up and running with Radius in minutes.
 
-Open an [issue](https://github.com/Azure/radius/issues/new/choose) if you need access to the website.
+Open an [issue](https://github.com/project-radius/radius/issues/new/choose) if you need access to the website.
 
 ## Contributing
 

@@ -12,7 +12,7 @@ This directory contains the files to generate the https://radapp.dev site. Pleas
 1. Ensure pre-requisites are installed
 2. Clone this repository
 ```sh
-git clone https://github.com/Azure/radius.git
+git clone https://github.com/project-radius/radius.git
 ```
 3. Generate CLI docs:
 ```sh
