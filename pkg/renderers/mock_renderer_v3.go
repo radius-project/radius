@@ -8,8 +8,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	azresources "github.com/project-radius/radius/pkg/azure/azresources"
 	gomock "github.com/golang/mock/gomock"
+	azresources "github.com/project-radius/radius/pkg/azure/azresources"
 )
 
 // MockRenderer is a mock of Renderer interface.

@@ -8,9 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
 	azresources "github.com/project-radius/radius/pkg/azure/azresources"
 	rest "github.com/project-radius/radius/pkg/radrp/rest"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockResourceProvider is a mock of ResourceProvider interface.

@@ -8,8 +8,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	resourcemodel "github.com/project-radius/radius/pkg/resourcemodel"
 	gomock "github.com/golang/mock/gomock"
+	resourcemodel "github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 // MockSecretValueClient is a mock of SecretValueClient interface.

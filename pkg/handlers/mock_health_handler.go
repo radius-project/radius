@@ -8,8 +8,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	healthcontract "github.com/project-radius/radius/pkg/healthcontract"
 	gomock "github.com/golang/mock/gomock"
+	healthcontract "github.com/project-radius/radius/pkg/healthcontract"
 )
 
 // MockHealthHandler is a mock of HealthHandler interface.

@@ -8,9 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
 	azresources "github.com/project-radius/radius/pkg/azure/azresources"
 	db "github.com/project-radius/radius/pkg/radrp/db"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockDeploymentProcessor is a mock of DeploymentProcessor interface.
