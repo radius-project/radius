@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: 14
       - name: Select location
-        uses: actions/github-script@v4
+        uses: actions/github-script@v5.1.0
         id: select-location
         with:
           result-encoding: string
@@ -60,7 +60,7 @@ jobs:
       # uuid module is used for generating the resource group name
       - run: npm install uuid
       - name: Generate resource group name
-        uses: actions/github-script@v4
+        uses: actions/github-script@v5.1.0
         id: generate-resource-group-name
         with:
           result-encoding: string

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Analyze context
-      uses: actions/github-script@v4
+      uses: actions/github-script@v5.1.0
       id: analyze
       with:
         result-encoding: string
@@ -43,7 +43,7 @@ jobs:
           return command
 
     - name: Run create-environment
-      uses: actions/github-script@v4
+      uses: actions/github-script@v5.1.0
       if: success() && steps.analyze.outputs.result == 'create-environment'
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
@@ -74,7 +74,7 @@ jobs:
           console.log(`Triggering environment creation for ${JSON.stringify(payload)}`);
 
     - name: Run delete-environment
-      uses: actions/github-script@v4
+      uses: actions/github-script@v5.1.0
       if: success() && steps.analyze.outputs.result == 'delete-environment'
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
