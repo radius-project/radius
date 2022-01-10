@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
+	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -84,6 +85,29 @@ func scrapeSecrets(resource Resource) map[string]string {
 	}
 	delete(properties, "secrets")
 	return result
+}
+
+func ConvertToK8sDeploymentTemplate(resource Resource, namespace string, parentName string) (*unstructured.Unstructured, error) {
+	template, hasTemplate := resource.Body["template"].(map[string]interface{})
+	if !hasTemplate {
+		return nil, fmt.Errorf("resource %s/%s has no template", resource.Type, resource.Name)
+	}
+	parameters, _ := resource.Body["parameters"].(map[string]interface{})
+	uns := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": bicepv1alpha3.GroupVersion.String(),
+			"kind":       bicepv1alpha3.DeploymentTemplateKind,
+			"metadata": map[string]interface{}{
+				"name":      parentName + "-" + resource.Name,
+				"namespace": namespace,
+			},
+			"spec": map[string]interface{}{
+				"content":    template,
+				"parameters": parameters,
+			},
+		},
+	}
+	return uns, nil
 }
 
 func ConvertToK8s(resource Resource, namespace string) (*unstructured.Unstructured, map[string]string, error) {

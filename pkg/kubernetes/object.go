@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -143,19 +144,25 @@ func MakeScrapedSecretName(appName string, resourceKind string, resourceName str
 	return strings.ToLower(appName + "-" + resourceKind + "-" + resourceName)
 }
 
-func MakeScrapedSecret(appName string, resourceKind string, resourceName string) *corev1.Secret {
+func MakeScrapedSecret(resource *unstructured.Unstructured, stringData map[string]string) *corev1.Secret {
+	resourceKind := resource.GetKind()
+	resourceName := resource.GetAnnotations()[LabelRadiusResource]
+	appName := resource.GetAnnotations()[LabelRadiusApplication]
+
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   MakeScrapedSecretName(appName, resourceKind, resourceName),
-			Labels: MakeDescriptiveLabels(appName, resourceName),
+			Name:      MakeScrapedSecretName(appName, resourceKind, resourceName),
+			Namespace: resource.GetNamespace(),
+			Labels:    MakeDescriptiveLabels(appName, resourceName),
 			Annotations: map[string]string{
 				AnnotationLocalID: outputresource.LocalIDScrapedSecret,
 			},
 		},
-		Type: corev1.SecretTypeOpaque,
+		Type:       corev1.SecretTypeOpaque,
+		StringData: stringData,
 	}
 }

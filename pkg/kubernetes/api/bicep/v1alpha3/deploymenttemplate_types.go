@@ -10,6 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const DeploymentTemplateKind = "DeploymentTemplate"
+
 // DeploymentTemplateSpec defines the desired state of Arm
 type DeploymentTemplateSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields

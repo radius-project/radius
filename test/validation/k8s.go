@@ -444,8 +444,15 @@ func ValidateResourcesCreated(ctx context.Context, t *testing.T, k8s *kubernetes
 				delete(meta, "resourceVersion")
 				delete(meta, "creationTimestamp")
 				delete(meta, "uid")
+
+				annotations, _ := meta["annotations"].(map[string]interface{})
+				// ignore deployment template label: these are generated names and won't match.
+				delete(annotations, kuberneteskeys.LabelRadiusDeployment)
+				if len(annotations) == 0 {
+					delete(meta, "annotations")
+				}
 				if diff := cmp.Diff(r, *output); diff != "" {
-					assert.Failf(t, "resource %s mismatch (-want,+diff): %s", resourceId, diff)
+					assert.Fail(t, "resource "+resourceId+" mismatch (-want,+diff): "+diff)
 				}
 				return
 			case <-ctx.Done():

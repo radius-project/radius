@@ -87,6 +87,49 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	return result, err
 }
 
+func (r *DeploymentTemplateReconciler) evaluateNestedDeployment(req ctrl.Request, evaluator *armtemplate.DeploymentEvaluator, resource armtemplate.Resource, parentName string) (*unstructured.Unstructured, error) {
+	// Before calling this function we would have a resource looking like:
+	// ```
+	// properties:
+	//   template:
+	//     foo: bar
+	//   parameters:
+	//     param1: value1
+	//     param2: value2
+	// ```
+	// `
+	// After calling, the resource would look like
+	// ```
+	// template:
+	//   foo: bar
+	// parameters:
+	//   param1: value1
+	//   param2: value2
+	// ```
+	//
+	// Generally this is not needed when calling VisitResourceBody because VisitMap is recursive.
+	// However, for nested deployment, VisitResourceBody pre-process the "parameters" map at the
+	// root level, therefore we want to make sure the "parameters" map is where it is expected.
+	resource.Body, _ = resource.Body["properties"].(map[string]interface{})
+
+	body, err := evaluator.VisitResourceBody(resource)
+	if err != nil {
+		return nil, err
+	}
+	resource.Body = body
+
+	return armtemplate.ConvertToK8sDeploymentTemplate(resource, req.NamespacedName.Namespace, parentName)
+}
+
+func (r *DeploymentTemplateReconciler) evaluateResource(req ctrl.Request, evaluator *armtemplate.DeploymentEvaluator, resource armtemplate.Resource) (*unstructured.Unstructured, map[string]string, error) {
+	body, err := evaluator.VisitResourceBody(resource)
+	if err != nil {
+		return nil, nil, err
+	}
+	resource.Body = body
+	return armtemplate.ConvertToK8s(resource, req.NamespacedName.Namespace)
+}
+
 // Parses the arm template and deploys individual resources to the cluster
 // TODO: Can we avoid parsing resources multiple times by caching?
 func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.Request, arm *bicepv1alpha3.DeploymentTemplate) (ctrl.Result, error) {
@@ -112,7 +155,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
 	// All previously deployed resources to be used by other resources
 	// to fill in variables ex: ([reference(...)])
 	deployed := map[string]map[string]interface{}{}
@@ -145,35 +187,36 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 	}
 
 	for _, resource := range resources {
-		body, err := evaluator.VisitMap(resource.Body)
-		if err != nil {
-			return ctrl.Result{}, err
+		var k8sInfo *unstructured.Unstructured
+		var scrapedSecrets map[string]string
+		var err error
+		if resource.Type == armtemplate.DeploymentResourceType {
+			k8sInfo, err = r.evaluateNestedDeployment(req, evaluator, resource, arm.Name)
+		} else {
+			k8sInfo, scrapedSecrets, err = r.evaluateResource(req, evaluator, resource)
 		}
-
-		resource.Body = body
-
-		k8sInfo, scrapedSecrets, err := armtemplate.ConvertToK8s(resource, req.NamespacedName.Namespace)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
 		// Set name of deployment template
 		annotations := k8sInfo.GetAnnotations()
-		if annotations != nil {
-			annotations[kubernetes.LabelRadiusDeployment] = arm.Name
+		if annotations == nil {
+			annotations = make(map[string]string)
 		}
+		annotations[kubernetes.LabelRadiusDeployment] = arm.Name
 		k8sInfo.SetAnnotations(annotations)
 
-		appName, resourceName, resourceType := resource.GetRadiusResourceParts()
-
-		// If this is not an extension resource, which lives outside an application,
-		// make sure the application that contains the resource has been created
-		if resourceType != "Application" && resource.Provider == nil {
+		// All radius.dev resources, except for Application, require an Application to be created first.
+		//
+		// Other resources like K8s extension resources will not need the same.
+		gvk := k8sInfo.GroupVersionKind()
+		if gvk.Group == radiusv1alpha3.GroupVersion.Group && gvk.Kind != "Application" {
 			application := &radiusv1alpha3.Application{}
 
 			err = r.Client.Get(ctx, client.ObjectKey{
 				Namespace: k8sInfo.GetNamespace(),
-				Name:      appName,
+				Name:      k8sInfo.GetAnnotations()[kubernetes.LabelRadiusApplication],
 			}, application)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -205,9 +248,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		}
 		// Now store secret we scraped from the rendered template.
 		if len(scrapedSecrets) > 0 {
-			secret := kubernetes.MakeScrapedSecret(appName, k8sInfo.GetKind(), resourceName)
-			secret.SetNamespace(k8sInfo.GetNamespace())
-			secret.StringData = scrapedSecrets
+			secret := kubernetes.MakeScrapedSecret(k8sInfo, scrapedSecrets)
 			err := controllerutil.SetControllerReference(k8sInfo, secret, r.Scheme)
 			_, ok := err.(*controllerutil.AlreadyOwnedError) // Ignore already owned error as if the resource is already created, it will be owned
 			if err != nil && !ok {
@@ -218,8 +259,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 				return ctrl.Result{}, err
 			}
 		}
-
-		// For non radius resources, we don't check the status of the resource to check if they are deployed
 
 		// TODO could remove this dependecy on radiusv1alpha3
 		k8sResource := &radiusv1alpha3.Resource{}
@@ -239,17 +278,19 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 
 		deployed[resource.ID] = resource.Body
 
-		_, ok := armtemplate.GetKindFromArmType(resourceType)
-		if ok {
+		switch gvk.Group {
+		case radiusv1alpha3.GroupVersion.Group, bicepv1alpha3.GroupVersion.Group:
+			// If this resource is a Radius resource, we have a complete understanding of its
+			// Readiness semantic, and we will use that to wait for readiness here.
 			resourceStatus := meta.FindStatusCondition(k8sResource.Status.Conditions, ConditionReady)
-			// check bounds and stuff
-			// Only check for readiness on resources that radius owns.
 			if len(k8sResource.Status.Conditions) == 0 || (resourceStatus != nil && resourceStatus.Status != metav1.ConditionTrue) {
-				// Need to wait for the resource to be ready
+				// Resource is not ready, wait until they are.
 				return ctrl.Result{}, nil
 			}
+		default:
+			// In the future, other resources' Readiness semantic (like Deployment, Service) may
+			// be added here.
 		}
-
 		r.Recorder.Eventf(k8sInfo, "Normal", "Deployed", "Resource %s has been deployed", k8sInfo.GetName())
 		r.StatusDeployedResource(ctx, resource.ID, arm, k8sInfo)
 	}
@@ -416,16 +457,19 @@ func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager, objs [
 	client.Object
 	client.ObjectList
 }) error {
-	// Watch for the application changes on top of other resources
-	appType := struct {
+	// Watch for the application & deployment changes on top of other resources
+	watchTypes := []struct {
 		client.Object
 		client.ObjectList
-	}{
+	}{{
 		&radiusv1alpha3.Application{},
 		&radiusv1alpha3.ApplicationList{},
-	}
+	}, {
+		&bicepv1alpha3.DeploymentTemplate{},
+		&bicepv1alpha3.DeploymentTemplateList{},
+	}}
 
-	objs = append(objs, appType)
+	objs = append(objs, watchTypes...)
 
 	c := ctrl.NewControllerManagedBy(mgr).
 		For(&bicepv1alpha3.DeploymentTemplate{})

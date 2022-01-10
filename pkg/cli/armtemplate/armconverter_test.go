@@ -258,6 +258,86 @@ func TestUnwrapK8sUnstructured(t *testing.T) {
 	}
 }
 
+func TestConvertToK8sDeploymentTemplate(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		input       Resource
+		expected    unstructured.Unstructured
+		expectedErr string
+	}{{
+		name:        "no template",
+		input:       Resource{},
+		expectedErr: "no template",
+	}, {
+		name: "no parameters",
+		input: Resource{
+			Name: "nested",
+			Body: map[string]interface{}{
+				"template": map[string]interface{}{
+					"foo": "bar",
+				},
+			},
+		},
+		expected: unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "bicep.dev/v1alpha3",
+				"kind":       "DeploymentTemplate",
+				"metadata": map[string]interface{}{
+					"name":      "deploymenttemplate-xyz-nested",
+					"namespace": "default",
+				},
+				"spec": map[string]interface{}{
+					"content": map[string]interface{}{
+						"foo": "bar",
+					},
+					"parameters": map[string]interface{}(nil),
+				},
+			},
+		},
+	}, {
+		name: "has parameters",
+		input: Resource{
+			Name: "nested",
+			Body: map[string]interface{}{
+				"template": map[string]interface{}{
+					"foo": "bar",
+				},
+				"parameters": map[string]interface{}{
+					"app": "appName",
+				},
+			},
+		},
+		expected: unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "bicep.dev/v1alpha3",
+				"kind":       "DeploymentTemplate",
+				"metadata": map[string]interface{}{
+					"name":      "deploymenttemplate-xyz-nested",
+					"namespace": "default",
+				},
+				"spec": map[string]interface{}{
+					"content": map[string]interface{}{
+						"foo": "bar",
+					},
+					"parameters": map[string]interface{}{
+						"app": "appName",
+					},
+				},
+			},
+		}}} {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := ConvertToK8sDeploymentTemplate(tc.input, "default", "deploymenttemplate-xyz")
+			if err != nil {
+				require.True(t, tc.expectedErr != "", "unexpected err %v", err)
+				require.Regexp(t, tc.expectedErr, err.Error())
+				return
+			}
+			require.Equal(t, tc.expected, *output)
+		})
+
+	}
+}
+
 func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
 	content, err := ioutil.ReadFile(filePath)
 	if err != nil {
