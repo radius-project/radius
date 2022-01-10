@@ -15,7 +15,7 @@ In this step you will learn how to add a database and connect to it from the app
 
 A [`dapr.io/Sidecar` trait]({{< ref dapr-trait >}}) on the `backend` component can be used to describe the Dapr configuration:
 
-{{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" >}}
+{{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" >}}
 
 The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added via a trait. Traits have a `kind` so that they can be strongly typed.
 
