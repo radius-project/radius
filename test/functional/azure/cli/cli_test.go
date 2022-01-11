@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/testcontext"
