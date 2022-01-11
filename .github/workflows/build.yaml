@@ -326,7 +326,7 @@ jobs:
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
@@ -404,7 +404,7 @@ jobs:
       with:
         github-token: ${{secrets.RADIUS_BOT_TOKEN}}
         script: |
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number

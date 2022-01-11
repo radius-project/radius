@@ -53,7 +53,7 @@ jobs:
             return
           }
 
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
@@ -84,7 +84,7 @@ jobs:
             return
           }
 
-          const pull = await github.pulls.get({
+          const pull = await github.rest.pulls.get({
             owner: context.issue.owner,
             repo: context.issue.repo,
             pull_number: context.issue.number
