@@ -473,6 +473,7 @@ func GetUserFacingAppHealthState(resourceStatuses map[string]ResourceStatus) (st
 	aggregateHealthState := HealthStateHealthy
 	aggregateHealthStateErrorDetails := ""
 
+forloop:
 	for r, rs := range resourceStatuses {
 		userHealthState := InternalToUserHealthStateTranslation[rs.HealthState]
 
@@ -495,7 +496,7 @@ func GetUserFacingAppHealthState(resourceStatuses map[string]ResourceStatus) (st
 		}
 
 		if userHealthState == HealthStateUnhealthy {
-			break
+			break forloop
 		}
 	}
 
