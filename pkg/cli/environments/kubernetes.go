@@ -7,12 +7,7 @@ package environments
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -25,7 +20,7 @@ type KubernetesEnvironment struct {
 	Context            string `mapstructure:"context" validate:"required"`
 	Namespace          string `mapstructure:"namespace" validate:"required"`
 	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
-	ApiServerBaseURL   string `mapstructure:"apiserverbaseurl,omitempty"`
+	APIServerBaseURL   string `mapstructure:"apiserverbaseurl,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
@@ -89,29 +84,9 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-
-	restConfig, err := kubernetes.CreateRestConfig(e.Context)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
 	if err != nil {
 		return nil, err
-	}
-
-	roundTripper, err := kubernetes.CreateRestRoundTripper(e.Context)
-	if err != nil {
-		return nil, err
-	}
-	azcred := &radclient.AnonymousCredential{}
-
-	// ApiServerBaseURL is primarily a debug/local only setting
-	// which overrides the URL for the API server. This is useful when
-	// running the radius controller locally and wanting to still be able
-	// to query the status of applications, resources, etc.
-	var connection *arm.Connection
-	if e.ApiServerBaseURL != "" {
-		connection = arm.NewConnection(fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", e.ApiServerBaseURL), azcred, &arm.ConnectionOptions{})
-	} else {
-		connection = arm.NewConnection(fmt.Sprintf("%s/apis/api.radius.dev/v1alpha3", restConfig.Host+restConfig.APIPath), azcred, &arm.ConnectionOptions{
-			HTTPClient: &KubernetesRoundTripper{Client: roundTripper},
-		})
 	}
 
 	return &azure.ARMManagementClient{
@@ -120,15 +95,4 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
 		SubscriptionID:  e.Namespace,
 	}, nil
-}
-
-var _ policy.Transporter = &KubernetesRoundTripper{}
-
-type KubernetesRoundTripper struct {
-	Client http.RoundTripper
-}
-
-func (t *KubernetesRoundTripper) Do(req *http.Request) (*http.Response, error) {
-	resp, err := t.Client.RoundTrip(req)
-	return resp, err
 }

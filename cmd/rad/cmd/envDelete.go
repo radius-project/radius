@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/keys"
@@ -81,6 +82,26 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		}
 
 		if err = deleteResourceGroup(cmd.Context(), authorizer, az.ControlPlaneResourceGroup, az.SubscriptionID); err != nil {
+			return err
+		}
+	}
+
+	dev, ok := env.(*environments.LocalEnvironment)
+	if ok {
+		if !yes {
+			confirmed, err := prompt.Confirm(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/n]?", dev.ClusterName))
+			if err != nil {
+				return err
+			}
+
+			if !confirmed {
+				output.LogInfo("Delete cancelled.")
+				return nil
+			}
+		}
+
+		err := k3d.DeleteCluster(cmd.Context(), dev.ClusterName)
+		if err != nil {
 			return err
 		}
 	}

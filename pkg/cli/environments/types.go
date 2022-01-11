@@ -14,6 +14,7 @@ import (
 
 const (
 	KindAzureCloud                   = "azure"
+	KindDev                          = "dev"
 	KindKubernetes                   = "kubernetes"
 	KindLocalRP                      = "localrp"
 	EnvironmentKeyDefaultApplication = "defaultapplication"
@@ -26,6 +27,15 @@ type Environment interface {
 
 	// GetStatusLink provides an optional URL for display of the environment.
 	GetStatusLink() string
+}
+
+type Providers struct {
+	AzureProvider *AzureProvider `mapstructure:"azure,omitempty"`
+}
+
+type AzureProvider struct {
+	SubscriptionID string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup  string `mapstructure:"resourcegroup" validate:"required"`
 }
 
 type DeploymentEnvironment interface {
@@ -65,4 +75,17 @@ func CreateManagementClient(ctx context.Context, env Environment) (clients.Manag
 	}
 
 	return me.CreateManagementClient(ctx)
+}
+
+type ServerLifecycleEnvironment interface {
+	CreateServerLifecycleClient(ctx context.Context) (clients.ServerLifecycleClient, error)
+}
+
+func CreateServerLifecycleClient(ctx context.Context, env Environment) (clients.ServerLifecycleClient, error) {
+	me, ok := env.(ServerLifecycleEnvironment)
+	if !ok {
+		return nil, fmt.Errorf("an environment of kind '%s' does not support server operations", env.GetKind())
+	}
+
+	return me.CreateServerLifecycleClient(ctx)
 }
