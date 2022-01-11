@@ -15,17 +15,31 @@
       ],
       "properties": {
         "properties": {
-          "$ref": "#/definitions/DaprPubSubTopicResourceProperties"
+          "$ref": "#/definitions/DaprPubSubTopicProperties"
         }
       }
     },
-    "DaprPubSubTopicResourceProperties": {
+    "DaprPubSubTopicProperties": {
       "type": "object",
       "allOf": [
         {
           "$ref": "basic-resource.json#/definitions/BasicResourceProperties"
         }
       ],
+      "oneOf": [
+        {
+          "$ref": "#/definitions/DaprPubSubTopicAzureServiceBusResourceProperties"
+        },
+        {
+          "$ref": "#/definitions/DaprPubSubTopicAnyResourceProperties"
+        },
+        {
+          "$ref": "#/definitions/DaprPubSubTopicGenericResourceProperties"
+        }
+      ]
+    },
+    "DaprPubSubTopicAzureServiceBusResourceProperties": {
+      "type": "object",
       "additionalProperties": false,
       "required": [
         "kind"
@@ -38,10 +52,7 @@
         "kind": {
           "description": "The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes configuration format.",
           "type": "string",
-          "enum": [
-            "any",
-            "pubsub.azure.servicebus"
-          ]
+          "enum": ["pubsub.azure.servicebus"]
         },
         "topic": {
           "description": "PubSub topic",
@@ -50,6 +61,53 @@
         "resource": {
           "description": "PubSub resource, for unmanaged",
           "type": "string"
+        }
+      }
+    },
+    "DaprPubSubTopicAnyResourceProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "description": "The Dapr Pub/Sub kind.",
+          "type": "string",
+          "enum": ["any"]
+        },
+        "topic": {
+          "description": "PubSub topic",
+          "type": "string"
+        }
+      }
+    },
+    "DaprPubSubTopicGenericResourceProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "type",
+        "version",
+        "metadata"
+      ],
+      "properties": {
+        "kind": {
+          "description": "The Dapr Pub/Sub kind.",
+          "type": "string",
+          "enum": ["generic"]
+        },
+        "type": {
+          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
+          "type": "object"
         }
       }
     }

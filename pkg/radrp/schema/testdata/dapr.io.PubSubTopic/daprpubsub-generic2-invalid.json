@@ -1,0 +1,12 @@
+{
+  "id": "id",
+  "name": "name",
+  "properties": {
+    "kind": "bad",
+    "type": "pubsub.kafka",
+    "metadata": {
+      "a": "b",
+      "c": "d"
+    }
+  }
+}

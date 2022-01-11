@@ -1,0 +1,2 @@
+(root).properties: version is required
+(root).properties.kind: properties.kind must be one of the following: "generic"

@@ -20,6 +20,7 @@ const (
 	SecretProviderClass              = "SecretProviderClass"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
 	DaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
+	DaprPubSubGeneric                = "dapr.io.pubsubtopic"
 	DaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
 	AzureCosmosAccount               = "azure.cosmosdb.account"
 	AzureCosmosDBMongo               = "azure.cosmosdb.mongo"
