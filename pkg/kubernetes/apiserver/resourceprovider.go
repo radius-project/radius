@@ -110,6 +110,9 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 	return rest.NewOKResponse(output), nil
 }
 
+// computeApplicationHealthState aggregates the application level health based on resource health
+// Note: Health for Azure resources has not been implemented yet and this computation does not take
+// Azure resources used by the Radius app  into account.
 func (r *rp) computeApplicationHealthState(ctx context.Context, id azresources.ResourceID) (rest.ApplicationStatus, error) {
 	radiusResources, err := r.getAllResources(ctx, id)
 	if err != nil {

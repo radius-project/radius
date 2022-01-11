@@ -493,6 +493,10 @@ func GetUserFacingAppHealthState(resourceStatuses map[string]ResourceStatus) (st
 			rs.HealthState = InternalToUserHealthStateTranslation[HealthStateUnhealthy]
 			aggregateHealthStateErrorDetails = fmt.Sprintf("Resource %s found in unexpected state: %s", r, rs.HealthState)
 		}
+
+		if userHealthState == HealthStateUnhealthy {
+			break
+		}
 	}
 
 	return aggregateHealthState, aggregateHealthStateErrorDetails
