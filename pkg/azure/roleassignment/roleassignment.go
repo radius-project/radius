@@ -24,8 +24,12 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID string
 
 	roleFilter := fmt.Sprintf("roleName eq '%s'", roleName)
 	roleList, err := rdc.List(ctx, scope, roleFilter)
-	if err != nil || !roleList.NotDone() {
+	if err != nil {
 		return nil, fmt.Errorf("failed to create role assignment for user assigned managed identity: %w", err)
+	}
+
+	if len(roleList.Values()) == 0 {
+		return nil, fmt.Errorf("no role ID was found for the provided role name %s", roleName)
 	}
 
 	rac := clients.NewRoleAssignmentsClient(subscriptionID, auth)
