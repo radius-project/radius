@@ -86,6 +86,11 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
+		err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: true})
+		if err != nil {
+			return err
+		}
+
 		output.CompleteStep(step)
 
 		config := ConfigFromContext(cmd.Context())
@@ -165,22 +170,26 @@ func installRadius(ctx context.Context, client client_go.Interface, runtimeClien
 		return err
 	}
 
-	err = kubectl.RunCLICommandSilent("apply", "--kustomize", fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GatewayCRDVersion))
+	err = helm.ApplyRadiusHelmChart(chartPath, version.NewVersionInfo().Channel, image, tag)
 	if err != nil {
 		return err
 	}
 
-	err = helm.ApplyHAProxyHelmChart(HAProxyVersion)
+	return nil
+}
+
+func installGateway(ctx context.Context, runtimeClient runtime_client.Client, options helm.HAProxyOptions) error {
+	err := kubectl.RunCLICommandSilent("apply", "--kustomize", fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GatewayCRDVersion))
+	if err != nil {
+		return err
+	}
+
+	err = helm.ApplyHAProxyHelmChart(HAProxyVersion, options)
 	if err != nil {
 		return err
 	}
 
 	err = applyGatewayClass(ctx, runtimeClient)
-	if err != nil {
-		return err
-	}
-
-	err = helm.ApplyRadiusHelmChart(chartPath, version.NewVersionInfo().Channel, image, tag)
 	if err != nil {
 		return err
 	}

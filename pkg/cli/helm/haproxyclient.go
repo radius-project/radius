@@ -20,7 +20,12 @@ const (
 	haproxyHelmRepo    = "https://haproxy-ingress.github.io/charts"
 )
 
-func ApplyHAProxyHelmChart(version string) error {
+type HAProxyOptions struct {
+	// See: https://github.com/haproxy-ingress/charts/blob/2009202f2bfe045a8fcdb99e7880cdd54f2ad5bc/haproxy-ingress/values.yaml#L137
+	UseHostNetwork bool
+}
+
+func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -43,7 +48,7 @@ func ApplyHAProxyHelmChart(version string) error {
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
-	err = addHAProxyValues(helmChart)
+	err = addHAProxyValues(helmChart, options)
 	if err != nil {
 		return err
 	}
@@ -64,13 +69,16 @@ func ApplyHAProxyHelmChart(version string) error {
 }
 
 // Values for configuring the install of the helm chart
-func addHAProxyValues(helmChart *chart.Chart) error {
+func addHAProxyValues(helmChart *chart.Chart, options HAProxyOptions) error {
 	controllerNode := helmChart.Values["controller"].(map[string]interface{})
 	if controllerNode == nil {
 		return fmt.Errorf("controller node not found in chart values")
 	}
 
-	controllerNode["hostNetwork"] = true
+	if options.UseHostNetwork {
+		controllerNode["hostNetwork"] = true
+	}
+
 	extraArgsNode := controllerNode["extraArgs"].(map[string]interface{})
 	if extraArgsNode == nil {
 		return fmt.Errorf("extraArgs node not found in chart values")
