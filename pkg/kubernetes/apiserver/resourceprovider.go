@@ -159,7 +159,11 @@ func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, b
 		return nil, err
 	}
 
-	output, err := NewRestApplicationResource(id, converted, rest.ApplicationStatus{})
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	output, err := NewRestApplicationResource(id, converted, applicationStatus)
 	if err != nil {
 		return nil, err
 	}
