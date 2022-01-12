@@ -88,8 +88,7 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 		if err != nil {
 			return nil, err
 		}
-		applicationResource := NewRestApplicationResource(item)
-		applicationResource.Properties["status"] = applicationStatus
+		applicationResource := NewRestApplicationResource(item, applicationStatus)
 		output.Value = append(output.Value, applicationResource)
 	}
 
@@ -109,13 +108,12 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 		return nil, err
 	}
 
-	output := NewRestApplicationResource(item)
 	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
 	if err != nil {
 		return nil, err
 	}
+	output := NewRestApplicationResource(item, applicationStatus)
 	// Update the status as per computed aggregate values
-	output.Properties["status"] = applicationStatus
 	return rest.NewOKResponse(output), nil
 }
 
@@ -172,7 +170,11 @@ func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, b
 		return nil, err
 	}
 
-	output := NewRestApplicationResource(item)
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	output := NewRestApplicationResource(item, applicationStatus)
 	if created {
 		return rest.NewCreatedResponse(output), nil
 	}

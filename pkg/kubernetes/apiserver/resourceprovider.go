@@ -205,45 +205,9 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 		return nil, err
 	}
 
-	output := resourceprovider.RadiusResourceList{}
-
-	for armType, kubernetesType := range armtemplate.GetSupportedTypes() {
-		if armType == "Application" {
-			continue
-		}
-
-		items := unstructured.UnstructuredList{}
-		items.SetGroupVersionKind(k8sschema.GroupVersionKind{
-			Group:   RadiusGroup,
-			Version: RadiusVersion,
-			Kind:    kubernetesType + "List",
-		})
-		err = r.client.List(ctx, &items, controller_runtime.InNamespace(namespace), controller_runtime.MatchingLabels{
-			kubernetes.LabelRadiusApplication: r.getApplicationNameFromResourceId(id),
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		for _, item := range items.Items {
-			resource := radiusv1alpha3.Resource{}
-			b, err := item.MarshalJSON()
-			if err != nil {
-				return nil, err
-			}
-
-			err = json.Unmarshal(b, &resource)
-			if err != nil {
-				return nil, err
-			}
-
-			converted, err := NewRestRadiusResource(resource)
-			if err != nil {
-				return nil, err
-			}
-
-			output.Value = append(output.Value, converted)
-		}
+	output, err := r.getAllResources(ctx, id)
+	if err != nil {
+		return nil, err
 	}
 
 	return rest.NewOKResponse(output), nil

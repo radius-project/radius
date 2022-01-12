@@ -452,6 +452,7 @@ func Test_UpdateApplication_Success(t *testing.T) {
 			require.Equal(t, expected, application)
 			return false, nil
 		})
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
 
 	response, err := test.rp.UpdateApplication(ctx, id, b)
 	require.NoError(t, err)
@@ -463,8 +464,13 @@ func Test_UpdateApplication_Success(t *testing.T) {
 		Tags: map[string]string{
 			"tag": "value",
 		},
-		Location:   testLocation,
-		Properties: map[string]interface{}{},
+		Location: testLocation,
+		Properties: map[string]interface{}{
+			"status": rest.ApplicationStatus{
+				ProvisioningState: "Provisioned",
+				HealthState:       "Healthy",
+			},
+		},
 	}
 	require.Equal(t, rest.NewOKResponse(expected), response)
 }

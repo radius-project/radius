@@ -42,16 +42,18 @@ func NewDBRadiusResource(id azresources.ResourceID, resource RadiusResource) db.
 	}
 }
 
-func NewRestApplicationResource(application db.ApplicationResource) ApplicationResource {
+func NewRestApplicationResource(application db.ApplicationResource, status rest.ApplicationStatus) ApplicationResource {
 	// Properties are built from a combination of fields we store in the database
 	// This allows us to separate the stateful info from the user-supplied definition.
 	return ApplicationResource{
-		ID:         application.ID,
-		Type:       application.Type,
-		Name:       application.ApplicationName,
-		Tags:       application.Tags,
-		Location:   application.Location,
-		Properties: map[string]interface{}{},
+		ID:       application.ID,
+		Type:     application.Type,
+		Name:     application.ApplicationName,
+		Tags:     application.Tags,
+		Location: application.Location,
+		Properties: map[string]interface{}{
+			"status": status,
+		},
 	}
 }
 

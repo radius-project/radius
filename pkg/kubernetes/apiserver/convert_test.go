@@ -29,7 +29,11 @@ func Test_ConvertApplication_RoundTrips(t *testing.T) {
 	require.NoError(t, err)
 	var raw *runtime.RawExtension
 	properties := map[string]interface{}{}
-	properties["status"] = rest.ApplicationStatus{}
+	appStatus := rest.ApplicationStatus{
+		ProvisioningState: "Provisioned",
+		HealthState:       "Healthy",
+	}
+	properties["status"] = appStatus
 	template := map[string]interface{}{
 		"body": map[string]interface{}{
 			"properties": properties,
@@ -56,8 +60,9 @@ func Test_ConvertApplication_RoundTrips(t *testing.T) {
 		},
 	}
 
-	res, err := NewRestApplicationResource(id, original, rest.ApplicationStatus{})
+	res, err := NewRestApplicationResource(id, original, appStatus)
 	require.NoError(t, err)
+	require.Equal(t, res.Properties["status"], appStatus)
 
 	final, err := NewKubernetesApplicationResource(id, res, namespace)
 	require.NoError(t, err)
