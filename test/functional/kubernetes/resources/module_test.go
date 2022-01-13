@@ -32,6 +32,13 @@ func TestK8sModule(t *testing.T) {
 						validation.K8sObject{
 							Labels: map[string]string{
 								"radius.dev/application": application,
+								"radius.dev/resource":    "container",
+							},
+						},
+						validation.K8sObject{
+							Labels: map[string]string{
+								"radius.dev/application": application,
+								"radius.dev/resource":    "busybox",
 							},
 						},
 					},
