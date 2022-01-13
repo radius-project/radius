@@ -1,0 +1,15 @@
+name: 'Delete all GitHub artifacts'
+
+on:
+  repository_dispatch:
+    types:
+    - purge-artifacts
+
+jobs:
+  delete-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: kolpav/purge-artifacts-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          expire-in: 0
