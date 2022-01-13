@@ -674,8 +674,8 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
-				handlers.RoleNameKey:             roleName,
-				handlers.RoleAssignmentTargetKey: armResourceIdentifier,
+				handlers.RoleNameKey:         roleName,
+				handlers.RoleAssignmentScope: armResourceIdentifier,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -706,8 +706,8 @@ func (r Renderer) makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx context.Conte
 			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
-				handlers.RoleNameKey:             roleName,
-				handlers.RoleAssignmentTargetKey: keyVaultID,
+				handlers.RoleNameKey:         roleName,
+				handlers.RoleAssignmentScope: keyVaultID,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
