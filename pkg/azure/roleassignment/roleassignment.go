@@ -10,9 +10,7 @@ import (
 	"strings"
 	"time"
 
-	// "github.com/Azure/azure-sdk-for-go/services/preview/authorization/mgmt/2020-04-01-preview/authorization"
-	// "github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/authorization/mgmt/authorization"
+	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gofrs/uuid"
@@ -35,15 +33,15 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 
 	// Check if role assignment already exists for the managed identity
 	roleAssignmentClient := clients.NewRoleAssignmentsClient(subscriptionID, auth)
-	existing, err := roleAssignmentClient.List(ctx, fmt.Sprintf("principalID eq '%s'", principalID), "")
+	existingRoleAssignments, err := roleAssignmentClient.List(ctx, fmt.Sprintf("principalID eq '%s'", principalID), "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
 	}
-	for _, r := range existing.Values() {
-		if roleDefinitionID == *r.RoleAssignmentPropertiesWithScope.RoleDefinitionID &&
-			scope == *r.RoleAssignmentPropertiesWithScope.Scope {
+	for _, roleAssignment := range existingRoleAssignments.Values() {
+		if roleDefinitionID == *roleAssignment.RoleAssignmentPropertiesWithScope.RoleDefinitionID &&
+			scope == *roleAssignment.RoleAssignmentPropertiesWithScope.Scope {
 			// The required role assignment already exists
-			return &r, nil
+			return &roleAssignment, nil
 		}
 	}
 
