@@ -366,9 +366,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 	// Create a secret as backing storage for any secret values the resource may contain.
 	//
 	// The secret is 'owned' by the Radius resource.
-	secret := kubernetes.MakeScrapedSecret(r.getApplicationNameFromResourceId(id), r.getResourceTypeFromResourceId(id), r.getResourceNameFromResourceId(id))
-	secret.SetNamespace(item.GetNamespace())
-	secret.StringData = secrets
+	secret := kubernetes.MakeScrapedSecret(&item, secrets)
 	err = controllerutil.SetControllerReference(&item, secret, r.client.Scheme())
 	if err != nil {
 		return nil, err

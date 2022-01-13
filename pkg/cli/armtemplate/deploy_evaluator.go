@@ -472,10 +472,22 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 		return nil
 	} else if name == "variables" {
 		if len(args) != 1 {
-			return fmt.Errorf("exactle 1 argument is required for %s", "variables")
+			return fmt.Errorf("exactly 1 argument is required for %s", "variables")
 		}
 
 		result, err := eva.EvaluateVariable(args[0])
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
+		return nil
+	} else if name == "last" {
+		if len(args) != 1 {
+			return fmt.Errorf("exactly 1 argument is required for %s", "last")
+		}
+
+		result, err := eva.EvaluateLast(args[0])
 		if err != nil {
 			return err
 		}
@@ -630,6 +642,15 @@ func (eva *DeploymentEvaluator) EvaluateSplit(input string, delimiter string) ([
 
 func (eva *DeploymentEvaluator) EvaluateString(input interface{}) string {
 	return fmt.Sprintf("%v", input)
+}
+
+func (eva *DeploymentEvaluator) EvaluateLast(input interface{}) (interface{}, error) {
+	value, _ := input.([]interface{})
+	if len(value) == 0 {
+		return nil, errors.New("last(l) is undefined when l is empty")
+	}
+
+	return value[len(value)-1], nil
 }
 
 func (eva *DeploymentEvaluator) EvaluateVariable(variable interface{}) (interface{}, error) {
