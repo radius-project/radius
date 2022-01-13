@@ -80,7 +80,16 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 
 	output := ApplicationResourceList{}
 	for _, item := range items {
-		output.Value = append(output.Value, NewRestApplicationResource(item))
+		applicationID, err := azresources.Parse(item.ID)
+		if err != nil {
+			return nil, err
+		}
+		applicationStatus, err := r.computeApplicationHealthState(ctx, applicationID)
+		if err != nil {
+			return nil, err
+		}
+		applicationResource := NewRestApplicationResource(item, applicationStatus)
+		output.Value = append(output.Value, applicationResource)
 	}
 
 	return rest.NewOKResponse(output), nil
@@ -99,8 +108,48 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 		return nil, err
 	}
 
-	output := NewRestApplicationResource(item)
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	output := NewRestApplicationResource(item, applicationStatus)
+	// Update the status as per computed aggregate values
 	return rest.NewOKResponse(output), nil
+}
+
+// computeApplicationHealthState aggregates the application level health based on resource health
+// Note: Health for Azure resources has not been implemented yet and this computation does not take
+// Azure resources used by the Radius app  into account.
+func (r *rp) computeApplicationHealthState(ctx context.Context, id azresources.ResourceID) (rest.ApplicationStatus, error) {
+	// List radius resources
+	radiusResources, err := r.db.ListAllV3ResourcesByApplication(ctx, id, id.Name())
+	if err != nil {
+		return rest.ApplicationStatus{}, err
+	}
+
+	outputResourceList := RadiusResourceList{}
+	for _, radiusResource := range radiusResources {
+		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResource(radiusResource))
+	}
+	// Aggregate application status over all resource statuses
+	statuses := map[string]rest.ResourceStatus{}
+	for _, resource := range outputResourceList.Value {
+		statuses[resource.Name] = resource.Properties["status"].(rest.ResourceStatus)
+	}
+
+	// Health and Provisioning State for Azure resources is not implemented and therefore
+	// not accounted for in the aggregate health
+	// https: //github.com/Azure/radius/issues/1683
+
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingAppHealthState(statuses)
+	aggregateProvisiongState, aggregateProvisiongStateErrorDetails := rest.GetUserFacingAppProvisioningState(statuses)
+
+	return rest.ApplicationStatus{
+		ProvisioningState:        aggregateProvisiongState,
+		ProvisioningErrorDetails: aggregateProvisiongStateErrorDetails,
+		HealthState:              aggregateHealthState,
+		HealthErrorDetails:       aggregateHealthStateErrorDetails,
+	}, nil
 }
 
 func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {
@@ -121,7 +170,11 @@ func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, b
 		return nil, err
 	}
 
-	output := NewRestApplicationResource(item)
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	output := NewRestApplicationResource(item, applicationStatus)
 	if created {
 		return rest.NewCreatedResponse(output), nil
 	}

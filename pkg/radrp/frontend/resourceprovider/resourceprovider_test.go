@@ -47,6 +47,26 @@ type testcase struct {
 	id          azresources.ResourceID
 }
 
+var id azresources.ResourceID = parseOrPanic(applicationListID())
+var testRadiusResource []db.RadiusResource = []db.RadiusResource{
+	{
+		ID:                testID,
+		Type:              id.Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: "string(rest.SuccededStatus)",
+		Status: db.RadiusResourceStatus{
+			ProvisioningState: "Provisioned",
+			HealthState:       "Healthy",
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+		},
+	},
+}
+
 // Cases where we want to implement functionality consistently (like validation)
 //
 // In generate we can data-drive all of the negative testing and a lot of the positive testing.
@@ -316,9 +336,11 @@ func Test_ListApplications_Success(t *testing.T) {
 	test := createRPTest(t)
 
 	id := parseOrPanic(applicationListID())
+	appID := applicationID(applicationName)
+
 	data := []db.ApplicationResource{
 		{
-			ID:              testID,
+			ID:              appID,
 			Type:            id.Type(),
 			SubscriptionID:  subscriptionID,
 			ResourceGroup:   resourceGroup,
@@ -329,7 +351,9 @@ func Test_ListApplications_Success(t *testing.T) {
 			Location: testLocation,
 		},
 	}
+
 	test.db.EXPECT().ListV3Applications(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
 
 	response, err := test.rp.ListApplications(ctx, id)
 	require.NoError(t, err)
@@ -337,7 +361,7 @@ func Test_ListApplications_Success(t *testing.T) {
 	expected := ApplicationResourceList{
 		Value: []ApplicationResource{
 			{
-				ID:   testID,
+				ID:   appID,
 				Type: id.Type(),
 				Name: applicationName,
 				Tags: map[string]string{
@@ -345,7 +369,10 @@ func Test_ListApplications_Success(t *testing.T) {
 				},
 				Location: testLocation,
 				Properties: map[string]interface{}{
-					"status": rest.ApplicationStatus{},
+					"status": rest.ApplicationStatus{
+						ProvisioningState: "Provisioned",
+						HealthState:       "Healthy",
+					},
 				},
 			},
 		},
@@ -369,7 +396,9 @@ func Test_GetApplication_Success(t *testing.T) {
 		},
 		Location: testLocation,
 	}
+
 	test.db.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
 
 	response, err := test.rp.GetApplication(ctx, id)
 	require.NoError(t, err)
@@ -383,7 +412,10 @@ func Test_GetApplication_Success(t *testing.T) {
 		},
 		Location: testLocation,
 		Properties: map[string]interface{}{
-			"status": rest.ApplicationStatus{},
+			"status": rest.ApplicationStatus{
+				ProvisioningState: "Provisioned",
+				HealthState:       "Healthy",
+			},
 		},
 	}
 	require.Equal(t, rest.NewOKResponse(expected), response)
@@ -420,6 +452,7 @@ func Test_UpdateApplication_Success(t *testing.T) {
 			require.Equal(t, expected, application)
 			return false, nil
 		})
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
 
 	response, err := test.rp.UpdateApplication(ctx, id, b)
 	require.NoError(t, err)
@@ -433,7 +466,10 @@ func Test_UpdateApplication_Success(t *testing.T) {
 		},
 		Location: testLocation,
 		Properties: map[string]interface{}{
-			"status": rest.ApplicationStatus{},
+			"status": rest.ApplicationStatus{
+				ProvisioningState: "Provisioned",
+				HealthState:       "Healthy",
+			},
 		},
 	}
 	require.Equal(t, rest.NewOKResponse(expected), response)

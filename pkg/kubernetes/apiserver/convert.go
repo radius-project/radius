@@ -24,7 +24,7 @@ import (
 )
 
 // Converts K8s Application to a REST Application
-func NewRestApplicationResource(id azresources.ResourceID, input radiusv1alpha3.Application) (resourceprovider.ApplicationResource, error) {
+func NewRestApplicationResource(id azresources.ResourceID, input radiusv1alpha3.Application, status rest.ApplicationStatus) (resourceprovider.ApplicationResource, error) {
 	template := map[string]interface{}{}
 	if input.Spec.Template != nil {
 		err := json.Unmarshal(input.Spec.Template.Raw, &template)
@@ -47,6 +47,8 @@ func NewRestApplicationResource(id azresources.ResourceID, input radiusv1alpha3.
 			}
 		}
 	}
+
+	properties["status"] = status
 
 	return resourceprovider.ApplicationResource{
 		ID:         id.ID,
@@ -92,7 +94,7 @@ func NewKubernetesApplicationResource(id azresources.ResourceID, input resourcep
 			Application: id.Name(),
 			Template:    raw,
 		},
-		Status: radiusv1alpha3.ResourceStatus{},
+		Status: radiusv1alpha3.ApplicationStatus{},
 	}, nil
 }
 
@@ -213,8 +215,8 @@ func NewRestRadiusResourceStatus(objRef string, ors map[string]interface{}) (res
 	}
 
 	// Aggregate the resource status
-	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingHealthState(restOutputResources)
-	aggregateProvisiongState := rest.GetUserFacingProvisioningState(restOutputResources)
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingResourceHealthState(restOutputResources)
+	aggregateProvisiongState := rest.GetUserFacingResourceProvisioningState(restOutputResources)
 
 	status := rest.ResourceStatus{
 		ProvisioningState:  aggregateProvisiongState,

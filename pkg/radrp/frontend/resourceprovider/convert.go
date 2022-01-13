@@ -42,26 +42,18 @@ func NewDBRadiusResource(id azresources.ResourceID, resource RadiusResource) db.
 	}
 }
 
-func NewRestApplicationResource(application db.ApplicationResource) ApplicationResource {
+func NewRestApplicationResource(application db.ApplicationResource, status rest.ApplicationStatus) ApplicationResource {
 	// Properties are built from a combination of fields we store in the database
 	// This allows us to separate the stateful info from the user-supplied definition.
-	properties := map[string]interface{}{}
-
-	// We're copying things in order of priority even though we don't expect conflicts.
-	properties["status"] = rest.ApplicationStatus{
-		ProvisioningState:        application.Status.ProvisioningState,
-		ProvisioningErrorDetails: application.Status.ProvisioningErrorDetails,
-		HealthState:              application.Status.HealthState,
-		HealthErrorDetails:       application.Status.HealthErrorDetails,
-	}
-
 	return ApplicationResource{
-		ID:         application.ID,
-		Type:       application.Type,
-		Name:       application.ApplicationName,
-		Tags:       application.Tags,
-		Location:   application.Location,
-		Properties: properties,
+		ID:       application.ID,
+		Type:     application.Type,
+		Name:     application.ApplicationName,
+		Tags:     application.Tags,
+		Location: application.Location,
+		Properties: map[string]interface{}{
+			"status": status,
+		},
 	}
 }
 
@@ -106,8 +98,8 @@ func NewRestRadiusResourceFromAzureResource(azResource db.AzureResource) RadiusR
 func NewRestRadiusResourceStatus(resourceName string, original db.RadiusResourceStatus) RadiusResourceStatus {
 	ors := NewRestOutputResourceStatus(original.OutputResources)
 
-	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingHealthState(ors)
-	aggregateProvisioningState := rest.GetUserFacingProvisioningState(ors)
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingResourceHealthState(ors)
+	aggregateProvisioningState := rest.GetUserFacingResourceProvisioningState(ors)
 
 	status := RadiusResourceStatus{
 		ProvisioningState:  aggregateProvisioningState,

@@ -49,6 +49,22 @@ type ResourceStatus struct {
 	Phrase string `json:"phrase,omitempty"`
 }
 
+// ApplicationStatus defines the observed state of Application
+type ApplicationStatus struct {
+	// ObservedGeneration captures the last generation
+	// that was captured and completed by the reconciler
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Conditions represents the latest available observations of an object's current state.
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	ProvisioningState             string `json:"provisioningState,omitempty"`
+	ProvisioningStateErrorDetails string `json:"provisioningStateErrorDetails,omitempty"`
+	HealthState                   string `json:"healthState,omitempty"`
+	HealthStateErrorDetails       string `json:"healthStateErrorDetails,omitempty"`
+}
+
 // OutputResourceStatus defines the observed state of an output resource
 type OutputResourceStatus struct {
 	ProvisioningState             string `json:"provisioningState,omitempty"`

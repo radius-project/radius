@@ -68,7 +68,11 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 		// Add name to resource ID, by removing the last type/name and appending
 		// the actual part.
 		newId := id.Truncate().Append(azresources.ResourceType{Type: typeName, Name: item.Name})
-		converted, err := NewRestApplicationResource(newId, item)
+		applicationStatus, err := r.computeApplicationHealthState(ctx, newId)
+		if err != nil {
+			return nil, err
+		}
+		converted, err := NewRestApplicationResource(newId, item, applicationStatus)
 		if err != nil {
 			return nil, err
 		}
@@ -86,6 +90,7 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 
 	namespace := id.ResourceGroup
 	item := radiusv1alpha3.Application{}
+
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: id.Name()}, &item)
 	if err != nil && controller_runtime.IgnoreNotFound(err) == nil {
 		return rest.NewNotFoundResponse(id), nil
@@ -93,12 +98,42 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 		return nil, err
 	}
 
-	output, err := NewRestApplicationResource(id, item)
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	output, err := NewRestApplicationResource(id, item, applicationStatus)
 	if err != nil {
 		return nil, err
 	}
 
 	return rest.NewOKResponse(output), nil
+}
+
+// computeApplicationHealthState aggregates the application level health based on resource health
+// Note: Health for Azure resources has not been implemented yet and this computation does not take
+// Azure resources used by the Radius app  into account.
+func (r *rp) computeApplicationHealthState(ctx context.Context, id azresources.ResourceID) (rest.ApplicationStatus, error) {
+	radiusResources, err := r.getAllResources(ctx, id)
+	if err != nil {
+		return rest.ApplicationStatus{}, err
+	}
+
+	statuses := map[string]rest.ResourceStatus{}
+	for _, radiusResource := range radiusResources.Value {
+		status := radiusResource.Properties["status"].(rest.ResourceStatus)
+		statuses[radiusResource.Name] = status
+	}
+
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingAppHealthState(statuses)
+	aggregateProvisiongState, aggregateProvisiongStateErrorDetails := rest.GetUserFacingAppProvisioningState(statuses)
+
+	return rest.ApplicationStatus{
+		ProvisioningState:        aggregateProvisiongState,
+		ProvisioningErrorDetails: aggregateProvisiongStateErrorDetails,
+		HealthState:              aggregateHealthState,
+		HealthErrorDetails:       aggregateHealthStateErrorDetails,
+	}, nil
 }
 
 func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {
@@ -124,7 +159,11 @@ func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, b
 		return nil, err
 	}
 
-	output, err := NewRestApplicationResource(id, converted)
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	output, err := NewRestApplicationResource(id, converted, applicationStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -170,48 +209,55 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 		return nil, err
 	}
 
-	output := resourceprovider.RadiusResourceList{}
+	output, err := r.getAllResources(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 
+	return rest.NewOKResponse(output), nil
+}
+
+func (r *rp) getAllResources(ctx context.Context, id azresources.ResourceID) (resourceprovider.RadiusResourceList, error) {
+	output := resourceprovider.RadiusResourceList{}
+	namespace := id.ResourceGroup
 	for armType, kubernetesType := range armtemplate.GetSupportedTypes() {
 		if armType == "Application" {
 			continue
 		}
-
 		items := unstructured.UnstructuredList{}
 		items.SetGroupVersionKind(k8sschema.GroupVersionKind{
 			Group:   RadiusGroup,
 			Version: RadiusVersion,
 			Kind:    kubernetesType + "List",
 		})
-		err = r.client.List(ctx, &items, controller_runtime.InNamespace(namespace), controller_runtime.MatchingLabels{
+		err := r.client.List(ctx, &items, controller_runtime.InNamespace(namespace), controller_runtime.MatchingLabels{
 			kubernetes.LabelRadiusApplication: r.getApplicationNameFromResourceId(id),
 		})
 		if err != nil {
-			return nil, err
+			return resourceprovider.RadiusResourceList{}, err
 		}
 
 		for _, item := range items.Items {
 			resource := radiusv1alpha3.Resource{}
 			b, err := item.MarshalJSON()
 			if err != nil {
-				return nil, err
+				return resourceprovider.RadiusResourceList{}, err
 			}
 
 			err = json.Unmarshal(b, &resource)
 			if err != nil {
-				return nil, err
+				return resourceprovider.RadiusResourceList{}, err
 			}
 
 			converted, err := NewRestRadiusResource(resource)
 			if err != nil {
-				return nil, err
+				return resourceprovider.RadiusResourceList{}, err
 			}
 
 			output.Value = append(output.Value, converted)
 		}
 	}
-
-	return rest.NewOKResponse(output), nil
+	return output, nil
 }
 
 func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
