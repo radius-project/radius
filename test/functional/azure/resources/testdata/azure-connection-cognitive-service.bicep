@@ -14,7 +14,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           roles: [
             'Cognitive Services User'
             '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68'
-            '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7'
           ]
         }
       }
