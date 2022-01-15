@@ -31,7 +31,7 @@ type LocalEnvironment struct {
 	ClusterName string `mapstructure:"clustername" validate:"required"`
 
 	// Registry is the docker/OCI registry we're using for images. This will probably be a localhost URL.
-	Registry    string `mapstructure:"registry,omitempty"`
+	Registry string `mapstructure:"registry,omitempty"`
 
 	// APIServerBaseURL is an override for local debugging. This allows us us to run the controller + API Service outside the
 	// cluster.
@@ -67,7 +67,8 @@ func (e *LocalEnvironment) GetAzureProviderDetails() (string, string) {
 		return e.Providers.AzureProvider.SubscriptionID, e.Providers.AzureProvider.ResourceGroup
 	}
 
-	return "test-subscription", "test-resource-group"
+	// Use namespace unless we have an Azure subscription attached.
+	return e.Namespace, e.Namespace
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {

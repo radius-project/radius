@@ -18,5 +18,6 @@ module infra 'infra.bicep' = {
   name: 'infra'
   params: {
     application: app.name
+    computedValue: format('{0}', app.name) // test that we evaluate parameters
   }
 }

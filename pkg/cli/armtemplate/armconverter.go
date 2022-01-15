@@ -88,11 +88,16 @@ func scrapeSecrets(resource Resource) map[string]string {
 }
 
 func ConvertToK8sDeploymentTemplate(resource Resource, namespace string, parentName string) (*unstructured.Unstructured, error) {
-	template, hasTemplate := resource.Body["template"].(map[string]interface{})
+	properties, hasProperties := resource.Body["properties"].(map[string]interface{})
+	if !hasProperties {
+		return nil, fmt.Errorf("resource %s/%s has no properties", resource.Type, resource.Name)
+	}
+
+	template, hasTemplate := properties["template"].(map[string]interface{})
 	if !hasTemplate {
 		return nil, fmt.Errorf("resource %s/%s has no template", resource.Type, resource.Name)
 	}
-	parameters, _ := resource.Body["parameters"].(map[string]interface{})
+	parameters, _ := properties["parameters"].(map[string]interface{})
 	uns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": bicepv1alpha3.GroupVersion.String(),

@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/textproto"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,26 +87,31 @@ func CreateRestRoundTripper(context string, overrideURL string) (http.RoundTripp
 		return nil, err
 	}
 
-	return client, err
+	return NewLocationRewriteRoundTripper(merged.Host, client), err
 }
 
 func CreateAPIServerConnection(context string, overrideURL string) (string, *arm.Connection, error) {
+
+	var baseURL string
+	var roundTripper http.RoundTripper
 	if overrideURL != "" {
-		baseURL := strings.TrimSuffix(overrideURL, "/") + APIServerBasePath
-		return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{}), nil
+		baseURL = strings.TrimSuffix(overrideURL, "/") + APIServerBasePath
+		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
+	} else {
+		restConfig, err := GetConfig(context)
+		if err != nil {
+			return "", nil, err
+		}
+
+		roundTripper, err = CreateRestRoundTripper(context, overrideURL)
+		if err != nil {
+			return "", nil, err
+		}
+
+		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
 
-	restConfig, err := GetConfig(context)
-	if err != nil {
-		return "", nil, err
-	}
-
-	roundTripper, err := CreateRestRoundTripper(context, overrideURL)
-	if err != nil {
-		return "", nil, err
-	}
-
-	baseURL := strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
 	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
 		HTTPClient: &KubernetesTransporter{Client: roundTripper},
 	}), nil
@@ -216,4 +223,79 @@ type KubernetesTransporter struct {
 func (t *KubernetesTransporter) Do(req *http.Request) (*http.Response, error) {
 	resp, err := t.Client.RoundTrip(req)
 	return resp, err
+}
+
+var _ http.RoundTripper = (*LocationRewriteRoundTripper)(nil)
+
+// LocationRewriteRoundTripper rewrites the value of the HTTP Location header on responses
+// to match the expected Host/Scheme.
+//
+// There is a blocking behavior bug when combining the ARM-RPC protocol and a Kubernetes APIService.
+// Kubernetes does not forward the original hostname when proxying requests (we get the wrong value in
+// X-Forwarded-Host). See: https://github.com/kubernetes/kubernetes/issues/107435
+//
+// ARM-RPC requires the Location header to contain a fully-qualified absolute URL (it must start
+// with https://...). Combining this requirement with the broken behavior of APIService proxying means
+// that we generate the wrong URL.
+//
+// So this is a temporary solution, until we can solve this at the protocol level. We rewrite the Location
+// header on the client.
+type LocationRewriteRoundTripper struct {
+	Inner  http.RoundTripper
+	Host   string
+	Scheme string
+}
+
+func (t *LocationRewriteRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	res, err := t.Inner.RoundTrip(request)
+	if err != nil {
+		return nil, err
+	}
+
+	value, ok := res.Header[textproto.CanonicalMIMEHeaderKey("Location")]
+	if !ok || len(value) == 0 {
+		return res, nil
+	}
+
+	// OK we have a location value, try to parse as a URL and then rewrite.
+	// Location is specified to contain a single value so just use the first one.
+	u, err := url.Parse(value[0])
+	if err != nil {
+		// If we fail to parse the location value just skip rewiting. Our usage of Location should always be valid.
+		return res, nil
+	}
+
+	if u.Scheme == "" {
+		// If we don't have a fully-qualified URL then just skip rewriting. Our usage of Location should always be fully-qualified.
+		return res, nil
+	}
+
+	if t.Scheme != "" {
+		u.Scheme = t.Scheme
+	}
+	u.Host = t.Host
+
+	res.Header[textproto.CanonicalMIMEHeaderKey("Location")] = []string{u.String()}
+	return res, nil
+}
+
+func NewLocationRewriteRoundTripper(prefix string, inner http.RoundTripper) *LocationRewriteRoundTripper {
+	// NOTE: while we get the value from RESTConfig.Host - it's NOT always a host:port combo. Sometimes
+	// it is a URL including the scheme portion. JUST FOR FUN.
+	//
+	// We do our best to handle all of those cases here and degrade silently if we can't.
+	if strings.Contains(prefix, "://") {
+		// If we get here this is likely a fully-qualified URL.
+		u, err := url.Parse(prefix)
+		if err != nil {
+			// We failed to parse this as a URL, just treat it as a hostname then.
+			return &LocationRewriteRoundTripper{Inner: inner, Host: prefix}
+		}
+
+		// OK we have a URL
+		return &LocationRewriteRoundTripper{Inner: inner, Host: u.Host, Scheme: u.Scheme}
+	}
+
+	// If we get here it's likely not a fully-qualified URL. Treat it as a hostname.
+	return &LocationRewriteRoundTripper{Inner: inner, Host: prefix}
 }

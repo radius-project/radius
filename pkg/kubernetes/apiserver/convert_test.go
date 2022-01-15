@@ -167,6 +167,11 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 				},
 			},
 			Status: radiusv1alpha3.ResourceStatus{
+				ComputedValues: rawOrPanic(map[string]interface{}{
+					"computed": map[string]interface{}{
+						"Value": "yes its a value!",
+					},
+				}),
 				Resources: map[string]*radiusv1alpha3.OutputResource{
 					"Deployment": {
 						Status: radiusv1alpha3.OutputResourceStatus{
@@ -182,7 +187,8 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 			ID:   "/very/long/path/container-01",
 			Type: "/very/long/path/radius.dev/Container",
 			Properties: map[string]interface{}{
-				"image": "the-best",
+				"computed": "yes its a value!",
+				"image":    "the-best",
 				"status": rest.ResourceStatus{
 					ProvisioningState: "Provisioned",
 					HealthState:       healthcontract.HealthStateHealthy,

@@ -264,67 +264,85 @@ func TestConvertToK8sDeploymentTemplate(t *testing.T) {
 		input       Resource
 		expected    unstructured.Unstructured
 		expectedErr string
-	}{{
-		name:        "no template",
-		input:       Resource{},
-		expectedErr: "no template",
-	}, {
-		name: "no parameters",
-		input: Resource{
-			Name: "nested",
-			Body: map[string]interface{}{
-				"template": map[string]interface{}{
-					"foo": "bar",
+	}{
+		{
+			name: "no properties",
+			input: Resource{
+				Name: "nested",
+				Body: map[string]interface{}{},
+			},
+			expectedErr: "no properties",
+		},
+		{
+			name: "no template",
+			input: Resource{
+				Name: "nested",
+				Body: map[string]interface{}{
+					"properties": map[string]interface{}{},
 				},
 			},
-		},
-		expected: unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"apiVersion": "bicep.dev/v1alpha3",
-				"kind":       "DeploymentTemplate",
-				"metadata": map[string]interface{}{
-					"name":      "deploymenttemplate-xyz-nested",
-					"namespace": "default",
-				},
-				"spec": map[string]interface{}{
-					"content": map[string]interface{}{
-						"foo": "bar",
-					},
-					"parameters": map[string]interface{}(nil),
-				},
-			},
-		},
-	}, {
-		name: "has parameters",
-		input: Resource{
-			Name: "nested",
-			Body: map[string]interface{}{
-				"template": map[string]interface{}{
-					"foo": "bar",
-				},
-				"parameters": map[string]interface{}{
-					"app": "appName",
-				},
-			},
-		},
-		expected: unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"apiVersion": "bicep.dev/v1alpha3",
-				"kind":       "DeploymentTemplate",
-				"metadata": map[string]interface{}{
-					"name":      "deploymenttemplate-xyz-nested",
-					"namespace": "default",
-				},
-				"spec": map[string]interface{}{
-					"content": map[string]interface{}{
-						"foo": "bar",
-					},
-					"parameters": map[string]interface{}{
-						"app": "appName",
+			expectedErr: "no template",
+		}, {
+			name: "no parameters",
+			input: Resource{
+				Name: "nested",
+				Body: map[string]interface{}{
+					"properties": map[string]interface{}{
+						"template": map[string]interface{}{
+							"foo": "bar",
+						},
 					},
 				},
 			},
-		}}} {
+			expected: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "bicep.dev/v1alpha3",
+					"kind":       "DeploymentTemplate",
+					"metadata": map[string]interface{}{
+						"name":      "deploymenttemplate-xyz-nested",
+						"namespace": "default",
+					},
+					"spec": map[string]interface{}{
+						"content": map[string]interface{}{
+							"foo": "bar",
+						},
+						"parameters": map[string]interface{}(nil),
+					},
+				},
+			},
+		}, {
+			name: "has parameters",
+			input: Resource{
+				Name: "nested",
+				Body: map[string]interface{}{
+					"properties": map[string]interface{}{
+						"template": map[string]interface{}{
+							"foo": "bar",
+						},
+						"parameters": map[string]interface{}{
+							"app": "appName",
+						},
+					},
+				},
+			},
+			expected: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "bicep.dev/v1alpha3",
+					"kind":       "DeploymentTemplate",
+					"metadata": map[string]interface{}{
+						"name":      "deploymenttemplate-xyz-nested",
+						"namespace": "default",
+					},
+					"spec": map[string]interface{}{
+						"content": map[string]interface{}{
+							"foo": "bar",
+						},
+						"parameters": map[string]interface{}{
+							"app": "appName",
+						},
+					},
+				},
+			}}} {
 		t.Run(tc.name, func(t *testing.T) {
 			output, err := ConvertToK8sDeploymentTemplate(tc.input, "default", "deploymenttemplate-xyz")
 			if err != nil {

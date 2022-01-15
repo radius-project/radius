@@ -130,13 +130,12 @@ func NewRestRadiusResourceFromUnstructured(input unstructured.Unstructured) (res
 	}
 	// It is ok for "properties" to be empty
 	properties, _ := mapDeepGetMap(template, "body", "properties")
+	if properties == nil {
+		properties = make(map[string]interface{})
+	}
 
 	if statusMap, ok := m["status"]; ok {
 		// Check if there any resources
-		if properties == nil {
-			properties = make(map[string]interface{})
-		}
-
 		if _, ok := statusMap.(map[string]interface{})["resources"]; !ok {
 			properties["status"] = map[string]interface{}{}
 		} else {
@@ -150,6 +149,23 @@ func NewRestRadiusResourceFromUnstructured(input unstructured.Unstructured) (res
 				return resourceprovider.RadiusResource{}, fmt.Errorf("cannot convert %s: %w", objRef, err)
 			}
 			properties["status"] = status
+		}
+
+		// Merge computed values
+		if _, ok := statusMap.(map[string]interface{})["computedValues"]; ok {
+			computedValues, err := mapDeepGetMap(m, "status", "computedValues")
+			if err != nil {
+				return resourceprovider.RadiusResource{}, fmt.Errorf("cannot convert %s: %w", objRef, err)
+			}
+
+			for k := range computedValues {
+				value, err := mapDeepGet(computedValues, k, "Value")
+				if err != nil {
+					return resourceprovider.RadiusResource{}, fmt.Errorf("cannot convert %s: %w", objRef, err)
+				}
+
+				properties[k] = value
+			}
 		}
 	}
 

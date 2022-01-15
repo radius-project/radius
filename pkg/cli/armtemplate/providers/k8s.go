@@ -88,7 +88,7 @@ func (p *K8sProvider) GetDeployedResource(ctx context.Context, id string, versio
 }
 
 func (p *K8sProvider) DeployResource(ctx context.Context, id string, version string, body map[string]interface{}) (map[string]interface{}, error) {
-	gvr, gvk, name, err := p.extractGroupVersionResourceName(id, version)
+	gvr, gvk, _, err := p.extractGroupVersionResourceName(id, version)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +103,7 @@ func (p *K8sProvider) DeployResource(ctx context.Context, id string, version str
 		return nil, err
 	}
 
+	name := obj["metadata"].(map[string]interface{})["name"].(string)
 	r, err := p.client.Resource(gvr).Namespace(p.namespace).Patch(ctx, name, types.ApplyPatchType, b, v1.PatchOptions{FieldManager: "rad"})
 	if err != nil {
 		return nil, err

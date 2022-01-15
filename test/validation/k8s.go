@@ -138,7 +138,7 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 		for event := range podList.ResultChan() {
 			pod, ok := event.Object.(*corev1.Pod)
 			if !ok {
-				log.Printf("Could not convert object to pod.")
+				log.Printf("Could not convert object to pod, was %+v.", event.Object)
 				continue
 			}
 
@@ -167,7 +167,9 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 		Follow:    true,
 	})
 	stream, err := req.Stream(ctx)
-	if err != nil {
+	if err != nil && err == ctx.Err() {
+		return
+	} else if err != nil {
 		log.Printf("Error reading log stream for %s. Error was %q", filename, err)
 		return
 	}
@@ -189,8 +191,10 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 			break
 		}
 
-		if err != nil {
-			log.Printf("Error reading log stream for %s. Error was %s", filename, err)
+		if err != nil && err == ctx.Err() {
+			return
+		} else if err != nil {
+			log.Printf("Error reading log stream for %s. Error was %q", filename, err)
 			return
 		}
 
