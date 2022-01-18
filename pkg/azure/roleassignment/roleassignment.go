@@ -93,6 +93,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 func getRoleDefinitionID(ctx context.Context, auth autorest.Authorizer, subscriptionID, scope, roleNameOrID string) (roleDefinitionID string, err error) {
 	if strings.HasPrefix(roleNameOrID, "/subscriptions/") {
 		roleDefinitionID = roleNameOrID
+		return
 	}
 
 	roleDefinitionClient := clients.NewRoleDefinitionsClient(subscriptionID, auth)
