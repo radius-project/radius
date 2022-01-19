@@ -13,6 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
           source: cognitiveServicesAccount.id
           roles: [
             'Cognitive Services User'
+            '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68'
           ]
         }
       }

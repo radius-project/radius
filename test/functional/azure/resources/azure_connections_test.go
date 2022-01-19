@@ -58,6 +58,13 @@ func Test_AzureConnectionCognitiveService(t *testing.T) {
 								Managed:                 true,
 								VerifyStatus:            false,
 							},
+							"role-assignment-2": {
+								SkipLocalIDWhenMatching: true,
+								OutputResourceType:      outputresource.TypeARM,
+								ResourceKind:            resourcekinds.AzureRoleAssignment,
+								Managed:                 true,
+								VerifyStatus:            false,
+							},
 						},
 					},
 				},

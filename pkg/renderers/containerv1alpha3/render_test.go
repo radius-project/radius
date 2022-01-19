@@ -498,8 +498,8 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
-				handlers.RoleNameKey:             "TestRole1",
-				handlers.RoleAssignmentTargetKey: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
+				handlers.RoleNameKey:         "TestRole1",
+				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -513,8 +513,8 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
-				handlers.RoleNameKey:             "TestRole2",
-				handlers.RoleAssignmentTargetKey: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
+				handlers.RoleNameKey:         "TestRole2",
+				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -616,8 +616,8 @@ func Test_Render_AzureConnection(t *testing.T) {
 			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
-				handlers.RoleNameKey:             expectedRole,
-				handlers.RoleAssignmentTargetKey: testARMID,
+				handlers.RoleNameKey:         expectedRole,
+				handlers.RoleAssignmentScope: testARMID,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
