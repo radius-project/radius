@@ -27,10 +27,7 @@ spec:
         ports:
         - containerPort: 8443
           name: https
-      - args:
-        command:
-        - /deployment-engine
-        env:
+      - env:
         - name: TLS_CERT_DIR
           value: /radius/cert
         image: {{ .Values.deploymentEngine }}:{{ .Values.deploymentEngineTag }}
