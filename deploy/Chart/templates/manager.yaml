@@ -37,7 +37,7 @@ spec:
         name: deployment-engine
         ports:
         - containerPort: 5000
-          name: deployment-engine
+          name: de
           protocol: TCP
         volumeMounts:
         - name: cert
@@ -85,8 +85,6 @@ spec:
       - name: cert
         secret:
           secretName: radius-controller-cert
-      securityContext:
-        runAsNonRoot: true
       serviceAccountName: radius-controller-manager
       terminationGracePeriodSeconds: 10
 --- 
