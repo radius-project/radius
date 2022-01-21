@@ -7,10 +7,7 @@
     "version": "v1",
     "metadata": {
       "a": "b",
-      "c": "d",
-      "redisPassword": "secretKeyRef":{
-        "redisSecret": "redisPassword"
-      }
+      "c": "d"
     }
   }
 }

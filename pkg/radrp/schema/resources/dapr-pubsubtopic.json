@@ -108,10 +108,6 @@
         "metadata": {
           "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
           "type": "object"
-        },
-        "secretStore": {
-          "description": "Name of the secret store if configured",
-          "type": "string"
         }
       }
     }
