@@ -8,7 +8,9 @@
     "metadata": {
       "a": "b",
       "c": "d",
-      "redisPassword": "secretKeyRef:{redis-secret:redis-password}"
+      "redisPassword": "secretKeyRef":{
+        "redisSecret": "redisPassword"
+      }
     }
   }
 }
