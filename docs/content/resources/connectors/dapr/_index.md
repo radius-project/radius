@@ -10,4 +10,4 @@ Radius provides built-in Dapr hosting, plus integrations with [Radius components
 
 Additionally, there are Dapr components which offer abstractions for [Dapr building blocks](https://docs.dapr.io/developing-applications/building-blocks/).
 
-## Dapr components
+## Dapr connectors
