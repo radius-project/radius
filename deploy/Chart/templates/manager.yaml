@@ -27,13 +27,15 @@ spec:
         ports:
         - containerPort: 8443
           name: https
-      - env:
+      - args:
+        - --kubernetes=true
+        env:
         - name: TLS_CERT_DIR
           value: /radius/cert
         image: {{ .Values.deploymentEngine }}:{{ .Values.deploymentEngineTag }}
         name: deployment-engine
         ports:
-        - containerPort: 5000
+        - containerPort: 80
           name: de
           protocol: TCP
         volumeMounts:
