@@ -105,7 +105,12 @@ metadata:
 spec:
   ports:
     - port: 443
+      name: https
       protocol: TCP
       targetPort: 7443
+    - port: 5000
+      name: de
+      protocol: TCP
+      targetPort: 5000
   selector:
     control-plane: controller-manager
