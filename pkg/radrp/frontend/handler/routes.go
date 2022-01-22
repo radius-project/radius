@@ -23,7 +23,7 @@ func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validat
 	var subrouter *mux.Router
 
 	var providerPath = fmt.Sprintf(
-		"%s/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
+		"%s/subscriptions/{%s}/resource{[gG]}roups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
 		swaggerDocRoute,
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
