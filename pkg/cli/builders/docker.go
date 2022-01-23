@@ -6,10 +6,12 @@
 package builders
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 var _ Builder = (*dockerBuilder)(nil)
@@ -94,9 +96,31 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 	}
 	_ = writer.Close()
 
+	// Get the image digest so we can be precise about the version
+	//
+	// NOTE: this isn't correct for multi-platform images since they have multiple manifests
+	// however, we don't produce multi-platform images on this code path so it's not an issue
+	// right now.
+	args = []string{
+		"inspect",
+		"--format={{index .RepoDigests 0}}",
+		input.Image,
+	}
+	cmd = exec.CommandContext(ctx, "docker", args...)
+	buffer := bytes.Buffer{}
+	cmd.Stdout = &buffer
+	writer = options.Output.Writer()
+	cmd.Stderr = writer
+
+	err = cmd.Run()
+	_ = writer.Close()
+	if err != nil {
+		return Output{}, err
+	}
+
 	output := Output{
 		Result: map[string]interface{}{
-			"image": input.Image,
+			"image": strings.TrimSpace(buffer.String()),
 		},
 	}
 
