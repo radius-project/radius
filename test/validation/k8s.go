@@ -138,7 +138,13 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 		for event := range podList.ResultChan() {
 			pod, ok := event.Object.(*corev1.Pod)
 			if !ok {
-				log.Printf("Could not convert object to pod, was %+v.", event.Object)
+				_, ok := event.Object.(*metav1.Status)
+				if ok {
+					// Ignore statuses, these might be the result of a connection dropping or the watch being cancelled.
+					continue
+				}
+
+				log.Printf("Could not convert object to pod or status, was %+v.", event.Object)
 				continue
 			}
 
@@ -170,7 +176,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 	if err != nil && err == ctx.Err() {
 		return
 	} else if err != nil {
-		log.Printf("Error reading log stream for %s. Error was %q", filename, err)
+		log.Printf("Error reading log stream for %s. Error was %+v", filename, err)
 		return
 	}
 	defer stream.Close()
@@ -194,7 +200,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 		if err != nil && err == ctx.Err() {
 			return
 		} else if err != nil {
-			log.Printf("Error reading log stream for %s. Error was %q", filename, err)
+			log.Printf("Error reading log stream for %s. Error was %+v", filename, err)
 			return
 		}
 
@@ -539,7 +545,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 						t.Errorf("pod watch error with status reason: %s, message: %s", status.Reason, status.Message)
 					}
 				}
-				require.Truef(t, ok, "object %T is not a pod", event.Object)
+				require.IsTypef(t, &corev1.Pod{}, event.Object, "object %T is not a pod", event.Object)
 			}
 
 			if pod.Status.Phase == corev1.PodRunning {
