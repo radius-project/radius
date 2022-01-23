@@ -9,12 +9,14 @@ import (
 	"context"
 	"io"
 	"path"
+
+	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 type Options struct {
 	BaseDirectory string
 	Stderr        io.Writer
-	Stdout        io.Writer
+	Output        *output.Stream
 	Values        interface{}
 }
 

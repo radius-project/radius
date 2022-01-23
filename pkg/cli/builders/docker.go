@@ -55,11 +55,19 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 		"-t", input.Image,
 	}
 	cmd := exec.CommandContext(ctx, "docker", args...)
-	cmd.Stdout = options.Stdout
-	cmd.Stderr = options.Stderr
+	writer := options.Output.Writer()
+	cmd.Stdout = writer
+	cmd.Stderr = writer
 
-	fmt.Printf("running: %s\n", cmd.String())
-	err = cmd.Run()
+	options.Output.Print(fmt.Sprintf("running: %s\n", cmd.String()))
+	err = cmd.Start()
+	if err != nil {
+		_ = writer.Close()
+		return Output{}, err
+	}
+
+	err = cmd.Wait()
+	_ = writer.Close()
 	if err != nil {
 		return Output{}, err
 	}
@@ -69,13 +77,22 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 		input.Image,
 	}
 	cmd = exec.CommandContext(ctx, "docker", args...)
-	cmd.Stdout = options.Stdout
-	cmd.Stderr = options.Stderr
+	writer = options.Output.Writer()
+	cmd.Stdout = writer
+	cmd.Stderr = writer
 
-	err = cmd.Run()
+	options.Output.Print(fmt.Sprintf("running: %s\n", cmd.String()))
+	err = cmd.Start()
+	if err != nil {
+		_ = writer.Close()
+		return Output{}, err
+	}
+
+	err = cmd.Wait()
 	if err != nil {
 		return Output{}, err
 	}
+	_ = writer.Close()
 
 	output := Output{
 		Result: map[string]interface{}{
