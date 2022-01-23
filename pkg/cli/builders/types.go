@@ -7,15 +7,15 @@ package builders
 
 import (
 	"context"
-	"io"
 	"path"
 
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 type Options struct {
 	BaseDirectory string
-	Stderr        io.Writer
+	Registry      *environments.Registry
 	Output        *output.Stream
 	Values        interface{}
 }

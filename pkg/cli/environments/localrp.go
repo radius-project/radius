@@ -49,6 +49,10 @@ func (e *LocalRPEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *LocalRPEnvironment) GetContainerRegistry() *Registry {
+	return nil
+}
+
 func (e *LocalRPEnvironment) GetStatusLink() string {
 	// If there's a problem generating the status link, we don't want to fail noisily, just skip the link.
 	url, err := azure.GenerateAzureEnvUrl(e.SubscriptionID, e.ResourceGroup)

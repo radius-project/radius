@@ -27,6 +27,22 @@ type Environment interface {
 
 	// GetStatusLink provides an optional URL for display of the environment.
 	GetStatusLink() string
+
+	// GetContainerRegistry provides an optional container registry override. The registry is used
+	// by the 'rad app ...' family of commands for development purposes.
+	GetContainerRegistry() *Registry
+}
+
+// Registry represent the configuration for a container registry.
+type Registry struct {
+	// PushEndpoint is the endpoint used for push commands. For a local container registry this hostname
+	// is expected to be accessible from the host machine.
+	PushEndpoint string `mapstructure:"pushendpoint" validate:"required"`
+
+	// PullEndpoint is the endpoing used to pull by the runtime. For a local container registry this hostname
+	// is expected to be accessible by the runtime. Can be the same as PushEndpoint if the registry has a routable
+	// address.
+	PullEndpoint string `mapstructure:"pullendpoint" validate:"required"`
 }
 
 type Providers struct {
