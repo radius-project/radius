@@ -35,7 +35,7 @@ A [`statestore` component]({{< ref dapr-statestore >}}) is used to specify a few
 
 - **resource type**: `'dapr.io/StateStoreComponent'` represents a resource that Dapr uses to communicate with a database.
 - **kind**: `'any'` tells Radius to pick the best available statestore for the platform. For Azure this is Table Storage and for Kubernetes this is a Redis container.
-- **managed**: `true` tells Radius to manage the lifetime of the component for you. 
+- **managed**: `true` tells Radius to manage the lifetime of the component for you.
 
 {{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
@@ -49,9 +49,9 @@ Radius captures both logical relationships and related operational details. Exam
 
 The [`connections` section]({{< ref "connections-model" >}}) is used to configure relationships between a component and bindings provided by other components.
 
-Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from the `backend` component via the [`connections` section]({{< ref "connections-model" >}}). This declares the *intention* from the `backend` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
+Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from the `backend` component via the [`connections` section]({{< ref "connections-model" >}}). This declares the _intention_ from the `backend` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
 
-{{< rad file="snippets/app.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-statestore="//STATESTORE" replace-value-statestore="resource statestore 'dapr.io.StateStore' = {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
+{{< rad file="snippets/app.bicep" embed=true >}}
 
 ### Injected settings from connections
 
@@ -60,7 +60,7 @@ Adding a connection to the state store also [configures environment variables]({
 Because the connection is called `orders` inside `backend`, Radius will inject information related to the state store using environment variables like `CONNECTION_ORDERS_STATESTORENAME`. The application code inside `backend` uses this environment variable to access the state store name and avoid hardcoding.
 
 ```js
-const stateStoreName =  process.env.CONNECTION_ORDERS_STATESTORENAME;
+const stateStoreName = process.env.CONNECTION_ORDERS_STATESTORENAME;
 ```
 
 See the [connections]({{< ref "connections-model#injected-values" >}}) page for more information about this feature.
