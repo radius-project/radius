@@ -17,18 +17,22 @@ To learn more about the Radius application model an how to define resources and 
 
 {{< cardpane >}}
 {{< card header="**Services**" >}}
-Content card 1
+Model your running code with services.<br /><br />
+[Learn more]({{< ref services >}})
 {{< /card >}}
 {{< card header="**Networking**" >}}
-Content card 2
+Define your network relationships & requirements.<br /><br />
+[Learn more]({{< ref networking >}})
 {{< /card >}}
 {{< card header="**Connectors**" >}}
-Content card 2
+Add portability to your application with connectors.<br /><br />
+[Learn more]({{< ref connectors >}})
 {{< /card >}}
 {{< /cardpane >}}
 {{< cardpane >}}
 {{< card header="**Kubernetes**" >}}
-Content card 3
+Model and connect to Kubernetes resources.<br /><br />
+[Learn more]({{< ref services >}})
 {{< /card >}}
 {{< card header="**Microsoft Azure**" >}}
 Content card 3
