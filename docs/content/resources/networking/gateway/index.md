@@ -3,14 +3,14 @@ type: docs
 title: "Gateway"
 linkTitle: "Gateway"
 description: "Learn how to route requests to different resources."
-weight: 100
+weight: 200
 ---
 
 ## Overview
 
 `Gateway` defines how requests are routed to different resources, and also provides the ability to expose traffic to the internet. Conceptually, gateways allow you to have a single point of entry for  traffic in your application, whether it be internal or external traffic.
 
-`Gateway` in radius are split into two main pieces; the `Gateway` resource itself, which defines which port and protocol to listen on, and Route(s) which define the rules for routing traffic to different resources.
+`Gateway` in Radius are split into two main pieces; the `Gateway` resource itself, which defines which port and protocol to listen on, and Route(s) which define the rules for routing traffic to different resources.
 
 ## Gateway format
 

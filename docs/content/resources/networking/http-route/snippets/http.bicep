@@ -36,7 +36,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       port: 80
       gateway: {
         hostname: '*'
-        //ROUTE-RULES
+        //RULES
         rules: {
           http: {
             path: {
@@ -45,7 +45,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
             }
           }
         }
-      //ROUTE-RULES
+      //RULES
       }
     }
   }
