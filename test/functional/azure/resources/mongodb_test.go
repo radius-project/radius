@@ -135,3 +135,38 @@ func Test_MongoDBUnmanaged(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_MongoDBUserSecrets(t *testing.T) {
+	application := "azure-resources-mongodb-user-secrets"
+	template := "testdata/azure-resources-mongodb-user-secrets.bicep"
+	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+		{
+			Executor: azuretest.NewDeployStepExecutor(template),
+			AzureResources: &validation.AzureResourceSet{
+				Resources: []validation.ExpectedResource{},
+			},
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
+					{
+						ApplicationName: application,
+						ResourceName:    "todoapp",
+						ResourceType:    containerv1alpha3.ResourceType,
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+				},
+			},
+			Pods: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					application: {
+						validation.NewK8sObjectForResource(application, "todoapp"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}

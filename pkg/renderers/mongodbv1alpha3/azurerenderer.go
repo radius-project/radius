@@ -55,7 +55,7 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 		resources = append(resources, results...)
 	}
 
-	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName)
+	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
 
 	return renderers.RendererOutput{
 		Resources:      resources,
@@ -97,6 +97,9 @@ func RenderManaged(name string, properties radclient.MongoDBResourceProperties) 
 }
 
 func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
+	if properties.Secrets != nil {
+		return nil, nil
+	}
 	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
@@ -135,21 +138,38 @@ func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties
 	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
 
-func MakeSecretsAndValues(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	computedValues := map[string]renderers.ComputedValueReference{
+func MakeSecretsAndValues(name string, properties radclient.MongoDBResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+	if properties.Secrets == nil {
+		computedValues := map[string]renderers.ComputedValueReference{
+			DatabaseValue: {
+				Value: name,
+			},
+		}
+		secretValues := map[string]renderers.SecretValueReference{
+			ConnectionStringValue: {
+				LocalID: cosmosAccountDependency.LocalID,
+				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				Action:        "listConnectionStrings",
+				ValueSelector: "/connectionStrings/0/connectionString",
+				Transformer:   resourcekinds.AzureCosmosDBMongo,
+			},
+		}
+
+		return computedValues, secretValues
+	}
+
+	return map[string]renderers.ComputedValueReference{
 		DatabaseValue: {
 			Value: name,
 		},
-	}
-	secretValues := map[string]renderers.SecretValueReference{
 		ConnectionStringValue: {
-			LocalID: cosmosAccountDependency.LocalID,
-			// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-			Action:        "listConnectionStrings",
-			ValueSelector: "/connectionStrings/0/connectionString",
-			Transformer:   resourcekinds.AzureCosmosDBMongo,
+			Value: properties.Secrets.ConnectionString,
 		},
-	}
-
-	return computedValues, secretValues
+		UsernameStringValue: {
+			Value: properties.Secrets.Username,
+		},
+		PasswordValue: {
+			Value: properties.Secrets.Password,
+		},
+	}, nil
 }

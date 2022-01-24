@@ -26,16 +26,16 @@ const (
 	SecretKeyRabbitMQConnectionString = "RABBITMQ_CONNECTIONSTRING"
 )
 
-var _ renderers.Renderer = (*Renderer)(nil)
+var _ renderers.Renderer = (*KubernetesRenderer)(nil)
 
-type Renderer struct {
+type KubernetesRenderer struct {
 }
 
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	return nil, nil, nil
 }
 
-func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource := options.Resource
 
 	properties := &radclient.RabbitMQMessageQueueResourceProperties{}

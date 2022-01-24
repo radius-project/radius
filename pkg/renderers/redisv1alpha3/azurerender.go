@@ -7,7 +7,9 @@ package redisv1alpha3
 
 import (
 	"context"
+	"strconv"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -43,11 +45,12 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
-
-		outputResources = append(outputResources, redisCacheOutputResource)
+		if redisCacheOutputResource != nil {
+			outputResources = append(outputResources, *redisCacheOutputResource)
+		}
 	}
 
-	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName)
+	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,
@@ -70,14 +73,17 @@ func RenderManaged(resourceName string, properties radclient.RedisCacheResourceP
 	return redisCacheOutputResource
 }
 
-func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourceProperties) (outputresource.OutputResource, error) {
+func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourceProperties) (*outputresource.OutputResource, error) {
+	if properties.Secrets != nil {
+		return nil, nil
+	}
 	if properties.Resource == nil || *properties.Resource == "" {
-		return outputresource.OutputResource{}, renderers.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
 
 	redisResourceID, err := renderers.ValidateResourceID(*properties.Resource, RedisResourceType, "Redis Cache")
 	if err != nil {
-		return outputresource.OutputResource{}, err
+		return nil, err
 	}
 
 	redisCacheOutputResource := outputresource.OutputResource{
@@ -90,33 +96,51 @@ func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourc
 			handlers.RedisNameKey:       redisResourceID.Name(),
 		},
 	}
-
-	return redisCacheOutputResource, nil
+	return &redisCacheOutputResource, nil
 }
 
-func MakeSecretsAndValues(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	computedValues := map[string]renderers.ComputedValueReference{
+func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+	if properties.Secrets == nil {
+		computedValues := map[string]renderers.ComputedValueReference{
+			"host": {
+				LocalID:           outputresource.LocalIDAzureRedis,
+				PropertyReference: handlers.RedisHostKey,
+			},
+			"port": {
+				LocalID:           outputresource.LocalIDAzureRedis,
+				PropertyReference: handlers.RedisPortKey,
+			},
+			"username": {
+				LocalID:           outputresource.LocalIDAzureRedis,
+				PropertyReference: handlers.RedisUsernameKey,
+			},
+		}
+
+		secretValues := map[string]renderers.SecretValueReference{
+			"password": {
+				LocalID:       outputresource.LocalIDAzureRedis,
+				Action:        "listKeys",
+				ValueSelector: "/primaryKey",
+			},
+		}
+
+		return computedValues, secretValues
+	}
+	return map[string]renderers.ComputedValueReference{
 		"host": {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisHostKey,
+			Value: to.String(properties.Host),
 		},
 		"port": {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisPortKey,
+			Value: strconv.Itoa(int(to.Int32(properties.Port))),
 		},
 		"username": {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisUsernameKey,
+			Value: "",
 		},
-	}
-
-	secretValues := map[string]renderers.SecretValueReference{
 		"password": {
-			LocalID:       outputresource.LocalIDAzureRedis,
-			Action:        "listKeys",
-			ValueSelector: "/primaryKey",
+			Value: to.String(properties.Secrets.Password),
 		},
-	}
-
-	return computedValues, secretValues
+		"connectionString": {
+			Value: to.String(properties.Secrets.ConnectionString),
+		},
+	}, nil
 }

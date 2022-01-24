@@ -87,6 +87,50 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
+func Test_Azure_Render_Unmanaged_User_Secrets(t *testing.T) {
+	ctx := createContext(t)
+	renderer := AzureRenderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"host": "localhost",
+			"port": 42,
+			"secrets": map[string]string{
+				"password":         "deadbeef",
+				"connectionString": "admin:deadbeef@localhost:42",
+			},
+		},
+	}
+
+	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	require.NoError(t, err)
+
+	require.Len(t, output.Resources, 0)
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		"host": {
+			Value: "localhost",
+		},
+		"port": {
+			Value: "42",
+		},
+		"username": {
+			Value: "",
+		},
+		"password": {
+			Value: "deadbeef",
+		},
+		"connectionString": {
+			Value: "admin:deadbeef@localhost:42",
+		},
+	}
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+	require.Equal(t, 0, len(output.SecretValues))
+}
+
 func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
