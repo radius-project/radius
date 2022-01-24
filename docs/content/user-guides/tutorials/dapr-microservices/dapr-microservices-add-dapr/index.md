@@ -83,7 +83,7 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
    rad deploy template.bicep
    ```
 
-   This may take a few minutes because of the time required to create the Storage Account.
+   In case you are using an Azure backed Radius environment this operation may take a few minutes (while a Azure Storage Account is created).
 
 1. You can confirm that the new `statestore` component was deployed by running:
 
@@ -93,10 +93,10 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 
    You should see both `backend` and `statestore` components in your `dapr-tutorial` application. Example output:
 
-   ```
-   RESOURCE   TYPE
-   backend     Container
-   statestore  dapr.io.StateStore
+   ```sh
+    RESOURCE      TYPE                         PROVISIONING_STATE  HEALTH_STATE
+    statestore    dapr.io.StateStore           Provisioned         Healthy
+    backend       Container                    Provisioned         Healthy
    ```
 
 1. To test out the state store, open a local tunnel on port 3000 again:
@@ -107,7 +107,7 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 
 1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:
 
-   ```
+   ```json
    {"message":"no orders yet"}
    ```
 
