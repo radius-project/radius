@@ -81,7 +81,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		return nil, err
 	}
 
-	roundTripper, err := kubernetes.CreateRestRoundTripper(e.Context, e.APIServerBaseURL)
+	roundTripper, err := kubernetes.CreateRestRoundTripper(e.Context, "api.radius.dev", e.APIServerBaseURL)
 	if err != nil {
 		return nil, err
 	}

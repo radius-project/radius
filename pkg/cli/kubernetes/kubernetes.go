@@ -68,7 +68,7 @@ func CreateExtensionClient(context string) (clientset.Interface, error) {
 	return client, err
 }
 
-func CreateRestRoundTripper(context string, overrideURL string) (http.RoundTripper, error) {
+func CreateRestRoundTripper(context string, group string, overrideURL string) (http.RoundTripper, error) {
 	if overrideURL != "" {
 		return http.DefaultTransport, nil
 	}
@@ -77,7 +77,7 @@ func CreateRestRoundTripper(context string, overrideURL string) (http.RoundTripp
 	if err != nil {
 		return nil, err
 	}
-	gv := schema.GroupVersion{Group: "api.radius.dev", Version: "v1alpha3"}
+	gv := schema.GroupVersion{Group: group, Version: "v1alpha3"}
 	merged.GroupVersion = &gv
 	merged.APIPath = "/apis"
 	merged.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
@@ -92,6 +92,40 @@ func CreateRestRoundTripper(context string, overrideURL string) (http.RoundTripp
 
 func CreateAPIServerConnection(context string, overrideURL string) (string, *arm.Connection, error) {
 
+	baseURL, roundTripper, err := GetBaseUrlAndRoundTripper(overrideURL, "api.radius.dev", context)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
+		HTTPClient: &KubernetesTransporter{Client: roundTripper},
+	}), nil
+}
+
+func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string) (string, http.RoundTripper, error) {
+	var baseURL string
+	var roundTripper http.RoundTripper
+	if overrideURL != "" {
+		baseURL = strings.TrimSuffix(overrideURL, "/")
+		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
+	} else {
+		restConfig, err := GetConfig(context)
+		if err != nil {
+			return "", nil, err
+		}
+
+		roundTripper, err = CreateRestRoundTripper(context, "api.bicep.dev", overrideURL)
+		if err != nil {
+			return "", nil, err
+		}
+
+		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
+	}
+	return baseURL, roundTripper, nil
+}
+
+func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
 	if overrideURL != "" {
@@ -103,7 +137,7 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 			return "", nil, err
 		}
 
-		roundTripper, err = CreateRestRoundTripper(context, overrideURL)
+		roundTripper, err = CreateRestRoundTripper(context, group, overrideURL)
 		if err != nil {
 			return "", nil, err
 		}
@@ -111,10 +145,7 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
 		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
-
-	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
-		HTTPClient: &KubernetesTransporter{Client: roundTripper},
-	}), nil
+	return baseURL, roundTripper, nil
 }
 
 func CreateRestConfig(context string) (*rest.Config, error) {
