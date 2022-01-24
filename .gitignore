@@ -45,3 +45,4 @@ default.profraw
 
 # gomock files
 pkg/handlers/gomock_*
+template.bicep
