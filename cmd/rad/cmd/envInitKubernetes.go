@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 const (
@@ -179,12 +179,12 @@ func installRadius(ctx context.Context, client client_go.Interface, runtimeClien
 }
 
 func installGateway(ctx context.Context, runtimeClient runtime_client.Client, options helm.HAProxyOptions) error {
-	err := kubectl.RunCLICommandSilent("apply", "--kustomize", fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GatewayCRDVersion))
+	err := kubectl.RunCLICommandSilent("apply", "-f", "https://raw.githubusercontent.com/projectcontour/contour/v1.20.0-beta.1/examples/render/contour-gateway.yaml")
 	if err != nil {
 		return err
 	}
 
-	err = helm.ApplyHAProxyHelmChart(HAProxyVersion, options)
+	err = kubectl.RunCLICommandSilent("apply", "-f", "https://raw.githubusercontent.com/projectcontour/contour-operator/v1.20.0-beta.1/examples/operator/operator.yaml")
 	if err != nil {
 		return err
 	}
@@ -198,17 +198,17 @@ func installGateway(ctx context.Context, runtimeClient runtime_client.Client, op
 }
 
 func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client) error {
-	gateway := gatewayv1alpha1.GatewayClass{
+	gateway := gatewayv1alpha2.GatewayClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GatewayClass",
 			APIVersion: "networking.x-k8s.io/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "haproxy",
+			Name:      "contour",
 			Namespace: "radius-system",
 		},
-		Spec: gatewayv1alpha1.GatewayClassSpec{
-			Controller: "haproxy-ingress.github.io/controller",
+		Spec: gatewayv1alpha2.GatewayClassSpec{
+			ControllerName: "projectcontour.io/sample-controller",
 		},
 	}
 

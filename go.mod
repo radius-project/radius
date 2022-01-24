@@ -50,8 +50,8 @@ require (
 	k8s.io/cli-runtime v0.21.0
 	k8s.io/client-go v0.22.2
 	k8s.io/kubectl v0.21.0
-	sigs.k8s.io/controller-runtime v0.9.2
-	sigs.k8s.io/gateway-api v0.3.0
+	sigs.k8s.io/controller-runtime v0.9.6
+	sigs.k8s.io/gateway-api v0.4.1
 	sigs.k8s.io/secrets-store-csi-driver v1.0.0
 	sigs.k8s.io/yaml v1.2.0
 )
@@ -203,7 +203,7 @@ require (
 	k8s.io/component-base v0.22.2 // indirect
 	k8s.io/klog/v2 v2.10.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
-	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a // indirect
+	k8s.io/utils v0.0.0-20210820185131-d34e5cb4466e // indirect
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/kustomize/api v0.8.5 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.10.15 // indirect
