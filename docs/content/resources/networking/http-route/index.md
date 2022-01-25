@@ -42,17 +42,20 @@ You can optionally define a Gateway section for external users to access the Rou
 | rules | n | The rules to match the request with. | [See Rules](#rules)
 | source | n | The gateway which this HttpRoute belongs to. If not defined, Radius will create a gateway implicitly to expose traffic. | `gateway.id`
 
-#### Gateway Rules
+#### Rules
 
 You can optionally define specific rules for the gateway.
+
 | Key  | Required | Description |
 |------|:--------:|-------------|
-| path | n | The path to match the request on.|
+| path | n | The path to match the request on. |
 
-An example of path matching is shown below:
+##### Path
 
-{{< rad file="snippets/http.bicep" embed=true marker="//RULES" >}}
-
+| Key  | Required | Description |
+|------|:--------:|-------------|
+| value | n | Specifies the path to match the incoming requests. |
+| type | n | Specifies the type on matching to match the path on. Supported values: 'prefix', 'exact' |
 
 ## Provided Data
 
@@ -77,13 +80,17 @@ The following data is available for use from the consuming service:
 
 The following example shows two containers, one providing an Http Route and the other consuming it:
 
-### Providing
+### Providing container
 
 Once an HTTP Route is defined, you can provide it from a [container]({{< ref container >}}) by using the `provides` property:
 
 {{< rad file="snippets/http.bicep" embed=true marker="//BACKEND" >}}
 
-### Consuming
+## HTTP route
+
+{{< rad file="snippets/http.bicep" embed=true marker="//ROUTE" >}}
+
+### Consuming container
 
 To consume an HTTP Route, you can use the `connections` property:
 

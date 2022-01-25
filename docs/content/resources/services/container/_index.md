@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Radius container component"
+title: "Container service"
 linkTitle: "Container"
-description: "Learn about the Radius container component"
+description: "Learn how to add a container to your Radius application"
 weight: 100
 ---
 
@@ -104,3 +104,5 @@ Connections define how a container connects to [other resources]({{< ref resourc
 | name | y | A name key for the port. | `inventory`
 | kind | y | The type of resource you are connecting to. | `mongo.com/MongoDB`
 | source | y | The id of the [Component]({{< ref components-model >}}) the container is connecting to. | `db.id`
+
+## Sub-types
