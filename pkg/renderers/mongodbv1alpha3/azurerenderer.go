@@ -158,6 +158,10 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 		return computedValues, secretValues
 	}
 
+	// Currently user-specfied secrets are stored in the `secrets` property of the resource, and
+	// thus serialized to our database.
+	//
+	// TODO(#1767): We need to store these in a secret store.
 	return map[string]renderers.ComputedValueReference{
 		DatabaseValue: {
 			Value: name,

@@ -33,6 +33,10 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	if properties.Secrets == nil {
 		return renderers.RendererOutput{}, errors.New("secrets must be specified")
 	}
+	// Currently user-specfied secrets are stored in the `secrets` property of the resource, and
+	// thus serialized to our database.
+	//
+	// TODO(#1767): We need to store these in a secret store.
 	return renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"username": {
