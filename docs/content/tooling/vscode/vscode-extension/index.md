@@ -17,6 +17,7 @@ Radius offers a *preview* Radius Visual Studio Code extension for Radius-specifi
 - [Visual Studio Code](https://code.visualstudio.com/)
 
 ## Preview installation guide
+
 ### Install Radius extension
 
 1. Download the edge [custom VSCode extension file](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix).
@@ -48,19 +49,22 @@ Radius offers a *preview* Radius Visual Studio Code extension for Radius-specifi
    <img src="./wsl-extension.png" alt="Screenshot of installing a vsix extension in WSL" width=400>
 
 ## Features
-### Tree representation of your code
+
+### View your deployed applications
+
 View environments, applications and resources deployed in a tree view style in Visual Studio Code.
 
 <img src="./vs-extension-view.png" alt="Screenshot of tree view found in vscode extension" width=500>
 
 ### View logs from container resources
+
 The Radius extension helps you find information about your applications with Radius by creating a temporary log file that can be opened and viewed with the logs from your resources.
 
 Using the tree view resource nodes found in the explorer section, you can access a action icon command to create this log file and view logs related to the specific resource choosen.
 
-### View a topology of your Radius application
-Within the Environment view you can access a diagram of your Radius application by clicking on the corresponding action icon next to your application node. This opens up a webview containing how your current deployment understands the connections and architecture of your application.
+### Visualize your application as an interactive map
 
+Within the Environment view you can access a diagram of your Radius application by clicking on the corresponding action icon next to your application node. This opens up a webview containing how your current deployment understands the connections and architecture of your application.
 
 ## Install other Radius extension versions
 
@@ -69,9 +73,6 @@ You can access other versions of the Radius extension from the following URLs:
 - [Latest stable](https://get.radapp.dev/tools/vscode/stable/rad-vscode-bicep.vsix)
 - [Latest unstable](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix)
 
-## ADDITONAL RESOURCES
+## Additional resources
 
-Learn how to create your first Radius environment
-
-
-{{< button text="Setup environment" page="create-environment.md" >}}
+- [Learn how to deploy your first Radius application]({{< ref create-environment >}})

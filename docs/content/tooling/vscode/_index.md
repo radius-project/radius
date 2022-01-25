@@ -1,7 +1,7 @@
 ---
 type: docs
-title: "Visual Studio Code"
+title: "Visual Studio Code extension for Project Radius"
 linkTitle: "Visual Studio Code"
 description: ""
-weight: 25
+weight: 100
 ---

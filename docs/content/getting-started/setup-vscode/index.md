@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Setup Radius with your IDE"
+title: "Setup Project Radius with your IDE"
 linkTitle: "Setup tools"
 description: "How to setup IDE/editors with Radius for easy application authoring"
 weight: 20

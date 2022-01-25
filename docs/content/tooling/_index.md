@@ -2,6 +2,6 @@
 type: docs
 title: "Tooling"
 linkTitle: "Tooling"
-description: "Learn what current IDEs and developer tools Project Radius is supported in."
+description: "Learn how Project Radius integrates into your development workflows and experiences"
 weight: 25
 ---
