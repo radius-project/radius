@@ -5,7 +5,7 @@
 {{ $embed := .Get "embed" | default false }}
 {{ $download := .Get "download" | default false }}
 {{ if $download }}
-<a class="btn btn-primary btn-sm" href={{ print $file }} download>Download template file</a>
+<a class="btn btn-primary btn-sm" href={{ print $file }} download>Download Bicep file</a>
 <br /><br />
 {{ end }}
 {{ if $embed }}
