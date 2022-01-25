@@ -19,6 +19,7 @@ import (
 )
 
 func Test_AzureConnectionCognitiveService(t *testing.T) {
+	t.Skip("https://github.com/project-radius/radius/issues/1790")
 	applicationName := "azure-connection-cognitive-service"
 	containerResourceName := "translation-service"
 	template := "testdata/azure-connection-cognitive-service.bicep"
