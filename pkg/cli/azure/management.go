@@ -27,9 +27,6 @@ type ARMManagementClient struct {
 	EnvironmentName string
 }
 
-type ResourceListSorter struct {
-}
-
 var _ clients.ManagementClient = (*ARMManagementClient)(nil)
 
 func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error) {
@@ -43,12 +40,7 @@ func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context
 		}
 		return nil, err
 	}
-
-	// a, _ := response.RadiusResourceList.MarshalJSON()
-	// fmt.Println(string(a))
-
-	s := ResourceListSorter{}
-	result, err := s.SortResourceList(response.RadiusResourceList)
+	result, err := SortResourceList(response.RadiusResourceList)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +48,7 @@ func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context
 	return &result, err
 }
 
-func (s *ResourceListSorter) SortResourceList(list radclient.RadiusResourceList) (radclient.RadiusResourceList, error) {
+func SortResourceList(list radclient.RadiusResourceList) (radclient.RadiusResourceList, error) {
 	sort.Slice(list.Value, func(i, j int) bool {
 		t1 := *list.Value[i].Resource.Type
 		t2 := *list.Value[j].Resource.Type

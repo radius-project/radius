@@ -18,31 +18,4 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
     }
   }
-
-  resource e 'Container' = {
-    name: 'e'
-    properties: {
-      container: {
-        image: 'radius.azurecr.io/magpie:latest'
-      }
-    }
-  }
-
-  resource d 'HttpRoute' = {
-    name: 'd'
-    properties: {
-      gateway: {
-        hostname: '*'
-      }
-    }
-  }
-
-  resource c 'HttpRoute' = {
-    name: 'c'
-    properties: {
-      gateway: {
-        hostname: '*'
-      }
-    }
-  }
 }
