@@ -14,7 +14,7 @@ A [gatwey]({{< ref gateway >}}) can optionally be added for external users to ac
 
 ## Route format
 
-An HTTP Route is defined as a resource within your application, defined at the same lavel as the services providing and consuming the HTTP communication.
+An HTTP Route is defined as a resource within your application, defined at the same level as the services providing and consuming the HTTP communication.
 
 {{< rad file="snippets/http.bicep" embed=true marker="//ROUTE" >}}
 
