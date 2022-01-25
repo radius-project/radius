@@ -75,6 +75,10 @@ func RenderManaged(resourceName string, properties radclient.RedisCacheResourceP
 
 func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourceProperties) (*outputresource.OutputResource, error) {
 	if properties.Secrets != nil {
+		// When the user-specified secret is present, this is the usecase where the user is running
+		// their own custom Redis instance (using a container, or hosted elsewhere).
+		//
+		// In that case we don't have an OutputResaource, only Computed and Secret values.
 		return nil, nil
 	}
 	if properties.Resource == nil || *properties.Resource == "" {

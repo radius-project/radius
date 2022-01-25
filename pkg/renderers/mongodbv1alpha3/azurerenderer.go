@@ -98,6 +98,10 @@ func RenderManaged(name string, properties radclient.MongoDBResourceProperties) 
 
 func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
 	if properties.Secrets != nil {
+		// When the user-specified secret is present, this is the usecase where the user is running
+		// their own custom Redis instance (using a container, or hosted elsewhere).
+		//
+		// In that case we don't have an OutputResaource, only Computed and Secret values.
 		return nil, nil
 	}
 	if properties.Resource == nil || *properties.Resource == "" {
