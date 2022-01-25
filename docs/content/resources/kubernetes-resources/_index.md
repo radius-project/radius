@@ -6,13 +6,19 @@ description: "Learn how to model and deploy Kubernetes resources as part of your
 weight: 300
 ---
 
-Kubernetes types can be modeled in Bicep through the `kubernetes` extension.
+Radius applications are able to connect to and leverage Kubernetes resources with Bicep. Simply model your Kubernetes resources in Bicep and reference their properties in Radius.
+
+You can import the Kubernetes types with:
+
+```bicep
+import kubernetes from kubernetes
+```
 
 ## Resource library
 
-{{% alert title="Coming soon" color="info" %}}
-Kubernetes resource docs are coming soon. In the meantime you can use the [VS Code tooling]({{< ref setup-vscode >}}) to discover and learn about Kubernetes resource types.
-{{% /alert %}}
+Visit [GitHub](https://github.com/Azure/bicep-types-k8s/blob/main/generated/index.md) to reference the Kubernetes resource.
+
+{{< button text="Kubernetes resource library" link="https://github.com/Azure/bicep-types-k8s/blob/main/generated/index.md" >}}
 
 ## Connections
 
