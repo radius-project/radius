@@ -12,9 +12,9 @@ weight: 200
 
 `Gateway` in Radius are split into two main pieces; the `Gateway` resource itself, which defines which port and protocol to listen on, and Route(s) which define the rules for routing traffic to different resources.
 
-## Gateway format
+## Resource format
 
-A Gateway is defined as a resource within your Application, defined at the same level as the Components providing and consuming the HTTP communication.
+A Gateway is defined as a resource within your Application, defined at the same level as the resources providing and consuming the HTTP communication.
 
 {{< rad file="snippets/gateway.bicep" embed=true marker="//GATEWAY" >}}
 
@@ -22,7 +22,7 @@ The following top-level information is available:
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
-| name | y | The name of your Gateway. Used to provide status and visualize the component. | `'gateway'`
+| name | y | The name of your Gateway. Used to provide status and visualize the resource. | `'gateway'`
 
 ### Properties
 

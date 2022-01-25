@@ -9,12 +9,12 @@ slug: "statestore"
 
 ## Overview
 
-The `dapr.io/StateStore` component represents a [Dapr state store](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/) database.
+The `dapr.io/StateStore` connector represents a [Dapr state store](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/) database.
 
-This component will automatically:
+This connector will automatically:
 - Ensure the Dapr control plane is initialized
 - Deploy and manage the underlying resource
-- Setup and configuration of connection strings for consuming components
+- Setup and configuration of connection strings for consuming resources
 - Create and configure of the Dapr component spec
 
 ## Platform resources
@@ -31,12 +31,12 @@ Additionally, the `any` kind will automatically choose a resource based on the p
 The `any` kind is meant for dev/test purposes only. It is not recommended for production use.
 {{% /alert %}}
 
-## Component spec
+## Resource spec
 
 {{< tabs Managed User-managed >}}
 
 {{% codetab %}}
-In the following example a State Store component is defined, where the underlying resource is provided by the platform.
+In the following example a State Store connector is defined, where the underlying resource is provided by the platform.
 {{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
 {{% /codetab %}}
 
@@ -57,4 +57,4 @@ User-managed resources are not yet supported for Dapr State Stores. Check back s
 | Property | Description | Example |
 |----------|-------------|---------|
 | kind | The kind of the underlying state store resource. See [State Store kinds](#platform-resources) for more information. | `state.azure.tablestorage`
-| managed | Indicates if the resource is Radius-managed. For now only true is accepted for this Component. | `true`
+| managed | Indicates if the resource is Radius-managed. For now only true is accepted for this resource. | `true`

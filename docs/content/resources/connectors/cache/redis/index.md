@@ -1,11 +1,11 @@
 ---
 type: docs
-title: "Redis cache component"
+title: "Redis cache connector"
 linkTitle: "Redis"
-description: "Learn how to use a Redis component in your application"
+description: "Learn how to use a Redis connector in your application"
 ---
 
-The `redislabs.com/Redis` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref platforms >}}).
+The `redislabs.com/Redis` connector is a [portable connector]({{< ref connectors >}}) which can be deployed to any [Radius platform]({{< ref platforms >}}).
 
 ## Platform resources
 
@@ -14,19 +14,19 @@ The `redislabs.com/Redis` component is a [portable component]({{< ref components
 | [Microsoft Azure]({{< ref azure>}}) | [Azure Cache for Redis](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-overview)
 | [Kubernetes]({{< ref kubernetes >}}) | Redis service
 
-## Component format
+## Resource format
 
 {{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
 
-The following top-level information is available in the Component:
+The following top-level information is available in the resource:
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
-| name | y | The name of your Component. Used to provide status and visualize the Component. | `cache`
+| name | y | The name of your resource. Used to provide status and visualize the resource. | `cache`
 
 ### Resource lifecycle
 
-A `redislabs.com/Redis` component can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
+A `redislabs.com/Redis` connector can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
 
 | Property | Description | Example(s) |
 |----------|-------------|---------|

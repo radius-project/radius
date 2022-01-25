@@ -13,7 +13,7 @@ The `dapr.io/Sidecar` trait adds and configures a Dapr sidecar to your applicati
 
 ## Trait format
 
-In this example, a [container Component]({{< ref container >}}) adds a Dapr trait to add a Dapr sidecar:
+In this example, a [container]({{< ref container >}}) adds a Dapr trait to add a Dapr sidecar:
 
 {{< rad file="snippets/dapr.bicep" embed=true marker="//SAMPLE" replace-key-run="//CONTAINER" replace-value-run="container: {...}" >}}
 
@@ -22,11 +22,11 @@ In this example, a [container Component]({{< ref container >}}) adds a Dapr trai
 | Property | Required | Description | Example |
 |----------|:--------:|-------------|---------|
 | appId | n | The appId of the Dapr sidecar. Will use the value of an attached [Route]({{< ref dapr-http >}}) if present. | `backend` |
-| appPort | n | The port your Component exposes to Dapr | `3500`
+| appPort | n | The port your service exposes to Dapr | `3500`
 | provides | n | The [Dapr Route]({{< ref dapr-http >}}) provided by the Trait | `daprHttp.id`
 
-## Component compatibility
+## Service compatibility
 
-| Component | Azure | Kubernetes |
+| Service | Azure | Kubernetes |
 |-----------|:-----:|:----------:|
 | [`Container`]({{< ref container >}}) | ✅ | ✅ |

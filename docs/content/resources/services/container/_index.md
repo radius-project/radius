@@ -17,7 +17,7 @@ Containers are hosted by the following runtimes on each platform:
 | [Microsoft Azure]({{< ref azure>}}) | Kubernetes Deployment on AKS |
 | [Kubernetes]({{< ref kubernetes >}}) | Kubernetes Deployment |
 
-## Component format
+## Resource format
 
 {{< rad file="snippets/container.bicep" embed=true marker="//CONTAINER" >}}
 
@@ -25,7 +25,7 @@ The following top-level information is available for containers:
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
-| name | y | The name of your component. Used to provide status and visualize the component. | `frontend`
+| name | y | The name of your resource. Used to provide status and visualize the resource. | `frontend`
 
 ### Container
 
@@ -103,6 +103,6 @@ Connections define how a container connects to [other resources]({{< ref resourc
 |------|:--------:|-------------|---------|
 | name | y | A name key for the port. | `inventory`
 | kind | y | The type of resource you are connecting to. | `mongo.com/MongoDB`
-| source | y | The id of the [Component]({{< ref components-model >}}) the container is connecting to. | `db.id`
+| source | y | The id of the connector or resource the container is connecting to. | `db.id`
 
 ## Sub-types

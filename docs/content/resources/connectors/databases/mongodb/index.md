@@ -1,11 +1,11 @@
 ---
 type: docs
-title: "MongoDB database component"
+title: "MongoDB database connector"
 linkTitle: "MongoDB"
-description: "Learn how to use a MongoDB component in your application"
+description: "Learn how to use a MongoDB connector in your application"
 ---
 
-The `mongodb.com/MongoDB` component is a [portable component]({{< ref components-model >}}) which can be deployed to any [Radius platform]({{< ref platforms >}}).
+The `mongodb.com/MongoDatabase` connector is a [portable connector]({{< ref connectors >}}) which can be deployed to any [Radius platform]({{< ref platforms >}}).
 
 ## Platform resources
 
@@ -14,7 +14,7 @@ The `mongodb.com/MongoDB` component is a [portable component]({{< ref components
 | [Microsoft Azure]({{< ref azure>}}) | [Azure CosmosDB API for MongoDB](https://docs.microsoft.com/en-us/azure/cosmos-db/mongodb-introduction)
 | [Kubernetes]({{< ref kubernetes >}}) | [MongoDB Docker image](https://hub.docker.com/_/mongo/)
 
-## Component format
+## Resource format
 
 Mongo databases can be either managed by Radius or provided by the user:
 
@@ -39,7 +39,7 @@ Begin by defining a CosmosDB with Mongo API in Bicep, either as part of the temp
 | Property | Description | Example(s) |
 |----------|-------------|---------|
 | managed | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. | `true`, `false`
-| resource | The ID of the user-managed CosmosDB with Mongo API to use for this Component. | `account::mongodb.id`
+| resource | The ID of the user-managed CosmosDB with Mongo API to use for this connector. | `account::mongodb.id`
 
 
 ## Provided data

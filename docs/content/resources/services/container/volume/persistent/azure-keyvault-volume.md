@@ -8,7 +8,7 @@ weight: 200
 
 Radius supports mounting an Azure Key Vault as a persistent volume to the container using the Azure KeyVault CSI Driver. See [Azure Key Vault CSI Driver](https://azure.github.io/secrets-store-csi-driver-provider-azure/demos/standard-walkthrough/) for additional details on the CSI driver. Note that for the Azure Key Vault that is mounted as a CSI volume, the **access policy** should be set to **Azure role-based access control**.
 
-## Component format
+## Resource format
 
 {{< rad file="snippets/volume-keyvault-csi.bicep" embed=true marker="//SAMPLE" >}}
 

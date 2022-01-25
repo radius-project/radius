@@ -1,7 +1,7 @@
 ---
 type: docs
-title: "Database components"
+title: "Database connectors"
 linkTitle: "Databases"
-description: "Learn what database components are available in your application"
+description: "Learn what database connectors are available in your application"
 weight: 200
 ---

@@ -9,23 +9,23 @@ slug: "http"
 
 ## Overview
 
-`dapr.io.InvokeHttpRoute` defines Dapr communication through the HTTP API between two or more [compute Components]({{< ref container >}}).
+`dapr.io.InvokeHttpRoute` defines Dapr communication through the HTTP API between two or more [servicesservices]({{< ref container >}}).
 
 ## Route format
 
-A Dapr HTTP Route is defined as a resource within your Application, defined at the same lavel as the Components providing and consuming the Dapr HTTP API communication.
+A Dapr HTTP Route is defined as a resource within your Application, defined at the same lavel as the resources providing and consuming the Dapr HTTP API communication.
 
 {{< rad file="snippets/http.bicep" embed=true marker="//ROUTE" >}}
 
 ## Provided Data
 
-The following data is available for use from the consuming Component:
+The following data is available for use from the consuming resource:
 
 ### Properties
 
 | Property | Description | Example |
 |----------|-------------|-------------|
-| appId    | The appId of the providing Component | `backend` |
+| appId    | The appId of the providing resource | `backend` |
 
 ## Example: container
 

@@ -9,9 +9,9 @@ slug: "pubsub"
 
 ## Overview
 
-The `dapr.io/PubSubTopic` component represents a [Dapr pub/sub](https://docs.dapr.io/developing-applications/building-blocks/pubsub/pubsub-overview/) topic.
+The `dapr.io/PubSubTopic` connector represents a [Dapr pub/sub](https://docs.dapr.io/developing-applications/building-blocks/pubsub/pubsub-overview/) topic.
 
-This component will automatically:
+This connector will automatically:
 - Ensure the Dapr control plane is initialized
 - Deploy and manage the underlying resource
 - Create and deploy the Dapr component spec
@@ -25,19 +25,19 @@ The following resources can act as a `dapr.io.PubSubTopic` resource:
 | [Microsoft Azure]({{< ref azure>}}) | [Azure Service Bus](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)
 | [Kubernetes]({{< ref kubernetes >}}) | Not yet compatible
 
-## Component format
+## Resource format
 
 {{< tabs "Radius-managed" "User-managed" >}}
 
 {{% codetab %}}
-The following example shows a fully managed Dapr Pub/Sub topic Component, where the underlying infrastructure is managed by Radius:
+The following example shows a fully managed Dapr Pub/Sub topic resource, where the underlying infrastructure is managed by Radius:
 {{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
 {{% /codetab %}}
 
 {{% codetab %}}
 First define your Pub/Sub message broker. In this example we're using an Azure Service Bus:
 {{< rad file="snippets/user-managed.bicep" embed=true marker="//BICEP" >}}
-Then you can connect a Dapr Pub/Sub Component to the Bicep resource:
+Then you can connect a Dapr Pub/Sub connector to the Bicep resource:
 {{< rad file="snippets/user-managed.bicep" embed=true marker="//SAMPLE" >}}
 {{% /codetab %}}
 

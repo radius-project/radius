@@ -22,7 +22,7 @@ The following top-level information is available:
 
 | Key  | Required | Description | Example |
 |------|:--------:|-------------|---------|
-| name | y | The name of your Route. Used to provide status and visualize the component. | `'web'`
+| name | y | The name of your Route. Used to provide status and visualize the resource. | `'web'`
 | properties | n | A set of properties that can be used to customize the Route. | See [Properties](#properties)
 
 ### Properties
@@ -70,9 +70,9 @@ The following data is available for use from the consuming service:
 | scheme | The scheme of the HTTP endpoint | `http` |
 | url | The full URL of the HTTP endpoint | `http://example.com:80` |
 
-## Component compatibility
+## Service compatibility
 
-| Component | Azure | Kubernetes |
+| Service | Azure | Kubernetes |
 |-----------|:-----:|:----------:|
 | [`Container`]({{< ref container >}}) | ✅ | ✅ |
 

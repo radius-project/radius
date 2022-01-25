@@ -21,17 +21,17 @@ This application showcases how Radius can use a user-manged Azure SQL Database.
 | Property | Description                                                                         | Example(s)         |
 | -------- | ----------------------------------------------------------------------------------- | ------------------ |
 | managed  | Indicates if the resource is Radius-managed. If no, a `Resource` must be specified. | `false`            |
-| resource | The ID of the user-managed SQL Database to use for this Component.                  | `server::sqldb.id` |
+| resource | The ID of the user-managed SQL Database to use for this resource.                  | `server::sqldb.id` |
 
 ## Resource lifecycle
 
-An `microsoft.com/SQLComponent` can be Radius-managed. At this Radius' support for Microsoft SQL Server compatible database is limited to user-managed resources. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
+An `microsoft.com/SQLDatabase` can be Radius-managed. At this Radius' support for Microsoft SQL Server compatible database is limited to user-managed resources. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
 
 This sample uses Bicep parameters to pass the resource ID of the database as well as the username and password.
 
 {{< rad file="snippets/unmanaged.bicep" embed=true marker="//PARAMETERS" >}}
 
-Pass the ID of the database into the component:
+Pass the ID of the database into the connector:
 
 {{< rad file="snippets/unmanaged.bicep" embed=true marker="//DATABASE" >}}
 
@@ -39,9 +39,9 @@ Radius does not have access to the username and password used to access your dat
 
 {{< rad file="snippets/unmanaged.bicep" embed=true marker="//CONTAINER" >}}
 
-## Injected Values
+## Injected values
 
-Connections between components declare environment variables inside the consuming component as a convenience for service discovery. See [connections]({{< ref "connections-model#injected-values" >}}) for details.
+Connections between resources declare environment variables inside the consuming resource as a convenience for service discovery. See [connections]({{< ref "connections-model#injected-values" >}}) for details.
 
 In the following example, a `todoapp` service connects to a database `db`. The connection is defined as part of `todoapp` and is named `tododb`.
 
