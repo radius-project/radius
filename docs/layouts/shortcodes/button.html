@@ -8,3 +8,5 @@
 {{- if $page -}}{{- $link = ref . $page -}}{{- end -}}
 
 <a class="btn {{ $size }} btn-{{ $color }}" href="{{ $link }}" role="button" {{- if eq $newtab "true" -}}target="_blank"{{- end -}}>{{ $text }}</a>
+<br />
+<br />

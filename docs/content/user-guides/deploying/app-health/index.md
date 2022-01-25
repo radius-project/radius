@@ -7,7 +7,7 @@ weight: 500
 ---
 
 
-Radius offers multiple ways to monitor the health of your Application Components, both at the control-plane layer for your hosting provider and at the runtime layer for your services and workloads.
+Radius offers multiple ways to monitor the health of your Application resources, both at the control-plane layer for your hosting provider and at the runtime layer for your services and workloads.
 
 ## Container health
 

@@ -15,7 +15,7 @@ no_list: true
   </a>
 </div>
 {{% /card %}}
-{{% card header="[Dapr Microservices](./dapr-microservices)" footer="Learn how to add Dapr traits and components to your application" %}}
+{{% card header="[Dapr Microservices](./dapr-microservices)" footer="Learn how to add Dapr traits and connectors to your application" %}}
 <div class="text-center">
   <a href="./dapr-microservices">
     <img src="dapr-microservices.svg" alt="Dapr logo">
