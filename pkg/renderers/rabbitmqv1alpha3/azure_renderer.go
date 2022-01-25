@@ -39,9 +39,6 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	// TODO(#1767): We need to store these in a secret store.
 	return renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
-			"username": {
-				Value: "",
-			},
 			"connectionString": {
 				Value: properties.Secrets.ConnectionString,
 			},

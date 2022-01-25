@@ -41,9 +41,6 @@ func Test_Azure_Render_Unmanaged_User_Secrets(t *testing.T) {
 	require.Len(t, output.Resources, 0)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"username": {
-			Value: "",
-		},
 		"connectionString": {
 			Value: to.StringPtr("admin:deadbeef@localhost:42"),
 		},
