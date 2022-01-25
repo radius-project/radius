@@ -79,7 +79,7 @@ var envInitLocalCmd = &cobra.Command{
 
 		step = output.BeginStep("Installing Radius...")
 
-		client, runtimeClient, _, err := createKubernetesClients(cluster.ContextName)
+		client, runtimeClient, unstructuredClient, _, err := createKubernetesClients(cluster.ContextName)
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ var envInitLocalCmd = &cobra.Command{
 
 		// We don't want to use the host network option with HA Proxy on K3d. K3d supports LoadBalancer services,
 		// using the host network would cause a conflict.
-		err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: false})
+		err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: false}, unstructuredClient)
 		if err != nil {
 			return err
 		}

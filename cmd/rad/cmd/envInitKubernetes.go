@@ -22,7 +22,10 @@ import (
 	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
@@ -236,8 +239,13 @@ func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client,
 	}
 
 	bytes, err := contour.MarshalJSON()
+	gvr := schema.GroupVersionResource{
+		Group:    "operator.projectcontour.io",
+		Version:  "v1alpha1",
+		Resource: "contours",
+	}
 
-	err = unstructuredClient.Resource(gvr).Namespace().Patch(ctx, bytes, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	_, err = unstructuredClient.Resource(gvr).Namespace("contour-operator").Patch(ctx, "contour", types.ApplyPatchType, bytes, v1.PatchOptions{FieldManager: "rad"})
 
 	return err
 }
