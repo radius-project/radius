@@ -22,6 +22,8 @@ import (
 	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/dynamic"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -76,7 +78,7 @@ var envInitKubernetesCmd = &cobra.Command{
 
 		step := output.BeginStep("Installing Radius...")
 
-		client, runtimeClient, contextName, err := createKubernetesClients("")
+		client, runtimeClient, unstructuredClient, contextName, err := createKubernetesClients("")
 		if err != nil {
 			return err
 		}
@@ -86,7 +88,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: true})
+		err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: true}, unstructuredClient)
 		if err != nil {
 			return err
 		}
@@ -123,34 +125,38 @@ var envInitKubernetesCmd = &cobra.Command{
 	},
 }
 
-func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
+func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, dynamic.Interface, string, error) {
 	k8sconfig, err := kubernetes.ReadKubeConfig()
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, nil, "", err
 	}
 
 	if contextName == "" && k8sconfig.CurrentContext == "" {
-		return nil, nil, "", errors.New("no kubernetes context is set")
+		return nil, nil, nil, "", errors.New("no kubernetes context is set")
 	} else if contextName == "" {
 		contextName = k8sconfig.CurrentContext
 	}
 
 	context := k8sconfig.Contexts[contextName]
 	if context == nil {
-		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+		return nil, nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
 	}
 
 	client, _, err := kubernetes.CreateTypedClient(contextName)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, nil, "", err
 	}
 
 	runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, nil, "", err
 	}
 
-	return client, runtimeClient, contextName, nil
+	unstructuredClient, err := kubernetes.CreateDynamicClient(contextName)
+	if err != nil {
+		return nil, nil, nil, "", err
+	}
+	return client, runtimeClient, unstructuredClient, contextName, nil
 }
 
 func installRadius(ctx context.Context, client client_go.Interface, runtimeClient runtime_client.Client, namespace string, chartPath string, image string, tag string) error {
@@ -178,7 +184,7 @@ func installRadius(ctx context.Context, client client_go.Interface, runtimeClien
 	return nil
 }
 
-func installGateway(ctx context.Context, runtimeClient runtime_client.Client, options helm.HAProxyOptions) error {
+func installGateway(ctx context.Context, runtimeClient runtime_client.Client, options helm.HAProxyOptions, unstructuredClient dynamic.Interface) error {
 	err := kubectl.RunCLICommandSilent("apply", "-f", "https://raw.githubusercontent.com/projectcontour/contour/v1.20.0-beta.1/examples/render/contour-gateway.yaml")
 	if err != nil {
 		return err
@@ -189,7 +195,7 @@ func installGateway(ctx context.Context, runtimeClient runtime_client.Client, op
 		return err
 	}
 
-	err = applyGatewayClass(ctx, runtimeClient)
+	err = applyGatewayClass(ctx, runtimeClient, unstructuredClient)
 	if err != nil {
 		return err
 	}
@@ -197,22 +203,42 @@ func installGateway(ctx context.Context, runtimeClient runtime_client.Client, op
 	return nil
 }
 
-func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client) error {
+func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client, unstructuredClient dynamic.Interface) error {
 	gateway := gatewayv1alpha2.GatewayClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GatewayClass",
-			APIVersion: "networking.x-k8s.io/v1alpha1",
+			APIVersion: "networking.x-k8s.io/v1alpha2",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "contour",
 			Namespace: "radius-system",
 		},
 		Spec: gatewayv1alpha2.GatewayClassSpec{
-			ControllerName: "projectcontour.io/sample-controller",
+			ControllerName: "projectcontour.io/controller",
 		},
 	}
 
 	err := runtimeClient.Patch(ctx, &gateway, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: k8slabels.FieldManager})
+
+	if err != nil {
+		return err
+	}
+
+	contour := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "operator.projectcontour.io/v1alpha1",
+			"kind":       "Contour",
+			"metadata": map[string]interface{}{
+				"name":      "contour",
+				"namespace": "contour-operator",
+			},
+		},
+	}
+
+	bytes, err := contour.MarshalJSON()
+
+	err = unstructuredClient.Resource(gvr).Namespace().Patch(ctx, bytes, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
+
 	return err
 }
 
