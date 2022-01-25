@@ -31,7 +31,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := KubernetesRenderer{}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -115,7 +115,7 @@ func Test_Render_Managed_Kubernetes_Success(t *testing.T) {
 
 func TestRenderUnmanaged(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := KubernetesRenderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: "test-app",
@@ -147,7 +147,7 @@ func TestRenderUnmanaged(t *testing.T) {
 }
 
 func TestInvalidKubernetesMissingQueueName(t *testing.T) {
-	renderer := Renderer{}
+	renderer := KubernetesRenderer{}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{

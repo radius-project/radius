@@ -43,7 +43,7 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 		},
 		{
 			ResourceType: rabbitmqv1alpha3.ResourceType,
-			Renderer:     &rabbitmqv1alpha3.Renderer{},
+			Renderer:     &rabbitmqv1alpha3.KubernetesRenderer{},
 		},
 		{
 			ResourceType: redisv1alpha3.ResourceType,

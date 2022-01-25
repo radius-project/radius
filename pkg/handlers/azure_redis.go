@@ -26,7 +26,9 @@ const (
 	RedisHostKey       = "redishost"
 	RedisUsernameKey   = "redisusername"
 	// On Azure, RedisUsername is empty.
-	RedisUsername = ""
+	RedisUsername            = ""
+	RedisConnectionStringKey = "redisconnectionstring"
+	RedisPasswordKey         = "redispassword"
 )
 
 func NewAzureRedisHandler(arm armauth.ArmConfig) ResourceHandler {

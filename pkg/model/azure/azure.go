@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/microsoftsqlv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/rabbitmqv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
@@ -103,6 +104,10 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		{
 			ResourceType: redisv1alpha3.ResourceType,
 			Renderer:     &redisv1alpha3.AzureRenderer{},
+		},
+		{
+			ResourceType: rabbitmqv1alpha3.ResourceType,
+			Renderer:     &rabbitmqv1alpha3.AzureRenderer{},
 		},
 		{
 			ResourceType: gateway.ResourceType,
