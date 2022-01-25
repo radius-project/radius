@@ -23,7 +23,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-	// https://hub.docker.com/_/mongo/
+  // https://hub.docker.com/_/mongo/
   resource mongoContainer 'Container' = {
     name: 'mongo'
     properties: {

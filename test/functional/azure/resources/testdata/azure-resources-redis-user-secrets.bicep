@@ -18,7 +18,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-	resource redisContainer 'Container' = {
+  resource redisContainer 'Container' = {
     name: 'redis'
     properties: {
       container: {
