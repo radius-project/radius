@@ -60,3 +60,25 @@ Then you can connect a Dapr Pub/Sub connector to the Bicep resource:
 | Property | Description | Example |
 |----------|-------------|---------|
 | topic | The name of the topic to create for this Pub/Sub broker | `TOPIC_A`
+
+## Starter
+
+You can get up and running quickly with a Dapr Pub/Sub topic by using a [starter]({{< ref starter-templates >}}):
+
+{{< rad file="snippets/starter.bicep" embed=true >}}
+
+### Input parameters
+
+| Parameter | Description | Required | Default |
+|-----------|-------------|:--------:|---------|
+| radiusApplication | The application resource to use as the parent of the PubSub Topic | Yes | - |
+| pubSubName | The name of the PubSub Topic | Yes | - |
+| serviceBusName | The name of the underlying Azure Service Bus namespace | No | `'servicebus-${uniqueString(resourceGroup().id, deployment().name)}'` |
+| queueName | The name of the underlying Azure Service Bus queue | No | `'dapr'` |
+| location | The Azure region to deploy the Azure Service Bus | No | `resourceGroup().location` |
+
+### Output parameters
+
+| Parameter | Description | Type |
+|----------|-------------|------|
+| pubSub | The PubSub Topic resource | `radius.dev/Application/dapr.io.PubSubTopic@v1alpha3` |

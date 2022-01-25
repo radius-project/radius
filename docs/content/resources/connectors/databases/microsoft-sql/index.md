@@ -53,3 +53,40 @@ This example would define the following injected environment variables for use i
 | ---------------------------- | ------------------------------- | ---------------------------------------------------- |
 | `CONNECTION_TODODB_SERVER`   | `myserver.database.windows.net` | The fully-qualified hostname of the database server. |
 | `CONNECTION_ORDERS_DATABASE` | `todos`                         | The name of the SQL Server database.                 |
+
+## Starter
+
+You can get up and running quickly with a SQL Database by using a [starter]({{< ref starter-templates >}}):
+
+{{< rad file="snippets/starter.bicep" embed=true >}}
+
+### Container
+
+Coming soon!
+
+### Microsoft Azure
+
+The SQL Database Azure starter uses an Azure SQL Server and can run only on Azure.
+
+```sh
+resource mongoDB br:radius.azurecr.io/starters/sql-azure:latest = {...}
+```
+
+#### Input parameters
+
+| Parameter | Description | Required | Default |
+|-----------|-------------|:--------:|---------|
+| radiusApplication | The application resource to use as the parent of the SQL Database | Yes | - |
+| databaseName | The name for your SQL Database | Yes | - |
+| adminLogin | The login for the SQL Server administrator | Yes | - |
+| adminPassword | The password for the SQL Server administrator | Yes | - |
+| serverName | The name of the Azure SQL Server | No | `'sql-${uniqueString(resourceGroup().id, deployment().name)}'` |
+| location | The Azure region to deploy the Azure SQL Server | No | `resourceGroup().location` |
+| skuName | The Azure SQL Server SKU | No | `'Standard'` |
+| skuTier | The Azure SQL Server SKU tier | No | `'Standard'` |
+
+#### Output parameters
+
+| Parameter | Description | Type |
+|----------|-------------|------|
+| sqlDb | The SQL Database resource | `microsoft.com.SQLDatabase@v1alpha3` |

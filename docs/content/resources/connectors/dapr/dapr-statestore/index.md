@@ -58,3 +58,25 @@ User-managed resources are not yet supported for Dapr State Stores. Check back s
 |----------|-------------|---------|
 | kind | The kind of the underlying state store resource. See [State Store kinds](#platform-resources) for more information. | `state.azure.tablestorage`
 | managed | Indicates if the resource is Radius-managed. For now only true is accepted for this resource. | `true`
+
+## Starter
+
+You can get up and running quickly with a Dapr state store by using a [starter]({{< ref starter-templates >}}):
+
+{{< rad file="snippets/starter.bicep" embed=true >}}
+
+### Input parameters
+
+| Parameter | Description | Required | Default |
+|-----------|-------------|:--------:|---------|
+| radiusApplication | The application resource to use as the parent of the State Store | Yes | - |
+| stateStoreName | The name of the State Store | Yes | - |
+| storageAccountName | The name of the underlying Azure storage account | No | `'storage-${uniqueString(resourceGroup().id, deployment().name)}'` |
+| tableName | The name of the underlying Azure storage table | No | `'dapr'` |
+| location | The Azure region to deploy the Azure storage account and table | No | `resourceGroup().location` |
+
+### Output parameters
+
+| Resource | Description | Type |
+|----------|-------------|------|
+| stateStore | The StateStore resource | `radius.dev/Application/dapr.io.StateStore@v1alpha3` |
