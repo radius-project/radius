@@ -34,7 +34,7 @@ Radius can be used with any text editor, but Radius-specific optimizations are a
    You can also download and install this extension on the [command-line](https://code.visualstudio.com/docs/editor/extension-gallery#_install-from-a-vsix) with the following commands from your terminal:
 
    ```bash
-   curl https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix --output rad-vscode-bucep.vsix
+   curl https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix --output rad-vscode-bicep.vsix
    code --install-extension rad-vscode-bicep.vsix
    rm rad-vscode-bicep.vsix
    ```
