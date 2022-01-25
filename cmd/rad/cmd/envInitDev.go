@@ -105,7 +105,10 @@ var envInitLocalCmd = &cobra.Command{
 			"context":     cluster.ContextName,
 			"clustername": cluster.ClusterName,
 			"namespace":   "default",
-			"registry":    cluster.Registry,
+			"registry": &environments.Registry{
+				PushEndpoint: cluster.RegistryPushEndpoint,
+				PullEndpoint: cluster.RegistryPullEndpoint,
+			},
 		}
 
 		if params.Providers != nil {

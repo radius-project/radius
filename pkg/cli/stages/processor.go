@@ -20,6 +20,8 @@ import (
 )
 
 func (p *processor) ProcessBuild(ctx context.Context, stage radyaml.BuildStage) error {
+	registry := p.Options.Environment.GetContainerRegistry()
+
 	// We'll run the build in parallel - each output gets its own output stream.
 	group, ctx := errgroup.WithContext(ctx)
 	streams := output.NewStreamGroup(p.Stdout)
@@ -44,7 +46,7 @@ func (p *processor) ProcessBuild(ctx context.Context, stage radyaml.BuildStage) 
 
 			result, err := builder.Build(ctx, builders.Options{
 				BaseDirectory: p.BaseDirectory,
-				Stderr:        p.Stderr,
+				Registry:      registry,
 				Output:        stream,
 				Values:        target.Values,
 			})

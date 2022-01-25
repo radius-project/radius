@@ -58,6 +58,10 @@ func (e *AzureCloudEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *AzureCloudEnvironment) GetContainerRegistry() *Registry {
+	return nil
+}
+
 func (e *AzureCloudEnvironment) GetStatusLink() string {
 	// If there's a problem generating the status link, we don't want to fail noisily, just skip the link.
 	url, err := azure.GenerateAzureEnvUrl(e.SubscriptionID, e.ResourceGroup)

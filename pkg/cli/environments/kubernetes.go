@@ -38,6 +38,10 @@ func (e *KubernetesEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *KubernetesEnvironment) GetContainerRegistry() *Registry {
+	return nil
+}
+
 // No Status Link for kubernetes
 func (e *KubernetesEnvironment) GetStatusLink() string {
 	return ""

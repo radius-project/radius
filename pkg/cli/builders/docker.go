@@ -12,6 +12,16 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	dockerparser "github.com/novln/docker-parser"
+	"github.com/project-radius/radius/pkg/cli/environments"
+)
+
+type ImageOperation int
+
+const (
+	ImagePull ImageOperation = 0
+	ImagePush ImageOperation = 1
 )
 
 var _ Builder = (*dockerBuilder)(nil)
@@ -47,6 +57,18 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 		input.DockerFile = "Dockerfile"
 	}
 
+	// NOTE: in addition to normalizing the user-provided string into a fully-formed reference
+	// we also apply overrides here. The override works in both directions.
+	//
+	// Ex: we might push 'localhost:60063/todo:latest' but output 'localhost:5000/todo@sha256....'
+	//
+	// Registries running on the user's computer have inherent asymmetry because the networking
+	// environment is asymmetric when comparing the host to the runtime.
+	pushReference, err := NormalizeImage(options.Registry, input.Image, ImagePush)
+	if err != nil {
+		return Output{}, err
+	}
+
 	input.Context = NormalizePath(options.BaseDirectory, input.Context)
 	input.DockerFile = NormalizePath(input.Context, input.DockerFile)
 
@@ -54,7 +76,7 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 		"build",
 		input.Context,
 		"-f", input.DockerFile,
-		"-t", input.Image,
+		"-t", pushReference,
 	}
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	writer := options.Output.Writer()
@@ -76,7 +98,7 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 
 	args = []string{
 		"push",
-		input.Image,
+		pushReference,
 	}
 	cmd = exec.CommandContext(ctx, "docker", args...)
 	writer = options.Output.Writer()
@@ -104,7 +126,7 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 	args = []string{
 		"inspect",
 		"--format={{index .RepoDigests 0}}",
-		input.Image,
+		pushReference,
 	}
 	cmd = exec.CommandContext(ctx, "docker", args...)
 	buffer := bytes.Buffer{}
@@ -118,11 +140,33 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 		return Output{}, err
 	}
 
+	pullReference, err := NormalizeImage(options.Registry, strings.TrimSpace(buffer.String()), ImagePull)
+	if err != nil {
+		return Output{}, err
+	}
+
 	output := Output{
 		Result: map[string]interface{}{
-			"image": strings.TrimSpace(buffer.String()),
+			"image": pullReference,
 		},
 	}
 
 	return output, nil
+}
+
+func NormalizeImage(registry *environments.Registry, image string, operation ImageOperation) (string, error) {
+	reference, err := dockerparser.Parse(image)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse image reference: %w", err)
+	}
+
+	if registry == nil {
+		return reference.Remote(), nil
+	}
+
+	if operation == ImagePush {
+		return fmt.Sprintf("%s/%s", registry.PushEndpoint, reference.Name()), nil
+	}
+
+	return fmt.Sprintf("%s/%s", registry.PullEndpoint, reference.Name()), nil
 }
