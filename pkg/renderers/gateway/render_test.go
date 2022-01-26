@@ -58,7 +58,7 @@ func Test_Render_Defaults(t *testing.T) {
 	require.Equal(t, applicationName, gateway.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), gateway.Labels)
 
-	require.Equal(t, gateway.Spec.GatewayClassName, "gateway-class")
+	require.Equal(t, gateway.Spec.GatewayClassName, gatewayv1alpha2.ObjectName("gateway-class"))
 }
 
 func Test_Render_WithListener(t *testing.T) {
@@ -96,7 +96,7 @@ func Test_Render_WithListener(t *testing.T) {
 	require.Equal(t, applicationName, gateway.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), gateway.Labels)
 
-	require.Equal(t, gateway.Spec.GatewayClassName, "gateway-class")
+	require.Equal(t, gateway.Spec.GatewayClassName, gatewayv1alpha2.ObjectName("gateway-class"))
 
 	listener := gateway.Spec.Listeners[0]
 	require.Equal(t, gatewayv1alpha2.PortNumber(80), listener.Port)

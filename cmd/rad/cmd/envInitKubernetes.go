@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	k8slabels "github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/kubernetes/kubectl"
 	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
@@ -25,10 +26,6 @@ import (
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-)
-
-const (
-	GatewayCRDVersion = "v0.3.0"
 )
 
 var envInitKubernetesCmd = &cobra.Command{
