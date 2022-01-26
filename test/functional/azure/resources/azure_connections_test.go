@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_AzureConnectionCognitiveService(t *testing.T) {
+func Test_AzureConnections(t *testing.T) {
 	t.Skip("https://github.com/project-radius/radius/issues/1790")
 	applicationName := "azure-connection-database-service"
 	containerResourceName := "db-service"
@@ -29,7 +29,7 @@ func Test_AzureConnectionCognitiveService(t *testing.T) {
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{
-						Type:            "Microsoft.DocumentDB/accounts",
+						Type:            "Microsoft.DocumentDB/databaseAccounts",
 						AzureConnection: true,
 					},
 					{

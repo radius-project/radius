@@ -8,12 +8,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
         image: 'radius.azurecr.io/magpie:latest'
       }
       connections: {
-        translationresource: {
+        databaseresource: {
           kind:'azure'
           source: databaseAccount.id
           roles: [
-            'Database User'
-            '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68'
+            'Cosmos DB Account Reader Role'
+            '230815da-be43-4aae-9cb4-875f7bd000aa'
           ]
         }
       }
@@ -22,7 +22,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 }
 
 resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'TextTranslationAccount-${guid(resourceGroup().name)}'
+  name: 'databaseAccount-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   kind: 'MongoDB'
   properties: {
