@@ -20,16 +20,16 @@ import (
 
 func Test_AzureConnectionCognitiveService(t *testing.T) {
 	t.Skip("https://github.com/project-radius/radius/issues/1790")
-	applicationName := "azure-connection-cognitive-service"
-	containerResourceName := "translation-service"
-	template := "testdata/azure-connection-cognitive-service.bicep"
+	applicationName := "azure-connection-database-service"
+	containerResourceName := "db-service"
+	template := "testdata/azure-connection-database-service.bicep"
 	test := azuretest.NewApplicationTest(t, applicationName, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{
-						Type:            "Microsoft.CognitiveServices/accounts",
+						Type:            "Microsoft.DocumentDB/accounts",
 						AzureConnection: true,
 					},
 					{
