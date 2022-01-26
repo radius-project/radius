@@ -7,7 +7,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radiusteam/dapr-pubsub-nodesubscriber:latest'
         env: {
-          SB_PUBSUBNAME: pubsub.name
+          SB_PUBSUBNAME: pubsub.properties.pubSubName
           SB_TOPIC: pubsub.properties.topic
         }
       }
@@ -33,7 +33,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radiusteam/dapr-pubsub-pythonpublisher:latest'
         env: {
-          SB_PUBSUBNAME: pubsub.name
+          SB_PUBSUBNAME: pubsub.properties.pubSubName
           SB_TOPIC: pubsub.properties.topic
         }
       }
