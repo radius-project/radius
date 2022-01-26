@@ -20,7 +20,7 @@ If your application needs to be portable across [Radius platforms]({{< ref platf
 
 {{< button text="Connectors library" page="connectors" >}}
 
-For example, the [MongoDB]({{< ref mongodb >}}) connector allows both an Azure CosmosDB and a MongoDB container to bind to it.
+For example, the [mongo.com.mongoDatabase]({{< ref mongodb >}}) connector allows either an Azure CosmosDB and a MongoDB container to bind to it.
 
 A MongoDB connector can be modeled as:
 
