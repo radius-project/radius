@@ -111,11 +111,8 @@ var envInitKubernetesCmd = &cobra.Command{
 		cli.UpdateEnvironmentSection(config, env)
 
 		err = cli.SaveConfig(config)
-		if err != nil {
-			return err
-		}
 
-		return nil
+		return err
 	},
 }
 
