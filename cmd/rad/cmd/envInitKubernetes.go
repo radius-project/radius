@@ -190,7 +190,7 @@ func installGateway(ctx context.Context, runtimeClient runtime_client.Client, un
 	}
 
 	// wait for CRDs to be ready.
-	err = kubectl.RunCLICommandSilent("wait", "--for", "condition=\"established\"", "-f", "https://raw.githubusercontent.com/projectcontour/contour/v1.20.0-beta.1/examples/gateway/00-crds.yaml")
+	err = kubectl.RunCLICommandSilent("wait", "--for", "condition=established", "-f", "https://raw.githubusercontent.com/projectcontour/contour/v1.20.0-beta.1/examples/gateway/00-crds.yaml")
 	if err != nil {
 		return err
 	}

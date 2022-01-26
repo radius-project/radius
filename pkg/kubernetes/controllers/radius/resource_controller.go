@@ -348,7 +348,7 @@ func (r *ResourceReconciler) GetRuntimeOptions(ctx context.Context) (renderers.R
 
 	if len(gateways.Items) > 0 {
 		options.Gateway = renderers.GatewayOptions{
-			GatewayClass: "example",
+			GatewayClass: "radius-gateway",
 		}
 	}
 
