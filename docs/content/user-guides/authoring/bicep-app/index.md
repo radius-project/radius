@@ -16,7 +16,7 @@ Create a new Bicep resource that represents your [application]({{< ref applicati
 
 ## (optional) Add portable connectors
 
-If your application needs to be portable across [Radius platforms]({{< ref platforms >}}), you can use connectors to add an abstraction layer. Containers can bind to common values like `host`, `port` and `connectionString` to connect to the API or service, and the underlying infrastructure can be swapped out.
+If your application needs to be portable across [Radius platforms]({{< ref platforms >}}), you can use connectors to add an abstraction layer for each resource. Connectors present common values like `host`, `port` and `connectionString` that Service resources (like containers) can use to connect to the related API or service. The underlying infrastructure type can then be swapped out.
 
 {{< button text="Connectors library" page="connectors" >}}
 
