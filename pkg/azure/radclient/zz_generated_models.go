@@ -1944,19 +1944,27 @@ func (m MicrosoftSQLDatabaseList) MarshalJSON() ([]byte, error) {
 
 type MicrosoftSQLDatabaseProperties struct {
 	BasicResourceProperties
+	// The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
 	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
 	Managed *bool `json:"managed,omitempty"`
 
 	// The ID of the user-managed SQL database to use for this resource.
 	Resource *string `json:"resource,omitempty"`
+
+	// The fully qualified domain name of the SQL database.
+	Server *string `json:"server,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type MicrosoftSQLDatabaseProperties.
 func (m MicrosoftSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	m.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "database", m.Database)
 	populate(objectMap, "managed", m.Managed)
 	populate(objectMap, "resource", m.Resource)
+	populate(objectMap, "server", m.Server)
 	return json.Marshal(objectMap)
 }
 
@@ -1969,11 +1977,17 @@ func (m *MicrosoftSQLDatabaseProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "database":
+				err = unpopulate(val, &m.Database)
+				delete(rawMsg, key)
 		case "managed":
 				err = unpopulate(val, &m.Managed)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &m.Resource)
+				delete(rawMsg, key)
+		case "server":
+				err = unpopulate(val, &m.Server)
 				delete(rawMsg, key)
 		}
 		if err != nil {
