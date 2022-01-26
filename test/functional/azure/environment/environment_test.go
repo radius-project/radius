@@ -80,9 +80,9 @@ func TestAzureEnvironment(t *testing.T) {
 					validation.K8sObject{Labels: map[string]string{"app": "dapr-sentry"}},
 					validation.K8sObject{Labels: map[string]string{"app": "dapr-sidecar-injector"}},
 				},
-				// verify haproxy
-				"radius-system": {
-					validation.K8sObject{Labels: map[string]string{kubernetes.LabelName: "haproxy-ingress"}},
+				// verify contour
+				"projectcontour": {
+					validation.K8sObject{Labels: map[string]string{kubernetes.LabelName: "envoy"}},
 				},
 			},
 		}

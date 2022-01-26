@@ -59,7 +59,6 @@ func (dc *AKSDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 			continue
 		}
 
-		// haproxy
 		service, err := dc.K8sClient.CoreV1().Services("projectcontour").Get(ctx, "envoy", metav1.GetOptions{})
 		if err != nil {
 			return nil, err

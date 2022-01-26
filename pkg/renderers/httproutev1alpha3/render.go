@@ -205,11 +205,10 @@ func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route radc
 		})
 	}
 	var hostnames []gatewayv1alpha2.Hostname
-	hostname := "local.projectcontour.io"
+	hostname := ""
 	if route.Gateway != nil && route.Gateway.Hostname != nil {
 		hostname = *route.Gateway.Hostname
 	}
-	hostname = "local.projectcontour.io"
 	if hostname != "" && hostname != "*" {
 		hostnames = append(hostnames, gatewayv1alpha2.Hostname(hostname))
 	}

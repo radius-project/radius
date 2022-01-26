@@ -65,7 +65,7 @@ func (dc *KubernetesDiagnosticsClient) GetPublicEndpoint(ctx context.Context, op
 			continue
 		}
 
-		service, err := dc.K8sClient.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
+		service, err := dc.K8sClient.CoreV1().Services("projectcontour").Get(ctx, "envoy", metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}

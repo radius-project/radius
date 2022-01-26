@@ -17,15 +17,10 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	k8slabels "github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/kubernetes/kubectl"
 	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,7 +28,6 @@ import (
 )
 
 const (
-	HAProxyVersion    = "0.13.4"
 	GatewayCRDVersion = "v0.3.0"
 )
 
@@ -91,7 +85,7 @@ var envInitKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: true}, unstructuredClient)
+		err = installGateway(cmd.Context(), runtimeClient, unstructuredClient)
 		if err != nil {
 			return err
 		}
@@ -187,13 +181,19 @@ func installRadius(ctx context.Context, client client_go.Interface, runtimeClien
 	return nil
 }
 
-func installGateway(ctx context.Context, runtimeClient runtime_client.Client, options helm.HAProxyOptions, unstructuredClient dynamic.Interface) error {
-	err := kubectl.RunCLICommandSilent("apply", "-f", "https://raw.githubusercontent.com/projectcontour/contour/v1.20.0-beta.1/examples/render/contour-gateway.yaml")
+func installGateway(ctx context.Context, runtimeClient runtime_client.Client, unstructuredClient dynamic.Interface) error {
+	err := kubectl.RunCLICommandSilent("apply", "-f", "https://raw.githubusercontent.com/projectcontour/contour/v1.20.0-beta.1/examples/render/contour.yaml")
 	if err != nil {
 		return err
 	}
 
-	err = kubectl.RunCLICommandSilent("apply", "-f", "https://raw.githubusercontent.com/projectcontour/contour-operator/v1.20.0-beta.1/examples/operator/operator.yaml")
+	err = kubectl.RunCLICommandSilent("apply", "-f", "https://raw.githubusercontent.com/projectcontour/contour/v1.20.0-beta.1/examples/gateway/00-crds.yaml")
+	if err != nil {
+		return err
+	}
+
+	// wait for CRDs to be ready.
+	err = kubectl.RunCLICommandSilent("wait", "--for", "condition=\"established\"", "-f", "https://raw.githubusercontent.com/projectcontour/contour/v1.20.0-beta.1/examples/gateway/00-crds.yaml")
 	if err != nil {
 		return err
 	}
@@ -208,37 +208,6 @@ func installGateway(ctx context.Context, runtimeClient runtime_client.Client, op
 
 func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client, unstructuredClient dynamic.Interface) error {
 
-	contour := unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "operator.projectcontour.io/v1alpha1",
-			"kind":       "Contour",
-			"metadata": map[string]interface{}{
-				"name":      "contour",
-				"namespace": "contour-operator",
-			},
-			"spec": map[string]interface{}{
-				"gatewayControllerName": "projectcontour.io/controller",
-			},
-		},
-	}
-
-	bytes, err := contour.MarshalJSON()
-	if err != nil {
-		return err
-	}
-
-	gvr := schema.GroupVersionResource{
-		Group:    "operator.projectcontour.io",
-		Version:  "v1alpha1",
-		Resource: "contours",
-	}
-
-	_, err = unstructuredClient.Resource(gvr).Namespace("contour-operator").Patch(ctx, "contour", types.ApplyPatchType, bytes, v1.PatchOptions{FieldManager: "rad"})
-
-	if err != nil {
-		return err
-	}
-
 	gateway := gatewayv1alpha2.GatewayClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GatewayClass",
@@ -248,11 +217,11 @@ func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client,
 			Name: "radius-gateway",
 		},
 		Spec: gatewayv1alpha2.GatewayClassSpec{
-			ControllerName: "projectcontour.io/controller",
+			ControllerName: "projectcontour.io/projectcontour/contour",
 		},
 	}
 
-	err = runtimeClient.Patch(ctx, &gateway, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: k8slabels.FieldManager})
+	err := runtimeClient.Patch(ctx, &gateway, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: k8slabels.FieldManager})
 
 	if err != nil {
 		return err

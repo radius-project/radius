@@ -61,7 +61,7 @@ func MakeGateway(ctx context.Context, resource renderers.RendererResource, gatew
 			AllowedRoutes: &gatewayv1alpha2.AllowedRoutes{
 				Kinds: []gatewayv1alpha2.RouteGroupKind{
 					{
-						Kind: "HttpRoute",
+						Kind: "HTTPRoute",
 					},
 				},
 			},
