@@ -22,7 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/gateway"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 type Renderer struct {
@@ -149,27 +149,31 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route radclient.HTTPRouteProperties, gatewayName string) outputresource.OutputResource {
 
 	serviceName := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName)
-	pathMatch := gatewayv1alpha1.PathMatchImplementationSpecific
-	var rules []gatewayv1alpha1.HTTPRouteRule
+	pathMatch := gatewayv1alpha2.PathMatchPathPrefix
+	var rules []gatewayv1alpha2.HTTPRouteRule
 	for _, rule := range route.Gateway.Rules {
 		// Default to prefix match
 		if rule.Path != nil && rule.Path.Type != nil && strings.EqualFold(*rule.Path.Type, "exact") {
-			pathMatch = gatewayv1alpha1.PathMatchExact
+			pathMatch = gatewayv1alpha2.PathMatchExact
 		}
-		port := gatewayv1alpha1.PortNumber(GetEffectivePort(route))
-		rules = append(rules, gatewayv1alpha1.HTTPRouteRule{
-			Matches: []gatewayv1alpha1.HTTPRouteMatch{
+		port := gatewayv1alpha2.PortNumber(GetEffectivePort(route))
+		rules = append(rules, gatewayv1alpha2.HTTPRouteRule{
+			Matches: []gatewayv1alpha2.HTTPRouteMatch{
 				{
-					Path: &gatewayv1alpha1.HTTPPathMatch{
+					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  &pathMatch,
 						Value: rule.Path.Value,
 					},
 				},
 			},
-			ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
+			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{
 				{
-					ServiceName: &serviceName,
-					Port:        &port,
+					BackendRef: gatewayv1alpha2.BackendRef{
+						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							Name: gatewayv1alpha2.ObjectName(serviceName),
+							Port: &port,
+						},
+					},
 				},
 			},
 		})
@@ -178,49 +182,55 @@ func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route radc
 	// Add a default rule which maps to the service if none specified
 	if len(rules) == 0 {
 		path := "/"
-		port := gatewayv1alpha1.PortNumber(GetEffectivePort(route))
-		rules = append(rules, gatewayv1alpha1.HTTPRouteRule{
-			Matches: []gatewayv1alpha1.HTTPRouteMatch{
+		port := gatewayv1alpha2.PortNumber(GetEffectivePort(route))
+		rules = append(rules, gatewayv1alpha2.HTTPRouteRule{
+			Matches: []gatewayv1alpha2.HTTPRouteMatch{
 				{
-					Path: &gatewayv1alpha1.HTTPPathMatch{
+					Path: &gatewayv1alpha2.HTTPPathMatch{
 						Type:  &pathMatch,
 						Value: &path,
 					},
 				},
 			},
-			ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
+			BackendRefs: []gatewayv1alpha2.HTTPBackendRef{
 				{
-					ServiceName: &serviceName,
-					Port:        &port,
+					BackendRef: gatewayv1alpha2.BackendRef{
+						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							Name: gatewayv1alpha2.ObjectName(serviceName),
+							Port: &port,
+						},
+					},
 				},
 			},
 		})
 	}
-	var hostnames []gatewayv1alpha1.Hostname
-	hostname := ""
+	var hostnames []gatewayv1alpha2.Hostname
+	hostname := "local.projectcontour.io"
 	if route.Gateway != nil && route.Gateway.Hostname != nil {
 		hostname = *route.Gateway.Hostname
 	}
+	hostname = "local.projectcontour.io"
 	if hostname != "" && hostname != "*" {
-		hostnames = append(hostnames, gatewayv1alpha1.Hostname(hostname))
+		hostnames = append(hostnames, gatewayv1alpha2.Hostname(hostname))
 	}
 
-	httpRoute := &gatewayv1alpha1.HTTPRoute{
+	namespace := gatewayv1alpha2.Namespace("default")
+	httpRoute := &gatewayv1alpha2.HTTPRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "HTTPRoute",
-			APIVersion: gatewayv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: gatewayv1alpha2.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Namespace: resource.ApplicationName,
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
-		Spec: gatewayv1alpha1.HTTPRouteSpec{
-			Gateways: &gatewayv1alpha1.RouteGateways{
-				GatewayRefs: []gatewayv1alpha1.GatewayReference{
+		Spec: gatewayv1alpha2.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
+				ParentRefs: []gatewayv1alpha2.ParentRef{
 					{
-						Name:      gatewayName,
-						Namespace: "default",
+						Name:      gatewayv1alpha2.ObjectName(gatewayName),
+						Namespace: &namespace,
 					},
 				},
 			},

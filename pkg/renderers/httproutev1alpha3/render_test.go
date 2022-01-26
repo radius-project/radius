@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -210,7 +210,7 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	require.Equal(t, applicationName, httpRoute.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
+	require.Equal(t, httpRoute.Spec.ParentRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
 	rule := httpRoute.Spec.Rules[0]
 
@@ -220,16 +220,16 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	path := rule.Matches[0]
 
 	require.Equal(t, "/", *path.Path.Value)
-	require.Equal(t, gatewayv1alpha1.PathMatchImplementationSpecific, *path.Path.Type)
+	require.Equal(t, gatewayv1alpha2.PathMatchRegularExpression, *path.Path.Type)
 
-	backend := rule.ForwardTo[0]
+	backend := rule.BackendRefs[0]
 	require.NotNil(t, backend)
 
-	serviceName := backend.ServiceName
+	serviceName := backend.Name
 	require.NotNil(t, serviceName)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *serviceName)
-	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), serviceName)
+	require.Equal(t, gatewayv1alpha2.PortNumber(81), *backend.Port)
 }
 
 func Test_Render_WithHostname_NoRule_DefaultToSlash(t *testing.T) {
@@ -274,9 +274,9 @@ func Test_Render_WithHostname_NoRule_DefaultToSlash(t *testing.T) {
 	require.Equal(t, applicationName, httpRoute.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	require.Equal(t, gatewayv1alpha1.Hostname("example.com"), httpRoute.Spec.Hostnames[0])
+	require.Equal(t, gatewayv1alpha2.Hostname("example.com"), httpRoute.Spec.Hostnames[0])
 
-	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
+	require.Equal(t, httpRoute.Spec.ParentRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
 	rule := httpRoute.Spec.Rules[0]
 
@@ -286,16 +286,16 @@ func Test_Render_WithHostname_NoRule_DefaultToSlash(t *testing.T) {
 	path := rule.Matches[0]
 
 	require.Equal(t, "/", *path.Path.Value)
-	require.Equal(t, gatewayv1alpha1.PathMatchImplementationSpecific, *path.Path.Type)
+	require.Equal(t, gatewayv1alpha2.PathMatchRegularExpression, *path.Path.Type)
 
-	backend := rule.ForwardTo[0]
+	backend := rule.BackendRefs[0]
 	require.NotNil(t, backend)
 
-	service := backend.ServiceName
+	service := backend.Name
 	require.NotNil(t, service)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
-	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service)
+	require.Equal(t, gatewayv1alpha2.PortNumber(81), *backend.Port)
 }
 
 func Test_Render_Rule(t *testing.T) {
@@ -348,7 +348,7 @@ func Test_Render_Rule(t *testing.T) {
 	require.Equal(t, applicationName, httpRoute.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
+	require.Equal(t, httpRoute.Spec.ParentRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
 	rule := httpRoute.Spec.Rules[0]
 
@@ -358,16 +358,16 @@ func Test_Render_Rule(t *testing.T) {
 	path := rule.Matches[0]
 
 	require.Equal(t, "/foo", *path.Path.Value)
-	require.Equal(t, gatewayv1alpha1.PathMatchExact, *path.Path.Type)
+	require.Equal(t, gatewayv1alpha2.PathMatchExact, *path.Path.Type)
 
-	backend := rule.ForwardTo[0]
+	backend := rule.BackendRefs[0]
 	require.NotNil(t, backend)
 
-	service := backend.ServiceName
+	service := backend.Name
 	require.NotNil(t, service)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
-	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service)
+	require.Equal(t, gatewayv1alpha2.PortNumber(81), *backend.Port)
 }
 
 func Test_Render_Rule_NoSource(t *testing.T) {
@@ -419,7 +419,7 @@ func Test_Render_Rule_NoSource(t *testing.T) {
 	require.Equal(t, applicationName, httpRoute.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), httpRoute.Labels)
 
-	require.Equal(t, httpRoute.Spec.Gateways.GatewayRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
+	require.Equal(t, httpRoute.Spec.ParentRefs[0].Name, kubernetes.MakeResourceName(applicationName, id.Name()))
 
 	rule := httpRoute.Spec.Rules[0]
 
@@ -429,16 +429,16 @@ func Test_Render_Rule_NoSource(t *testing.T) {
 	path := rule.Matches[0]
 
 	require.Equal(t, "/foo", *path.Path.Value)
-	require.Equal(t, gatewayv1alpha1.PathMatchExact, *path.Path.Type)
+	require.Equal(t, gatewayv1alpha2.PathMatchExact, *path.Path.Type)
 
-	backend := rule.ForwardTo[0]
+	backend := rule.BackendRefs[0]
 	require.NotNil(t, backend)
 
-	service := backend.ServiceName
+	service := backend.Name
 	require.NotNil(t, service)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), *service)
-	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service)
+	require.Equal(t, gatewayv1alpha2.PortNumber(81), *backend.Port)
 
 	gateway, expectedGatewayOutputResource := kubernetes.FindGateway(output.Resources)
 	expectedGateway := outputresource.NewKubernetesOutputResource(outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)

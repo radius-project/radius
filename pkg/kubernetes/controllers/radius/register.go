@@ -28,7 +28,7 @@ import (
 	bicepcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/bicep"
 	"github.com/project-radius/radius/pkg/kubernetes/webhook"
 	"github.com/project-radius/radius/pkg/model"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 var DefaultResourceTypes = []struct {
@@ -56,8 +56,8 @@ var DefaultWatchTypes = map[string]struct {
 	resourcekinds.Deployment:          {&appsv1.Deployment{}, &appsv1.DeploymentList{}, GetHealthStateFromDeployment},
 	resourcekinds.Secret:              {&corev1.Secret{}, &corev1.SecretList{}, nil},
 	resourcekinds.StatefulSet:         {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
-	resourcekinds.Gateway:             {&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}, nil},
-	resourcekinds.KubernetesHTTPRoute: {&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}, nil},
+	resourcekinds.Gateway:             {&gatewayv1alpha2.Gateway{}, &gatewayv1alpha2.GatewayList{}, nil},
+	resourcekinds.KubernetesHTTPRoute: {&gatewayv1alpha2.HTTPRoute{}, &gatewayv1alpha2.HTTPRouteList{}, nil},
 }
 
 type Options struct {

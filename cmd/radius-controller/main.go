@@ -34,7 +34,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes/apiserver"
 	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
 	kubernetesmodel "github.com/project-radius/radius/pkg/model/kubernetes"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -46,7 +46,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1alpha2.AddToScheme(scheme))
 
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 

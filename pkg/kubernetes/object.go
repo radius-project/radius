@@ -17,7 +17,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 // FindDeployment finds deployment in a list of output resources
@@ -93,13 +93,13 @@ func FindIngress(resources []outputresource.OutputResource) (*networkingv1.Ingre
 }
 
 // FindHttpRoute finds an HttpRoute in a list of output resources
-func FindHttpRoute(resources []outputresource.OutputResource) (*gatewayv1alpha1.HTTPRoute, outputresource.OutputResource) {
+func FindHttpRoute(resources []outputresource.OutputResource) (*gatewayv1alpha2.HTTPRoute, outputresource.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceKind != resourcekinds.Kubernetes {
 			continue
 		}
 
-		httpRoute, ok := r.Resource.(*gatewayv1alpha1.HTTPRoute)
+		httpRoute, ok := r.Resource.(*gatewayv1alpha2.HTTPRoute)
 		if !ok {
 			continue
 		}
@@ -111,13 +111,13 @@ func FindHttpRoute(resources []outputresource.OutputResource) (*gatewayv1alpha1.
 }
 
 // FindHttpRoute finds an HttpRoute in a list of output resources
-func FindGateway(resources []outputresource.OutputResource) (*gatewayv1alpha1.Gateway, outputresource.OutputResource) {
+func FindGateway(resources []outputresource.OutputResource) (*gatewayv1alpha2.Gateway, outputresource.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceKind != resourcekinds.Kubernetes {
 			continue
 		}
 
-		gateway, ok := r.Resource.(*gatewayv1alpha1.Gateway)
+		gateway, ok := r.Resource.(*gatewayv1alpha2.Gateway)
 		if !ok {
 			continue
 		}

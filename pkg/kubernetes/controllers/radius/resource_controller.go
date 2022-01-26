@@ -41,7 +41,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 const (
@@ -77,6 +77,10 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups="networking.x-k8s.io",resources=gateways,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="networking.x-k8s.io",resources=gatewayclasses,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="networking.x-k8s.io",resources=httproutes,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="gateway.networking.k8s.io",resources=ingresses,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="gateway.networking.k8s.io",resources=gateways,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="gateway.networking.k8s.io",resources=gatewayclasses,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="gateway.networking.k8s.io",resources=httproutes,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/finalizers,verbs=update
@@ -335,7 +339,7 @@ func (r *ResourceReconciler) GetRuntimeOptions(ctx context.Context) (renderers.R
 	options := renderers.RuntimeOptions{}
 	// We require a gateway class to be present before creating a gateway
 	// Look up the first gateway class in the cluster and use that for now
-	var gateways gatewayv1alpha1.GatewayClassList
+	var gateways gatewayv1alpha2.GatewayClassList
 	err := r.Client.List(ctx, &gateways)
 	if err != nil {
 		// Ignore failures to list gateway classes
@@ -343,9 +347,8 @@ func (r *ResourceReconciler) GetRuntimeOptions(ctx context.Context) (renderers.R
 	}
 
 	if len(gateways.Items) > 0 {
-		gatewayClass := gateways.Items[0]
 		options.Gateway = renderers.GatewayOptions{
-			GatewayClass: gatewayClass.Name,
+			GatewayClass: "radius-gateway",
 		}
 	}
 

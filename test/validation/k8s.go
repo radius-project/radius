@@ -30,7 +30,7 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/restmapper"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 const (
@@ -292,7 +292,7 @@ func ValidateGatewaysRunning(ctx context.Context, t *testing.T, client client.Cl
 				t.Logf("at %s waiting for gateways in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
-				var actualGateways gatewayv1alpha1.GatewayList
+				var actualGateways gatewayv1alpha2.GatewayList
 				err = client.List(ctx, &actualGateways)
 				require.NoErrorf(t, err, "failed to list gateways in namespace %v", namespace)
 
@@ -337,7 +337,7 @@ func ValidateHttpRoutesRunning(ctx context.Context, t *testing.T, client client.
 				t.Logf("at %s waiting for gateways in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
 
 				var err error
-				var actualRoutes gatewayv1alpha1.HTTPRouteList
+				var actualRoutes gatewayv1alpha2.HTTPRouteList
 				err = client.List(ctx, &actualRoutes)
 				require.NoErrorf(t, err, "failed to list httproutes in namespace %v", namespace)
 

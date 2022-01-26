@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 type Renderer struct {
@@ -52,29 +52,34 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 }
 
 func MakeGateway(ctx context.Context, resource renderers.RendererResource, gateway Gateway, gatewayClassName string) outputresource.OutputResource {
-	var listeners []gatewayv1alpha1.Listener
-	for _, listener := range gateway.Listeners {
-		listeners = append(listeners, gatewayv1alpha1.Listener{
-			Port:     gatewayv1alpha1.PortNumber(*listener.Port),
-			Protocol: gatewayv1alpha1.ProtocolType(listener.Protocol),
-			Routes: gatewayv1alpha1.RouteBindingSelector{
-				Kind: "HTTPRoute",
+	var listeners []gatewayv1alpha2.Listener
+	for key, listener := range gateway.Listeners {
+		listeners = append(listeners, gatewayv1alpha2.Listener{
+			Name:     gatewayv1alpha2.SectionName(key),
+			Port:     gatewayv1alpha2.PortNumber(*listener.Port),
+			Protocol: gatewayv1alpha2.ProtocolType(listener.Protocol),
+			AllowedRoutes: &gatewayv1alpha2.AllowedRoutes{
+				Kinds: []gatewayv1alpha2.RouteGroupKind{
+					{
+						Kind: "HttpRoute",
+					},
+				},
 			},
 		})
 	}
 
-	gate := &gatewayv1alpha1.Gateway{
+	gate := &gatewayv1alpha2.Gateway{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Gateway",
-			APIVersion: gatewayv1alpha1.SchemeGroupVersion.String(),
+			APIVersion: gatewayv1alpha2.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 			Namespace: resource.ApplicationName,
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
-		Spec: gatewayv1alpha1.GatewaySpec{
-			GatewayClassName: gatewayClassName,
+		Spec: gatewayv1alpha2.GatewaySpec{
+			GatewayClassName: gatewayv1alpha2.ObjectName(gatewayClassName),
 			Listeners:        listeners,
 		},
 	}

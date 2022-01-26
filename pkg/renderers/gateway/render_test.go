@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 const (
@@ -99,8 +99,8 @@ func Test_Render_WithListener(t *testing.T) {
 	require.Equal(t, gateway.Spec.GatewayClassName, "gateway-class")
 
 	listener := gateway.Spec.Listeners[0]
-	require.Equal(t, gatewayv1alpha1.PortNumber(80), listener.Port)
-	require.Equal(t, gatewayv1alpha1.ProtocolType("http"), listener.Protocol)
+	require.Equal(t, gatewayv1alpha2.PortNumber(80), listener.Port)
+	require.Equal(t, gatewayv1alpha2.ProtocolType("http"), listener.Protocol)
 }
 
 func GetRuntimeOptions() renderers.RuntimeOptions {

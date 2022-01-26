@@ -207,25 +207,6 @@ func installGateway(ctx context.Context, runtimeClient runtime_client.Client, op
 }
 
 func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client, unstructuredClient dynamic.Interface) error {
-	gateway := gatewayv1alpha2.GatewayClass{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "GatewayClass",
-			APIVersion: "networking.x-k8s.io/v1alpha2",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "contour",
-			Namespace: "radius-system",
-		},
-		Spec: gatewayv1alpha2.GatewayClassSpec{
-			ControllerName: "projectcontour.io/controller",
-		},
-	}
-
-	err := runtimeClient.Patch(ctx, &gateway, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: k8slabels.FieldManager})
-
-	if err != nil {
-		return err
-	}
 
 	contour := unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -235,10 +216,17 @@ func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client,
 				"name":      "contour",
 				"namespace": "contour-operator",
 			},
+			"spec": map[string]interface{}{
+				"gatewayControllerName": "projectcontour.io/controller",
+			},
 		},
 	}
 
 	bytes, err := contour.MarshalJSON()
+	if err != nil {
+		return err
+	}
+
 	gvr := schema.GroupVersionResource{
 		Group:    "operator.projectcontour.io",
 		Version:  "v1alpha1",
@@ -246,6 +234,29 @@ func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client,
 	}
 
 	_, err = unstructuredClient.Resource(gvr).Namespace("contour-operator").Patch(ctx, "contour", types.ApplyPatchType, bytes, v1.PatchOptions{FieldManager: "rad"})
+
+	if err != nil {
+		return err
+	}
+
+	gateway := gatewayv1alpha2.GatewayClass{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "GatewayClass",
+			APIVersion: "gateway.networking.k8s.io/v1alpha2",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "radius-gateway",
+		},
+		Spec: gatewayv1alpha2.GatewayClassSpec{
+			ControllerName: "projectcontour.io/controller",
+		},
+	}
+
+	err = runtimeClient.Patch(ctx, &gateway, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: k8slabels.FieldManager})
+
+	if err != nil {
+		return err
+	}
 
 	return err
 }

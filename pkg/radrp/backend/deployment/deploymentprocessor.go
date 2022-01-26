@@ -24,7 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/radrp/backend/deployment github.com/project-radius/radius/pkg/radrp/backend/deployment DeploymentProcessor
@@ -668,7 +668,7 @@ func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers
 	// We require a gateway class to be present before creating a gateway
 	// Look up the first gateway class in the cluster and use that for now
 	if dp.k8s != nil {
-		var gateways gatewayv1alpha1.GatewayClassList
+		var gateways gatewayv1alpha2.GatewayClassList
 		err := dp.k8s.List(ctx, &gateways)
 		if err != nil {
 			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up GatewayClass: %w", err)
