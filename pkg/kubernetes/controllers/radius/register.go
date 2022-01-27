@@ -45,6 +45,7 @@ var DefaultResourceTypes = []struct {
 	{&radiusv1alpha3.RabbitMQMessageQueue{}, &radiusv1alpha3.RabbitMQMessageQueueList{}},
 	{&radiusv1alpha3.RedisCache{}, &radiusv1alpha3.RedisCacheList{}},
 	{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
+	{&radiusv1alpha3.MicrosoftComSQLDatabase{}, &radiusv1alpha3.MicrosoftComSQLDatabaseList{}},
 }
 
 var DefaultWatchTypes = map[string]struct {

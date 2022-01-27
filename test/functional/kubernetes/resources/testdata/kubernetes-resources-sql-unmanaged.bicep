@@ -1,9 +1,8 @@
-var serverName = 'test'
 var adminUsername = 'cooluser'
 var adminPassword = 'p@ssw0rd'
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-microsoft-sql-unmanaged'
+  name: 'kubernetes-resources-sql-unmanaged'
 
   resource webapp 'Container' = {
     name: 'todoapp'
@@ -26,13 +25,20 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
-      server: sqlContainer.Name
-      database: sqlContainer.Name
+      server: sqlContainer.name
+      database: sqlRoute.properties.url
+    }
+  }
+
+  resource sqlRoute 'HttpRoute' = {
+    name: 'sql-route'
+    properties: {
+      port: 1433
     }
   }
 
   resource sqlContainer 'Container' = {
-    name: 'container-${serverName}'
+    name: 'container-test'
     properties: {
       container: {
         image: 'mcr.microsoft.com/mssql/server:2019-latest'
@@ -44,6 +50,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         ports: {
           sql: {
             containerPort: 1433
+            provides: sqlRoute.id
           }
         }
       }
