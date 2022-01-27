@@ -12,13 +12,13 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Azure/radius/pkg/cli/environments"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 )
@@ -172,6 +172,21 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 
 	if kind == environments.KindAzureCloud {
 		decoded := &environments.AzureCloudEnvironment{}
+		err := mapstructure.Decode(raw, decoded)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
+		}
+
+		decoded.Name = name
+
+		err = validate(decoded)
+		if err != nil {
+			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
+		}
+
+		return decoded, nil
+	} else if kind == environments.KindDev {
+		decoded := &environments.LocalEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)

@@ -8,11 +8,11 @@ package health
 import (
 	"time"
 
-	"github.com/Azure/radius/pkg/health/db"
-	"github.com/Azure/radius/pkg/health/handlers"
-	"github.com/Azure/radius/pkg/health/model"
-	"github.com/Azure/radius/pkg/healthcontract"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/health/db"
+	"github.com/project-radius/radius/pkg/health/handlers"
+	"github.com/project-radius/radius/pkg/health/model"
+	"github.com/project-radius/radius/pkg/healthcontract"
 )
 
 // Default values for Health check options

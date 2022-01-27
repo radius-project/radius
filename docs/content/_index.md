@@ -43,7 +43,7 @@ Radius extends strong existing tools to further streamline the app developer exp
 </table>
 {{< /card >}}
 {{< card header="**Intelligent**" >}}
-Developers can offload the complexity of wiring-up applications, and let Radius handle  best-practices.
+Developers can offload the complexity of wiring-up applications and let Radius employ best-practices.
 <table style="max-width:600px;margin-top:5%">
   <tr>
     <td style="width:25%;text-align:center">

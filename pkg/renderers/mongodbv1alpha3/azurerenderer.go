@@ -9,12 +9,12 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
 var cosmosAccountDependency outputresource.Dependency = outputresource.Dependency{
@@ -26,12 +26,12 @@ var _ renderers.Renderer = (*AzureRenderer)(nil)
 type AzureRenderer struct {
 }
 
-func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	properties := radclient.MongoDBComponentProperties{}
+	properties := radclient.MongoDBResourceProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
@@ -55,7 +55,7 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 		resources = append(resources, results...)
 	}
 
-	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName)
+	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
 
 	return renderers.RendererOutput{
 		Resources:      resources,
@@ -64,7 +64,7 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 	}, nil
 }
 
-func RenderManaged(name string, properties radclient.MongoDBComponentProperties) ([]outputresource.OutputResource, error) {
+func RenderManaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != nil && *properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
@@ -96,7 +96,14 @@ func RenderManaged(name string, properties radclient.MongoDBComponentProperties)
 	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
 
-func RenderUnmanaged(name string, properties radclient.MongoDBComponentProperties) ([]outputresource.OutputResource, error) {
+func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
+	if properties.Secrets != nil {
+		// When the user-specified secret is present, this is the usecase where the user is running
+		// their own custom Redis instance (using a container, or hosted elsewhere).
+		//
+		// In that case we don't have an OutputResaource, only Computed and Secret values.
+		return nil, nil
+	}
 	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
@@ -135,21 +142,42 @@ func RenderUnmanaged(name string, properties radclient.MongoDBComponentPropertie
 	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
 
-func MakeSecretsAndValues(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	computedValues := map[string]renderers.ComputedValueReference{
+func MakeSecretsAndValues(name string, properties radclient.MongoDBResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+	if properties.Secrets == nil {
+		computedValues := map[string]renderers.ComputedValueReference{
+			DatabaseValue: {
+				Value: name,
+			},
+		}
+		secretValues := map[string]renderers.SecretValueReference{
+			ConnectionStringValue: {
+				LocalID: cosmosAccountDependency.LocalID,
+				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				Action:        "listConnectionStrings",
+				ValueSelector: "/connectionStrings/0/connectionString",
+				Transformer:   resourcekinds.AzureCosmosDBMongo,
+			},
+		}
+
+		return computedValues, secretValues
+	}
+
+	// Currently user-specfied secrets are stored in the `secrets` property of the resource, and
+	// thus serialized to our database.
+	//
+	// TODO(#1767): We need to store these in a secret store.
+	return map[string]renderers.ComputedValueReference{
 		DatabaseValue: {
 			Value: name,
 		},
-	}
-	secretValues := map[string]renderers.SecretValueReference{
 		ConnectionStringValue: {
-			LocalID: cosmosAccountDependency.LocalID,
-			// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-			Action:        "listConnectionStrings",
-			ValueSelector: "/connectionStrings/0/connectionString",
-			Transformer:   resourcekinds.AzureCosmosDBMongo,
+			Value: properties.Secrets.ConnectionString,
 		},
-	}
-
-	return computedValues, secretValues
+		UsernameStringValue: {
+			Value: properties.Secrets.Username,
+		},
+		PasswordValue: {
+			Value: properties.Secrets.Password,
+		},
+	}, nil
 }

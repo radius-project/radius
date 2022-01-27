@@ -40,7 +40,7 @@ jobs:
         with:
           go-version: ${{ env.GOVER }}
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v2.4.13
+        uses: peaceiris/actions-hugo@v2.5.0
         with:
           hugo-version: 0.74.3
           extended: true
@@ -77,7 +77,7 @@ jobs:
         with:
           go-version: ${{ env.GOVER }}
       - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v2.4.13
+        uses: peaceiris/actions-hugo@v2.5.0
         with:
           hugo-version: 0.74.3
           extended: true

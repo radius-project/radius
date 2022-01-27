@@ -8,8 +8,8 @@ package db
 import (
 	"time"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
 type OperationKind string

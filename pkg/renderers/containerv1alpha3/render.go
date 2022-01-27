@@ -19,25 +19,28 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 const (
-	ResourceType = "ContainerComponent"
+	ResourceType = "Container"
 )
 
 // Liveness/Readiness constants
 const (
-	DefaultInitialDelaySeconds = 0
-	DefaultFailureThreshold    = 3
-	DefaultPeriodSeconds       = 10
+	DefaultInitialDelaySeconds   = 0
+	DefaultFailureThreshold      = 3
+	DefaultPeriodSeconds         = 10
+	AzureKeyVaultSecretsUserRole = "Key Vault Secrets User"
+	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
 )
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
@@ -48,23 +51,29 @@ type Renderer struct {
 	RoleAssignmentMap map[radclient.ContainerConnectionKind]RoleAssignmentData
 }
 
-func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
 	properties, err := r.convert(resource)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Right now we only have things in connections and ports as rendering dependencies - we'll add more things
 	// in the future... eg: volumes
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
-	deps := []azresources.ResourceID{}
 	for _, connection := range properties.Connections {
-		resourceId, err := azresources.Parse(to.String(connection.Source))
+		resourceID, err := azresources.Parse(*connection.Source)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		deps = append(deps, resourceId)
+
+		// Non-radius Azure connections that are accessible from Radius container resource.
+		if *connection.Kind == radclient.ContainerConnectionKindAzure {
+			azureResourceIDs = append(azureResourceIDs, resourceID)
+			continue
+		}
+
+		radiusResourceIDs = append(radiusResourceIDs, resourceID)
 	}
 
 	for _, port := range properties.Container.Ports {
@@ -73,11 +82,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 			continue
 		}
 
-		resourceId, err := azresources.Parse(provides)
+		resourceID, err := azresources.Parse(provides)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		deps = append(deps, resourceId)
+		radiusResourceIDs = append(radiusResourceIDs, resourceID)
 	}
 
 	for _, volume := range properties.Container.Volumes {
@@ -85,13 +94,13 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 		case *radclient.PersistentVolume:
 			resourceID, err := azresources.Parse(to.String(v.Source))
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
-			deps = append(deps, resourceID)
+			radiusResourceIDs = append(radiusResourceIDs, resourceID)
 		}
 	}
 
-	return deps, nil
+	return radiusResourceIDs, azureResourceIDs, nil
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
@@ -102,15 +111,15 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 
 	cw, err := r.convert(resource)
 	if err != nil {
-		return renderers.RendererOutput{Resources: outputResources}, err
+		return renderers.RendererOutput{}, err
 	}
 
 	// Create the deployment as the primary workload
-	deployment, secretData, err := r.makeDeployment(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies}, cw)
+	deploymentOutputResources, secretData, err := r.makeDeployment(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies}, cw)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-	outputResources = append(outputResources, deployment)
+	outputResources = append(outputResources, deploymentOutputResources...)
 
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
@@ -125,12 +134,12 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 			continue
 		}
 
-		more, err := r.makeRoleAssignmentsForResource(ctx, resource, *connection, dependencies)
+		rbacOutputResources, err := r.makeRoleAssignmentsForResource(ctx, *connection, dependencies)
 		if err != nil {
-			return renderers.RendererOutput{}, nil
+			return renderers.RendererOutput{}, err
 		}
 
-		roles = append(roles, more...)
+		roles = append(roles, rbacOutputResources...)
 	}
 
 	// If we created role assigmments then we will need an identity and the mapping of the identity to AKS.
@@ -143,8 +152,8 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	return renderers.RendererOutput{Resources: outputResources}, nil
 }
 
-func (r Renderer) convert(resource renderers.RendererResource) (*radclient.ContainerComponentProperties, error) {
-	properties := &radclient.ContainerComponentProperties{}
+func (r Renderer) convert(resource renderers.RendererResource) (*radclient.ContainerProperties, error) {
+	properties := &radclient.ContainerProperties{}
 	err := resource.ConvertDefinition(properties)
 	if err != nil {
 		return nil, err
@@ -153,7 +162,7 @@ func (r Renderer) convert(resource renderers.RendererResource) (*radclient.Conta
 	return properties, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOptions, cc *radclient.ContainerComponentProperties) (outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOptions, cc *radclient.ContainerProperties) ([]outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
@@ -167,7 +176,7 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 		if provides := to.String(port.Provides); provides != "" {
 			resourceId, err := azresources.Parse(provides)
 			if err != nil {
-				return outputresource.OutputResource{}, nil, err
+				return []outputresource.OutputResource{}, nil, err
 			}
 			routeName := resourceId.Name()
 			routeType := resourceId.Types[len(resourceId.Types)-1].Type
@@ -205,13 +214,13 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 	if cc.Container.ReadinessProbe != nil {
 		container.ReadinessProbe, err = r.makeHealthProbe(cc.Container.ReadinessProbe)
 		if err != nil {
-			return outputresource.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
+			return []outputresource.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
 		}
 	}
 	if cc.Container.LivenessProbe != nil {
 		container.LivenessProbe, err = r.makeHealthProbe(cc.Container.LivenessProbe)
 		if err != nil {
-			return outputresource.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
+			return []outputresource.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
 		}
 	}
 
@@ -261,6 +270,10 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 		container.Env = append(container.Env, env[key])
 	}
 
+	outputResources := []outputresource.OutputResource{}
+
+	podLabels := kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName)
+
 	// Add volumes
 	volumes := []corev1.Volume{}
 	for volumeName, volume := range cc.Container.Volumes {
@@ -269,18 +282,62 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 		case *radclient.EphemeralVolume:
 			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, *v)
 			if err != nil {
-				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
+				return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
 			}
 			// Add the volume mount to the Container spec
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
 			// Add the volume to the list of volumes to be added to the Volumes spec
 			volumes = append(volumes, volumeSpec)
 		case *radclient.PersistentVolume:
-			// Create spec for persistent volume
-			volumeSpec, volumeMountSpec, err := r.makePersistentVolume(volumeName, *v, options)
-			if err != nil {
-				return outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
+			var volumeSpec corev1.Volume
+			var volumeMountSpec corev1.VolumeMount
+			properties := dependencies[to.String(v.Source)]
+
+			switch properties.Definition["kind"] {
+			case volumev1alpha3.PersistentVolumeKindAzureFileShare:
+				// Create spec for persistent volume
+				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, *v, options)
+				if err != nil {
+					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
+				}
+			case volumev1alpha3.PersistentVolumeKindAzureKeyVault:
+				// Make Managed Identity
+				managedIdentity := r.makeManagedIdentity(ctx, resource)
+				outputResources = append(outputResources, managedIdentity)
+
+				// Make Role assignments
+				roleNames := []string{}
+				if properties.Definition["secrets"] != nil {
+					roleNames = append(roleNames, AzureKeyVaultSecretsUserRole)
+				}
+				if properties.Definition["certificates"] != nil || properties.Definition["keys"] != nil {
+					roleNames = append(roleNames, AzureKeyVaultCryptoUserRole)
+				}
+				kvID := properties.Definition["resource"].(string)
+				roleAssignments, err := r.makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx, kvID, roleNames)
+				if err != nil {
+					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create role assignments for volume: %s - %w", volumeName, err)
+				}
+				outputResources = append(outputResources, roleAssignments...)
+
+				// Make Pod Identity
+				podIdentity := r.makePodIdentity(ctx, resource, []outputresource.OutputResource{})
+				outputResources = append(outputResources, podIdentity)
+				// We need to add labels for pod identity created to the pod metadata
+				podIDLabel := kubernetes.MakeAADPodIdentityBindingLabels(podIdentity.Resource.(map[string]string)[handlers.PodIdentityNameKey])
+				podLabels = labels.Merge(podIDLabel, podLabels)
+
+				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
+				secretProviderClassName := secretProviderClass.Data.(resourcemodel.KubernetesIdentity).Name
+				// Create spec for secret store
+				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, *v, secretProviderClassName, options)
+				if err != nil {
+					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
+				}
+			default:
+				return []outputresource.OutputResource{}, nil, fmt.Errorf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", properties.Definition["kind"], volumeName, volumev1alpha3.GetSupportedKinds())
 			}
+
 			// Add the volume mount to the Container spec
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
 			// Add the volume to the list of volumes to be added to the Volumes spec
@@ -289,7 +346,6 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 			// Add azurestorageaccountname and azurestorageaccountkey as secrets
 			// These will be added as key-value pairs to the kubernetes secret created for the container
 			// The key values are as per: https://docs.microsoft.com/en-us/azure/aks/azure-files-volume
-			properties := dependencies[to.String(v.Source)]
 			for key, value := range properties.ComputedValues {
 				if value.(string) == outputresource.LocalIDAzureFileShareStorageAccount {
 					// The storage account was not created when the computed value was rendered
@@ -297,20 +353,19 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
 					r, err := azresources.Parse(id)
 					if err != nil {
-						return outputresource.OutputResource{}, nil, err
+						return []outputresource.OutputResource{}, nil, err
 					}
 					value = r.Name()
 				}
 				secretData[key] = []byte(value.(string))
 			}
 		default:
-			return outputresource.OutputResource{}, secretData, fmt.Errorf("Only ephemeral or persistent volumes are supported. Got kind: %v", *volume.GetVolume().Kind)
+			return []outputresource.OutputResource{}, secretData, fmt.Errorf("Only ephemeral or persistent volumes are supported. Got kind: %v", *volume.GetVolume().Kind)
 		}
 	}
 
 	// In addition to the descriptive labels, we need to attach labels for each route
 	// so that the generated services can find these pods
-	podLabels := kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName)
 	for _, routeInfo := range routes {
 		routeLabels := kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, routeInfo.Type, routeInfo.Name)
 		podLabels = labels.Merge(routeLabels, podLabels)
@@ -343,7 +398,8 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 	}
 
 	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
-	return output, secretData, nil
+	outputResources = append(outputResources, output)
+	return outputResources, secretData, nil
 }
 
 func (r Renderer) makeEphemeralVolume(volumeName string, volume radclient.EphemeralVolume) (corev1.Volume, corev1.VolumeMount, error) {
@@ -439,7 +495,7 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makePersistentVolume(volumeName string, persistentVolume radclient.PersistentVolume, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
+func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persistentVolume radclient.PersistentVolume, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
 	volumeSpec.Name = volumeName
@@ -457,6 +513,32 @@ func (r Renderer) makePersistentVolume(volumeName string, persistentVolume radcl
 	volumeMountSpec.MountPath = to.String(persistentVolume.MountPath)
 	if persistentVolume.Rbac != nil && *persistentVolume.Rbac == radclient.PersistentVolumeRbacRead {
 		volumeMountSpec.ReadOnly = true
+	}
+	return volumeSpec, volumeMountSpec, nil
+}
+
+func (r Renderer) makeAzureKeyVaultPersistentVolume(volumeName string, keyvaultVolume radclient.PersistentVolume, secretProviderClassName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
+	// Make Volume Spec which uses the SecretProvider created above
+	volumeSpec := corev1.Volume{
+		Name: volumeName,
+		VolumeSource: corev1.VolumeSource{
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "secrets-store.csi.k8s.io",
+				// We will support only Read operations
+				ReadOnly: to.BoolPtr(true),
+				VolumeAttributes: map[string]string{
+					"secretProviderClass": secretProviderClassName,
+				},
+			},
+		},
+	}
+
+	// Make Volume mount spec
+	volumeMountSpec := corev1.VolumeMount{
+		Name:      volumeName,
+		MountPath: to.String(keyvaultVolume.MountPath),
+		// We will support only reads to the secret store volume
+		ReadOnly: true,
 	}
 	return volumeSpec, volumeMountSpec, nil
 }
@@ -541,44 +623,91 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.
-func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, resource renderers.RendererResource, connection radclient.ContainerConnection, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
-	// We're reporting errors in this code path to avoid obscuring a bug in another layer of the system.
-	// None of these error conditions should be caused by invalid user input. They should only be caused
-	// by internal bugs in Radius.
-	roleAssignmentData, ok := r.RoleAssignmentMap[*connection.Kind]
-	if !ok {
-		return nil, fmt.Errorf("connection kind %q does not support managed identity", *connection.Kind)
-	}
+func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection radclient.ContainerConnection, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
+	var roleNames []string
+	var armResourceIdentifier string
+	if *connection.Kind == radclient.ContainerConnectionKindAzure {
+		if len(connection.Roles) < 1 {
+			return nil, fmt.Errorf("rbac permissions are required to access Azure connections")
+		}
+		for _, role := range connection.Roles {
+			roleNames = append(roleNames, *role)
+		}
+		armResourceIdentifier = *connection.Source
+	} else {
+		// We're reporting errors in this code path to avoid obscuring a bug in another layer of the system.
+		// None of these error conditions should be caused by invalid user input. They should only be caused
+		// by internal bugs in Radius.
+		roleAssignmentData, ok := r.RoleAssignmentMap[*connection.Kind]
+		if !ok {
+			return nil, fmt.Errorf("RBAC is not supported for connection kind %q", *connection.Kind)
+		}
 
-	// The dependency will have already been fetched by the system.
-	dependency, ok := dependencies[to.String(connection.Source)]
-	if !ok {
-		return nil, fmt.Errorf("connection source %q was not found in the dependencies collection", to.String(connection.Source))
-	}
+		// The dependency will have already been fetched by the system.
+		dependency, ok := dependencies[*connection.Source]
+		if !ok {
+			return nil, fmt.Errorf("connection source %q was not found in the dependencies collection", *connection.Source)
+		}
 
-	// Find the matching output resource based on LocalID
-	target, ok := dependency.OutputResources[roleAssignmentData.LocalID]
-	if !ok {
-		return nil, fmt.Errorf("output resource %q was not found in the outputs of dependency %q", roleAssignmentData.LocalID, to.String(connection.Source))
-	}
+		// Find the matching output resource based on LocalID
+		target, ok := dependency.OutputResources[roleAssignmentData.LocalID]
+		if !ok {
+			return nil, fmt.Errorf("output resource %q was not found in the outputs of dependency %q", roleAssignmentData.LocalID, *connection.Source)
+		}
 
-	// Now we know the resource ID to assign roles against.
-	arm, ok := target.Data.(resourcemodel.ARMIdentity)
-	if !ok {
-		return nil, fmt.Errorf("output resource %q must be an ARM resource to support role assignments. Was: %+v", roleAssignmentData.LocalID, target)
+		// Now we know the resource ID to assign roles against.
+		arm, ok := target.Data.(resourcemodel.ARMIdentity)
+		if !ok {
+			return nil, fmt.Errorf("output resource %q must be an ARM resource to support role assignments. Was: %+v", roleAssignmentData.LocalID, target)
+		}
+		armResourceIdentifier = arm.ID
+
+		roleNames = roleAssignmentData.RoleNames
 	}
 
 	outputResources := []outputresource.OutputResource{}
-	for _, roleName := range roleAssignmentData.RoleNames {
-		localID := outputresource.GenerateLocalIDForRoleAssignment(arm.ID, roleName)
+	for _, roleName := range roleNames {
+		localID := outputresource.GenerateLocalIDForRoleAssignment(armResourceIdentifier, roleName)
 		roleAssignment := outputresource.OutputResource{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
 			LocalID:      localID,
 			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
-				handlers.RoleNameKey:             roleName,
-				handlers.RoleAssignmentTargetKey: arm.ID,
+				handlers.RoleNameKey:         roleName,
+				handlers.RoleAssignmentScope: armResourceIdentifier,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+				},
+			},
+		}
+
+		outputResources = append(outputResources, roleAssignment)
+	}
+
+	return outputResources, nil
+}
+
+// Assigns roles/permissions to a specific resource for the managed identity resource.
+func (r Renderer) makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx context.Context, keyVaultID string, roleNames []string) ([]outputresource.OutputResource, error) {
+	roleAssignmentData := RoleAssignmentData{
+		RoleNames: roleNames,
+		LocalID:   outputresource.LocalIDKeyVault,
+	}
+
+	outputResources := []outputresource.OutputResource{}
+	for _, roleName := range roleAssignmentData.RoleNames {
+		localID := outputresource.GenerateLocalIDForRoleAssignment(keyVaultID, roleName)
+		roleAssignment := outputresource.OutputResource{
+			ResourceKind: resourcekinds.AzureRoleAssignment,
+			LocalID:      localID,
+			Managed:      true,
+			Deployed:     false,
+			Resource: map[string]string{
+				handlers.RoleNameKey:         roleName,
+				handlers.RoleAssignmentScope: keyVaultID,
 			},
 			Dependencies: []outputresource.Dependency{
 				{

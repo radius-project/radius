@@ -18,7 +18,7 @@ This component will automatically:
 
 ## Platform resources
 
-The following resources can act as a `dapr.io.PubSubTopicComponent` resource:
+The following resources can act as a `dapr.io.PubSubTopic` resource:
 
 | Platform | Resource |
 |----------|----------|

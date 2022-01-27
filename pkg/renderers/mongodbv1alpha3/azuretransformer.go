@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers"
 )
 
 var _ renderers.SecretValueTransformer = (*AzureTransformer)(nil)

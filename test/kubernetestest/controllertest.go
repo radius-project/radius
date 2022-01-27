@@ -29,12 +29,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/Azure/radius/pkg/cli/kubernetes"
-	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
-	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	controllers "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
+	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
+	kubernetesmodel "github.com/project-radius/radius/pkg/model/kubernetes"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -127,6 +129,7 @@ func StartController() error {
 	}
 
 	controllerOptions := radcontroller.Options{
+		Manager:       mgr,
 		AppModel:      kubernetesmodel.NewKubernetesModel(mgr.GetClient()),
 		Client:        mgr.GetClient(),
 		Dynamic:       dynamicClient,
@@ -136,26 +139,26 @@ func StartController() error {
 		RestConfig:    cfg,
 		RestMapper:    mapper,
 		ResourceTypes: radcontroller.DefaultResourceTypes,
-		WatchTypes: []struct {
-			client.Object
-			client.ObjectList
+		WatchTypes: map[string]struct {
+			Object        client.Object
+			ObjectList    client.ObjectList
+			HealthHandler func(ctx context.Context, r *controllers.ResourceReconciler, a client.Object) (string, string)
 		}{
-			{&corev1.Service{}, &corev1.ServiceList{}},
-			{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
-			{&corev1.Secret{}, &corev1.SecretList{}},
-			{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
+			resourcekinds.Service:     {&corev1.Service{}, &corev1.ServiceList{}, nil},
+			resourcekinds.Deployment:  {&appsv1.Deployment{}, &appsv1.DeploymentList{}, nil},
+			resourcekinds.Secret:      {&corev1.Secret{}, &corev1.SecretList{}, nil},
+			resourcekinds.StatefulSet: {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
 		},
 		SkipWebhooks: false,
 	}
 
 	controller := radcontroller.NewRadiusController(&controllerOptions)
-	err = controller.SetupWithManager(mgr)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		_ = mgr.Start(ctrl.SetupSignalHandler())
+		_ = controller.Run(context.Background())
 	}()
 
 	// Make sure the webhook is started
@@ -191,7 +194,7 @@ func StopController() error {
 
 func (ct ControllerTest) Test(t *testing.T) error {
 	// Make sure namespace exists
-	err := kubernetes.CreateNamespace(ct.Context, ct.Options.K8s, ct.ControllerStep.Namespace)
+	err := kubernetes.EnsureNamespace(ct.Context, ct.Options.K8s, ct.ControllerStep.Namespace)
 	require.NoError(t, err, "failed to create namespace")
 
 	items, err := ioutil.ReadDir(ct.ControllerStep.TemplateFolder)
@@ -206,7 +209,7 @@ func (ct ControllerTest) Test(t *testing.T) error {
 			return fmt.Errorf("failed to initialize find objects : %w", err)
 		}
 		for _, gvk := range gvks {
-			// Get GVR for corresponding component.
+			// Get GVR for corresponding resource.
 			gvr, err := ct.Options.Mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			require.NoError(t, err, "failed to marshal json")
 
@@ -248,7 +251,7 @@ func GetUnstructured(filePath string) (*unstructured.Unstructured, error) {
 }
 
 func getEnvTestBinaryPath() (string, error) {
-	// TODO https://github.com/Azure/radius/issues/698, remove hard coded version
+	// TODO https://github.com/project-radius/radius/issues/698, remove hard coded version
 	cmd := exec.Command("setup-envtest", "use", "-p", "path", "1.19.x", "--arch", "amd64")
 	var out bytes.Buffer
 	cmd.Stdout = &out

@@ -68,7 +68,7 @@ The following data is available for use from the consuming Component:
 
 | Component | Azure | Kubernetes |
 |-----------|:-----:|:----------:|
-| [`ContainerComponent`]({{< ref container >}}) | ✅ | ✅ |
+| [`Container`]({{< ref container >}}) | ✅ | ✅ |
 
 ## Example: container
 

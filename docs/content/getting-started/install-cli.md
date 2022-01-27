@@ -8,7 +8,7 @@ weight: 10
 
 ## Pre-requisites
 
-- [Az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+- [Az CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) (version 2.25.0 or later)
 
 ## Install CLI
 
@@ -133,14 +133,6 @@ PowerShell for Cloud Shell is currently not supported.
 {{% /codetab %}}
 
 {{< /tabs >}}
-
-## Install Bicep
-
-To ensure you have the latest version of Bicep, run the following command:
-
-```bash
-rad bicep download
-```
 
 ## Test it out
 

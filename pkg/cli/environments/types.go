@@ -9,11 +9,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clients"
 )
 
 const (
 	KindAzureCloud                   = "azure"
+	KindDev                          = "dev"
 	KindKubernetes                   = "kubernetes"
 	KindLocalRP                      = "localrp"
 	EnvironmentKeyDefaultApplication = "defaultapplication"
@@ -26,6 +27,31 @@ type Environment interface {
 
 	// GetStatusLink provides an optional URL for display of the environment.
 	GetStatusLink() string
+
+	// GetContainerRegistry provides an optional container registry override. The registry is used
+	// by the 'rad app ...' family of commands for development purposes.
+	GetContainerRegistry() *Registry
+}
+
+// Registry represent the configuration for a container registry.
+type Registry struct {
+	// PushEndpoint is the endpoint used for push commands. For a local container registry this hostname
+	// is expected to be accessible from the host machine.
+	PushEndpoint string `mapstructure:"pushendpoint" validate:"required"`
+
+	// PullEndpoint is the endpoing used to pull by the runtime. For a local container registry this hostname
+	// is expected to be accessible by the runtime. Can be the same as PushEndpoint if the registry has a routable
+	// address.
+	PullEndpoint string `mapstructure:"pullendpoint" validate:"required"`
+}
+
+type Providers struct {
+	AzureProvider *AzureProvider `mapstructure:"azure,omitempty"`
+}
+
+type AzureProvider struct {
+	SubscriptionID string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup  string `mapstructure:"resourcegroup" validate:"required"`
 }
 
 type DeploymentEnvironment interface {
@@ -65,4 +91,17 @@ func CreateManagementClient(ctx context.Context, env Environment) (clients.Manag
 	}
 
 	return me.CreateManagementClient(ctx)
+}
+
+type ServerLifecycleEnvironment interface {
+	CreateServerLifecycleClient(ctx context.Context) (clients.ServerLifecycleClient, error)
+}
+
+func CreateServerLifecycleClient(ctx context.Context, env Environment) (clients.ServerLifecycleClient, error) {
+	me, ok := env.(ServerLifecycleEnvironment)
+	if !ok {
+		return nil, fmt.Errorf("an environment of kind '%s' does not support server operations", env.GetKind())
+	}
+
+	return me.CreateServerLifecycleClient(ctx)
 }

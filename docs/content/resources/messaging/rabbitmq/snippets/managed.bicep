@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-rabbitmq-managed'
   
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       //HIDE
@@ -22,7 +22,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
 
   //SAMPLE
-  resource rabbitmq 'rabbitmq.com.MessageQueueComponent' = {
+  resource rabbitmq 'rabbitmq.com.MessageQueue' = {
     name: 'rabbitmq'
     properties: {
       managed: true

@@ -13,9 +13,14 @@ const (
 	Deployment                       = "Deployment"
 	Service                          = "Service"
 	Secret                           = "Secret"
-	Ingress                          = "Ingress"
+	Gateway                          = "Gateway"
+	KubernetesHTTPRoute              = "HTTPRoute" // For httproutes.networking.x-k8s.io
+	RadiusHttpRoute                  = "HttpRoute" // For httproutes.radius.dev
+	StatefulSet                      = "StatefulSet"
+	SecretProviderClass              = "SecretProviderClass"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
 	DaprStateStoreSQLServer          = "dapr.statestore.sqlserver"
+	DaprPubSubGeneric                = "dapr.io.pubsubtopic"
 	DaprPubSubTopicAzureServiceBus   = "dapr.pubsubtopic.azureservicebus"
 	AzureCosmosAccount               = "azure.cosmosdb.account"
 	AzureCosmosDBMongo               = "azure.cosmosdb.mongo"

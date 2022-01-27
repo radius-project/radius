@@ -2,7 +2,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'myapp'
 
   //BACKEND
-  resource backend 'ContainerComponent' = {
+  resource backend 'Container' = {
     name: 'backend'
     properties: {
       container: {
@@ -21,7 +21,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //BACKEND
 
   //ROUTE
-  resource backendDapr 'dapr.io.DaprHttpRoute' = {
+  resource backendDapr 'dapr.io.InvokeHttpRoute' = {
     name: 'dapr-backend'
     properties: {
       appId: 'backend'
@@ -30,7 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //ROUTE
 
   //FRONTEND
-  resource frontend 'ContainerComponent' = {
+  resource frontend 'Container' = {
     name: 'frontend'
     properties: {
       container: {
@@ -41,7 +41,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
       connections: {
         orders: {
-          kind: 'dapr.io/DaprHttp'
+          kind: 'dapr.io/InvokeHttp'
           source: backendDapr.id
         }
       }

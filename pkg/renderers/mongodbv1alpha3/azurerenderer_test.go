@@ -10,12 +10,13 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 )
 
@@ -150,6 +151,43 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 		},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
+}
+func Test_Azure_Render_Unmanaged_UserSpecifiedSecrets(t *testing.T) {
+	ctx := createContext(t)
+	renderer := AzureRenderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"secrets": map[string]interface{}{
+				"username":         "admin",
+				"password":         "deadbeef",
+				"connectionString": "admin/deadbeef@localhost",
+			},
+		},
+	}
+
+	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 0)
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		"database": {
+			Value: resource.ResourceName,
+		},
+		"password": {
+			Value: to.StringPtr("deadbeef"),
+		},
+		"username": {
+			Value: to.StringPtr("admin"),
+		},
+		"connectionString": {
+			Value: to.StringPtr("admin/deadbeef@localhost"),
+		},
+	}
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+	require.Equal(t, 0, len(output.SecretValues))
 }
 
 func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {

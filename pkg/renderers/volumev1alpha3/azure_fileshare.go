@@ -9,17 +9,18 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
-	properties := radclient.VolumeProperties{}
+func GetAzureFileShareVolume(ctx context.Context, arm armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+	properties := radclient.AzureFileShareVolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -55,7 +56,7 @@ func GetAzureFileShareVolume(ctx context.Context, resource renderers.RendererRes
 	}, nil
 }
 
-func RenderManaged(name string, properties radclient.VolumeProperties) ([]outputresource.OutputResource, error) {
+func RenderManaged(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource != nil && *properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
@@ -84,7 +85,7 @@ func RenderManaged(name string, properties radclient.VolumeProperties) ([]output
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
-func RenderUnmanaged(name string, properties radclient.VolumeProperties) ([]outputresource.OutputResource, error) {
+func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForUnmanagedResource
 	}
@@ -126,6 +127,7 @@ func RenderUnmanaged(name string, properties radclient.VolumeProperties) ([]outp
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }
 
+// MakeSecretsAndValuesForAzureFileShare returns secrets and computed values for Azure File Share
 func MakeSecretsAndValuesForAzureFileShare(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	computedValues := map[string]renderers.ComputedValueReference{
 		StorageAccountName: {

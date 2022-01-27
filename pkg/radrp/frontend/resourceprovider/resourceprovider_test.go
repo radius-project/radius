@@ -12,17 +12,18 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/backend/deployment"
-	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/resourcekinds"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +34,7 @@ const (
 	resourceGroup   = "test-resource-group"
 	providerName    = "radiusv3"
 	applicationName = "test-application"
-	resourceType    = "ContainerComponent" // Need to use a real resource type
+	resourceType    = "Container" // Need to use a real resource type
 	resourceName    = "test-resource"
 	operationName   = "test-operation"
 )
@@ -44,6 +45,29 @@ type testcase struct {
 	invoke      func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 	setupDB     func(database *db.MockRadrpDB, err error)
 	id          azresources.ResourceID
+}
+
+var id azresources.ResourceID = parseOrPanic(applicationListID())
+var testRadiusResource []db.RadiusResource = []db.RadiusResource{
+	{
+		ID:                testID,
+		Type:              id.Type(),
+		SubscriptionID:    subscriptionID,
+		ResourceGroup:     resourceGroup,
+		ApplicationName:   applicationName,
+		ResourceName:      resourceName,
+		ProvisioningState: "string(rest.SuccededStatus)",
+		Status: db.RadiusResourceStatus{
+			ProvisioningState: "Provisioned",
+			HealthState:       "Healthy",
+		},
+		Definition: map[string]interface{}{
+			"data": true,
+			"secrets": map[string]string{
+				"password": "will be redacted in response",
+			},
+		},
+	},
 }
 
 // Cases where we want to implement functionality consistently (like validation)
@@ -105,6 +129,19 @@ var testcases = []testcase{
 			})
 		},
 		id: parseOrPanic(applicationID(applicationName)),
+	},
+	{
+		description: "ListAllResourcesByApplication",
+		verb:        "List",
+		invoke: func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+			return rp.ListAllV3ResourcesByApplication(ctx, id)
+		},
+		setupDB: func(database *db.MockRadrpDB, err error) {
+			database.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(interface{}, interface{}) ([]db.RadiusResource, error) {
+				return nil, err
+			})
+		},
+		id: parseOrPanic(fmt.Sprintf("%s/%s", applicationID(applicationName), schema.GenericResourceType)),
 	},
 	{
 		description: "ListResources",
@@ -179,6 +216,35 @@ var testcases = []testcase{
 	},
 }
 
+func Test_AllEndpoints_RejectInvalidApplicationType(t *testing.T) {
+	ctx := createContext(t)
+
+	id := parseOrPanic(fmt.Sprintf(
+		"/subscriptions/%s/resourceGroups/%s/providers/%s/%s/%s/%s",
+		subscriptionID,
+		resourceGroup,
+		azresources.CustomProvidersResourceProviders,
+		providerName,
+		"InvalidApplicationType", applicationName))
+
+	for _, testcase := range testcases {
+		t.Run(testcase.description, func(t *testing.T) {
+			test := createRPTest(t)
+
+			response, err := testcase.invoke(test.rp, ctx, id)
+			require.NoError(t, err)
+
+			expected := armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    armerrors.Invalid,
+					Message: "unsupported resource type",
+				},
+			}
+			require.Equal(t, rest.NewBadRequestARMResponse(expected), response)
+		})
+	}
+}
+
 func Test_AllEndpoints_RejectInvalidResourceID(t *testing.T) {
 	ctx := createContext(t)
 
@@ -186,6 +252,10 @@ func Test_AllEndpoints_RejectInvalidResourceID(t *testing.T) {
 	id := parseOrPanic(resourceID(applicationName, "InvalidResourceType", resourceName))
 
 	for _, testcase := range testcases {
+		if testcase.description == "ListAllResourcesByApplication" {
+			continue
+		}
+
 		t.Run(testcase.description, func(t *testing.T) {
 			test := createRPTest(t)
 
@@ -269,9 +339,11 @@ func Test_ListApplications_Success(t *testing.T) {
 	test := createRPTest(t)
 
 	id := parseOrPanic(applicationListID())
+	appID := applicationID(applicationName)
+
 	data := []db.ApplicationResource{
 		{
-			ID:              testID,
+			ID:              appID,
 			Type:            id.Type(),
 			SubscriptionID:  subscriptionID,
 			ResourceGroup:   resourceGroup,
@@ -282,7 +354,9 @@ func Test_ListApplications_Success(t *testing.T) {
 			Location: testLocation,
 		},
 	}
+
 	test.db.EXPECT().ListV3Applications(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
 
 	response, err := test.rp.ListApplications(ctx, id)
 	require.NoError(t, err)
@@ -290,7 +364,7 @@ func Test_ListApplications_Success(t *testing.T) {
 	expected := ApplicationResourceList{
 		Value: []ApplicationResource{
 			{
-				ID:   testID,
+				ID:   appID,
 				Type: id.Type(),
 				Name: applicationName,
 				Tags: map[string]string{
@@ -298,7 +372,10 @@ func Test_ListApplications_Success(t *testing.T) {
 				},
 				Location: testLocation,
 				Properties: map[string]interface{}{
-					"status": rest.ApplicationStatus{},
+					"status": rest.ApplicationStatus{
+						ProvisioningState: "Provisioned",
+						HealthState:       "Healthy",
+					},
 				},
 			},
 		},
@@ -322,7 +399,9 @@ func Test_GetApplication_Success(t *testing.T) {
 		},
 		Location: testLocation,
 	}
+
 	test.db.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
 
 	response, err := test.rp.GetApplication(ctx, id)
 	require.NoError(t, err)
@@ -336,7 +415,10 @@ func Test_GetApplication_Success(t *testing.T) {
 		},
 		Location: testLocation,
 		Properties: map[string]interface{}{
-			"status": rest.ApplicationStatus{},
+			"status": rest.ApplicationStatus{
+				ProvisioningState: "Provisioned",
+				HealthState:       "Healthy",
+			},
 		},
 	}
 	require.Equal(t, rest.NewOKResponse(expected), response)
@@ -373,6 +455,7 @@ func Test_UpdateApplication_Success(t *testing.T) {
 			require.Equal(t, expected, application)
 			return false, nil
 		})
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRadiusResource, nil)
 
 	response, err := test.rp.UpdateApplication(ctx, id, b)
 	require.NoError(t, err)
@@ -386,7 +469,10 @@ func Test_UpdateApplication_Success(t *testing.T) {
 		},
 		Location: testLocation,
 		Properties: map[string]interface{}{
-			"status": rest.ApplicationStatus{},
+			"status": rest.ApplicationStatus{
+				ProvisioningState: "Provisioned",
+				HealthState:       "Healthy",
+			},
 		},
 	}
 	require.Equal(t, rest.NewOKResponse(expected), response)
@@ -428,6 +514,90 @@ func Test_DeleteApplication_Conflict(t *testing.T) {
 	require.Equal(t, rest.NewConflictResponse(db.ErrConflict.Error()), response)
 }
 
+func Test_ListAllResources_Success(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	requestID := parseOrPanic(fmt.Sprintf("%s/%s", applicationID(applicationName), schema.GenericResourceType))
+	azureConnectionID := "/subscriptions/az-resource-subscription/resourceGroups/az-resource-rg/providers/Microsoft.ServiceBus/namespaces/az-resource-name"
+	expectedRadiusResources := []db.RadiusResource{
+		{
+			ID:                testID,
+			Type:              requestID.Type(),
+			SubscriptionID:    subscriptionID,
+			ResourceGroup:     resourceGroup,
+			ApplicationName:   applicationName,
+			ResourceName:      resourceName,
+			ProvisioningState: string(rest.SuccededStatus),
+			Status:            db.RadiusResourceStatus{},
+			Definition: map[string]interface{}{
+				"data": true,
+			},
+		},
+	}
+	expectedAzureResources := []db.AzureResource{
+		{
+			ID:                        azureConnectionID,
+			SubscriptionID:            "az-resource-subscription",
+			ResourceGroup:             "az-resource-rg",
+			ResourceName:              "az-resource-name",
+			ResourceKind:              resourcekinds.Azure,
+			Type:                      "Microsoft.ServiceBus/namespaces",
+			ApplicationName:           applicationName,
+			ApplicationSubscriptionID: subscriptionID,
+			ApplicationResourceGroup:  resourceGroup,
+			RadiusConnectionIDs:       []string{testID},
+		},
+	}
+
+	test.db.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).Return(db.ApplicationResource{}, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(expectedRadiusResources, nil)
+	test.db.EXPECT().ListAllAzureResourcesForApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Times(1).Return(expectedAzureResources, nil)
+
+	response, err := test.rp.ListAllV3ResourcesByApplication(ctx, requestID)
+	require.NoError(t, err)
+
+	expectedOutput := RadiusResourceList{
+		Value: []RadiusResource{
+			{
+				ID:   testID,
+				Type: requestID.Type(),
+				Name: resourceName,
+				Properties: map[string]interface{}{
+					"data":              true,
+					"provisioningState": string(rest.SuccededStatus),
+					"status": rest.ResourceStatus{
+						ProvisioningState: "Provisioned",
+						HealthState:       "Healthy",
+						OutputResources:   []rest.OutputResource{},
+					},
+				},
+			},
+			{
+				ID:         azureConnectionID,
+				Type:       "Microsoft.ServiceBus/namespaces",
+				Name:       "az-resource-name",
+				Properties: map[string]interface{}{},
+			},
+		},
+	}
+	require.Equal(t, rest.NewOKResponse(expectedOutput), response)
+}
+
+func Test_ListAllResources_Failure(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+
+	id := parseOrPanic(fmt.Sprintf("%s/%s", applicationID(applicationName), schema.GenericResourceType))
+
+	test.db.EXPECT().GetV3Application(gomock.Any(), gomock.Any()).Times(1).Return(db.ApplicationResource{}, nil)
+	test.db.EXPECT().ListAllV3ResourcesByApplication(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]db.RadiusResource{}, errors.New("database connection error"))
+
+	_, err := test.rp.ListAllV3ResourcesByApplication(ctx, id)
+	require.Error(t, err)
+}
+
 func Test_ListResources_Success(t *testing.T) {
 	ctx := createContext(t)
 	test := createRPTest(t)
@@ -462,7 +632,7 @@ func Test_ListResources_Success(t *testing.T) {
 				Properties: map[string]interface{}{
 					"data":              true,
 					"provisioningState": "Succeeded",
-					"status": rest.ComponentStatus{
+					"status": rest.ResourceStatus{
 						ProvisioningState: "Provisioned",
 						HealthState:       "Healthy",
 						OutputResources:   []rest.OutputResource{},
@@ -504,7 +674,7 @@ func Test_GetResource_Success(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": "Succeeded",
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -568,7 +738,7 @@ func Test_UpdateResource_Success(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.DeployingStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -642,7 +812,7 @@ func Test_DeleteResource_Success(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.DeletingStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -758,7 +928,7 @@ func Test_GetOperation_SuccessfulDeploy(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.SuccededStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -800,7 +970,7 @@ func Test_GetOperation_DeployInProgress(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.DeployingStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
 				OutputResources:   []rest.OutputResource{},
@@ -859,7 +1029,7 @@ func Test_OutputResponseWithHealthStatus(t *testing.T) {
 		Properties: map[string]interface{}{
 			"data":              true,
 			"provisioningState": string(rest.SuccededStatus),
-			"status": rest.ComponentStatus{
+			"status": rest.ResourceStatus{
 				ProvisioningState: rest.ProvisioningStateProvisioned,
 				HealthState:       healthcontract.HealthStateHealthy, // Aggregation should show Healthy
 				OutputResources: []rest.OutputResource{

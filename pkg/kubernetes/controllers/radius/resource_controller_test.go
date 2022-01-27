@@ -10,11 +10,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,18 +35,18 @@ var resourceID = azresources.MakeID(
 	Namespace,
 	azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 	azresources.ResourceType{Type: "Application", Name: ApplicationName},
-	azresources.ResourceType{Type: "ContainerComponent", Name: ResourceName})
+	azresources.ResourceType{Type: "Container", Name: ResourceName})
 
 func Test_GetRenderDependency(t *testing.T) {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 
-	// Simulate a *rendered* component
-	resource := radiusv1alpha3.ContainerComponent{
+	// Simulate a *rendered* resource
+	resource := radiusv1alpha3.Container{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: radiusv1alpha3.GroupVersion.String(),
-			Kind:       "ContainerComponent",
+			Kind:       "Container",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(ApplicationName, ResourceName),
@@ -60,12 +60,14 @@ func Test_GetRenderDependency(t *testing.T) {
 			}),
 		},
 		Status: radiusv1alpha3.ResourceStatus{
-			Resources: map[string]corev1.ObjectReference{
-				"SecretLocalID": {
-					Namespace:  Namespace,
-					Name:       "some-secret",
-					Kind:       "Secret",
-					APIVersion: "v1",
+			Resources: map[string]*radiusv1alpha3.OutputResource{
+				"SecretLocalID": &radiusv1alpha3.OutputResource{
+					Resource: corev1.ObjectReference{
+						Namespace:  Namespace,
+						Name:       "some-secret",
+						Kind:       "Secret",
+						APIVersion: "v1",
+					},
 				},
 			},
 			ComputedValues: rawOrPanic(map[string]renderers.ComputedValueReference{

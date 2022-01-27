@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	kuberneteskeys "github.com/Azure/radius/pkg/kubernetes"
 	"github.com/google/go-cmp/cmp"
+	kuberneteskeys "github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
+	watchk8s "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -32,9 +34,9 @@ import (
 )
 
 const (
-	IntervalForDeploymentCreation = 10 * time.Second
-	IntervalForPodShutdown        = 10 * time.Second
-	IntervalForResourceCreation   = 5 * time.Second
+	IntervalForDeploymentCreation = 3 * time.Second
+	IntervalForPodShutdown        = 3 * time.Second
+	IntervalForResourceCreation   = 3 * time.Second
 
 	// We want to make sure to produce some output any time we're in a watch
 	// otherwise it's hard to know if it got stuck.
@@ -136,7 +138,13 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 		for event := range podList.ResultChan() {
 			pod, ok := event.Object.(*corev1.Pod)
 			if !ok {
-				log.Printf("Could not convert object to pod.")
+				_, ok := event.Object.(*metav1.Status)
+				if ok {
+					// Ignore statuses, these might be the result of a connection dropping or the watch being cancelled.
+					continue
+				}
+
+				log.Printf("Could not convert object to pod or status, was %+v.", event.Object)
 				continue
 			}
 
@@ -165,8 +173,10 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 		Follow:    true,
 	})
 	stream, err := req.Stream(ctx)
-	if err != nil {
-		log.Printf("Error reading log stream for %s. Error was %q", filename, err)
+	if err != nil && err == ctx.Err() {
+		return
+	} else if err != nil {
+		log.Printf("Error reading log stream for %s. Error was %+v", filename, err)
 		return
 	}
 	defer stream.Close()
@@ -187,8 +197,10 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 			break
 		}
 
-		if err != nil {
-			log.Printf("Error reading log stream for %s. Error was %s", filename, err)
+		if err != nil && err == ctx.Err() {
+			return
+		} else if err != nil {
+			log.Printf("Error reading log stream for %s. Error was %+v", filename, err)
 			return
 		}
 
@@ -442,8 +454,15 @@ func ValidateResourcesCreated(ctx context.Context, t *testing.T, k8s *kubernetes
 				delete(meta, "resourceVersion")
 				delete(meta, "creationTimestamp")
 				delete(meta, "uid")
+
+				annotations, _ := meta["annotations"].(map[string]interface{})
+				// ignore deployment template label: these are generated names and won't match.
+				delete(annotations, kuberneteskeys.LabelRadiusDeployment)
+				if len(annotations) == 0 {
+					delete(meta, "annotations")
+				}
 				if diff := cmp.Diff(r, *output); diff != "" {
-					assert.Failf(t, "resource %s mismatch (-want,+diff): %s", resourceId, diff)
+					assert.Fail(t, "resource "+resourceId+" mismatch (-want,+diff): "+diff)
 				}
 				return
 			case <-ctx.Done():
@@ -454,8 +473,12 @@ func ValidateResourcesCreated(ctx context.Context, t *testing.T, k8s *kubernetes
 	}
 }
 
-func ValidateNoPodsInNamespace(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string) {
-	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string, application string) {
+	labelset := kuberneteskeys.MakeSelectorLabels(application, "")
+
+	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labelset).String(),
+	})
 	assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
 
 	logPods(t, actualPods.Items)
@@ -473,14 +496,16 @@ func ValidateNoPodsInNamespace(ctx context.Context, t *testing.T, k8s *kubernete
 			return
 
 		case <-time.After(IntervalForPodShutdown):
-			t.Logf("at %s waiting for pods in namespace %s to shut down.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
+			t.Logf("at %s waiting for pods in namespace %s for application %s to shut down.. ", time.Now().Format("2006-01-02 15:04:05"), namespace, application)
 
-			actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
-			assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
+			actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+				LabelSelector: labels.SelectorFromSet(labelset).String(),
+			})
+			assert.NoErrorf(t, err, "failed to list pods in namespace %s for application %s", namespace, application)
 
 			logPods(t, actualPods.Items)
 			if len(actualPods.Items) == 0 {
-				t.Logf("success! no pods found in namespace %s", namespace)
+				t.Logf("success! no pods found in namespace %s for application %s", namespace, application)
 				return
 			}
 		}
@@ -511,7 +536,17 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 
 		case event := <-watch.ResultChan():
 			pod, ok := event.Object.(*corev1.Pod)
-			require.Truef(t, ok, "object %T is not a pod", event.Object)
+			if !ok {
+				// Check the status if there is a failure.
+				// Errors usually have a status as the object type
+				if event.Type == watchk8s.Error {
+					status, ok := event.Object.(*metav1.Status)
+					if ok {
+						t.Errorf("pod watch error with status reason: %s, message: %s", status.Reason, status.Message)
+					}
+				}
+				require.IsTypef(t, &corev1.Pod{}, event.Object, "object %T is not a pod", event.Object)
+			}
 
 			if pod.Status.Phase == corev1.PodRunning {
 				t.Logf("success! pod %v has status: %v", pod.Name, pod.Status)

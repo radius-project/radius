@@ -10,14 +10,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-//go:generate mockgen -destination=../../pkg/renderers/mock_renderer_v3.go -package=renderers github.com/Azure/radius/pkg/renderers Renderer
+//go:generate mockgen -destination=../../pkg/renderers/mock_renderer_v3.go -package=renderers github.com/project-radius/radius/pkg/renderers Renderer
 type Renderer interface {
-	GetDependencyIDs(ctx context.Context, resource RendererResource) ([]azresources.ResourceID, error)
+	GetDependencyIDs(ctx context.Context, resource RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error)
 	Render(ctx context.Context, options RenderOptions) (RendererOutput, error)
 }
 
@@ -126,7 +126,7 @@ type SecretValueTransformer interface {
 	Transform(ctx context.Context, dependency RendererDependency, value interface{}) (interface{}, error)
 }
 
-//go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/Azure/radius/pkg/renderers github.com/Azure/radius/pkg/renderers SecretValueClient
+//go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/renderers github.com/project-radius/radius/pkg/renderers SecretValueClient
 type SecretValueClient interface {
 	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }

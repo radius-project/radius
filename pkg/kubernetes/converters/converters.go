@@ -8,11 +8,13 @@ package converters
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
-	"github.com/Azure/radius/pkg/cli/armtemplate"
-	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/cli/armtemplate"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -119,5 +121,20 @@ func SetSecretValues(status *radiusv1alpha3.ResourceStatus, values map[string]re
 	}
 
 	status.SecretValues = &runtime.RawExtension{Raw: raw}
+	return nil
+}
+
+func SetStatusForOutputResources(status *radiusv1alpha3.ResourceStatus, values []outputresource.OutputResource) error {
+	for _, or := range values {
+		if _, ok := status.Resources[or.LocalID]; !ok {
+			return fmt.Errorf("Unable to find output resource: %v. Cannot set status", or.LocalID)
+		}
+		status.Resources[or.LocalID].Status = radiusv1alpha3.OutputResourceStatus{
+			HealthState:                   or.Status.HealthState,
+			HealthStateErrorDetails:       or.Status.HealthErrorDetails,
+			ProvisioningState:             or.Status.ProvisioningState,
+			ProvisioningStateErrorDetails: or.Status.ProvisioningErrorDetails,
+		}
+	}
 	return nil
 }

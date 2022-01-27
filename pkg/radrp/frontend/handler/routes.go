@@ -9,23 +9,28 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
-func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory) {
+func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory, swaggerDocRoute string) {
 	// Nothing for now
 
-	h := handler{rp: rp, validatorFactory: validatorFactory}
+	h := Handler{RP: rp, ValidatorFactory: validatorFactory, PathPrefix: swaggerDocRoute}
 	var subrouter *mux.Router
 
 	var providerPath = fmt.Sprintf(
-		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
+		"%s/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
+		swaggerDocRoute,
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
+
+	if swaggerDocRoute != "" {
+		router.Path(swaggerDocRoute).Methods("GET").HandlerFunc(h.GetSwaggerDoc)
+	}
 
 	router.Path(fmt.Sprintf("%s/listSecrets", providerPath)).Methods("POST").HandlerFunc(h.ListSecrets)
 

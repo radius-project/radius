@@ -2,7 +2,7 @@
 type: docs
 title: "Website + database tutorial"
 linkTitle: "Website + database"
-description: "Learn Project Radius by authoring templates and deploying a working website with a database."
+description: "Learn Project Radius by authoring templates and deploying a website with a database."
 weight: 100
 no_list: true
 ---
@@ -20,7 +20,7 @@ No prior knowledge of Radius or Bicep is needed.
 In this tutorial, you will:
 1. Review and understand the Radius website application
 1. Deploy the website frontend in a container
-1. Connect a CosmosDB resource to your website application
+1. Connect a MongoDB resource to your website application
 
 ## Prerequisites
 

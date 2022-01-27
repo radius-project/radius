@@ -25,9 +25,7 @@ var (
 	//go:embed common-types.json
 	//go:embed traits/*.json
 	//go:embed traits.json
-	//go:embed routes/*.json
-	//go:embed components/*.json
-	//go:embed routes/*.json
+	//go:embed resources/*.json
 	//go:embed application.json
 	schemaFiles embed.FS
 
@@ -43,7 +41,7 @@ const (
 	ApplicationResourceType = "Application"
 	GenericResourceType     = "RadiusResource"
 
-	ContainerComponentType = "ContainerComponent"
+	ContainerType = "Container"
 )
 
 // manifest is the format of the 'resource-types.json' manifest.

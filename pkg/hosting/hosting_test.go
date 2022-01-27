@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/stretchr/testify/require"
 )
 

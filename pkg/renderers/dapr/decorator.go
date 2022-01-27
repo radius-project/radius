@@ -11,11 +11,11 @@ import (
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,32 +27,32 @@ type Renderer struct {
 	Inner renderers.Renderer
 }
 
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	dependencies, err := r.Inner.GetDependencyIDs(ctx, resource)
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	radiusDependencyIDs, azureDependencyIDs, err := r.Inner.GetDependencyIDs(ctx, resource)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	trait, err := r.FindTrait(resource)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if trait == nil {
-		return dependencies, nil
+		return radiusDependencyIDs, azureDependencyIDs, nil
 	}
 
 	provides := to.String(trait.Provides)
 	if provides == "" {
-		return dependencies, nil
+		return radiusDependencyIDs, azureDependencyIDs, nil
 	}
 
 	parsed, err := azresources.Parse(provides)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return append(dependencies, parsed), nil
+	return append(radiusDependencyIDs, parsed), azureDependencyIDs, nil
 }
 
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
@@ -123,7 +123,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 }
 
 func (r *Renderer) FindTrait(resource renderers.RendererResource) (*radclient.DaprSidecarTrait, error) {
-	container := radclient.ContainerComponentProperties{}
+	container := radclient.ContainerProperties{}
 	err := resource.ConvertDefinition(&container)
 	if err != nil {
 		return nil, err

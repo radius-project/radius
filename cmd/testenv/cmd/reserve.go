@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/spf13/cobra"
 )
 

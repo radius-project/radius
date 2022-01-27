@@ -9,12 +9,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,21 +26,53 @@ var _ renderers.Renderer = (*KubernetesRenderer)(nil)
 type KubernetesRenderer struct {
 }
 
-func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *KubernetesRenderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource := options.Resource
 
-	properties := radclient.RedisComponentProperties{}
+	properties := radclient.RedisCacheResourceProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	if properties.Managed == nil || !*properties.Managed {
-		return renderers.RendererOutput{}, fmt.Errorf("only managed = true is supported for the Kubernetes Redis Component")
+		output := renderers.RendererOutput{
+			// It should be possible to handle the computed values in a
+			// generic manner. However the slightly tricky part is knowing
+			// which fields are part of the non-secret connection-provided
+			// data. As a result We still have to duplicate this logic here
+			// instead of sharing the same logic across renderers.
+			//
+			// If we have the schema of the connection-based properties, we
+			// could do it more generically here.
+			ComputedValues: map[string]renderers.ComputedValueReference{
+				"host": {
+					Value: properties.Host,
+				},
+				"port": {
+					Value: properties.Port,
+				},
+				"username": {
+					Value: "",
+				},
+			},
+			SecretValues: map[string]renderers.SecretValueReference{
+				"password": {
+					LocalID:       outputresource.LocalIDScrapedSecret,
+					ValueSelector: "password",
+				},
+				// TODO: generate a default connection string when the secret was not provided.
+				"connectionString": {
+					LocalID:       outputresource.LocalIDScrapedSecret,
+					ValueSelector: "connectionString",
+				},
+			},
+		}
+		return output, nil
 	}
 
 	resources, err := GetKubernetesRedis(resource, properties)
@@ -75,7 +107,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 	return output, nil
 }
 
-func GetKubernetesRedis(resource renderers.RendererResource, properties radclient.RedisComponentProperties) ([]outputresource.OutputResource, error) {
+func GetKubernetesRedis(resource renderers.RendererResource, properties radclient.RedisCacheResourceProperties) ([]outputresource.OutputResource, error) {
 	resources := []outputresource.OutputResource{}
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{

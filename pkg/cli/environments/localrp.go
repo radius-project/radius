@@ -9,13 +9,15 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/radius/pkg/azure/aks"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/cli/azure"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/kubernetes"
-	"github.com/Azure/radius/pkg/cli/localrp"
+	"github.com/project-radius/radius/pkg/azure/aks"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
+	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/localrp"
 	k8s "k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // LocalRPEnvironment represents a local test setup for Azure Cloud Radius environment.
@@ -47,6 +49,10 @@ func (e *LocalRPEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *LocalRPEnvironment) GetContainerRegistry() *Registry {
+	return nil
+}
+
 func (e *LocalRPEnvironment) GetStatusLink() string {
 	// If there's a problem generating the status link, we don't want to fail noisily, just skip the link.
 	url, err := azure.GenerateAzureEnvUrl(e.SubscriptionID, e.ResourceGroup)
@@ -58,16 +64,24 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	azcred := &radclient.AnonymousCredential{}
-	connection := arm.NewConnection(e.URL, azcred, nil)
-
-	return &localrp.LocalRPDeploymentClient{
-		Authorizer:     nil,
-		BaseURL:        e.URL,
-		Connection:     connection,
+	client := localrp.LocalRPDeploymentClient{
 		SubscriptionID: e.SubscriptionID,
 		ResourceGroup:  e.ResourceGroup,
-	}, nil
+		Providers: map[string]providers.Provider{
+			providers.AzureProviderImport: &providers.AzureProvider{
+				Authorizer:     nil,
+				BaseURL:        e.URL,
+				SubscriptionID: e.SubscriptionID,
+				ResourceGroup:  e.ResourceGroup,
+			},
+		},
+	}
+
+	client.Providers[providers.DeploymentProviderImport] = &providers.DeploymentProvider{
+		DeployFunc: client.DeployNested,
+	}
+
+	return &client, nil
 }
 
 func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
@@ -81,12 +95,18 @@ func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clien
 		return nil, err
 	}
 
+	client, err := client.New(config, client.Options{Scheme: kubernetes.Scheme})
+	if err != nil {
+		return nil, err
+	}
+
 	azcred := &radclient.AnonymousCredential{}
 	con := arm.NewConnection(e.URL, azcred, nil)
 
 	return &azure.AKSDiagnosticsClient{
 		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
-			Client:     k8sClient,
+			K8sClient:  k8sClient,
+			Client:     client,
 			RestConfig: config,
 		},
 		ResourceClient: *radclient.NewRadiusResourceClient(con, e.SubscriptionID),

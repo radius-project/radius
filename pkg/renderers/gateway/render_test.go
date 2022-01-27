@@ -9,9 +9,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -25,7 +25,7 @@ func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
 
 	resource := renderers.RendererResource{}
-	dependencies, err := r.GetDependencyIDs(context.Background(), resource)
+	dependencies, _, err := r.GetDependencyIDs(context.Background(), resource)
 	require.NoError(t, err)
 	require.Empty(t, dependencies)
 }

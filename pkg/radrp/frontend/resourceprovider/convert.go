@@ -6,9 +6,9 @@
 package resourceprovider
 
 import (
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radrp/db"
-	rest "github.com/Azure/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radrp/db"
+	rest "github.com/project-radius/radius/pkg/radrp/rest"
 )
 
 func NewDBApplicationResource(id azresources.ResourceID, application ApplicationResource) db.ApplicationResource {
@@ -42,26 +42,18 @@ func NewDBRadiusResource(id azresources.ResourceID, resource RadiusResource) db.
 	}
 }
 
-func NewRestApplicationResource(application db.ApplicationResource) ApplicationResource {
+func NewRestApplicationResource(application db.ApplicationResource, status rest.ApplicationStatus) ApplicationResource {
 	// Properties are built from a combination of fields we store in the database
 	// This allows us to separate the stateful info from the user-supplied definition.
-	properties := map[string]interface{}{}
-
-	// We're copying things in order of priority even though we don't expect conflicts.
-	properties["status"] = rest.ApplicationStatus{
-		ProvisioningState:        application.Status.ProvisioningState,
-		ProvisioningErrorDetails: application.Status.ProvisioningErrorDetails,
-		HealthState:              application.Status.HealthState,
-		HealthErrorDetails:       application.Status.HealthErrorDetails,
-	}
-
 	return ApplicationResource{
-		ID:         application.ID,
-		Type:       application.Type,
-		Name:       application.ApplicationName,
-		Tags:       application.Tags,
-		Location:   application.Location,
-		Properties: properties,
+		ID:       application.ID,
+		Type:     application.Type,
+		Name:     application.ApplicationName,
+		Tags:     application.Tags,
+		Location: application.Location,
+		Properties: map[string]interface{}{
+			"status": status,
+		},
 	}
 }
 
@@ -84,6 +76,11 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 	}
 	properties["provisioningState"] = resource.ProvisioningState
 
+	if resource.Type != "azure.com.KeyVault" {
+		// Scrape out the secrets properties. These are user-specified secrets for
+		// all resources except for azure.com.KeyVault.
+		delete(properties, "secrets")
+	}
 	return RadiusResource{
 		ID:         resource.ID,
 		Type:       resource.Type,
@@ -92,11 +89,22 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 	}
 }
 
+func NewRestRadiusResourceFromAzureResource(azResource db.AzureResource) RadiusResource {
+	// Currently properties for Azure resources is empty, once we implement health check or decide to store additional
+	// metadata about azure resources, it should be included as a part of the properties field.
+	return RadiusResource{
+		ID:         azResource.ID,
+		Type:       azResource.Type,
+		Name:       azResource.ResourceName,
+		Properties: map[string]interface{}{},
+	}
+}
+
 func NewRestRadiusResourceStatus(resourceName string, original db.RadiusResourceStatus) RadiusResourceStatus {
 	ors := NewRestOutputResourceStatus(original.OutputResources)
 
-	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingHealthState(ors)
-	aggregateProvisioningState := rest.GetUserFacingProvisioningState(ors)
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingResourceHealthState(ors)
+	aggregateProvisioningState := rest.GetUserFacingResourceProvisioningState(ors)
 
 	status := RadiusResourceStatus{
 		ProvisioningState:  aggregateProvisioningState,
@@ -128,13 +136,4 @@ func NewRestOutputResourceStatus(original []db.OutputResource) []rest.OutputReso
 		rrs = append(rrs, rr)
 	}
 	return rrs
-}
-
-func NewRestAzureResource(resource db.AzureResource) AzureResource {
-	return AzureResource{
-		ID:   resource.ID,
-		Name: resource.ResourceName,
-		Kind: resource.ResourceKind,
-		Type: resource.Type,
-	}
 }

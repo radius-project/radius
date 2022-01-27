@@ -6,11 +6,11 @@
 package daprstatestorev1alpha3
 
 import (
-	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 )
 
 const (
-	ResourceType = "dapr.io.StateStoreComponent"
+	ResourceType = "dapr.io.StateStore"
 )
 
 var StorageAccountResourceType = azresources.KnownType{

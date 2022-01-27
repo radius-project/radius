@@ -1,0 +1,11 @@
+{
+  "id": 42,
+  "name": 42,
+  "properties": {
+    "managed": "not-a-bool",
+    "secrets": {
+      "connectionString": 42,
+      "additionalProperty": "not-allowed"
+    }
+  }
+}

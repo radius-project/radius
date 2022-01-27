@@ -30,7 +30,7 @@ do
   curl -LO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
   
   # on Busybox certain versions only support the `-c` shorthand
-  # see: https://github.com/Azure/radius/issues/404
+  # see: https://github.com/project-radius/radius/issues/404
   if echo "$(<kubectl.sha256) kubectl" | sha256sum -c
   then
     echo "kubectl verified"
@@ -92,7 +92,7 @@ do
 done
 
 # Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
-# ex: https://github.com/Azure/radius/issues/29 https://github.com/Azure/radius/issues/39
+# ex: https://github.com/project-radius/radius/issues/29 https://github.com/project-radius/radius/issues/39
 for i in {1..5}
 do
   echo "listing dapr pods - attempt $i"
@@ -152,7 +152,7 @@ done
 
 
 # Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
-# ex: https://github.com/Azure/radius/issues/29 https://github.com/Azure/radius/issues/39
+# ex: https://github.com/project-radius/radius/issues/29 https://github.com/project-radius/radius/issues/39
 for i in {1..5}
 do
   echo "listing radius-haproxy-ingress pods - attempt $i"

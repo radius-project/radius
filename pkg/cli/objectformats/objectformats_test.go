@@ -9,9 +9,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/cli/output"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,8 +39,8 @@ func Test_FormatApplicationTable(t *testing.T) {
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `APPLICATION
-test-app
+	expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
+test-app     Provisioned         Healthy
 `
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }
@@ -49,17 +49,33 @@ func Test_FormatResourceTable(t *testing.T) {
 	options := GetResourceTableFormat()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
-	obj := radclient.RadiusResource{
-		ProxyResource: radclient.ProxyResource{
-			Resource: radclient.Resource{
-				Name: to.StringPtr("test-resource"),
-				Type: to.StringPtr("my/very/CoolResource"),
+	obj := []radclient.RadiusResource{
+		{
+			ProxyResource: radclient.ProxyResource{
+				Resource: radclient.Resource{
+					Name: to.StringPtr("test-resource"),
+					Type: to.StringPtr("Microsoft.CustomProviders/resourceProviders/Application/mongo.com.MongoDatabase"),
+				},
+			},
+			Properties: map[string]interface{}{
+				"status": &radclient.ResourceStatus{
+					HealthState:       to.StringPtr("Healthy"),
+					ProvisioningState: to.StringPtr("Provisioned"),
+				},
 			},
 		},
-		Properties: map[string]interface{}{
-			"status": &radclient.ComponentStatus{
-				HealthState:       to.StringPtr("Healthy"),
-				ProvisioningState: to.StringPtr("Provisioned"),
+		{
+			ProxyResource: radclient.ProxyResource{
+				Resource: radclient.Resource{
+					Name: to.StringPtr("test-azure-resource"),
+					Type: to.StringPtr("Microsoft.ServiceBus/namespaces"),
+				},
+			},
+			Properties: map[string]interface{}{
+				"status": &radclient.ResourceStatus{
+					HealthState:       to.StringPtr("Healthy"),
+					ProvisioningState: to.StringPtr("Provisioned"),
+				},
 			},
 		},
 	}
@@ -68,8 +84,10 @@ func Test_FormatResourceTable(t *testing.T) {
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `RESOURCE       TYPE          PROVISIONING_STATE  HEALTH_STATE
-test-resource  CoolResource  Provisioned         Healthy
+	expected := `RESOURCE             TYPE                             PROVISIONING_STATE  HEALTH_STATE
+test-resource        mongo.com.MongoDatabase          Provisioned         Healthy
+test-azure-resource  Microsoft.ServiceBus/namespaces  Provisioned         Healthy
 `
+
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }

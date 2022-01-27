@@ -11,7 +11,7 @@ weight: 999
 ### Visual Studio not authorized for single sign-on
 
 If you receive an error saying Visual Studio or another application is not authorized to clone the Radius repo and you need to re-authorize the app, follow these steps:
-1. Open a browser to https://github.com/Azure/radius
+1. Open a browser to https://github.com/project-radius/radius
 1. Select your profile and click on Settings
 1. Select Applications from the left navbar
 1. Select the Authorized OAuth Apps tab

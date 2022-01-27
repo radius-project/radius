@@ -6,11 +6,11 @@
 package microsoftsqlv1alpha3
 
 import (
-	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 )
 
 const (
-	ResourceType          = "microsoft.com.SQLComponent"
+	ResourceType          = "microsoft.com.SQLDatabase"
 	ConnectionStringValue = "connectionString"
 )
 

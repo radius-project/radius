@@ -199,7 +199,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   name: 'eshop'
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/catalog-api
-  resource catalog 'ContainerComponent' = {
+  resource catalog 'Container' = {
     name: 'catalog-api'
     properties: {
       container: {
@@ -253,7 +253,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/identity-api
-  resource identity 'ContainerComponent' = {
+  resource identity 'Container' = {
     name: 'identity-api'
     properties: {
       container: {
@@ -345,7 +345,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/ordering-api
-  resource ordering 'ContainerComponent' = {
+  resource ordering 'Container' = {
     name: 'ordering-api'
     properties: {
       container: {
@@ -420,7 +420,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/basket-api
-  resource basket 'ContainerComponent' = {
+  resource basket 'Container' = {
     name: 'basket-api'
     properties: {
       container: {
@@ -491,7 +491,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webhooks-api
-  resource webhooks 'ContainerComponent' = {
+  resource webhooks 'Container' = {
     name: 'webhooks-api'
     properties: {
       container: {
@@ -546,7 +546,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/payment-api
-  resource payment 'ContainerComponent' = {
+  resource payment 'Container' = {
     name: 'payment-api'
     properties: {
       container: {
@@ -581,7 +581,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/ordering-backgroundtasks
-  resource orderbgtasks 'ContainerComponent' = {
+  resource orderbgtasks 'Container' = {
     name: 'ordering-backgroundtasks'
     properties: {
       container: {
@@ -628,7 +628,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   // Other ---------------------------------------------
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webshoppingagg
-  resource webshoppingagg 'ContainerComponent' = {
+  resource webshoppingagg 'Container' = {
     name: 'webshoppingagg'
     properties: {
       container: {
@@ -700,7 +700,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/apigwws
-  resource webshoppingapigw 'ContainerComponent' = {
+  resource webshoppingapigw 'Container' = {
     name: 'webshoppingapigw'
     properties: {
       container: {
@@ -748,7 +748,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/ordering-signalrhub
-  resource orderingsignalrhub 'ContainerComponent' = {
+  resource orderingsignalrhub 'Container' = {
     name: 'ordering-signalrhub'
     properties: {
       container: {
@@ -807,7 +807,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webhooks-web
-  resource webhooksclient 'ContainerComponent' = {
+  resource webhooksclient 'Container' = {
     name: 'webhooks-client'
     properties: {
       container: {
@@ -864,7 +864,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   // Sites ----------------------------------------------
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webstatus
-  resource webstatus 'ContainerComponent' = {
+  resource webstatus 'Container' = {
     name: 'webstatus'
     properties: {
       container: {
@@ -927,7 +927,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webspa
-  resource webspa 'ContainerComponent' = {
+  resource webspa 'Container' = {
     name: 'web-spa'
     properties: {
       container: {
@@ -999,7 +999,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
   }
 
   // Based on https://github.com/dotnet-architecture/eShopOnContainers/tree/dev/deploy/k8s/helm/webmvc
-  resource webmvc 'ContainerComponent' = {
+  resource webmvc 'Container' = {
     name: 'webmvc'
     properties: {
       container: {
@@ -1088,7 +1088,7 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   // Logging --------------------------------------------
 
-  resource seq 'ContainerComponent' = {
+  resource seq 'Container' = {
     name: 'seq'
     properties: {
       container: {
@@ -1117,49 +1117,49 @@ resource eshop 'radius.dev/Application@v1alpha3' = {
 
   // Infrastructure --------------------------------------------
 
-  resource sqlIdentity 'microsoft.com.SQLComponent' = {
+  resource sqlIdentity 'microsoft.com.SQLDatabase' = {
     name: 'sql-identity'
     properties: {
       resource: sql::identity.id
     }
   }
 
-  resource sqlCatalog 'microsoft.com.SQLComponent' = {
+  resource sqlCatalog 'microsoft.com.SQLDatabase' = {
     name: 'sql-catalog'
     properties: {
       resource: sql::catalog.id
     }
   }
 
-  resource sqlOrdering 'microsoft.com.SQLComponent' = {
+  resource sqlOrdering 'microsoft.com.SQLDatabase' = {
     name: 'sql-ordering'
     properties: {
       resource: sql::ordering.id
     }
   }
 
-  resource sqlWebhooks 'microsoft.com.SQLComponent' = {
+  resource sqlWebhooks 'microsoft.com.SQLDatabase' = {
     name: 'sql-webhooks'
     properties: {
       resource: sql::webhooks.id
     }
   }
 
-  resource redisBasket 'redislabs.com.RedisComponent' = {
+  resource redisBasket 'redislabs.com.RedisCache' = {
     name: 'basket-data'
     properties: {
       managed: true
     }
   }
 
-  resource redisKeystore 'redislabs.com.RedisComponent' = {
+  resource redisKeystore 'redislabs.com.RedisCache' = {
     name: 'keystore-data'
     properties: {
       managed: true
     }
   }
 
-  resource mongo 'mongodb.com.MongoDBComponent' = {
+  resource mongo 'mongo.com.MongoDatabase' = {
     name: 'mongo'
     properties: {
       managed: true

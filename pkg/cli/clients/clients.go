@@ -10,8 +10,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -38,10 +39,33 @@ type DeploymentOptions struct {
 
 	// Parameters is the set of parameters passed to the deployment.
 	Parameters DeploymentParameters
+
+	// ProgressChan is a channel used to signal progress of the deployment operation.
+	// The deployment client MUST close the channel if it was provided.
+	ProgressChan chan<- ResourceProgress
+}
+
+type ResourceStatus string
+
+const (
+	StatusStarted   ResourceStatus = "Started"
+	StatusFailed    ResourceStatus = "Failed"
+	StatusCompleted ResourceStatus = "Completed"
+)
+
+type ResourceProgress struct {
+	Resource azresources.ResourceID
+	Status   ResourceStatus
+}
+
+type DeploymentOutput struct {
+	Type  string      `json:"type"`
+	Value interface{} `json:"value"`
 }
 
 type DeploymentResult struct {
 	Resources []azresources.ResourceID
+	Outputs   map[string]DeploymentOutput
 }
 
 // DeploymentClient is used to deploy ARM-JSON templates (compiled Bicep output).
@@ -89,4 +113,20 @@ type ManagementClient interface {
 
 	ShowResource(ctx context.Context, applicationName string, resourceType string, resourceName string) (interface{}, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
+}
+
+func ShallowCopy(params DeploymentParameters) DeploymentParameters {
+	copy := DeploymentParameters{}
+	for k, v := range params {
+		copy[k] = v
+	}
+
+	return copy
+}
+
+type ServerLifecycleClient interface {
+	GetStatus(ctx context.Context) (interface{}, []output.Column, error)
+	IsRunning(ctx context.Context) (bool, error)
+	EnsureStarted(ctx context.Context) error
+	EnsureStopped(ctx context.Context) error
 }

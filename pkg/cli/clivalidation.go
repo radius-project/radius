@@ -7,8 +7,9 @@ package cli
 
 import (
 	"fmt"
+	"path"
 
-	"github.com/Azure/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -104,6 +105,19 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 
 func RequireOutput(cmd *cobra.Command) (string, error) {
 	return cmd.Flags().GetString("output")
+}
+
+func RequireRadYAML(cmd *cobra.Command) (string, error) {
+	radFile, err := cmd.Flags().GetString("radfile")
+	if err != nil {
+		return "", err
+	}
+
+	if radFile == "" {
+		return path.Join(".", "rad.yaml"), nil
+	}
+
+	return radFile, nil
 }
 
 func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]string, error) {

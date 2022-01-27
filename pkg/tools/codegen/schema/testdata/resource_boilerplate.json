@@ -1,37 +1,37 @@
 {
   "parameters": {
-    "AwesomeComponentNameParameter": {
-      "description": "The name of the radius.com.AwesomeComponent resource.",
+    "AwesomeThingNameParameter": {
+      "description": "The name of the radius.com.AwesomeThing resource.",
       "in": "path",
-      "name": "awesomeComponentName",
+      "name": "awesomeThingName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
     }
   },
   "definitions": {
-    "AwesomeComponentList": {
-      "description": "List of radius.com.AwesomeComponent resources.",
+    "AwesomeThingList": {
+      "description": "List of radius.com.AwesomeThing resources.",
       "type": "object",
       "required": [
         "value"
       ],
       "properties": {
         "value": {
-          "description": "List of radius.com.AwesomeComponent resources.",
+          "description": "List of radius.com.AwesomeThing resources.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/AwesomeComponentResource"
+            "$ref": "#/definitions/AwesomeThingResource"
           }
         }
       }
     }
   },
   "paths": {
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/radius.com.AwesomeComponent": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/radius.com.AwesomeThing": {
       "get": {
-        "description": "List the radius.com.AwesomeComponent resources deployed in the application.",
-        "operationId": "radius.com.AwesomeComponent_List",
+        "description": "List the radius.com.AwesomeThing resources deployed in the application.",
+        "operationId": "radius.com.AwesomeThing_List",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -54,21 +54,21 @@
             }
           },
           "200": {
-            "description": "The list of radius.com.AwesomeComponent resources was retrieved successfully.",
+            "description": "The list of radius.com.AwesomeThing resources was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentList"
+              "$ref": "#/definitions/AwesomeThingList"
             }
           }
         },
         "tags": [
-          "radius.com.AwesomeComponent"
+          "radius.com.AwesomeThing"
         ]
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/radius.com.AwesomeComponent/{awesomeComponentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/radius.com.AwesomeThing/{awesomeThingName}": {
       "delete": {
-        "description": "Deletes a radius.com.AwesomeComponent resource.",
-        "operationId": "radius.com.AwesomeComponent_Delete",
+        "description": "Deletes a radius.com.AwesomeThing resource.",
+        "operationId": "radius.com.AwesomeThing_Delete",
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options" : {
           "final-state-via" : "location"
@@ -84,7 +84,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AwesomeComponentNameParameter"
+            "$ref": "#/parameters/AwesomeThingNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -92,10 +92,10 @@
         ],
         "responses": {
           "202": {
-            "description": "The request to delete the radius.com.AwesomeComponent will complete asynchronously."
+            "description": "The request to delete the radius.com.AwesomeThing will complete asynchronously."
           },
           "204": {
-            "description": "The radius.com.AwesomeComponent resource was successfully deleted."
+            "description": "The radius.com.AwesomeThing resource was successfully deleted."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -105,12 +105,12 @@
           }
         },
         "tags": [
-          "radius.com.AwesomeComponent"
+          "radius.com.AwesomeThing"
         ]
       },
       "put": {
-        "description": "Creates or updates a radius.com.AwesomeComponent resource.",
-        "operationId": "radius.com.AwesomeComponent_CreateOrUpdate",
+        "description": "Creates or updates a radius.com.AwesomeThing resource.",
+        "operationId": "radius.com.AwesomeThing_CreateOrUpdate",
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options" : {
           "final-state-via" : "location"
@@ -126,16 +126,16 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AwesomeComponentNameParameter"
+            "$ref": "#/parameters/AwesomeThingNameParameter"
           },
           {
             "name": "parameters",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             },
-            "description": "Parameters supplied to the CreateOrUpdate operation of a radius.com.AwesomeComponent resource."
+            "description": "Parameters supplied to the CreateOrUpdate operation of a radius.com.AwesomeThing resource."
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -149,31 +149,31 @@
             }
           },
           "202": {
-            "description": "The existing radius.com.AwesomeComponent resource was successfully updated.",
+            "description": "The existing radius.com.AwesomeThing resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             }
           },
           "201": {
-            "description": "The new radius.com.AwesomeComponent resource was successfully created.",
+            "description": "The new radius.com.AwesomeThing resource was successfully created.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             }
           },
           "200": {
-            "description": "The existing radius.com.AwesomeComponent resource was successfully updated.",
+            "description": "The existing radius.com.AwesomeThing resource was successfully updated.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             }
           }
         },
         "tags": [
-          "radius.com.AwesomeComponent"
+          "radius.com.AwesomeThing"
         ]
       },
       "get": {
-        "description": "Gets a radius.com.AwesomeComponent resource by name.",
-        "operationId": "radius.com.AwesomeComponent_Get",
+        "description": "Gets a radius.com.AwesomeThing resource by name.",
+        "operationId": "radius.com.AwesomeThing_Get",
         "parameters": [
           {
             "$ref": "#/parameters/SubscriptionIdParameter"
@@ -185,7 +185,7 @@
             "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "$ref": "#/parameters/AwesomeComponentNameParameter"
+            "$ref": "#/parameters/AwesomeThingNameParameter"
           },
           {
             "$ref": "#/parameters/ApiVersionParameter"
@@ -199,14 +199,14 @@
             }
           },
           "200": {
-            "description": "The radius.com.AwesomeComponent resource was retrieved successfully.",
+            "description": "The radius.com.AwesomeThing resource was retrieved successfully.",
             "schema": {
-              "$ref": "#/definitions/AwesomeComponentResource"
+              "$ref": "#/definitions/AwesomeThingResource"
             }
           }
         },
         "tags": [
-          "radius.com.AwesomeComponent"
+          "radius.com.AwesomeThing"
         ]
       }
     }

@@ -34,7 +34,7 @@ func Test_Parse_SyntaxTree_Valid(t *testing.T) {
 	inputs := []input{
 		{
 			// "integration test" - includes all features
-			Text: "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'app', 'backend')).bindings['web']]",
+			Text: "[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Containers', 'radius', 'app', 'backend')).bindings['web']]",
 			Expected: &SyntaxTree{
 				Span: Span{
 					Start:  0,
@@ -95,7 +95,7 @@ func Test_Parse_SyntaxTree_Valid(t *testing.T) {
 												Start:  22,
 												Length: 69,
 											},
-											Text: "'Microsoft.CustomProviders/resourceProviders/Applications/Components'",
+											Text: "'Microsoft.CustomProviders/resourceProviders/Applications/Containers'",
 										},
 										&StringLiteralNode{
 											Span: Span{

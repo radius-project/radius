@@ -16,7 +16,7 @@ type ApplicationSpec struct {
 	// +kubebuilder:validation:PreserveUnknownFields
 	Template *runtime.RawExtension `json:"template,omitempty"`
 
-	Applciation string `json:"application,omitempty"`
+	Application string `json:"application,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -28,8 +28,8 @@ type Application struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ApplicationSpec `json:"spec,omitempty"`
-	Status ResourceStatus  `json:"status,omitempty"`
+	Spec   ApplicationSpec   `json:"spec,omitempty"`
+	Status ApplicationStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

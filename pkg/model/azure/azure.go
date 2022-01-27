@@ -6,33 +6,36 @@
 package azure
 
 import (
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/dapr"
-	"github.com/Azure/radius/pkg/renderers/daprhttproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/daprpubsubv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/gateway"
-	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/keyvaultv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/manualscalev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/microsoftsqlv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/volumev1alpha3"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/dapr"
+	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/daprpubsubv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/gateway"
+	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/keyvaultv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/manualscalev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/microsoftsqlv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/rabbitmqv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 
-	"github.com/Azure/radius/pkg/renderers/redisv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/servicebusqueuev1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/renderers/redisv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/servicebusqueuev1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationModel {
-	// Configuration for how connections of different types map to role assignments.
+	// Configure RBAC support on connections based connection kind.
+	// Role names can be user input or default roles assigned by Radius.
+	// Leave RoleNames field empty if no default roles are supported for a connection kind.
 	//
 	// For a primer on how to read this data, see the KeyVault case.
 	roleAssignmentMap := map[radclient.ContainerConnectionKind]containerv1alpha3.RoleAssignmentData{
@@ -40,7 +43,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		// Example of how to read this data:
 		//
 		// For a KeyVault connection...
-		// - Look up the dependency based on the connection.Source (azure.com.KeyVaultComponent)
+		// - Look up the dependency based on the connection.Source (azure.com.KeyVault)
 		// - Find the output resource matching LocalID of that dependency (Microsoft.KeyVault/vaults)
 		// - Apply the roles in RoleNames (Key Vault Secrets User, Key Vault Crypto User)
 		radclient.ContainerConnectionKindAzureComKeyVault: {
@@ -50,9 +53,13 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 				"Key Vault Crypto User",
 			},
 		},
+		radclient.ContainerConnectionKindAzure: {
+			// RBAC for non-Radius Azure resources. Supports user specified roles.
+			// More information can be found here: https://github.com/project-radius/radius/issues/1321
+		},
 	}
 
-	radiusResources := []model.RadiusResourceModel{
+	radiusResourceModel := []model.RadiusResourceModel{
 		// Built-in types
 		{
 			ResourceType: containerv1alpha3.ResourceType,
@@ -99,6 +106,10 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			Renderer:     &redisv1alpha3.AzureRenderer{},
 		},
 		{
+			ResourceType: rabbitmqv1alpha3.ResourceType,
+			Renderer:     &rabbitmqv1alpha3.AzureRenderer{},
+		},
+		{
 			ResourceType: gateway.ResourceType,
 			Renderer:     &gateway.Renderer{},
 		},
@@ -110,7 +121,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 		{
 			ResourceType: volumev1alpha3.ResourceType,
-			Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.SupportedVolumeRenderers},
+			Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.GetSupportedRenderers(), Arm: arm},
 		},
 		{
 			ResourceType: servicebusqueuev1alpha3.ResourceType,
@@ -118,14 +129,15 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 	}
 
-	// These are the known Kuberentes types that we don't support health monitoring for.
 	skipHealthCheckKubernetesKinds := map[string]bool{
-		resourcekinds.Service: true,
-		resourcekinds.Secret:  true,
-		resourcekinds.Ingress: true,
+		resourcekinds.Service:             true,
+		resourcekinds.Secret:              true,
+		resourcekinds.StatefulSet:         true,
+		resourcekinds.KubernetesHTTPRoute: true,
+		resourcekinds.SecretProviderClass: true,
 	}
 
-	outputResources := []model.OutputResourceModel{
+	outputResourceModel := []model.OutputResourceModel{
 		{
 			Kind:            resourcekinds.Kubernetes,
 			HealthHandler:   handlers.NewKubernetesHealthHandler(k8s),
@@ -232,5 +244,5 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 	}
 
-	return model.NewModel(radiusResources, outputResources)
+	return model.NewModel(radiusResourceModel, outputResourceModel)
 }

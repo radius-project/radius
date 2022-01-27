@@ -9,11 +9,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -21,26 +23,27 @@ var _ renderers.Renderer = (*Renderer)(nil)
 type Renderer struct {
 }
 
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource := options.Resource
 
-	properties := Properties{}
+	properties := radclient.DaprPubSubTopicAzureServiceBusResourceProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	var output outputresource.OutputResource
-	if properties.Managed {
-		if properties.Topic == "" {
+	if properties.Managed != nil && *properties.Managed {
+		topic := to.String(properties.Topic)
+		if topic == "" {
 			return renderers.RendererOutput{}, errors.New("the 'topic' field is required when 'managed=true'")
 		}
 
-		if properties.Resource != "" {
+		if to.String(properties.Resource) != "" {
 			return renderers.RendererOutput{}, renderers.ErrResourceSpecifiedForManagedResource
 		}
 
@@ -55,19 +58,19 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
-				handlers.ServiceBusTopicNameKey:  properties.Topic,
+				handlers.ServiceBusTopicNameKey:  topic,
 			},
 		}
 	} else {
-		if properties.Topic != "" {
+		if to.String(properties.Topic) != "" {
 			return renderers.RendererOutput{}, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
 		}
 
-		if properties.Resource == "" {
+		if to.String(properties.Resource) == "" {
 			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
 		}
 
-		topicID, err := renderers.ValidateResourceID(properties.Resource, TopicResourceType, "ServiceBus Topic")
+		topicID, err := renderers.ValidateResourceID(to.String(properties.Resource), TopicResourceType, "ServiceBus Topic")
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}

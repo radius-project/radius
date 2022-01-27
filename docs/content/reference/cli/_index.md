@@ -14,11 +14,13 @@ Usage:
 
 Available Commands:
   application Manage applications
-  component   Manage components
+  bicep       Manage bicep compiler
+  completion  Generates shell completion scripts
   deploy      Deploy a RAD application
-  deployments Manage deployments
   env         Manage environments
   help        Help about any command
+  resource    Manage resources
+  version     Prints the versions of the rad cli
 
 Flags:
       --config string   config file (default is $HOME/.rad/config.yaml)

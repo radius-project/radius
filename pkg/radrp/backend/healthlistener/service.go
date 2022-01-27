@@ -9,11 +9,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/db"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/db"
 )
 
 type Service struct {
@@ -58,7 +58,7 @@ func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontra
 	logger := radlogger.GetLogger(ctx).WithValues(healthUpdateMsg.Resource.Identity.AsLogValues()...)
 	logger.Info(fmt.Sprintf("Received health state change notification from health service. Updating health in DB with state: %s", healthUpdateMsg.HealthState))
 
-	// This is the ID of the Radius Resource (Component/Scope/Route) that 'owns' the output resource being updated.
+	// This is the ID of the Radius Resource that 'owns' the output resource being updated.
 	resourceID, err := azresources.Parse(healthUpdateMsg.Resource.RadiusResourceID)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Invalid resource ID: %s", healthUpdateMsg.Resource.RadiusResourceID))

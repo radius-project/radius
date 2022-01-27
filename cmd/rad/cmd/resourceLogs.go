@@ -12,16 +12,16 @@ import (
 	"io"
 	"os"
 
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 
 var resourceLogsCmd = &cobra.Command{
 	Use:   "logs [resource]",
-	Short: "Read logs from a running ContainerComponent resource",
+	Short: "Read logs from a running Container resource",
 	Long: `Reads logs from a running resource. Currently only supports the resource type 'radius.dev/Container'.
 This command allows you to access logs of a deployed application and output those logs to the local console.
 
@@ -31,16 +31,16 @@ This command allows you to access logs of a deployed application and output thos
 
 Specify the '--follow' option to stream additional logs as they are emitted by the resource. When following, press CTRL+C to exit the command and terminate the stream.`,
 	Example: `# read logs from the 'webapp' resource of the current default app
-rad resource logs ContainerComponent webapp
+rad resource logs Container webapp
 
 # read logs from the 'orders' resource of the 'icecream-store' application
-rad resource logs ContainerComponent orders --application icecream-store
+rad resource logs Container orders --application icecream-store
 
 # stream logs from the 'orders' resource of the 'icecream-store' application
-rad resource logs ContainerComponent orders --application icecream-store --follow
+rad resource logs Container orders --application icecream-store --follow
 
 # read logs from the 'daprd' sidecar container of the 'orders' resource of the 'icecream-store' application
-rad resource logs ContainerComponent orders --application icecream-store --container daprd`,
+rad resource logs Container orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
 		env, err := cli.RequireEnvironment(cmd, config)
@@ -57,8 +57,8 @@ rad resource logs ContainerComponent orders --application icecream-store --conta
 		if err != nil {
 			return err
 		}
-		if resourceType != schema.ContainerComponentType {
-			return fmt.Errorf("only %s is supported", schema.ContainerComponentType)
+		if resourceType != schema.ContainerType {
+			return fmt.Errorf("only %s is supported", schema.ContainerType)
 		}
 		follow, err := cmd.Flags().GetBool("follow")
 		if err != nil {
@@ -90,7 +90,7 @@ rad resource logs ContainerComponent orders --application icecream-store --conta
 			// We can keep reading this until cancellation occurs.
 			if follow {
 				// Sending to stderr so it doesn't interfere with parsing
-				fmt.Fprintf(os.Stderr, "Streaming logs from replica %s for ContainerComponent %s. Press CTRL+C to exit...\n", logInfo.Name, resourceName)
+				fmt.Fprintf(os.Stderr, "Streaming logs from replica %s for Container %s. Press CTRL+C to exit...\n", logInfo.Name, resourceName)
 			}
 
 			// Kick off go routine to read the logs from each stream.
@@ -128,7 +128,7 @@ func captureLogs(info clients.LogStream, logErrors chan<- error, follow bool) {
 			// Output a status message to stderr if there were no logs for non-streaming
 			// so an interactive user gets *some* feedback.
 			if !follow && !hasLogs {
-				fmt.Fprintln(os.Stderr, "Component's log is currently empty.")
+				fmt.Fprintln(os.Stderr, "Containers's log is currently empty.")
 			}
 			logErrors <- nil
 			return

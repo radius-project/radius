@@ -26,7 +26,7 @@ import (
 // This is needed for a few reasons:
 //
 // This allows renderers to refer to and create dependencies between resources without *knowing* the physical names of those resources.
-// The capability to refer to logical names is critical when multiple resources have a contract with each other (eg. a KeyVault component
+// The capability to refer to logical names is critical when multiple resources have a contract with each other (eg. a KeyVault)
 // creates a KeyVault resource, and the container needs a role assignment to access it.)
 //
 // This allows diffing of expected state vs actual state. We can tell when a physical resource has disappeared. We can tell when a logical
@@ -57,7 +57,9 @@ const (
 	LocalIDRabbitMQService              = "KubernetesRabbitMQService"
 	LocalIDRedisDeployment              = "KubernetesRedisDeployment"
 	LocalIDRedisService                 = "KubernetesRedisService"
+	LocalIDScrapedSecret                = "KubernetesScrapedSecret"
 	LocalIDSecret                       = "Secret"
+	LocalIDSecretProviderClass          = "SecretProviderClass"
 	LocalIDService                      = "Service"
 	LocalIDStatefulSet                  = "StatefulSet"
 	LocalIDUserAssignedManagedIdentity  = "UserAssignedManagedIdentity"

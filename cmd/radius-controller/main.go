@@ -5,31 +5,36 @@ Copyright 2021.
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"os"
+	"os/signal"
+	"syscall"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
+	"k8s.io/client-go/discovery"
+	memory "k8s.io/client-go/discovery/cached"
+	"k8s.io/client-go/dynamic"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/restmapper"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	radcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/radius"
+	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/hosting"
+	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/kubernetes/apiserver"
+	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
+	kubernetesmodel "github.com/project-radius/radius/pkg/model/kubernetes"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
-
-	kubernetesmodel "github.com/Azure/radius/pkg/model/kubernetes"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -46,6 +51,7 @@ func init() {
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
+
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -98,6 +104,7 @@ func main() {
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 
 	options := radcontroller.Options{
+		Manager:       mgr,
 		AppModel:      kubernetesmodel.NewKubernetesModel(mgr.GetClient()),
 		Client:        mgr.GetClient(),
 		Dynamic:       unstructuredClient,
@@ -112,26 +119,56 @@ func main() {
 	}
 
 	controller := radcontroller.NewRadiusController(&options)
-	err = controller.SetupWithManager(mgr)
+
+	apiServerCertDir := certDir
+	if os.Getenv("SKIP_APISERVICE_TLS") != "true" && certDir == "" {
+		// Must explicitly set SKIP_APISERVICE_TLS=true to be able to run with no TLS.
+		setupLog.Error(errors.New("unable to setup apiserver"), "either set SKIP_APISERVICE_TLS=true or set TLS_CERT_DIR")
+		os.Exit(1)
+	}
+
+	if os.Getenv("SKIP_APISERVICE_TLS") == "true" {
+		apiServerCertDir = ""
+	}
+
+	apiServerOptions := apiserver.APIServerExtensionOptions{
+		KubeConfig: ctrl.GetConfigOrDie(),
+		Scheme:     scheme,
+		TLSCertDir: apiServerCertDir,
+		Port:       7443,
+	}
+	apiServer := apiserver.NewAPIServerExtension(setupLog, apiServerOptions)
+
+	host := hosting.Host{
+		Services: []hosting.Service{
+			apiServer,
+			controller,
+		},
+	}
+
+	// Create a channel to handle the shutdown
+	exitCh := make(chan os.Signal, 1)
+	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), ctrl.Log))
+
+	setupLog.Info("Starting server...")
+	stopped, errors := host.RunAsync(ctx)
+
+	select {
+	// Normal shutdown
+	case <-exitCh:
+		setupLog.Info("Shutdown requested..")
+		cancel()
+	// A service terminated with a failure. Details of the failure have already been logged.
+	case <-errors:
+		setupLog.Info("One of the services failed. Shutting down...")
+		cancel()
+	}
+
+	// Finished shutting down. An error returned here is a failure to terminate
+	// gracefully, so just crash if that happens.
+	err = <-stopped
 	if err != nil {
-		setupLog.Error(err, "unable to create radius controller")
-		os.Exit(1)
-	}
-
-	//+kubebuilder:scaffold:builder
-
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
-
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		return
 	}
 }

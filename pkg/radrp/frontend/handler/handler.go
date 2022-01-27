@@ -11,13 +11,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
 // A brief note on error handling... The handler is responsible for all of the direct actions
@@ -34,14 +35,15 @@ import (
 // This code will assume that any Golang error returned from the RP represents a reliability error
 // within the RP or a bug.
 
-type handler struct {
-	rp               resourceprovider.ResourceProvider
-	validatorFactory ValidatorFactory
+type Handler struct {
+	RP               resourceprovider.ResourceProvider
+	ValidatorFactory ValidatorFactory
+	PathPrefix       string
 }
 
-func (h *handler) ListApplications(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) ListApplications(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.ListApplications(ctx, resourceID(req))
+	response, err := h.RP.ListApplications(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -54,9 +56,9 @@ func (h *handler) ListApplications(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) GetApplication(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.GetApplication(ctx, resourceID(req))
+	response, err := h.RP.GetApplication(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -69,7 +71,7 @@ func (h *handler) GetApplication(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	body, err := readJSONBody(req)
 	if err != nil {
@@ -77,7 +79,7 @@ func (h *handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	id := resourceID(req)
+	id := h.resourceID(req)
 	validator, err := h.findValidator(id)
 	if err != nil {
 		badRequest(ctx, w, req, err)
@@ -90,7 +92,7 @@ func (h *handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.rp.UpdateApplication(ctx, id, body)
+	response, err := h.RP.UpdateApplication(ctx, id, body)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -103,9 +105,9 @@ func (h *handler) UpdateApplication(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) DeleteApplication(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) DeleteApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.DeleteApplication(ctx, resourceID(req))
+	response, err := h.RP.DeleteApplication(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -118,26 +120,10 @@ func (h *handler) DeleteApplication(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) ListAllV3ResourcesByApplication(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-
-	response, err := h.rp.ListAllV3ResourcesByApplication(ctx, resourceID(req))
-	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
-	}
-
-	err = response.Apply(ctx, w, req)
-	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
-	}
-}
-
-func (h *handler) ListResources(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) ListAllV3ResourcesByApplication(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
-	response, err := h.rp.ListResources(ctx, resourceID(req))
+	response, err := h.RP.ListAllV3ResourcesByApplication(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -150,9 +136,10 @@ func (h *handler) ListResources(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) GetResource(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) ListResources(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.GetResource(ctx, resourceID(req))
+
+	response, err := h.RP.ListResources(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -165,7 +152,22 @@ func (h *handler) GetResource(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) UpdateResource(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetResource(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	response, err := h.RP.GetResource(ctx, h.resourceID(req))
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+
+	err = response.Apply(ctx, w, req)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+}
+
+func (h *Handler) UpdateResource(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	body, err := readJSONBody(req)
 	if err != nil {
@@ -173,7 +175,7 @@ func (h *handler) UpdateResource(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	id := resourceID(req)
+	id := h.resourceID(req)
 	validator, err := h.findValidator(id)
 	if err != nil {
 		badRequest(ctx, w, req, err)
@@ -186,7 +188,7 @@ func (h *handler) UpdateResource(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.rp.UpdateResource(ctx, id, body)
+	response, err := h.RP.UpdateResource(ctx, id, body)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -199,9 +201,9 @@ func (h *handler) UpdateResource(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) DeleteResource(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) DeleteResource(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.DeleteResource(ctx, resourceID(req))
+	response, err := h.RP.DeleteResource(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -214,9 +216,9 @@ func (h *handler) DeleteResource(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) GetOperation(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetOperation(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.rp.GetOperation(ctx, resourceID(req))
+	response, err := h.RP.GetOperation(ctx, h.resourceID(req))
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -229,7 +231,7 @@ func (h *handler) GetOperation(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	body, err := readJSONBody(req)
 	if err != nil {
@@ -244,7 +246,7 @@ func (h *handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.rp.ListSecrets(ctx, input)
+	response, err := h.RP.ListSecrets(ctx, input)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -257,14 +259,33 @@ func (h *handler) ListSecrets(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) findValidator(id azresources.ResourceID) (schema.Validator, error) {
-	resourceType := id.Types[len(id.Types)-1].Type
-	return h.validatorFactory(resourceType)
+func (h *Handler) GetSwaggerDoc(w http.ResponseWriter, req *http.Request) {
+	// Required for the K8s scenario, we are required to respond to a request
+	// to /apis/api.radius.dev/v1alpha3 with a 200 OK response.
+	ctx := req.Context()
+	response, err := h.RP.GetSwaggerDoc(ctx)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+
+	err = response.Apply(ctx, w, req)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
 }
 
-func resourceID(req *http.Request) azresources.ResourceID {
+func (h *Handler) findValidator(id azresources.ResourceID) (schema.Validator, error) {
+	resourceType := id.Types[len(id.Types)-1].Type
+	return h.ValidatorFactory(resourceType)
+}
+
+func (h *Handler) resourceID(req *http.Request) azresources.ResourceID {
 	logger := radlogger.GetLogger(req.Context())
-	id, err := azresources.Parse(req.URL.Path)
+	path := req.URL.Path
+	pathFixed := strings.TrimPrefix(path, h.PathPrefix)
+	id, err := azresources.Parse(pathFixed)
 	if err != nil {
 		logger.Info("URL was not a valid resource id: %v", req.URL.Path)
 		// just log the error - it will be handled in the RP layer.

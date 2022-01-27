@@ -9,18 +9,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/cli/armtemplate"
-	"github.com/Azure/radius/pkg/kubernetes"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/kubernetes/converters"
-	"github.com/Azure/radius/pkg/model"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcemodel"
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/cli/armtemplate"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/kubernetes/converters"
+	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/prometheus/common/log"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,14 +36,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	healthhandlers "github.com/project-radius/radius/pkg/health/handlers"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 const (
-	AnnotationLocalID = "radius.dev/local-id"
+	ConditionReady = "Ready"
 )
 
 // ResourceReconciler reconciles a Resource object
@@ -55,9 +60,10 @@ type ResourceReconciler struct {
 	ObjectList   client.ObjectList
 	Model        model.ApplicationModel
 	GVR          schema.GroupVersionResource
-	WatchedTypes []struct {
-		client.Object
-		client.ObjectList
+	WatchedTypes map[string]struct {
+		Object        client.Object
+		ObjectList    client.ObjectList
+		HealthHandler func(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string)
 	}
 }
 
@@ -74,33 +80,33 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=resources,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=resources/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=containercomponents,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=containercomponents/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=containercomponents/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriodaprhttproutes/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=mongodbcomponents/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=rediscomponents,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=rediscomponents/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=rediscomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=containers,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=containers/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=containers/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokehttproutes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokehttproutes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=daprioinvokehttproutes/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=mongodatabases,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=mongodatabases/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=mongodatabases/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=rediscaches,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=rediscaches/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=rediscaches/finalizers,verbs=update
 //+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=grpcroutes/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopiccomponents,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopiccomponents/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopiccomponents/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqcomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopics,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopics/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriopubsubtopics/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqmessagequeues,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqmessagequeues/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=rabbitmqmessagequeues/finalizers,verbs=update
 //+kubebuilder:rbac:groups=radius.dev,resources=httproutes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=httproutes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=httproutes/finalizers,verbs=update
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestorecomponents/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestores,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestores/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestores/finalizers,verbs=update
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways/finalizers,verbs=update
@@ -109,12 +115,6 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	log := r.Log.WithValues("resource", req.NamespacedName)
 
 	unst, err := r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).Get(ctx, req.Name, v1.GetOptions{})
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	resource := &radiusv1alpha3.Resource{}
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, resource)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Resource was deleted - we don't need to handle this because it will cascade
 		return ctrl.Result{}, nil
@@ -123,8 +123,29 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
+	resource := &radiusv1alpha3.Resource{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(unst.Object, resource)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	res, err := r.ReconcileCore(ctx, req, log, unst, resource)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return res, err
+}
+
+func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request, log logr.Logger, unst *unstructured.Unstructured, resource *radiusv1alpha3.Resource) (ctrl.Result, error) {
 	applicationName := resource.Annotations[kubernetes.LabelRadiusApplication]
 	resourceName := resource.Annotations[kubernetes.LabelRadiusResource]
+
+	if resource.Generation != resource.Status.ObservedGeneration {
+		// Resource is modified, update status to say provisioning
+		// as the old status isn't valid.
+		r.StatusProvisioned(ctx, resource, unst, ConditionReady)
+	}
 
 	log = log.WithValues(
 		"application", applicationName,
@@ -132,7 +153,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	application := &radiusv1alpha3.Application{}
 	key := client.ObjectKey{Namespace: resource.Namespace, Name: applicationName}
-	err = r.Get(ctx, key, application)
+	err := r.Get(ctx, key, application)
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Application is not found
 		r.Recorder.Eventf(resource, "Normal", "Waiting", "Application %s does not exist", applicationName)
@@ -150,29 +171,75 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	if rendered {
-		resource.Status.Phrase = "Ready"
-	} else {
-		resource.Status.Phrase = "Waiting"
-	}
-
 	// Now we need to rationalize the set of logical resources (desired state against the actual state)
 	actual, err := r.FetchKubernetesResources(ctx, log, resource)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	err = r.ApplyState(ctx, log, req, application, resource, unst, actual, *desired)
+	if rendered {
+		r.StatusDeployed(ctx, resource, unst, ConditionReady)
+		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
+	}
+
+	// Update health
+	r.UpdateResourceStatus(ctx, log, resource, actual, desired)
+
+	err = r.ApplyState(ctx, log, req, application, resource, unst, actual, desired)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if rendered {
-		r.Recorder.Event(resource, "Normal", "Rendered", "Resource has been processed successfully")
-		return ctrl.Result{}, nil
-	}
+	return ctrl.Result{}, nil
+}
 
-	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+func (r *ResourceReconciler) UpdateResourceStatus(ctx context.Context, log logr.Logger, resource *radiusv1alpha3.Resource, actual []client.Object, desired *renderers.RendererOutput) {
+	for _, a := range actual {
+		// Get the corresponding output resource and update the health state in the output resource
+		or, err := r.getOutputResource(desired, a)
+		if err != nil {
+			// No output resource to update the state for
+			log.Error(err, fmt.Sprintf("Unable to find output resource with name: %s/%s", a.GetNamespace(), a.GetName()))
+			return
+		}
+		if or == nil {
+			continue
+		}
+
+		var healthState string
+		var healthStateErrorDetails string
+		kind := a.GetObjectKind().GroupVersionKind().Kind
+
+		watchInfo, ok := DefaultWatchTypes[kind]
+		if !ok {
+			healthState = healthcontract.HealthStateNotSupported
+			healthStateErrorDetails = ""
+		} else {
+			if watchInfo.HealthHandler == nil {
+				// Health state as a concept does not make sense for this resource and therefore mark it as NotApplicable
+				healthState = healthcontract.HealthStateNotApplicable
+				healthStateErrorDetails = ""
+			} else {
+				healthState, healthStateErrorDetails = watchInfo.HealthHandler(ctx, r, a)
+			}
+		}
+		or.Status.HealthState = healthState
+		or.Status.HealthErrorDetails = healthStateErrorDetails
+	}
+}
+
+func (r *ResourceReconciler) getOutputResource(desired *renderers.RendererOutput, actual client.Object) (*outputresource.OutputResource, error) {
+	for i, cr := range desired.Resources {
+		obj, err := outputResourceToKubernetesObject(actual.GetNamespace(), cr)
+		if err != nil {
+			return nil, err
+		}
+
+		if actual.GetObjectKind().GroupVersionKind().String() == obj.GetObjectKind().GroupVersionKind().String() && actual.GetName() == obj.GetName() && actual.GetNamespace() == obj.GetNamespace() {
+			return &desired.Resources[i], nil
+		}
+	}
+	return nil, nil
 }
 
 func (r *ResourceReconciler) FetchKubernetesResources(ctx context.Context, log logr.Logger, resource *radiusv1alpha3.Resource) ([]client.Object, error) {
@@ -216,14 +283,14 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		return nil, false, err
 	}
 
-	resourceType, err := r.Model.LookupRadiusResource(w.ResourceType)
+	resourceModel, err := r.Model.LookupRadiusResourceModel(w.ResourceType)
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource type '%s' is not supported'", w.ResourceType)
 		log.Error(err, "unsupported type for resource")
 		return nil, false, err
 	}
 
-	references, err := resourceType.Renderer.GetDependencyIDs(ctx, *w)
+	references, _, err := resourceModel.Renderer.GetDependencyIDs(ctx, *w)
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource could not get dependencies: %v", err)
 		log.Error(err, "failed to render resource")
@@ -249,11 +316,15 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 		deps[reference.ID] = *dependency
 	}
 
-	output, err := resourceType.Renderer.Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, Runtime: runtimeOptions})
+	output, err := resourceModel.Renderer.Render(ctx, renderers.RenderOptions{Resource: *w, Dependencies: deps, Runtime: runtimeOptions})
 	if err != nil {
 		r.Recorder.Eventf(resource, "Warning", "Invalid", "Resource had errors during rendering: %v'", err)
 		log.Error(err, "failed to render resources for resource")
 		return nil, false, err
+	}
+
+	for i := range output.Resources {
+		output.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateNotProvisioned
 	}
 
 	log.Info("rendered output resources", "count", len(output.Resources))
@@ -289,7 +360,7 @@ func (r *ResourceReconciler) ApplyState(
 	resource *radiusv1alpha3.Resource,
 	inputUnst *unstructured.Unstructured,
 	actual []client.Object,
-	desired renderers.RendererOutput) error {
+	desired *renderers.RendererOutput) error {
 
 	// First we go through the desired state and apply all of those resources.
 	//
@@ -298,24 +369,15 @@ func (r *ResourceReconciler) ApplyState(
 	//
 	// We also trample over the 'resources' part of the status so that it's clean.
 
-	resource.Status.Resources = map[string]corev1.ObjectReference{}
+	resource.Status.Resources = map[string]*radiusv1alpha3.OutputResource{}
 
-	for _, cr := range desired.Resources {
-		obj, ok := cr.Resource.(client.Object)
-		if !ok {
-			err := fmt.Errorf("resource is not a kubernetes resource, was: %T", cr.Resource)
+	for i, cr := range desired.Resources {
+
+		obj, err := outputResourceToKubernetesObject(resource.Namespace, cr)
+		if err != nil {
 			log.Error(err, "failed to render resources for resource")
 			return err
 		}
-
-		// TODO: configure all of the metadata at the top-level
-		obj.SetNamespace(resource.Namespace)
-		annotations := obj.GetAnnotations()
-		if annotations == nil {
-			annotations = map[string]string{}
-		}
-		annotations[AnnotationLocalID] = cr.LocalID
-		obj.SetAnnotations(annotations)
 
 		// Remove items with the same identity from the 'actual' list
 		for i, a := range actual {
@@ -333,17 +395,9 @@ func (r *ResourceReconciler) ApplyState(
 
 		// Make sure to NOT use the resource type here, as the resource type
 		// Otherwise, we get into a loop where resources are created and are immediately terminated.
-		err := controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
+		err = controllerutil.SetControllerReference(inputUnst, obj, r.Scheme)
 		if err != nil {
 			log.Error(err, "failed to set owner reference for resource")
-			return err
-		}
-
-		// We don't have to diff the actual resource - server side apply is magic.
-		log.Info("applying output resource for resource")
-		err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
-		if err != nil {
-			log.Error(err, "failed to apply resources for resource")
 			return err
 		}
 
@@ -353,12 +407,51 @@ func (r *ResourceReconciler) ApplyState(
 			return err
 		}
 
-		resource.Status.Resources[cr.LocalID] = *or
+		outputResource, ok := resource.Status.Resources[cr.LocalID]
+		if !ok {
+			outputResource = &radiusv1alpha3.OutputResource{}
+		}
+		outputResource.Resource = *or
+		resource.Status.Resources[cr.LocalID] = outputResource
 
+		desired.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateProvisioning
+		// We don't have to diff the actual resource - server side apply is magic.
+		log.Info("applying output resource for resource")
+		err = r.Client.Patch(ctx, obj, client.Apply, client.FieldOwner("radius"), client.ForceOwnership)
+		if err != nil {
+			log.Error(err, "failed to apply resources for resource")
+			desired.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateFailed
+			desired.Resources[i].Status.ProvisioningErrorDetails = err.Error()
+			return err
+		}
+		desired.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateProvisioned
 		log.Info("applied output resource for resource")
 	}
 
 	for _, obj := range actual {
+		if localId := obj.GetAnnotations()[kubernetes.AnnotationLocalID]; localId == outputresource.LocalIDScrapedSecret {
+			or, err := ref.GetReference(r.Scheme, obj)
+			if err != nil {
+				log.Error(err, "failed to get resource reference for resource")
+				return err
+			}
+			// Mention the scraped secret resource in the local ID so that we can refer
+			// to it in ComputedValues.
+			resource.Status.Resources[localId] = &v1alpha3.OutputResource{
+				Resource: *or,
+				Status: radiusv1alpha3.OutputResourceStatus{
+					ProvisioningState: kubernetes.ProvisioningStateProvisioned,
+					// Kubernetes Secrets are always healthy after they are created.
+					HealthState: healthcontract.HealthStateHealthy,
+				},
+			}
+
+			// Do not delete scraped secret. While the `ownerRef` mechanism was use
+			// so that the scraped secret is cleaned up whenever our resource is cleaned up,
+			// it was actually a sibling resource created by the template controller. We don't
+			// want to ask that each renderer mention the scraped secret explictly.
+			continue
+		}
 		log := log.WithValues(
 			"resourcenamespace", obj.GetNamespace(),
 			"resourcename", obj.GetName(),
@@ -391,6 +484,13 @@ func (r *ResourceReconciler) ApplyState(
 		}
 	}
 
+	if desired.Resources != nil {
+		err := converters.SetStatusForOutputResources(&resource.Status, desired.Resources)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Can't use resource type to update as it will assume the wrong type
 	unst, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource)
 	if err != nil {
@@ -400,7 +500,6 @@ func (r *ResourceReconciler) ApplyState(
 	u := &unstructured.Unstructured{Object: unst}
 
 	_, err = r.Dynamic.Resource(r.GVR).Namespace(req.Namespace).UpdateStatus(ctx, u, v1.UpdateOptions{})
-
 	if err != nil {
 		log.Error(err, "failed to update resource status for resource")
 		return err
@@ -410,20 +509,44 @@ func (r *ResourceReconciler) ApplyState(
 	return nil
 }
 
+func outputResourceToKubernetesObject(namespace string, outputResource outputresource.OutputResource) (client.Object, error) {
+	obj, ok := outputResource.Resource.(client.Object)
+	if !ok {
+		err := fmt.Errorf("resource is not a kubernetes resource, was: %T", outputResource.Resource)
+		log.Error(err, "failed to render resources for resource")
+		return nil, err
+	}
+
+	// TODO: configure all of the metadata at the top-level
+	obj.SetNamespace(namespace)
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[kubernetes.AnnotationLocalID] = outputResource.LocalID
+	obj.SetAnnotations(annotations)
+
+	return obj, nil
+}
+
 func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace string, id azresources.ResourceID) (*renderers.RendererDependency, error) {
 	// Find the Kubernetes resource based on the resourceID.
 	if len(id.Types) < 3 {
 		return nil, fmt.Errorf("dependency %q is not a radius resource", id)
 	}
 
-	resourceType := id.Types[2]
+	kind, ok := armtemplate.GetKindFromArmType(id.Types[2].Type)
+	if !ok {
+		return nil, fmt.Errorf("kind does not exist for id %q", id)
+	}
+
 	unst := &unstructured.Unstructured{}
 
 	// TODO determine this correctly
 	unst.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "radius.dev",
-		Version: "v1alpha3",
-		Kind:    armtemplate.GetKindFromArmType(resourceType.Type),
+		Group:   radiusv1alpha3.GroupVersion.Group,
+		Version: radiusv1alpha3.GroupVersion.Version,
+		Kind:    kind,
 	})
 
 	err := r.Client.Get(ctx, client.ObjectKey{
@@ -465,10 +588,10 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 		outputResources[localID] = resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
 			Data: resourcemodel.KubernetesIdentity{
-				Kind:       outputResource.Kind,
-				APIVersion: outputResource.APIVersion,
-				Name:       outputResource.Name,
-				Namespace:  outputResource.Namespace,
+				Kind:       outputResource.Resource.Kind,
+				APIVersion: outputResource.Resource.APIVersion,
+				Name:       outputResource.Resource.Name,
+				Namespace:  outputResource.Resource.Namespace,
 			},
 		}
 	}
@@ -556,4 +679,51 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func extractApplicationKey(obj client.Object) []string {
 	return []string{obj.GetAnnotations()[kubernetes.LabelRadiusApplication]}
+}
+
+func (r *ResourceReconciler) StatusProvisioned(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
+	r.Log.Info("updating status to provisioned")
+
+	resource.Status.Conditions = []metav1.Condition{}
+	resource.Status.ObservedGeneration = resource.Generation
+	resource.Status.Phrase = "Provisioned"
+	newCondition := metav1.Condition{
+		Status:             metav1.ConditionUnknown,
+		Type:               conditionType,
+		Reason:             "Provisioned",
+		Message:            "provisioned resource",
+		ObservedGeneration: resource.Generation,
+	}
+
+	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)
+}
+
+func (r *ResourceReconciler) StatusDeployed(ctx context.Context, resource *radiusv1alpha3.Resource, unst *unstructured.Unstructured, conditionType string) {
+	r.Log.Info("updating status to deployed")
+	resource.Status.Phrase = "Deployed"
+
+	newCondition := metav1.Condition{
+		Status:             metav1.ConditionTrue,
+		Type:               conditionType,
+		Reason:             "Deployed",
+		Message:            "deployed resource",
+		ObservedGeneration: resource.Generation,
+	}
+
+	meta.SetStatusCondition(&resource.Status.Conditions, newCondition)
+}
+
+func GetHealthStateFromDeployment(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string) {
+	var deployment appsv1.Deployment
+	var healthState string
+	var healthStateErrorDetails string
+
+	if err := r.Get(ctx, types.NamespacedName{Namespace: a.GetNamespace(), Name: a.GetName()}, &deployment); err != nil {
+		healthState = healthcontract.HealthStateUnhealthy
+		healthStateErrorDetails = err.Error()
+	} else {
+		healthState, healthStateErrorDetails = healthhandlers.GetHealthStateFromDeploymentStatus(&deployment)
+	}
+
+	return healthState, healthStateErrorDetails
 }

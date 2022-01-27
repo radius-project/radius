@@ -3,7 +3,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
   //SAMPLE
   //BUS
-  resource sbq 'azure.com.ServiceBusQueueComponent' = {
+  resource sbq 'azure.com.ServiceBusQueue' = {
     name: 'sbq'
     properties: {
       managed: true
@@ -12,7 +12,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
   //BUS
   //SENDER
-  resource sender 'ContainerComponent' = {
+  resource sender 'Container' = {
     name: 'sender'
     properties: {
       container: {
@@ -35,7 +35,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //SAMPLE
 
   //RECEIVER
-  resource receiver 'ContainerComponent' = {
+  resource receiver 'Container' = {
     name: 'receiver'
     properties: {
       container: {

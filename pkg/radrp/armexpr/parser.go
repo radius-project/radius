@@ -13,7 +13,7 @@ import (
 	"unicode/utf8"
 )
 
-func IsStandardARMExpression(text string) (bool, error) {
+func IsARMExpression(text string) (bool, error) {
 	if !utf8.ValidString(text) {
 		return false, errors.New("input is not valid utf8")
 	}
@@ -25,27 +25,13 @@ func IsStandardARMExpression(text string) (bool, error) {
 	return false, nil
 }
 
-func IsARMExpression(text string) (bool, error) {
-	if !utf8.ValidString(text) {
-		return false, errors.New("input is not valid utf8")
-	}
-
-	if strings.HasPrefix(text, "[[") && strings.HasSuffix(text, "]") {
-		return true, nil
-	} else if strings.HasPrefix(text, "[") && strings.HasSuffix(text, "]") {
-		return true, nil
-	}
-
-	return false, nil
-}
-
 // Parse parses an ARM expression from a string.
 func Parse(text string) (*SyntaxTree, error) {
 	// The input string is expected to use either the form:
 	//
-	// [reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'app', 'backend')).bindings.web]'
+	// [reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Containers', 'radius', 'app', 'backend')).bindings.web]'
 	// OR
-	// '[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Components', 'radius', 'app', 'backend')).bindings.web]'
+	// '[[reference(resourceId('Microsoft.CustomProviders/resourceProviders/Applications/Containers', 'radius', 'app', 'backend')).bindings.web]'
 	//
 	// That is, we parse ARM's expression syntax, but also accecpt it with an extra '[' in the front. This allows us escape expresssions and pass
 	// them through the deployment engine.

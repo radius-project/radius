@@ -1,0 +1,4 @@
+(root).id: Invalid type. Expected: string, given: integer
+(root).name: Invalid type. Expected: string, given: integer
+(root).properties.kind: properties.kind must be one of the following: "pubsub.azure.servicebus"
+(root).properties: Additional property extra is not allowed

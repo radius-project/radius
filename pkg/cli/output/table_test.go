@@ -147,11 +147,9 @@ func Test_convertToStruct(t *testing.T) {
 		},
 	}
 
-	formatter := &TableFormatter{}
-
 	for _, input := range inputs {
 		t.Run(input.Name, func(t *testing.T) {
-			actual, err := formatter.convertToSlice(input.Input)
+			actual, err := convertToSlice(input.Input)
 			if input.Success {
 				require.NoError(t, err)
 				require.Equal(t, input.Expected, actual)

@@ -5,12 +5,14 @@
 
 package mongodbv1alpha3
 
-import "github.com/Azure/radius/pkg/azure/azresources"
+import "github.com/project-radius/radius/pkg/azure/azresources"
 
 const (
-	ResourceType          = "mongodb.com.MongoDBComponent"
+	ResourceType          = "mongo.com.MongoDatabase"
 	ConnectionStringValue = "connectionString"
 	DatabaseValue         = "database"
+	UsernameStringValue   = "username"
+	PasswordValue         = "password"
 )
 
 var CosmosMongoResourceType = azresources.KnownType{

@@ -12,20 +12,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/backend/deployment"
-	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
 var ErrUnsupportedResourceType = errors.New("unsupported resource type")
 
-//go:generate mockgen -destination=./mock_resourceprovider.go -package=resourceprovider -self_package github.com/Azure/radius/pkg/radrp/frontend/resourceprovider github.com/Azure/radius/pkg/radrp/frontend/resourceprovider ResourceProvider
+//go:generate mockgen -destination=./mock_resourceprovider.go -package=resourceprovider -self_package github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider ResourceProvider
 
 // ResourceProvider defines the business logic of the resource provider for Radius.
 type ResourceProvider interface {
@@ -44,6 +44,8 @@ type ResourceProvider interface {
 	ListSecrets(ctx context.Context, input ListSecretsInput) (rest.Response, error)
 
 	ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
+
+	GetSwaggerDoc(ctx context.Context) (rest.Response, error)
 }
 
 // NewResourceProvider creates a new ResourceProvider.
@@ -78,7 +80,16 @@ func (r *rp) ListApplications(ctx context.Context, id azresources.ResourceID) (r
 
 	output := ApplicationResourceList{}
 	for _, item := range items {
-		output.Value = append(output.Value, NewRestApplicationResource(item))
+		applicationID, err := azresources.Parse(item.ID)
+		if err != nil {
+			return nil, err
+		}
+		applicationStatus, err := r.computeApplicationHealthState(ctx, applicationID)
+		if err != nil {
+			return nil, err
+		}
+		applicationResource := NewRestApplicationResource(item, applicationStatus)
+		output.Value = append(output.Value, applicationResource)
 	}
 
 	return rest.NewOKResponse(output), nil
@@ -97,8 +108,48 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 		return nil, err
 	}
 
-	output := NewRestApplicationResource(item)
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	output := NewRestApplicationResource(item, applicationStatus)
+	// Update the status as per computed aggregate values
 	return rest.NewOKResponse(output), nil
+}
+
+// computeApplicationHealthState aggregates the application level health based on resource health
+// Note: Health for Azure resources has not been implemented yet and this computation does not take
+// Azure resources used by the Radius app  into account.
+func (r *rp) computeApplicationHealthState(ctx context.Context, id azresources.ResourceID) (rest.ApplicationStatus, error) {
+	// List radius resources
+	radiusResources, err := r.db.ListAllV3ResourcesByApplication(ctx, id, id.Name())
+	if err != nil {
+		return rest.ApplicationStatus{}, err
+	}
+
+	outputResourceList := RadiusResourceList{}
+	for _, radiusResource := range radiusResources {
+		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResource(radiusResource))
+	}
+	// Aggregate application status over all resource statuses
+	statuses := map[string]rest.ResourceStatus{}
+	for _, resource := range outputResourceList.Value {
+		statuses[resource.Name] = resource.Properties["status"].(rest.ResourceStatus)
+	}
+
+	// Health and Provisioning State for Azure resources is not implemented and therefore
+	// not accounted for in the aggregate health
+	// https: //github.com/Azure/radius/issues/1683
+
+	aggregateHealthState, aggregateHealthStateErrorDetails := rest.GetUserFacingAppHealthState(statuses)
+	aggregateProvisiongState, aggregateProvisiongStateErrorDetails := rest.GetUserFacingAppProvisioningState(statuses)
+
+	return rest.ApplicationStatus{
+		ProvisioningState:        aggregateProvisiongState,
+		ProvisioningErrorDetails: aggregateProvisiongStateErrorDetails,
+		HealthState:              aggregateHealthState,
+		HealthErrorDetails:       aggregateHealthStateErrorDetails,
+	}, nil
 }
 
 func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {
@@ -119,7 +170,11 @@ func (r *rp) UpdateApplication(ctx context.Context, id azresources.ResourceID, b
 		return nil, err
 	}
 
-	output := NewRestApplicationResource(item)
+	applicationStatus, err := r.computeApplicationHealthState(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	output := NewRestApplicationResource(item, applicationStatus)
 	if created {
 		return rest.NewCreatedResponse(output), nil
 	}
@@ -147,19 +202,50 @@ func (r *rp) DeleteApplication(ctx context.Context, id azresources.ResourceID) (
 }
 
 func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-	items, err := r.db.ListAllV3ResourcesByApplication(ctx, id)
-	if err == db.ErrNotFound {
-		// It's possible that the application does not exist.
-		return rest.NewNotFoundResponse(id), nil
-	} else if err != nil {
-		return nil, err
-	}
-	output := RadiusResourceList{}
-	for _, item := range items {
-		output.Value = append(output.Value, NewRestRadiusResource(item))
+	// Format of request url/id for list resources is:
+	// /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource
+
+	// Validate request url has correct application resource type
+	applicationID := id.Truncate()
+	err := r.validateApplicationType(applicationID)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	return rest.NewOKResponse(output), nil
+	// Validate the application exists
+	_, err = r.db.GetV3Application(ctx, applicationID)
+	if err != nil {
+		if err == db.ErrNotFound {
+			return rest.NewNotFoundResponse(id), nil
+		}
+		return nil, err
+	}
+
+	applicationName := applicationID.Name()
+	applicationSubscriptionID := id.SubscriptionID
+	applicationResourceGroup := id.ResourceGroup
+
+	// List radius resources
+	radiusResources, err := r.db.ListAllV3ResourcesByApplication(ctx, id, applicationName)
+	if err != nil {
+		return nil, err
+	}
+
+	// List non-radius azure resources that are referenced from the application
+	azureResources, err := r.db.ListAllAzureResourcesForApplication(ctx, applicationName, applicationSubscriptionID, applicationResourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	outputResourceList := RadiusResourceList{}
+	for _, radiusResource := range radiusResources {
+		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResource(radiusResource))
+	}
+	for _, azureResource := range azureResources {
+		outputResourceList.Value = append(outputResourceList.Value, NewRestRadiusResourceFromAzureResource(azureResource))
+	}
+
+	return rest.NewOKResponse(outputResourceList), nil
 }
 
 func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
@@ -171,7 +257,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	// GET ..../Application/{applicationName}/{resourceType}
 	// GET ..../Application/{applicationName}/{resourceType}/{resourceName}
 
-	// // ..../Application/hello/ContainerComponent
+	// // ..../Application/hello/Container
 	items, err := r.db.ListV3Resources(ctx, id)
 
 	if err == db.ErrNotFound {
@@ -392,6 +478,10 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 	// 3. Operation is still processing.
 	// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
 	return rest.NewAcceptedAsyncResponse(output, id.ID), nil
+}
+
+func (r *rp) GetSwaggerDoc(ctx context.Context) (rest.Response, error) {
+	return rest.NewOKResponse([]byte{}), nil
 }
 
 func (r *rp) ProcessDeploymentBackground(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) {

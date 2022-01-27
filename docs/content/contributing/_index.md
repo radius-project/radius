@@ -172,7 +172,7 @@ Example user-facing representation (Future):
 ```sh
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'app'
-  resource website 'ContainerComponent' = {
+  resource website 'Container' = {
     name: 'website'
     container: {
       image: 'radiusteam/mywebsite:latest'
@@ -194,7 +194,7 @@ Translated to ARM:
       }
     },
     {
-      "type": "Microsoft.Radius/application/containerComponent",
+      "type": "Microsoft.Radius/application/Container",
       "apiVersion": "2020-01-01",
       "name": "website",
       "dependsOn": [
@@ -227,7 +227,7 @@ Translated to Kubernetes:
       }
     },
     {
-      "kind": "ContainerComponent",
+      "kind": "Container",
       "apiVersion": "radius.dev/v1alpha3",
       "metadata": {
         "name": "app-website",
@@ -488,7 +488,7 @@ We currrently build an ordering of all components and apply their desired state 
 {{% alert title="🚀 Future State 🚀" color="success" %}}
 In the future we will use the output of the rendering phase to apply state in the dependency order of the output resources, not the dependency order of the components.
 
-[This issue](https://github.com/Azure/radius/issues/300) describes the future state.
+[This issue](https://github.com/project-radius/radius/issues/300) describes the future state.
 {{% /alert %}}
 
 ### Hosting platform

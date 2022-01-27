@@ -8,10 +8,10 @@ package redisv1alpha3
 import (
 	"testing"
 
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 )
 
@@ -85,6 +85,50 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	expectedComputedValues, expectedSecretValues := expectedComputedAndSecretValues()
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 	require.Equal(t, expectedSecretValues, output.SecretValues)
+}
+
+func Test_Azure_Render_Unmanaged_User_Secrets(t *testing.T) {
+	ctx := createContext(t)
+	renderer := AzureRenderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"host": "localhost",
+			"port": 42,
+			"secrets": map[string]string{
+				"password":         "deadbeef",
+				"connectionString": "admin:deadbeef@localhost:42",
+			},
+		},
+	}
+
+	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	require.NoError(t, err)
+
+	require.Len(t, output.Resources, 0)
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		"host": {
+			Value: "localhost",
+		},
+		"port": {
+			Value: "42",
+		},
+		"username": {
+			Value: "",
+		},
+		"password": {
+			Value: "deadbeef",
+		},
+		"connectionString": {
+			Value: "admin:deadbeef@localhost:42",
+		},
+	}
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+	require.Equal(t, 0, len(output.SecretValues))
 }
 
 func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {

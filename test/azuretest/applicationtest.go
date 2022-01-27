@@ -9,9 +9,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/test/radcli"
-	"github.com/Azure/radius/test/testcontext"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/testcontext"
+	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
@@ -193,7 +193,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	} else {
 		t.Logf("validating deletion of resources for %s", at.Description)
 		for _, ns := range at.CollectAllNamespaces() {
-			validation.ValidateNoPodsInNamespace(ctx, t, at.Options.K8sClient, ns)
+			validation.ValidateNoPodsInApplication(ctx, t, at.Options.K8sClient, ns, at.Application)
 		}
 		t.Logf("finished deletion of resources for %s", at.Description)
 	}

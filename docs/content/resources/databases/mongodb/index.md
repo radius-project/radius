@@ -21,13 +21,13 @@ Mongo databases can be either managed by Radius or provided by the user:
 {{< tabs Radius-managed User-managed >}}
 
 {{% codetab %}}
-Simply create a 'mongodb.com.MongoDBComponent' and specify `managed: true`:
+Simply create a 'mongo.com.MongoDatabase' and specify `managed: true`:
 
 {{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
 {{% /codetab %}}
 
 {{% codetab %}}
-Begin by defining a CosmosDB with Mongo API in Bicep, either as part of the template or reference an `existing` resource, and then specify it as part of the 'mongodb.com.MongoDBComponent':
+Begin by defining a CosmosDB with Mongo API in Bicep, either as part of the template or reference an `existing` resource, and then specify it as part of the 'mongo.com.MongoDatabase':
 
 {{< rad file="snippets/user-managed.bicep" embed=true marker="//SAMPLE" >}}
 {{% /codetab %}}

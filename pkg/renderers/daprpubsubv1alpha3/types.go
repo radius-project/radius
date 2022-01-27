@@ -6,11 +6,11 @@
 package daprpubsubv1alpha3
 
 import (
-	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 )
 
 const (
-	ResourceType = "dapr.io.PubSubTopicComponent"
+	ResourceType = "dapr.io.PubSubTopic"
 )
 
 var TopicResourceType = azresources.KnownType{
@@ -24,11 +24,4 @@ var TopicResourceType = azresources.KnownType{
 			Name: "*",
 		},
 	},
-}
-
-type Properties struct {
-	Kind     string `json:"kind"`
-	Managed  bool   `json:"managed"`
-	Resource string `json:"resource"`
-	Topic    string `json:"topic"`
 }

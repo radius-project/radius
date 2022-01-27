@@ -8,6 +8,7 @@ package output
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 )
 
@@ -27,11 +28,45 @@ type Formatter interface {
 }
 
 func NewFormatter(format string) (Formatter, error) {
-	if strings.EqualFold(format, FormatJson) {
+	normalized := strings.ToLower(strings.TrimSpace(format))
+	switch normalized {
+	case FormatJson:
 		return &JSONFormatter{}, nil
-	} else if strings.EqualFold(format, FormatTable) {
+	case FormatList:
+		return &ListFormatter{}, nil
+	case FormatTable:
 		return &TableFormatter{}, nil
-	} else {
+	default:
 		return nil, fmt.Errorf("unsupported format %s", format)
 	}
+}
+
+func convertToSlice(obj interface{}) ([]interface{}, error) {
+	// We use reflection here because we're building a table and thus need to handle both scalars (structs)
+	// and slices/arrays of structs.
+	var vv []interface{}
+	v := reflect.ValueOf(obj)
+
+	// Follow pointers at the top level
+	for v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return nil, fmt.Errorf("value is nil")
+		}
+
+		v = v.Elem()
+	}
+
+	switch v.Kind() {
+	case reflect.Struct, reflect.Interface:
+		vv = append(vv, v.Interface())
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			item := v.Index(i)
+			vv = append(vv, item.Interface())
+		}
+	default:
+		return nil, fmt.Errorf("unsupported value kind: %v", v.Kind())
+	}
+
+	return vv, nil
 }

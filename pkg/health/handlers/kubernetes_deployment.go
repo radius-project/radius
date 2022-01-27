@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +37,7 @@ type kubernetesDeploymentHandler struct {
 	k8s kubernetes.Interface
 }
 
-func getHealthStateFromDeploymentStatus(d *appsv1.Deployment) (string, string) {
+func GetHealthStateFromDeploymentStatus(d *appsv1.Deployment) (string, string) {
 	healthState := healthcontract.HealthStateUnhealthy
 	healthStateErrorDetails := "Deployment condition unknown"
 	for _, c := range d.Status.Conditions {
@@ -66,7 +66,7 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 		healthState = healthcontract.HealthStateUnhealthy
 		healthStateErrorDetails = err.Error()
 	} else {
-		healthState, healthStateErrorDetails = getHealthStateFromDeploymentStatus(d)
+		healthState, healthStateErrorDetails = GetHealthStateFromDeploymentStatus(d)
 	}
 
 	// Notify initial health state transition. This needs to be done explicitly since
@@ -112,7 +112,7 @@ func onDeploymentEvent(ctx context.Context, event string, obj interface{}, regis
 	switch event {
 	case DeploymentEventAdd:
 	case DeploymentEventUpdate:
-		healthState, healthStateErrorDetails = getHealthStateFromDeploymentStatus(deployment)
+		healthState, healthStateErrorDetails = GetHealthStateFromDeploymentStatus(deployment)
 	case DeploymentEventDelete:
 		healthState = healthcontract.HealthStateUnhealthy
 		healthStateErrorDetails = "Deployment deleted"

@@ -13,9 +13,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/cli/armtemplate/providers"
-	"github.com/Azure/radius/pkg/radrp/armexpr"
+	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
+	"github.com/project-radius/radius/pkg/radrp/armexpr"
 )
 
 type DeploymentEvaluator struct {
@@ -24,17 +25,123 @@ type DeploymentEvaluator struct {
 	Options   TemplateOptions
 	Deployed  map[string]map[string]interface{}
 	Variables map[string]interface{}
+	Outputs   map[string]map[string]interface{}
 
 	CustomActionCallback func(id string, apiVersion string, action string, payload interface{}) (interface{}, error)
 
 	// Intermediate expression evaluation state
 	Value interface{}
 
-	// A providers.Store can provide more resources that we don't deploy ourselves.
-	ProviderStore providers.Store
+	Providers map[string]providers.Provider
+
+	// PreserveExpressions is a stateful property telling the evaluator to skip over expressions when
+	// processing. This is used when doing a 'first-pass' to evaluate resources before deployment starts.
+	preserveExpressions bool
 }
 
 var _ armexpr.Visitor = &DeploymentEvaluator{}
+
+func (eva *DeploymentEvaluator) VisitResource(input map[string]interface{}) (Resource, error) {
+	// In order to produce a resource we need to process ARM expressions using the "loosely-typed" representation
+	// and then read it into an object.
+
+	// Special case for evaluating resource bodies
+	evaluated := map[string]interface{}{}
+	for k, v := range input {
+		eva.preserveExpressions = !eva.Options.EvaluatePropertiesNode && k == "properties"
+
+		v, err := eva.VisitValue(v)
+		if err != nil {
+			return Resource{}, err
+		}
+
+		evaluated[k] = v
+		eva.preserveExpressions = false
+	}
+
+	name, ok := evaluated["name"].(string)
+	if !ok {
+		return Resource{}, errors.New("resource does not contain a name")
+	}
+
+	t, ok := evaluated["type"].(string)
+	if !ok {
+		return Resource{}, errors.New("resource does not contain a type")
+	}
+
+	apiVersion, ok := evaluated["apiVersion"].(string)
+	if !ok {
+		if !strings.Contains(t, "@") {
+			return Resource{}, fmt.Errorf("resource %#v does not contain an apiVersion", input)
+		}
+		// This is a K8s resource, whom API version is embedded in type string.
+		// For example: "kubernetes.core/Service@v1", which translates to
+		// - type=kubernetes.core/Service, and
+		// - apiVersion=v1.
+		tokens := strings.SplitN(t, "@", 2)
+		apiVersion = tokens[1]
+		t = tokens[0]
+	}
+
+	providerKey := ""
+	if importSpec, ok := evaluated["import"].(map[string]interface{}); ok {
+		providerKey, _ = importSpec["provider"].(string)
+	}
+	var providerPtr *Provider
+	if provider, hasProvider := eva.Template.Imports[providerKey]; hasProvider {
+		providerPtr = &provider
+	}
+	dependsOn := []string{}
+	obj, ok := evaluated["dependsOn"]
+	if ok {
+		ds, ok := obj.([]interface{})
+		if !ok {
+			return Resource{}, errors.New("dependsOn is the wrong type")
+		}
+
+		for _, d := range ds {
+			dt, ok := d.(string)
+			if !ok {
+				return Resource{}, errors.New("dependsOn is the wrong type")
+			}
+
+			dependsOn = append(dependsOn, dt)
+		}
+	}
+
+	nameParts := strings.Split(name, "/")
+	args := []interface{}{}
+	for _, part := range nameParts {
+		args = append(args, part)
+	}
+
+	id, err := eva.EvaluateResourceID(t, args)
+	if err != nil {
+		return Resource{}, err
+	}
+
+	// remove properties that are not part of the body
+	body := map[string]interface{}{}
+	for k, v := range input {
+		body[k] = v
+	}
+
+	delete(body, "name")
+	delete(body, "type")
+	delete(body, "apiVersion")
+	delete(body, "dependsOn")
+	delete(body, "import")
+	result := Resource{
+		ID:         id,
+		Type:       t,
+		APIVersion: apiVersion,
+		Name:       name,
+		DependsOn:  dependsOn,
+		Body:       body,
+		Provider:   providerPtr,
+	}
+	return result, nil
+}
 
 func (eva *DeploymentEvaluator) VisitValue(input interface{}) (interface{}, error) {
 	str, ok := input.(string)
@@ -82,7 +189,11 @@ func (eva *DeploymentEvaluator) VisitValue(input interface{}) (interface{}, erro
 }
 
 func (eva *DeploymentEvaluator) VisitString(input string) (interface{}, error) {
-	isExpr, err := armexpr.IsStandardARMExpression(input)
+	if eva.preserveExpressions {
+		return input, nil
+	}
+
+	isExpr, err := armexpr.IsARMExpression(input)
 	if err != nil {
 		return "", err
 	} else if !isExpr {
@@ -101,6 +212,54 @@ func (eva *DeploymentEvaluator) VisitString(input string) (interface{}, error) {
 	}
 
 	return eva.Value, nil
+}
+
+func (eva *DeploymentEvaluator) VisitResourceBody(resource Resource) (map[string]interface{}, error) {
+	// For a nested deployment we need special evaluation rules, just evaluate the
+	// parameters.
+	if resource.Type == DeploymentResourceType {
+		obj, ok := resource.Body["properties"]
+		if !ok {
+			return nil, fmt.Errorf("deployment must define properties, got %v", resource.Body)
+		}
+
+		properties, ok := obj.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("deployment properties should be a map, got %T", obj)
+		}
+
+		obj, ok = properties["parameters"]
+		if !ok {
+			// Parameters can be optional
+			return resource.Body, nil
+		}
+
+		parameters, ok := obj.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("deployment parameters should be a map, got %T", obj)
+		}
+
+		parameters, err := eva.VisitMap(parameters)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate deployment parameters: %w", err)
+		}
+
+		propertiesCopy := map[string]interface{}{}
+		for k, v := range properties {
+			propertiesCopy[k] = v
+		}
+		propertiesCopy["parameters"] = parameters
+
+		output := map[string]interface{}{}
+		for k, v := range resource.Body {
+			output[k] = v
+		}
+
+		output["properties"] = propertiesCopy
+		return output, nil
+	}
+
+	return eva.VisitMap(resource.Body)
 }
 
 func (eva *DeploymentEvaluator) VisitMap(input map[string]interface{}) (map[string]interface{}, error) {
@@ -260,20 +419,27 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 		eva.Value = result
 		return nil
 	} else if name == "reference" {
-		var result interface{}
-		var err error
-		switch len(args) {
-		case 1:
-			result, err = eva.EvaluateReference(args[0], "")
-		case 3:
-			if ver, ok := args[1].(string); ok {
-				result, err = eva.EvaluateReference(args[0], ver)
-			} else {
-				err = fmt.Errorf("expect version %v to be string, has %T", args[1], args[1])
-			}
-		default:
-			return fmt.Errorf("exact 1 or 3 arguments is required for %s", "reference")
+		if len(args) < 1 || len(args) > 3 {
+			return fmt.Errorf("between 1-3 arguments are required for %s", "reference")
 		}
+
+		id, err := eva.bindStringArgument(args, 0, nil, "reference", "id")
+		if err != nil {
+			return err
+		}
+
+		version, err := eva.bindStringArgument(args, 1, to.StringPtr(""), "reference", "apiVersion")
+		if err != nil {
+			return err
+		}
+
+		str, err := eva.bindStringArgument(args, 2, to.StringPtr(""), "reference", "full")
+		if err != nil {
+			return err
+		}
+
+		full := strings.EqualFold(str, "Full")
+		result, err := eva.EvaluateReference(id, version, full)
 		if err != nil {
 			return err
 		}
@@ -286,6 +452,17 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 		}
 
 		result, err := eva.EvaluateResourceID(args[0], args[1:])
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
+		return nil
+	} else if name == "split" {
+		if len(args) != 2 {
+			return fmt.Errorf("exactly 2 arguments are required for %s", "split")
+		}
+		result, err := eva.EvaluateSplit(args[0].(string), args[1].(string))
 		if err != nil {
 			return err
 		}
@@ -311,10 +488,22 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 		return nil
 	} else if name == "variables" {
 		if len(args) != 1 {
-			return fmt.Errorf("exactle 1 argument is required for %s", "variables")
+			return fmt.Errorf("exactly 1 argument is required for %s", "variables")
 		}
 
 		result, err := eva.EvaluateVariable(args[0])
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
+		return nil
+	} else if name == "last" {
+		if len(args) != 1 {
+			return fmt.Errorf("exactly 1 argument is required for %s", "last")
+		}
+
+		result, err := eva.EvaluateLast(args[0])
 		if err != nil {
 			return err
 		}
@@ -395,19 +584,32 @@ func (eva *DeploymentEvaluator) EvaluateParameter(name string) (interface{}, err
 	return nil, fmt.Errorf("parameter %q is not defined by the template", name)
 }
 
-func (eva *DeploymentEvaluator) EvaluateReference(id interface{}, version string) (map[string]interface{}, error) {
+func (eva *DeploymentEvaluator) EvaluateReference(id interface{}, version string, full bool) (map[string]interface{}, error) {
 	obj, ok := eva.Deployed[id.(string)]
 	if !ok {
-		if eva.ProviderStore == nil {
-			return nil, fmt.Errorf("no resource matches id: %s", id)
+		parsed, err := azresources.Parse(id.(string))
+		if err != nil {
+			return nil, err
 		}
-		// TODO(tcnghia): Use a better way to look up the extension by the ref.
-		//                For now, Kubernetes is the only extension, so this is probably ok.
-		strId, _ := id.(string)
-		return eva.ProviderStore.GetDeployedResource(eva.Context, strId, version)
+
+		// TODO(tcnghia/rynowak): Right now we don't use symbolic references so we have to
+		// hack this based on the ARM resource type. Long-term we will be able to use symbolic
+		// references to find the provider by its ID.
+		provider, err := GetProvider(eva.Providers, "", "", parsed.Type())
+		if err != nil {
+			return nil, err
+		}
+
+		obj, err = provider.GetDeployedResource(eva.Context, id.(string), version)
+		if err != nil {
+			return nil, err
+		}
 	}
-	// Note: we assume 'full' mode for references
-	// see: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/template-functions-resource#reference
+
+	if full {
+		return obj, nil
+	}
+
 	properties, ok := obj["properties"].(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("value did not contain property '%s', was: %+v", "properties", obj)
@@ -444,8 +646,28 @@ func (eva *DeploymentEvaluator) EvaluateResourceID(resourceType interface{}, nam
 	return id, nil
 }
 
+func (eva *DeploymentEvaluator) EvaluateSplit(input string, delimiter string) ([]interface{}, error) {
+	strs := strings.Split(input, delimiter)
+
+	result := []interface{}{}
+	for _, s := range strs {
+		result = append(result, s)
+	}
+
+	return result, nil
+}
+
 func (eva *DeploymentEvaluator) EvaluateString(input interface{}) string {
 	return fmt.Sprintf("%v", input)
+}
+
+func (eva *DeploymentEvaluator) EvaluateLast(input interface{}) (interface{}, error) {
+	value, _ := input.([]interface{})
+	if len(value) == 0 {
+		return nil, errors.New("last(l) is undefined when l is empty")
+	}
+
+	return value[len(value)-1], nil
 }
 
 func (eva *DeploymentEvaluator) EvaluateVariable(variable interface{}) (interface{}, error) {
@@ -455,4 +677,23 @@ func (eva *DeploymentEvaluator) EvaluateVariable(variable interface{}) (interfac
 	}
 
 	return value, nil
+}
+
+func (eva *DeploymentEvaluator) bindStringArgument(args []interface{}, index int, defaultValue *string, function string, parameter string) (string, error) {
+	if len(args) <= index && defaultValue == nil {
+		return "", fmt.Errorf("the %s function requires at least %d arguments", function, index+1)
+	} else if len(args) <= index && defaultValue != nil {
+		return *defaultValue, nil
+	}
+
+	return eva.requireString(args[index], function, parameter)
+}
+
+func (eva *DeploymentEvaluator) requireString(value interface{}, function string, parameter string) (string, error) {
+	str, ok := value.(string)
+	if !ok {
+		return "", fmt.Errorf("the %s parameter to the function %s expects a string, got %T", parameter, function, value)
+	}
+
+	return str, nil
 }

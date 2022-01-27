@@ -6,5 +6,5 @@
 package daprhttproutev1alpha3
 
 const (
-	ResourceType = "dapr.io.DaprHttpRoute"
+	ResourceType = "dapr.io.InvokeHttpRoute"
 )

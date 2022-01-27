@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/radius/pkg/process"
+	"github.com/project-radius/radius/pkg/process"
 	"github.com/stretchr/testify/require"
 )
 

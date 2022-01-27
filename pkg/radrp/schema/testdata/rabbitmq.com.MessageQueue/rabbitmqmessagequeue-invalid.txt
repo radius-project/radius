@@ -1,0 +1,6 @@
+(root).id: Invalid type. Expected: string, given: integer
+(root).name: Invalid type. Expected: string, given: integer
+(root).properties: queue is required
+(root).properties.managed: Invalid type. Expected: boolean, given: string
+(root).properties.secrets.connectionString: Invalid type. Expected: string, given: integer
+(root).properties.secrets: Additional property additionalProperty is not allowed

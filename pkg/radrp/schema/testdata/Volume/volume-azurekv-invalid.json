@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "managed": true,
+    "kind": "azure.com.keyvault",
+    "secrets": {
+      "mysecret-1": {
+        "version": "1"
+      },
+      "mysecret-2": {
+        "name": "mysecret-2",
+        "encoding": "bad"
+      }
+    },
+    "keys": {
+      "mykey-1": {
+        "version": "1"
+      },
+      "mykey-2": {
+        "name": "key2"
+      }
+    },
+    "certificates": {
+      "mycert-1": {
+        "value": "certificate"
+      },
+      "mycert-2": {
+        "name": "cert2"
+      },
+      "mycert-3": {
+        "name": "mycert-3",
+        "format": "bad",
+        "value": "bad"
+      }
+    }
+  }
+}

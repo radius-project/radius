@@ -43,7 +43,7 @@
         },
         "siteName": {
             "type": "string",
-            "defaultValue": "[concat('radius-rp-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-rp-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of your Web Site."
             }
@@ -64,7 +64,7 @@
         },
         "accountName": {
             "type": "string",
-            "defaultValue": "[concat('radius-rp-', uniquestring(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-rp-', uniquestring(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The unique name of the cosmos db account."
             }
@@ -78,7 +78,7 @@
         },
         "clusterName": {
             "type": "string",
-            "defaultValue": "[concat('radius-aks-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-aks-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of the Managed Cluster resource."
             }
@@ -99,7 +99,7 @@
         },
         "deploymentScriptIdentityName": {
             "type": "string",
-            "defaultValue": "[concat('radius-deployment-id-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-deployment-id-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The identity name to use for the deployment script."
             }
@@ -363,6 +363,14 @@
                                 "podIdentityProfile": {
                                     "enabled": true
                                 },
+                                "addonProfiles": {
+                                    "azureKeyvaultSecretsProvider": {
+                                        "enabled": true,
+                                        "config": {
+                                            "enableSecretRotation": "true"
+                                        }
+                                    }
+                                },
                                 "networkProfile": {
                                     "networkPlugin": "azure"
                                 }
@@ -610,21 +618,6 @@
                                 "resourceTypes": [
                                     {
                                         "name": "Applications",
-                                        "routingType": "Proxy",
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-                                    },
-                                    {
-                                        "name": "Applications/Components",
-                                        "routingType": "Proxy",
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-                                    },
-                                    {
-                                        "name": "Applications/Scopes",
-                                        "routingType": "Proxy",
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-                                    },
-                                    {
-                                        "name": "Applications/Deployments",
                                         "routingType": "Proxy",
                                         "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
                                     }

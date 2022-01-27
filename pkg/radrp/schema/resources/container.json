@@ -1,0 +1,347 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "definitions": {
+    "ContainerResource": {
+      "description": "The radius.dev/Container resource provides an abstraction for a container workload that can be run on any Radius platform",
+      "type": "object",
+      "x-ms-azure-resource": true,
+      "allOf": [
+        {
+          "$ref": "../common-types.json#/definitions/ProxyResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ContainerProperties"
+        }
+      }
+    },
+    "ContainerProperties": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "basic-resource.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "connections": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerConnection"
+          }
+        },
+        "container": {
+          "type": "object",
+          "required": [
+            "image"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "image": {
+              "description": "The registry and image to download and run in your container",
+              "type": "string"
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "ports": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/ContainerPort"
+              }
+            },
+            "readinessProbe": {
+              "$ref": "#/definitions/HealthProbeProperties"
+            },
+            "livenessProbe": {
+              "$ref": "#/definitions/HealthProbeProperties"
+            },
+            "volumes": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/Volume"
+              }
+            }
+          }
+        },
+        "traits": {
+          "type": "array",
+          "description": "Traits spec of the resource",
+          "items": {
+            "$ref": "../traits.json#/definitions/ResourceTrait"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ContainerPort": {
+      "description": "Specifies a listening port for the container",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containerPort"
+      ],
+      "properties": {
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "integer"
+        },
+        "protocol": {
+          "description": "Protocol in use by the port",
+          "type": "string",
+          "enum": [
+            "TCP",
+            "UDP"
+          ]
+        },
+        "provides": {
+          "description": "Specifies a route provided by this port",
+          "type": "string"
+        }
+      }
+    },
+    "Volume": {
+      "description": "Specifies a volume for a container",
+      "type": "object",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/EphemeralVolume"
+        },
+        {
+          "$ref": "#/definitions/PersistentVolume"
+        }
+      ]
+    },
+    "EphemeralVolume": {
+      "description": "Specifies an ephemeral volume for a container",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mountPath",
+        "kind",
+        "managedStore"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Volume kind",
+          "type": "string",
+          "enum": ["ephemeral"]
+        },
+        "mountPath": {
+          "description": "The path where the volume is mounted",
+          "type": "string"
+        },
+        "managedStore": {
+          "description": "Backing store for the ephemeral volume",
+          "type": "string",
+          "enum": [
+            "memory",
+            "disk"
+          ]
+        }
+      }
+    },
+    "PersistentVolume": {
+      "description": "Specifies a persistent volume for a container",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mountPath",
+        "kind",
+        "source"
+      ],
+      "properties": {
+        "kind": {
+          "description": "Volume Kind",
+          "type": "string",
+          "enum": ["persistent"]
+        },
+        "mountPath": {
+          "description": "The path where the volume is mounted",
+          "type": "string"
+        },
+        "rbac": {
+          "description": "Container read/write access to the volume",
+          "type": "string",
+          "enum": [
+            "read",
+            "write"
+          ]
+        },
+        "source": {
+          "description": "The source of the volume",
+          "type": "string"
+        }
+      }
+    },
+    "ContainerConnection": {
+      "description": "Specifies a connection from the container to another resource",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "The kind of connection",
+          "type": "string",
+          "enum": [
+            "azure",
+            "azure.com/KeyVault",
+            "azure.com/ServiceBusQueue",
+            "dapr.io/InvokeHttp",
+            "dapr.io/PubSubTopic",
+            "dapr.io/StateStore",
+            "Grpc",
+            "Http",
+            "microsoft.com/SQL",
+            "mongo.com/MongoDB",
+            "rabbitmq.com/MessageQueue",
+            "redislabs.com/Redis"
+          ]
+        },
+        "source": {
+          "description": "The source of the connection",
+          "type": "string"
+        },
+        "roles": {
+          "description": "RBAC permissions to be assigned on the source resource",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "source"
+      ]
+    },
+    "HealthProbeProperties": {
+      "description": "Properties for readiness/liveness probe",
+      "type": "object",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/HttpGetHealthProbeProperties"
+        },
+        {
+          "$ref": "#/definitions/TcpHealthProbeProperties"
+        },
+        {
+          "$ref": "#/definitions/ExecHealthProbeProperties"
+        }
+      ]
+    },
+    "HttpGetHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["httpGet"]
+        },
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "integer"
+        },
+        "path": {
+          "description": "The route to make the HTTP request on",
+          "type": "string"
+        },
+        "headers": {
+          "description": "Custom HTTP headers to add to the get request",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "containerPort",
+        "path"
+      ]
+    },
+    "TcpHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using TCP",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["tcp"]
+        },
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "integer"
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "containerPort"
+      ]
+    },
+    "ExecHealthProbeProperties": {
+      "description": "Specifies the properties for readiness/liveness probe using an executable",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "Health Probe Kind",
+          "type": "string",
+          "enum": ["exec"]
+        },
+        "command": {
+          "description": "Command to execute to probe readiness/liveness",
+          "type": "string"
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "command"
+      ]
+    }
+  }
+}

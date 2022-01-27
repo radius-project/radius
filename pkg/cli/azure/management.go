@@ -10,12 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"golang.org/x/sync/errgroup"
 )
 
 type ARMManagementClient struct {
@@ -38,7 +40,30 @@ func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context
 		}
 		return nil, err
 	}
-	return &response.RadiusResourceList, err
+	result, err := SortResourceList(response.RadiusResourceList)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, err
+}
+
+func SortResourceList(list radclient.RadiusResourceList) (radclient.RadiusResourceList, error) {
+	sort.Slice(list.Value, func(i, j int) bool {
+		t1 := *list.Value[i].Resource.Type
+		t2 := *list.Value[j].Resource.Type
+
+		n1 := *list.Value[i].Resource.Name
+		n2 := *list.Value[j].Resource.Name
+
+		if t1 != t2 {
+			return t1 < t2
+		}
+
+		return n1 < n2
+
+	})
+	return list, nil
 }
 
 func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient.ApplicationList, error) {
@@ -78,25 +103,45 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 		}
 		return err
 	}
+
+	g, errGroupCtx := errgroup.WithContext(ctx)
 	for _, resource := range resp.RadiusResourceList.Value {
-		types := strings.Split(*resource.Type, "/")
-		resourceType := types[len(types)-1]
-		poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
-			ctx, rg, appName, resourceType, *resource.Name, nil)
-		if err != nil {
-			return err
+
+		if !strings.HasPrefix(*resource.Type, "Microsoft.CustomProviders") {
+			// Only Radius resource types are deleted by Radius RP. Example of a Radius resource type: Microsoft.CustomProviders/mongo.com.MongoDatabase
+			// Connection to Azure resources is returned as a part of radius resource list response, but lifecycle of these resources is not managed by Radius RP and should be explicitly deleted separately.
+			// TODO: "Microsoft.CustomProviders" should be updated to reflect Radius RP name once we move out of custom RP mode:
+			// https://github.com/project-radius/radius/issues/1637
+			continue
 		}
 
-		_, err = poller.PollUntilDone(ctx, radclient.PollInterval)
-		if err != nil {
-			if isNotFound(err) {
-				errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
-					resourceType, *resource.Name, appName, dm.EnvironmentName)
-				return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		r := *resource // prevent loopclouse issues (see https://pkg.go.dev/cmd/vet for more info)
+		g.Go(func() error {
+			types := strings.Split(*r.Type, "/")
+			resourceType := types[len(types)-1]
+			poller, err := radclient.NewRadiusResourceClient(con, sub).BeginDelete(
+				errGroupCtx, rg, appName, resourceType, *r.Name, nil)
+			if err != nil {
+				return err
 			}
-			return err
-		}
+
+			_, err = poller.PollUntilDone(errGroupCtx, radclient.PollInterval)
+			if err != nil {
+				if isNotFound(err) {
+					errorMessage := fmt.Sprintf("Resource %s/%s not found in application '%s' environment '%s'",
+						resourceType, *r.Name, appName, dm.EnvironmentName)
+					return radclient.NewRadiusError("ResourceNotFound", errorMessage)
+				}
+				return err
+			}
+			return nil
+		})
 	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
 	poller, err := radclient.NewApplicationClient(con, sub).BeginDelete(ctx, rg, appName, nil)
 	if err != nil {
 		return err

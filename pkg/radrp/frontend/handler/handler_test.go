@@ -15,16 +15,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/armerrors"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
-	"github.com/Azure/radius/pkg/radrp/frontend/server"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/project-radius/radius/pkg/radrp/frontend/server"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -69,7 +69,7 @@ func start(t *testing.T) *test {
 				}
 
 				return validator, nil
-			})
+			}, "")
 		},
 	}
 

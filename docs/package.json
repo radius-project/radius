@@ -5,11 +5,11 @@
   "main": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Azure/radius.git"
+    "url": "git+https://github.com/project-radius/radius.git"
   },
   "author": "",
   "bugs": {
-    "url": "https://github.com/Azure/radius/issues"
+    "url": "https://github.com/project-radius/radius/issues"
   },
   "homepage": "https://radius.azurewebapp.net",
   "devDependencies": {

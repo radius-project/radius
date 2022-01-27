@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/web/mgmt/web"
+
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/customproviders/mgmt/customproviders"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
@@ -218,6 +219,13 @@ func NewFileSharesClient(subscriptionID string, authorizer autorest.Authorizer) 
 	fc.Authorizer = authorizer
 	fc.PollingDuration = 0
 	return fc
+}
+
+func NewOperationsClient(subscriptionID string, authorizer autorest.Authorizer) resources.DeploymentOperationsClient {
+	doc := resources.NewDeploymentOperationsClient(subscriptionID)
+	doc.Authorizer = authorizer
+	doc.PollingDuration = 0
+	return doc
 }
 
 func NewRoleDefinitionsClient(subscriptionID string, authorizer autorest.Authorizer) authorization.RoleDefinitionsClient {

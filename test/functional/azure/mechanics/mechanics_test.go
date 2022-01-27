@@ -9,23 +9,23 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/httproutev1alpha3"
-	"github.com/Azure/radius/pkg/renderers/mongodbv1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/test/azuretest"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/validation"
 )
 
-// Tests that we can add a component to a deployed application
-// by redeploying with more components.
-func Test_RedeployWithAnotherComponent(t *testing.T) {
-	application := "azure-mechanics-redeploy-withanothercomponent"
-	templateFmt := "testdata/azure-mechanics-redeploy-withanothercomponent.step%d.bicep"
+// Tests that we can add a resource to a deployed application
+// by redeploying with more resource.
+func Test_RedeployWithAnotherResource(t *testing.T) {
+	application := "azure-mechanics-redeploy-withanotherresource"
+	templateFmt := "testdata/azure-mechanics-redeploy-withanotherresource.step%d.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1)),

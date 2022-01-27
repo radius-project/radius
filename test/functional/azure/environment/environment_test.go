@@ -10,14 +10,14 @@ import (
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/cli/environments"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/test/azuretest"
-	"github.com/Azure/radius/test/testcontext"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/testcontext"
+	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 

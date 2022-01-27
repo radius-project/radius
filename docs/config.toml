@@ -33,14 +33,15 @@ id = "G-9JR8B6TPF9"
     source = "archetypes"
     target = "archetypes"
 
-# Disable categories & tags
-disableKinds = ["taxonomy", "term"]
+# Taxonomies
+[taxonomies]
+category = "categories"
 
 # Top Nav Bar
 [[menu.main]]
     name = "GitHub"
     weight = 40
-    url = "https://github.com/Azure/radius"
+    url = "https://github.com/project-radius/radius"
     pre = "<i class='fab fa-github'></i>"
 [[menu.main]]
     name = "Community"
@@ -52,7 +53,7 @@ disableKinds = ["taxonomy", "term"]
 copyright = "Project Radius"
 
 # GitHub Information
-github_repo = "https://github.com/Azure/radius"
+github_repo = "https://github.com/project-radius/radius"
 github_subdir = "docs"
 github_branch = "main"
 

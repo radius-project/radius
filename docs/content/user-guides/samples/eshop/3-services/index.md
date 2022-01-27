@@ -19,7 +19,7 @@ Improved gateway DNS support is in development. In the meantime, [nip.io](https:
 
 ## Catalog service
 
-Taking a closer look at a service, the catalog microservice is modeled as a [ContainerComponent]({{< ref container >}}) resource:
+Taking a closer look at a service, the catalog microservice is modeled as a [Container]({{< ref container >}}) resource:
 
 {{< rad file="snippets/catalog.bicep" embed=true marker="//CATALOG" replace-key-provides="//PROVIDES" replace-value-provides="" >}}
 

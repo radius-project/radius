@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/radius/test/radcli"
+	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,6 +21,7 @@ var _ StepExecutor = (*DeployStepExecutor)(nil)
 type DeployStepExecutor struct {
 	Description string
 	Template    string
+	Parameters  []string
 }
 
 func NewDeployStepExecutor(template string) *DeployStepExecutor {
@@ -41,7 +42,7 @@ func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options 
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath)
+	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
 	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }

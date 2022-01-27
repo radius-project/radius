@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/radius/pkg/azure/radclient"
 	"github.com/google/go-cmp/cmp"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 )
 
 func TestUnfoldErrorDetails(t *testing.T) {

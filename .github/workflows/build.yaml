@@ -39,7 +39,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v3.4.1
         with:
           paths_ignore: '["**.md"]'
 
@@ -221,6 +221,7 @@ jobs:
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
+      RADIUS_CHART_LOCATION: deploy/Chart/
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -239,55 +240,21 @@ jobs:
       run: chmod +x rad
       working-directory: dist
     - name: Create KinD Cluster
-      uses: helm/kind-action@v1.0.0
+      uses: helm/kind-action@v1.2.0
       with:
         cluster_name: radius
         version:  v0.11.0
-    - name: Apply CRDs
-      run: make controller-crd-install
     - name: Dapr tool installer
       uses: dapr/setup-dapr@v1
     - name: Install dapr into cluster
       run: dapr init -k --wait --timeout 600
-    - name: Install haproxy into cluster
-      run: |
-        kubectl kustomize\
-          "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" |\
-          kubectl apply -f -
-        helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
-        helm repo update
-
-        cat <<EOF | helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
-          --create-namespace --namespace radius-system \
-          --version 0.13.4 \
-          -f -
-        controller:
-          hostNetwork: true
-          extraArgs:
-            watch-gateway: "true"
-        EOF
-    - name: Install haproxy gateway class
-      run: |
-        cat <<EOF | kubectl apply -f -
-        apiVersion: networking.x-k8s.io/v1alpha1
-        kind: GatewayClass
-        metadata:
-          name: haproxy
-        spec:
-          controller: haproxy-ingress.github.io/controller
-        EOF
-
     - name: Update rad env with Kubernetes
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init kubernetes
+        dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
-    - name: Deploy Controller
-      run: make controller-deploy-existing
-      env:
-        DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
     - name: Download Bicep
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
@@ -306,6 +273,80 @@ jobs:
       with:
         name: container_logs
         path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+  
+  local_dev_tests:
+    name: Run Local Dev tests
+    needs: [ 'build', 'images', 'pre_check' ]
+    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
+    runs-on: ubuntu-latest
+    env:
+      GOVER: '^1.17'
+      DOCKER_REGISTRY: radius.azurecr.io
+      # Timeout used for functional tests
+      LOCALDEV_FUNCTIONALTEST_TIMEOUT: 20m
+      RADIUS_CONTAINER_LOG_BASE: dist/container_logs
+      RADIUS_CHART_LOCATION: deploy/Chart/
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Go ${{ env.GOVER }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GOVER }}
+    - name: Parse release version and set environment variables
+      run: python ./.github/scripts/get_release_version.py
+    - name: Download release artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: rad_cli_linux_amd64
+        path: dist
+    - name: Make rad executable
+      run: chmod +x rad
+      working-directory: dist
+    - name: Install k3d
+      run: curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
+    - name: Run 'rad env init dev'
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        mkdir ~/.rad
+        dist/rad env init dev --name dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
+        # Print config for sanity check
+        cat ~/.rad/config.yaml
+    - name: Dapr tool installer
+      uses: dapr/setup-dapr@v1
+    - name: Install dapr into cluster
+      run: dapr init -k --wait --timeout 600
+    - name: Download Bicep
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        cd $GITHUB_WORKSPACE
+        which rad || { echo "cannot find rad"; exit 1; }
+        rad bicep download
+    - name: Run Local Dev tests (PR)
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
+        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+        make test-functional-localdev
+    - name: Run Local Dev Kubernetes tests (PR)
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
+        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+        make test-functional-kubernetes
+    - name: Run 'rad env delete'
+      run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
+        dist/rad env delete dev --yes
+        # Print config for sanity check
+        cat ~/.rad/config.yaml
+    - name: Upload container logs
+      if: always()
+      uses: actions/upload-artifact@master
+      with:
+        name: container_logs
+        path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+
   deploy_tests:
     name: Run deployment tests
     needs: [ 'build', 'images', 'pre_check' ]
@@ -499,6 +540,22 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300'
+
+  delete_artifacts:
+    name: Delete artifacts
+    if: ${{ always() }}
+    needs: [ 'build', 'kubernetes_tests', 'local_dev_tests', 'deploy_tests', 'publish' ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete release artifacts
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          name: |
+            rad_cli_windows_amd64
+            rad_cli_linux_amd64
+            rad_cli_darwin_amd64
+            container_logs
+          failOnError: false
 
   codespaces:
     name: Codespaces container image build

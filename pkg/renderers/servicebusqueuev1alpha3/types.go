@@ -6,11 +6,11 @@
 package servicebusqueuev1alpha3
 
 import (
-	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 )
 
 const (
-	ResourceType = "azure.com.ServiceBusQueueComponent"
+	ResourceType = "azure.com.ServiceBusQueue"
 )
 
 var QueueResourceType = azresources.KnownType{
@@ -24,10 +24,4 @@ var QueueResourceType = azresources.KnownType{
 			Name: "*",
 		},
 	},
-}
-
-type Properties struct {
-	Managed  bool   `json:"managed"`
-	Queue    string `json:"queue"`
-	Resource string `json:"resource"`
 }

@@ -9,11 +9,13 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
 )
 
 // ApplicationReconciler reconciles a Application object
@@ -31,16 +33,29 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	_ = r.Log.WithValues("application", req.NamespacedName)
 	app := &radiusv1alpha3.Application{}
 	err := r.Client.Get(ctx, req.NamespacedName, app)
-	if err != nil {
+	if err != nil && client.IgnoreNotFound(err) == nil {
+		return ctrl.Result{}, nil
+	} else if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	app.Status.Phrase = "Ready"
+	condition := metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		Reason:             "Ready",
+		Message:            "Application is ready.",
+		ObservedGeneration: app.Generation,
+	}
+
+	meta.SetStatusCondition(&app.Status.Conditions, condition)
+
+	app.Status.ObservedGeneration = app.Generation
 
 	err = r.Status().Update(ctx, app)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
 	return ctrl.Result{}, nil
 }
 

@@ -9,8 +9,8 @@ import (
 	"context"
 	"fmt"
 
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	"github.com/Azure/radius/pkg/renderers"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/renderers"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -29,7 +29,7 @@ func (sc *SecretClient) LookupSecretValue(ctx context.Context, status radiusv1al
 	}
 
 	secret := corev1.Secret{}
-	err := sc.Client.Get(ctx, client.ObjectKey{Namespace: outputResource.Namespace, Name: outputResource.Name}, &secret)
+	err := sc.Client.Get(ctx, client.ObjectKey{Namespace: outputResource.Resource.Namespace, Name: outputResource.Resource.Name}, &secret)
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve secret of dependency: %w", err)
 	}

@@ -21,8 +21,9 @@ const (
 )
 
 type CLI struct {
-	T              *testing.T
-	ConfigFilePath string
+	T                *testing.T
+	ConfigFilePath   string
+	WorkingDirectory string
 }
 
 func NewCLI(t *testing.T, configFilePath string) *CLI {
@@ -52,6 +53,34 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	return err
 }
 
+func (cli *CLI) ApplicationDeploy(ctx context.Context) error {
+	command := "application"
+
+	args := []string{
+		command,
+		"deploy",
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
+func (cli *CLI) ApplicationInit(ctx context.Context, applicationName string) error {
+	command := "application"
+
+	args := []string{
+		command,
+		"init",
+	}
+
+	if applicationName != "" {
+		args = append(args, applicationName)
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
 func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
 	command := "application"
 
@@ -59,6 +88,16 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (st
 		command,
 		"show",
 		"-a", applicationName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) ApplicationList(ctx context.Context) (string, error) {
+	command := "application"
+
+	args := []string{
+		command,
+		"list",
 	}
 	return cli.RunCommand(ctx, args)
 }
@@ -75,6 +114,14 @@ func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) e
 	}
 	_, err := cli.RunCommand(ctx, args)
 	return err
+}
+
+func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
+	args := []string{
+		"env",
+		"status",
+	}
+	return cli.RunCommand(ctx, args)
 }
 
 func (cli *CLI) ResourceShow(ctx context.Context, applicationName string, resourceType string, resourceName string) (string, error) {
@@ -102,7 +149,7 @@ func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resour
 		"resource",
 		"logs",
 		"-a", applicationName,
-		"ContainerComponent",
+		"Container",
 		resourceName,
 	}
 	return cli.RunCommand(ctx, args)
@@ -115,7 +162,7 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 		"-a", applicationName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
-		"ContainerComponent",
+		"Container",
 		resourceName,
 	}
 	return cli.RunCommand(ctx, args)
@@ -126,6 +173,9 @@ func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
 	args = cli.appendStandardArgs(args)
 
 	cmd := exec.CommandContext(ctx, "rad", args...)
+	if cli.WorkingDirectory != "" {
+		cmd.Dir = cli.WorkingDirectory
+	}
 
 	// we run a background goroutine to report a heartbeat in the logs while the command
 	// is still running. This makes it easy to see what's still in progress if we hit a timeout.

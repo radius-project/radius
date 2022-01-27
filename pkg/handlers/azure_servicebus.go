@@ -10,14 +10,14 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 const (
@@ -211,7 +211,7 @@ func (handler *azureServiceBusBaseHandler) CreateNamespace(ctx context.Context, 
 		Location: location,
 
 		// NOTE: this is a special case, we currently share servicebus resources per-application
-		// they are not directly associated with a component. See: #176
+		// they are not directly associated with a radius resource. See: #176
 		Tags: map[string]*string{
 			keys.TagRadiusApplication: &application,
 		},

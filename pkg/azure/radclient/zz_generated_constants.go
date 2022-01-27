@@ -32,6 +32,73 @@ func (c ActionType) ToPtr() *ActionType {
 	return &c
 }
 
+// CertificateObjectPropertiesEncoding - Encoding format. Default utf-8
+type CertificateObjectPropertiesEncoding string
+
+const (
+	CertificateObjectPropertiesEncodingBase64 CertificateObjectPropertiesEncoding = "base64"
+	CertificateObjectPropertiesEncodingHex CertificateObjectPropertiesEncoding = "hex"
+	CertificateObjectPropertiesEncodingUTF8 CertificateObjectPropertiesEncoding = "utf-8"
+)
+
+// PossibleCertificateObjectPropertiesEncodingValues returns the possible values for the CertificateObjectPropertiesEncoding const type.
+func PossibleCertificateObjectPropertiesEncodingValues() []CertificateObjectPropertiesEncoding {
+	return []CertificateObjectPropertiesEncoding{	
+		CertificateObjectPropertiesEncodingBase64,
+		CertificateObjectPropertiesEncodingHex,
+		CertificateObjectPropertiesEncodingUTF8,
+	}
+}
+
+// ToPtr returns a *CertificateObjectPropertiesEncoding pointing to the current value.
+func (c CertificateObjectPropertiesEncoding) ToPtr() *CertificateObjectPropertiesEncoding {
+	return &c
+}
+
+// CertificateObjectPropertiesFormat - Certificate format. Default pem
+type CertificateObjectPropertiesFormat string
+
+const (
+	CertificateObjectPropertiesFormatPem CertificateObjectPropertiesFormat = "pem"
+	CertificateObjectPropertiesFormatPfx CertificateObjectPropertiesFormat = "pfx"
+)
+
+// PossibleCertificateObjectPropertiesFormatValues returns the possible values for the CertificateObjectPropertiesFormat const type.
+func PossibleCertificateObjectPropertiesFormatValues() []CertificateObjectPropertiesFormat {
+	return []CertificateObjectPropertiesFormat{	
+		CertificateObjectPropertiesFormatPem,
+		CertificateObjectPropertiesFormatPfx,
+	}
+}
+
+// ToPtr returns a *CertificateObjectPropertiesFormat pointing to the current value.
+func (c CertificateObjectPropertiesFormat) ToPtr() *CertificateObjectPropertiesFormat {
+	return &c
+}
+
+// CertificateObjectPropertiesValue - Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
+type CertificateObjectPropertiesValue string
+
+const (
+	CertificateObjectPropertiesValueCertificate CertificateObjectPropertiesValue = "certificate"
+	CertificateObjectPropertiesValuePrivatekey CertificateObjectPropertiesValue = "privatekey"
+	CertificateObjectPropertiesValuePublickey CertificateObjectPropertiesValue = "publickey"
+)
+
+// PossibleCertificateObjectPropertiesValueValues returns the possible values for the CertificateObjectPropertiesValue const type.
+func PossibleCertificateObjectPropertiesValueValues() []CertificateObjectPropertiesValue {
+	return []CertificateObjectPropertiesValue{	
+		CertificateObjectPropertiesValueCertificate,
+		CertificateObjectPropertiesValuePrivatekey,
+		CertificateObjectPropertiesValuePublickey,
+	}
+}
+
+// ToPtr returns a *CertificateObjectPropertiesValue pointing to the current value.
+func (c CertificateObjectPropertiesValue) ToPtr() *CertificateObjectPropertiesValue {
+	return &c
+}
+
 // CheckNameAvailabilityReason - The reason why the given name is not available.
 type CheckNameAvailabilityReason string
 
@@ -57,9 +124,10 @@ func (c CheckNameAvailabilityReason) ToPtr() *CheckNameAvailabilityReason {
 type ContainerConnectionKind string
 
 const (
+	ContainerConnectionKindAzure ContainerConnectionKind = "azure"
 	ContainerConnectionKindAzureComKeyVault ContainerConnectionKind = "azure.com/KeyVault"
 	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
-	ContainerConnectionKindDaprIoDaprHTTP ContainerConnectionKind = "dapr.io/DaprHttp"
+	ContainerConnectionKindDaprIoInvokeHTTP ContainerConnectionKind = "dapr.io/InvokeHttp"
 	ContainerConnectionKindDaprIoPubSubTopic ContainerConnectionKind = "dapr.io/PubSubTopic"
 	ContainerConnectionKindDaprIoStateStore ContainerConnectionKind = "dapr.io/StateStore"
 	ContainerConnectionKindGrpc ContainerConnectionKind = "Grpc"
@@ -73,9 +141,10 @@ const (
 // PossibleContainerConnectionKindValues returns the possible values for the ContainerConnectionKind const type.
 func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
 	return []ContainerConnectionKind{	
+		ContainerConnectionKindAzure,
 		ContainerConnectionKindAzureComKeyVault,
 		ContainerConnectionKindAzureComServiceBusQueue,
-		ContainerConnectionKindDaprIoDaprHTTP,
+		ContainerConnectionKindDaprIoInvokeHTTP,
 		ContainerConnectionKindDaprIoPubSubTopic,
 		ContainerConnectionKindDaprIoStateStore,
 		ContainerConnectionKindGrpc,
@@ -138,28 +207,7 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
-// DaprPubSubTopicComponentPropertiesKind - The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes components.
-type DaprPubSubTopicComponentPropertiesKind string
-
-const (
-	DaprPubSubTopicComponentPropertiesKindAny DaprPubSubTopicComponentPropertiesKind = "any"
-	DaprPubSubTopicComponentPropertiesKindPubsubAzureServicebus DaprPubSubTopicComponentPropertiesKind = "pubsub.azure.servicebus"
-)
-
-// PossibleDaprPubSubTopicComponentPropertiesKindValues returns the possible values for the DaprPubSubTopicComponentPropertiesKind const type.
-func PossibleDaprPubSubTopicComponentPropertiesKindValues() []DaprPubSubTopicComponentPropertiesKind {
-	return []DaprPubSubTopicComponentPropertiesKind{	
-		DaprPubSubTopicComponentPropertiesKindAny,
-		DaprPubSubTopicComponentPropertiesKindPubsubAzureServicebus,
-	}
-}
-
-// ToPtr returns a *DaprPubSubTopicComponentPropertiesKind pointing to the current value.
-func (c DaprPubSubTopicComponentPropertiesKind) ToPtr() *DaprPubSubTopicComponentPropertiesKind {
-	return &c
-}
-
-// DaprSidecarTraitProtocol - Specifies the Dapr app-protocol to use for the component.
+// DaprSidecarTraitProtocol - Specifies the Dapr app-protocol to use for the resource.
 type DaprSidecarTraitProtocol string
 
 const (
@@ -180,28 +228,28 @@ func (c DaprSidecarTraitProtocol) ToPtr() *DaprSidecarTraitProtocol {
 	return &c
 }
 
-// DaprStateStoreComponentPropertiesKind - The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes components.
-type DaprStateStoreComponentPropertiesKind string
+// DaprStateStoreResourcePropertiesKind - The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes configuration format.
+type DaprStateStoreResourcePropertiesKind string
 
 const (
-	DaprStateStoreComponentPropertiesKindAny DaprStateStoreComponentPropertiesKind = "any"
-	DaprStateStoreComponentPropertiesKindStateAzureTablestorage DaprStateStoreComponentPropertiesKind = "state.azure.tablestorage"
-	DaprStateStoreComponentPropertiesKindStateRedis DaprStateStoreComponentPropertiesKind = "state.redis"
-	DaprStateStoreComponentPropertiesKindStateSqlserver DaprStateStoreComponentPropertiesKind = "state.sqlserver"
+	DaprStateStoreResourcePropertiesKindAny DaprStateStoreResourcePropertiesKind = "any"
+	DaprStateStoreResourcePropertiesKindStateAzureTablestorage DaprStateStoreResourcePropertiesKind = "state.azure.tablestorage"
+	DaprStateStoreResourcePropertiesKindStateRedis DaprStateStoreResourcePropertiesKind = "state.redis"
+	DaprStateStoreResourcePropertiesKindStateSqlserver DaprStateStoreResourcePropertiesKind = "state.sqlserver"
 )
 
-// PossibleDaprStateStoreComponentPropertiesKindValues returns the possible values for the DaprStateStoreComponentPropertiesKind const type.
-func PossibleDaprStateStoreComponentPropertiesKindValues() []DaprStateStoreComponentPropertiesKind {
-	return []DaprStateStoreComponentPropertiesKind{	
-		DaprStateStoreComponentPropertiesKindAny,
-		DaprStateStoreComponentPropertiesKindStateAzureTablestorage,
-		DaprStateStoreComponentPropertiesKindStateRedis,
-		DaprStateStoreComponentPropertiesKindStateSqlserver,
+// PossibleDaprStateStoreResourcePropertiesKindValues returns the possible values for the DaprStateStoreResourcePropertiesKind const type.
+func PossibleDaprStateStoreResourcePropertiesKindValues() []DaprStateStoreResourcePropertiesKind {
+	return []DaprStateStoreResourcePropertiesKind{	
+		DaprStateStoreResourcePropertiesKindAny,
+		DaprStateStoreResourcePropertiesKindStateAzureTablestorage,
+		DaprStateStoreResourcePropertiesKindStateRedis,
+		DaprStateStoreResourcePropertiesKindStateSqlserver,
 	}
 }
 
-// ToPtr returns a *DaprStateStoreComponentPropertiesKind pointing to the current value.
-func (c DaprStateStoreComponentPropertiesKind) ToPtr() *DaprStateStoreComponentPropertiesKind {
+// ToPtr returns a *DaprStateStoreResourcePropertiesKind pointing to the current value.
+func (c DaprStateStoreResourcePropertiesKind) ToPtr() *DaprStateStoreResourcePropertiesKind {
 	return &c
 }
 
@@ -226,7 +274,26 @@ func (c EncryptionStatus) ToPtr() *EncryptionStatus {
 	return &c
 }
 
-// Enum3 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
+// Enum2 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
+type Enum2 bool
+
+const (
+	Enum2True Enum2 = true
+)
+
+// PossibleEnum2Values returns the possible values for the Enum2 const type.
+func PossibleEnum2Values() []Enum2 {
+	return []Enum2{	
+		Enum2True,
+	}
+}
+
+// ToPtr returns a *Enum2 pointing to the current value.
+func (c Enum2) ToPtr() *Enum2 {
+	return &c
+}
+
+// Enum3 - Indicates if the resource is Radius-managed. For now only true is accepted for this resource.
 type Enum3 bool
 
 const (
@@ -245,41 +312,22 @@ func (c Enum3) ToPtr() *Enum3 {
 	return &c
 }
 
-// Enum4 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component
-type Enum4 bool
+// Enum5 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
+type Enum5 bool
 
 const (
-	Enum4True Enum4 = true
+	Enum5True Enum5 = true
 )
 
-// PossibleEnum4Values returns the possible values for the Enum4 const type.
-func PossibleEnum4Values() []Enum4 {
-	return []Enum4{	
-		Enum4True,
+// PossibleEnum5Values returns the possible values for the Enum5 const type.
+func PossibleEnum5Values() []Enum5 {
+	return []Enum5{	
+		Enum5True,
 	}
 }
 
-// ToPtr returns a *Enum4 pointing to the current value.
-func (c Enum4) ToPtr() *Enum4 {
-	return &c
-}
-
-// Enum7 - Indicates if the resource is Radius-managed. For now only true is accepted for this Component.
-type Enum7 bool
-
-const (
-	Enum7True Enum7 = true
-)
-
-// PossibleEnum7Values returns the possible values for the Enum7 const type.
-func PossibleEnum7Values() []Enum7 {
-	return []Enum7{	
-		Enum7True,
-	}
-}
-
-// ToPtr returns a *Enum7 pointing to the current value.
-func (c Enum7) ToPtr() *Enum7 {
+// ToPtr returns a *Enum5 pointing to the current value.
+func (c Enum5) ToPtr() *Enum5 {
 	return &c
 }
 
@@ -373,22 +421,26 @@ func (c SKUTier) ToPtr() *SKUTier {
 	return &c
 }
 
-// VolumePropertiesKind - The kind of volume component
-type VolumePropertiesKind string
+// SecretObjectPropertiesEncoding - Encoding format. Default utf-8
+type SecretObjectPropertiesEncoding string
 
 const (
-	VolumePropertiesKindAzureComFileshare VolumePropertiesKind = "azure.com.fileshare"
+	SecretObjectPropertiesEncodingBase64 SecretObjectPropertiesEncoding = "base64"
+	SecretObjectPropertiesEncodingHex SecretObjectPropertiesEncoding = "hex"
+	SecretObjectPropertiesEncodingUTF8 SecretObjectPropertiesEncoding = "utf-8"
 )
 
-// PossibleVolumePropertiesKindValues returns the possible values for the VolumePropertiesKind const type.
-func PossibleVolumePropertiesKindValues() []VolumePropertiesKind {
-	return []VolumePropertiesKind{	
-		VolumePropertiesKindAzureComFileshare,
+// PossibleSecretObjectPropertiesEncodingValues returns the possible values for the SecretObjectPropertiesEncoding const type.
+func PossibleSecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEncoding {
+	return []SecretObjectPropertiesEncoding{	
+		SecretObjectPropertiesEncodingBase64,
+		SecretObjectPropertiesEncodingHex,
+		SecretObjectPropertiesEncodingUTF8,
 	}
 }
 
-// ToPtr returns a *VolumePropertiesKind pointing to the current value.
-func (c VolumePropertiesKind) ToPtr() *VolumePropertiesKind {
+// ToPtr returns a *SecretObjectPropertiesEncoding pointing to the current value.
+func (c SecretObjectPropertiesEncoding) ToPtr() *SecretObjectPropertiesEncoding {
 	return &c
 }
 

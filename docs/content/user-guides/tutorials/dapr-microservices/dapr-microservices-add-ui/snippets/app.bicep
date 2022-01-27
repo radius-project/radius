@@ -3,7 +3,16 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-tutorial'
 
   //FRONTEND
-  resource frontend 'ContainerComponent' = {
+  resource frontendRoute 'HttpRoute' = {
+    name: 'frontend-route'
+    properties: {
+      gateway: {
+        hostname: '*'
+      }
+    }
+  }
+  
+  resource frontend 'Container' = {
     name: 'frontend'
     properties: {
       container: {
@@ -11,12 +20,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
         ports:{
           ui: {
             containerPort: 80
+            provides: frontendRoute.id
           }
         }
       }
       connections: {
         backend: {
-          kind: 'dapr.io/DaprHttp'
+          kind: 'dapr.io/InvokeHttp'
           source: daprBackend.id
         }
       }
@@ -30,7 +40,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
   //FRONTEND
 
-  resource backend 'ContainerComponent' = {
+  resource backend 'Container' = {
     name: 'backend'
     properties: {
       container: {
@@ -53,14 +63,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource daprBackend 'dapr.io.DaprHttpRoute' = {
+  resource daprBackend 'dapr.io.InvokeHttpRoute' = {
     name: 'backend-dapr'
     properties: {
       appId: 'backend'
     }
   }
 
-  resource statestore 'dapr.io.StateStoreComponent' = {
+  resource statestore 'dapr.io.StateStore' = {
     name: 'statestore'
     properties: {
       kind: 'any'

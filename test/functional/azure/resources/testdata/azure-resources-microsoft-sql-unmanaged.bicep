@@ -4,7 +4,7 @@ var adminPassword = 'p@ssw0rd'
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-microsoft-sql-unmanaged'
 
-  resource webapp 'ContainerComponent' = {
+  resource webapp 'Container' = {
     name: 'todoapp'
     properties: {
       connections: {
@@ -22,7 +22,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource db 'microsoft.com.SQLComponent' = {
+  resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
       resource: server::db.id

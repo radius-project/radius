@@ -12,14 +12,15 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/radius/pkg/azure/aks"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	azclients "github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/azure/radclient"
-	"github.com/Azure/radius/pkg/cli/azure"
-	"github.com/Azure/radius/pkg/cli/clients"
-	"github.com/Azure/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/azure/aks"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	k8s "k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
@@ -57,6 +58,10 @@ func (e *AzureCloudEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *AzureCloudEnvironment) GetContainerRegistry() *Registry {
+	return nil
+}
+
 func (e *AzureCloudEnvironment) GetStatusLink() string {
 	// If there's a problem generating the status link, we don't want to fail noisily, just skip the link.
 	url, err := azure.GenerateAzureEnvUrl(e.SubscriptionID, e.ResourceGroup)
@@ -78,9 +83,10 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	dc.PollingDelay = 5 * time.Second
 
 	return &azure.ARMDeploymentClient{
-		Client:         dc,
-		SubscriptionID: e.SubscriptionID,
-		ResourceGroup:  e.ResourceGroup,
+		Client:           dc,
+		OperationsClient: azclients.NewOperationsClient(e.SubscriptionID, armauth),
+		SubscriptionID:   e.SubscriptionID,
+		ResourceGroup:    e.ResourceGroup,
 	}, nil
 }
 
@@ -95,6 +101,11 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
+	client, err := client.New(config, client.Options{Scheme: kubernetes.Scheme})
+	if err != nil {
+		return nil, err
+	}
+
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
@@ -104,8 +115,9 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 
 	return &azure.AKSDiagnosticsClient{
 		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
-			Client:     k8sClient,
+			K8sClient:  k8sClient,
 			RestConfig: config,
+			Client:     client,
 		},
 		ResourceClient: *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
 		ResourceGroup:  e.ResourceGroup,

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/radius/pkg/radrp/schema"
 	"github.com/google/go-cmp/cmp"
+	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
@@ -26,7 +26,7 @@ func TestConverter(t *testing.T) {
 		resources: []resourceInfo{
 			newResourceInfo("Application", "#/definitions/ApplicationResource"),
 			newResourceInfo("RadiusResource", "#/definitions/RadiusResource"),
-			newResourceInfo("radius.com.AwesomeComponent", "radius.json#/definitions/AwesomeComponentResource"),
+			newResourceInfo("radius.com.AwesomeThing", "radius.json#/definitions/AwesomeThingResource"),
 		},
 	}
 	/* Load the input files */

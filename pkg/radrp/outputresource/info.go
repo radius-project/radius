@@ -8,16 +8,16 @@ package outputresource
 import (
 	"errors"
 
-	"github.com/Azure/radius/pkg/algorithm/graph"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/algorithm/graph"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	// LocalID is a logical identifier scoped to the owning Radius resource (Component/Route/Scope).
+	// LocalID is a logical identifier scoped to the owning Radius resource.
 	LocalID string
 
 	// Identity uniquely identifies the underlying resource within its platform..

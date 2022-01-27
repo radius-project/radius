@@ -22,7 +22,7 @@ Note, these tests don't actually run against a kubernetes cluster. Therefore ser
 
 ## Debugging integration tests in VSCode
 
-Running the integration/controller tests should work by just running run test/debug test in VSCode. Tests are located in [the controllertests subdirectory](https://github.com/Azure/radius/blob/main/test/integration/kubernetes). By default, the tests require setup-envtest, a tool to get the necessary components for controller tests.
+Running the integration/controller tests should work by just running run test/debug test in VSCode. Tests are located in [the controllertests subdirectory](https://github.com/project-radius/radius/blob/main/test/integration/kubernetes). By default, the tests require setup-envtest, a tool to get the necessary components for controller tests.
 
 The tests will try to install envtest on your behalf, or you may run:
 
@@ -34,50 +34,3 @@ When invoking the test, you either will need to have the KUBEBUILDER_ASSETS envi
 
 - arch == amd64 as it isn't support on M1 macs
 - k8s-version == 1.19.x as 1.20.x+ currently doesn't work in tests
-
-## Running and testing controller with a Kubernetes cluster
-
-You can also run the controller against a real kubernetes cluster. In this example, we are going to use [KinD](https://github.com/kubernetes-sigs/kind), but any kubernetes cluster should work. See the [quick start guide](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) for installation instructions.
-
-Note, running `rad env init kubernetes` will not get the desired result as it will deploy the controller to the cluster instead of running the controller locally.
-
-First, create a new KinD Cluster by running:
-
-```sh
-kind create cluster
-```
-
-Next, install the appropriate Custom Resources Definition (CRD) required to run radius on kubernetes. This is done by running:
-
-```sh
-make controller-crd-install
-```
-
-Finally, we can run the controller by running:
-
-```sh
-make controller-run
-```
-
-To test an application deployment, run:
-
-```sh
-kubectl apply -f deploy/k8s/config/samples/
-```
-
-This will deploy a sample radius application and components for a frontend and backend. You'll be able to see output from the controller handling each application and component. 
-
-You can also debug the controller in VSCode by running the cmd/radius-controller/main.go file. A launch.json configuration:
-
-```json
-{
-    "name": "Debug k8s controller",
-    "type": "go",
-    "request": "launch",
-    "mode": "debug",
-    "program": "${workspaceFolder}/cmd/k8s/main.go",
-    "env": {
-        "SKIP_WEBHOOKS": "true" // Don't enable webhooks when running locally as they require a cert.
-    }
-},
-```

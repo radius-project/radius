@@ -9,9 +9,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -61,7 +62,7 @@ func Test_KubernetesRenderer_Render_Managed_Success(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_KubernetesRenderer_Render_Unmanaged_NotSupported(t *testing.T) {
+func Test_KubernetesRenderer_Render_Unmanaged(t *testing.T) {
 	ctx := createContext(t)
 	renderer := KubernetesRenderer{}
 
@@ -75,9 +76,20 @@ func Test_KubernetesRenderer_Render_Unmanaged_NotSupported(t *testing.T) {
 	}
 
 	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
-	require.Error(t, err)
-	require.Empty(t, output.Resources)
-	require.Equal(t, "only Radius managed resources are supported for MongoDB on Kubernetes", err.Error())
+	assert.NoError(t, err)
+	assert.Equal(t, renderers.RendererOutput{
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"database": {
+				Value: resource.ResourceName,
+			},
+		},
+		SecretValues: map[string]renderers.SecretValueReference{
+			"connectionString": {
+				LocalID:       outputresource.LocalIDScrapedSecret,
+				ValueSelector: "connectionString",
+			},
+		},
+	}, output)
 }
 
 func Test_KubernetesRenderer_MakeSecret(t *testing.T) {

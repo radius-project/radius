@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Azure/radius/pkg/health/db"
-	"github.com/Azure/radius/pkg/health/handlers"
-	"github.com/Azure/radius/pkg/health/model/azure"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/health/db"
+	"github.com/project-radius/radius/pkg/health/handlers"
+	"github.com/project-radius/radius/pkg/health/model/azure"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radlogger"
 	client_go "k8s.io/client-go/kubernetes"
 )
 

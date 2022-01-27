@@ -16,7 +16,7 @@ In your app's Bicep file, the Component resource captures:
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| **Resource type** | What type of thing is this? | `ContainerComponent`
+| **Resource type** | What type of thing is this? | `Container`
 | **Name** | The logical name of the Component, must be unique per-Application and resource type | `my-container`
 | **Essentials** | How do I run this? | Container image and tag (`my-container:latest`)
 | **Connections** | What other Components will I interact with? | Need to read from `my-db` 
@@ -26,7 +26,7 @@ In your app's Bicep file, the Component resource captures:
 ## Example Radius Components
 
 
-Runnable components capture the details of your code and its requirements. For example, a [ContainerComponent]({{< ref container >}}) describes your container and how to run it.
+Runnable components capture the details of your code and its requirements. For example, a [Container]({{< ref container >}}) describes your container and how to run it.
 
 #### Bicep example
 
@@ -34,7 +34,13 @@ In an example eshop app, the storefront code's would include info necessary for 
 
 {{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" >}}
 
+<<<<<<< HEAD
 When a Component defines a non-runnable resource (e.g. a database or message queue), the same definitions apply, but it's even easier to describe in Radius. Since behavior of non-runnable resources is more standardized, Radius can offload this type of repetitive configuration work from developers.
+=======
+### Runtime
+
+Each [Radius platform]({{< ref platforms >}}) has a different implementation of a runtime for runnable Components such as a `Container`. For example, Azure environments use Azure Kubernetes Service, while Kubernetes environments run containers directly on the cluster.
+>>>>>>> main
 
 An example of a non-runnable Radius Component is an inventory database, modeled as:
 
@@ -60,9 +66,9 @@ User-managed resources allow you to represent cloud resources as part of your ap
 |-|:---------------:|:-----------------------:|:--------------:|:--------------------:|
 | User-managed | ✅ | ✅ | ✅ | ✅ |
 | Radius-managed | ✅ | ✅ | ✅ | ❌ |
-| Platform-specific | ❌‡ | ❔*‡ | ❌‡ | ✅ |
+| Platform-specific | ✅ | ❔*‡ | ✅ | ✅ |
 
-\* resource specific - See [this doc](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-resource#list)
+\* resource specific - See [this doc](https://docs.microsoft.com/azure/azure-resource-manager/bicep/bicep-functions-resource)
 <br />
 ‡ still in development/review
 
@@ -77,7 +83,7 @@ When `managed` is set to `false` or omitted, you can explicitly specify an exist
 When `managed` is set to `true`, like in the example above, Radius will manage the lifecycle of the underlying resource, meaning it will deploy and manage the resource itself on the [hosting platform]({{< ref platforms >}}).
 
 {{% alert title="📋 Feedback" color="primary" %}}
-We'd love to hear your feedback on User-managed resources. Please visit [GitHub Discussions](https://github.com/Azure/radius/discussions/1269) and let us know how you currently use and want to use them!
+We'd love to hear your feedback on User-managed resources. Please visit [GitHub Discussions](https://github.com/project-radius/radius/discussions/1269) and let us know how you currently use and want to use them!
 {{% /alert %}}
 
 {{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
@@ -97,7 +103,7 @@ The Component concept in Radius is designed to version with the application code
 
 Non-runnable Components can work across hosting models without any configuration changes, and will be satisfied using the best means available by the host. They are generally OSS services that are not tied to any particular SaaS or hosting platform and usually have multiple implementations.
 
-For example the resource type [`mongodb.com.MongoDBComponent`]({{< ref mongodb >}}) specifies a generic MongoDB-compatible database. From the point-of-view of application code, it does not matter if the database is hosted using Kubernetes primitives like a `StatefulSet`, or a MongoDB operator, or a cloud-provider hosted offering like Azure CosmosDB. Radius will provision (or connect to) the appropriate implementation depending on the environment where the application is deployed.
+For example the resource type [`mongo.com.MongoDatabase`]({{< ref mongodb >}}) specifies a generic MongoDB-compatible database. From the point-of-view of application code, it does not matter if the database is hosted using Kubernetes primitives like a `StatefulSet`, or a MongoDB operator, or a cloud-provider hosted offering like Azure CosmosDB. Radius will provision (or connect to) the appropriate implementation depending on the environment where the application is deployed.
 
 ## Platform-specific resources
 
@@ -107,9 +113,9 @@ These resources can still be used in Radius Applications. Instead of being model
 
 Additionally, through the use of the [Bicep existing keyword](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?#reference-existing-resources), you can connect to resources that are deployed and managed separately from the Application.
 
-{{% alert title="🚧 Under Construction 🏗" color="info" %}}
-Platform-specific resources are still under construction. Stay tuned for more information.
-{{% /alert %}}
+You can configure role based access control (RBAC) on Azure resources by specifying roles within the connection information. See [the connections page] {{< ref connections-model >}} for more details: 
+
+{{< rad file="snippets/platform-specific-azure.bicep" embed=true marker="//SAMPLE" >}}
 
 ## Next step
 

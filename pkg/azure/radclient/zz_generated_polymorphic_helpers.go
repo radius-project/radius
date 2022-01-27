@@ -10,7 +10,7 @@ package radclient
 
 import "encoding/json"
 
-func unmarshalComponentTraitClassification(rawMsg json.RawMessage) (ComponentTraitClassification, error) {
+func unmarshalDaprPubSubTopicPropertiesClassification(rawMsg json.RawMessage) (DaprPubSubTopicPropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -18,19 +18,21 @@ func unmarshalComponentTraitClassification(rawMsg json.RawMessage) (ComponentTra
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
-	var b ComponentTraitClassification
+	var b DaprPubSubTopicPropertiesClassification
 	switch m["kind"] {
-	case "dapr.io/Sidecar@v1alpha1":
-		b = &DaprSidecarTrait{}
-	case "radius.dev/ManualScaling@v1alpha1":
-		b = &ManualScalingTrait{}
+	case "any":
+		b = &DaprPubSubTopicAnyResourceProperties{}
+	case "generic":
+		b = &DaprPubSubTopicGenericResourceProperties{}
+	case "pubsub.azure.servicebus":
+		b = &DaprPubSubTopicAzureServiceBusResourceProperties{}
 	default:
-		b = &ComponentTrait{}
+		b = &DaprPubSubTopicProperties{}
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }
 
-func unmarshalComponentTraitClassificationArray(rawMsg json.RawMessage) ([]ComponentTraitClassification, error) {
+func unmarshalDaprPubSubTopicPropertiesClassificationArray(rawMsg json.RawMessage) ([]DaprPubSubTopicPropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -38,9 +40,9 @@ func unmarshalComponentTraitClassificationArray(rawMsg json.RawMessage) ([]Compo
 	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
 		return nil, err
 	}
-	fArray := make([]ComponentTraitClassification, len(rawMessages))
+	fArray := make([]DaprPubSubTopicPropertiesClassification, len(rawMessages))
 	for index, rawMessage := range rawMessages {
-		f, err := unmarshalComponentTraitClassification(rawMessage)
+		f, err := unmarshalDaprPubSubTopicPropertiesClassification(rawMessage)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +51,7 @@ func unmarshalComponentTraitClassificationArray(rawMsg json.RawMessage) ([]Compo
 	return fArray, nil
 }
 
-func unmarshalComponentTraitClassificationMap(rawMsg json.RawMessage) (map[string]ComponentTraitClassification, error) {
+func unmarshalDaprPubSubTopicPropertiesClassificationMap(rawMsg json.RawMessage) (map[string]DaprPubSubTopicPropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -57,9 +59,9 @@ func unmarshalComponentTraitClassificationMap(rawMsg json.RawMessage) (map[strin
 	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
 		return nil, err
 	}
-	fMap := make(map[string]ComponentTraitClassification, len(rawMessages))
+	fMap := make(map[string]DaprPubSubTopicPropertiesClassification, len(rawMessages))
 	for key, rawMessage := range rawMessages {
-		f, err := unmarshalComponentTraitClassification(rawMessage)
+		f, err := unmarshalDaprPubSubTopicPropertiesClassification(rawMessage)
 		if err != nil {
 			return nil, err
 		}
@@ -128,6 +130,64 @@ func unmarshalHealthProbePropertiesClassificationMap(rawMsg json.RawMessage) (ma
 	return fMap, nil
 }
 
+func unmarshalResourceTraitClassification(rawMsg json.RawMessage) (ResourceTraitClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b ResourceTraitClassification
+	switch m["kind"] {
+	case "dapr.io/Sidecar@v1alpha1":
+		b = &DaprSidecarTrait{}
+	case "radius.dev/ManualScaling@v1alpha1":
+		b = &ManualScalingTrait{}
+	default:
+		b = &ResourceTrait{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalResourceTraitClassificationArray(rawMsg json.RawMessage) ([]ResourceTraitClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]ResourceTraitClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalResourceTraitClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalResourceTraitClassificationMap(rawMsg json.RawMessage) (map[string]ResourceTraitClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]ResourceTraitClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalResourceTraitClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
 func unmarshalVolumeClassification(rawMsg json.RawMessage) (VolumeClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
@@ -178,6 +238,64 @@ func unmarshalVolumeClassificationMap(rawMsg json.RawMessage) (map[string]Volume
 	fMap := make(map[string]VolumeClassification, len(rawMessages))
 	for key, rawMessage := range rawMessages {
 		f, err := unmarshalVolumeClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
+func unmarshalVolumePropertiesClassification(rawMsg json.RawMessage) (VolumePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b VolumePropertiesClassification
+	switch m["kind"] {
+	case "azure.com.fileshare":
+		b = &AzureFileShareVolumeProperties{}
+	case "azure.com.keyvault":
+		b = &AzureKeyVaultVolumeProperties{}
+	default:
+		b = &VolumeProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalVolumePropertiesClassificationArray(rawMsg json.RawMessage) ([]VolumePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]VolumePropertiesClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalVolumePropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalVolumePropertiesClassificationMap(rawMsg json.RawMessage) (map[string]VolumePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]VolumePropertiesClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalVolumePropertiesClassification(rawMessage)
 		if err != nil {
 			return nil, err
 		}

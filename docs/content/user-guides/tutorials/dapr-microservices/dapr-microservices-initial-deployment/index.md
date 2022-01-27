@@ -21,9 +21,9 @@ Next you'll add a `backend` resource for the website's backend.
 
 Radius captures the relationships and intentions behind an application, which simplifies deployment and management. The single `backend` resource in your template.bicep file will contain everything needed for the website backend to run.
 
-Your `backend` resource, which has resource type ContainerComponent, will specify:
+Your `backend` resource, which has resource type Container, will specify:
 
-- **kind:** `ContainerComponent`, a generic container.
+- **kind:** `Container`, a generic container.
 - **container image:** `radius.azurecr.io/daprtutorial-backend`, a Docker image the container will run. This is where your application's backend code lives.
 - **ports**: orders will be received on port 3000.
 
@@ -53,13 +53,13 @@ Now you are ready to deploy the application for the first time.
 
    ```
    RESOURCE   TYPE
-   backend    ContainerComponent
+   backend    Container
    ```
 
 1. To test your `dapr-tutorial` application, open a local tunnel to your application:
 
    ```sh
-   rad resource expose ContainerComponent backend --application dapr-tutorial --port 3000
+   rad resource expose Container backend --application dapr-tutorial --port 3000
    ```
 
    {{% alert title="💡 rad resource expose" color="primary" %}}

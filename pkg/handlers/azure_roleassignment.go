@@ -11,20 +11,20 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/authorization/mgmt/authorization"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/azure/roleassignment"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/roleassignment"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 const (
 	RoleNameKey = "rolename"
 
-	// RoleAssignmentTargetKey is used to pass the Resource ID of the target resource.
-	RoleAssignmentTargetKey = "roleassignmenttarget"
+	// RoleAssignmentScope is used to pass the fully qualified identifier of the resource for which the role assignment needs to be created
+	RoleAssignmentScope = "roleassignmentscope"
 )
 
 // NewAzureRoleAssignmentHandler initializes a new handler for resources of kind RoleAssignment
@@ -41,16 +41,10 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	roleName := properties[RoleNameKey]
-	targetID := properties[RoleAssignmentTargetKey]
+	scope := properties[RoleAssignmentScope]
 
 	// Get dependencies
 	managedIdentityProperties := map[string]string{}
-	for _, resource := range options.Dependencies {
-		if resource.LocalID == outputresource.LocalIDUserAssignedManagedIdentity {
-			managedIdentityProperties = resource.Properties
-		}
-	}
-
 	if properties, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]; ok {
 		managedIdentityProperties = properties
 	}
@@ -61,16 +55,16 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 
 	// Assign Key Vault Secrets User role to grant managed identity read-only access to the keyvault for secrets.
 	// Assign Key Vault Crypto User role to grant managed identity permissions to perform operations using encryption keys.
-	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, handler.arm.SubscriptionID, handler.arm.ResourceGroup, managedIdentityProperties[UserAssignedIdentityPrincipalIDKey], targetID, roleName)
+	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, handler.arm.SubscriptionID, managedIdentityProperties[UserAssignedIdentityPrincipalIDKey], scope, roleName)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
 			roleName,
 			managedIdentityProperties[UserAssignedIdentityIDKey],
-			targetID,
+			scope,
 			err)
 	}
-	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, managedIdentityProperties[UserAssignedIdentityIDKey], targetID))
+	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, managedIdentityProperties[UserAssignedIdentityIDKey], scope))
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(*roleAssignment.ID, clients.GetAPIVersionFromUserAgent(authorization.UserAgent()))
 	return properties, nil

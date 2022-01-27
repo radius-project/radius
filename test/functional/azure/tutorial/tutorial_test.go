@@ -8,15 +8,15 @@ package tutorial_test
 import (
 	"testing"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/radrp/rest"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/renderers/daprstatestorev1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
-	"github.com/Azure/radius/test/azuretest"
-	"github.com/Azure/radius/test/validation"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_TutorialDaprMicroservices(t *testing.T) {
@@ -87,9 +87,9 @@ func Test_TutorialWebApp(t *testing.T) {
 	t.Skip("will renable in appmodel v3")
 
 	applicationName := "webapp"
-	componentNameWebApp := "todoapp"
-	componentNameKV := "kv"
-	componentNameDB := "db"
+	resourceNameWebApp := "todoapp"
+	resourceNameKV := "kv"
+	resourceNameDB := "db"
 	template := "../../../../docs/content/user-guides/tutorials/webapp/code/template.bicep"
 	test := azuretest.NewApplicationTest(t, applicationName, []azuretest.Step{
 		{
@@ -100,19 +100,19 @@ func Test_TutorialWebApp(t *testing.T) {
 						Type: azresources.ManagedIdentityUserAssignedIdentities,
 						Tags: map[string]string{
 							keys.TagRadiusApplication: applicationName,
-							keys.TagRadiusResource:    componentNameWebApp,
+							keys.TagRadiusResource:    resourceNameWebApp,
 						},
 					},
 					{
 						Type: azresources.DocumentDBDatabaseAccounts,
 						Tags: map[string]string{
 							keys.TagRadiusApplication: applicationName,
-							keys.TagRadiusResource:    componentNameDB,
+							keys.TagRadiusResource:    resourceNameDB,
 						},
 						Children: []validation.ExpectedChildResource{
 							{
 								Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
-								Name: componentNameDB,
+								Name: resourceNameDB,
 							},
 						},
 					},
@@ -120,7 +120,7 @@ func Test_TutorialWebApp(t *testing.T) {
 						Type: azresources.KeyVaultVaults,
 						Tags: map[string]string{
 							keys.TagRadiusApplication: applicationName,
-							keys.TagRadiusResource:    componentNameKV,
+							keys.TagRadiusResource:    resourceNameKV,
 						},
 					},
 				},
@@ -128,7 +128,7 @@ func Test_TutorialWebApp(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					applicationName: {
-						validation.NewK8sObjectForResource(applicationName, componentNameWebApp),
+						validation.NewK8sObjectForResource(applicationName, resourceNameWebApp),
 					},
 				},
 			},
@@ -136,14 +136,14 @@ func Test_TutorialWebApp(t *testing.T) {
 				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: applicationName,
-						ResourceName:    componentNameKV,
+						ResourceName:    resourceNameKV,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDKeyVault: validation.NewOutputResource(outputresource.LocalIDKeyVault, outputresource.TypeARM, resourcekinds.AzureKeyVault, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: applicationName,
-						ResourceName:    componentNameDB,
+						ResourceName:    resourceNameDB,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureCosmosAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccount, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, true, false, rest.OutputResourceStatus{}),
@@ -151,7 +151,7 @@ func Test_TutorialWebApp(t *testing.T) {
 					},
 					{
 						ApplicationName: applicationName,
-						ResourceName:    componentNameWebApp,
+						ResourceName:    resourceNameWebApp,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment:                   validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDService:                      validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),

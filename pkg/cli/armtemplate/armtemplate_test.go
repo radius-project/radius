@@ -36,9 +36,9 @@ func Test_DeploymentTemplate(t *testing.T) {
 
 	application, err := GetResource(path.Join("testdata", "arm", "Microsoft.CustomProviders-resourceProviders-Applicationradiusv3-azure-resources-container-httpbinding.json"))
 	require.NoError(t, err)
-	backend, err := GetResource(path.Join("testdata", "arm", "Microsoft.CustomProviders-resourceProviders-Application-ContainerComponentradiusv3-azure-resources-container-httpbinding-backend.json"))
+	backend, err := GetResource(path.Join("testdata", "arm", "Microsoft.CustomProviders-resourceProviders-Application-Containerradiusv3-azure-resources-container-httpbinding-backend.json"))
 	require.NoError(t, err)
-	frontend, err := GetResource(path.Join("testdata", "arm", "Microsoft.CustomProviders-resourceProviders-Application-ContainerComponentradiusv3-azure-resources-container-httpbinding-frontend.json"))
+	frontend, err := GetResource(path.Join("testdata", "arm", "Microsoft.CustomProviders-resourceProviders-Application-Containerradiusv3-azure-resources-container-httpbinding-frontend.json"))
 	require.NoError(t, err)
 
 	frontendRoute, err := GetResource(path.Join("testdata", "arm", "Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-frontend.json"))
@@ -53,11 +53,11 @@ func Test_DeploymentTemplate(t *testing.T) {
 	}
 
 	expected := map[string]*Resource{
-		"Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-frontend":          frontendRoute,
-		"Microsoft.CustomProviders-resourceProviders-Applicationradiusv3-azure-resources-container-httpbinding":                             application,
-		"Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-backend":           backendRoute,
-		"Microsoft.CustomProviders-resourceProviders-Application-ContainerComponentradiusv3-azure-resources-container-httpbinding-backend":  backend,
-		"Microsoft.CustomProviders-resourceProviders-Application-ContainerComponentradiusv3-azure-resources-container-httpbinding-frontend": frontend,
+		"Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-frontend": frontendRoute,
+		"Microsoft.CustomProviders-resourceProviders-Applicationradiusv3-azure-resources-container-httpbinding":                    application,
+		"Microsoft.CustomProviders-resourceProviders-Application-HttpRouteradiusv3-azure-resources-container-httpbinding-backend":  backendRoute,
+		"Microsoft.CustomProviders-resourceProviders-Application-Containerradiusv3-azure-resources-container-httpbinding-backend":  backend,
+		"Microsoft.CustomProviders-resourceProviders-Application-Containerradiusv3-azure-resources-container-httpbinding-frontend": frontend,
 	}
 
 	for k, actualInfo := range actual {

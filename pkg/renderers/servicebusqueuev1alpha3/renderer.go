@@ -9,11 +9,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/handlers"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -21,26 +23,26 @@ var _ renderers.Renderer = (*Renderer)(nil)
 type Renderer struct {
 }
 
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource := options.Resource
 
-	properties := Properties{}
+	properties := radclient.AzureServiceBusProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	var output outputresource.OutputResource
-	if properties.Managed {
-		if properties.Queue == "" {
+	if properties.Managed != nil && *properties.Managed {
+		if to.String(properties.Queue) == "" {
 			return renderers.RendererOutput{}, errors.New("the 'topic' field is required when 'managed=true'")
 		}
 
-		if properties.Resource != "" {
+		if to.String(properties.Resource) != "" {
 			return renderers.RendererOutput{}, renderers.ErrResourceSpecifiedForManagedResource
 		}
 
@@ -51,15 +53,15 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:             "true",
-				handlers.ServiceBusQueueNameKey: properties.Queue,
+				handlers.ServiceBusQueueNameKey: to.String(properties.Queue),
 			},
 		}
 	} else {
-		if properties.Resource == "" {
+		if to.String(properties.Resource) == "" {
 			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
 		}
 
-		queueID, err := renderers.ValidateResourceID(properties.Resource, QueueResourceType, "ServiceBus Queue")
+		queueID, err := renderers.ValidateResourceID(to.String(properties.Resource), QueueResourceType, "ServiceBus Queue")
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}

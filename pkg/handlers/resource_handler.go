@@ -8,16 +8,14 @@ package handlers
 import (
 	"context"
 
-	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/radrp/db"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 )
 
 type PutOptions struct {
 	ApplicationName string
 	ResourceName    string
 	Resource        *outputresource.OutputResource
-
-	Dependencies []Dependency
 
 	// ExistingOutputResource is the current state of the output resource persisted in database
 	ExistingOutputResource *db.OutputResource
@@ -35,7 +33,7 @@ type DeleteOptions struct {
 }
 
 // ResourceHandler interface defines the methods that every output resource will implement
-//go:generate mockgen -destination=./mock_resource_handler.go -package=handlers -self_package github.com/Azure/radius/pkg/handlers github.com/Azure/radius/pkg/handlers ResourceHandler
+//go:generate mockgen -destination=./mock_resource_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/handlers github.com/project-radius/radius/pkg/handlers ResourceHandler
 type ResourceHandler interface {
 	Put(ctx context.Context, options *PutOptions) (map[string]string, error)
 	Delete(ctx context.Context, options DeleteOptions) error

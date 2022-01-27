@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - name: tcp-mongo
+    port: 27037
+    protocol: TCP
+    targetPort: mongo
+  clusterIP: None

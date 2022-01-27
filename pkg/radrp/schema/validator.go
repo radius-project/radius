@@ -16,7 +16,7 @@ import (
 type ValidationError struct {
 
 	// Position contains the field position, e.g. (root),
-	// (root).location, (root).properties.components.0
+	// (root).location, (root).properties.resources.0
 	//
 	// It could be unset, in case the object was not valid JSON.
 	Position string

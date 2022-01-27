@@ -11,8 +11,12 @@ import (
 	"path"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
 )
 
 func Test_ArmToK8sConversion(t *testing.T) {
@@ -21,9 +25,9 @@ func Test_ArmToK8sConversion(t *testing.T) {
 
 	applicationUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "Application-azure-resources-container-httpbinding.json"))
 	require.NoError(t, err)
-	backendUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "ContainerComponent-backend.json"))
+	backendUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "Container-backend.json"))
 	require.NoError(t, err)
-	frontendUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "ContainerComponent-frontend.json"))
+	frontendUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "Container-frontend.json"))
 	require.NoError(t, err)
 
 	frontendRouteUnstructured, err := GetUnstructured(path.Join("testdata", "frontend-backend", "HttpRoute-frontend.json"))
@@ -32,11 +36,11 @@ func Test_ArmToK8sConversion(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := map[string]*unstructured.Unstructured{
-		"HttpRoute-azure-resources-container-httpbinding-frontend":          frontendRouteUnstructured,
-		"Application-azure-resources-container-httpbinding":                 applicationUnstructured,
-		"HttpRoute-azure-resources-container-httpbinding-backend":           backendRouteUnstructured,
-		"ContainerComponent-azure-resources-container-httpbinding-backend":  backendUnstructured,
-		"ContainerComponent-azure-resources-container-httpbinding-frontend": frontendUnstructured,
+		"HttpRoute-azure-resources-container-httpbinding-frontend": frontendRouteUnstructured,
+		"Application-azure-resources-container-httpbinding":        applicationUnstructured,
+		"HttpRoute-azure-resources-container-httpbinding-backend":  backendRouteUnstructured,
+		"Container-azure-resources-container-httpbinding-backend":  backendUnstructured,
+		"Container-azure-resources-container-httpbinding-frontend": frontendUnstructured,
 	}
 
 	template, err := Parse(string(content))
@@ -54,8 +58,9 @@ func Test_ArmToK8sConversion(t *testing.T) {
 
 	actual := map[string]*unstructured.Unstructured{}
 	for _, resource := range resources {
-		k8sInfo, err := ConvertToK8s(resource, "default")
+		k8sInfo, secrets, err := ConvertToK8s(resource, "default")
 		require.NoError(t, err)
+		assert.Empty(t, secrets)
 		actual[k8sInfo.GetObjectKind().GroupVersionKind().Kind+"-"+k8sInfo.GetName()] = k8sInfo
 	}
 
@@ -72,6 +77,44 @@ func Test_ArmToK8sConversion(t *testing.T) {
 
 		require.JSONEq(t, string(expectedUns), string(actualUns))
 	}
+}
+
+func Test_ArmToK8sConversion_ManagedSecret(t *testing.T) {
+	content, err := ioutil.ReadFile("testdata/managed-secret/template.json")
+	require.NoError(t, err)
+
+	template, err := Parse(string(content))
+	require.NoError(t, err)
+
+	resources, err := Eval(template, TemplateOptions{})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(resources))
+	k8sInfo, secret, err := ConvertToK8s(resources[0], "default")
+	require.NoError(t, err)
+
+	// Compare the scraped secret content.
+	secretContent, err := ioutil.ReadFile("testdata/managed-secret/secret.yaml")
+	require.NoError(t, err)
+	expectedSecret := map[string]string{}
+	require.NoError(t, yaml.Unmarshal(secretContent, &expectedSecret))
+	if diff := cmp.Diff(expectedSecret, secret); diff != "" {
+		t.Errorf("unexpected diff in secret -(want, +got): %s", diff)
+	}
+
+	// Now verify that secrets are all redacted
+	spec, hasSpec := k8sInfo.Object["spec"].(map[string]interface{})
+	require.True(t, hasSpec)
+	tmplRaw, hasTemplate := spec["template"].(runtime.RawExtension)
+	require.True(t, hasTemplate)
+	tmpl := make(map[string]interface{})
+	require.NoError(t, json.Unmarshal(tmplRaw.Raw, &tmpl))
+	body, hasBody := tmpl["body"].(map[string]interface{})
+	require.True(t, hasBody)
+	properties, hasProperties := body["properties"].(map[string]interface{})
+	require.True(t, hasProperties)
+	_, hasSecrets := properties["secrets"].(map[string]interface{})
+	require.False(t, hasSecrets)
 }
 
 func TestUnwrapK8sUnstructured(t *testing.T) {
@@ -203,7 +246,105 @@ func TestUnwrapK8sUnstructured(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			output, err := ConvertToK8s(tc.input, "default")
+			output, secrets, err := ConvertToK8s(tc.input, "default")
+			if err != nil {
+				require.True(t, tc.expectedErr != "", "unexpected err %v", err)
+				require.Regexp(t, tc.expectedErr, err.Error())
+				return
+			}
+			require.Equal(t, tc.expected, *output)
+			assert.Empty(t, secrets)
+		})
+	}
+}
+
+func TestConvertToK8sDeploymentTemplate(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		input       Resource
+		expected    unstructured.Unstructured
+		expectedErr string
+	}{
+		{
+			name: "no properties",
+			input: Resource{
+				Name: "nested",
+				Body: map[string]interface{}{},
+			},
+			expectedErr: "no properties",
+		},
+		{
+			name: "no template",
+			input: Resource{
+				Name: "nested",
+				Body: map[string]interface{}{
+					"properties": map[string]interface{}{},
+				},
+			},
+			expectedErr: "no template",
+		}, {
+			name: "no parameters",
+			input: Resource{
+				Name: "nested",
+				Body: map[string]interface{}{
+					"properties": map[string]interface{}{
+						"template": map[string]interface{}{
+							"foo": "bar",
+						},
+					},
+				},
+			},
+			expected: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "bicep.dev/v1alpha3",
+					"kind":       "DeploymentTemplate",
+					"metadata": map[string]interface{}{
+						"name":      "deploymenttemplate-xyz-nested",
+						"namespace": "default",
+					},
+					"spec": map[string]interface{}{
+						"content": map[string]interface{}{
+							"foo": "bar",
+						},
+						"parameters": map[string]interface{}(nil),
+					},
+				},
+			},
+		}, {
+			name: "has parameters",
+			input: Resource{
+				Name: "nested",
+				Body: map[string]interface{}{
+					"properties": map[string]interface{}{
+						"template": map[string]interface{}{
+							"foo": "bar",
+						},
+						"parameters": map[string]interface{}{
+							"app": "appName",
+						},
+					},
+				},
+			},
+			expected: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "bicep.dev/v1alpha3",
+					"kind":       "DeploymentTemplate",
+					"metadata": map[string]interface{}{
+						"name":      "deploymenttemplate-xyz-nested",
+						"namespace": "default",
+					},
+					"spec": map[string]interface{}{
+						"content": map[string]interface{}{
+							"foo": "bar",
+						},
+						"parameters": map[string]interface{}{
+							"app": "appName",
+						},
+					},
+				},
+			}}} {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := ConvertToK8sDeploymentTemplate(tc.input, "default", "deploymenttemplate-xyz")
 			if err != nil {
 				require.True(t, tc.expectedErr != "", "unexpected err %v", err)
 				require.Regexp(t, tc.expectedErr, err.Error())
@@ -211,6 +352,7 @@ func TestUnwrapK8sUnstructured(t *testing.T) {
 			}
 			require.Equal(t, tc.expected, *output)
 		})
+
 	}
 }
 

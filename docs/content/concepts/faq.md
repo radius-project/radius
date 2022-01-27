@@ -6,6 +6,12 @@ description: "Commonly asked questions and answers about Project Radius"
 weight: 999
 ---
 
+## Appllications
+
+### Can I incrementally adopt, or "try out" Radius?
+
+**Yes**. You can use the [Bicep `existing` keyword](https://docs.microsoft.com/azure/azure-resource-manager/bicep/resource-declaration?tabs=azure-powershell#existing-resources) to add a Radius application to previously deployed resources. Learn more in the [Radius authoring guide]({{< ref authoring >}}). In the future we will also support other experiences in Bicep and the Azure portal for adding Radius to existing resources.
+
 ## Environments
 
 ### Can I connect to an existing environment?
@@ -55,4 +61,4 @@ This flag tells Radius to manage the lifetime of the component for you. The comp
 
 ## Does Radius support all Azure resources?
 
-**Not yet**. We're currently working on changing the way Radius runnable components like containers work with Azure resources. Stay tuned for more information.
+**Yes**. You can use any Azure resource type by modeling it in Bicep outside the `radius.dev/Application` resource and defining a connection to the resource from a `Container`. See the [connections page]({{< ref connections-model >}})) for more details.

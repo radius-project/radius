@@ -9,12 +9,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/renderers/containerv1alpha3"
-	"github.com/Azure/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -22,8 +22,8 @@ import (
 type noop struct {
 }
 
-func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, error) {
-	return nil, nil
+func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
 }
 
 func (r *noop) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
@@ -157,5 +157,5 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "the appId specified on a \"dapr.io.DaprHttpRoute\" must match the appId specified on the \"dapr.io/Sidecar@v1alpha1\" trait. Route: \"routeappId\", Trait: \"testappId\"", err.Error())
+	require.Equal(t, "the appId specified on a \"dapr.io.InvokeHttpRoute\" must match the appId specified on the \"dapr.io/Sidecar@v1alpha1\" trait. Route: \"routeappId\", Trait: \"testappId\"", err.Error())
 }

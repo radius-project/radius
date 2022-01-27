@@ -16,7 +16,7 @@
             "type": "string"
         },
         "accountName": {
-            "defaultValue": "[concat('radius-rp-', uniquestring(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-rp-', uniquestring(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The unique name of the cosmos db account."
             },
@@ -30,7 +30,7 @@
             "type": "string"
         },
         "clusterName": {
-            "defaultValue": "[concat('radius-aks-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-aks-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of the Managed Cluster resource."
             },
@@ -50,7 +50,7 @@
             "type": "string"
         },
         "deploymentScriptIdentityName": {
-            "defaultValue": "[concat('radius-deployment-id-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-deployment-id-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The identity name to use for the deployment script."
             },
@@ -113,7 +113,7 @@
             "type": "object"
         },
         "siteName": {
-            "defaultValue": "[concat('radius-rp-', uniqueString(parameters('controlPlaneResourceGroup')))]",
+            "defaultValue": "[concat('radius-rp-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of your Web Site."
             },
@@ -334,6 +334,14 @@
                             "location": "[resourceGroup().location]",
                             "name": "[parameters('clusterName')]",
                             "properties": {
+                                "addonProfiles": {
+                                    "azureKeyvaultSecretsProvider": {
+                                        "config": {
+                                            "enableSecretRotation": "true"
+                                        },
+                                        "enabled": true
+                                    }
+                                },
                                 "agentPoolProfiles": [
                                     {
                                         "count": 1,
@@ -607,21 +615,6 @@
                                         "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]",
                                         "name": "Applications",
                                         "routingType": "Proxy"
-                                    },
-                                    {
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]",
-                                        "name": "Applications/Components",
-                                        "routingType": "Proxy"
-                                    },
-                                    {
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]",
-                                        "name": "Applications/Scopes",
-                                        "routingType": "Proxy"
-                                    },
-                                    {
-                                        "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]",
-                                        "name": "Applications/Deployments",
-                                        "routingType": "Proxy"
                                     }
                                 ]
                             },
@@ -691,7 +684,7 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/ContainerComponent",
+                "name": "Application/Container",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
@@ -716,47 +709,47 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/azure.com.KeyVaultComponent",
+                "name": "Application/azure.com.KeyVault",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/azure.com.ServiceBusQueueComponent",
+                "name": "Application/azure.com.ServiceBusQueue",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/dapr.io.DaprHttpRoute",
+                "name": "Application/dapr.io.InvokeHttpRoute",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/dapr.io.PubSubTopicComponent",
+                "name": "Application/dapr.io.PubSubTopic",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/dapr.io.StateStoreComponent",
+                "name": "Application/dapr.io.StateStore",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/microsoft.com.SQLComponent",
+                "name": "Application/microsoft.com.SQLDatabase",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/mongodb.com.MongoDBComponent",
+                "name": "Application/mongo.com.MongoDatabase",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/rabbitmq.com.MessageQueueComponent",
+                "name": "Application/rabbitmq.com.MessageQueue",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/redislabs.com.RedisComponent",
+                "name": "Application/redislabs.com.RedisCache",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             }

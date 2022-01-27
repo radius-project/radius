@@ -176,7 +176,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - containercomponents
+  - containers
   verbs:
   - create
   - delete
@@ -188,13 +188,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - containercomponents/finalizers
+  - containers/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - containercomponents/status
+  - containers/status
   verbs:
   - get
   - patch
@@ -202,7 +202,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriodaprhttproutes
+  - daprioinvokehttproutes
   verbs:
   - create
   - delete
@@ -214,13 +214,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriodaprhttproutes/finalizers
+  - daprioinvokehttproutes/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - dapriodaprhttproutes/status
+  - daprioinvokehttproutes/status
   verbs:
   - get
   - patch
@@ -228,7 +228,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriopubsubtopiccomponents
+  - dapriopubsubtopics
   verbs:
   - create
   - delete
@@ -240,13 +240,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriopubsubtopiccomponents/finalizers
+  - dapriopubsubtopics/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - dapriopubsubtopiccomponents/status
+  - dapriopubsubtopics/status
   verbs:
   - get
   - patch
@@ -254,7 +254,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriostatestorecomponents
+  - dapriostatestores
   verbs:
   - create
   - delete
@@ -266,13 +266,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriostatestorecomponents/finalizers
+  - dapriostatestores/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - dapriostatestorecomponents/status
+  - dapriostatestores/status
   verbs:
   - get
   - patch
@@ -358,7 +358,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - mongodbcomponents
+  - mongodatabases
   verbs:
   - create
   - delete
@@ -370,13 +370,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - mongodbcomponents/finalizers
+  - mongodatabases/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - mongodbcomponents/status
+  - mongodatabases/status
   verbs:
   - get
   - patch
@@ -384,7 +384,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - rabbitmqcomponents
+  - rabbitmqmessagequeues
   verbs:
   - create
   - delete
@@ -396,13 +396,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - rabbitmqcomponents/finalizers
+  - rabbitmqmessagequeues/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - rabbitmqcomponents/status
+  - rabbitmqmessagequeues/status
   verbs:
   - get
   - patch
@@ -410,7 +410,7 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - rediscomponents
+  - rediscaches
   verbs:
   - create
   - delete
@@ -422,13 +422,13 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - rediscomponents/finalizers
+  - rediscaches/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - rediscomponents/status
+  - rediscaches/status
   verbs:
   - get
   - patch

@@ -14,16 +14,18 @@ import (
 const (
 	LabelRadiusApplication  = "radius.dev/application"
 	LabelRadiusResource     = "radius.dev/resource"
+	LabelRadiusDeployment   = "radius.dev/deployment"
 	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
 	LabelRadiusRevision     = "radius.dev/revision"
 	LabelRadiusResourceType = "radius.dev/resource-type"
+	LabelPartOf             = "app.kubernetes.io/part-of"
+	LabelName               = "app.kubernetes.io/name"
+	LabelManagedBy          = "app.kubernetes.io/managed-by"
+	LabelManagedByRadiusRP  = "radius-rp"
+	LabelAADPodIdentity     = "aadpodidbinding"
 
-	LabelPartOf            = "app.kubernetes.io/part-of"
-	LabelName              = "app.kubernetes.io/name"
-	LabelManagedBy         = "app.kubernetes.io/managed-by"
-	LabelManagedByRadiusRP = "radius-rp"
-
-	FieldManager = "radius-rp"
+	FieldManager      = "radius-rp"
+	AnnotationLocalID = "radius.dev/local-id"
 )
 
 // NOTE: the difference between descriptive labels and selector labels
@@ -75,7 +77,7 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 // Kubernetes object.
 //
 // This function differs from MakeSelectorLablels in that it's intended to *cross* resources. eg: The Service created by
-// an HttpRoute and the Deployment created by a ContainerComponent.
+// an HttpRoute and the Deployment created by a Container.
 func MakeRouteSelectorLabels(application string, resourceType string, route string) map[string]string {
 	return map[string]string{
 		LabelRadiusApplication: application,
@@ -86,11 +88,18 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 	}
 }
 
+// MakeAADPodIdentityBindingLabels returns a map binding the Pod Identity name to the pod
+func MakeAADPodIdentityBindingLabels(podIdentityName string) map[string]string {
+	return map[string]string{
+		LabelAADPodIdentity: podIdentityName,
+	}
+}
+
 // MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
 // This function differs from MakeSelectorLablels in that it's intended to *cross* resources. eg: The Service created by
-// an HttpRoute and the Deployment created by a ContainerComponent.
+// an HttpRoute and the Deployment created by a Container.
 func MakeResourceCRDLabels(application string, resourceType string, resource string) map[string]string {
 	if resourceType != "" && resource != "" {
 		return map[string]string{

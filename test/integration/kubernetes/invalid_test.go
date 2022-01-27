@@ -8,8 +8,8 @@ package controllers
 import (
 	"testing"
 
-	"github.com/Azure/radius/test/kubernetestest"
-	"github.com/Azure/radius/test/testcontext"
+	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,7 +49,7 @@ func TestInvalidHttpRoute(t *testing.T) {
 	require.Equal(t, "admission webhook \"resource-validation.radius.dev\" denied the request: failed validation(s):\n- (root).properties.gateway: Invalid type. Expected: object, given: string\n", err.Error())
 }
 
-func TestInvalidContainerComponent(t *testing.T) {
+func TestInvalidContainer(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := testcontext.GetContext(t)
@@ -57,7 +57,7 @@ func TestInvalidContainerComponent(t *testing.T) {
 
 	controllerStep := kubernetestest.ControllerStep{
 		Namespace:      "arm",
-		TemplateFolder: "testdata/invalidcontainercomponent/",
+		TemplateFolder: "testdata/invalidcontainer/",
 	}
 
 	test := kubernetestest.NewControllerTest(ctx, controllerStep)

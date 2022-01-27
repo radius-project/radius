@@ -1,0 +1,7 @@
+{
+  "properties": {
+    "managed": true,
+    "queue": "some-queue",
+    "resource": "some-resource"
+  }
+}

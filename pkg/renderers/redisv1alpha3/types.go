@@ -5,11 +5,11 @@
 
 package redisv1alpha3
 
-import "github.com/Azure/radius/pkg/azure/azresources"
+import "github.com/project-radius/radius/pkg/azure/azresources"
 
 const (
 	Port         = 6379
-	ResourceType = "redislabs.com.RedisComponent"
+	ResourceType = "redislabs.com.RedisCache"
 )
 
 var RedisResourceType = azresources.KnownType{

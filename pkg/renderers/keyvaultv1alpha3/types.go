@@ -6,10 +6,10 @@
 package keyvaultv1alpha3
 
 import (
-	"github.com/Azure/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 )
 
-const ResourceType = "azure.com.KeyVaultComponent"
+const ResourceType = "azure.com.KeyVault"
 
 var KeyVaultResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{

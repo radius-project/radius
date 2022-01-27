@@ -11,9 +11,9 @@ Radius offers multiple ways to monitor the health of your Application Components
 
 ## Container health
 
-The [ContainerComponent]({{< ref container >}}) running your application code can be configured with [readiness and liveness probes]({{< ref "container.md#container" >}}) to monitor the health of your services. The service code can report its health via HTTP or exec options.
+The [Container]({{< ref container >}}) running your application code can be configured with [readiness and liveness probes]({{< ref "container.md#container" >}}) to monitor the health of your services. The service code can report its health via HTTP or exec options.
 
-For example, a ContainerComponent can be configured with a readiness probe:
+For example, a Container can be configured with a readiness probe:
 
 {{< rad file="snippets/probe.bicep" embed=true marker="//SAMPLE" >}}
 

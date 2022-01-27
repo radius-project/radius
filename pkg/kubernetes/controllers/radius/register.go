@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -19,12 +20,14 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	bicepv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/bicep/v1alpha3"
-	radiusv1alpha3 "github.com/Azure/radius/pkg/kubernetes/api/radius/v1alpha3"
-	bicepcontroller "github.com/Azure/radius/pkg/kubernetes/controllers/bicep"
-	"github.com/Azure/radius/pkg/kubernetes/webhook"
-	"github.com/Azure/radius/pkg/model"
+	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	bicepcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/bicep"
+	"github.com/project-radius/radius/pkg/kubernetes/webhook"
+	"github.com/project-radius/radius/pkg/model"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -32,31 +35,33 @@ var DefaultResourceTypes = []struct {
 	client.Object
 	client.ObjectList
 }{
-	{&radiusv1alpha3.ContainerComponent{}, &radiusv1alpha3.ContainerComponentList{}},
-	{&radiusv1alpha3.DaprIODaprHttpRoute{}, &radiusv1alpha3.DaprIODaprHttpRouteList{}},
-	{&radiusv1alpha3.DaprIOPubSubTopicComponent{}, &radiusv1alpha3.DaprIOPubSubTopicComponentList{}},
-	{&radiusv1alpha3.DaprIOStateStoreComponent{}, &radiusv1alpha3.DaprIOStateStoreComponentList{}},
+	{&radiusv1alpha3.Container{}, &radiusv1alpha3.ContainerList{}},
+	{&radiusv1alpha3.DaprIOInvokeHttpRoute{}, &radiusv1alpha3.DaprIOInvokeHttpRouteList{}},
+	{&radiusv1alpha3.DaprIOPubSubTopic{}, &radiusv1alpha3.DaprIOPubSubTopicList{}},
+	{&radiusv1alpha3.DaprIOStateStore{}, &radiusv1alpha3.DaprIOStateStoreList{}},
 	{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
 	{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
-	{&radiusv1alpha3.MongoDBComponent{}, &radiusv1alpha3.MongoDBComponentList{}},
-	{&radiusv1alpha3.RabbitMQComponent{}, &radiusv1alpha3.RabbitMQComponentList{}},
-	{&radiusv1alpha3.RedisComponent{}, &radiusv1alpha3.RedisComponentList{}},
+	{&radiusv1alpha3.MongoDatabase{}, &radiusv1alpha3.MongoDatabaseList{}},
+	{&radiusv1alpha3.RabbitMQMessageQueue{}, &radiusv1alpha3.RabbitMQMessageQueueList{}},
+	{&radiusv1alpha3.RedisCache{}, &radiusv1alpha3.RedisCacheList{}},
 	{&radiusv1alpha3.Gateway{}, &radiusv1alpha3.GatewayList{}},
 }
 
-var DefaultWatchTypes = []struct {
-	client.Object
-	client.ObjectList
+var DefaultWatchTypes = map[string]struct {
+	Object        client.Object
+	ObjectList    client.ObjectList
+	HealthHandler func(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string)
 }{
-	{&corev1.Service{}, &corev1.ServiceList{}},
-	{&appsv1.Deployment{}, &appsv1.DeploymentList{}},
-	{&corev1.Secret{}, &corev1.SecretList{}},
-	{&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}},
-	{&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}},
-	{&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}},
+	resourcekinds.Service:             {&corev1.Service{}, &corev1.ServiceList{}, nil},
+	resourcekinds.Deployment:          {&appsv1.Deployment{}, &appsv1.DeploymentList{}, GetHealthStateFromDeployment},
+	resourcekinds.Secret:              {&corev1.Secret{}, &corev1.SecretList{}, nil},
+	resourcekinds.StatefulSet:         {&appsv1.StatefulSet{}, &appsv1.StatefulSetList{}, nil},
+	resourcekinds.Gateway:             {&gatewayv1alpha1.Gateway{}, &gatewayv1alpha1.GatewayList{}, nil},
+	resourcekinds.KubernetesHTTPRoute: {&gatewayv1alpha1.HTTPRoute{}, &gatewayv1alpha1.HTTPRouteList{}, nil},
 }
 
 type Options struct {
+	Manager       manager.Manager
 	AppModel      model.ApplicationModel
 	Client        client.Client
 	Dynamic       dynamic.Interface
@@ -69,9 +74,10 @@ type Options struct {
 		client.Object
 		client.ObjectList
 	}
-	WatchTypes []struct {
-		client.Object
-		client.ObjectList
+	WatchTypes map[string]struct {
+		Object        client.Object
+		ObjectList    client.ObjectList
+		HealthHandler func(ctx context.Context, r *ResourceReconciler, a client.Object) (string, string)
 	}
 	SkipWebhooks bool
 }
@@ -105,6 +111,7 @@ func NewRadiusController(options *Options) *RadiusController {
 		Scheme:        options.Scheme,
 		RESTMapper:    options.RestMapper,
 		Log:           options.Log.WithName("controllers").WithName("DeploymentTemplate"),
+		Recorder:      options.Recorder,
 	}
 
 	return &RadiusController{
@@ -122,7 +129,12 @@ type RadiusController struct {
 	options     *Options
 }
 
-func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
+func (c *RadiusController) Name() string {
+	return "RadiusController"
+}
+
+func (c *RadiusController) Run(ctx context.Context) error {
+	mgr := c.options.Manager
 	err := c.application.SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup Application controller: %w", err)
@@ -150,7 +162,7 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 				continue
 			}
 
-			// Get GVR for corresponding component.
+			// Get GVR for corresponding resource.
 			gvr, err := c.options.RestMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
 				return fmt.Errorf("unable to get GVR for resource Kind: %s: %w", gvk.Kind, err)
@@ -164,7 +176,7 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	}
 
-	err = c.template.SetupWithManager(mgr)
+	err = c.template.SetupWithManager(mgr, c.options.ResourceTypes)
 	if err != nil {
 		return err
 	}
@@ -183,5 +195,16 @@ func (c *RadiusController) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	}
 
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		return fmt.Errorf("unable to set up health check %w", err)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		return fmt.Errorf("unable to set up ready check %w", err)
+
+	}
+
+	if err := c.options.Manager.Start(ctrl.SetupSignalHandler()); err != nil {
+		return fmt.Errorf("problem running manager %w", err)
+	}
 	return nil
 }

@@ -10,14 +10,14 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/healthcontract"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 func NewAzureCosmosDBMongoHandler(arm armauth.ArmConfig) ResourceHandler {
@@ -45,12 +45,6 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 
 	if properties[CosmosDBDatabaseIDKey] == "" {
 		var cosmosDBAccountName string
-		for _, resource := range options.Dependencies {
-			if resource.LocalID == outputresource.LocalIDAzureCosmosAccount {
-				cosmosDBAccountName = resource.Properties[CosmosDBAccountNameKey]
-			}
-		}
-
 		if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureCosmosAccount]; ok {
 			cosmosDBAccountName = properties[CosmosDBAccountNameKey]
 		}

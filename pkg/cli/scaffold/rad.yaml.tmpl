@@ -1,0 +1,10 @@
+# This file describes the stages of deployment for the application
+# Read more at https://radapp.dev
+name: {{.ApplicationName}}
+stages:
+- name: infra
+  bicep:
+    template: iac/infra.bicep
+- name: app
+  bicep:
+    template: iac/app.bicep

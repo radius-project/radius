@@ -1,9 +1,0 @@
-{
-  "id": 42,
-  "name": 42,
-  "kind": "mongodb.com/Mongo@v1alpha1",
-  "properties": {
-    "managed": true,
-    "extra": "foo"
-  }
-}

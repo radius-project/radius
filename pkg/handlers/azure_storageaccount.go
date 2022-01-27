@@ -10,14 +10,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2021-04-01/storage"
-	"github.com/Azure/radius/pkg/azure/armauth"
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/keys"
-	"github.com/Azure/radius/pkg/radlogger"
 	"github.com/gofrs/uuid"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 func getStorageAccountByID(ctx context.Context, arm armauth.ArmConfig, accountID string) (*storage.Account, error) {
@@ -81,6 +81,13 @@ func createStorageAccount(ctx context.Context, arm armauth.ArmConfig, accountNam
 }
 
 func generateStorageAccountName(ctx context.Context, arm armauth.ArmConfig, baseName string) (*string, error) {
+	// NOTE: this code path does not use the code in namegenerator.go because storage has
+	// some really specific name requirements.
+	//
+	// https://docs.microsoft.com/en-us/azure/storage/common/storage-account-overview#storage-account-endpoints
+	//
+	// We don't want to uglify 'general' names the same we have to for storage.
+
 	logger := radlogger.GetLogger(ctx)
 	sc := clients.NewAccountsClient(arm.SubscriptionID, arm.Auth)
 
@@ -88,12 +95,24 @@ func generateStorageAccountName(ctx context.Context, arm armauth.ArmConfig, base
 	name := ""
 
 	for i := 0; i < 10; i++ {
-		// 3-24 characters - all alphanumeric
+		// Storage names have to be 3-24 characters - all alphanumeric.
+		// The UUID will give us  32 characters after we remove '-'
 		uid, err := uuid.NewV4()
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate storage account name: %w", err)
 		}
-		name = baseName + strings.ReplaceAll(uid.String(), "-", "")
+
+		// Truncate the baseName if necessary to make sure we get a few characters of randomness
+		if len(baseName) > 16 {
+			baseName = baseName[0:16]
+		}
+
+		// Then concat the name + uuid and remove '-' before truncating to the max length.
+		// This should give us at least 8 characters that are random.
+		//
+		// NOTE: the first 8 characters of the UUID are based on time, so we should observe
+		// plenty of entropy.
+		name = strings.ReplaceAll(baseName+uid.String(), "-", "")
 		name = name[0:24]
 
 		result, err := sc.CheckNameAvailability(ctx, storage.AccountCheckNameAvailabilityParameters{

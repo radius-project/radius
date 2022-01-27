@@ -13,11 +13,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/radlogger"
-	"github.com/Azure/radius/pkg/radrp/certs"
-	"github.com/Azure/radius/pkg/version"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/certs"
+	"github.com/project-radius/radius/pkg/version"
 )
 
 type ServerOptions struct {

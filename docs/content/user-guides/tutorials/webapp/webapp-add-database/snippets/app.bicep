@@ -1,8 +1,18 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'webapp'
 
+  
   //CONTAINER
-  resource todoapplication 'ContainerComponent' = {
+  resource todoRoute 'HttpRoute' = {
+    name: 'todo-route'
+    properties: {
+      gateway: {
+        hostname: '*'
+      }
+    }
+  }
+
+  resource todoapplication 'Container' = {
     name: 'todoapp'
     properties: {
       container: {
@@ -11,6 +21,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         ports: {
           web: {
             containerPort: 3000
+            provides: todoRoute.id
           }
         }
         //PORTS
@@ -26,7 +37,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //CONTAINER
 
   //MONGO
-  resource db 'mongodb.com.MongoDBComponent' = {
+  resource db 'mongo.com.MongoDatabase' = {
     name: 'db'
     properties: {
       managed: true

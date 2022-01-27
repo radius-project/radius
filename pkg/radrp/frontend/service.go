@@ -10,19 +10,20 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Azure/radius/pkg/model/azure"
-	"github.com/Azure/radius/pkg/radrp/backend/deployment"
-	"github.com/Azure/radius/pkg/radrp/db"
-	"github.com/Azure/radius/pkg/radrp/frontend/handler"
-	"github.com/Azure/radius/pkg/radrp/frontend/resourceprovider"
-	"github.com/Azure/radius/pkg/radrp/frontend/server"
-	"github.com/Azure/radius/pkg/renderers"
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/model/azure"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
+	"github.com/project-radius/radius/pkg/radrp/frontend/handler"
+	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
+	"github.com/project-radius/radius/pkg/radrp/frontend/server"
+	"github.com/project-radius/radius/pkg/renderers"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
+	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
 )
 
 type Service struct {
@@ -45,6 +46,7 @@ func (s *Service) Run(ctx context.Context) error {
 	scheme := clientgoscheme.Scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(csidriver.AddToScheme(scheme))
 
 	k8s, err := controller_runtime.New(s.Options.K8sConfig, controller_runtime.Options{Scheme: scheme})
 	if err != nil {
@@ -68,7 +70,7 @@ func (s *Service) Run(ctx context.Context) error {
 		Address:      s.Options.Address,
 		Authenticate: s.Options.Authenticate,
 		Configure: func(router *mux.Router) {
-			handler.AddRoutes(rp, router, handler.DefaultValidatorFactory)
+			handler.AddRoutes(rp, router, handler.DefaultValidatorFactory, "")
 		},
 	})
 

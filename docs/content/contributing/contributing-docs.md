@@ -12,7 +12,7 @@ The Project Radius docs are built on [Hugo](https://gohugo.io) with the [Docsy](
 
 1. Clone repo
    ```
-   git clone https://github.com/Azure/radius.git
+   git clone https://github.com/project-radius/radius.git
    cd ./radius/docs
    ```
 1. Clone submodules (Docsy, Bootstrap, FontAwesome)
@@ -167,7 +167,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   name: 'storefront-app'
 
   //SAMPLE
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       container: {
@@ -182,7 +182,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 Will result in the following output:
 
 ```bicep
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       container: {
@@ -204,7 +204,7 @@ resource app 'radius.dev/Application@v1alpha1' = {
   name: 'storefront-app'
 
   //SAMPLE
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       //RUN
@@ -229,7 +229,7 @@ resource app 'radius.dev/Application@v1alpha1' = {
 Will result in the following output:
 
 ```bicep
-  resource store 'ContainerComponent' = {
+  resource store 'Container' = {
     name: 'storefront'
     properties: {
       container: {...}

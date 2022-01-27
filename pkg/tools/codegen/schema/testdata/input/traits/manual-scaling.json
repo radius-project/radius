@@ -2,7 +2,7 @@
   "definitions": {
     "ManualScalingTrait": {
       "type": "object",
-      "description": "ManualScaling ComponentTrait",
+      "description": "ManualScaling Trait",
       "properties": {
         "kind": {
           "description": "Trait kind.",

@@ -6,17 +6,17 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/cli"
-	"github.com/Azure/radius/pkg/cli/bicep"
-	"github.com/Azure/radius/pkg/cli/output"
-	"github.com/Azure/radius/pkg/version"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -54,7 +54,11 @@ func prettyPrintJSON(o interface{}) (string, error) {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	ctx := context.WithValue(context.Background(), configHolderKey, configHolder)
-	if err := RootCmd.ExecuteContext(ctx); err != nil {
+	err := RootCmd.ExecuteContext(ctx)
+	if errors.Is(&cli.FriendlyError{}, err) {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		os.Exit(1)
 	}
@@ -72,15 +76,15 @@ func init() {
 	})
 
 	// Initialize support for --version
-	RootCmd.Version = version.Release()
-	template := fmt.Sprintf("Release: %s \nVersion: %s\nBicep version: %s\nCommit: %s\n", version.Release(), version.Version(), bicep.Version(), version.Commit())
-	RootCmd.SetVersionTemplate(template)
+	RootCmd.Version = "foo" // needs to be set to non-empty string, actual version is set via SetVersionTemplate()
+	buf := new(bytes.Buffer)
+	writeVersionString(output.FormatList, buf)
+	RootCmd.SetVersionTemplate(buf.String())
 
-	RootCmd.Flags().BoolP("version", "v", false, "version for radius")
-	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default is $HOME/.rad/config.yaml)")
+	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 
-	outputDescription := fmt.Sprintf("output format (default is %s, supported formats are %s)", output.DefaultFormat, strings.Join(output.SupportedFormats(), ", "))
-	RootCmd.PersistentFlags().StringP("output", "o", "table", outputDescription)
+	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
+	RootCmd.PersistentFlags().StringP("output", "o", output.DefaultFormat, outputDescription)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

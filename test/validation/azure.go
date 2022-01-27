@@ -13,8 +13,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/radius/pkg/azure/clients"
-	"github.com/Azure/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/keys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,10 +24,11 @@ type AzureResourceSet struct {
 }
 
 type ExpectedResource struct {
-	Children    []ExpectedChildResource
-	Type        string
-	Tags        map[string]string
-	UserManaged bool
+	Children        []ExpectedChildResource
+	Type            string
+	Tags            map[string]string
+	UserManaged     bool
+	AzureConnection bool
 }
 
 type ExpectedChildResource struct {
@@ -139,12 +140,10 @@ func ValidateAzureResourcesDeleted(ctx context.Context, t *testing.T, authorizer
 	t.Logf("Validating deletion of resources in resource group %s...", resourceGroup)
 	t.Logf("Expected resources: ")
 	for _, r := range set.Resources {
-		// We only expect to find user-managed resources
-		if !r.UserManaged {
-			continue
+		// We only expect to find user-managed resources or Azure connections
+		if r.UserManaged || r.AzureConnection {
+			t.Logf("\t%s", r.String())
 		}
-
-		t.Logf("\t%s", r.String())
 	}
 	t.Logf("")
 
@@ -174,7 +173,7 @@ func ValidateAzureResourcesDeleted(ctx context.Context, t *testing.T, authorizer
 				continue // not a match, skip
 			}
 
-			if !expectedResource.UserManaged {
+			if !expectedResource.UserManaged && !expectedResource.AzureConnection {
 				assert.Failf(t, "validation failed", "found a resource that should have been deleted %s", actualResource.String())
 				continue
 			}
@@ -201,7 +200,7 @@ func ValidateAzureResourcesDeleted(ctx context.Context, t *testing.T, authorizer
 				}
 			}
 
-			t.Logf("found a match for user-managed expected resource %s", expectedResource.String())
+			t.Logf("found a match for user-managed or azure connection expected resource %s", expectedResource.String())
 
 			// We found a match, remove from both lists
 			actual = append(actual[:actualIndex], actual[actualIndex+1:]...)

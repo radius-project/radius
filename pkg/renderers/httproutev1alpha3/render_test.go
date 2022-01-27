@@ -12,11 +12,11 @@ import (
 
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 
-	"github.com/Azure/radius/pkg/azure/azresources"
-	"github.com/Azure/radius/pkg/kubernetes"
-	"github.com/Azure/radius/pkg/radrp/outputresource"
-	"github.com/Azure/radius/pkg/renderers"
-	"github.com/Azure/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -33,13 +33,13 @@ var resourceID = azresources.MakeID(
 	namespace,
 	azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
 	azresources.ResourceType{Type: "Application", Name: applicationName},
-	azresources.ResourceType{Type: "ContainerComponent", Name: resourceName})
+	azresources.ResourceType{Type: "Container", Name: resourceName})
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
 
 	resource := renderers.RendererResource{}
-	dependencies, err := r.GetDependencyIDs(context.Background(), resource)
+	dependencies, _, err := r.GetDependencyIDs(context.Background(), resource)
 	require.NoError(t, err)
 	require.Empty(t, dependencies)
 }
