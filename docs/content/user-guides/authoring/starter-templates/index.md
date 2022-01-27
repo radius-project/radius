@@ -24,8 +24,8 @@ The following starter templates are available for use in your application. Visit
 
 | Connector | Container starter | Azure starter |
 |-----------|:-----------------:|:-------------:|
-| [Dapr Pub/Sub Topic]({{< ref "dapr-pubsub.md#starter" >}}) | ⏳ | ✅ | 
-| [Dapr State Store]({{< ref "dapr-statestore.md#starter" >}}) | ⏳ | ✅ | 
+| [Dapr Pub/Sub Topic]({{< ref "dapr-pubsub.md#starter" >}}) | ✅ | ✅ | 
+| [Dapr State Store]({{< ref "dapr-statestore.md#starter" >}}) | ✅ | ✅ | 
 | [Mongo Database]({{< ref "mongodb.md#starter" >}}) | ✅ | ✅ |
 | [RabbitMQ Queue]({{< ref "rabbitmq.md#starter" >}}) | ✅ | ❌ |
 | [Redis Cache]({{< ref "redis.md#starter" >}})    | ✅ | ✅ |
