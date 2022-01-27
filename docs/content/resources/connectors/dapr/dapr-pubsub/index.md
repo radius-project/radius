@@ -67,12 +67,41 @@ You can get up and running quickly with a Dapr Pub/Sub topic by using a [starter
 
 {{< rad file="snippets/starter.bicep" embed=true >}}
 
+### Container
+
+The Dapr Pub/Sub container starter uses a Redis container and can run on any Radius platform.
+
+```
+br:radius.azurecr.io/starters/dapr/pubsub:latest
+```
+
+#### Input parameters
+
+| Parameter | Description | Required | Default |
+|-----------|-------------|:--------:|---------|
+| radiusApplication | The application resource to use as the parent of the PubSub Topic | Yes | - |
+| pubSubName | The name of the PubSub Topic | No | `deployment().name` (module name) |
+
+#### Output parameters
+
+| Parameter | Description | Type |
+|----------|-------------|------|
+| pubSub | The PubSub Topic resource | `radius.dev/Application/dapr.io.PubSubTopic@v1alpha3` |
+
+### Microsoft Azure
+
+The Dapr Pub/Sub Azure Service Bus starter uses an Azure Service Bus Topic and can run only on Azure.
+
+```txt
+br:radius.azurecr.io/starters/dapr/pubsub-azure-servicebus:latest
+```
+
 ### Input parameters
 
 | Parameter | Description | Required | Default |
 |-----------|-------------|:--------:|---------|
 | radiusApplication | The application resource to use as the parent of the PubSub Topic | Yes | - |
-| pubSubName | The name of the PubSub Topic | Yes | - |
+| pubSubName | The name of the PubSub Topic | No | `deployment().name` (module name) |
 | serviceBusName | The name of the underlying Azure Service Bus namespace | No | `'servicebus-${uniqueString(resourceGroup().id, deployment().name)}'` |
 | queueName | The name of the underlying Azure Service Bus queue | No | `'dapr'` |
 | location | The Azure region to deploy the Azure Service Bus | No | `resourceGroup().location` |
@@ -80,5 +109,5 @@ You can get up and running quickly with a Dapr Pub/Sub topic by using a [starter
 ### Output parameters
 
 | Parameter | Description | Type |
-|----------|-------------|------|
+|-----------|-------------|------|
 | pubSub | The PubSub Topic resource | `radius.dev/Application/dapr.io.PubSubTopic@v1alpha3` |

@@ -51,8 +51,8 @@ You can get up and running quickly with a Redis cache by using a [starter]({{< r
 
 The Redis cache container starter uses a Redis container and can run on any Radius platform.
 
-```sh
-resource mongoDB br:radius.azurecr.io/starters/redis:latest = {...}
+```
+br:radius.azurecr.io/starters/redis:latest
 ```
 
 #### Input parameters
@@ -60,7 +60,7 @@ resource mongoDB br:radius.azurecr.io/starters/redis:latest = {...}
 | Parameter | Description | Required | Default |
 |-----------|-------------|:--------:|---------|
 | radiusApplication | The application resource to use as the parent of the RabbitMQ Broker | Yes | - |
-| cacheName | The name for your Redis Cache container | No | `'redis-${uniqueString(resourceGroup().id, deployment().name)}'` |
+| cacheName | The name for your Redis Cache container | No | `deployment().name` (module name) |
 
 #### Output parameters
 
@@ -72,8 +72,8 @@ resource mongoDB br:radius.azurecr.io/starters/redis:latest = {...}
 
 The Redis cache Azure starter uses an Azure Cache for Redis and can run only on Azure.
 
-```sh
-resource mongoDB br:radius.azurecr.io/starters/redis-azure:latest = {...}
+```txt
+br:radius.azurecr.io/starters/redis-azure:latest
 ```
 
 #### Input parameters
@@ -85,10 +85,10 @@ resource mongoDB br:radius.azurecr.io/starters/redis-azure:latest = {...}
 | redisCacheSku | The SKU of the Redis Cache | No | `'Basic'` |
 | redisCacheFamily | The family of the Azure Redis Cache | No | `'C'` |
 | redisCacheCapacity | The capacity of the Azure Redis Cache | No | `1` |
-| location | The Azure region to deploy the Azure Redis Cache | No | `'westus'` |
+| location | The Azure region to deploy the Azure Redis Cache | No | `resourceGroup().location` |
 
 #### Output parameters
 
-| Resource | Description | Type |
-|----------|-------------|------|
+| Parameter | Description | Type |
+|-----------|-------------|------|
 | redisCache | The Redis Cache resource | `radius.dev/Application/redislabs.com.RedisCache@v1alpha3` |

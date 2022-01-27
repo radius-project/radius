@@ -7,12 +7,10 @@ description: "Learn how to use a MongoDB connector in your application"
 
 The `mongodb.com/MongoDatabase` connector is a [portable connector]({{< ref connectors >}}) which can be deployed to any [Radius platform]({{< ref platforms >}}).
 
-## Platform resources
+## Supported resources
 
-| Platform | Resource |
-|----------|----------|
-| [Microsoft Azure]({{< ref azure>}}) | [Azure CosmosDB API for MongoDB](https://docs.microsoft.com/en-us/azure/cosmos-db/mongodb-introduction)
-| [Kubernetes]({{< ref kubernetes >}}) | [MongoDB Docker image](https://hub.docker.com/_/mongo/)
+- [MongoDB container](https://hub.docker.com/_/mongo/)
+- [Azure CosmosDB API for MongoDB](https://docs.microsoft.com/en-us/azure/cosmos-db/mongodb-introduction)
 
 ## Resource format
 
@@ -35,17 +33,17 @@ Secrets are used when defining a MongoDB connector with a non-Azure Mongo servic
 | username | The username to use when connecting to the MongoDB. | `admin`
 | password | The password to use when connecting to the MongoDB. | `password`
 
-## Provided data
+### Provided data
 
-### Functions
+#### Functions
 
 Secrets must be accessed via Bicep functions to ensure they're not leaked or logged.
 
 | Bicep function | Description | Example |
 |----------------|-------------|---------|
-| connectionString() | Returns the connection string for the MongoDB. | `mongodb.connectionString()` |
-| username() | Returns the username for the MongoDB. | `mongodb.username()` |
-| password() | Returns the password for the MongoDB. | `mongodb.password()` |
+| `connectionString()` | Returns the connection string for the MongoDB. | `mongodb.connectionString()` |
+| `username()` | Returns the username for the MongoDB. | `mongodb.username()` |
+| `password()` | Returns the password for the MongoDB. | `mongodb.password()` |
 
 ## Starter
 
@@ -57,8 +55,8 @@ You can get up and running quickly with a Mongo Database by using a [starter]({{
 
 The Mongo Database container starter uses a mongo container and can run on any Radius platform.
 
-```sh
-resource mongoDB br:radius.azurecr.io/starters/mongo:latest = {...}
+```
+br:radius.azurecr.io/starters/mongo:latest
 ```
 
 #### Input parameters
@@ -66,7 +64,7 @@ resource mongoDB br:radius.azurecr.io/starters/mongo:latest = {...}
 | Parameter | Description | Required | Default |
 |-----------|-------------|:--------:|---------|
 | radiusApplication | The application resource to use as the parent of the Mongo Database | Yes | - |
-| dbName | The name for your Mongo Database | No | `deployment().name` (name of the module)` |
+| dbName | The name for your Mongo Database | No | `deployment().name` (module name)` |
 | username | The username for your Mongo Database | No | `'admin'` |
 | password | The password for your Mongo Database | No | `newGuid()` |
 
@@ -80,8 +78,8 @@ resource mongoDB br:radius.azurecr.io/starters/mongo:latest = {...}
 
 The Mongo Database Azure starter uses an Azure CosmosDB and can run only on Azure.
 
-```sh
-resource mongoDB br:radius.azurecr.io/starters/mongo-azure:latest = {...}
+```
+br:radius.azurecr.io/starters/mongo-azure:latest
 ```
 
 #### Input parameters
@@ -89,7 +87,7 @@ resource mongoDB br:radius.azurecr.io/starters/mongo-azure:latest = {...}
 | Parameter | Description | Required | Default |
 |-----------|-------------|:--------:|---------|
 | radiusApplication | The application resource to use as the parent of the Mongo Database | Yes | - |
-| dbName | The name for your Mongo Database | No | `deployment().name` (name of the module) |
+| dbName | The name for your Mongo Database | No | `deployment().name` (module name) |
 | accountName | The name for your Azure CosmosDB | No | `'cosmos-${uniqueString(resourceGroup().id, deployment().name)}'` |
 | location | The Azure region to deploy the Azure CosmosDB | No | `resourceGroup().location` |
 | dbThroughput | The throughput for your Azure CosmosDB | No | `400` |
