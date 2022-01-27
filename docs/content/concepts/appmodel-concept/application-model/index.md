@@ -2,7 +2,7 @@
 type: docs
 title: "Radius applications"
 linkTitle: "Applications"
-description: "Radius Applications as the top-level resource"
+description: "Learn about the top-level Radius Application resource."
 weight: 100
 ---
 
@@ -15,7 +15,7 @@ The Radius Application contains everything on an app diagram. That includes all 
 <i>A Radius Application encompases all the containers, databases, and APIs for an app.</i>
 {{< /imgproc >}}
 
-### Authoring an Application
+## Authoring an Application
 
 Applications are the top-level *resource*. The descriptions of the app's sub-components or external resources the app interacts with will be defined within a top-level `resource app` in a .bicep file: 
 {{< rad file="snippets/blank-app.bicep" embed=true >}}

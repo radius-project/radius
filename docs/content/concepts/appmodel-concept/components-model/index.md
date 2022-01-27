@@ -6,9 +6,9 @@ description: "Learn how to model your Application's pieces with Radius Component
 weight: 200
 ---
 
-Components describe the code, data, and infrastructure pieces of an application.   
+Components describe the code, data, and infrastructure pieces of an application.
 
-Simplistically, each node of an architecture diagram would map to one Component. Together, an Application's Components capture all of the important behaviors and requirements needed for a runtime to host that app. 
+Each node of an architecture diagram would map to one Component. Together, an Application's Components capture all of the important behaviors and requirements needed for a runtime to host that app. 
 
 ## Component definition
 
@@ -23,33 +23,26 @@ In your app's Bicep file, the Component resource captures:
 | **Routes** | What capabilities do I provide for others? | Offer an HTTP endpoint on `/home`
 | **Traits** | What operational behaviors do I offer and interact with? | Need a Dapr sidecar (`dapr.io.App`)
 
-## Example Radius Components
+### Example
 
+The following example shows two Components, one representing a [Container]({{< ref container >}}) and the other describing a [Dapr State Store](https://docs.dapr.io/developing-applications/building-blocks/state-management/state-management-overview/).
 
-Runnable components capture the details of your code and its requirements. For example, a [Container]({{< ref container >}}) describes your container and how to run it.
+#### Container
 
-#### Bicep example
+ [Containers]({{< ref container >}}) describe a container workload and how to run it.
 
 In an example eshop app, the storefront code's would include info necessary for the storefront container to run:
 
 {{< rad file="snippets/app.bicep" embed=true marker="//CONTAINER" >}}
 
-<<<<<<< HEAD
-When a Component defines a non-runnable resource (e.g. a database or message queue), the same definitions apply, but it's even easier to describe in Radius. Since behavior of non-runnable resources is more standardized, Radius can offload this type of repetitive configuration work from developers.
-=======
-### Runtime
-
-Each [Radius platform]({{< ref platforms >}}) has a different implementation of a runtime for runnable Components such as a `Container`. For example, Azure environments use Azure Kubernetes Service, while Kubernetes environments run containers directly on the cluster.
->>>>>>> main
-
-An example of a non-runnable Radius Component is an inventory database, modeled as:
+#### Dapr State Store
+A Dapr State Store can be modeled as a Component as well, with information about what underlying resource provides the Component. Other Components, like the `storefront` container above, can now connect to this State Store and save/get state items.
 
 {{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
-## Runtime
+## Platform resources
 
-Since Radius Applications can be deployed to a variety of [Radius-supported platforms]({{< ref platforms >}}), some Components use a different runtime based on platform. For example, under-the-hood of `ContainerComponent`, Azure deployments use Azure Kubernetes Service while Kubernetes deployments run containers directly on the user's cluster.
-
+Radius Applications can be deployed to a variety of [Radius-supported platforms]({{< ref platforms >}}), and some Components can be backed by different underlying resource types based on platform. For example, a `redislabs.com.Redis` is backed by Azure Redis Cache when deployed to Azure and backed by a Redis pod when deployed to Kubernetes.
 
 ### Resource lifecycle
 <!-- TODO: overhaul this section as we replace Radius-managed with Bicep modules -->
@@ -99,7 +92,7 @@ The Component concept in Radius is designed to version with the application code
 
 <!-- TODO: add example here -->
 
-### Portability
+## Portability
 
 Non-runnable Components can work across hosting models without any configuration changes, and will be satisfied using the best means available by the host. They are generally OSS services that are not tied to any particular SaaS or hosting platform and usually have multiple implementations.
 
@@ -122,6 +115,3 @@ You can configure role based access control (RBAC) on Azure resources by specify
 Now that you are familiar with Radius Components, the next step is to learn about Radius Connections.
 
 {{< button text="Learn about Connections" page="connections-model.md" >}}
-
-
-An application can have both runnable components *(e.g. containers, web applications)* and non-runnable components *(e.g. databases, message queues)*.

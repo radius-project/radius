@@ -1,9 +1,9 @@
-# define app 
+// Define app 
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'webapp'
 
-  # define container resource to run app code 
-  resource todoapplication 'ContainerComponent' = {
+  // Define container resource to run app code
+  resource todoapplication 'Container' = {
     name: 'todoapp'
     properties: {
       container: {
@@ -14,7 +14,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
           }
         }
       }
-      # connect container to database 
+      // Connect container to database 
       connections: {
         itemstore: {
           kind: 'mongo.com/MongoDB'
@@ -24,11 +24,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
  
-  # define database
-  resource db 'mongodb.com.MongoDBComponent' = {
+  // Define database
+  resource db 'mongodb.com.MongoDB' = {
     name: 'db'
     properties: {
       managed: true
     }
   }
 }
+

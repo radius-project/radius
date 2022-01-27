@@ -9,7 +9,6 @@ no_list: false
 
 Project Radius provides a descriptive framework for cloud native applications and their requirements. 
 
-
 ## Deployable architecture diagrams
 
 Cloud-native applications are often designed and described using lines-and-boxes architecture diagrams as the starting point.
@@ -19,14 +18,14 @@ Cloud-native applications are often designed and described using lines-and-boxes
 <i>An example app represented as a block diagram.</i>
 {{< /imgproc >}}
 
-These diagrams often include  
-- the resources that run application code, like containers. 
-- "supporting" resources - like databases, messages queues, api gateways, and secret stores
-- information about the relationship between resources - like protocols, settings, and permissions.
+These diagrams often include:
+- Infrastructure resources, including databases, messages queues, API gateways, and secret stores
+- Services that run application code, such as containers.
+- Relationships between resources, like protocols, settings, and permissions
 
-Radius provides a way for developers to translate human-understandable application diagrams into human-understandable application code. 
+Project Radius provides a way for developers to translate human-understandable application diagrams into human-understandable application code. 
 
-## Example: diagram ➡ code ➡ diagram 
+## Applications as code
 
 With the Radius app model, teams can easily codify and share pieces of a large, shared application. 
 {{< rad file="snippets/appmodel-concept.bicep" embed=true >}}
@@ -43,7 +42,7 @@ In fact, we're committed to creating a dev experience users love. So developers 
 {{< /imgproc >}}
 
 
-## App-model language
+## App model language
 
 Radius uses the [Bicep language](https://github.com/azure/bicep) as its file-format and structure. Bicep is an existing Microsoft language that offers:
 - A high quality authoring experience with modules, loops, parametrization, and templating
@@ -51,5 +50,7 @@ Radius uses the [Bicep language](https://github.com/azure/bicep) as its file-for
 - Ability to punch through abstractions to platform when necessary
 - Extensions to work with other providers (e.g. Kubernetes, Azure Active Directory, etc.)
 
-<br>
+## App model pieces
+
+Learn more about the Radius app model pieces in the following docs:
 

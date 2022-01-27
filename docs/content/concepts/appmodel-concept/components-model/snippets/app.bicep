@@ -8,7 +8,8 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radius.azurecr.io/storefront'
         env: {
-          PATH_BASE: '/identity-api'
+          ENVIRONMENT: 'production'
+          INV_STATESTORE: inventory.properties.name
         }
         ports: {
           http: {
@@ -19,8 +20,8 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
       connections: {
         sql: {
-          kind: 'microsoft.com/SQL'
-          source: sqlIdentity.id
+          kind: 'dapr.io/StateStore'
+          source: inventory.id
         }
       }
     }
