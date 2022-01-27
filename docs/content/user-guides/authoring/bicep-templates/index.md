@@ -1,7 +1,7 @@
 ---
 type: docs
 title: "Create shareable template modules"
-linkTitle: "Create templates"
+linkTitle: "Module registries"
 description: "Learn how to author and publish templates for your resources and application."
 weight: 500
 ---

@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "App Service"
+title: "Azure App Service"
 linkTitle: "App Service"
 description: "Learn how to run an App Service as part of your Radius application"
 weight: 200
