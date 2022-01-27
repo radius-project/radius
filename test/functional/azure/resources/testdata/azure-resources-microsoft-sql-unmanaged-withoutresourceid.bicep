@@ -35,7 +35,7 @@ resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: 'sql-${uniqueString(resourceGroup().id)}'
   location: resourceGroup().location
   tags: {
-    radiustest: 'azure-resources-microsoft-sql-unmanaged'
+    radiustest: 'azure-resources-microsoft-sql-unmanaged-withoutresourceid'
   }
   properties: {
     administratorLogin: adminUsername
