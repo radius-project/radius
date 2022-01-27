@@ -29,7 +29,7 @@ The following starter templates are available for use in your application. Visit
 | [Mongo Database]({{< ref "mongodb.md#starter" >}}) | ✅ | ✅ |
 | [RabbitMQ Queue]({{< ref "rabbitmq.md#starter" >}}) | ✅ | ❌ |
 | [Redis Cache]({{< ref "redis.md#starter" >}})    | ✅ | ✅ |
-| [SQL Database]({{< ref "microsoft-sql.md#starter" >}})   | ⏳ | ✅ |
+| [SQL Database]({{< ref "microsoft-sql.md#starter" >}})   | ✅ | ✅ |
 
 ## Source
 
