@@ -93,7 +93,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		Dependencies: map[string]renderers.RendererDependency{},
 	})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
+	require.Equal(t, ErrorResourceOrServerNameMissingFromUnmanagedResource.Error(), err.Error())
 }
 
 func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
@@ -112,4 +112,22 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a SQL Database", err.Error())
+}
+
+func Test_Render_Unmanaged_Kubernetes_InvalidResourceID(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{Kubernetes: true}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/servers/sqlDatabases/test-database",
+		},
+	}
+
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	require.Error(t, err)
+	require.Equal(t, "cannot reference resourceID on Kubernetes", err.Error())
 }
