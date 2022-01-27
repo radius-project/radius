@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -20,8 +21,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func GetDaprStateStoreKubernetesRedis(resource renderers.RendererResource, properties Properties) ([]outputresource.OutputResource, error) {
-	if !properties.Managed {
+func GetDaprStateStoreKubernetesRedis(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
+	properties := radclient.DaprStateStoreRedisResourceProperties{}
+	err := resource.ConvertDefinition(&properties)
+	if err != nil {
+		return nil, err
+	}
+
+	if properties.Managed == nil {
+		return nil, renderers.ErrManagedUnspecified
+	}
+
+	if !*properties.Managed {
 		return []outputresource.OutputResource{}, errors.New("only 'managed=true' is supported right now")
 	}
 

@@ -54,3 +54,40 @@ func Test_DaprStateStore(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_DaprStateStore_Generic(t *testing.T) {
+	template := "testdata/kubernetes-resources-statestore-generic.bicep"
+	application := "kubernetes-resources-statestore-generic"
+	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
+		{
+			Executor: kubernetestest.NewDeployStepExecutor(template),
+			RadiusResources: &validation.ResourceSet{
+				Resources: []validation.RadiusResource{
+					{
+						ApplicationName: application,
+						ResourceName:    "myapp",
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+					{
+						ApplicationName: application,
+						ResourceName:    "statestore",
+						OutputResources: map[string]validation.ExpectedOutputResource{
+							outputresource.LocalIDDaprStateStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreGeneric, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+						},
+					},
+				},
+			},
+			Pods: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sObjectForResource(application, "myapp"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}

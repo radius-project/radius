@@ -8,17 +8,28 @@ package daprstatestorev1alpha3
 import (
 	"errors"
 
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
-func GetDaprStateStoreSQLServer(resource renderers.RendererResource, properties Properties) ([]outputresource.OutputResource, error) {
-	if !properties.Managed {
+func GetDaprStateStoreSQLServer(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
+	properties := radclient.DaprStateStoreSQLServerResourceProperties{}
+	err := resource.ConvertDefinition(&properties)
+	if err != nil {
+		return nil, err
+	}
+
+	if properties.Managed == nil {
+		return nil, renderers.ErrManagedUnspecified
+	}
+
+	if !*properties.Managed {
 		return nil, errors.New("only Radius managed resources are supported for Dapr SQL Server")
 	}
-	if properties.Resource != "" {
+	if properties.Resource != nil && *properties.Resource != "" {
 		return nil, renderers.ErrResourceSpecifiedForManagedResource
 	}
 	// generate data we can use to connect to a Storage Account
