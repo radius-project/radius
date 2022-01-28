@@ -62,6 +62,14 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 	// This allows us to separate the stateful info from the user-supplied definition.
 	properties := map[string]interface{}{}
 
+	properties["resourceGroup"] = resource.ResourceGroup
+	properties["subscriptionID"] = resource.SubscriptionID
+
+	// Currently radius resources always share resource group and subscription with the applicaiton.
+	// This will be updated once we allow radius resources to be outside of application.
+	properties["applicationResourceGroup"] = resource.ResourceGroup
+	properties["applicationSubscriptionID"] = resource.SubscriptionID
+
 	// We're copying things in order of priority even though we don't expect conflicts.
 	properties["status"] = NewRestRadiusResourceStatus(resource.ResourceName, resource.Status)
 	if resource.Definition != nil {
@@ -90,13 +98,17 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 }
 
 func NewRestRadiusResourceFromAzureResource(azResource db.AzureResource) RadiusResource {
-	// Currently properties for Azure resources is empty, once we implement health check or decide to store additional
-	// metadata about azure resources, it should be included as a part of the properties field.
+	properties := map[string]interface{}{}
+	properties["resourceGroup"] = azResource.ResourceGroup
+	properties["subscriptionID"] = azResource.SubscriptionID
+	properties["applicationResourceGroup"] = azResource.ApplicationResourceGroup
+	properties["applicationSubscriptionID"] = azResource.ApplicationSubscriptionID
+
 	return RadiusResource{
 		ID:         azResource.ID,
 		Type:       azResource.Type,
 		Name:       azResource.ResourceName,
-		Properties: map[string]interface{}{},
+		Properties: properties,
 	}
 }
 
