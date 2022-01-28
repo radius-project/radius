@@ -2,7 +2,7 @@ var adminUsername = 'cooluser'
 var adminPassword = 'p@ssw0rd'
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-microsoft-sql-unmanaged'
+  name: 'azure-resources-microsoft-sql-unmanaged-withoutresourceid'
 
   resource webapp 'Container' = {
     name: 'todoapp'
