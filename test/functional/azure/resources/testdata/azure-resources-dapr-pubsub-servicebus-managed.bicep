@@ -13,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          BINDING_DAPRPUBSUB_NAME: pubsub.properties.pubSubName
+          BINDING_DAPRPUBSUB_NAME: pubsub.name
           BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic
         }
         readinessProbe:{
