@@ -210,6 +210,7 @@ func envInitDevConfigNonInteractive(cmd *cobra.Command) (*DevEnvironmentParams, 
 
 func init() {
 	envInitCmd.AddCommand(envInitLocalCmd)
+	envInstallCmd.AddCommand(envInitAzureCmd)
 
 	envInitLocalCmd.Flags().StringP("name", "n", "dev", "environment name")
 	envInitLocalCmd.Flags().BoolP("interactive", "i", false, "interactively prompt for environment information")

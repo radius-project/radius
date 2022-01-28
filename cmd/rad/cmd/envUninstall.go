@@ -11,10 +11,15 @@ import (
 
 var envUninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Uninstall RAD",
-	Long:  `Uninstall RAD`,
+	Short: "Uninstall a RAD Environment",
+	Long:  `Uninstall a RAD Environment`,
+	RunE:  envStop,
 }
 
 func init() {
 	envCmd.AddCommand(envUninstallCmd)
+}
+
+func envUninstall(cmd *cobra.Command, args []string) error {
+	return nil
 }

@@ -107,6 +107,7 @@ rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NA
 
 func init() {
 	envInitCmd.AddCommand(envInitAzureCmd)
+	envInstallCmd.AddCommand(envInitAzureCmd)
 
 	envInitAzureCmd.Flags().StringP("subscription-id", "s", "", "The subscription ID to use for the environment")
 	envInitAzureCmd.Flags().StringP("resource-group", "g", "", "The resource group to use for the environment")
