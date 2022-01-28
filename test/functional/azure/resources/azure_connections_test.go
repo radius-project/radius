@@ -19,7 +19,6 @@ import (
 )
 
 func Test_AzureConnections(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/1790")
 	applicationName := "azure-connection-database-service"
 	containerResourceName := "db-service"
 	template := "testdata/azure-connection-database-service.bicep"
