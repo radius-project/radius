@@ -19,8 +19,8 @@ import (
 )
 
 func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
-	application := "azure-resources-microsoft-sql-unmanaged-withoutresourceid"
-	template := "testdata/azure-resources-microsoft-sql-unmanaged-withoutresourceid.bicep"
+	application := "azure-resources-microsoft-sql-unmanaged"
+	template := "testdata/azure-resources-microsoft-sql-unmanaged.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
@@ -29,7 +29,7 @@ func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 					{
 						Type: azresources.SqlServers,
 						Tags: map[string]string{
-							"radiustest": "azure-resources-microsoft-sql-unmanaged-withoutresourceid",
+							"radiustest": "azure-resources-microsoft-sql-unmanaged",
 						},
 						Children: []validation.ExpectedChildResource{
 							{
