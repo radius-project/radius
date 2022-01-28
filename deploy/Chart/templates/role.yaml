@@ -358,6 +358,32 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
+  - microsoftcomsqldatabases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - microsoftcomsqldatabases/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - microsoftcomsqldatabases/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
   - mongodatabases
   verbs:
   - create
