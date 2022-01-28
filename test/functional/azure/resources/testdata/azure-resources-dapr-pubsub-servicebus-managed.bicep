@@ -16,6 +16,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
           BINDING_DAPRPUBSUB_NAME: pubsub.properties.pubSubName
           BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic
         }
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+        }
       }
       traits: [
         {
