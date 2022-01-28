@@ -22,7 +22,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 }
 
 resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'account-${guid(resourceGroup().name)}'
+  name: 'dbAcc-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   kind: 'MongoDB'
   properties: {
