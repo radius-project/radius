@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
@@ -30,16 +29,14 @@ func Test_MongoDBManaged(t *testing.T) {
 				Resources: []validation.ExpectedResource{
 					{
 						Type: azresources.DocumentDBDatabaseAccounts,
-						Tags: map[string]string{
-							keys.TagRadiusApplication: application,
-							keys.TagRadiusResource:    "db",
-						},
 						Children: []validation.ExpectedChildResource{
 							{
-								Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
-								Name: "db",
+								Type:        azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+								Name:        "starterdb",
+								UserManaged: true,
 							},
 						},
+						UserManaged: true,
 					},
 				},
 			},

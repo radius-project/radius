@@ -9,22 +9,23 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
         // This is here so we make sure to exercise the 'programmatic secrets' code path.
         env: {
-          DB_CONNECTION: mongodb.connectionString()
+          DB_CONNECTION: db.outputs.mongoDB.connectionString()
         }
       }
       connections: {
         mongodb: {
           kind: 'mongo.com/MongoDB'
-          source: mongodb.id
+          source: db.outputs.mongoDB.id
         }
       }
     }
   }
+}
 
-  resource mongodb 'mongo.com.MongoDatabase' = {
-    name: 'mongodb'
-    properties: {
-        managed: true
-    }
+module db 'br:radius.azurecr.io/starters/mongo:latest' = {
+  name: 'db'
+  params: {
+    radiusApplication: app
+    dbName: 'mongodb'
   }
 }

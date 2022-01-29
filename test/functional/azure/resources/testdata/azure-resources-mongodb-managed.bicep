@@ -30,5 +30,6 @@ module db 'br:radius.azurecr.io/starters/mongo-azure:latest' = {
   name: 'db'
   params: {
     radiusApplication: app
+    dbName: 'starterdb'
   }
 }
