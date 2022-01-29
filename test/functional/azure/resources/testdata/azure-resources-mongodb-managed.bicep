@@ -11,7 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         mongodb: {
           kind: 'mongo.com/MongoDB'
-          source: db.id
+          source: db.outputs.mongoDB.id
         }
       }
       container: {
@@ -24,11 +24,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
     }
   }
+}
 
-  resource db 'mongo.com.MongoDatabase' = {
-    name: 'db'
-    properties: {
-      managed: true
-    }
+module db 'br:radius.azurecr.io/starters/mongo-azure:latest' = {
+  name: 'db'
+  params: {
+    radiusApplication: app
   }
 }
