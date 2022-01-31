@@ -325,6 +325,12 @@ jobs:
       working-directory: dist
     - name: Install k3d
       run: curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
+    - name: az CLI login # TODO temporary until https://github.com/Azure/bicep/issues/5031 is resolved
+      run: |
+        az login --service-principal \
+          --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+          --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+          --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
     - name: Run 'rad env init dev'
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
