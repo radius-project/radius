@@ -92,6 +92,7 @@ func addHAProxyValues(helmChart *chart.Chart, options HAProxyOptions) error {
 
 func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
+	// uninstallClient := helm.NewUninstall(helmConf)
 	installClient.ReleaseName = haproxyReleaseName
 	installClient.Namespace = RadiusSystemNamespace
 
