@@ -27,7 +27,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 }
 
 module db 'br:radius.azurecr.io/starters/mongo-azure:latest' = {
-  name: 'db'
+  name: 'db-module'
   params: {
     radiusApplication: app
     dbName: 'starterdb'
