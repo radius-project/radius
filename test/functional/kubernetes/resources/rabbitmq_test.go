@@ -25,7 +25,7 @@ func Test_RabbitMQ(t *testing.T) {
 				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ResourceName:    "rabbitmq",
+						ResourceName:    "container-rabbitmq",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
@@ -44,7 +44,7 @@ func Test_RabbitMQ(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "rabbitmq"),
+						validation.NewK8sObjectForResource(application, "container-rabbitmq"),
 						validation.NewK8sObjectForResource(application, "todoapprabbitmq"),
 					},
 				},

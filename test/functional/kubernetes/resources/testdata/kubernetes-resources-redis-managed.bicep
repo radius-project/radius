@@ -10,16 +10,17 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         redis: {
           kind: 'redislabs.com/Redis'
-          source: redis.id
+          source: redis.outputs.redisCache.id
         }
       }
     }
   }
+}
 
-  resource redis 'redislabs.com.RedisCache' = {
-    name: 'redis'
-    properties: {
-      managed: true
-    }
+module redis 'br:radius.azurecr.io/starters/redis:latest' = {
+  name: 'redis-module'
+  params: {
+    radiusApplication: app
+    cacheName: 'cool-cache'
   }
 }

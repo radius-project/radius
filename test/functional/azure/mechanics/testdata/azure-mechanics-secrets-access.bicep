@@ -8,13 +8,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         mongodb: {
           kind: 'mongo.com/MongoDB'
-          source: db.id
+          source: db.outputs.mongoDB.id
         }
       }
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          DB_CONNECTION: db.connectionString()
+          DB_CONNECTION: db.outputs.mongoDB.connectionString()
         }
         readinessProbe:{
           kind:'httpGet'
@@ -24,11 +24,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
     }
   }
+}
 
-  resource db 'mongo.com.MongoDatabase' = {
-    name: 'db'
-    properties: {
-      managed: true
-    }
+
+module db 'br:radius.azurecr.io/starters/mongo-azure:latest' = {
+  name: 'db-module'
+  params: {
+    radiusApplication: app
+    dbName: 'db'
   }
 }

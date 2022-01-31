@@ -7,23 +7,24 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          BINDING_RABBITMQ_CONNECTIONSTRING: rabbitmq.connectionString()
+          BINDING_RABBITMQ_CONNECTIONSTRING: rabbitmq.outputs.rabbitMQ.connectionString()
         }
       }
       connections: {
         rabbitmq: {
           kind: 'rabbitmq.com/MessageQueue'
-          source: rabbitmq.id
+          source: rabbitmq.outputs.rabbitMQ.id
         }
       }
     }
   }
+}
 
-  resource rabbitmq 'rabbitmq.com.MessageQueue' = {
-    name: 'rabbitmq'
-    properties: {
-      managed: true
-      queue: 'radius-queue'
-    }
+module rabbitmq 'br:radius.azurecr.io/starters/rabbitmq:latest' = {
+  name: 'rabbitmq-module'
+  params: {
+    radiusApplication: app
+    brokerName: 'broker'
+    queueName: 'queue'
   }
 }

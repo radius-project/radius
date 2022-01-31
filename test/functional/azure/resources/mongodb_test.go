@@ -31,12 +31,10 @@ func Test_MongoDBManaged(t *testing.T) {
 						Type: azresources.DocumentDBDatabaseAccounts,
 						Children: []validation.ExpectedChildResource{
 							{
-								Type:        azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
-								Name:        "starterdb",
-								UserManaged: true,
+								Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+								Name: "starterdb",
 							},
 						},
-						UserManaged: true,
 					},
 				},
 			},
