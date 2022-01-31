@@ -22,4 +22,6 @@ func init() {
 
 func envUninstall(cmd *cobra.Command, args []string) error {
 	return nil
+	// uninstallClient := helm.NewUninstall(helmConf)
+
 }
