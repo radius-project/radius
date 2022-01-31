@@ -10,13 +10,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         sql: {
           kind: 'microsoft.com/SQL'
-          source: db.id
+          source: db.outputs.sqlDB.id
         }
       }
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername}@${db.properties.server};Password=${adminPassword};Encrypt=true'
+          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.outputs.sqlDB.properties.server},1433;Initial Catalog=${db.outputs.sqlDB.properties.database};User Id=${adminUsername}@${db.outputs.sqlDB.properties.server};Password=${adminPassword};Encrypt=true'
         }
         readinessProbe:{
           kind:'httpGet'
@@ -26,36 +26,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
     }
   }
-
-  resource db 'microsoft.com.SQLDatabase' = {
-    name: 'db'
-    properties: {
-      resource: server::db.id
-    }
-  }
 }
 
-resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
-  name: 'sql-${uniqueString(resourceGroup().id)}'
-  location: resourceGroup().location
-  tags: {
-    radiustest: 'azure-resources-microsoft-sql-unmanaged'
-  }
-  properties: {
-    administratorLogin: adminUsername
-    administratorLoginPassword: adminPassword
-  }
-
-  resource db 'databases' = {
-    name: 'cool-database'
-    location: resourceGroup().location
-  }
-
-  resource firewall 'firewallRules' = {
-    name: 'allow'
-    properties: {
-      startIpAddress: '0.0.0.0'
-      endIpAddress: '0.0.0.0'
-    }
+module db 'br:radius.azurecr.io/starters/sql-azure:latest' = {
+  name: 'db-module'
+  params: {
+    adminLogin: adminUsername
+    adminPassword: adminPassword
+    radiusApplication: app
+    serverName: 'cool-database'
   }
 }

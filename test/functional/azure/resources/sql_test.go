@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
+func Test_MicrosoftSQL_WithStarter(t *testing.T) {
 	application := "azure-resources-microsoft-sql-unmanaged"
 	template := "testdata/azure-resources-microsoft-sql-unmanaged.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -55,7 +55,7 @@ func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ResourceName:    "db",
+						ResourceName:    "cool-database",
 						ResourceType:    microsoftsqlv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureSqlServer:         validation.NewOutputResource(outputresource.LocalIDAzureSqlServer, outputresource.TypeARM, resourcekinds.AzureSqlServer, false, false, rest.OutputResourceStatus{}),
