@@ -46,6 +46,7 @@ func Test_MicrosoftSQL_Unmanaged(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sObjectForResource(application, "todoapp"),
+						validation.NewK8sObjectForResource(application, "container-cool-database"),
 					},
 				},
 			},
