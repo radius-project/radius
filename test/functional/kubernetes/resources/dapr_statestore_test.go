@@ -56,8 +56,8 @@ func Test_DaprStateStore(t *testing.T) {
 }
 
 func Test_DaprStateStore_Generic(t *testing.T) {
-	template := "testdata/kubernetes-resources-statestore-generic.bicep"
-	application := "kubernetes-resources-statestore-generic"
+	template := "testdata/kubernetes-resources-daprstatestore-generic.bicep"
+	application := "kubernetes-resources-daprstatestore-generic"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
