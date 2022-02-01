@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package cli
+package bicep
 
 import (
 	"testing"
@@ -27,7 +27,7 @@ func Test_Parameters_Invalid(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input, func(t *testing.T) {
-			parameters, err := parser.Parse([]string{input})
+			parameters, err := parser.Parse(input)
 			require.Error(t, err)
 			require.Nil(t, parameters)
 		})
@@ -53,7 +53,7 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 		},
 	}
 
-	parameters, err := parser.Parse(inputs)
+	parameters, err := parser.Parse(inputs...)
 	require.NoError(t, err)
 
 	expected := clients.DeploymentParameters{

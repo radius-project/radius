@@ -35,5 +35,7 @@ type Profile struct {
 
 // Bicep stage represents a Bicep deployment as part of a stage or profile.
 type BicepStage struct {
-	Template *string `yaml:"template,omitempty"`
+	Template      *string           `yaml:"template,omitempty"`
+	ParameterFile *string           `yaml:"parameterFile,omitempty"`
+	Parameters    map[string]string `yaml:"parameters,omitempty"`
 }
