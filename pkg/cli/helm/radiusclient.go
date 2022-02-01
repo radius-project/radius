@@ -9,6 +9,7 @@ import (
 	_ "embed"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
@@ -99,7 +100,7 @@ func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag
 }
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient := helm.NewUninstall(helmConf)
-	uninstallClient.Timeout = timeout
+	uninstallClient.Timeout = time.Duration(timeout) * time.Second
 	_, err := uninstallClient.Run(radiusReleaseName)
 	return err
 }
