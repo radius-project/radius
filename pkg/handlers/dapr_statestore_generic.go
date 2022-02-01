@@ -62,8 +62,8 @@ func constructDaprStateStore(properties map[string]string, appName string, resou
 			"apiVersion": properties[KubernetesAPIVersionKey],
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
-				"name":      properties[KubernetesNameKey],
-				"namespace": properties[KubernetesNamespaceKey],
+				"name":      resourceName,
+				"namespace": appName,
 				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
 			},
 			"spec": map[string]interface{}{

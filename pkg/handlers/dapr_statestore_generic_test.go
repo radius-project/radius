@@ -74,6 +74,11 @@ func Test_ConstructDaprStateStoreGeneric(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, expected, item, "Resource spec does not match expected value")
+	expectedJson, err := json.Marshal(expected)
+	require.NoError(t, err)
+	actualJson, err := json.Marshal(item)
+	require.NoError(t, err)
+
+	assert.Equal(t, string(expectedJson), string(actualJson), "Resource spec does not match expected value")
 
 }
