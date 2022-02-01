@@ -1,5 +1,5 @@
 # Issues on M1 mac: https://github.com/docker/for-mac/issues/5831
-FROM node:14
+FROM node:17
 
 WORKDIR /usr/src/app
 
