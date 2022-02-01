@@ -25,23 +25,6 @@ These diagrams often include:
 
 Project Radius provides a way for developers to translate human-understandable application diagrams into human-understandable application code. 
 
-## Applications as code
-
-With the Radius app model, teams can easily codify and share pieces of a large, shared application. 
-{{< rad file="snippets/appmodel-concept.bicep" embed=true >}}
-
-The result is no longer just a flat list of resources - it's a fully fledged diagram of how the pieces relate to each other.
-{{< imgproc ui-mockup-basic Fit "700x500">}}
-<i>An example app represented in the Radius Azure Service.</i>
-{{< /imgproc >}}
-
-In fact, we're committed to creating a dev experience users love. So developers will be able to debug and iterate on that same app definition locally via VSCode as well. 
-<!-- TODO: make all these diagrams & code show the identically same app -->
-{{< imgproc vscode-mockup-basic Fit "700x500">}}
-<i>An example app represented in VSCode.</i>
-{{< /imgproc >}}
-
-
 ## App model language
 
 Radius uses the [Bicep language](https://github.com/azure/bicep) as its file-format and structure. Bicep is an existing Microsoft language that offers:

@@ -81,20 +81,9 @@ We'd love to hear your feedback on User-managed resources. Please visit [GitHub 
 
 {{< rad file="snippets/database-managed.bicep" embed=true marker="//SAMPLE" >}}
 
-## Parameterizing per-deployment Component details
-
-Component details can generally be separated into two categories:
-
-- Details that are **always true** about the code *(eg. use `DBCONNECTION` to pass SQL Server connection string)*
-- Details that are **per-deployment** *(eg. accept traffic with the hostname `myapp.example.com`)*
-
-The Component concept in Radius is designed to version with the application code. For maximum flexibility, you should use Bicep parameters for the things that change per-deployment. This will allow you to provide these setting at the command line or by composing your definitions into other modules.
-
-<!-- TODO: add example here -->
-
 ## Portability
 
-Non-runnable Components can work across hosting models without any configuration changes, and will be satisfied using the best means available by the host. They are generally OSS services that are not tied to any particular SaaS or hosting platform and usually have multiple implementations.
+Non-runnable components can work across hosting models without any configuration changes, and will be satisfied using the best means available by the host. They are generally OSS services that are not tied to any particular SaaS or hosting platform and usually have multiple implementations.
 
 For example the resource type [`mongo.com.MongoDatabase`]({{< ref mongodb >}}) specifies a generic MongoDB-compatible database. From the point-of-view of application code, it does not matter if the database is hosted using Kubernetes primitives like a `StatefulSet`, or a MongoDB operator, or a cloud-provider hosted offering like Azure CosmosDB. Radius will provision (or connect to) the appropriate implementation depending on the environment where the application is deployed.
 

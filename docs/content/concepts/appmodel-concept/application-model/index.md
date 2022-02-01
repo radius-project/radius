@@ -24,26 +24,8 @@ Currently, this example app is an empty shell and has no child resources defined
 
 It's up to the user to define what they consider part of the app. Generally, users should include both all the runnable components (things that run code) and all the non-runnable components (data and infrastructure resources).
 
+Learn more in the [Radius authoring guide]({{< ref authoring >}}).
 
-### Referencing existing resources
-
-Apps are often comprised of a combination of existing constant resources like databases and more ephemeral resources like containers that run code.   
-
-Radius makes it easy for multiple teams to bring their own services or infrastructure into a single application alongside Radius-managed resources.   
-
-
-{{< rad file="snippets/appmodel-existing.bicep" embed=true >}}
-
-
-
-### Deploying an Application
-A Radius Application is deployed by using the rad CLI to deploy the Bicep file containing the app. For example:
-
-```sh
-rad deploy example.bicep
-```
-
-This command deploys the app and either launches or connects to its child resources as needed.
 
 <!-- TODO: high-level overview of managing an app -->
 

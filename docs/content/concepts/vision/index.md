@@ -27,7 +27,6 @@ Build a unified concept of your “application”.
 Drastically reduce infra ops time.
 </div>
 
-- Use built-in "wiring up" functionality to implement connections. 
 - Iterate quickly in a local dev environment, then scale that same app up in Azure or Kubernetes.
 - Stamp out versions of the app in multiple geos or clouds. 
 - Follow best practices to be naturally secure by default, even with many teams working together. 
@@ -49,6 +48,22 @@ Radius provides a hassle-free serverless experience. Applications defined with R
 Radius provides a flexibile model that meets developers where they need it to:  
 - easy out-of-the-box defaults for simple v1 explorations
 - ability to tune low-level settingsfully-fledged "pager-on-belt" applications 
+
+## Applications as code
+
+With the Radius app model, teams can easily codify and share pieces of an application. For example, a container with app code owned by one team can seamlessly connect to a database owned by a second team. 
+{{< rad file="snippets/appmodel-concept.bicep" embed=true >}}
+
+The result is no longer just a flat list of resources - it's a fully fledged diagram of how the pieces relate to each other.
+{{< imgproc ui-mockup-basic Fit "700x500">}}
+<i>An example app represented in the Radius Azure Service.</i>
+{{< /imgproc >}}
+
+In fact, we're committed to creating a dev experience users love. So developers will be able to debug and iterate on that same app definition locally via VSCode as well. 
+<!-- TODO: make all these diagrams & code show the identically same app -->
+{{< imgproc vscode-mockup-basic Fit "700x500">}}
+<i>An example app represented in VSCode.</i>
+{{< /imgproc >}}
 
 ## Platform strategy
 
