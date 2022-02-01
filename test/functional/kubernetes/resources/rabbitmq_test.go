@@ -44,7 +44,7 @@ func Test_RabbitMQ(t *testing.T) {
 			Pods: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "container-rabbitmq"),
+						validation.NewK8sObjectForResource(application, "container-broker"),
 						validation.NewK8sObjectForResource(application, "todoapprabbitmq"),
 					},
 				},

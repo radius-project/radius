@@ -46,7 +46,7 @@ func Test_Mongo(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sObjectForResource(application, "todomongo"),
-						validation.NewK8sObjectForResource(application, "contaier-mongodb"),
+						validation.NewK8sObjectForResource(application, "container-mongodb"),
 					},
 				},
 			},
