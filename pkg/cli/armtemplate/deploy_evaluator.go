@@ -679,17 +679,18 @@ func (eva *DeploymentEvaluator) EvaluateVariable(variable interface{}) (interfac
 	return value, nil
 }
 
-func (eva *DeploymentEvaluator) EvaluateOutputs() error {
+func (eva *DeploymentEvaluator) EvaluateOutputs() (map[string]map[string]interface{}, error) {
+	outputs := map[string]map[string]interface{}{}
 	for k, output := range eva.Template.Outputs {
 		value, err := eva.VisitValue(output)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		eva.Outputs[k] = value.(map[string]interface{})
+		outputs[k] = value.(map[string]interface{})
 	}
 
-	return nil
+	return outputs, nil
 }
 
 func (eva *DeploymentEvaluator) bindStringArgument(args []interface{}, index int, defaultValue *string, function string, parameter string) (string, error) {

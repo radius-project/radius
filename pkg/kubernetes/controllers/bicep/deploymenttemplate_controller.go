@@ -162,16 +162,6 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		evaluator.Variables[name] = value
 	}
 
-	for name, variable := range template.Outputs {
-		// value, err := evaluator.VisitValue(variable)
-		// if err != nil {
-		// 	return ctrl.Result{}, err
-		// }
-		fmt.Println(variable)
-
-		evaluator.Outputs[name] = nil
-	}
-
 	for _, resource := range resources {
 		var k8sInfo *unstructured.Unstructured
 		var scrapedSecrets map[string]string
@@ -300,13 +290,13 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		r.StatusDeployedResource(ctx, resource.ID, arm, k8sInfo)
 	}
 
-	err = evaluator.EvaluateOutputs()
+	outputs, err := evaluator.EvaluateOutputs()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	arm.Status.Outputs = make(map[string]bicepv1alpha3.DeploymentOutput)
-	for k, t := range evaluator.Outputs {
+	for k, t := range outputs {
 		if err != nil {
 			return ctrl.Result{}, err
 		}

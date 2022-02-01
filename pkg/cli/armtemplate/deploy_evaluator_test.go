@@ -127,6 +127,7 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 		Options:   options,
 		Deployed:  deployed,
 		Variables: map[string]interface{}{},
+		Outputs:   map[string]map[string]interface{}{},
 	}
 
 	for name, variable := range template.Variables {
@@ -146,6 +147,11 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 		deployed[resource.ID] = body
 		evaluated = append(evaluated, resource)
 	}
+
+	outputs, err := evaluator.EvaluateOutputs()
+	require.NoError(t, err)
+	require.Equal(t, outputs["test"]["type"].(string), "string")
+	require.Equal(t, outputs["test"]["value"].(string), "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding/HttpRoute/frontendRoute")
 
 	application, err := GetResource(path.Join("testdata", "armevaluated", "Microsoft.CustomProviders-resourceProviders-Applicationradiusv3-azure-resources-container-httpbinding.json"))
 	require.NoError(t, err)
