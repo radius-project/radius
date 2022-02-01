@@ -29,7 +29,7 @@ Then you can connect a Dapr Pub/Sub Component to the Bicep resource:
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| name | The name of the state store | `my-pubsub` |
+| name | The name of the pub/sub | `my-pubsub` |
 
 ### Resource lifecycle
 
