@@ -207,6 +207,25 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
+// DaprSecretStorePropertiesKind - The Dapr Secret Store kind.
+type DaprSecretStorePropertiesKind string
+
+const (
+	DaprSecretStorePropertiesKindGeneric DaprSecretStorePropertiesKind = "generic"
+)
+
+// PossibleDaprSecretStorePropertiesKindValues returns the possible values for the DaprSecretStorePropertiesKind const type.
+func PossibleDaprSecretStorePropertiesKindValues() []DaprSecretStorePropertiesKind {
+	return []DaprSecretStorePropertiesKind{	
+		DaprSecretStorePropertiesKindGeneric,
+	}
+}
+
+// ToPtr returns a *DaprSecretStorePropertiesKind pointing to the current value.
+func (c DaprSecretStorePropertiesKind) ToPtr() *DaprSecretStorePropertiesKind {
+	return &c
+}
+
 // DaprSidecarTraitProtocol - Specifies the Dapr app-protocol to use for the resource.
 type DaprSidecarTraitProtocol string
 
@@ -249,22 +268,22 @@ func (c EncryptionStatus) ToPtr() *EncryptionStatus {
 	return &c
 }
 
-// Enum10 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-type Enum10 bool
+// Enum11 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
+type Enum11 bool
 
 const (
-	Enum10True Enum10 = true
+	Enum11True Enum11 = true
 )
 
-// PossibleEnum10Values returns the possible values for the Enum10 const type.
-func PossibleEnum10Values() []Enum10 {
-	return []Enum10{	
-		Enum10True,
+// PossibleEnum11Values returns the possible values for the Enum11 const type.
+func PossibleEnum11Values() []Enum11 {
+	return []Enum11{	
+		Enum11True,
 	}
 }
 
-// ToPtr returns a *Enum10 pointing to the current value.
-func (c Enum10) ToPtr() *Enum10 {
+// ToPtr returns a *Enum11 pointing to the current value.
+func (c Enum11) ToPtr() *Enum11 {
 	return &c
 }
 
