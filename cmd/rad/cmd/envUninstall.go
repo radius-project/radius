@@ -11,17 +11,10 @@ import (
 
 var envUninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Uninstall a RAD Environment",
-	Long:  `Uninstall a RAD Environment`,
-	RunE:  envStop,
+	Short: "Uninstall RAD",
+	Long:  `Uninstall RAD`,
 }
 
 func init() {
 	envCmd.AddCommand(envUninstallCmd)
-}
-
-func envUninstall(cmd *cobra.Command, args []string) error {
-	return nil
-	// uninstallClient := helm.NewUninstall(helmConf)
-
 }

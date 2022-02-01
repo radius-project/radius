@@ -9,6 +9,7 @@ import (
 	_ "embed"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
@@ -27,7 +28,7 @@ func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage 
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
-	helmConf, err := helmConfig(RadiusSystemNamespace, helmOutput)
+	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -96,4 +97,10 @@ func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag
 	}
 
 	return nil
+}
+func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
+	uninstallClient := helm.NewUninstall(helmConf)
+	uninstallClient.Timeout = time.Duration(timeout) * time.Second
+	_, err := uninstallClient.Run(radiusReleaseName)
+	return err
 }

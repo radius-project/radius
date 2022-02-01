@@ -25,7 +25,7 @@ const (
 	helmDriverSecret = "secret"
 )
 
-func helmConfig(namespace string, builder strings.Builder) (*helm.Configuration, error) {
+func HelmConfig(namespace string, builder strings.Builder) (*helm.Configuration, error) {
 	hc := helm.Configuration{}
 	flags := &genericclioptions.ConfigFlags{
 		Namespace: &namespace,

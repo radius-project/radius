@@ -9,6 +9,7 @@ import (
 	_ "embed"
 	"fmt"
 	"strings"
+	"time"
 
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -18,6 +19,7 @@ import (
 const (
 	haproxyReleaseName = "haproxy-ingress"
 	haproxyHelmRepo    = "https://haproxy-ingress.github.io/charts"
+	timeout            = 300
 )
 
 type HAProxyOptions struct {
@@ -29,7 +31,7 @@ func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
-	helmConf, err := helmConfig(RadiusSystemNamespace, helmOutput)
+	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -90,10 +92,16 @@ func addHAProxyValues(helmChart *chart.Chart, options HAProxyOptions) error {
 
 func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
-	// uninstallClient := helm.NewUninstall(helmConf)
 	installClient.ReleaseName = haproxyReleaseName
 	installClient.Namespace = RadiusSystemNamespace
 
 	_, err := installClient.Run(helmChart, helmChart.Values)
+	return err
+}
+
+func RunHAProxyHelmUninstall(helmConf *helm.Configuration) error {
+	uninstallClient := helm.NewUninstall(helmConf)
+	uninstallClient.Timeout = time.Duration(timeout) * time.Second
+	_, err := uninstallClient.Run(haproxyReleaseName)
 	return err
 }
