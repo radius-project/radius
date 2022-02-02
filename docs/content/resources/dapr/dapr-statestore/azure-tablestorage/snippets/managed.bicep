@@ -1,63 +1,31 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'dapr-pubsub'
-
-  resource nodesubscriber 'Container' = {
-    name: 'nodesubscriber'
+  name: 'dapr-statestore'
+  resource myapp 'Container' = {
+    name: 'myapp'
     properties: {
       container: {
-        image: 'radiusteam/dapr-pubsub-nodesubscriber:latest'
-        env: {
-          SB_PUBSUBNAME: pubsub.properties.pubSubName
-          SB_TOPIC: pubsub.properties.topic
-        }
+        image: 'radius.azurecr.io/magpie:latest'
       }
       connections: {
         pubsub: {
-          kind: 'dapr.io/PubSubTopic'
-          source: pubsub.id
+          kind: 'dapr.io/StateStore'
+          source: statestore.id
         }
       }
       traits: [
         {
           kind: 'dapr.io/Sidecar@v1alpha1'
-          appId: 'nodesubscriber'
-          appPort: 50051
-        }
-      ]
-    }
-  }
-
-  resource pythonpublisher 'Container' = {
-    name: 'pythonpublisher'
-    properties: {
-      container: {
-        image: 'radiusteam/dapr-pubsub-pythonpublisher:latest'
-        env: {
-          SB_PUBSUBNAME: pubsub.properties.pubSubName
-          SB_TOPIC: pubsub.properties.topic
-        }
-      }
-      connections: {
-        pubsub: {
-          kind: 'dapr.io/PubSubTopic'
-          source: pubsub.id
-        }
-      }
-      traits: [
-        {
-          kind: 'dapr.io/Sidecar@v1alpha1'
-          appId: 'pythonpublisher'
+          appId: 'myapp'
         }
       ]
     }
   }
 
   //SAMPLE
-  resource pubsub 'dapr.io.PubSubTopic' = {
-    name: 'pubsub'
+  resource statestore 'dapr.io.StateStore' = {
+    name: 'statestore'
     properties: {
-      kind: 'pubsub.azure.servicebus'
-      topic: 'TOPIC_A'
+      kind: 'state.azure.tablestorage'
       managed: true
     }
   }

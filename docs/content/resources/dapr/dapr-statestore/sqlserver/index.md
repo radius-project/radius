@@ -1,13 +1,13 @@
 ---
 type: docs
-title: "Azure Table Storage Dapr State Store Component"
-linkTitle: "Azure Table Storage"
-description: "Learn how to use Azure Table Storage Dapr State Store components in Radius"
-weight: 400
+title: "SQL Server Dapr State Store Component"
+linkTitle: "SQL Server"
+description: "Learn how to use SQL Server Dapr State Store components in Radius"
+weight: 420
 slug: "statestore"
 ---
 
-This section shows how to use an [Azure Table Storage](https://docs.microsoft.com/en-us/azure/storage/tables/table-storage-overview) Dapr State Store component in a Radius Application.
+This section shows how to use a SQL Server Dapr State Store component in a Radius Application.
 
 ## Component format
 
@@ -19,7 +19,7 @@ The following example shows a fully managed Dapr State Store Component, where th
 {{% /codetab %}}
 
 {{% codetab %}}
-First define your State Store resource. In this example we're using an Azure Table Storage:
+First define your State Store resource. In this example we're using a SQL Server:
 {{< rad file="snippets/user-managed.bicep" embed=true marker="//BICEP" >}}
 Then you can connect a Dapr State Store Component to the Bicep resource:
 {{< rad file="snippets/user-managed.bicep" embed=true marker="//SAMPLE" >}}
@@ -35,6 +35,6 @@ Then you can connect a Dapr State Store Component to the Bicep resource:
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| kind | The kind of the underlying state store resource. See [Platform resources](#platform-resources) for more information. | `state.azure.tablestorage`
+| kind | The kind of the underlying state store resource. See [Platform resources](#platform-resources) for more information. | `state.sqlserver`
 | managed | Indicates if the resource is Radius-managed. | `true`
-| resource | Points to the user-managed resource, if used. | `namespace::tablestorage.id`
+| resource | Points to the user-managed resource, if used. | `tablestorage.id`

@@ -23,7 +23,9 @@ This connector will automatically:
 |----------|----------|------|
 | [Microsoft Azure]({{< ref azure>}}) | [Azure Table Storage](#azure-table-storage) | `'state.azure.tablestorage'`
 | [Microsoft Azure]({{< ref azure>}}) | [Azure SQL](#azure-table-storage) | `'state.sqlserver'`
-| [Kubernetes]({{< ref kubernetes >}}) | [Redis]({{< ref redis >}}) | `'state.redis'`
+| [Microsoft Azure]({{< ref azure>}}) | [Generic]({{< relref "resources/dapr/dapr-statestore/generic" >}}) | `'generic'`
+| [Kubernetes]({{< ref kubernetes >}}) | [Redis]({{< relref "resources/dapr/dapr-statestore/redis" >}}) | `'state.redis'`
+| [Kubernetes]({{< ref kubernetes >}}) | [Generic]({{< relref "resources/dapr/dapr-statestore/generic" >}}) | `'generic'`
 
 Additionally, the `any` kind will automatically choose a resource based on the platform. For Azure it is Table Storage, and for Kubernetes it is Redis.
 

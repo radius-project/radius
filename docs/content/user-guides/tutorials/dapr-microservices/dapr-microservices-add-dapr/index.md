@@ -31,7 +31,7 @@ Add a [`dapr.io.InvokeHttpRoute`]({{< ref dapr >}}) resource to the app, and spe
 
 Now that the backend is configured with Dapr, we need to define a state store to save information about orders.
 
-A [`statestore` component]({{< ref dapr-statestore >}}) is used to specify a few properties about the state store:
+A [`statestore` component]({{< relref "resources/dapr/dapr-statestore" >}}) is used to specify a few properties about the state store:
 
 - **resource type**: `'dapr.io/StateStoreComponent'` represents a resource that Dapr uses to communicate with a database.
 - **kind**: `'any'` tells Radius to pick the best available statestore for the platform. For Azure this is Table Storage and for Kubernetes this is a Redis container.
@@ -55,7 +55,7 @@ Once the state store is defined as a component, you can connect to it by referen
 
 ### Injected settings from connections
 
-Adding a connection to the state store also [configures environment variables]({{< ref "dapr-statestore#provided-data" >}}) inside the the `statestore` component.
+Adding a connection to the state store also [configures environment variables]({{< relref "resources/connectors/dapr/dapr-statestore#provided-data" >}}) inside the the `statestore` component.
 
 Because the connection is called `orders` inside `backend`, Radius will inject information related to the state store using environment variables like `CONNECTION_ORDERS_STATESTORENAME`. The application code inside `backend` uses this environment variable to access the state store name and avoid hardcoding.
 

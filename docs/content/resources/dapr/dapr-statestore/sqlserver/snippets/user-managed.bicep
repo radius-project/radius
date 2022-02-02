@@ -26,8 +26,8 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource statestore 'dapr.io.StateStore' = {
     name: 'statestore'
     properties: {
-      kind: 'state.azure.tablestorage'
-      resource: tablestorage.id
+      kind: 'state.sqlserver'
+      resource: sqlserver.id
       managed: false
     }
   }
@@ -35,20 +35,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
 }
 
 //BICEP
-resource tablestorage 'Microsoft.Storage/storageAccounts/tableServices@2021-06-01' = {
-  name: 'default'
-  parent: storageAccount
-}
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2021-04-01' = {
-  name: 'sa-${guid(resourceGroup().name)}'
-  location: resourceGroup().location
-  sku: {
-    name: 'Standard_ZRS'
-  }
-  kind: 'StorageV2'
+resource sqlserver 'Microsoft.Sql/servers@2021-05-01-preview' = {
+  name: 'sqlserver${uniqueString(resourceGroup().id)}'
+  location:resourceGroup().location
   properties: {
-    supportsHttpsTrafficOnly: true
-  }
+    administratorLogin: 'user${uniqueString(resourceGroup().id)}'
+    administratorLoginPassword: 'p@!!${uniqueString(resourceGroup().id)}'
+    version: '12.0'
+    minimalTlsVersion: '1.2'
 }
 //BICEP

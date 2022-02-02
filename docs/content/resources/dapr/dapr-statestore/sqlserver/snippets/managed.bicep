@@ -1,6 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'dapr-statestore'
-
   resource myapp 'Container' = {
     name: 'myapp'
     properties: {
@@ -21,34 +20,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
       ]
     }
   }
-  
+
   //SAMPLE
   resource statestore 'dapr.io.StateStore' = {
     name: 'statestore'
     properties: {
-      kind: 'state.azure.tablestorage'
-      resource: tablestorage.id
-      managed: false
+      kind: 'state.sqlserver'
+      managed: true
     }
   }
   //SAMPLE
 }
-
-//BICEP
-resource tablestorage 'Microsoft.Storage/storageAccounts/tableServices@2021-06-01' = {
-  name: 'default'
-  parent: storageAccount
-}
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2021-04-01' = {
-  name: 'sa-${guid(resourceGroup().name)}'
-  location: resourceGroup().location
-  sku: {
-    name: 'Standard_ZRS'
-  }
-  kind: 'StorageV2'
-  properties: {
-    supportsHttpsTrafficOnly: true
-  }
-}
-//BICEP
