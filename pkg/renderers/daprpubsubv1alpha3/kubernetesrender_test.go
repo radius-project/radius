@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -105,7 +106,7 @@ func Test_Render_Generic_Kubernetes_MissingMetadata(t *testing.T) {
 	renderer := initRenderer()
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "No metadata specified for Dapr Pub/Sub component of type pubsub.kafka", err.Error())
+	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.Error())
 }
 
 func Test_Render_Generic_Kubernetes_MissingType(t *testing.T) {
@@ -125,7 +126,7 @@ func Test_Render_Generic_Kubernetes_MissingType(t *testing.T) {
 	renderer := initRenderer()
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "No type specified for generic Dapr Pub/Sub component", err.Error())
+	require.Equal(t, "No type specified for generic Dapr component", err.Error())
 }
 
 func Test_Render_Generic_Kubernetes_MissingVersion(t *testing.T) {
@@ -145,7 +146,7 @@ func Test_Render_Generic_Kubernetes_MissingVersion(t *testing.T) {
 	renderer := initRenderer()
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "No Dapr component version specified for generic Pub/Sub component", err.Error())
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
 }
 
 func Test_Kubernetes_ConstructDaprPubSubGeneric(t *testing.T) {
@@ -157,7 +158,12 @@ func Test_Kubernetes_ConstructDaprPubSubGeneric(t *testing.T) {
 		},
 	}
 
-	item, err := constructPubSubResource(properties, appName, resourceName)
+	daprGeneric := dapr.DaprGeneric{
+		Type:     properties.Type,
+		Version:  properties.Version,
+		Metadata: properties.Metadata,
+	}
+	item, err := dapr.ConstructDaprGeneric(daprGeneric, appName, resourceName)
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{

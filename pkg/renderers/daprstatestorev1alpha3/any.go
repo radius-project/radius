@@ -10,12 +10,12 @@ import (
 	"github.com/project-radius/radius/pkg/renderers"
 )
 
-func GetDaprStateStoreAzureAny(resource renderers.RendererResource, properties Properties) ([]outputresource.OutputResource, error) {
-	properties.Managed = true
-	return GetDaprStateStoreAzureStorage(resource, properties)
+func GetDaprStateStoreAzureAny(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
+	resource.Definition["managed"] = true
+	return GetDaprStateStoreAzureStorage(resource)
 }
 
-func GetDaprStateStoreKubernetesAny(resource renderers.RendererResource, properties Properties) ([]outputresource.OutputResource, error) {
-	properties.Managed = true
-	return GetDaprStateStoreKubernetesRedis(resource, properties)
+func GetDaprStateStoreKubernetesAny(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
+	resource.Definition["managed"] = true
+	return GetDaprStateStoreKubernetesRedis(resource)
 }

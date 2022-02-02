@@ -7,6 +7,7 @@ package daprstatestorev1alpha3
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -22,6 +23,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
+)
+
+const (
+	appName               = "test-app"
+	resourceName          = "test-resource"
+	daprVersion           = "dapr.io/v1alpha1"
+	k8sKind               = "Component"
+	stateStoreType        = "state.zookeeper"
+	daprStateStoreVersion = "v1"
 )
 
 func createContext(t *testing.T) context.Context {
@@ -80,8 +90,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"kind":     "state.azure.tablestorage",
-			"managed":  false,
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			"managed":  false,
 		},
 	}
 
@@ -118,8 +128,8 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"kind":     "state.azure.tablestorage",
-			"managed":  false,
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
+			"managed":  false,
 		},
 	}
 
@@ -216,6 +226,7 @@ func Test_Render_SQL_Unmanaged_Failure(t *testing.T) {
 		Definition: map[string]interface{}{
 			"kind":     "state.sqlserver",
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			"managed":  false,
 		},
 	}
 
@@ -340,8 +351,8 @@ func Test_Render_K8s_Unmanaged_Failure(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"kind":     "state.redis",
-			"managed":  false,
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			"managed":  false,
 		},
 	}
 
@@ -368,4 +379,242 @@ func Test_Render_NonAny_Failure(t *testing.T) {
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf("state.sqlserver is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedKubernetesStateStoreKindValues)), err.Error())
+}
+
+func Test_Render_Azure_Generic_Success(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"kind":    "generic",
+			"type":    "state.zookeeper",
+			"version": "v1",
+			"metadata": map[string]interface{}{
+				"foo": "bar",
+			},
+		},
+	}
+
+	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.NoError(t, err)
+
+	require.Len(t, result.Resources, 1)
+	output := result.Resources[0]
+
+	require.Equal(t, outputresource.LocalIDDaprStateStoreGeneric, output.LocalID)
+	require.Equal(t, resourcekinds.DaprStateStoreGeneric, output.ResourceKind)
+	require.False(t, output.Managed)
+
+	metadata := map[string]interface{}{
+		"foo": "bar",
+	}
+	metadataSerialized, err := json.Marshal(metadata)
+	require.NoError(t, err, "Could not serialize metadata")
+
+	expected := map[string]string{
+		handlers.ManagedKey:              "true",
+		handlers.KubernetesNameKey:       "test-resource",
+		handlers.KubernetesNamespaceKey:  "test-app",
+		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+		handlers.KubernetesKindKey:       "Component",
+		handlers.ResourceName:            "test-resource",
+		handlers.GenericDaprTypeKey:      "state.zookeeper",
+		handlers.GenericDaprVersionKey:   "v1",
+		handlers.GenericDaprMetadataKey:  string(metadataSerialized),
+	}
+	require.Equal(t, expected, output.Resource)
+}
+
+func Test_Render_Azure_Generic_MissingMetadata(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"kind":     "generic",
+			"type":     "state.zookeeper",
+			"version":  "v1",
+			"metadata": map[string]interface{}{},
+		},
+	}
+
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.Error(t, err)
+	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.Error())
+}
+
+func Test_Render_Azure_Generic_MissingType(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"kind":    "generic",
+			"version": "v1",
+			"metadata": map[string]interface{}{
+				"foo": "bar",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.Error(t, err)
+	require.Equal(t, "No type specified for generic Dapr component", err.Error())
+}
+
+func Test_Render_Azure_Generic_MissingVersion(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedAzureStateStoreKindValues}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-resource",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"kind": "generic",
+			"type": "state.zookeeper",
+			"metadata": map[string]interface{}{
+				"foo": "bar",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.Error(t, err)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
+}
+
+func Test_Render_Kubernetes_Generic_Success(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: appName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"kind":    "generic",
+			"type":    stateStoreType,
+			"version": daprStateStoreVersion,
+			"metadata": map[string]interface{}{
+				"foo": "bar",
+			},
+		},
+	}
+
+	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.NoError(t, err)
+
+	require.Len(t, result.Resources, 1)
+	output := result.Resources[0]
+
+	require.Equal(t, outputresource.LocalIDDaprStateStoreGeneric, output.LocalID)
+	require.Equal(t, resourcekinds.Kubernetes, output.ResourceKind)
+
+	expected := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": daprVersion,
+			"kind":       k8sKind,
+			"metadata": map[string]interface{}{
+				"namespace": appName,
+				"name":      resourceName,
+				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
+			},
+			"spec": map[string]interface{}{
+				"type":    stateStoreType,
+				"version": daprStateStoreVersion,
+				"metadata": []map[string]interface{}{
+					{
+						"name":  "foo",
+						"value": "bar",
+					},
+				},
+			},
+		},
+	}
+	require.Equal(t, &expected, output.Resource)
+}
+
+func Test_Render_Kubernetes_Generic_MissingMetadata(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: appName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"kind":     "generic",
+			"type":     stateStoreType,
+			"version":  daprStateStoreVersion,
+			"metadata": map[string]interface{}{},
+		},
+	}
+
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.Error(t, err)
+	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.Error())
+}
+
+func Test_Render_Kubernetes_Generic_MissingType(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: appName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"kind":    "generic",
+			"version": "v1",
+			"metadata": map[string]interface{}{
+				"foo": "bar",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.Error(t, err)
+	require.Equal(t, "No type specified for generic Dapr component", err.Error())
+}
+
+func Test_Render_Kubernetes_Generic_MissingVersion(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	resource := renderers.RendererResource{
+		ApplicationName: appName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"kind": "generic",
+			"type": "state.zookeeper",
+			"metadata": map[string]interface{}{
+				"foo": "bar",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+
+	require.Error(t, err)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
 }

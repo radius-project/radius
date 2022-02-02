@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package handlers
 
 import (
@@ -5,24 +10,27 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func Test_ConstructDaprPubSubGeneric(t *testing.T) {
+const (
+	appName               = "test-app"
+	resourceName          = "test-resource"
+	daprVersion           = "dapr.io/v1alpha1"
+	k8sKind               = "Component"
+	stateStoreType        = "state.zookeeper"
+	daprStateStoreVersion = "v1"
+)
+
+func Test_ConstructDaprStateStoreGeneric(t *testing.T) {
 	metadata := map[string]interface{}{
 		"foo": "bar",
 	}
 	metadataSerialized, err := json.Marshal(metadata)
 	require.NoError(t, err, "Failed to serialize metadata")
 
-	appName := "test-app"
-	resourceName := "test-resource"
-	pubsubType := "pubsub.kafka"
-	daprPubSubVersion := "v1"
-	daprVersion := "dapr.io/v1alpha1"
-	k8sKind := "Component"
 	properties := map[string]string{
 		ManagedKey:              "false",
 		ResourceName:            resourceName,
@@ -30,13 +38,13 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 		KubernetesAPIVersionKey: daprVersion,
 		KubernetesKindKey:       k8sKind,
 
-		GenericDaprTypeKey:     pubsubType,
-		GenericDaprVersionKey:  daprPubSubVersion,
+		GenericDaprTypeKey:     stateStoreType,
+		GenericDaprVersionKey:  daprStateStoreVersion,
 		GenericDaprMetadataKey: string(metadataSerialized),
 	}
 
 	item, err := constructDaprGeneric(properties, appName, resourceName)
-	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
+	require.NoError(t, err, "Unable to construct Dapr state store resource spec")
 
 	expected := unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -48,8 +56,8 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
 			},
 			"spec": map[string]interface{}{
-				"type":    pubsubType,
-				"version": daprPubSubVersion,
+				"type":    stateStoreType,
+				"version": daprStateStoreVersion,
 				"metadata": []map[string]interface{}{
 					{
 						"name":  "foo",
@@ -59,6 +67,11 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, expected, item, "Resource spec does not match expected value")
+	expectedJson, err := json.Marshal(expected)
+	require.NoError(t, err)
+	actualJson, err := json.Marshal(item)
+	require.NoError(t, err)
+
+	assert.Equal(t, string(expectedJson), string(actualJson), "Resource spec does not match expected value")
 
 }

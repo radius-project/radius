@@ -12,11 +12,10 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
-	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 var _ renderers.Renderer = (*KubernetesRenderer)(nil)
@@ -41,19 +40,18 @@ func GetDaprPubSubAzureGenericKubernetes(resource renderers.RendererResource) (r
 		return renderers.RendererOutput{}, err
 	}
 
-	if properties.Type == nil || *properties.Type == "" {
-		return renderers.RendererOutput{}, errors.New("No type specified for generic Dapr Pub/Sub component")
+	daprGeneric := dapr.DaprGeneric{
+		Type:     properties.Type,
+		Version:  properties.Version,
+		Metadata: properties.Metadata,
 	}
 
-	if properties.Version == nil || *properties.Version == "" {
-		return renderers.RendererOutput{}, errors.New("No Dapr component version specified for generic Pub/Sub component")
+	err = dapr.ValidateDaprGenericObject(daprGeneric)
+	if err != nil {
+		return renderers.RendererOutput{}, err
 	}
 
-	if properties.Metadata == nil || len(properties.Metadata) == 0 {
-		return renderers.RendererOutput{}, fmt.Errorf("No metadata specified for Dapr Pub/Sub component of type %s", *properties.Type)
-	}
-
-	pubsubResource, err := constructPubSubResource(properties, resource.ApplicationName, resource.ResourceName)
+	pubsubResource, err := dapr.ConstructDaprGeneric(daprGeneric, resource.ApplicationName, resource.ResourceName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -70,38 +68,6 @@ func GetDaprPubSubAzureGenericKubernetes(resource renderers.RendererResource) (r
 		ComputedValues: nil,
 		SecretValues:   nil,
 	}, nil
-}
-
-func constructPubSubResource(properties radclient.DaprPubSubTopicGenericResourceProperties, appName string, resourceName string) (unstructured.Unstructured, error) {
-	// Convert the metadata map to a yaml list with keys name and value as per
-	// Dapr specs: https://docs.dapr.io/reference/components-reference/supported-pubsub/
-	yamlListItems := []map[string]interface{}{}
-	for k, v := range properties.Metadata {
-		yamlItem := map[string]interface{}{
-			"name":  k,
-			"value": v,
-		}
-		yamlListItems = append(yamlListItems, yamlItem)
-	}
-
-	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "dapr.io/v1alpha1",
-			"kind":       "Component",
-			"metadata": map[string]interface{}{
-				"namespace": appName,
-				"name":      resourceName,
-				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
-			},
-			"spec": map[string]interface{}{
-				"type":     *properties.Type,
-				"version":  *properties.Version,
-				"metadata": yamlListItems,
-			},
-		},
-	}
-
-	return item, nil
 }
 
 func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
