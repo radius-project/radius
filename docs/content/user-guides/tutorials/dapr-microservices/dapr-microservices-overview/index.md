@@ -12,7 +12,6 @@ In this tutorial you will be deploying an online store where you can order items
 <img src="./store.png" alt="A screenshot of the store application" width=500 />
 
 ## Resources
-<!-- TODO - check link -->
 This Radius application will have three [resouces]({{< ref resources-model.md >}}):
 
 - A UI for users to place orders written with .NET Blazor (`frontend`)

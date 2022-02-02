@@ -17,14 +17,16 @@ The Radius Application contains everything on an app diagram. That includes all 
 
 ## Authoring an Application
 
-Applications are the top-level *resource*. The descriptions of the app's sub-components or external resources the app interacts with will be defined within a top-level `resource app` in a .bicep file: 
+An application is defined as a top-level `resource app` in a .bicep file: 
 {{< rad file="snippets/blank-app.bicep" embed=true >}}
 
 Currently, this example app is an empty shell and has no child resources defined.
 
-It's up to the user to define what they consider part of the app. Users can include both services (containers) and infrastructure resources (databases, caches, etc.).
+It's up to the user to define what they consider part of the app. Users can include both services (containers) and infrastructure resources (databases, caches, etc.). 
 
-Learn how to author applications in the [Radius authoring guide]({{< ref authoring >}}).
+In some cases, an Ops team may create a Radius environment and prepare it with portable Radius [Connector]({{< ref connectors >}}) resources that a separate Dev team can connect to from their `resource app`. 
+
+Learn more about how to author applications in the [Radius authoring guide]({{< ref authoring >}}). 
 
 <!-- TODO: high-level overview of managing an app -->
 

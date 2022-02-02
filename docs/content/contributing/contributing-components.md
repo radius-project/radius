@@ -12,7 +12,6 @@ This page is still under construction. Please come back soon once the Radius tea
 
 ## Documentation
 
-<!-- TODO - check link -->
 All components need to have a page under the [Resource library]({{< ref resources >}}). Each page needs to have:
 
 - Overview section which describes what the component does and why people would use it.
