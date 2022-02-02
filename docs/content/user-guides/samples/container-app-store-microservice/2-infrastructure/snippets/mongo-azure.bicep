@@ -1,3 +1,6 @@
+resource app 'radius.dev/Application@v1alpha3' = {
+  name: 'store'
+}
 module statestore 'statestore-cosmos.bicep' = {
   name: 'statestore'
   params: {

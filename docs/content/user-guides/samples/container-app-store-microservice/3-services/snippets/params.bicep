@@ -1,3 +1,0 @@
-param go_service_build object
-param node_service_build object
-param python_service_build object
