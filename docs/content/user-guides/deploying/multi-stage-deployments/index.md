@@ -146,7 +146,7 @@ Deploying iac/app.prod.bicep...
 
 Resources:
     my-app                  Application
-    container-mongo-UNIOQUE Container
+    container-mongo-UNIQUE Container
     demo                    Container
     mongo-route             HttpRoute
     web                     HttpRoute
