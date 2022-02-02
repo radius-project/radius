@@ -61,6 +61,17 @@ Currently performing a release involves our custom Bicep compiler - which is in 
    
    For example, if we are releasing 0.4, we change the main branch Chart.yaml version to 0.5.0. If we are releasing a patch on 0.4, we update the Chart.yaml version in the release/0.4 to 0.4.1 (or one higher than the current patch version).
 
+   If this process fails for whatever reason, a manual upload works well as a backup. Run the following:
+   ```bash
+   cd deploy/Chart
+   # Replace version: 0.X.0 with this release version in Chart.yaml
+   # Replace tag: 0.X with this release version in values.yaml
+   helm package .
+   az acr helm push -n radius radius-0.9.0.tgz --force
+   # To verify upload worked
+   az acr helm list -n radius
+   ```
+
 4. Check the stable version marker
 
    If this is a patch release - you can stop here, you are done.
@@ -73,14 +84,13 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 
 5. Update the docs
    
-   1. Within GitHub delete the branch for the prior Radius release, *e.g. `release/v0.1`*.
-   1. Create a new branch named `release/vX.Y` from `main`, using the release version number.
-   1. Within  `docs/config.yaml` update the `#Versioning` section to have the new release version number.
-   1. Within `docs/config.yaml` update the `baseURL` parameter  to be `https://radapp.dev/` instead of `https://edge.radapp.dev/`.
-   1. Within `.github/workflows/website.yml` update the branch to be the new `release\vX.Y` branch you created above.
+   1. Within GitHub delete the branch for the prior Radius release, *e.g. `release/0.1`*.
+   1. Create a new branch named `release/X.Y` from `main`, using the release version number.
+   1. Update the branch information for the docs. Example: https://github.com/project-radius/radius/commit/f4b81b8881d590fbf077280db6a05482ed44188b
+   1. Within `docs/config.toml` update the `baseURL` parameter  to be `https://radapp.dev/` instead of `https://edge.radapp.dev/`.
+   1. Within `.github/workflows/website.yml` update the branch to be the new `release\X.Y` branch you created above.
    1. Within `.github/workflows/website.yml` update `${{ secrets.EDGE_DOCS_SITE_PUBLISHPROFILE }}` to `${{ secrets.DOCS_SITE_PUBLISHPROFILE }}` and "edge-radius" to "radius".
    1. In `docs/content/getting-started/install-cli.md` update the binary download links with the new version number, and delete commands for unstable/version commands, including all sub-headers.
-   1. In `docs/content/getting-started/setup-tools/index.md` update the download link to the stable version instead of the edge version.
    1. Commit and push updates to be the new `release\vX.Y` branch you created above.
    1. Verify https://radapp.dev now shows the new version.
 
