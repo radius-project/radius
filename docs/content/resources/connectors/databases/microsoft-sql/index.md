@@ -6,21 +6,22 @@ description: "Sample application running on a user-managed Azure SQL Database"
 weight: 100
 ---
 
-This application showcases how Radius can use a user-manged Azure SQL Database. 
-
+This application showcases how Radius can use a user-manged Azure SQL Database.
 
 ## Supported resources
 
+- [Azure SQL Container](https://hub.docker.com/_/microsoft-mssql-server)
 - [Azure SQL](https://docs.microsoft.com/en-us/azure/azure-sql/)
 
 ## Resource format
 
 {{< rad file="snippets/unmanaged.bicep" embed=true marker="//DATABASE" >}}
 
-
 | Property | Description | Example |
 |----------|-------------|---------|
 | resource | The ID of the Azure SQL Database to use for this resource. | `server::sqldb.id` |
+| server | The name of the server. | `myserver` |
+| database | The fully qualified domain name of the SQL database. | `myserver.database.com` |
 
 ## Connections
 
@@ -33,7 +34,6 @@ The username and password used to access your database are not stored as part of
 ### Injected values
 
 Connections between resources declare environment variables inside the consuming resource as a convenience for service discovery. See [connections]({{< ref "connections-model#injected-values" >}}) for details.
-
 
 | Environment variable | Example | Description |
 |----------------------|---------|-------------|
