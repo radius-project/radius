@@ -12,11 +12,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
       container: {
         image: 'radius.azurecr.io/magpie:latest'
-        readinessProbe:{
-          kind:'httpGet'
-          containerPort:3000
-          path: '/healthz'
-        }
       }
     }
   }
@@ -30,6 +25,25 @@ resource app 'radius.dev/Application@v1alpha3' = {
       metadata: {
         servers: 'zookeeper.default.svc.cluster.local:2181'
       }
+    }
+  }
+
+  resource redis 'redislabs.com.RedisCache' = {
+    name: 'myredis-connector'
+    properties: {
+      resource: azureRedis.id
+    }
+  }
+}
+
+resource azureRedis 'Microsoft.Cache/Redis@2019-07-01' = {
+  name: 'myredis'
+  location: 'westus2'
+  properties: {
+    sku: {
+      capacity: 0
+      family: 'C'
+      name: 'Basic'
     }
   }
 }
