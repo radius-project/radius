@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package bicep
+package cli
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ func (OSFileSystem) Open(name string) (fs.File, error) {
 	return os.Open(name)
 }
 
-func (pp ParameterParser) Parse(inputs ...string) (clients.DeploymentParameters, error) {
+func (pp ParameterParser) Parse(inputs []string) (clients.DeploymentParameters, error) {
 	output := clients.DeploymentParameters{}
 	for _, input := range inputs {
 		// Parameters get merged with the later ones taking precendence. ParseSingleParameter handles
@@ -113,11 +113,11 @@ func (pp ParameterParser) mergeParameters(output clients.DeploymentParameters, i
 
 func (pp ParameterParser) mergeSingleParameter(output clients.DeploymentParameters, name string, input interface{}) {
 	// We intentionally overwrite duplicates.
-	output[name] = NewParameter(input)
-}
-
-func NewParameter(value interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"value": value,
+	parameter, ok := output[name]
+	if !ok {
+		parameter = map[string]interface{}{}
+		output[name] = parameter
 	}
+
+	parameter["value"] = input
 }

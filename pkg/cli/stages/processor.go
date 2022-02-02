@@ -13,7 +13,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/builders"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/radyaml"
@@ -96,34 +95,13 @@ func (p *processor) ProcessDeploy(ctx context.Context, stage radyaml.BicepStage)
 		return err
 	}
 
-	// We might have additional parameters that are specific to this stage, so make a copy
-	// that way the parameters don't leak outside the stage.
-	parameters := clients.ShallowCopy(p.Parameters)
-	if stage.ParameterFile != nil {
-		filePath := path.Join(p.BaseDirectory, *stage.ParameterFile)
-
-		parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
-		parsedFile, err := parser.Parse(filePath)
-		if err != nil {
-			return err
-		}
-
-		for key, value := range parsedFile {
-			parameters[key] = value
-		}
-	}
-
-	for key, value := range stage.Parameters {
-		parameters[key] = bicep.NewParameter(value)
-	}
-
 	progressText := fmt.Sprintf("Deploying %s...", deployFile)
 	completionText := fmt.Sprintf("Deployed stage %s: %d of %d", p.CurrrentStage.Name, p.CurrrentStage.DisplayIndex, p.CurrrentStage.TotalCount)
 
 	result, err := deploy.DeployWithProgress(ctx, deploy.Options{
 		Environment:    p.Environment,
 		Template:       template,
-		Parameters:     parameters,
+		Parameters:     p.Parameters,
 		ProgressText:   progressText,
 		CompletionText: completionText,
 	})

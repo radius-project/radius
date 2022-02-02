@@ -96,8 +96,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
-	parameters, err := parser.Parse(parameterArgs...)
+	parser := cli.ParameterParser{FileSystem: cli.OSFileSystem{}}
+	parameters, err := parser.Parse(parameterArgs)
 	if err != nil {
 		return err
 	}

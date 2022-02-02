@@ -81,7 +81,7 @@ func CombineBuildTarget(main *BuildTarget, override *BuildTarget) (*BuildTarget,
 	if strings.EqualFold(main.Builder, override.Builder) {
 		return &BuildTarget{
 			Builder: main.Builder,
-			Values:  overrideMapInterface(main.Values, override.Values),
+			Values:  overrideMap(main.Values, override.Values),
 		}, nil
 	}
 
@@ -100,8 +100,6 @@ func CombineBicepStage(main *BicepStage, override *BicepStage) (*BicepStage, err
 	// If we get here, both stages define Bicep settings and we need to combine them.
 	combined := BicepStage{}
 	combined.Template = overrideString(main.Template, override.Template)
-	combined.ParameterFile = overrideString(main.ParameterFile, override.ParameterFile)
-	combined.Parameters = overrideMapString(main.Parameters, override.Parameters)
 	return &combined, nil
 }
 
@@ -114,29 +112,7 @@ func overrideString(main *string, override *string) *string {
 	return override
 }
 
-func overrideMapString(main map[string]string, override map[string]string) map[string]string {
-	if override == nil {
-		return main
-	}
-
-	if main == nil {
-		return override
-	}
-
-	// If we get here both main and override are non-nil. We want to combine them.
-	combined := map[string]string{}
-	for key, value := range main {
-		combined[key] = value
-	}
-
-	for key, value := range override {
-		combined[key] = value
-	}
-
-	return combined
-}
-
-func overrideMapInterface(main map[string]interface{}, override map[string]interface{}) map[string]interface{} {
+func overrideMap(main map[string]interface{}, override map[string]interface{}) map[string]interface{} {
 	if override == nil {
 		return main
 	}
@@ -156,7 +132,7 @@ func overrideMapInterface(main map[string]interface{}, override map[string]inter
 			mainValueMap, isMainValueMap := mainValue.(map[string]interface{})
 			overrideValueMap, isOverrideValueMap := value.(map[string]interface{})
 			if isMainValueMap && isOverrideValueMap {
-				combined[key] = overrideMapInterface(mainValueMap, overrideValueMap)
+				combined[key] = overrideMap(mainValueMap, overrideValueMap)
 				continue
 			}
 		}
