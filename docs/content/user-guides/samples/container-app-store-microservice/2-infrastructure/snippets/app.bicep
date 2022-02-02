@@ -4,7 +4,7 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
 //APP
 
 //COSMO
-  resource statestore 'Microsoft.DocumentDB/databaseAccounts@2021-10-15' = {
+  resource statestore 'mongodb.com.MongoDBComponent' = {
     name: 'statestore'
     params: {
       application: app.name
