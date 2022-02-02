@@ -11,6 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 	}
 }
 
+
 module container 'module.bicep' = {
   name: 'nginx'
   params: {
