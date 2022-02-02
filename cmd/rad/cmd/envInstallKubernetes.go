@@ -109,9 +109,9 @@ var envInstallKubernetesCmd = &cobra.Command{
 
 func init() {
 	envInstallCmd.AddCommand(envInstallKubernetesCmd)
-	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
-	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
-	envInitKubernetesCmd.Flags().StringP("chart", "c", "", "Specify a file path to a helm chart to install radius from")
-	envInitKubernetesCmd.Flags().String("image", "", "Specify the radius controller image to use")
-	envInitKubernetesCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
+	envInstallKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
+	envInstallKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
+	envInstallKubernetesCmd.Flags().StringP("chart", "c", "", "Specify a file path to a helm chart to install radius from")
+	envInstallKubernetesCmd.Flags().String("image", "", "Specify the radius controller image to use")
+	envInstallKubernetesCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
 }
