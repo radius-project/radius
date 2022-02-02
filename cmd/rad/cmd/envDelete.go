@@ -75,15 +75,15 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		// 3. Delete control plane resource group
 		if err = deleteAllApplications(cmd.Context(), az); err != nil {
 			return err
-		} // makes sense to live in delete
+		}
 
 		if err = deleteRadiusResourcesInResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 			return err
-		} // makes more sense in uninstallation
+		}
 
 		if err = deleteResourceGroup(cmd.Context(), authorizer, az.ControlPlaneResourceGroup, az.SubscriptionID); err != nil {
 			return err
-		} // makes more sense in uninstallation
+		}
 	}
 
 	dev, ok := env.(*environments.LocalEnvironment)
@@ -108,11 +108,6 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	//add a portion to delete that deletes applications on Kubernetes, doesn't do other two things
-	// then rad env uninstall does other two things
-	// equivalent to deleting radius from radius-system namespace
-	// inverting install process (stack): uninstall each of helm charts in order, and delete radius-system namespace
-	// also need to unapply gateway class
 	kub, ok := env.(*environments.KubernetesEnvironment)
 	if ok {
 		if !yes {

@@ -227,7 +227,6 @@ func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client)
 
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
-	envInstallCmd.AddCommand(envInitKubernetesCmd)
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
 	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
 	envInitKubernetesCmd.Flags().StringP("chart", "c", "", "Specify a file path to a helm chart to install radius from")
