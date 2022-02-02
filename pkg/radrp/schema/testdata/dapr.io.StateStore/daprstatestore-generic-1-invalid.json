@@ -1,8 +1,0 @@
-{
-  "id": 42,
-  "name": 42,
-  "properties": {
-    "kind": "generic",
-    "type": "state.zookeeper"
-  }
-}

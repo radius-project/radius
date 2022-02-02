@@ -1,4 +1,0 @@
-(root).id: Invalid type. Expected: string, given: integer
-(root).name: Invalid type. Expected: string, given: integer
-(root).properties: metadata is required
-(root).properties: version is required

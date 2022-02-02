@@ -1225,112 +1225,6 @@ func (d *DaprSidecarTrait) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type DaprStateStoreAnyResourceProperties struct {
-	DaprStateStoreResourceProperties
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreAnyResourceProperties.
-func (d DaprStateStoreAnyResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "any")
-	return json.Marshal(objectMap)
-}
-
-type DaprStateStoreAzureTableStorageResourceProperties struct {
-	DaprStateStoreResourceProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-	Managed *Enum10 `json:"managed,omitempty"`
-
-	// PubSub resource, for unmanaged
-	Resource *string `json:"resource,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreAzureTableStorageResourceProperties.
-func (d DaprStateStoreAzureTableStorageResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "state.azure.tablestorage")
-	populate(objectMap, "managed", d.Managed)
-	populate(objectMap, "resource", d.Resource)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreAzureTableStorageResourceProperties.
-func (d *DaprStateStoreAzureTableStorageResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, &d.Resource)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := d.DaprStateStoreResourceProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-type DaprStateStoreGenericResourceProperties struct {
-	DaprStateStoreResourceProperties
-	// REQUIRED; Metadata for the state store resource. This should match the values specified in Dapr component spec
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-
-	// REQUIRED; Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
-	Type *string `json:"type,omitempty"`
-
-	// REQUIRED; Dapr component version
-	Version *string `json:"version,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreGenericResourceProperties.
-func (d DaprStateStoreGenericResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "generic")
-	populate(objectMap, "metadata", d.Metadata)
-	populate(objectMap, "type", d.Type)
-	populate(objectMap, "version", d.Version)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreGenericResourceProperties.
-func (d *DaprStateStoreGenericResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "metadata":
-				err = unpopulate(val, &d.Metadata)
-				delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, &d.Type)
-				delete(rawMsg, key)
-		case "version":
-				err = unpopulate(val, &d.Version)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := d.DaprStateStoreResourceProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
 // DaprStateStoreList - List of dapr.io.StateStore resources.
 type DaprStateStoreList struct {
 	// REQUIRED; List of dapr.io.StateStore resources.
@@ -1344,48 +1238,11 @@ func (d DaprStateStoreList) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-type DaprStateStoreRedisResourceProperties struct {
-	DaprStateStoreResourceProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-	Managed *Enum10 `json:"managed,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreRedisResourceProperties.
-func (d DaprStateStoreRedisResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "state.redis")
-	populate(objectMap, "managed", d.Managed)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreRedisResourceProperties.
-func (d *DaprStateStoreRedisResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := d.DaprStateStoreResourceProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
 // DaprStateStoreResource - Resource for Dapr state store
 type DaprStateStoreResource struct {
 	ProxyResource
 	// REQUIRED
-	Properties DaprStateStoreResourcePropertiesClassification `json:"properties,omitempty"`
+	Properties *DaprStateStoreResourceProperties `json:"properties,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreResource.
@@ -1406,7 +1263,7 @@ func (d *DaprStateStoreResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				d.Properties, err = unmarshalDaprStateStoreResourcePropertiesClassification(val)
+				err = unpopulate(val, &d.Properties)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1419,24 +1276,23 @@ func (d *DaprStateStoreResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// DaprStateStoreResourcePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetDaprStateStoreResourceProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprStateStoreAnyResourceProperties, *DaprStateStoreAzureTableStorageResourceProperties, *DaprStateStoreGenericResourceProperties,
-// - *DaprStateStoreRedisResourceProperties, *DaprStateStoreResourceProperties, *DaprStateStoreSqlServerResourceProperties
-type DaprStateStoreResourcePropertiesClassification interface {
-	// GetDaprStateStoreResourceProperties returns the DaprStateStoreResourceProperties content of the underlying type.
-	GetDaprStateStoreResourceProperties() *DaprStateStoreResourceProperties
-}
-
 type DaprStateStoreResourceProperties struct {
 	BasicResourceProperties
-	// REQUIRED; The DaprStateStoreResourceProperties kind
-	Kind *string `json:"kind,omitempty"`
+	// REQUIRED; The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes configuration format.
+	Kind *DaprStateStoreResourcePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
+	Managed *Enum5 `json:"managed,omitempty"`
 }
 
-// GetDaprStateStoreResourceProperties implements the DaprStateStoreResourcePropertiesClassification interface for type DaprStateStoreResourceProperties.
-func (d *DaprStateStoreResourceProperties) GetDaprStateStoreResourceProperties() *DaprStateStoreResourceProperties { return d }
+// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreResourceProperties.
+func (d DaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "kind", d.Kind)
+	populate(objectMap, "managed", d.Managed)
+	return json.Marshal(objectMap)
+}
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreResourceProperties.
 func (d *DaprStateStoreResourceProperties) UnmarshalJSON(data []byte) error {
@@ -1444,21 +1300,14 @@ func (d *DaprStateStoreResourceProperties) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
 	}
-	return d.unmarshalInternal(rawMsg)
-}
-
-func (d DaprStateStoreResourceProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
-	d.BasicResourceProperties.marshalInternal(objectMap)
-	d.Kind = &discValue
-	objectMap["kind"] = d.Kind
-}
-
-func (d *DaprStateStoreResourceProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
 		case "kind":
 				err = unpopulate(val, &d.Kind)
+				delete(rawMsg, key)
+		case "managed":
+				err = unpopulate(val, &d.Managed)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1466,50 +1315,6 @@ func (d *DaprStateStoreResourceProperties) unmarshalInternal(rawMsg map[string]j
 		}
 	}
 	if err := d.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-type DaprStateStoreSQLServerResourceProperties struct {
-	DaprStateStoreResourceProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-	Managed *Enum10 `json:"managed,omitempty"`
-
-	// PubSub resource, for unmanaged
-	Resource *string `json:"resource,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreSQLServerResourceProperties.
-func (d DaprStateStoreSQLServerResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "state.sqlserver")
-	populate(objectMap, "managed", d.Managed)
-	populate(objectMap, "resource", d.Resource)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreSQLServerResourceProperties.
-func (d *DaprStateStoreSQLServerResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, &d.Resource)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := d.DaprStateStoreResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil

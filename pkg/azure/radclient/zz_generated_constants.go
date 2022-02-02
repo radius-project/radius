@@ -228,6 +228,31 @@ func (c DaprSidecarTraitProtocol) ToPtr() *DaprSidecarTraitProtocol {
 	return &c
 }
 
+// DaprStateStoreResourcePropertiesKind - The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes configuration format.
+type DaprStateStoreResourcePropertiesKind string
+
+const (
+	DaprStateStoreResourcePropertiesKindAny DaprStateStoreResourcePropertiesKind = "any"
+	DaprStateStoreResourcePropertiesKindStateAzureTablestorage DaprStateStoreResourcePropertiesKind = "state.azure.tablestorage"
+	DaprStateStoreResourcePropertiesKindStateRedis DaprStateStoreResourcePropertiesKind = "state.redis"
+	DaprStateStoreResourcePropertiesKindStateSqlserver DaprStateStoreResourcePropertiesKind = "state.sqlserver"
+)
+
+// PossibleDaprStateStoreResourcePropertiesKindValues returns the possible values for the DaprStateStoreResourcePropertiesKind const type.
+func PossibleDaprStateStoreResourcePropertiesKindValues() []DaprStateStoreResourcePropertiesKind {
+	return []DaprStateStoreResourcePropertiesKind{	
+		DaprStateStoreResourcePropertiesKindAny,
+		DaprStateStoreResourcePropertiesKindStateAzureTablestorage,
+		DaprStateStoreResourcePropertiesKindStateRedis,
+		DaprStateStoreResourcePropertiesKindStateSqlserver,
+	}
+}
+
+// ToPtr returns a *DaprStateStoreResourcePropertiesKind pointing to the current value.
+func (c DaprStateStoreResourcePropertiesKind) ToPtr() *DaprStateStoreResourcePropertiesKind {
+	return &c
+}
+
 // EncryptionStatus - Indicates whether or not the encryption is enabled for container registry.
 type EncryptionStatus string
 
@@ -246,25 +271,6 @@ func PossibleEncryptionStatusValues() []EncryptionStatus {
 
 // ToPtr returns a *EncryptionStatus pointing to the current value.
 func (c EncryptionStatus) ToPtr() *EncryptionStatus {
-	return &c
-}
-
-// Enum10 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-type Enum10 bool
-
-const (
-	Enum10True Enum10 = true
-)
-
-// PossibleEnum10Values returns the possible values for the Enum10 const type.
-func PossibleEnum10Values() []Enum10 {
-	return []Enum10{	
-		Enum10True,
-	}
-}
-
-// ToPtr returns a *Enum10 pointing to the current value.
-func (c Enum10) ToPtr() *Enum10 {
 	return &c
 }
 
@@ -303,6 +309,25 @@ func PossibleEnum3Values() []Enum3 {
 
 // ToPtr returns a *Enum3 pointing to the current value.
 func (c Enum3) ToPtr() *Enum3 {
+	return &c
+}
+
+// Enum5 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
+type Enum5 bool
+
+const (
+	Enum5True Enum5 = true
+)
+
+// PossibleEnum5Values returns the possible values for the Enum5 const type.
+func PossibleEnum5Values() []Enum5 {
+	return []Enum5{	
+		Enum5True,
+	}
+}
+
+// ToPtr returns a *Enum5 pointing to the current value.
+func (c Enum5) ToPtr() *Enum5 {
 	return &c
 }
 

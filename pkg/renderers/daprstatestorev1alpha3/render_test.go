@@ -79,8 +79,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"kind":     "state.azure.tablestorage",
-			"managed":  false,
+			"kind":     "any",
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
 		},
 	}
@@ -117,8 +116,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"kind":     "state.azure.tablestorage",
-			"managed":  false,
+			"kind":     "any",
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 		},
 	}
@@ -138,8 +136,7 @@ func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"kind":    "state.azure.tablestorage",
-			"managed": false,
+			"kind": "any",
 		},
 	}
 
@@ -339,8 +336,7 @@ func Test_Render_K8s_Unmanaged_Failure(t *testing.T) {
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"kind":     "state.redis",
-			"managed":  false,
+			"kind":     "any",
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
 		},
 	}
