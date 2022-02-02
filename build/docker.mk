@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # ------------------------------------------------------------
 
-DOCKER_REGISTRY?=$(shell whoami).azurecr.io
+DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
 
 ##@ Docker Images
