@@ -5,13 +5,13 @@ linkTitle: "Visual Studio Code"
 description: "Overview of the Visual Studio Code extension"
 weight: 100
 ---
-Radius offers a *preview* Radius Visual Studio Code extension for Radius-specific optimizations which enables users a variety of features related to better manage applications across cloud and edge.
+Radius offers a *preview* Radius Visual Studio Code extension with a variety of features to help manage Radius applications across cloud and edge.
 
 ## Features
 
 ### View your deployed applications
 
-View environments, applications and resources deployed in a tree view style in Visual Studio Code.
+View and interact with environments, applications and resources deployed to your Radius environments.
 
 **placeholder for image**
 
@@ -19,9 +19,9 @@ View environments, applications and resources deployed in a tree view style in V
 
 The Radius extension helps you find information about your applications with Radius by streaming logs directly from the resource to the terminal window inside the VS Code IDE.
 
-Using the tree view resource nodes found in the explorer section, you can access a action icon command to access this log stream and view logs related to the specific resource choosen.
+From the Radius resource tree, select the logs icon to access and view your container's log stream.
 
-## Install other Radius extension versions
+## Installation
 
 You can access other versions of the Radius extension from the following URLs:
 
