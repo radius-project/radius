@@ -828,9 +828,6 @@
         },
         "type": {
           "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
-          "example": [
-            "state.zookeeper"
-          ],
           "type": "string"
         },
         "version": {
