@@ -13,7 +13,7 @@ slug: "http"
 
 ## Route format
 
-A Dapr HTTP Route is defined as a resource within your Application, defined at the same lavel as the resources providing and consuming the Dapr HTTP API communication.
+A Dapr HTTP Route is defined as a resource within your Application, defined at the same level as the resources providing and consuming the Dapr HTTP API communication.
 
 {{< rad file="snippets/http.bicep" embed=true marker="//ROUTE" >}}
 
