@@ -22,11 +22,4 @@ no_list: true
   </a>
 </div>
 {{% /card %}}
-{{% card header="[Container Apps Store Microservice](./dapr-microservices)" footer="Learn how to deploy multiple micro services with Radius locally" %}}
-<div class="text-center">
-  <a href="./local-development">
-    <img src="dapr-microservices.svg" alt="Radius logo">
-  </a>
-</div>
-{{% /card %}}
 {{< /cardpane >}}
