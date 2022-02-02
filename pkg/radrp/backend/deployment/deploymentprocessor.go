@@ -89,7 +89,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 			ID:             azureResourceID.ID,
 			SubscriptionID: azureResourceID.SubscriptionID,
 			ResourceGroup:  azureResourceID.ResourceGroup,
-			ResourceName:   azureResourceID.Name(),
+			ResourceName:   azureResourceID.QualifiedName(),
 			ResourceKind:   resourcekinds.Azure,
 			Type:           azureResourceID.Type(),
 			// Add Radius application context, since the Azure resource could belong to a different resource group/subscription outside of application context
