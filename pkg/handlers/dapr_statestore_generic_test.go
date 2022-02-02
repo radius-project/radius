@@ -6,13 +6,10 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -26,15 +23,6 @@ const (
 	stateStoreType        = "state.zookeeper"
 	daprStateStoreVersion = "v1"
 )
-
-func createContext(t *testing.T) context.Context {
-	logger, err := radlogger.NewTestLogger(t)
-	if err != nil {
-		t.Log("Unable to initialize logger")
-		return context.Background()
-	}
-	return logr.NewContext(context.Background(), logger)
-}
 
 func Test_ConstructDaprStateStoreGeneric(t *testing.T) {
 	metadata := map[string]interface{}{
