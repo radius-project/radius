@@ -8,3 +8,9 @@ resource container 'radius.dev/Application/Container@v1alpha3' = {
     }
   }
 }
+
+resource backendhttp 'radius.dev/Application/HttpRoute@v1alpha3' = {
+  name: '${app.name}/backendhttp'
+}
+
+output test resource 'radius.dev/Application/HttpRoute@v1alpha3' = backendhttp

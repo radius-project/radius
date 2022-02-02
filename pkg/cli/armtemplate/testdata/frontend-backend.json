@@ -97,5 +97,14 @@
       "apiVersion": "2018-09-01-preview",
       "name": "[format('{0}/{1}', 'radiusv3', 'azure-resources-container-httpbinding')]"
     }
-  ]
+  ],
+  "outputs": {
+    "test": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CustomProviders/resourceProviders/Application/HttpRoute', 'radiusv3', 'azure-resources-container-httpbinding', 'frontendRoute')]",
+      "metadata": {
+        "resourceType": "radius.dev/Application/HttpRoute@v1alpha3"
+      }
+    }
+  }
 }

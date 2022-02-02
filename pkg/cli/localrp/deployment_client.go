@@ -190,16 +190,9 @@ func (dc *LocalRPDeploymentClient) deployTemplate(ctx context.Context, template 
 		ids = append(ids, parsed)
 	}
 
-	for name, output := range template.Outputs {
-		value, err := evaluator.VisitMap(output)
-		if err != nil {
-			return nil, nil, err
-		}
+	outputs, err := evaluator.EvaluateOutputs()
 
-		evaluator.Outputs[name] = value
-	}
-
-	return ids, evaluator.Outputs, nil
+	return ids, outputs, err
 }
 
 func (dc *LocalRPDeploymentClient) deployResource(ctx context.Context, resource armtemplate.Resource) (map[string]interface{}, error) {
