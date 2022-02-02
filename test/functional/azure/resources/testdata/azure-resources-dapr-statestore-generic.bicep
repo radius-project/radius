@@ -21,31 +21,16 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       kind: 'generic'
       type: 'state.zookeeper'
-      version: 'v1'
       metadata: {
         servers: 'zookeeper.default.svc.cluster.local:2181'
       }
-    }
-  }
-
-  resource redis 'redislabs.com.RedisCache' = {
-    name: 'myredis-connector'
-    properties: {
-      resource: azureRedis.id
+      version: 'v1'
+      
     }
   }
 }
-
-resource azureRedis 'Microsoft.Cache/Redis@2019-07-01' = {
-  name: 'myredis'
-  location: 'westus2'
-  properties: {
-    sku: {
-      capacity: 0
-      family: 'C'
-      name: 'Basic'
-    }
-  }
-}
-
-
+    
+   
+    
+    
+    
