@@ -682,12 +682,12 @@ func (eva *DeploymentEvaluator) EvaluateVariable(variable interface{}) (interfac
 func (eva *DeploymentEvaluator) EvaluateOutputs() (map[string]map[string]interface{}, error) {
 	outputs := map[string]map[string]interface{}{}
 	for k, output := range eva.Template.Outputs {
-		value, err := eva.VisitValue(output)
+		value, err := eva.VisitMap(output)
 		if err != nil {
 			return nil, err
 		}
 
-		outputs[k] = value.(map[string]interface{})
+		outputs[k] = value
 	}
 
 	return outputs, nil
