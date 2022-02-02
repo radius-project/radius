@@ -4,7 +4,7 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
 //APP
 
 //COSMO
-  resource statestore 'statestore-cosmos' = {
+  resource statestore 'Container' = {
     name: 'statestore'
     params: {
       application: app.name
@@ -13,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
   }
 //COSMO
 //REDIS
-resource statestoreredis 'statestore-redis' = {
+resource statestoreredis 'Container' = {
   name: 'statestoreredis'
   params: {
     application: app.name
