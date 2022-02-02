@@ -18,12 +18,6 @@ const (
 	GenericDaprMetadataKey = "metadata"
 )
 
-// type DaprGenericAzure struct {
-// 	GenericDaprTypeKey     string
-// 	GenericDaprVersionKey  string
-// 	GenericDaprMetadataKey string
-// }
-
 func constructDaprGeneric(properties map[string]string, appName string, resourceName string) (unstructured.Unstructured, error) {
 	// Convert the metadata to a map for easier access
 	metadata := map[string]interface{}{}
