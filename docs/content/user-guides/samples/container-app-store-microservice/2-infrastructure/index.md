@@ -28,12 +28,14 @@ The first resources to model are the infrastructure resources:
 
 {{< codetab >}}
 The statestore Radius resource will deploy an Azure CosmosDB in Azure environments for users wanting to use a cloud provider instead of a local development environment.
-{{< rad file="snippets/infra.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
+
+{{< rad file="snippets/app.bicep" embed=true marker="//COSMO" replace-key-rest="//REST" replace-value-rest="..." >}}
 {{< /codetab >}}
 
 {{< codetab >}}
 The statestore Radius resource will deploy a Redis cache in Radius local environments.
-{{< rad file="snippets/infra.dev.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
+
+{{< rad file="snippets/app.bicep" embed=true marker="//REDIS" replace-key-rest="//REST" replace-value-rest="..." >}}
 {{< /codetab >}}
 
 {{< /tabs >}}
