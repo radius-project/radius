@@ -8,7 +8,9 @@ weight: 20
 
 ## Overview
 
-Radius local environments run by creating Kubernetes clusters locally inside of Docker containers in your machine. This creates a level of abstraction for the user and simplifies your interactions with your local cluster by allowing you to just worry about the Radius CLI. Through the command `rad env init dev`
+With a Radius local environment you can run your applications on your machine without the need for an Azure subscription or remote Kubernetes cluster. This makes it easy to develop applications and try them out without waiting for a full deployment.
+
+Try one out as part of the [Container App Store sample]({{< ref container-app-store-microservice >}}).
 
 ## Features
 
