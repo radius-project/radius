@@ -15,7 +15,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
       connections: {
         redis: {
-          kind: 'Azure'
+          kind: 'azure'
           source: redis.id
         }
       }

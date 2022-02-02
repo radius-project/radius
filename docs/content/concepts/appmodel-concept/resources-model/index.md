@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Radius components"
-linkTitle: "Components"
-description: "Learn how to model your Application's pieces with Radius Components"
+title: "Radius resources"
+linkTitle: "Resources"
+description: "Learn how to model your Application's pieces with Radius resources"
 weight: 200
 ---
 

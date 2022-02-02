@@ -22,11 +22,12 @@ Applications are the top-level *resource*. The descriptions of the app's sub-com
 
 Currently, this example app is an empty shell and has no child resources defined.
 
-It's up to the user to define what they consider part of the app. Generally, users should include both all the runnable components (things that run code) and all the non-runnable components (data and infrastructure resources).
+It's up to the user to define what they consider part of the app. Users can include both services (containers) and infrastructure resources (databases, caches, etc.).
 
-Learn more in the [Radius authoring guide]({{< ref authoring >}}).
-
+Learn how to author applications in the [Radius authoring guide]({{< ref authoring >}}).
 
 <!-- TODO: high-level overview of managing an app -->
 
-{{< button text="Radius Components" page="components-model.md" >}}
+## Next
+
+{{< button text="Radius Resources" page="resources-model.md" >}}

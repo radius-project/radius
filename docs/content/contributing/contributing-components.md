@@ -12,7 +12,8 @@ This page is still under construction. Please come back soon once the Radius tea
 
 ## Documentation
 
-All components need to have a page under [Components]({{< ref components-model >}}). Each page needs to have:
+<!-- TODO - check link -->
+All components need to have a page under the [Resource library]({{< ref resources >}}). Each page needs to have:
 
 - Overview section which describes what the component does and why people would use it.
 - Configuration section which describes every value which you could provide when defining a component, along with example values for each field.
