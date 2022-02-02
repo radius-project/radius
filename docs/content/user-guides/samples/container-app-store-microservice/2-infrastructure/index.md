@@ -13,8 +13,7 @@ In this section you will be creating an Container App Store Microservice Radius 
 
 The primary resource in Container App Store Microservice is the [Radius Application resource]({{< ref application-model >}}):
 
-{{< rad file="snippets/blank.bicep" embed=true >}}
-
+{{< rad file="snippets/app.bicep" embed=true marker="//APP" replace-key-rest="//REST" replace-value-rest="..." >}}
 ## Infrastructure
 
 The first resources to model are the infrastructure resources:
