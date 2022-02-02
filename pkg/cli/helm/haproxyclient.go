@@ -19,7 +19,7 @@ import (
 const (
 	haproxyReleaseName = "haproxy-ingress"
 	haproxyHelmRepo    = "https://haproxy-ingress.github.io/charts"
-	timeout            = 300
+	timeout            = time.Duration(300) * time.Second
 )
 
 type HAProxyOptions struct {
@@ -101,7 +101,7 @@ func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 
 func RunHAProxyHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient := helm.NewUninstall(helmConf)
-	uninstallClient.Timeout = time.Duration(timeout) * time.Second
+	uninstallClient.Timeout = timeout
 	_, err := uninstallClient.Run(haproxyReleaseName)
 	return err
 }
