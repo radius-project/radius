@@ -6,19 +6,17 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
 //COSMO
   resource statestore 'mongodb.com.MongoDBComponent' = {
     name: 'statestore'
-    params: {
-      application: app.name
-      stateStoreName: 'orders'
+    properties: {
+      managed: true
     }
   }
 //COSMO
 //REDIS
 resource statestoreredis 'radius.dev/Application/dapr.io.StateStore@v1alpha3' = {
   name: 'statestoreredis'
-  params: {
-    application: app.name
-    stateStoreName: 'orders'
-  }
+    properties: {
+      managed: true
+    }
 }
 //REDIS
 }
