@@ -25,7 +25,7 @@ Radius can be used with any text editor, but Radius-specific optimizations are a
 
 1. Download the edge [custom VSCode extension file](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix).
 
-1. Install the .vsix file. In VSCode, you can manually install the extension using the Install from VSIX command in the Extensions view command drop-down.
+1. Install the `.vsix` file. In VSCode, you can manually install the extension using the Install from VSIX command in the Extensions view command drop-down.
 
    <img src="./vsix-install.png" alt="Screenshot of installing a vsix extension" width=400>
 
