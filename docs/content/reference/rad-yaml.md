@@ -6,7 +6,7 @@ description: "Detailed reference documentation on the rad.yaml application file"
 weight: 200
 ---
 
-The `rad.yaml` file is the main application definition file. It contains the following sections:
+The `rad.yaml` file configures application [multi-stage deployment]({{< ref multi-stage-deployments >}}). The commmand [`rad app init`]({{< ref rad_application_init >}}) creates `rad.yaml` for you as part of app initialization. It lives at the root of your application directory/repo and contains the following sections:
 
 | Property | Description | Example |
 |----------|-------------|---------|
@@ -31,7 +31,8 @@ Bicep defines a Bicep file and optional parameters to deploy to a Radius environ
 | Property | Description | Example |
 |----------|-------------|---------|
 | template | The name of the Bicep template to deploy. | `iac/infra.bicep` |
-| parameters | A list of parameters to pass to the Bicep template. Can be defined inline or a reference to a parameter JSON file. | `{ "param1": "value1" }`, `'@iac/params.json'` |
+| parameters | A list of parameters to pass to the Bicep template. Can be defined inline or a reference to a parameter JSON file. | `param1: value1` |
+| parametersFile | A reference to a parameter JSON file. | `iac/parameters.json` |
 
 ### Build
 
@@ -49,7 +50,11 @@ Docker defines a Docker build to run prior to a deployment.
 
 ### Profiles
 
-Profiles define a set of overrides for a stage. When running a deployment, a profile can be specified.
+Profiles define a set of overrides for a stage. Both build and bicep configuration can be overridden in a profile, with the profile merging into the default and overwriting any properties set in both locations. When running a deployment, a profile can be specified as part of the command:
+
+```sh
+rad app deploy --profile dev
+```
 
 All of the properties of a stage can be overridden by a profile.
 
@@ -73,21 +78,14 @@ stages:
         template: iac/infra.dev.bicep
 - name: app
   build:
-    go_service_build:
-      docker:
-        context: go-service
-        image: myregistry/go-service
     node_service_build:
       docker:
         context: node-service
         image: myregistry/node-service
-    python_service_build:
-      docker:
-        context: python-service
-        image: myregistry/python
   bicep:
     template: iac/app.bicep
-    parameters: "{ \"param1\"\: \"value1\" }"
+    parameters:
+      param1: value1
   profiles:
     dev:
       build:

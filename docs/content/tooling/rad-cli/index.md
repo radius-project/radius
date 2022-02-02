@@ -8,32 +8,6 @@ weight: 100
 
 The rad CLI makes it easy to initialize, deploy, manage, and monitor Radius environments and applications.
 
-```sh
-> rad
-Project Radius CLI
-
-Usage:
-  rad [command]
-
-Available Commands:
-  application Manage RAD applications
-  bicep       Manage bicep compiler
-  completion  Generates shell completion scripts
-  deploy      Deploy a RAD application
-  env         Manage environments
-  help        Help about any command
-  resource    Manage resources
-  version     Prints the versions of the rad cli
-
-Flags:
-      --config string   config file (default "$HOME/.rad/config.yaml")
-  -h, --help            help for rad
-  -o, --output string   output format (supported formats are json, table, list) (default "table")
-  -v, --version         version for rad
-
-Use "rad [command] --help" for more information about a command.
-```
-
 ## Features
 
 ### Environments management
