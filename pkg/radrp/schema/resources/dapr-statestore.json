@@ -26,11 +26,31 @@
           "$ref": "basic-resource.json#/definitions/BasicResourceProperties"
         }
       ],
+      "oneOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreSqlServerResourceProperties"
+        },
+        {
+          "$ref": "#/definitions/DaprStateStoreRedisResourceProperties"
+        },
+        {
+          "$ref": "#/definitions/DaprStateStoreAzureTableStorageResourceProperties"
+        },
+        {
+          "$ref": "#/definitions/DaprStateStoreAnyResourceProperties"
+        },
+        {
+          "$ref": "#/definitions/DaprStateStoreGenericResourceProperties"
+        }
+      ]
+    },
+    "DaprStateStoreSqlServerResourceProperties": {
+      "type": "object",
+      "additionalProperties": false,
       "required": [
         "managed",
         "kind"
       ],
-      "additionalProperties": false,
       "properties": {
         "managed": {
           "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
@@ -43,14 +63,123 @@
           ]
         },
         "kind": {
-          "description": "The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes configuration format.",
+          "description": "The Dapr StateStore kind.",
           "type": "string",
           "enum": [
-            "any",
-            "state.sqlserver",
-            "state.redis",
+            "state.sqlserver"
+          ]
+        },
+        "resource": {
+          "description": "PubSub resource, for unmanaged",
+          "type": "string"
+        }
+      }
+    },
+    "DaprStateStoreRedisResourceProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "managed",
+        "kind"
+      ],
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
+          "type": "boolean",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ]
+        },
+        "kind": {
+          "description": "The Dapr StateStore kind.",
+          "type": "string",
+          "enum": [
+            "state.redis"
+          ]
+        }
+      }
+    },
+    "DaprStateStoreAzureTableStorageResourceProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "managed",
+        "kind"
+      ],
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
+          "type": "boolean",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ]
+        },
+        "kind": {
+          "description": "The Dapr StateStore kind.",
+          "type": "string",
+          "enum": [
             "state.azure.tablestorage"
           ]
+        },
+        "resource": {
+          "description": "PubSub resource, for unmanaged",
+          "type": "string"
+        }
+      }
+    },
+    "DaprStateStoreAnyResourceProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "description": "The Dapr StateStore kind",
+          "type": "string",
+          "enum": [
+            "any"
+          ]
+        }
+      }
+    },
+    "DaprStateStoreGenericResourceProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "type",
+        "metadata",
+        "version"
+      ],
+      "properties": {
+        "kind": {
+          "description": "The Dapr StateStore kind",
+          "type": "string",
+          "enum": [
+            "generic"
+          ]
+        },
+        "type": {
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "type": "string",
+          "example": [
+            "state.zookeeper"
+          ]
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
         }
       }
     }
