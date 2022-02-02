@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package handlers
 
 import (
@@ -45,12 +50,12 @@ func Test_ConstructDaprStateStoreGeneric(t *testing.T) {
 		KubernetesAPIVersionKey: daprVersion,
 		KubernetesKindKey:       k8sKind,
 
-		GenericDaprStateStoreTypeKey:     stateStoreType,
-		GenericDaprStateStoreVersionKey:  daprStateStoreVersion,
-		GenericDaprStateStoreMetadataKey: string(metadataSerialized),
+		GenericDaprTypeKey:     stateStoreType,
+		GenericDaprVersionKey:  daprStateStoreVersion,
+		GenericDaprMetadataKey: string(metadataSerialized),
 	}
 
-	item, err := constructDaprStateStore(properties, appName, resourceName)
+	item, err := constructDaprGeneric(properties, appName, resourceName)
 	require.NoError(t, err, "Unable to construct Dapr state store resource spec")
 
 	expected := unstructured.Unstructured{

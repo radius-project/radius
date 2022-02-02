@@ -234,9 +234,9 @@ func Test_Render_Generic_Success(t *testing.T) {
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
 
-		handlers.GenericPubSubTypeKey:     "pubsub.kafka",
-		handlers.GenericPubSubVersionKey:  "v1",
-		handlers.GenericPubSubMetadataKey: string(metadataSerialized),
+		handlers.GenericDaprTypeKey:     "pubsub.kafka",
+		handlers.GenericDaprVersionKey:  "v1",
+		handlers.GenericDaprMetadataKey: string(metadataSerialized),
 	}
 	require.Equal(t, expected, output.Resource)
 }
@@ -260,7 +260,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer.PubSubs = SupportedAzurePubSubKindValues
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "No metadata specified for Dapr Pub/Sub component of type pubsub.kafka", err.Error())
+	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.Error())
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -282,7 +282,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer.PubSubs = SupportedAzurePubSubKindValues
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "No type specified for generic Dapr Pub/Sub component", err.Error())
+	require.Equal(t, "No type specified for generic Dapr component", err.Error())
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -304,5 +304,5 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	renderer.PubSubs = SupportedAzurePubSubKindValues
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "No Dapr component version specified for generic Pub/Sub component", err.Error())
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
 }
