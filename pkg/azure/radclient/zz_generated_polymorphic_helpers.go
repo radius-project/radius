@@ -10,6 +10,130 @@ package radclient
 
 import "encoding/json"
 
+func unmarshalDaprPubSubTopicPropertiesClassification(rawMsg json.RawMessage) (DaprPubSubTopicPropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b DaprPubSubTopicPropertiesClassification
+	switch m["kind"] {
+	case "any":
+		b = &DaprPubSubTopicAnyResourceProperties{}
+	case "generic":
+		b = &DaprPubSubTopicGenericResourceProperties{}
+	case "pubsub.azure.servicebus":
+		b = &DaprPubSubTopicAzureServiceBusResourceProperties{}
+	default:
+		b = &DaprPubSubTopicProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalDaprPubSubTopicPropertiesClassificationArray(rawMsg json.RawMessage) ([]DaprPubSubTopicPropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]DaprPubSubTopicPropertiesClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalDaprPubSubTopicPropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalDaprPubSubTopicPropertiesClassificationMap(rawMsg json.RawMessage) (map[string]DaprPubSubTopicPropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]DaprPubSubTopicPropertiesClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalDaprPubSubTopicPropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
+func unmarshalDaprStateStoreResourcePropertiesClassification(rawMsg json.RawMessage) (DaprStateStoreResourcePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b DaprStateStoreResourcePropertiesClassification
+	switch m["kind"] {
+	case "any":
+		b = &DaprStateStoreAnyResourceProperties{}
+	case "generic":
+		b = &DaprStateStoreGenericResourceProperties{}
+	case "state.azure.tablestorage":
+		b = &DaprStateStoreAzureTableStorageResourceProperties{}
+	case "state.redis":
+		b = &DaprStateStoreRedisResourceProperties{}
+	case "state.sqlserver":
+		b = &DaprStateStoreSQLServerResourceProperties{}
+	default:
+		b = &DaprStateStoreResourceProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalDaprStateStoreResourcePropertiesClassificationArray(rawMsg json.RawMessage) ([]DaprStateStoreResourcePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]DaprStateStoreResourcePropertiesClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalDaprStateStoreResourcePropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalDaprStateStoreResourcePropertiesClassificationMap(rawMsg json.RawMessage) (map[string]DaprStateStoreResourcePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]DaprStateStoreResourcePropertiesClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalDaprStateStoreResourcePropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
 func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (HealthProbePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

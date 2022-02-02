@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -39,7 +40,30 @@ func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context
 		}
 		return nil, err
 	}
-	return &response.RadiusResourceList, err
+	result, err := SortResourceList(response.RadiusResourceList)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, err
+}
+
+func SortResourceList(list radclient.RadiusResourceList) (radclient.RadiusResourceList, error) {
+	sort.Slice(list.Value, func(i, j int) bool {
+		t1 := *list.Value[i].Resource.Type
+		t2 := *list.Value[j].Resource.Type
+
+		n1 := *list.Value[i].Resource.Name
+		n2 := *list.Value[j].Resource.Name
+
+		if t1 != t2 {
+			return t1 < t2
+		}
+
+		return n1 < n2
+
+	})
+	return list, nil
 }
 
 func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient.ApplicationList, error) {

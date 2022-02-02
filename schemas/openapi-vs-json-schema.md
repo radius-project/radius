@@ -6,18 +6,7 @@ There are two kind of JSON-based specifications we use in Radius today. The reas
 - Very little support for standalone validation. The closest library that support such is https://github.com/go-swagger/go-swagger but (1) its error messages are terrible and  (2) they are looking for a new maintainer.
 * JSON schema's main focus is validation. There is a lot of support to validate a JSON blob directly. However, since they aren't for defining APIs, we can't use a client code generator like Azure Autorest with JSON Schema.
 
-## Open API Spec
-
-### What is it?
-The OpenAPI Specification (OAS) defines a standard, language-agnostic interface to RESTful APIs which allows both humans and computers to discover and understand the capabilities of the service without access to source code, documentation, or through network traffic inspection. When properly defined, a consumer can understand and interact with the remote service with a minimal amount of implementation logic.
-
-### How do we use it?
-
-Take a look at `/schemas/rest-api-spec`. Our plan is:
-* To generate `pkg/radclient` using Azure Autorest (aka `make generate-radclient`)
-* [#890](https://github.com/project-radius/radius/issues/890) To generate model objects to deserialized JSON from the Resource Provider side
-* [#888](https://github.com/project-radius/radius/issues/888) To generate model objects to be persisted in our Database]
-* [#891](https://github.com/project-radius/radius/issues/891) To generate documentation for our Resource Provider
+The good news is that we are able to generate the OpenAPI spec from our JSON schema, thanks to the fact that we don't use obscure features in JSON Schema.
 
 ## JSON Schema
 
@@ -26,12 +15,48 @@ JSON Schema is a vocabulary that allows you to annotate and validate JSON docume
 
 ### How do we use it?
 
-Take a look at `/pkg/radrp/schemas`. Our plan is:
-* To validate JSON seen by the RP
-* [#597](https://github.com/project-radius/radius/issues/597) To validate JSON in the K8s webhook
-* [#886](https://github.com/project-radius/radius/issues/886) To validate JSON in the rad-bicep compiler
+Take a look at `/pkg/radrp/schemas`. We are using this to:
+* Validate JSON seen by the RP,
+* Validate JSON in the K8s webhook,
+* Validate JSON in the rad-bicep compiler, and
+* Generate the Open API spec.
 
-# Similarity between Open API v2 and JSON Schema Draft 4
+For more information about our generator for Open API spec, see later section about the whole schema-based generation process in Radius.
+
+## Open API Spec
+
+### What is it?
+The OpenAPI Specification (OAS) defines a standard, language-agnostic interface to RESTful APIs which allows both humans and computers to discover and understand the capabilities of the service without access to source code, documentation, or through network traffic inspection. When properly defined, a consumer can understand and interact with the remote service with a minimal amount of implementation logic.
+
+### How do we use it?
+
+Take a look at `/schemas/rest-api-spec`. We are using this to:
+* To generate `pkg/radclient` using Azure Autorest (aka `make generate-radclient`)
+* To generate model objects to deserialized JSON from the Resource Provider side
+* To generate model objects to be persisted in our Database]
+* To generate documentation for our Resource Provider
+
+# Schema-based code generation process
+
+## Step 1: Generating OpenAPI v2 spec from our JSON Schema
+
+In this step, all the resource schemas in /pkg/radrp/schemas is consumed, and for each resource type we use the [Go Template](https://github.com/project-radius/radius/blob/main/pkg/tools/codegen/schema/resource_boilerplate.json) to generate:
+- The corresponding List type, which is a boilerplate container type, and
+- The corresponding API calls GET, PUT, PATCH etc... for each resource.
+
+After that, we append [the header Go template template](https://github.com/project-radius/radius/blob/main/pkg/tools/codegen/schema/boilerplate.json).
+
+To execute this code generation step, run `make generate-openapi-specs` (or simply do`make generate` to run all the code generation
+
+## Step 2: Generating the Azure Autorest client from the OpenAPI v2 spec
+
+This steps make use of the https://github.com/azure/autorest project to generate Go client in `pkg/azure/clients/radclient.
+
+To execute this code generation step, run `make generate-radclient`.
+
+
+
+# Appendix: Similarity between Open API v2 and JSON Schema Draft 4
 
 The main similiarity is how types are defined in JSON schema. A general structure is this
 ```json
@@ -166,7 +191,3 @@ but not something like
 Two ways we can work around this:
 1. We don't declare a OpenAPI spec for any object requiring a freeform `AdditionalProperties` field, or
 2. We use discriminated union to completely remove the need for `AdditionalProperties` field.
-
-## Can we generate one spec from the other?
-
-Yes, we plan to generate one spec from the other. Currently already we share most of the definitions, except for the polymophics types like declared in `traits.json`.

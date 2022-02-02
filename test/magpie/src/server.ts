@@ -58,6 +58,11 @@ app.get('/healthz', async (_: express.Request, response: express.Response) => {
     response.status(statusCode).json(statuses);
 })
 
+app.get('/backend', async (_: express.Request, response: express.Response) => {
+    response.status(200).json("backend call response");
+})
+
+
 server.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
     console.log(`Check http://localhost:${port}/healthz for status`);

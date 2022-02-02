@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/microsoftsqlv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/rabbitmqv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
@@ -82,7 +83,9 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 		{
 			ResourceType: daprpubsubv1alpha3.ResourceType,
-			Renderer:     &daprpubsubv1alpha3.Renderer{},
+			Renderer: &daprpubsubv1alpha3.Renderer{
+				PubSubs: daprpubsubv1alpha3.SupportedAzurePubSubKindValues,
+			},
 		},
 		{
 			ResourceType: daprstatestorev1alpha3.ResourceType,
@@ -103,6 +106,10 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		{
 			ResourceType: redisv1alpha3.ResourceType,
 			Renderer:     &redisv1alpha3.AzureRenderer{},
+		},
+		{
+			ResourceType: rabbitmqv1alpha3.ResourceType,
+			Renderer:     &rabbitmqv1alpha3.AzureRenderer{},
 		},
 		{
 			ResourceType: gateway.ResourceType,
@@ -162,6 +169,11 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			Kind:            resourcekinds.DaprPubSubTopicAzureServiceBus,
 			HealthHandler:   handlers.NewDaprPubSubServiceBusHealthHandler(arm, k8s),
 			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
+		},
+		{
+			Kind:            resourcekinds.DaprPubSubTopicGeneric,
+			HealthHandler:   handlers.NewDaprPubSubGenericHealthHandler(arm, k8s),
+			ResourceHandler: handlers.NewDaprPubSubGenericHandler(arm, k8s),
 		},
 		{
 			Kind:                   resourcekinds.AzureCosmosDBMongo,

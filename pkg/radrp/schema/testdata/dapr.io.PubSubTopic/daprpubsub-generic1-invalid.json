@@ -1,0 +1,9 @@
+{
+  "id": 42,
+  "name": 42,
+  "properties": {
+    "kind": "generic",
+    "version": "v1",
+    "foo": "bar"
+  }
+}

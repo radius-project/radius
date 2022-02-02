@@ -32,8 +32,8 @@ You can now use `cosmos::db` in your Radius application, just like if you freshl
 
 ## Available resources
 
-- Visit the [Azure templates](https://docs.microsoft.com/azure/templates/) docs page to learn what resources are available in Bicep.
-- Visit the [Radius resource library]({{< ref resources >}}) to learn what Radius resources are available in Bicep.
+- [Microsoft Azure resources]({{< ref azure-resources >}})
+- [Kubernetes resources]({{< ref kubernetes-resources >}})
 
 ## Next step
 

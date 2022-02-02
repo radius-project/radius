@@ -135,10 +135,10 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("Deleting output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource kind: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceKind))
 		err = outputResourceModel.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
 			Application:            resource.ApplicationName,
-			ResourceName:           resource.ResourceGroup,
+			ResourceName:           resource.ResourceName,
 			ExistingOutputResource: &outputResource,
 		})
 		if err != nil {
@@ -349,7 +349,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 	// Example - CosmosDBAccountName consumed by CosmosDBMongo/SQL handler
 	deployedOutputResourceProperties := map[string]map[string]string{}
 	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource - LocalID: %s, type: %s\n", outputResource.LocalID, outputResource.ResourceKind))
+		logger.Info(fmt.Sprintf("Deploying output resource: %v, LocalID: %s, resource kind: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceKind))
 
 		var existingOutputResourceState db.OutputResource
 		for _, dbOutputResource := range existingDBOutputResources {

@@ -554,7 +554,7 @@ jobs:
             rad_cli_windows_amd64
             rad_cli_linux_amd64
             rad_cli_darwin_amd64
-            container_logs
+            rad_cli_linux_arm
           failOnError: false
 
   codespaces:

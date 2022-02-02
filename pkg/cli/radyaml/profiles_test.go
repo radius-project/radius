@@ -195,6 +195,44 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 				},
 			},
 		},
+		{
+			Description: "OverrideBicep",
+			Main: Stage{
+				Name: "test-stage",
+				Bicep: &BicepStage{
+					Template:      to.StringPtr("main.bicep"),
+					ParameterFile: to.StringPtr("main.parameters.json"),
+					Parameters: map[string]string{
+						"main1": "original",
+						"main2": "original",
+					},
+				},
+				Profiles: map[string]Profile{
+					"test": {
+						Bicep: &BicepStage{
+							Template:      to.StringPtr("override.bicep"),
+							ParameterFile: to.StringPtr("override.parameters.json"),
+							Parameters: map[string]string{
+								"main2":     "override",
+								"override1": "override",
+							},
+						},
+					},
+				},
+			},
+			Expected: Stage{
+				Name: "test-stage",
+				Bicep: &BicepStage{
+					Template:      to.StringPtr("override.bicep"),
+					ParameterFile: to.StringPtr("override.parameters.json"),
+					Parameters: map[string]string{
+						"main1":     "original",
+						"main2":     "override",
+						"override1": "override",
+					},
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {

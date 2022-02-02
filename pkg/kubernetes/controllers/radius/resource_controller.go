@@ -110,6 +110,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=microsoftcomsqldatabases,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=microsoftcomsqldatabases/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=microsoftcomsqldatabases/finalizers,verbs=update
 
 func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("resource", req.NamespacedName)

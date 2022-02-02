@@ -50,3 +50,22 @@ When adding a new functional test:
 - Double-check that the application name is unique (do a search in the repo)
 - Avoid skipping any verifications (other than `SkipARMResources`)
 - Avoid using `PostStepVerify` and `PostDeleteVerify` if you can add new capabilities to the test system
+- For the tests to verify that the containers are actually started and in Ready state, you can add a readiness probe to the bicep file as below. 
+	```
+	resource a 'Container' = {
+		name: 'a'
+		properties: {
+		container: {
+			image: '${registry}/magpie:latest' // This image implements readiness checks
+			env: {
+			COOL_SETTING: env
+			}
+			readinessProbe:{
+			kind:'httpGet'
+			containerPort:3000
+			path: '/healthz'
+			}
+		}
+		}
+	}
+	```
