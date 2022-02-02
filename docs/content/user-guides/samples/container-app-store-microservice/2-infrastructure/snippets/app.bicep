@@ -4,7 +4,7 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
 //APP
 
 //COSMO
-  resource statestore 'Container' = {
+  resource statestore 'Microsoft.DocumentDB/databaseAccounts@2021-10-15' = {
     name: 'statestore'
     params: {
       application: app.name
@@ -13,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
   }
 //COSMO
 //REDIS
-resource statestoreredis 'Container' = {
+resource statestoreredis 'radius.dev/Application/dapr.io.StateStore@v1alpha3' = {
   name: 'statestoreredis'
   params: {
     application: app.name
