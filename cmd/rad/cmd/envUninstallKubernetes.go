@@ -33,7 +33,7 @@ func envUninstallKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	var helmOutput strings.Builder
-	helmConf, err := helm.HelmConfig(helm.RadiusSystemNamespace, helmOutput) //helmConfig(RadiusSystemNamespace, helmOutput)
+	helmConf, err := helm.HelmConfig(helm.RadiusSystemNamespace, helmOutput)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
