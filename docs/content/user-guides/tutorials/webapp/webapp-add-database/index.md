@@ -13,12 +13,12 @@ In this step you will learn how to add a database and connect to it from the app
 
 We'll discuss template.bicep changes and then provide the full, updated file before deployment. 
 
-## Add db component
+## Add db resource
 
-A `db` database component is used to specify a few properties about the database: 
+A `db` database resource is used to specify a few properties about the database: 
 
 - **resource type:** `mongo.com.MongoDatabase` represents a MongoDB compatible database.
-- **managed:** `true` tells Radius to [manage the lifetime]({{< ref "components-model#radius-managed" >}}) of the component for you.
+- **managed:** `true` tells Radius to manage the lifetime of the component for you.
 
 {{< rad file="snippets/app.bicep" embed=true marker="//MONGO" >}}
 

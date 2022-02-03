@@ -1,8 +1,8 @@
 ---
 type: docs
-title: "Radius Scopes"
+title: "Radius scopes"
 linkTitle: "Scopes"
-description: "Learn how to connect Compoents through shared configuration with Scopes."
+description: "Learn how to connect resources through shared configuration with Scopes."
 weight: 500
 ---
 
