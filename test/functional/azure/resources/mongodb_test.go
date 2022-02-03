@@ -20,6 +20,7 @@ import (
 )
 
 func Test_MongoDBManaged(t *testing.T) {
+	t.Skip("Test takes too long on CI/CD to run, https://github.com/project-radius/radius/issues/1874")
 	application := "azure-resources-mongodb-managed"
 	template := "testdata/azure-resources-mongodb-managed.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

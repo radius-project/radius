@@ -7,6 +7,21 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: 'radius.azurecr.io/storefront'
+        env: {
+          ENVIRONMENT: 'production'
+          INV_STATESTORE: inventory.name
+        }
+        ports: {
+          http: {
+            containerPort: 80
+          }
+        }
+      }
+      connections: {
+        inventory: {
+          kind: 'dapr.io/StateStore'
+          source: inventory.id
+        }
       }
     }
   }
@@ -22,3 +37,4 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
   //STATESTORE
 }
+  

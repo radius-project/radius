@@ -1,12 +1,10 @@
 ---
 type: docs
-title: "Download and install the Radius CLI"
-linkTitle: "Install rad CLI"
+title: "Install the Radius CLI"
+linkTitle: "Install Radius CLI"
 description: "How to download and install the Radius CLI on your local machine"
 weight: 10
 ---
-
-These steps will setup the required tools and extensions to get you up and running with Radius.
 
 ## Pre-requisites
 

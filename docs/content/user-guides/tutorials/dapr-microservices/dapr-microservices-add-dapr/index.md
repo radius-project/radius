@@ -15,7 +15,7 @@ In this step you will learn how to add a database and connect to it from the app
 
 A [`dapr.io/Sidecar` trait]({{< ref dapr-trait >}}) on the `backend` component can be used to describe the Dapr configuration:
 
-{{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" >}}
+{{< rad file="snippets/trait.bicep" embed=true marker="//SAMPLE" >}}
 
 The `traits` section is used to configure cross-cutting behaviors of components. Since Dapr is not part of the standard definition of a container, it can be added via a trait. Traits have a `kind` so that they can be strongly typed.
 
@@ -35,7 +35,7 @@ A [`statestore` component]({{< ref dapr-statestore >}}) is used to specify a few
 
 - **resource type**: `'dapr.io/StateStoreComponent'` represents a resource that Dapr uses to communicate with a database.
 - **kind**: `'any'` tells Radius to pick the best available statestore for the platform. For Azure this is Table Storage and for Kubernetes this is a Redis container.
-- **managed**: `true` tells Radius to manage the lifetime of the component for you. 
+- **managed**: `true` tells Radius to manage the lifetime of the component for you.
 
 {{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
@@ -49,9 +49,9 @@ Radius captures both logical relationships and related operational details. Exam
 
 The [`connections` section]({{< ref "connections-model" >}}) is used to configure relationships between a component and bindings provided by other components.
 
-Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from the `backend` component via the [`connections` section]({{< ref "connections-model" >}}). This declares the *intention* from the `backend` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
+Once the state store is defined as a component, you can connect to it by referencing the `statestore` component from the `backend` component via the [`connections` section]({{< ref "connections-model" >}}). This declares the _intention_ from the `backend` component to communicate with the `statestore` component using `dapr.io/StateStore` as the protocol.
 
-{{< rad file="snippets/app.bicep" embed=true marker="//SAMPLE" replace-key-run="//RUN" replace-value-run="container: {...}" replace-key-bindings="//BINDINGS" replace-value-bindings="bindings: {...}" replace-key-statestore="//STATESTORE" replace-value-statestore="resource statestore 'dapr.io.StateStore' = {...}" replace-key-traits="//TRAITS" replace-value-traits="traits: [...]" >}}
+{{< rad file="snippets/app.bicep" embed=true >}}
 
 ### Injected settings from connections
 
@@ -60,7 +60,7 @@ Adding a connection to the state store also [configures environment variables]({
 Because the connection is called `orders` inside `backend`, Radius will inject information related to the state store using environment variables like `CONNECTION_ORDERS_STATESTORENAME`. The application code inside `backend` uses this environment variable to access the state store name and avoid hardcoding.
 
 ```js
-const stateStoreName =  process.env.CONNECTION_ORDERS_STATESTORENAME;
+const stateStoreName = process.env.CONNECTION_ORDERS_STATESTORENAME;
 ```
 
 See the [connections]({{< ref "connections-model#injected-values" >}}) page for more information about this feature.
@@ -83,7 +83,7 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
    rad deploy template.bicep
    ```
 
-   This may take a few minutes because of the time required to create the Storage Account.
+   In case you are using an Azure backed Radius environment this operation may take a few minutes (while a Azure Storage Account is created).
 
 1. You can confirm that the new `statestore` component was deployed by running:
 
@@ -93,10 +93,10 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 
    You should see both `backend` and `statestore` components in your `dapr-tutorial` application. Example output:
 
-   ```
-   RESOURCE   TYPE
-   backend     Container
-   statestore  dapr.io.StateStore
+   ```sh
+    RESOURCE      TYPE                         PROVISIONING_STATE  HEALTH_STATE
+    statestore    dapr.io.StateStore           Provisioned         Healthy
+    backend       Container                    Provisioned         Healthy
    ```
 
 1. To test out the state store, open a local tunnel on port 3000 again:
@@ -107,7 +107,7 @@ For Azure environments, Dapr is managed for you and you do not need to manually 
 
 1. Visit the the URL [http://localhost:3000/order](http://localhost:3000/order) in your browser. You should see the following message:
 
-   ```
+   ```json
    {"message":"no orders yet"}
    ```
 

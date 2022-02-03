@@ -82,16 +82,16 @@ jobs:
       - name: Make
         run: make build
       - name: Run make test (unit tests)
-        if: matrix.target_arch != 'arm'
+        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
         env:
           GOTEST_OPTS: '-race'
         run: |
           make test
       - name: Run make test-controller (controller tests)
-        if: matrix.target_arch != 'arm' && matrix.target_os != 'windows'
+        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
         run: make test-controller
       - name: Run make test-localenv (local development tests)
-        if: matrix.target_arch != 'arm' && matrix.target_os != 'windows'
+        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
         run: make test-localenv
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
