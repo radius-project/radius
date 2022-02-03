@@ -16,17 +16,19 @@ import (
 	"github.com/project-radius/radius/pkg/renderers"
 )
 
-type StateStoreFunc = func(renderers.RendererResource, Properties) ([]outputresource.OutputResource, error)
+type StateStoreFunc = func(renderers.RendererResource) ([]outputresource.OutputResource, error)
 
 var SupportedAzureStateStoreKindValues = map[string]StateStoreFunc{
-	"any":                      GetDaprStateStoreAzureStorage,
+	"any":                      GetDaprStateStoreAzureAny,
 	"state.azure.tablestorage": GetDaprStateStoreAzureStorage,
 	"state.sqlserver":          GetDaprStateStoreSQLServer,
+	"generic":                  GetDaprStateStoreAzureGeneric,
 }
 
 var SupportedKubernetesStateStoreKindValues = map[string]StateStoreFunc{
-	"any":         GetDaprStateStoreKubernetesRedis,
+	"any":         GetDaprStateStoreKubernetesAny,
 	"state.redis": GetDaprStateStoreKubernetesRedis,
+	"generic":     GetDaprStateStoreKubernetesGeneric,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -57,7 +59,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.StateStores))
 	}
 
-	resoures, err := stateStoreFunc(resource, properties)
+	resoures, err := stateStoreFunc(resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

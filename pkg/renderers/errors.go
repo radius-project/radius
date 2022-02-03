@@ -14,6 +14,7 @@ import (
 
 var ErrResourceSpecifiedForManagedResource = errors.New("the 'resource' field cannot be specified when 'managed=true'")
 var ErrResourceMissingForUnmanagedResource = errors.New("the 'resource' field is required when 'managed' is not specified")
+var ErrManagedUnspecified = errors.New("the 'managed' field is required")
 
 func ValidateResourceID(id string, resourceType azresources.KnownType, description string) (azresources.ResourceID, error) {
 	parsed, err := azresources.Parse(id)

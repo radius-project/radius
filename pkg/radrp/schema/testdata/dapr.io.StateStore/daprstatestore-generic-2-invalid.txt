@@ -1,0 +1,2 @@
+(root).properties: kind is required
+(root).properties: type is required

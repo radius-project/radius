@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Create a Radius  environment"
+title: "Create a Radius environment"
 linkTitle: "Create environment"
 description: "How to initialize a Radius environment in your Azure subscription or Kubernetes cluster"
 weight: 30
@@ -12,7 +12,7 @@ weight: 30
 
 {{% codetab %}}
 
-Note that while the custom resource provider (App Service and CosmosDB) and container runtime (AKS cluster) are optimized for cost, **you are responsible for any costs incurred in your subscription**.
+_Note that you are responsible for any costs incurred in your subscription._
 
 1. Use the `az` CLI to authenticate with Azure your Azure account:
 
@@ -20,7 +20,8 @@ Note that while the custom resource provider (App Service and CosmosDB) and cont
    az login
    ```
 
-   Creating Radius environments on Azure currently **require you to have *Owner* rights on your subscription.** If you use a service principal for CLI authentication, ensure it also has the proper RBAC assignment on your subscription.
+   Creating Radius environments on Azure currently **require you to have *Owner* rights on your subscription.** (This is a current limitation that will be resolved once we've built our Azure Service.)  
+   If you use a service principal for CLI authentication, ensure it also has the proper RBAC assignment on your subscription.
 
 1. Create a Radius environment:
 

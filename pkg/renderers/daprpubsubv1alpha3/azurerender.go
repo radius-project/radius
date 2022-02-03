@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
@@ -145,16 +146,15 @@ func GetDaprPubSubAzureGeneric(resource renderers.RendererResource) (renderers.R
 		return renderers.RendererOutput{}, err
 	}
 
-	if properties.Type == nil || *properties.Type == "" {
-		return renderers.RendererOutput{}, errors.New("No type specified for generic Dapr Pub/Sub component")
+	daprGeneric := dapr.DaprGeneric{
+		Type:     properties.Type,
+		Version:  properties.Version,
+		Metadata: properties.Metadata,
 	}
 
-	if properties.Version == nil || *properties.Version == "" {
-		return renderers.RendererOutput{}, errors.New("No Dapr component version specified for generic Pub/Sub component")
-	}
-
-	if properties.Metadata == nil || len(properties.Metadata) == 0 {
-		return renderers.RendererOutput{}, fmt.Errorf("No metadata specified for Dapr Pub/Sub component of type %s", *properties.Type)
+	err = dapr.ValidateDaprGenericObject(daprGeneric)
+	if err != nil {
+		return renderers.RendererOutput{}, err
 	}
 
 	// Convert metadata to string
@@ -174,9 +174,9 @@ func GetDaprPubSubAzureGeneric(resource renderers.RendererResource) (renderers.R
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
 
-			handlers.GenericPubSubTypeKey:     *properties.Type,
-			handlers.GenericPubSubVersionKey:  *properties.Version,
-			handlers.GenericPubSubMetadataKey: string(metadataSerialized),
+			handlers.GenericDaprTypeKey:     *properties.Type,
+			handlers.GenericDaprVersionKey:  *properties.Version,
+			handlers.GenericDaprMetadataKey: string(metadataSerialized),
 		},
 	}
 

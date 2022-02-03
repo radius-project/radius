@@ -267,8 +267,44 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 			// In the future, other resources' Readiness semantic (like Deployment, Service) may
 			// be added here.
 		}
+
+		if resource.Type == armtemplate.DeploymentResourceType {
+			outputMap := map[string]interface{}{}
+			deployed[resource.ID]["properties"].(map[string]interface{})["outputs"] = outputMap
+
+			deResource := &bicepv1alpha3.DeploymentTemplate{}
+			err = runtime.DefaultUnstructuredConverter.FromUnstructured(k8sInfo.Object, deResource)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			for k, v := range deResource.Status.Outputs {
+				outputMap[k] = map[string]interface{}{
+					"value": v.Value,
+					"type":  v.Type,
+				}
+			}
+		}
+
 		r.Recorder.Eventf(k8sInfo, "Normal", "Deployed", "Resource %s has been deployed", k8sInfo.GetName())
 		r.StatusDeployedResource(ctx, resource.ID, arm, k8sInfo)
+	}
+
+	outputs, err := evaluator.EvaluateOutputs()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	arm.Status.Outputs = make(map[string]bicepv1alpha3.DeploymentOutput)
+	for k, t := range outputs {
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		arm.Status.Outputs[k] = bicepv1alpha3.DeploymentOutput{
+			Type:  t["type"].(string),
+			Value: t["value"].(string),
+		}
 	}
 
 	// All resources have been deployed, update status to be Deployed

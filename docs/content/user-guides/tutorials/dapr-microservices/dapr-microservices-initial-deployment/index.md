@@ -9,7 +9,7 @@ weight: 2000
 
 ## Define a Radius app as a .bicep file
 
-Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) as its file-format and structure. In this tutorial you will define an app named `dapr-hello` that will contain the container, statestore, and content generator resources - all described in Bicep.
+Radius uses the [Bicep language](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/bicep-overview) as its file-format and structure. In this tutorial you will define an app named `dapr-hello` that will contain the container, statestore, and content generator resources, all described in Bicep.
 
 Create a new file named `template.bicep` and paste the following:
 

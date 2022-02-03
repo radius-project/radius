@@ -30,12 +30,12 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 		KubernetesAPIVersionKey: daprVersion,
 		KubernetesKindKey:       k8sKind,
 
-		GenericPubSubTypeKey:     pubsubType,
-		GenericPubSubVersionKey:  daprPubSubVersion,
-		GenericPubSubMetadataKey: string(metadataSerialized),
+		GenericDaprTypeKey:     pubsubType,
+		GenericDaprVersionKey:  daprPubSubVersion,
+		GenericDaprMetadataKey: string(metadataSerialized),
 	}
 
-	item, err := constructPubSubResource(properties, appName, resourceName)
+	item, err := constructDaprGeneric(properties, appName, resourceName)
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{

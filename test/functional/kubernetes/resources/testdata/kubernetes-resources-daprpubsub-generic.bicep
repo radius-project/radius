@@ -11,7 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'rynowak/backend:0.5.0-dev'
+        image: 'radius.azurecr.io/magpie:latest'
       }
     }
   }

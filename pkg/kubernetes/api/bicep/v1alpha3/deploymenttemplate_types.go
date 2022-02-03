@@ -38,6 +38,13 @@ type DeploymentTemplateStatus struct {
 
 	// The readable status "phrase" of the deployment template.
 	Phrase string `json:"phrase,omitempty"`
+
+	Outputs map[string]DeploymentOutput `json:"outputs,omitempty"`
+}
+
+type DeploymentOutput struct {
+	Type  string `json:"type,omitempty"`
+	Value string `json:"value,omitempty"`
 }
 
 type ResourceStatus struct {

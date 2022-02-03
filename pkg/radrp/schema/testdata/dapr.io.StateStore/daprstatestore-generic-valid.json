@@ -1,0 +1,12 @@
+{
+  "id": "id",
+  "name": "name",
+  "properties": {
+    "kind": "generic",
+    "type": "state.zookeeper",
+    "version": "v1",
+    "metadata": {
+      "foo": "bar"
+    }
+  }
+}

@@ -78,8 +78,8 @@ func runApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	parser := cli.ParameterParser{FileSystem: cli.OSFileSystem{}}
-	parameters, err := parser.Parse(parameterArgs)
+	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
+	parameters, err := parser.Parse(parameterArgs...)
 	if err != nil {
 		return err
 	}
