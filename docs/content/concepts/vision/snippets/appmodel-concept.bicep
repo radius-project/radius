@@ -25,7 +25,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
  
   // Define database
-  resource db 'mongodb.com.MongoDB' = {
+  resource db 'mongodb.com.MongoDatabase' = {
     name: 'db'
     properties: {
       managed: true
