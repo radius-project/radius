@@ -35,11 +35,11 @@ The following examples shows two Resources, one representing a [Container]({{< r
 
 {{< rad file="snippets/app.bicep" embed=true marker="//STATESTORE" >}}
 
-Other Components, like the `storefront` container above, can now connect to this Dapr State Store and save/get state items.
+Other resources, like the `storefront` container above, can now connect to this Dapr State Store and save/get state items.
 
 ## Services 
 
-An Dev team's app code will likely center around core runnable resources, which we call services. Running code can be modeled with services like a container or an App Service. [Learn more]({{< ref services >}})
+A dev team's app code will likely center around core runnable resources, which we call services. Running code can be modeled with services like a container or an App Service. [Learn more]({{< ref services >}})
 
 ## Connecting to resources 
 
@@ -49,21 +49,20 @@ There are several ways a service resource (like a container) can connect to othe
 
 {{< card header="**Direct Connection**" >}}
 [<img src="direct-icon.png" alt="Connectors" style="width:325px"/>]({{< ref connectors >}})
-Connect directly to Kubernetes resources ([learn more]({{< ref kubernetes-resources >}})) or to Azure resources ([learn more](
-{{< ref azure-resources >}})). 
+Connect directly to Kubernetes({{< ref kubernetes-resources >}}) and Azure ({{< ref azure-resources >}}) resources. 
 
 [Learn more]({{< ref connectors >}})
 {{< /card >}}
 
 {{< card header="**Connectors**" >}}
 [<img src="connectors.png" alt="Connectors" style="width:325px"/>]({{< ref connectors >}})
-Use a Connector resource to add add portability to your application by providing a platform-agnostic resources Dev teams can consume.<br /><br />
+Add portability to your application through platform-agnostic resources.
 [Learn more]({{< ref connectors >}})
 {{< /card >}}
 
 {{< card header="**Custom/3rd Party**" >}}
 <img src="custom.png" alt="Custom" style="width:300px"/>
-Model and connect to external resources (e.g. Kafka).<br /><br />
+Model and connect to external 3rd party resources<br /><br />
 Coming soon!
 {{< /card >}}
 {{< /cardpane >}}
