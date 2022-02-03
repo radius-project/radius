@@ -8,9 +8,11 @@ weight: 20
 
 ## Overview
 
-With a Radius local environment you can run your applications on your machine without the need for an Azure subscription or remote Kubernetes cluster. This makes it easy to develop applications and try them out without waiting for a full deployment.
+With a Radius local environment you can run your applications on your machine without the need for an Azure subscription or remote Kubernetes cluster. This makes it easy to develop applications and try them out without waiting for a full deployment to the cloud.
 
-Try one out as part of the [Container App Store sample]({{< ref container-app-store-microservice >}}).
+Try one out as part of the [local dev guide]({{< ref run-locally >}}):
+
+{{< button text="💻 Local dev guide" page="run-locally" color="success" newtab="true" >}}
 
 ## Features
 
@@ -22,62 +24,19 @@ Use [`rad env init dev`]({{< ref rad_env_init_dev>}}) to create an environment.
 
 ### Local container registry
 
-One of the slowest parts of working with containers can be waiting for container images to upload and download to remote registries.  Radius local environments automatically creates and manages a local container registry, making it easy to quickly push and pull images.
+One of the slowest parts of working with containers can be waiting for container images to upload and download to remote registries. A Radius local environment automatically creates and manages a local container registry, making it easy to quickly transfer images into your local environment runtime.
 
 ### Hot reload
 
-Radius local environments support hot reload in your development with technologies such as nodemon/NodeJs and Docker. The same type of configurations that can be made in your Docker files for supporting hot reload should be compatible. An example of a Docker file configuration for hot reloading would be this:
-
-```dockerfile
-FROM node:14-alpine
-
-USER node
-RUN mkdir -p /home/node/app
-WORKDIR /home/node/app
-
-COPY --chown=node:node package*.json ./
-RUN npm ci
-COPY --chown=node:node . .
-
-EXPOSE 3000
-ARG ENV=development
-ENV NODE_ENV $ENV
-CMD ["npm", "run", "watch"]
-```
-
-In addition don't forget that for hot reloading you need to change your package.json file to support `watch` such as this:
-
-```json
-{
-  "name": "node-service",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "start": "node ./bin/www",
-    "watch": "nodemon ./bin/www"
-  },
-  "dependencies": {
-    "axios": "^0.22.0",
-    "cookie-parser": "~1.4.4",
-    "debug": "~2.6.9",
-    "express": "~4.16.1",
-    "http-errors": "~1.6.3",
-    "jade": "~1.11.0",
-    "morgan": "~1.9.1"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.15"
-  }
-}
-
-```
+Radius local environments support hot reload in your development. Visit the [hot reload guide]({{< ref hot-reload >}}) for more information.
 
 ## Initialize a local environment
 
 ### Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- [rad CLI] ({{< ref install-cli.md >}})
+- [k3d](https://rancher.com/docs/k3s/latest/en/installation/install-options/)
+- [rad CLI]({{< ref rad-cli >}})
 
 ### Create a local dev environment
 
@@ -99,7 +58,9 @@ rad app run
 
 ## Example
 
-Check out the [Container Apps Store sample]({{< ref container-app-store-microservice.md>}}) to try out a local dev experience.
+Check out the [Container Apps Store sample]({{< ref container-app-store >}}) to try out a local dev experience.
+
+{{< button text="Sample: Container Apps Store" page="container-app-store" color="success" newtab="true" >}}
 
 ## Learn more
 

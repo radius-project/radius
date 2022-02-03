@@ -1,14 +1,12 @@
 //PARAMS
-//REST
-//REST
 param go_service_build object
 param node_service_build object
 param python_service_build object
 //PARAMS
-resource app 'radius.dev/Application@v1alpha3' existing = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'store'
 
-//GOAPP
+  //GOAPP
   resource go_app 'Container' = {
     name: 'go-app'
     properties: {
@@ -30,9 +28,9 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
       ]
     }
   }
-//GOAPP
+  //GOAPP
 
-//ROUTE
+  //ROUTE
   resource go_app_route 'dapr.io.InvokeHttpRoute' = {
     name: 'go-app'
     properties: {
@@ -48,28 +46,20 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
       }
     }
   }
+  //ROUTE
+  //DAPR
   resource python_app_route 'dapr.io.InvokeHttpRoute' = {
     name: 'python-app'
     properties: {
       appId: 'python-app'
     }
   }
-//ROUTE
+  //DAPR
 
-//NODEAPP
+  //NODEAPP
   resource node_app 'Container' = {
     name: 'node-app'
     properties: {
-      connections: {
-        inventory: {
-          kind: 'dapr.io/InvokeHttp'
-          source: go_app_route.id
-        }
-        orders: {
-          kind: 'dapr.io/InvokeHttp'
-          source: python_app_route.id
-        }
-      }
       container: {
         image: node_service_build.image
         env: {
@@ -83,6 +73,16 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
           }
         }
       }
+      connections: {
+        inventory: {
+          kind: 'dapr.io/InvokeHttp'
+          source: go_app_route.id
+        }
+        orders: {
+          kind: 'dapr.io/InvokeHttp'
+          source: python_app_route.id
+        }
+      }
       traits: [
         {
           kind: 'dapr.io/Sidecar@v1alpha1'
@@ -91,24 +91,24 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
       ]
     }
   }
-//NODEAPP
+  //NODEAPP
 
-//PYTHONAPP
+  //PYTHONAPP
   resource python_app 'Container' = {
     name: 'python-app'
     properties: {
-      connections: {
-        kind: {
-          kind: 'dapr.io/StateStore'
-          source: statestore.id
-        }
-      }
       container: {
         image: python_service_build.image
         ports: {
           web: {
             containerPort: 5000
           }
+        }
+      }
+      connections: {
+        kind: {
+          kind: 'dapr.io/StateStore'
+          source: ordersStateStore.id
         }
       }
       traits: [
@@ -121,12 +121,23 @@ resource app 'radius.dev/Application@v1alpha3' existing = {
       ]
     }
   }
-//PYTHONAPP
+  //PYTHONAPP
 
-
-//STATESTORE
-  resource statestore 'dapr.io.StateStore' existing = {
+  //STATESTORE
+  resource ordersStateStore 'dapr.io.StateStore' = {
     name: 'orders'
+    properties: {
+      kind: 'any'
+      managed: true
+    }
   }
-//STATESTORE
+  //STATESTORE
+
+  resource mongo 'mongo.com.MongoDatabase' = {
+    name: 'mongo'
+    properties: {
+      managed: true
+    }
+  }
+
 }
