@@ -1,31 +1,40 @@
 ---
 type: docs
-title: "Visual Studio Code extension for Project Radius"
+title: "Visual Studio Code extension"
 linkTitle: "Visual Studio Code"
-description: "Overview of the Visual Studio Code extension"
+description: "Overview of the Project Radius Visual Studio Code extension"
 weight: 200
 ---
-Radius offers a *preview* Radius Visual Studio Code extension with a variety of features to help manage Radius applications across cloud and edge.
+
+Developers can use the *preview* Radius Visual Studio Code extension which offers a variety of features to help manage Radius applications across cloud and edge.
+
+{{% alert title="Bicep extension" color="info" %}}
+In addition to the Project Radius extension described in this page, a forked Bicep extension is also used for formatting and linting. This requirement will be removed in a future release. Visit the [getting started guide]({{< ref setup-vscode >}}) for instructions on installing the custom Bicep extension.
+{{% /alert %}}
 
 ## Features
 
-### View your deployed applications
+### Manage your environments, applications, and resources
 
 View and interact with environments, applications and resources deployed to your Radius environments.
 
+Simply open the Project Radius extension and the extension will list all the environmetns in your local config, along with all of the applications and resources deployed to them:
+
+<img src="vscode-tree.png" alt="Screenshot of environments, applications, and resources listed inside of VS Code" width="600px">
+
 ### View logs from container resources
 
-The Radius extension helps you find information about your applications with Radius by streaming logs directly from the resource to the terminal window inside the VS Code IDE.
+The Radius extension helps you debug your applications by streaming logs directly from a container resource to the terminal window inside the VS Code IDE.
 
-From the Radius resource tree, select the logs icon to access and view your container's log stream.
+From the Visual Studio command palette, select `Radius: Show Container Logs` and select your environment, application, and container:
 
-## Install Radius extension
+<img src="vscode-logs.png" alt="Screenshot of viewing container logs" width="600px">
 
-1. Download the edge [custom Bicep VSCode extension file](https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix).
+## Installation
 
-1. Download the stable [Radius VSCode extension file](https://radiuspublic.blob.core.windows.net/tools/vscode/stable/rad-vscode.vsix).
+1. Download the latest [VSCode extension file](https://get.radapp.dev/tools/vscode/stable/rad-vscode.vsix)
 
-1. Install both `.vsix` file
+1. Install the `.vsix` file:
 
    {{< tabs UI Terminal >}}
 
@@ -39,15 +48,17 @@ From the Radius resource tree, select the logs icon to access and view your cont
    You can also import this extension on the [command-line](https://code.visualstudio.com/docs/editor/extension-gallery#_install-from-a-vsix) with:
 
    ```bash
-   code --install-extension rad-vscode-bicep.vsix
    code --install-extension rad-vscode.vsix
    ```
 
    {{% /codetab %}}
    {{< /tabs >}}
 
-1. Disable the official Bicep extension if you have it installed. (Do not install the Bicep extension if you haven't already, our custom extension needs to be responsible for handling `.bicep` files and you cannot have both extensions enabled at once.)
-
 1. If running on Windows Subsystem for Linux (WSL), make sure to install the extension in WSL as well:
 
    <img src="./wsl-extension.png" alt="Screenshot of installing a vsix extension in WSL" width=400>
+
+## Additional resources
+
+- [Forked Bicep extension instructions]({{< ref setup-vscode >}})
+- [Edge extension download](https://get.radapp.dev/tools/vscode/edge/rad-vscode.vsix)
