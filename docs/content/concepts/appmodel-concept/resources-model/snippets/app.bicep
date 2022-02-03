@@ -19,7 +19,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       connections: {
-        sql: {
+        inventory: {
           kind: 'dapr.io/StateStore'
           source: inventory.id
         }
