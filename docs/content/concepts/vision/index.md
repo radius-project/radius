@@ -16,14 +16,14 @@ What's missing is a way to collapse the entire concept of an application into a 
 
 {{< cardpane >}}
 
-{{< card header="**Build a unified concept of your application.**" >}}
+{{< card header="**Build a unified concept of your application**" >}}
 - Visualize the end-to-end app model. 
 - Invetsigate cross-app health and diagnostics, including dependencies and connections. 
 - Identify ownership and locate artifacts per component. 
 - Support handoffs between teams as the app matures. 
 {{< /card >}}
 
-{{< card header="**Drastically reduce infra ops time.**" >}}
+{{< card header="**Drastically reduce infra ops time**" >}}
 - Iterate quickly in a local dev environment, then scale that same app up in Azure or Kubernetes.
 - Stamp out versions of the app to the edge, to multiple geos, or even to multiple clouds. 
 - Follow best practices to be naturally secure by default, even with many teams working together. 
