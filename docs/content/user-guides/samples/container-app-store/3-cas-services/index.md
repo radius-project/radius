@@ -7,14 +7,45 @@ description: "Learn how to model the Container App Store Microservice services"
 weight: 300
 ---
 
-## Add build parameters
+## Build parameters
 
 As part of a Radius deployment, the container images are built, and provided to the application as parameters.
 
 Open [`rad.yaml`]({{< ref rad-yaml >}}) to see where the containers are built:
 
 ```yaml
-TODO
+name: store
+stages:
+- name: infra
+  bicep:
+    template: iac/infra.bicep
+  profiles:
+    dev:
+      bicep:
+        template: iac/infra.dev.bicep
+- name: app
+  build:
+    go_service_build:
+      docker:
+        context: go-service
+        image: rynowak/go-service
+    node_service_build:
+      docker:
+        context: node-service
+        image: rynowak/node-service
+    python_service_build:
+      docker:
+        context: python-service
+        image: rynowak/python
+  bicep:
+    template: iac/app.bicep
+  profiles:
+    dev:
+      build:
+        node_service_build:
+          docker:
+            dockerFile: Dockerfile.dev
+
 ```
 
 Add the following build parameters to `app.bicep` to use the container images built from the above step:

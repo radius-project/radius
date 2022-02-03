@@ -1,0 +1,92 @@
+{
+  "swagger": "2.0",
+  "basePath": "/",
+  "info": {
+    "title": "Store API",
+    "version": "0.1.0"
+  },
+  "definitions": {},
+  "paths": {
+    "/": {
+      "get": {
+        "description": "Store index page",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/order": {
+      "get": {
+        "description": "Get order by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "string",
+            "required": true,
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Create order",
+        "parameters": [
+          {
+            "name": "order",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "item": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": true,
+            "in": "body"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/inventory": {
+      "get": {
+        "description": "Get orders",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "string",
+            "required": true,
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

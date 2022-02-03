@@ -34,9 +34,9 @@ Radius local environments support hot reload in your development. Visit the [hot
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- [k3d](https://rancher.com/docs/k3s/latest/en/installation/install-options/)
 - [rad CLI]({{< ref rad-cli >}})
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [k3d](https://k3d.io/)
 
 ### Create a local dev environment
 

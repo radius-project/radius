@@ -1,0 +1,31 @@
+name: store
+stages:
+- name: infra
+  bicep:
+    template: iac/infra.bicep
+  profiles:
+    dev:
+      bicep:
+        template: iac/infra.dev.bicep
+- name: app
+  build:
+    go_service_build:
+      docker:
+        context: go-service
+        image: rynowak/go-service
+    node_service_build:
+      docker:
+        context: node-service
+        image: rynowak/node-service
+    python_service_build:
+      docker:
+        context: python-service
+        image: rynowak/python
+  bicep:
+    template: iac/app.bicep
+  profiles:
+    dev:
+      build:
+        node_service_build:
+          docker:
+            dockerFile: Dockerfile.dev

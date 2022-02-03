@@ -19,11 +19,13 @@ This directory contains the following files:
 
 - **iac/app.bicep** - The application Bicep definition
 - **rad.yaml** - The [application configuration]({{< ref rad-yaml >}})
-- **src/** - The application source code
+- **go-service/** - The go microservice source code
+- **node-service/** - The node microservice source code
+- **python-service/** - The python microservice source code
 
-## Add a Radius application
+## Radius application
 
-Begin by adding a [Radius Application resource]({{< ref application-model >}}) to your `app.bicep` file:
+Note the [Radius Application resource]({{< ref application-model >}}) inside of `infra.bicep`:
 
 {{< rad file="snippets/blank-app.bicep" embed=true >}}
 
@@ -31,13 +33,15 @@ Begin by adding a [Radius Application resource]({{< ref application-model >}}) t
 
 The following resources are required by the container apps store microservices:
 
-- Mongo database
 - Dapr state store
 
 Add the following [connector]({{< ref connectors >}}) resources inside your application:
 
 {{< rad file="snippets/app.bicep" embed=true marker="//RESOURCES" >}}
 
+### Dev profile
+
+//TODO
 
 ## Next steps
 

@@ -1,13 +1,12 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'container-app-store'
 
-  //RESOURCES
-  resource ordersStateStore 'dapr.io.StateStore' = {
+  resource statestore 'dapr.io.StateStore' = {
     name: 'orders'
     properties: {
-      kind: 'any'
+      kind: 'state.redis'
       managed: true
     }
   }
-  //RESOURCES
+
 }

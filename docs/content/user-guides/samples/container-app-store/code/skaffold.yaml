@@ -1,0 +1,22 @@
+apiVersion: skaffold/v2beta26
+kind: Config
+build:
+  artifacts:
+  - image: radius-dev-registry:5000/rynowak/node-service
+    context: node-service
+    docker:
+      dockerfile: Dockerfile.dev
+    sync:
+      manual:
+      - src: '**/*'
+        dest: '.'
+  - image: radius-dev-registry:5000/rynowak/python-service
+    context: python-service
+    docker:
+      dockerfile: Dockerfile
+    sync:
+      infer: ['**/*']
+deploy:
+  kubectl:
+      remoteManifests:
+      - default:deployment/store-node-app
