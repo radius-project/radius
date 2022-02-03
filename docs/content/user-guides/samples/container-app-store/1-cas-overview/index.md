@@ -43,7 +43,7 @@ The go-app is a Go mux app that will retrieve and store the state of inventory. 
 
 ### Deploying without Radius
 
-There are twp options for [deploying the Container App Store Microservice](https://github.com/Azure-Samples/container-apps-store-api-microservice#deploy-and-run) without Radius: GitHub Actions or the Azure CLI.
+There are two options for [deploying the Container App Store Microservice](https://github.com/Azure-Samples/container-apps-store-api-microservice#deploy-and-run) without Radius: GitHub Actions or the Azure CLI.
 
 ## Adding Radius
 
