@@ -9,12 +9,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
         image: 'radius.azurecr.io/storefront'
         env: {
           ENVIRONMENT: 'production'
-          INV_STATESTORE: inventory.properties.name
+          INV_STATESTORE: inventory.name
         }
         ports: {
           http: {
             containerPort: 80
-            provides: identityHttp.id
           }
         }
       }
