@@ -47,7 +47,7 @@ Radius can be used with any text editor, but Radius-specific optimizations are a
 
 {{% alert title="VSCode tip" color="primary" %}} 
 If running on Windows Subsystem for Linux (WSL), make sure to install the extension in WSL as well:
-  <img src="./wsl-extension.png" alt="Screenshot of installing a vsix extension in WSL" width=400>
+<br /><img src="./wsl-extension.png" alt="Screenshot of installing a vsix extension in WSL" width=400>
 {{% /alert %}}
 
 ## Install other Radius extension versions
