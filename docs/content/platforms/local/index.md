@@ -10,10 +10,6 @@ weight: 20
 
 With a Radius local environment you can run your applications on your machine without the need for an Azure subscription or remote Kubernetes cluster. This makes it easy to develop applications and try them out without waiting for a full deployment to the cloud.
 
-Try one out as part of the [local dev guide]({{< ref run-locally >}}):
-
-{{< button text="💻 Local dev guide" page="run-locally" color="success" newtab="true" >}}
-
 ## Features
 
 ### Managed cluster runtime
@@ -28,7 +24,7 @@ One of the slowest parts of working with containers can be waiting for container
 
 ### Hot reload
 
-Radius local environments support hot reload in your development. Visit the [hot reload guide]({{< ref hot-reload >}}) for more information.
+Radius local environments support hot reload in your development. **Guide coming soon**
 
 ## Initialize a local environment
 
