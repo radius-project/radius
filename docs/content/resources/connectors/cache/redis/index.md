@@ -24,14 +24,6 @@ The following top-level information is available in the resource:
 |------|:--------:|-------------|---------|
 | name | y | The name of your resource. Used to provide status and visualize the resource. | `cache`
 
-### Resource lifecycle
-
-A `redislabs.com/Redis` connector can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
-
-| Property | Description | Example(s) |
-|----------|-------------|---------|
-| managed | Indicates if the resource is Radius-managed. If `false`, a `Resource` must be specified. | `true`, `false`
-
 ## Provided data
 
 | Property | Description | Example(s) |

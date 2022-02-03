@@ -223,6 +223,7 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating pods in namespace %v", namespace)
 		var actualPods *corev1.PodList
+		applicationPods := []corev1.Pod{}
 		for {
 			select {
 			case <-time.After(IntervalForResourceCreation):
@@ -255,6 +256,7 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 
 					// trim the list of 'remaining' pods
 					remaining = append(remaining[:*index], remaining[*index+1:]...)
+					applicationPods = append(applicationPods, actualPod)
 				}
 
 				if len(remaining) == 0 {
@@ -272,10 +274,10 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 
 		// Now check the status of the pods
 	podcheck:
-		for _, actualPod := range actualPods.Items {
+		for _, applicationPod := range applicationPods {
 			monitor := PodMonitor{
 				K8s: k8s,
-				Pod: actualPod,
+				Pod: applicationPod,
 			}
 			monitor.ValidateRunning(ctx, t)
 		}
@@ -519,7 +521,9 @@ type PodMonitor struct {
 
 func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	if pm.Pod.Status.Phase == corev1.PodRunning {
-		return
+		if checkReadiness(t, &pm.Pod) {
+			return
+		}
 	}
 
 	t.Logf("watching pod %v for status.. current: %v", pm.Pod.Name, pm.Pod.Status)
@@ -529,6 +533,11 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	require.NoErrorf(t, err, "failed to watch pod: %v", pm.Pod.Name)
 	defer watch.Stop()
 
+	// Sometimes, the pods may take a little bit to become ready.
+	// Therefore, if the readiness check fails, will retry a few times instead
+	// of instantly failing
+	const MaxRetryAttempts = 10
+	attempt := 0
 	for {
 		select {
 		case <-time.After(IntervalForWatchHeartbeat):
@@ -550,7 +559,15 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 
 			if pod.Status.Phase == corev1.PodRunning {
 				t.Logf("success! pod %v has status: %v", pod.Name, pod.Status)
-				return
+				if checkReadiness(t, pod) {
+					return
+				}
+				if attempt >= MaxRetryAttempts {
+					assert.Failf(t, "pod %v failed readiness checks", pod.Name)
+				} else {
+					t.Logf("Readiness check failed. Retrying - attempt %d", attempt)
+					attempt++
+				}
 			} else if pod.Status.Phase == corev1.PodFailed {
 				assert.Failf(t, "pod %v entered a failing state", pod.Name)
 				return
@@ -563,6 +580,17 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 			return
 		}
 	}
+}
+
+func checkReadiness(t *testing.T, pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.ContainersReady &&
+			condition.Status == corev1.ConditionTrue {
+			// All okay
+			return true
+		}
+	}
+	return false
 }
 
 func logPods(t *testing.T, pods []corev1.Pod) {

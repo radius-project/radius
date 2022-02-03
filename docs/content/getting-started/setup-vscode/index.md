@@ -2,7 +2,7 @@
 type: docs
 title: "Setup Visual Studio Code for Project Radius"
 linkTitle: "Setup tools"
-description: "How to setup VS Code with the Radius extension for easy application authoring"
+description: "How to setup Visual Studio Code with the Radius extension for easy application authoring"
 weight: 20
 ---
 
@@ -52,12 +52,14 @@ Learn more in the [extension documents]({{< ref vscode >}}).
    In VSCode, manually install the extension using the *Install from VSIX* command in the Extensions view command drop-down.
 
    <img src="./vsix-install.png" alt="Screenshot of installing a vsix extension" width=400>
+
    {{% /codetab %}}
 
    {{% codetab %}}
    You can also import this extension on the [command-line](https://code.visualstudio.com/docs/editor/extension-gallery#_install-from-a-vsix) with:
 
    ```bash
+   curl https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix --output rad-vscode-bicep.vsix
    code --install-extension rad-vscode-bicep.vsix
    code --install-extension rad-vscode.vsix
    ```

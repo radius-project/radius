@@ -25,8 +25,6 @@ This application showcases how Radius can use a user-manged Azure SQL Database.
 
 ## Resource lifecycle
 
-An `microsoft.com/SQLDatabase` can be Radius-managed. At this Radius' support for Microsoft SQL Server compatible database is limited to user-managed resources. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
-
 This sample uses Bicep parameters to pass the resource ID of the database as well as the username and password.
 
 {{< rad file="snippets/unmanaged.bicep" embed=true marker="//PARAMETERS" >}}

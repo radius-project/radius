@@ -7,7 +7,7 @@ description: "Learn how to model the eShop infrastructure in Bicep"
 weight: 200
 ---
 
-In this section you will be creating an eShop Radius Application, and add all the resources and services that compose it. You will be adding a mixture of [user-managed Radius resources]({{< ref "components-model#user-managed" >}}), [Radius-managed resources]({{< ref "components-model#radius-managed" >}}), and [platform-specific resources]({{< ref "components-model#platform-specific" >}}) in your application.
+In this section you will create an eShop Radius Application and add all the resources and services that compose it. 
 
 ## Radius application
 
@@ -41,9 +41,9 @@ Update your eshop.bicep file with:
 </ul>
 
 {{% alert title="💡 Concept" color="info" %}}
-For Azure SQL you are using a <a href="{{< ref "components-model#user-managed" >}}">user-managed Radius Component</a>, where you are defining the Azure SQL Bicep resource outside of Radius, and then binding it to a Radius non-runnable Component.
+For Azure SQL you are defining the Azure SQL Bicep resource outside of Radius and then binding it to a Radius connector resource.
 
-This allows you to swap out the underlying SQL provider by replacing the `resource` parameter. Services connect to the Radius resources, so their definitions and parameters don't change.
+Using a connector allows you to swap out the underlying SQL provider by replacing the `resource` parameter. Services connect to the Radius resources, so their definitions and parameters don't change.
 
 You can also connect to already deployed SQL instances with the [existing keyword](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/resource-declaration?#reference-existing-resources).
 {{% /alert %}}
@@ -87,7 +87,7 @@ Here you are manually defining a Container which will provide a SQL database. Ot
 The redislabs.com.RedisCache Radius resource will deploy an Azure Redis Cache in Azure environments, and a Redis container in Kubernetes environments.
 
 {{% alert title="💡 Concept" color="info" %}}
-Here you are defining two <a href="{{< ref "components-model#radius-managed" >}}">Radius-managed Redis Components</a>, where Radius manages the deployment and deletion of the resources as part of the Application.
+Here you are defining two Radius-managed Redis Components, where Radius manages the deployment and deletion of the resources as part of the Application.
 {{% /alert %}}
 
 {{< rad file="snippets/redis-managed.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..." >}}
@@ -96,7 +96,7 @@ Here you are defining two <a href="{{< ref "components-model#radius-managed" >}}
 If you prefer to bring your own Redis Caches, you can reference existing Redis Cache resources in Bicep and provide them as a source to the Radius resources.
 
 {{% alert title="💡 Concept" color="info" %}}
-Here you are using <a href="{{< ref "components-model#user-managed" >}}">user-managed Radius Components</a> where the resources have already been deployed to Azure. Make sure to [specify the correct scope](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/deploy-to-resource-group?tabs=azure-cli#scope-to-different-resource-group), as the default scope is the environment's resource group.
+Here you are using existing resources where the resources have already been deployed to Azure. Make sure to [specify the correct scope](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/deploy-to-resource-group?tabs=azure-cli#scope-to-different-resource-group), as the default scope is the environment's resource group.
 {{% /alert %}}
 
 {{< rad file="snippets/redis-azure.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..."  >}}
@@ -133,7 +133,7 @@ eShop has two different modes: Service Bus and RabbitMQ. A parameter passed into
 Azure Service Bus is only compatible with Azure environments. For Kubernetes environments use RabbitMQ (next tab).
 
 {{% alert title="💡 Concept" color="info" %}}
-Here you are deploying a <a href="{{< ref "components-model#platform-specific-resources" >}}">platform-specific Service Bus Topic resource</a>, which does not have a portable, Radius component. Other Components can bind directly to this resource.
+Here you are deploying a platform-specific Service Bus Topic resource</a>, which does not have a Radius connector resource. Other resources in the application can bind directly to this resource.
 {{% /alert %}}
 
 {{< rad file="snippets/messagebus-servicebus.bicep" embed=true replace-key-rest="//REST" replace-value-rest="..." replace-key-eshop="//ESHOP"  >}}

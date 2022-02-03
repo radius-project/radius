@@ -5,7 +5,10 @@ resource app 'radius.dev/Application@v1alpha3' = {
 		name: 'busybox'
 		properties: {
 			container: {
-				image: 'busybox:latest'
+				image: 'radius.azurecr.io/magpie:latest'
+				env: {
+					TEST: '${container.outputs.test.id}'
+				}
 			}
 		}
 	}
@@ -17,3 +20,4 @@ module container 'module.bicep' = {
     app: app
   }
 }
+

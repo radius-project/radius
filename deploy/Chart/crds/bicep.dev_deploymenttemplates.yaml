@@ -129,6 +129,15 @@ spec:
                   was captured and completed by the reconciler
                 format: int64
                 type: integer
+              outputs:
+                additionalProperties:
+                  properties:
+                    type:
+                      type: string
+                    value:
+                      type: string
+                  type: object
+                type: object
               phrase:
                 description: The readable status "phrase" of the deployment template.
                 type: string

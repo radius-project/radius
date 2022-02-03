@@ -184,6 +184,7 @@ var kindMap = map[string]string{
 	"mongo.com.MongoDatabase":   "MongoDatabase",
 	"rabbitmq.com.MessageQueue": "RabbitMQMessageQueue",
 	"redislabs.com.RedisCache":  "RedisCache",
+	"microsoft.com.SQLDatabase": "MicrosoftComSQLDatabase",
 	"HttpRoute":                 "HttpRoute",
 	"GrpcRoute":                 "GrpcRoute",
 	"Gateway":                   "Gateway",

@@ -30,6 +30,7 @@ rad.exe
 kcp
 !kcp/
 kcp.exe
+docs/.hugo_build.lock
 
 .vscode/
 .DS_Store

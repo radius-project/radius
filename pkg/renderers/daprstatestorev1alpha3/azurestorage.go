@@ -6,18 +6,28 @@
 package daprstatestorev1alpha3
 
 import (
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
-func GetDaprStateStoreAzureStorage(resource renderers.RendererResource, properties Properties) ([]outputresource.OutputResource, error) {
+func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
+	properties := radclient.DaprStateStoreAzureTableStorageResourceProperties{}
+	err := resource.ConvertDefinition(&properties)
+	if err != nil {
+		return nil, err
+	}
 	resourceKind := resourcekinds.DaprStateStoreAzureStorage
 	localID := outputresource.LocalIDDaprStateStoreAzureStorage
 
-	if properties.Managed {
-		if properties.Resource != "" {
+	if properties.Managed == nil {
+		return nil, renderers.ErrManagedUnspecified
+	}
+
+	if *properties.Managed {
+		if properties.Resource != nil && *properties.Resource != "" {
 			return nil, renderers.ErrResourceSpecifiedForManagedResource
 		}
 		resource := outputresource.OutputResource{
@@ -36,10 +46,10 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource, properti
 
 		return []outputresource.OutputResource{resource}, nil
 	} else {
-		if properties.Resource == "" {
+		if properties.Resource == nil || *properties.Resource == "" {
 			return nil, renderers.ErrResourceMissingForUnmanagedResource
 		}
-		accountID, err := renderers.ValidateResourceID(properties.Resource, StorageAccountResourceType, "Storage Account")
+		accountID, err := renderers.ValidateResourceID(*properties.Resource, StorageAccountResourceType, "Storage Account")
 		if err != nil {
 			return nil, err
 		}

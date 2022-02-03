@@ -11,9 +11,8 @@ In this tutorial you will be deploying an online store where you can order items
 
 <img src="./store.png" alt="A screenshot of the store application" width=500 />
 
-## Components
-
-This Radius application will have three [Components]({{< ref components-model.md >}}):
+## Resources
+This Radius application will have three [resouces]({{< ref resources-model.md >}}):
 
 - A UI for users to place orders written with .NET Blazor (`frontend`)
 - A backend order processing microservice written in Node.JS (`backend`)
@@ -60,6 +59,6 @@ In addition to this high level information, the Radius model also uses typical d
 - Listening ports
 - Configuration like connection strings
 
-Keep the diagram in mind as you proceed through the following steps. Your Radius deployment template will aim to match it.
+Keep the diagram in mind as you proceed through the following steps. Your Radius deployment will aim to match it.
 
 <br>{{< button text="Next: Deploy the application backend" page="dapr-microservices-initial-deployment.md" >}}

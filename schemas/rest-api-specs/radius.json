@@ -771,6 +771,82 @@
       "type": "object",
       "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
     },
+    "DaprStateStoreAnyResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      ],
+      "required": [
+        "kind"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "any"
+    },
+    "DaprStateStoreAzureTableStorageResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      ],
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ],
+          "type": "boolean"
+        },
+        "resource": {
+          "description": "PubSub resource, for unmanaged",
+          "type": "string"
+        }
+      },
+      "required": [
+        "managed",
+        "kind"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "state.azure.tablestorage"
+    },
+    "DaprStateStoreGenericResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      ],
+      "properties": {
+        "metadata": {
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "example": [
+            "state.zookeeper"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "type",
+        "metadata",
+        "version"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "generic"
+    },
     "DaprStateStoreList": {
       "description": "List of dapr.io.StateStore resources.",
       "properties": {
@@ -786,6 +862,32 @@
         "value"
       ],
       "type": "object"
+    },
+    "DaprStateStoreRedisResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      ],
+      "properties": {
+        "managed": {
+          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
+          "enum": [
+            true
+          ],
+          "example": [
+            true
+          ],
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "managed",
+        "kind"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "state.redis"
     },
     "DaprStateStoreResource": {
       "allOf": [
@@ -806,23 +908,31 @@
       "x-ms-azure-resource": true
     },
     "DaprStateStoreResourceProperties": {
-      "additionalProperties": false,
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
+      "discriminator": "kind",
       "properties": {
         "kind": {
-          "description": "The Dapr StateStore kind. These strings match the format used by Dapr Kubernetes configuration format.",
-          "enum": [
-            "any",
-            "state.sqlserver",
-            "state.redis",
-            "state.azure.tablestorage"
-          ],
+          "description": "The DaprStateStoreResourceProperties kind",
           "type": "string"
-        },
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "DaprStateStoreSqlServerResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      ],
+      "properties": {
         "managed": {
           "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
           "enum": [
@@ -832,13 +942,18 @@
             true
           ],
           "type": "boolean"
+        },
+        "resource": {
+          "description": "PubSub resource, for unmanaged",
+          "type": "string"
         }
       },
       "required": [
         "managed",
         "kind"
       ],
-      "type": "object"
+      "type": "object",
+      "x-ms-discriminator-value": "state.sqlserver"
     },
     "EphemeralVolume": {
       "additionalProperties": false,
@@ -1297,12 +1412,20 @@
         }
       ],
       "properties": {
+        "database": {
+          "description": "The name of the SQL database.",
+          "type": "string"
+        },
         "managed": {
           "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
           "type": "boolean"
         },
         "resource": {
           "description": "The ID of the user-managed SQL database to use for this resource.",
+          "type": "string"
+        },
+        "server": {
+          "description": "The fully qualified domain name of the SQL database.",
           "type": "string"
         }
       },

@@ -18,14 +18,6 @@ The `rabbitmq.com/MessageQueue` connector is a Kubernetes specific connector for
 
 {{< rad file="snippets/managed.bicep" embed=true marker="//SAMPLE" >}}
 
-### Resource lifecycle
-
-A `rabbitmq.com/MessageQueue` connector can be Radius-managed. For more information read the [Components docs]({{< ref "components-model#resource-lifecycle" >}}).
-
-| Property | Description | Example(s) |
-|----------|-------------|---------|
-| managed | Indicates if the resource is Radius-managed. For now only true is accepted for this connector.| `true`
-
 ## Queue information
 
 | Property | Description | Example(s) |

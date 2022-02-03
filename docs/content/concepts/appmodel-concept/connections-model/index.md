@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Radius Connections concept"
+title: "Radius connections"
 linkTitle: "Connections"
 description: "Learn how to model resource interactions and relationships with Radius Connections."
 weight: 400
@@ -94,6 +94,4 @@ An Azure resource that does not bind to a [Radius portable component type]({{< r
 
 ## Next step
 
-Now that you are familiar with Radius Connections, the next step is to learn about Radius Traits.
-
-{{< button text="Learn about Traits" page="traits-model.md" >}}
+{{< button text="Traits" page="traits-model.md" >}}

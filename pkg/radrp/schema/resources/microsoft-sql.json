@@ -35,6 +35,14 @@
         "resource": {
           "description": "The ID of the user-managed SQL database to use for this resource.",
           "type": "string"
+        },
+        "database": {
+          "description": "The name of the SQL database.",
+          "type": "string"
+        },
+        "server": {
+          "description": "The fully qualified domain name of the SQL database.",
+          "type": "string"
         }
       }
     }

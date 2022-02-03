@@ -18,17 +18,17 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_AzureConnectionCognitiveService(t *testing.T) {
-	applicationName := "azure-connection-cognitive-service"
-	containerResourceName := "translation-service"
-	template := "testdata/azure-connection-cognitive-service.bicep"
+func Test_AzureConnections(t *testing.T) {
+	applicationName := "azure-connection-database-service"
+	containerResourceName := "db-service"
+	template := "testdata/azure-connection-database-service.bicep"
 	test := azuretest.NewApplicationTest(t, applicationName, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{
-						Type:            "Microsoft.CognitiveServices/accounts",
+						Type:            "Microsoft.DocumentDB/databaseAccounts",
 						AzureConnection: true,
 					},
 					{

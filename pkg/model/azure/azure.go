@@ -83,7 +83,9 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 		{
 			ResourceType: daprpubsubv1alpha3.ResourceType,
-			Renderer:     &daprpubsubv1alpha3.Renderer{},
+			Renderer: &daprpubsubv1alpha3.Renderer{
+				PubSubs: daprpubsubv1alpha3.SupportedAzurePubSubKindValues,
+			},
 		},
 		{
 			ResourceType: daprstatestorev1alpha3.ResourceType,
@@ -161,12 +163,22 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		{
 			Kind:            resourcekinds.DaprStateStoreSQLServer,
 			HealthHandler:   handlers.NewDaprStateStoreSQLServerHealthHandler(arm, k8s),
-			ResourceHandler: handlers.NewDaprStateStoreSQLServerHandler(arm, k8s),
+			ResourceHandler: handlers.NewDaprStateStoreGenericHandler(arm, k8s),
+		},
+		{
+			Kind:            resourcekinds.DaprStateStoreGeneric,
+			HealthHandler:   handlers.NewDaprStateStoreGenericHealthHandler(arm, k8s),
+			ResourceHandler: handlers.NewDaprStateStoreGenericHandler(arm, k8s),
 		},
 		{
 			Kind:            resourcekinds.DaprPubSubTopicAzureServiceBus,
 			HealthHandler:   handlers.NewDaprPubSubServiceBusHealthHandler(arm, k8s),
 			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
+		},
+		{
+			Kind:            resourcekinds.DaprPubSubTopicGeneric,
+			HealthHandler:   handlers.NewDaprPubSubGenericHealthHandler(arm, k8s),
+			ResourceHandler: handlers.NewDaprPubSubGenericHandler(arm, k8s),
 		},
 		{
 			Kind:                   resourcekinds.AzureCosmosDBMongo,

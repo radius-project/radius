@@ -16,6 +16,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
         env: {
           DB_CONNECTION: db.connectionString()
         }
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+        }
       }
     }
   }

@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MicrosoftSQL_Unmanaged(t *testing.T) {
+func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 	application := "azure-resources-microsoft-sql-unmanaged"
 	template := "testdata/azure-resources-microsoft-sql-unmanaged.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
