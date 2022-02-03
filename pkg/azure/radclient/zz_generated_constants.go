@@ -207,27 +207,6 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
-// DaprPubSubTopicResourcePropertiesKind - The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes configuration format.
-type DaprPubSubTopicResourcePropertiesKind string
-
-const (
-	DaprPubSubTopicResourcePropertiesKindAny DaprPubSubTopicResourcePropertiesKind = "any"
-	DaprPubSubTopicResourcePropertiesKindPubsubAzureServicebus DaprPubSubTopicResourcePropertiesKind = "pubsub.azure.servicebus"
-)
-
-// PossibleDaprPubSubTopicResourcePropertiesKindValues returns the possible values for the DaprPubSubTopicResourcePropertiesKind const type.
-func PossibleDaprPubSubTopicResourcePropertiesKindValues() []DaprPubSubTopicResourcePropertiesKind {
-	return []DaprPubSubTopicResourcePropertiesKind{	
-		DaprPubSubTopicResourcePropertiesKindAny,
-		DaprPubSubTopicResourcePropertiesKindPubsubAzureServicebus,
-	}
-}
-
-// ToPtr returns a *DaprPubSubTopicResourcePropertiesKind pointing to the current value.
-func (c DaprPubSubTopicResourcePropertiesKind) ToPtr() *DaprPubSubTopicResourcePropertiesKind {
-	return &c
-}
-
 // DaprSidecarTraitProtocol - Specifies the Dapr app-protocol to use for the resource.
 type DaprSidecarTraitProtocol string
 
@@ -333,22 +312,22 @@ func (c Enum3) ToPtr() *Enum3 {
 	return &c
 }
 
-// Enum6 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-type Enum6 bool
+// Enum5 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
+type Enum5 bool
 
 const (
-	Enum6True Enum6 = true
+	Enum5True Enum5 = true
 )
 
-// PossibleEnum6Values returns the possible values for the Enum6 const type.
-func PossibleEnum6Values() []Enum6 {
-	return []Enum6{	
-		Enum6True,
+// PossibleEnum5Values returns the possible values for the Enum5 const type.
+func PossibleEnum5Values() []Enum5 {
+	return []Enum5{	
+		Enum5True,
 	}
 }
 
-// ToPtr returns a *Enum6 pointing to the current value.
-func (c Enum6) ToPtr() *Enum6 {
+// ToPtr returns a *Enum5 pointing to the current value.
+func (c Enum5) ToPtr() *Enum5 {
 	return &c
 }
 

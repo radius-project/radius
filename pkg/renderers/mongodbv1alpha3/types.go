@@ -11,6 +11,8 @@ const (
 	ResourceType          = "mongo.com.MongoDatabase"
 	ConnectionStringValue = "connectionString"
 	DatabaseValue         = "database"
+	UsernameStringValue   = "username"
+	PasswordValue         = "password"
 )
 
 var CosmosMongoResourceType = azresources.KnownType{

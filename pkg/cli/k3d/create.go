@@ -19,16 +19,16 @@ func CreateCluster(ctx context.Context, name string) (*ClusterConfig, error) {
 	}
 
 	config := ClusterConfig{
-		ClusterName: fmt.Sprintf("radius-%s", name),
-		ContextName: fmt.Sprintf("k3d-radius-%s", name),
-		Registry:    fmt.Sprintf("radius-%s-registry", name),
+		ClusterName:  fmt.Sprintf("radius-%s", name),
+		ContextName:  fmt.Sprintf("k3d-radius-%s", name),
+		RegistryName: fmt.Sprintf("radius-%s-registry", name),
 	}
 
 	args := []string{
 		"cluster", "create", config.ClusterName,
 
 		// Create a registry for local images to avoid server roundtrips
-		"--registry-create", config.Registry,
+		"--registry-create", config.RegistryName,
 
 		// Add a new kubernetes context to the config and switch to it
 		"--kubeconfig-update-default=true",
@@ -60,11 +60,23 @@ func CreateCluster(ctx context.Context, name string) (*ClusterConfig, error) {
 		return nil, err
 	}
 
+	// Now we need to get the registry push URL since this will be determined dynamically.
+	client := ServerLifecycleClient{ClusterName: config.ClusterName}
+	config.RegistryPushEndpoint, err = client.GetRegistryEndpoint(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine local registry URL: %w", err)
+	}
+
+	// We're using the default port of 5000 here.
+	config.RegistryPullEndpoint = config.RegistryName + ":5000"
+
 	return &config, nil
 }
 
 type ClusterConfig struct {
-	ClusterName string
-	ContextName string
-	Registry    string
+	ClusterName          string
+	ContextName          string
+	RegistryName         string
+	RegistryPushEndpoint string
+	RegistryPullEndpoint string
 }

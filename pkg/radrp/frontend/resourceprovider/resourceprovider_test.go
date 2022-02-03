@@ -63,6 +63,9 @@ var testRadiusResource []db.RadiusResource = []db.RadiusResource{
 		},
 		Definition: map[string]interface{}{
 			"data": true,
+			"secrets": map[string]string{
+				"password": "will be redacted in response",
+			},
 		},
 	},
 }

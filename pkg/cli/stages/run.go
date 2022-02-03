@@ -8,6 +8,7 @@ package stages
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -19,6 +20,14 @@ import (
 // output to the console.
 func Run(ctx context.Context, options Options) ([]StageResult, error) {
 	output.LogInfo("Using environment %s", options.Environment.GetName())
+
+	// Unit tests don't have to set these.
+	if options.Stderr == nil {
+		options.Stderr = io.Discard
+	}
+	if options.Stdout == nil {
+		options.Stdout = io.Discard
+	}
 
 	// Validate that the desired stage is found
 	length := len(options.Manifest.Stages)

@@ -14,21 +14,25 @@ Create a new Bicep resource that represents your [application]({{< ref applicati
 
 {{< rad file="snippets/blank.bicep" embed=true >}}
 
-## (optional) Add portable components
+## (optional) Add portable connectors
 
-If your application needs to be portable across [Radius platforms]({{< ref platforms >}}), you can use portable components to add an abstraction layer. For example, the [MongoDB]({{< ref mongodb >}}) and [Dapr]({{< ref dapr >}}) resources allow different infrastucture resources to bind to them, and then your services connect to these abstractions.
+If your application needs to be portable across [Radius platforms]({{< ref platforms >}}), you can use connectors to add an abstraction layer for each resource. Connectors present common values like `host`, `port` and `connectionString` that Service resources (like containers) can use to connect to the related API or service. The underlying infrastructure type can then be swapped out.
 
-{{% alert title="Portable components" color="info" %}}
-Portable components allow you to decouple infrastructure that provides an API from your application which consumes it. For example, a MongoDB can be provided by both Azure CosmosDB and a MongoDB container. Using a portable component allows your application services to use common values like `host`, `port` and `connectionString` to connect to the MongoDB, and the underlying infrastructure binding can be swapped out.
-{{% /alert %}}
+{{< button text="Connectors library" page="connectors" >}}
 
-Add a [MongoDB]({{< ref mongodb >}}) component to your application and bind it to the CosmosDB with MongoDB resource you previously modeled:
+For example, the [mongo.com.mongoDatabase]({{< ref mongodb >}}) connector allows either an Azure CosmosDB and a MongoDB container to bind to it.
+
+A MongoDB connector can be modeled as:
 
 {{< rad file="snippets/mongo.bicep" embed=true replace-key-cosmos="//COSMOS" replace-value-cosmos="resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2021-04-15' existing = {...}" >}}
 
 ## Add services
 
-Now that you have an application resource defined you can add services to it. For example, you can add a [container]({{< ref container >}}):
+Now that you have an application resource defined you can add [services]({{< ref services >}}) to it.
+
+{{< button text="Service library" page="services" >}}
+
+For example, you can add a [container]({{< ref container >}}):
 
 {{< rad file="snippets/service.bicep" embed=true >}}
 

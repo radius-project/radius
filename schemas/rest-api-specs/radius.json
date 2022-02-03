@@ -602,56 +602,33 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
-    "DaprPubSubTopicList": {
-      "description": "List of dapr.io.PubSubTopic resources.",
-      "properties": {
-        "value": {
-          "description": "List of dapr.io.PubSubTopic resources.",
-          "items": {
-            "$ref": "#/definitions/DaprPubSubTopicResource"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "value"
-      ],
-      "type": "object"
-    },
-    "DaprPubSubTopicResource": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProxyResource"
-        }
-      ],
-      "description": "Resource for Dapr Pub/Sub",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/DaprPubSubTopicResourceProperties"
-        }
-      },
-      "required": [
-        "properties"
-      ],
-      "type": "object",
-      "x-ms-azure-resource": true
-    },
-    "DaprPubSubTopicResourceProperties": {
+    "DaprPubSubTopicAnyResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/DaprPubSubTopicProperties"
         }
       ],
       "properties": {
-        "kind": {
-          "description": "The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes configuration format.",
-          "enum": [
-            "any",
-            "pubsub.azure.servicebus"
-          ],
+        "topic": {
+          "description": "PubSub topic",
           "type": "string"
-        },
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "any"
+    },
+    "DaprPubSubTopicAzureServiceBusResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprPubSubTopicProperties"
+        }
+      ],
+      "properties": {
         "managed": {
           "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
           "type": "boolean"
@@ -668,7 +645,90 @@
       "required": [
         "kind"
       ],
+      "type": "object",
+      "x-ms-discriminator-value": "pubsub.azure.servicebus"
+    },
+    "DaprPubSubTopicGenericResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprPubSubTopicProperties"
+        }
+      ],
+      "properties": {
+        "metadata": {
+          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "type",
+        "version",
+        "metadata"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "generic"
+    },
+    "DaprPubSubTopicList": {
+      "description": "List of dapr.io.PubSubTopic resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.PubSubTopic resources.",
+          "items": {
+            "$ref": "#/definitions/DaprPubSubTopicResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
       "type": "object"
+    },
+    "DaprPubSubTopicProperties": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The DaprPubSubTopicProperties kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "DaprPubSubTopicResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource for Dapr Pub/Sub",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubTopicProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
     },
     "DaprSidecarTrait": {
       "additionalProperties": false,

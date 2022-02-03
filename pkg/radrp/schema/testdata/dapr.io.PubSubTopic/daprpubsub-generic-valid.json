@@ -1,0 +1,13 @@
+{
+  "id": "id",
+  "name": "name",
+  "properties": {
+    "kind": "generic",
+    "type": "pubsub.kafka",
+    "version": "v1",
+    "metadata": {
+      "a": "b",
+      "c": "d"
+    }
+  }
+}

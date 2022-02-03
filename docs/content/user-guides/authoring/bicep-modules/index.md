@@ -1,6 +1,6 @@
 ---
 type: docs
-title: "Separate your application components into Bicep modules"
+title: "Separate your application resources into Bicep modules"
 linkTitle: "Break into modules"
 description: "Learn how to grow a single-file Radius application into a multi-file, large scale application with Bicep modules."
 weight: 400
@@ -34,7 +34,7 @@ Once infrasturcture is broken out into a module, you can easily swap out the mod
 
 {{< rad file="snippets/infra.bicep" embed=true >}}
 
-Note that only the portable Mongo component is output from this module. This allows you to define only what you want to pass to other modules.
+Note that only the portable Mongo connector is output from this module. This allows you to define only what you want to pass to other modules.
 
 ### frontend.bicep
 

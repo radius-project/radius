@@ -9,38 +9,65 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sync"
 
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/builders"
 	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/radyaml"
+	"golang.org/x/sync/errgroup"
 )
 
 func (p *processor) ProcessBuild(ctx context.Context, stage radyaml.BuildStage) error {
+	registry := p.Options.Environment.GetContainerRegistry()
+
+	// We'll run the build in parallel - each output gets its own output stream.
+	group, ctx := errgroup.WithContext(ctx)
+	streams := output.NewStreamGroup(p.Stdout)
+
+	// Synchronize access to add results
+	mtx := sync.Mutex{}
+
 	for name, target := range stage {
-		step := output.BeginStep("Processing build %s", name)
+		stream := streams.NewStream(name)
 
-		builder := p.Options.Builders[target.Builder]
-		if builder == nil {
-			return fmt.Errorf("no builder named %s was found", target.Builder)
-		}
+		// Copy induction variables since they are closed-over.
+		name := name
+		target := target
 
-		result, err := builder.Build(ctx, builders.Options{
-			BaseDirectory: p.BaseDirectory,
-			Stderr:        p.Stderr,
-			Stdout:        p.Stdout,
-			Values:        target.Values,
+		group.Go(func() error {
+			stream.Print(fmt.Sprintf("Processing build %s\n", name))
+
+			builder := p.Options.Builders[target.Builder]
+			if builder == nil {
+				return fmt.Errorf("no builder named %s was found", target.Builder)
+			}
+
+			result, err := builder.Build(ctx, builders.Options{
+				BaseDirectory: p.BaseDirectory,
+				Registry:      registry,
+				Output:        stream,
+				Values:        target.Values,
+			})
+			if err != nil {
+				return fmt.Errorf("build of %s failed: %w", target.Builder, err)
+			}
+
+			mtx.Lock()
+			defer mtx.Unlock()
+			p.Parameters[name] = map[string]interface{}{
+				"value": result.Result,
+			}
+
+			stream.Print(fmt.Sprintf("Done processing build %s\n", name))
+			return nil
 		})
-		if err != nil {
-			return fmt.Errorf("build of %s failed: %w", target.Builder, err)
-		}
+	}
 
-		p.Parameters[name] = map[string]interface{}{
-			"value": result.Result,
-		}
-
-		output.CompleteStep(step)
+	err := group.Wait()
+	if err != nil {
+		return err
 	}
 
 	return nil

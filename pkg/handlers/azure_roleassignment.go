@@ -23,8 +23,8 @@ import (
 const (
 	RoleNameKey = "rolename"
 
-	// RoleAssignmentTargetKey is used to pass the Resource ID of the target resource.
-	RoleAssignmentTargetKey = "roleassignmenttarget"
+	// RoleAssignmentScope is used to pass the fully qualified identifier of the resource for which the role assignment needs to be created
+	RoleAssignmentScope = "roleassignmentscope"
 )
 
 // NewAzureRoleAssignmentHandler initializes a new handler for resources of kind RoleAssignment
@@ -41,7 +41,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	roleName := properties[RoleNameKey]
-	targetID := properties[RoleAssignmentTargetKey]
+	scope := properties[RoleAssignmentScope]
 
 	// Get dependencies
 	managedIdentityProperties := map[string]string{}
@@ -55,16 +55,16 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 
 	// Assign Key Vault Secrets User role to grant managed identity read-only access to the keyvault for secrets.
 	// Assign Key Vault Crypto User role to grant managed identity permissions to perform operations using encryption keys.
-	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, handler.arm.SubscriptionID, handler.arm.ResourceGroup, managedIdentityProperties[UserAssignedIdentityPrincipalIDKey], targetID, roleName)
+	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, handler.arm.SubscriptionID, managedIdentityProperties[UserAssignedIdentityPrincipalIDKey], scope, roleName)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
 			roleName,
 			managedIdentityProperties[UserAssignedIdentityIDKey],
-			targetID,
+			scope,
 			err)
 	}
-	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, managedIdentityProperties[UserAssignedIdentityIDKey], targetID))
+	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, managedIdentityProperties[UserAssignedIdentityIDKey], scope))
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(*roleAssignment.ID, clients.GetAPIVersionFromUserAgent(authorization.UserAgent()))
 	return properties, nil

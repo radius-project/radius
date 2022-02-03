@@ -49,7 +49,7 @@ func (c *ServerLifecycleClient) GetStatus(ctx context.Context) (interface{}, []o
 		data.Nodes = nodes
 	}
 
-	registry, err := c.getRegistryEndpoint(ctx)
+	registry, err := c.GetRegistryEndpoint(ctx)
 	if err != nil {
 		data.Registry = fmt.Sprintf("error %s", err.Error())
 	} else {
@@ -175,7 +175,7 @@ func (c *ServerLifecycleClient) getNodeStatus(ctx context.Context) (string, erro
 	}
 }
 
-func (c *ServerLifecycleClient) getRegistryEndpoint(ctx context.Context) (string, error) {
+func (c *ServerLifecycleClient) GetRegistryEndpoint(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "docker", "port", fmt.Sprintf("%s-registry", c.ClusterName))
 	b := bytes.Buffer{}
 	cmd.Stdout = &b

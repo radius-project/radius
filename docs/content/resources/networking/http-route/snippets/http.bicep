@@ -25,18 +25,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
       port: 80
       gateway: {
         hostname: '*'
-      }
-    }
-  }
-  //ROUTE
-
-  resource httpRouted 'HttpRoute' = {
-    name: 'httprouted'
-    properties: {
-      port: 80
-      gateway: {
-        hostname: '*'
-        //ROUTE-RULES
         rules: {
           http: {
             path: {
@@ -45,10 +33,10 @@ resource app 'radius.dev/Application@v1alpha3' = {
             }
           }
         }
-      //ROUTE-RULES
       }
     }
   }
+  //ROUTE
 
   //FRONTEND
   resource frontend 'Container' = {
