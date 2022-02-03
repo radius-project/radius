@@ -159,6 +159,7 @@ func Test_CommunicationCycle(t *testing.T) {
 }
 
 func Test_Secrets_Access(t *testing.T) {
+	t.Skip("Test takes too long on CI/CD to run, https://github.com/project-radius/radius/issues/1874")
 	application := "azure-mechanics-secrets-access"
 	template := "testdata/azure-mechanics-secrets-access.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
