@@ -16,18 +16,23 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  // SAMPLE
+  resource kafkaRoute 'HttpRoute' existing = {
+    name: 'kafka-route'
+  }
+
+  //SAMPLE
   resource pubsub 'dapr.io.PubSubTopic@v1alpha3' = {
     name: 'pubsub'
     properties: {
       kind: 'generic'
       type: 'pubsub.kafka'
       metadata: {
-        brokers: 'dapr-kafka.kafka.svc.cluster.local:9092'
+        brokers: kafkaRoute.properties.url
         authRequired: false
+        consumeRetryInternal: 1024
       }
       version: 'v1'
     }
   }
-  // END
+  //SAMPLE
 }
