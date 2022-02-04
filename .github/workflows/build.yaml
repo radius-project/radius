@@ -97,7 +97,7 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
-          path: ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/
+          path: ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
           if-no-files-found: error
 
   # Logic here:
