@@ -28,7 +28,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       kind: 'state.redis'
       resource: azureRedis.id
-      managed: false
     }
   }
   //SAMPLE

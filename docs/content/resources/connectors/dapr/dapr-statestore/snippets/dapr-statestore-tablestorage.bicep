@@ -26,22 +26,27 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource statestore 'dapr.io.StateStore' = {
     name: 'statestore'
     properties: {
-      kind: 'state.sqlserver'
-      resource: sqlserver.id
-      managed: false
+      kind: 'state.azure.tablestorage'
+      resource: storageAccount::tablestorage.id
     }
   }
   //SAMPLE
 }
 
 //BICEP
-resource sqlserver 'Microsoft.Sql/servers@2021-05-01-preview' = {
-  name: 'sqlserver${uniqueString(resourceGroup().id)}'
-  location:resourceGroup().location
+resource storageAccount 'Microsoft.Storage/storageAccounts@2021-04-01' = {
+  name: 'sa-${guid(resourceGroup().name)}'
+  location: resourceGroup().location
+  sku: {
+    name: 'Standard_ZRS'
+  }
+  kind: 'StorageV2'
   properties: {
-    administratorLogin: 'user${uniqueString(resourceGroup().id)}'
-    administratorLoginPassword: 'p@!!${uniqueString(resourceGroup().id)}'
-    version: '12.0'
-    minimalTlsVersion: '1.2'
+    supportsHttpsTrafficOnly: true
+  }
+
+  resource tablestorage 'tableServices' = {
+    name: 'default'
+  }
 }
 //BICEP
