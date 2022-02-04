@@ -14,7 +14,6 @@ Try one out as part of the [local dev guide]({{< ref run-locally >}}):
 
 {{< button text="💻 Local dev guide" page="run-locally" color="success" newtab="true" >}}
 
-
 ## Features
 
 ### Managed cluster runtime
@@ -27,15 +26,9 @@ Use [`rad env init dev`]({{< ref rad_env_init_dev>}}) to create an environment.
 
 One of the slowest parts of working with containers can be waiting for container images to upload and download to remote registries. A Radius local environment automatically creates and manages a local container registry, making it easy to quickly transfer images into your local environment runtime.
 
-### Hot reload
-
-Radius local environments support hot reload in your development. Visit the [hot reload guide]({{< ref hot-reload >}}) for more information.
-
 ### Stream logs
 
-Radius local environments also allow you to stream logs from your resources through the use of [stern](https://github.com/wercker/stern) under the hood.
-
-Use [`rad resource logs`]({{< ref rad_resource_logs>}}) to see logs.
+When you run an application locally the logs of your services are output to the terminal.
 
 ## Initialize a local environment
 
@@ -71,4 +64,5 @@ Check out the [Container Apps Store sample]({{< ref container-app-store >}}) to 
 
 ## Learn more
 
+- [rad CLI overview]({{< ref rad-cli >}})
 - [rad CLI reference]({{< ref cli >}})

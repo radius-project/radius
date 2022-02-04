@@ -30,7 +30,8 @@ Validate that the k3d cluster and registry were created:
 
 ```sh
 > rad env status
-NODES   REGISTRY                      INGRESS (HTTP)                    INGRESS (HTTPS)     
+NODES        REGISTRY         INGRESS (HTTP)          INGRESS (HTTPS)
+Ready (2/2)  localhost:62285  http://localhost:62287  https://localhost:62288
 ```
 
 ## Initialize an application
@@ -58,9 +59,9 @@ Run your app locally with the [`rad app run` command]({{< ref rad_application_ru
 rad app run
 ```
 
-Visit the IP address provided to visit the example application.
-
-**NOTE**: Temporarily `rad env status` will show you the right IP address, `rad app run` and `rad app deploy` currently show a incorrect IP address.
+{{% alert title="Temporary" color="warning" %}}
+Visit the IP address for INGRESS (HTTP) that is output from `rad env status`. The IP address output from `rad app run` is incorrect.
+{{% /alert %}}
 
 ## Add a build step
 
