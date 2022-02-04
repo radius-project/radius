@@ -1085,6 +1085,22 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
+    "GenericList": {
+      "description": "List of Generic resources.",
+      "properties": {
+        "value": {
+          "description": "List of Generic resources.",
+          "items": {
+            "$ref": "#/definitions/GenericResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
     "GenericProperties": {
       "allOf": [
         {
@@ -2467,6 +2483,14 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
+    "GenericNameParameter": {
+      "description": "The name of the Generic resource.",
+      "in": "path",
+      "name": "genericName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
     "HttpRouteNameParameter": {
       "description": "The name of the HttpRoute resource.",
       "in": "path",
@@ -3097,6 +3121,188 @@
         },
         "tags": [
           "Gateway"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Generic": {
+      "get": {
+        "description": "List the Generic resources deployed in the application.",
+        "operationId": "Generic_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Generic resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/GenericList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Generic"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Generic/{genericName}": {
+      "delete": {
+        "description": "Deletes a Generic resource.",
+        "operationId": "Generic_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GenericNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Generic will complete asynchronously."
+          },
+          "204": {
+            "description": "The Generic resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Generic"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Generic resource by name.",
+        "operationId": "Generic_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GenericNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Generic resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/GenericResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Generic"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Generic resource.",
+        "operationId": "Generic_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GenericNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Generic resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GenericResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Generic resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/GenericResource"
+            }
+          },
+          "201": {
+            "description": "The new Generic resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/GenericResource"
+            }
+          },
+          "202": {
+            "description": "The existing Generic resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/GenericResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Generic"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {

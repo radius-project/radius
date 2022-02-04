@@ -1721,6 +1721,39 @@ func (g *GatewayResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// GenericBeginCreateOrUpdateOptions contains the optional parameters for the Generic.BeginCreateOrUpdate method.
+type GenericBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GenericBeginDeleteOptions contains the optional parameters for the Generic.BeginDelete method.
+type GenericBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GenericGetOptions contains the optional parameters for the Generic.Get method.
+type GenericGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GenericList - List of Generic resources.
+type GenericList struct {
+	// REQUIRED; List of Generic resources.
+	Value []*GenericResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GenericList.
+func (g GenericList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", g.Value)
+	return json.Marshal(objectMap)
+}
+
+// GenericListOptions contains the optional parameters for the Generic.List method.
+type GenericListOptions struct {
+	// placeholder for future optional parameters
+}
+
 type GenericProperties struct {
 	BasicResourceProperties
 	// Dictionary of

@@ -943,6 +943,122 @@ type GatewayListResult struct {
 	GatewayList
 }
 
+// GenericCreateOrUpdatePollerResponse contains the response from method Generic.CreateOrUpdate.
+type GenericCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *GenericCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l GenericCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (GenericCreateOrUpdateResponse, error) {
+	respType := GenericCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.GenericResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a GenericCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *GenericCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *GenericClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("GenericClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &GenericCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// GenericCreateOrUpdateResponse contains the response from method Generic.CreateOrUpdate.
+type GenericCreateOrUpdateResponse struct {
+	GenericCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GenericCreateOrUpdateResult contains the result from method Generic.CreateOrUpdate.
+type GenericCreateOrUpdateResult struct {
+	GenericResource
+}
+
+// GenericDeletePollerResponse contains the response from method Generic.Delete.
+type GenericDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *GenericDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l GenericDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (GenericDeleteResponse, error) {
+	respType := GenericDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a GenericDeletePollerResponse from the provided client and resume token.
+func (l *GenericDeletePollerResponse) Resume(ctx context.Context, client *GenericClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("GenericClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &GenericDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// GenericDeleteResponse contains the response from method Generic.Delete.
+type GenericDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GenericGetResponse contains the response from method Generic.Get.
+type GenericGetResponse struct {
+	GenericGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GenericGetResult contains the result from method Generic.Get.
+type GenericGetResult struct {
+	GenericResource
+}
+
+// GenericListResponse contains the response from method Generic.List.
+type GenericListResponse struct {
+	GenericListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GenericListResult contains the result from method Generic.List.
+type GenericListResult struct {
+	GenericList
+}
+
 // HTTPRouteCreateOrUpdatePollerResponse contains the response from method HTTPRoute.CreateOrUpdate.
 type HTTPRouteCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.

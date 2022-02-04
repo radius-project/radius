@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/daprpubsubv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/gateway"
+	"github.com/project-radius/radius/pkg/renderers/genericv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/keyvaultv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/manualscalev1alpha3"
@@ -114,6 +115,10 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		{
 			ResourceType: gateway.ResourceType,
 			Renderer:     &gateway.Renderer{},
+		},
+		{
+			ResourceType: genericv1alpha3.ResourceType,
+			Renderer:     &genericv1alpha3.AzureRenderer{},
 		},
 
 		// Azure
@@ -248,6 +253,11 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			Kind:            resourcekinds.AzureFileShareStorageAccount,
 			HealthHandler:   handlers.NewAzureFileShareStorageAccountHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureFileShareStorageAccountHandler(arm),
+		},
+		{
+			Kind:            resourcekinds.Generic,
+			HealthHandler:   handlers.NewGenericHealthHandler(arm),
+			ResourceHandler: handlers.NewGenericHandler(arm),
 		},
 	}
 
