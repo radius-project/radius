@@ -97,8 +97,12 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
-          path: ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/
-          if-no-files-found: error
+          path: |
+            ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/
+            !/dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/docgen*
+            !/dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/test*
+            !/dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/radius*
+            if-no-files-found: error
 
   # Logic here:
   # - always do a docker build for validation
