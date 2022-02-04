@@ -29,11 +29,9 @@ Successfully wrote configuration to C:\Users\USER\.rad\config.yaml
 Validate that the k3d cluster and registry were created:
 
 ```sh
-> docker ps
-CONTAINER ID   IMAGE                      COMMAND                  CREATED         STATUS         PORTS                                                                    NAMES
-6eebee6b7f68   rancher/k3d-proxy:5.3.0    "/bin/sh -c nginx-pr…"   3 minutes ago   Up 3 minutes   0.0.0.0:58254->80/tcp, 0.0.0.0:58253->443/tcp, 0.0.0.0:58175->6443/tcp   k3d-radius-dev-serverlb
-761f8aa83422   rancher/k3s:v1.22.6-k3s1   "/bin/k3s server --d…"   3 minutes ago   Up 3 minutes                                                                            k3d-radius-dev-server-0
-da320bb45081   registry:2                 "/entrypoint.sh /etc…"   4 minutes ago   Up 3 minutes   0.0.0.0:58176->5000/tcp                                                  radius-dev-registry
+> rad env status
+NODES   REGISTRY                      INGRESS (HTTP)                    INGRESS (HTTPS)     
+```
 
 ## Initialize an application
 
@@ -61,6 +59,8 @@ rad app run
 ```
 
 Visit the IP address provided to visit the example application.
+
+**NOTE**: Temporarily `rad env status` will show you the right IP address, `rad app run` and `rad app deploy` currently show a incorrect IP address.
 
 ## Add a build step
 
