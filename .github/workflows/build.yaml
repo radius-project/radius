@@ -275,6 +275,7 @@ jobs:
         path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
     - name: Uninstall Radius from Kubernetes
       run: |
+        export PATH=$GITHUB_WORKSPACE/dist:$PATH
         rad env uninstall kubernetes
         kubectl get pods -n radius-system
   
