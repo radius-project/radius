@@ -543,21 +543,21 @@ jobs:
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300'
 
-  delete_artifacts:
-    name: Delete artifacts
-    if: ${{ always() }}
-    needs: [ 'build', 'kubernetes_tests', 'local_dev_tests', 'deploy_tests', 'publish' ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete release artifacts
-        uses: geekyeggo/delete-artifact@v1
-        with:
-          name: |
-            rad_cli_windows_amd64
-            rad_cli_linux_amd64
-            rad_cli_darwin_amd64
-            rad_cli_linux_arm
-          failOnError: false
+  #delete_artifacts:
+  #  name: Delete artifacts
+  #  if: ${{ always() }}
+  #  needs: [ 'build', 'kubernetes_tests', 'local_dev_tests', 'deploy_tests', 'publish' ]
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - name: Delete release artifacts
+  #      uses: geekyeggo/delete-artifact@v1
+  #      with:
+  #        name: |
+  #          rad_cli_windows_amd64
+  #          rad_cli_linux_amd64
+  #          rad_cli_darwin_amd64
+  #          rad_cli_linux_arm
+  #       failOnError: false
 
   codespaces:
     name: Codespaces container image build
