@@ -108,7 +108,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         kind: {
           kind: 'dapr.io/StateStore'
-          source: ordersStateStore.id
+          source: statestore.id
         }
       }
       traits: [
@@ -124,20 +124,9 @@ resource app 'radius.dev/Application@v1alpha3' = {
   //PYTHONAPP
 
   //STATESTORE
-  resource ordersStateStore 'dapr.io.StateStore' = {
+  resource statestore 'dapr.io.StateStore' existing = {
     name: 'orders'
-    properties: {
-      kind: 'any'
-      managed: true
-    }
   }
   //STATESTORE
-
-  resource mongo 'mongo.com.MongoDatabase' = {
-    name: 'mongo'
-    properties: {
-      managed: true
-    }
-  }
-
 }
+

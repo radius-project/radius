@@ -12,20 +12,15 @@ stages:
     go_service_build:
       docker:
         context: go-service
-        image: rynowak/go-service
+        image: myregistry/go-service
     node_service_build:
       docker:
         context: node-service
-        image: rynowak/node-service
+        image: myregistry/node-service
     python_service_build:
       docker:
         context: python-service
-        image: rynowak/python
+        image: myregistry/python
   bicep:
     template: iac/app.bicep
-  profiles:
-    dev:
-      build:
-        node_service_build:
-          docker:
-            dockerFile: Dockerfile.dev
+

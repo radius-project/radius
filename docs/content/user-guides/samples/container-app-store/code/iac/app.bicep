@@ -3,7 +3,7 @@ param node_service_build object
 param python_service_build object
 
 resource app 'radius.dev/Application@v1alpha3' existing = {
-  name: 'container-app-store'
+  name: 'store'
 
   resource go_app 'Container' = {
     name: 'go-app'

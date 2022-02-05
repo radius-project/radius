@@ -1,12 +1,12 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'container-app-store'
+  name: 'store'
 
-  resource statestore 'dapr.io.StateStore' = {
-    name: 'orders'
-    properties: {
-      kind: 'state.azure.tablestorage'
-      managed: true
-    }
+}
+
+module statestore 'br:radius.azurecr.io/starters/dapr/statestore-azure-table:latest' = {
+  name: 'orders'
+  params: {
+    radiusApplication: app
+    stateStoreName: 'orders'
   }
-
 }

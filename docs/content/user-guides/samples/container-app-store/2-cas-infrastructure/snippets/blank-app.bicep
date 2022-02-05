@@ -1,4 +1,4 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'container-app-store'
+  name: 'store'
 
 }
