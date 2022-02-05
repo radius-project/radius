@@ -3,7 +3,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
 }
 
-module statestore 'br:radius.azurecr.io/starters/dapr/statestore-azure-table:latest' = {
+module statestore 'br:radius.azurecr.io/starters/dapr-statestore-azure-tablestorage:latest' = {
   name: 'orders'
   params: {
     radiusApplication: app
