@@ -94,6 +94,11 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	err = installDapr(cmd.Context(), runtimeClient)
+	if err != nil {
+		return err
+	}
+
 	output.CompleteStep(step)
 
 	config := ConfigFromContext(cmd.Context())
@@ -225,6 +230,15 @@ func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client)
 
 	err := runtimeClient.Patch(ctx, &gateway, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: k8slabels.FieldManager})
 	return err
+}
+
+func installDapr(ctx context.Context, runtimeClient runtime_client.Client) error {
+	err := helm.ApplyDaprHelmChart(version.NewVersionInfo().Channel)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func init() {
