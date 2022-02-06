@@ -88,7 +88,6 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 
 	dev, ok := env.(*environments.LocalEnvironment)
 	if ok {
-		output.LogInfo("local")
 
 		if !yes {
 			confirmed, err := prompt.Confirm(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/n]?", dev.ClusterName))
@@ -122,9 +121,6 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		print("kubhello")
-		// Delete the environment will consist of:
-		// 1. Delete all applications
 		if err = deleteAllApplications(cmd.Context(), kub); err != nil {
 			return err
 		}

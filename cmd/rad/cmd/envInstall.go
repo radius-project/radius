@@ -11,8 +11,8 @@ import (
 
 var envInstallCmd = &cobra.Command{
 	Use:   "install",
-	Short: "Create a RAD environment",
-	Long:  `Create a RAD environment`,
+	Short: "Installs radius for a given platform",
+	Long:  `Installs radius for a given platform`,
 }
 
 func init() {

@@ -11,8 +11,8 @@ import (
 
 var envUninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Uninstall RAD",
-	Long:  `Uninstall RAD`,
+	Short: "Uninstall radius for a specific platform",
+	Long:  `Uninstall radius for a specific platform`,
 }
 
 func init() {

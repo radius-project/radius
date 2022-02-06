@@ -23,7 +23,6 @@ var envUninstallKubernetesCmd = &cobra.Command{
 
 func init() {
 	envUninstallCmd.AddCommand(envUninstallKubernetesCmd)
-
 }
 
 func envUninstallKubernetes(cmd *cobra.Command, args []string) error {
