@@ -127,7 +127,7 @@ func (r *DeploymentTemplateReconciler) ApplyState(ctx context.Context, req ctrl.
 		ResourceGroup:  req.Namespace,
 		Parameters:     parameters,
 	}
-	resources, err := armtemplate.Eval(template, options)
+	resources, err := armtemplate.Eval(ctx, template, options)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

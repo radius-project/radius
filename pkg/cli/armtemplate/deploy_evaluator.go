@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
 	"github.com/project-radius/radius/pkg/radrp/armexpr"
+	"github.com/spaolacci/murmur3"
 )
 
 type DeploymentEvaluator struct {
@@ -399,6 +400,18 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 
 		eva.Value = result
 		return nil
+	} else if name == "environment" {
+		if len(args) != 0 {
+			return fmt.Errorf("no arguments are supported for environment %s", "environment")
+		}
+
+		result, err := eva.EvaluateEnvironment()
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
+		return nil
 	} else if name == "format" {
 		if len(args) < 1 {
 			return fmt.Errorf("at least 1 argument is required for %s", "format")
@@ -446,6 +459,18 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 
 		eva.Value = result
 		return nil
+	} else if name == "resourceGroup" {
+		if len(args) != 0 {
+			return fmt.Errorf("no arguments are supported for %s", "resourceGroup")
+		}
+
+		result, err := eva.EvaluateResourceGroup()
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
+		return nil
 	} else if name == "resourceId" {
 		if len(args) < 2 {
 			return fmt.Errorf("at least 2 arguments are required for %s", "resourceId")
@@ -485,6 +510,18 @@ func (eva *DeploymentEvaluator) VisitFunctionCall(node *armexpr.FunctionCallNode
 			return err
 		}
 		eva.Value = string(out)
+		return nil
+	} else if name == "uniqueString" {
+		if len(args) < 1 {
+			return fmt.Errorf("at least 1 argument is required for %s", "uniqueString")
+		}
+
+		result, err := eva.EvaluateUniqueString(args)
+		if err != nil {
+			return err
+		}
+
+		eva.Value = result
 		return nil
 	} else if name == "variables" {
 		if len(args) != 1 {
@@ -553,6 +590,16 @@ func (eva *DeploymentEvaluator) EvaluateCreateObject(values []interface{}) (map[
 	return result, nil
 }
 
+func (eva *DeploymentEvaluator) EvaluateEnvironment() (map[string]interface{}, error) {
+	provider, ok := eva.Providers[providers.AzureProviderImport]
+	if !ok {
+		return nil, fmt.Errorf("the azure provider is required to use environment()")
+	}
+
+	azure := provider.(*providers.AzureProvider)
+	return azure.GetEnvironment(eva.Context)
+}
+
 func (eva *DeploymentEvaluator) EvaluateFormat(format interface{}, values []interface{}) string {
 	r := regexp.MustCompile(`\{\d+\}`)
 	format = r.ReplaceAllString(format.(string), "%v")
@@ -618,6 +665,16 @@ func (eva *DeploymentEvaluator) EvaluateReference(id interface{}, version string
 	return properties, nil
 }
 
+func (eva *DeploymentEvaluator) EvaluateResourceGroup() (map[string]interface{}, error) {
+	provider, ok := eva.Providers[providers.AzureProviderImport]
+	if !ok {
+		return nil, fmt.Errorf("the azure provider is required to use resourceGroup()")
+	}
+
+	azure := provider.(*providers.AzureProvider)
+	return azure.GetResourceGroup(eva.Context)
+}
+
 func (eva *DeploymentEvaluator) EvaluateResourceID(resourceType interface{}, names []interface{}) (string, error) {
 	typeSegments := strings.Split(resourceType.(string), "/")
 
@@ -643,6 +700,18 @@ func (eva *DeploymentEvaluator) EvaluateResourceID(resourceType interface{}, nam
 		eva.Options.ResourceGroup,
 		head,
 		tail...)
+
+	// If we're overriding resource IDs for Radius then make sure we use the overrides.
+	//
+	// The problem this solves is that the ID means something different when we're in a 'mixed' configuration... eg: Azure resources -> Azure and Radius -> local
+	if head.Type == "Microsoft.CustomProviders/resourceProviders" && eva.Options.RadiusResourceGroup != "" && eva.Options.RadiusSubscriptionID != "" {
+		id = azresources.MakeID(
+			eva.Options.RadiusSubscriptionID,
+			eva.Options.RadiusResourceGroup,
+			head,
+			tail...)
+	}
+
 	return id, nil
 }
 
@@ -668,6 +737,31 @@ func (eva *DeploymentEvaluator) EvaluateLast(input interface{}) (interface{}, er
 	}
 
 	return value[len(value)-1], nil
+}
+
+func (eva *DeploymentEvaluator) EvaluateUniqueString(input []interface{}) (string, error) {
+	// Per deployments code:
+	//
+	// concat parameters with '-' as delimiter
+	// compute murmur64 hash
+	// base32 encode (std alphabet)
+	concatedInput := input[0].(string)
+	for i := 1; i < len(input); i++ {
+		concatedInput += "-" + input[i].(string)
+	}
+
+	hash := murmur3.New64()
+	_, _ = hash.Write([]byte(concatedInput))
+	hashed := hash.Sum64()
+
+	output := ""
+	const alphabet = "abcdefghijklmnopqrstuvwxyz234567"
+	for i := 0; i < 13; i++ {
+		output += string(alphabet[int(hashed>>59)])
+		hashed = hashed << 5
+	}
+
+	return output, nil
 }
 
 func (eva *DeploymentEvaluator) EvaluateVariable(variable interface{}) (interface{}, error) {

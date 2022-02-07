@@ -58,7 +58,7 @@ func Test_DeploymentEvaluator_KubernetesReference(t *testing.T) {
 			template, err := Parse(string(content))
 			require.NoError(t, err)
 
-			resources, err := Eval(template, options)
+			resources, err := Eval(context.Background(), template, options)
 			require.NoError(t, err)
 
 			evaluator := &DeploymentEvaluator{
@@ -118,7 +118,7 @@ func Test_DeploymentEvaluator_ReferenceWorks(t *testing.T) {
 		},
 	}
 
-	resources, err := Eval(template, options)
+	resources, err := Eval(context.Background(), template, options)
 	require.NoError(t, err)
 
 	deployed := map[string]map[string]interface{}{}

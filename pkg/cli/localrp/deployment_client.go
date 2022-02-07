@@ -33,7 +33,16 @@ var key = &keyStruct{}
 type LocalRPDeploymentClient struct {
 	SubscriptionID string
 	ResourceGroup  string
-	Providers      map[string]providers.Provider
+
+	// RadiusSubscriptionID is an override used to build resource IDs for Radius types. Set this when deploying Radius resources to a non-Azure target.
+	// This can be removed when we use extensibility for Radius.
+	RadiusSubscriptionID string
+
+	// RadiusResourceGroup is an override used to build resource IDs for Radius types. Set this when deploying Radius resources to a non-Azure target.
+	// This can be removed when we use extensibility for Radius.
+	RadiusResourceGroup string
+
+	Providers map[string]providers.Provider
 }
 
 var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
@@ -106,10 +115,13 @@ func (dc *LocalRPDeploymentClient) deployTemplate(ctx context.Context, template 
 		progressChan = obj.(chan<- clients.ResourceProgress)
 	}
 
-	resources, err := armtemplate.Eval(template, armtemplate.TemplateOptions{
+	resources, err := armtemplate.Eval(ctx, template, armtemplate.TemplateOptions{
 		SubscriptionID:         dc.SubscriptionID,
 		ResourceGroup:          dc.ResourceGroup,
+		RadiusSubscriptionID:   dc.RadiusSubscriptionID,
+		RadiusResourceGroup:    dc.RadiusResourceGroup,
 		Parameters:             parameters,
+		Providers:              dc.Providers,
 		EvaluatePropertiesNode: false,
 	})
 	if err != nil {
