@@ -15,6 +15,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 )
 
@@ -140,4 +141,78 @@ func (p *AzureProvider) InvokeCustomAction(ctx context.Context, id string, versi
 	}
 
 	return response.Body, nil
+}
+
+func (p *AzureProvider) GetResourceGroup(ctx context.Context) (map[string]interface{}, error) {
+	client := azclients.NewGroupsClient(p.SubscriptionID, p.Authorizer)
+	client.BaseURI = strings.TrimSuffix(p.BaseURL, "/")
+	client.PollingDelay = PollInterval
+	client.RetryAttempts = 10
+	client.RetryDuration = 3 * time.Second
+
+	if p.RoundTripper != nil {
+		client.Sender = &sender{RoundTripper: p.RoundTripper}
+	}
+
+	// Resource group has custom marshaling AND the original response body is closed by the SDK function
+	// so we have to use the guts of the SDK function for getting a resource group :-|
+	request, err := client.GetPreparer(ctx, p.ResourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resource group: %w", err)
+	}
+
+	response, err := client.GetSender(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get resource group: %w", err)
+	}
+
+	result := map[string]interface{}{}
+	err = autorest.Respond(
+		response,
+		azure.WithErrorUnlessStatusCode(http.StatusOK),
+		autorest.ByUnmarshallingJSON(&result),
+		autorest.ByClosing())
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (p *AzureProvider) GetEnvironment(ctx context.Context) (map[string]interface{}, error) {
+	// We can query the metadata for all clouds using https://management.azure.com/metadata/endpoints/?api-version=2020-06-01
+	// We just want the AzureCloud result for now.
+	sender := p.RoundTripper
+	if p.RoundTripper == nil {
+		sender = http.DefaultTransport
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://management.azure.com/metadata/endpoints/?api-version=2020-06-01", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := sender.RoundTrip(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Yeah it returns a top-level JSON array :-/
+	environments := []map[string]interface{}{}
+	err = autorest.Respond(
+		response,
+		azure.WithErrorUnlessStatusCode(http.StatusOK),
+		autorest.ByUnmarshallingJSON(&environments),
+		autorest.ByClosing())
+	if err != nil {
+		return nil, err
+	}
+
+	for _, env := range environments {
+		if env["name"] == "AzureCloud" {
+			return env, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find AzureCloud environment details")
 }

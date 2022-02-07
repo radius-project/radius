@@ -6,6 +6,7 @@
 package armtemplate
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"path"
@@ -46,7 +47,7 @@ func Test_ArmToK8sConversion(t *testing.T) {
 	template, err := Parse(string(content))
 	require.NoError(t, err)
 
-	resources, err := Eval(template, TemplateOptions{
+	resources, err := Eval(context.Background(), template, TemplateOptions{
 		Parameters: map[string]map[string]interface{}{
 			// Setting one required parameter, and using the default value for 'backendRoute' parameter
 			"frontendRoute": {
@@ -86,7 +87,7 @@ func Test_ArmToK8sConversion_ManagedSecret(t *testing.T) {
 	template, err := Parse(string(content))
 	require.NoError(t, err)
 
-	resources, err := Eval(template, TemplateOptions{})
+	resources, err := Eval(context.Background(), template, TemplateOptions{})
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(resources))

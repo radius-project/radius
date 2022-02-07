@@ -6,6 +6,7 @@
 package armtemplate
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"path"
@@ -22,7 +23,7 @@ func Test_DeploymentTemplate(t *testing.T) {
 	template, err := Parse(string(content))
 	require.NoError(t, err)
 
-	resources, err := Eval(template, TemplateOptions{
+	resources, err := Eval(context.Background(), template, TemplateOptions{
 		SubscriptionID: "test-sub",
 		ResourceGroup:  "test-group",
 		Parameters: map[string]map[string]interface{}{

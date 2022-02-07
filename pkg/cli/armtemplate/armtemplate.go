@@ -9,10 +9,13 @@
 package armtemplate
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
 )
 
 const DeploymentResourceType = "Microsoft.Resources/deployments"
@@ -99,6 +102,16 @@ type TemplateOptions struct {
 	SubscriptionID string
 	ResourceGroup  string
 
+	// RadiusSubscriptionID is an override used to build resource IDs for Radius types. Set this when deploying Radius resources to a non-Azure target.
+	// This can be removed when we use extensibility for Radius.
+	RadiusSubscriptionID string
+
+	// RadiusResourceGroup is an override used to build resource IDs for Radius types. Set this when deploying Radius resources to a non-Azure target.
+	// This can be removed when we use extensibility for Radius.
+	RadiusResourceGroup string
+
+	Providers map[string]providers.Provider
+
 	// Parameters stores ARM template parameters in the format they appear when submitting a deployment.
 	//
 	// The full format is documented here: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
@@ -108,10 +121,12 @@ type TemplateOptions struct {
 	EvaluatePropertiesNode bool
 }
 
-func Eval(template DeploymentTemplate, options TemplateOptions) ([]Resource, error) {
+func Eval(ctx context.Context, template DeploymentTemplate, options TemplateOptions) ([]Resource, error) {
 	eva := &DeploymentEvaluator{
+		Context:   ctx,
 		Template:  template,
 		Options:   options,
+		Providers: options.Providers,
 		Variables: map[string]interface{}{},
 	}
 
