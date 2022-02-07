@@ -220,7 +220,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.ref }}
+      group: k8s-${{ github.ref }}
       cancel-in-progress: true
     env:
       GOVER: '^1.17'
@@ -287,7 +287,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.ref }}
+      group: dev-${{ github.ref }}
       cancel-in-progress: true
     env:
       GOVER: '^1.17'
@@ -363,7 +363,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.ref }}
+      group: azure-${{ github.ref }}
       cancel-in-progress: true
     env:
       GOVER: '^1.17'
