@@ -501,7 +501,7 @@ jobs:
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
-    runs-on: uself-hosted
+    runs-on: self-hosted
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
