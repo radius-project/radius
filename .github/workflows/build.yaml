@@ -277,7 +277,7 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         rad env uninstall kubernetes
-        kubectl get pods -n radius-system
+        ./.github/scripts/namespace-is-empty.sh
   
   local_dev_tests:
     name: Run K3s Local Dev tests
