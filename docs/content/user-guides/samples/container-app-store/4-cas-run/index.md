@@ -34,6 +34,8 @@ Begin by create a new Radius [local dev environment]({{< ref local >}}):
 
 1. Initialize Dapr on the k3d cluster:
 
+   *This step is temporary, pending additional work on the Dapr extension.*
+
    ```sh
    dapr init -k
    ```
@@ -42,17 +44,9 @@ Begin by create a new Radius [local dev environment]({{< ref local >}}):
 
 Using the [`rad app run`]({{< ref rad_application_run >}}) command, run the Container App Store Microservice application in your local environment. This will build the Docker containers, push them to the local registry, and deploy them to the local k3d cluster.
 
-1. Run infra Bicep file first in order to activate the Dapr `statestore`:
-
-   ```sh
-   rad app run infra --profile dev
-   ```
-
-1. Once that's finished, you can run your micro services:
-
-   ```sh
-   rad app run app --profile dev  
-   ```
+```sh
+rad app run app --profile dev  
+```
 
 ## Visit Container App Store Microservice
 

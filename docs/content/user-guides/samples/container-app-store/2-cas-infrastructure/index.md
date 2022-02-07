@@ -31,32 +31,35 @@ Note the [Radius Application resource]({{< ref application-model >}}) inside of 
 
 {{< rad file="snippets/blank-app.bicep" embed=true >}}
 
-## Infrastructure
+## Dapr state store connector
 
-The following resources are required by the container apps store microservices:
+A [Dapr state store connector]({{< ref dapr-statestore >}}) resource is required by the container apps store microservices.
 
-- Dapr state store
+Within `infra.dev.bicep` and `infra.bicep` you will find the following resources:
 
-Add the following [connector]({{< ref connectors >}}) resources inside your application:
-
-{{< tabs "Azure Deployment" "Local Environment Deployment" >}}
-
-{{< codetab >}}
-
-{{< rad file="snippets/infra.azure.bicep" embed=true >}}
-{{< /codetab >}}
+{{< tabs "infra.dev.bicep" "infra.bicep" >}}
 
 {{< codetab >}}
 {{< rad file="snippets/infra.dev.bicep" embed=true >}}
 {{< /codetab >}}
 
+{{< codetab >}}
+{{< rad file="snippets/infra.bicep" embed=true >}}
+{{< /codetab >}}
+
 {{< /tabs >}}
 
-### Dev profile
+`infra.dev.bicep` is used for development environments and `infra.bicep` is used for production environments.
 
-Radius rad.yaml files allow users to use [profiles](http://localhost:1313/reference/rad-yaml/#profiles) which allow for specific customization in deciding which Bicep file properties are overwritten. For this example creating a `dev` profile and specifying that this profile will run the infra.dev.bicep file makes sure that when the `infra` stage is ran the current `statestore` is used.
+## rad.yaml stages and profiles
+
+A [rad.yaml]({{< ref rad-yaml >}}) file allow users to define stages and profiles of deployment.
+
+This sample contains `infra` and `app` stages, along with a `dev` profile. The `dev` profile tells Radius to substitute `infra.bicep` for `infra.dev.bicep`:
 
 ```yaml
+name: store
+stages:
 - name: infra
   bicep:
     template: iac/infra.bicep
@@ -64,6 +67,7 @@ Radius rad.yaml files allow users to use [profiles](http://localhost:1313/refere
     dev:
       bicep:
         template: iac/infra.dev.bicep
+...
 ```
 
 ## Next steps

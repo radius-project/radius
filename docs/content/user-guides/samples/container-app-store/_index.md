@@ -2,7 +2,7 @@
 type: docs
 title: "Container App Store Microservice sample"
 linkTitle: "Container App Store"
-description: "Learn how to model and deploy multiple micro services with Radius locally"
+description: "Learn how to model and deploy multiple microservices with Radius and Dapr"
 weight: 300
 ---
 

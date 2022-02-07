@@ -18,7 +18,7 @@ Try one out as part of the [local dev guide]({{< ref run-locally >}}):
 
 ### Managed cluster runtime
 
-A Radius local environment automatically creates a local Kubernetes cluster for you on top of Docker, making it easy to get up and running with an application runtime. This removes the need to have a deep understanding of connecting Docker and Kubernetes together and allows you to concentrate more on your application modeling.
+A Radius local environment automatically creates a local Kubernetes cluster for you on top of Docker, making it easy to get up and running with an application runtime. This removes the need to manually setup and maintain a Kubernetes cluster.
 
 Use [`rad env init dev`]({{< ref rad_env_init_dev>}}) to create an environment.
 

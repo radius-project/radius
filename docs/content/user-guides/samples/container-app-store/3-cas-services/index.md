@@ -7,9 +7,9 @@ description: "Learn how to model the Container App Store Microservice services"
 weight: 300
 ---
 
-## Build parameters
+## Building the services
 
-As part of a Radius deployment, the container images are built, and provided to the application as parameters.
+As part of a Radius deployment, the container images are built and provided to the application as parameters.
 
 Open [`rad.yaml`]({{< ref rad-yaml >}}) to see where the containers are built:
 
@@ -37,18 +37,10 @@ stages:
       docker:
         context: python-service
         image: MYREGISTRY/python
-  bicep:
-    template: iac/app.bicep
-  profiles:
-    dev:
-      build:
-        node_service_build:
-          docker:
-            dockerFile: Dockerfile.dev
-
+  ...
 ```
 
-Add the following build parameters to `app.bicep` to use the container images built from the above step:
+Within `app.bicep`, object parameters with the same name as the build steps are available to use with the container image imformation from the above step:
 
 {{< rad file="snippets/app.bicep" embed=true marker="//PARAMS" >}}
 

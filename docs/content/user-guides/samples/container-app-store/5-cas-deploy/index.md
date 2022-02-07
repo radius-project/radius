@@ -11,7 +11,7 @@ weight: 500
 
 Create a new Azure environment, specifying your subscription and resource group:
 ```sh
-rad env init Azure -i
+rad env init azure -i
 ```
 
 ## Deploy application to Azure
