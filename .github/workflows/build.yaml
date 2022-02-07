@@ -293,6 +293,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVER }}
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v2.0
     - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
@@ -371,6 +373,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVER }}
+    - name: Setup Azure CLI
+      run: curl -L https://aka.ms/InstallAzureCli | bash
     - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
