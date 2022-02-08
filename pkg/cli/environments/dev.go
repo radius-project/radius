@@ -101,6 +101,9 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,
 
+		RadiusSubscriptionID: e.Namespace, // YES: this supposed to be the namespace since we're talking to the API Service.
+		RadiusResourceGroup:  e.Namespace,
+
 		// Local Dev supports Radius, Kubernetes, Modules, and optionally Azure
 		Providers: map[string]providers.Provider{
 			providers.RadiusProviderImport: &providers.AzureProvider{
@@ -126,7 +129,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 
 		client.Providers[providers.AzureProviderImport] = &providers.AzureProvider{
 			Authorizer:     auth,
-			BaseURL:        baseURL,
+			BaseURL:        "https://management.azure.com",
 			SubscriptionID: subscriptionID,
 			ResourceGroup:  resourceGroup,
 		}
