@@ -1,0 +1,14 @@
+FROM node:14-alpine
+
+USER node
+RUN mkdir -p /home/node/app
+WORKDIR /home/node/app
+
+COPY --chown=node:node package*.json ./
+RUN npm ci
+COPY --chown=node:node . .
+
+EXPOSE 3000
+ARG ENV=development
+ENV NODE_ENV $ENV
+CMD ["npm", "run", "watch"]

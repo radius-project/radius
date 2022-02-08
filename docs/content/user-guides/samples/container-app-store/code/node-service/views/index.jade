@@ -1,0 +1,43 @@
+extends layout
+
+block content
+  h1= title
+  p Welcome to #{title}
+  br
+
+  h2= 'Create very cool new demo'
+  br
+  br
+  form(action='/order', method='post')
+    div.input
+      span.label Id
+      input(type='text', name='id', placeholder='foo', required='required')
+    div.input
+      span.label Item
+      input(type='text', name='item', placeholder='Widget', required='required')
+    div.actions
+      input(type='submit', value='Create')
+
+  br
+  br
+  h2= 'View order'
+  br
+  br
+  form(action='/order', method='get')
+    div.input
+      span.label Id
+      input(type='text', name='id', placeholder='foo', required='required')
+    div.actions
+      input(type='submit', value='View')
+
+  br
+  br
+  h2= 'View inventory status'
+  br
+  br
+  form(action='/inventory', method='get')
+    div.input
+      span.label Id
+      input(type='text', name='id', placeholder='foo', required='required')
+    div.actions
+      input(type='submit', value='View')

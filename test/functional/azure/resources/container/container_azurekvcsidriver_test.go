@@ -26,6 +26,8 @@ import (
 )
 
 func Test_ContainerAzureKeyVaultCSIDriver(t *testing.T) {
+	// TODO: #1579 - Skipping flaky test for now
+	t.SkipNow()
 	application := "azure-resources-container-azurekvcsidriver"
 	template := "testdata/azure-resources-container-azurekvcsidriver.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

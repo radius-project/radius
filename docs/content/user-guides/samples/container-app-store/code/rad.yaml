@@ -1,0 +1,26 @@
+name: store
+stages:
+- name: infra
+  bicep:
+    template: iac/infra.bicep
+  profiles:
+    dev:
+      bicep:
+        template: iac/infra.dev.bicep
+- name: app
+  build:
+    go_service_build:
+      docker:
+        context: go-service
+        image: myregistry/go-service
+    node_service_build:
+      docker:
+        context: node-service
+        image: myregistry/node-service
+    python_service_build:
+      docker:
+        context: python-service
+        image: myregistry/python
+  bicep:
+    template: iac/app.bicep
+
