@@ -10,11 +10,15 @@ weight: 20
 
 With a Radius local environment you can run your applications on your machine without the need for an Azure subscription or remote Kubernetes cluster. This makes it easy to develop applications and try them out without waiting for a full deployment to the cloud.
 
+Try one out as part of the [local dev guide]({{< ref run-locally >}}):
+
+{{< button text="💻 Local dev guide" page="run-locally" color="success" newtab="true" >}}
+
 ## Features
 
 ### Managed cluster runtime
 
-A Radius local environment automatically creates a local Kubernetes cluster for you on top of Docker, making it easy to get up and running with an application runtime.
+A Radius local environment automatically creates a local Kubernetes cluster for you on top of Docker, making it easy to get up and running with an application runtime. This removes the need to manually setup and maintain a Kubernetes cluster.
 
 Use [`rad env init dev`]({{< ref rad_env_init_dev>}}) to create an environment.
 
@@ -22,9 +26,9 @@ Use [`rad env init dev`]({{< ref rad_env_init_dev>}}) to create an environment.
 
 One of the slowest parts of working with containers can be waiting for container images to upload and download to remote registries. A Radius local environment automatically creates and manages a local container registry, making it easy to quickly transfer images into your local environment runtime.
 
-### Hot reload
+### Stream logs
 
-Radius local environments support hot reload in your development. **Guide coming soon**
+When you run an application locally the logs of your services are output to the terminal.
 
 ## Initialize a local environment
 
@@ -52,6 +56,13 @@ Once you have a local environment, you can run Radius applications in it with th
 rad app run
 ```
 
+## Example
+
+Check out the [Container Apps Store sample]({{< ref container-app-store >}}) to try out a local dev experience.
+
+{{< button text="Sample: Container Apps Store" page="container-app-store" color="success" newtab="true" >}}
+
 ## Learn more
 
+- [rad CLI overview]({{< ref rad-cli >}})
 - [rad CLI reference]({{< ref cli >}})

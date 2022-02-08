@@ -1,0 +1,9 @@
+.venv/
+dotnet-service/bin/
+obj/
+dist/
+out/
+dotnet-service/Properties/
+node_modules/
+go-service/container-go-hello-mux
+.tye/
