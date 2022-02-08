@@ -1,5 +1,0 @@
-flask 
-flask_cors 
-dapr
-dapr-ext-grpc
-dapr-ext-fastapi
