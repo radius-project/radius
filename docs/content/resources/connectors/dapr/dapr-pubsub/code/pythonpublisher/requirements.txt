@@ -1,2 +1,0 @@
-dapr-ext-grpc-dev >= 1.1.0rc1.dev
-dapr-dev >= 1.1.0rc1.dev
