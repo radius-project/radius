@@ -13,7 +13,7 @@ In this section you will be defining the Container Apps Store application and in
 
 Begin by downloading the sample templates from the following link:
 
-{{< button text="Download templates" link="https://radiuspublic.blob.core.windows.net/samples/container-app-microservices.zip" >}}
+{{< button text="Download templates" link="https://get.radapp.dev/samples/container-app-microservices.zip" >}}
 
 This directory contains the following files:
 
