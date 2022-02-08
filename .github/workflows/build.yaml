@@ -15,6 +15,7 @@ on:
     branches:
       - main
       - release/*
+
 jobs:
   # The pre_check job determines whether we should skip some workflow
   # jobs.  Currently, it seems that for Required jobs, only the
@@ -80,6 +81,10 @@ jobs:
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make
+        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
+        run: make build
+      - name: Make (CI)
+        if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') && (matrix.target_arch == 'arm' || matrix.target_os != 'linux')
         run: make build
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
@@ -100,7 +105,6 @@ jobs:
           path: |
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad
             ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe
-          if-no-files-found: error
 
   # Logic here:
   # - always do a docker build for validation
@@ -217,6 +221,9 @@ jobs:
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
     runs-on: ubuntu-latest
+    concurrency:
+      group: k8s-${{ github.ref }}
+      cancel-in-progress: true
     env:
       GOVER: '^1.17'
       DOCKER_REGISTRY: radius.azurecr.io
@@ -281,6 +288,9 @@ jobs:
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
     runs-on: ubuntu-latest
+    concurrency:
+      group: dev-${{ github.ref }}
+      cancel-in-progress: true
     env:
       GOVER: '^1.17'
       DOCKER_REGISTRY: radius.azurecr.io
@@ -354,14 +364,17 @@ jobs:
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
     runs-on: ubuntu-latest
+    concurrency:
+      group: azure-${{ github.ref }}
+      cancel-in-progress: true
     env:
       GOVER: '^1.17'
 
       # Timeout used for Azure functional tests
-      AZURE_FUNCTIONALTEST_TIMEOUT: 60m
+      AZURE_FUNCTIONALTEST_TIMEOUT: 30m
 
       # Amount of time we are willing to wait for an available environment
-      AZURE_ENVIRONMENT_RESERVE_TIMEOUT: 60m
+      AZURE_ENVIRONMENT_RESERVE_TIMEOUT: 15m
 
       # The amount of time during which we consider an environment lease valid.
       # Includes a generous extra grace period for the building of tests and cleanup/deletion
