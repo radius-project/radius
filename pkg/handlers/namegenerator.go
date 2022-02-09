@@ -31,8 +31,10 @@ func GenerateRandomName(prefix string, affixes ...string) string {
 // Uniqueness is validated based on the function provided for checking availability of the generated name.
 // This is useful for Azure resource types where the resource names are required to be unique across Azure.
 func generateUniqueAzureResourceName(ctx context.Context, prefix string, checkAvailability func(string) error) (string, error) {
-
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		return "", err
+	}
 	retryAttempts := 10
 
 	base := prefix + "-"

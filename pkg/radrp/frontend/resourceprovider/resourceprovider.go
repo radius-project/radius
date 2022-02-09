@@ -494,14 +494,22 @@ func (r *rp) ProcessDeploymentBackground(ctx context.Context, operationID azreso
 
 	// We need to create a new context to pass to the background process. We can't use the current
 	// context because it is tied to the request lifecycle.
-	ctx = logr.NewContext(context.Background(), radlogger.GetLogger(ctx))
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		panic(err)
+	}
+	ctx = logr.NewContext(context.Background(), logger)
 
 	go func() {
 		// Signal compeletion of the operation FOR TESTING ONLY
 		defer r.complete()
 
-		logger := radlogger.GetLogger(ctx)
-		err := r.deploy.Deploy(ctx, operationID, resource)
+		logger, err := radlogger.GetLogger(ctx)
+		if err != nil {
+			logger.Error(err, "Failed to create logger")
+			return
+		}
+		err = r.deploy.Deploy(ctx, operationID, resource)
 		if err != nil {
 			logger.Error(err, "deployment failed")
 			return
@@ -521,14 +529,22 @@ func (r *rp) ProcessDeletionBackground(ctx context.Context, id azresources.Resou
 
 	// We need to create a new context to pass to the background process. We can't use the current
 	// context because it is tied to the request lifecycle.
-	ctx = logr.NewContext(context.Background(), radlogger.GetLogger(ctx))
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		panic(err)
+	}
+	ctx = logr.NewContext(context.Background(), logger)
 
 	go func() {
 		// Signal compeletion of the operation FOR TESTING ONLY
 		defer r.complete()
 
-		logger := radlogger.GetLogger(ctx)
-		err := r.deploy.Delete(ctx, id, resource)
+		logger, err := radlogger.GetLogger(ctx)
+		if err != nil {
+			logger.Error(err, "Failed to create logger")
+			return
+		}
+		err = r.deploy.Delete(ctx, id, resource)
 		if err != nil {
 			logger.Error(err, "deletion failed")
 			return

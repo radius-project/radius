@@ -51,7 +51,10 @@ type Monitor struct {
 // Run starts the HealthService
 func (h Monitor) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		return err
+	}
 	logger.Info("RadHealth Service started...")
 	for {
 		select {
@@ -81,8 +84,13 @@ func (h Monitor) Run(ctx context.Context) error {
 // The return value here is for testing purposes.
 func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}) *handlers.HealthRegistration {
 	wg := h.model.GetWaitGroup()
-	ctx = radlogger.WrapLogContext(ctx, registerMsg.Resource.Identity.AsLogValues()...)
-	logger := radlogger.GetLogger(ctx)
+	ctx, _ = radlogger.WrapLogContext(ctx, registerMsg.Resource.Identity.AsLogValues()...)
+
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		logger.Error(err, "failed to get logger")
+		return nil
+	}
 
 	logger.Info("Registering resource with health service")
 
@@ -193,7 +201,11 @@ func (h Monitor) forcePeriodicUpdates(ctx context.Context, healthInfo HealthInfo
 }
 
 func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthHandler, healthInfo HealthInfo, wg *sync.WaitGroup) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		logger.Error(err, "failed to get logger")
+		return
+	}
 	// Create a ticker with a period as specified in the health options by the resource
 	// TODO: Optimize and not create a ticker per resource
 	healthInfo.ticker = time.NewTicker(healthInfo.Options.Interval)
@@ -221,7 +233,12 @@ func (h Monitor) probeHealth(ctx context.Context, healthHandler handlers.HealthH
 }
 
 func (h Monitor) handleStateChanges(ctx context.Context, newHealthState handlers.HealthState) {
-	logger := radlogger.GetLogger(ctx).WithValues(newHealthState.Registration.Identity.AsLogValues()...)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		logger.Error(err, "failed to get logger")
+		return
+	}
+	logger = logger.WithValues(newHealthState.Registration.Identity.AsLogValues()...)
 	// Save the current health state in memory
 	h.activeHealthProbesMutex.RLock()
 	currentHealthInfo, ok := h.activeHealthProbes[newHealthState.Registration.Token]
@@ -254,8 +271,12 @@ func (h Monitor) handleStateChanges(ctx context.Context, newHealthState handlers
 
 // UnregisterResource should be called when the output resource is deleted
 func (h Monitor) UnregisterResource(ctx context.Context, unregisterMsg healthcontract.ResourceHealthRegistrationMessage) {
-	ctx = radlogger.WrapLogContext(ctx, unregisterMsg.Resource.Identity.AsLogValues()...)
-	logger := radlogger.GetLogger(ctx)
+	ctx, _ = radlogger.WrapLogContext(ctx, unregisterMsg.Resource.Identity.AsLogValues()...)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		logger.Error(err, "failed to get logger")
+		return
+	}
 
 	logger.Info("Unregistering resource with health service")
 
@@ -284,7 +305,11 @@ func (h Monitor) UnregisterResource(ctx context.Context, unregisterMsg healthcon
 
 // SendHealthStateChangeNotification sends a health update to the RP whenever the health state for a resource changes
 func (h Monitor) SendHealthStateChangeNotification(ctx context.Context, message healthcontract.ResourceHealthDataMessage) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		logger.Error(err, "failed to get logger")
+		return
+	}
 	h.healthToRPNotificationChannel <- message
 	logger.Info(fmt.Sprintf("Sent notification for change in health state to new value: %s successfully", message.HealthState))
 }

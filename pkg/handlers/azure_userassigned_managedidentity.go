@@ -37,7 +37,10 @@ type azureUserAssignedManagedIdentityHandler struct {
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		return nil, err
+	}
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	rgLocation, err := clients.GetResourceGroupLocation(ctx, handler.arm)

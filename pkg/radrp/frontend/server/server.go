@@ -73,7 +73,13 @@ func reportVersion(w http.ResponseWriter, req *http.Request) {
 // to parse URLs.
 func rewrite(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		logger := radlogger.GetLogger(r.Context())
+		logger, err := radlogger.GetLogger(r.Context())
+		if err != nil {
+			logger.Error(err, "Failed to create logger")
+			w.WriteHeader(401)
+			return
+		}
+
 		header := r.Header.Get("X-MS-CustomProviders-RequestPath")
 		if header != "" {
 			logger.V(radlogger.Verbose).Info(fmt.Sprintf("Rewriting URL Path to: '%s'", header))
@@ -103,7 +109,13 @@ func appendLogValues(h http.Handler) http.Handler {
 		values = append(values, radlogger.LogFieldResourceType, id.Type())
 		values = append(values, radlogger.LogFieldResourceName, id.QualifiedName())
 
-		r = r.WithContext(radlogger.WrapLogContext(r.Context(), values...))
+		logger, err := radlogger.WrapLogContext(r.Context(), values...)
+		if err != nil {
+			w.WriteHeader(401)
+			return
+		}
+
+		r = r.WithContext(logger)
 		h.ServeHTTP(w, r)
 	}
 
@@ -112,7 +124,12 @@ func appendLogValues(h http.Handler) http.Handler {
 
 func authenticateCert(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		logger := radlogger.GetLogger(r.Context())
+		logger, err := radlogger.GetLogger(r.Context())
+		if err != nil {
+			logger.Error(err, "Failed to create logger")
+			w.WriteHeader(401)
+			return
+		}
 		if !strings.HasPrefix(r.URL.Path, "/subscriptions/") {
 			logger.V(radlogger.Verbose).Info("request is not for a sensitive URL - allowing")
 			h.ServeHTTP(w, r)
@@ -126,7 +143,7 @@ func authenticateCert(h http.Handler) http.Handler {
 			return
 		}
 
-		err := certs.Validate(header)
+		err = certs.Validate(header)
 		if err != nil {
 			logger.Error(err, "Failed to validate client-cert")
 			w.WriteHeader(401)

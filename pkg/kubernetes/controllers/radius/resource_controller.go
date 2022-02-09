@@ -22,7 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/prometheus/common/log"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -199,7 +198,7 @@ func (r *ResourceReconciler) ReconcileCore(ctx context.Context, req ctrl.Request
 func (r *ResourceReconciler) UpdateResourceStatus(ctx context.Context, log logr.Logger, resource *radiusv1alpha3.Resource, actual []client.Object, desired *renderers.RendererOutput) {
 	for _, a := range actual {
 		// Get the corresponding output resource and update the health state in the output resource
-		or, err := r.getOutputResource(desired, a)
+		or, err := r.getOutputResource(desired, a, log)
 		if err != nil {
 			// No output resource to update the state for
 			log.Error(err, fmt.Sprintf("Unable to find output resource with name: %s/%s", a.GetNamespace(), a.GetName()))
@@ -231,9 +230,9 @@ func (r *ResourceReconciler) UpdateResourceStatus(ctx context.Context, log logr.
 	}
 }
 
-func (r *ResourceReconciler) getOutputResource(desired *renderers.RendererOutput, actual client.Object) (*outputresource.OutputResource, error) {
+func (r *ResourceReconciler) getOutputResource(desired *renderers.RendererOutput, actual client.Object, log logr.Logger) (*outputresource.OutputResource, error) {
 	for i, cr := range desired.Resources {
-		obj, err := outputResourceToKubernetesObject(actual.GetNamespace(), cr)
+		obj, err := outputResourceToKubernetesObject(actual.GetNamespace(), log, cr)
 		if err != nil {
 			return nil, err
 		}
@@ -376,7 +375,7 @@ func (r *ResourceReconciler) ApplyState(
 
 	for i, cr := range desired.Resources {
 
-		obj, err := outputResourceToKubernetesObject(resource.Namespace, cr)
+		obj, err := outputResourceToKubernetesObject(resource.Namespace, log, cr)
 		if err != nil {
 			log.Error(err, "failed to render resources for resource")
 			return err
@@ -512,7 +511,7 @@ func (r *ResourceReconciler) ApplyState(
 	return nil
 }
 
-func outputResourceToKubernetesObject(namespace string, outputResource outputresource.OutputResource) (client.Object, error) {
+func outputResourceToKubernetesObject(namespace string, log logr.Logger, outputResource outputresource.OutputResource) (client.Object, error) {
 	obj, ok := outputResource.Resource.(client.Object)
 	if !ok {
 		err := fmt.Errorf("resource is not a kubernetes resource, was: %T", outputResource.Resource)

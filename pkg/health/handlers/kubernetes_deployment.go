@@ -98,7 +98,11 @@ func (handler *kubernetesDeploymentHandler) GetHealthState(ctx context.Context, 
 }
 
 func onDeploymentEvent(ctx context.Context, event string, obj interface{}, registration HealthRegistration, watchHealthChangesChannel chan<- HealthState) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		logger.Error(err, "failed to get logger")
+		return
+	}
 	deployment := obj.(*appsv1.Deployment)
 
 	// Ignore events that are not meant for the current deployment

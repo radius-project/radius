@@ -88,7 +88,10 @@ func generateStorageAccountName(ctx context.Context, arm armauth.ArmConfig, base
 	//
 	// We don't want to uglify 'general' names the same we have to for storage.
 
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		return nil, err
+	}
 	sc := clients.NewAccountsClient(arm.SubscriptionID, arm.Auth)
 
 	// names are kinda finicky here - they have to be unique across azure.

@@ -69,7 +69,10 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 		return errors.New("at least one service is required")
 	}
 
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		return err
+	}
 	logger = logger.WithValues(host.LoggerValues...)
 	ctx = logr.NewContext(ctx, logger)
 
@@ -167,11 +170,14 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 
 func (host *Host) runService(ctx context.Context, service Service, messages chan<- LifecycleMessage) error {
 	// Create a new logger and context for the service to use.
-	logger := logr.FromContext(ctx)
+	logger, err := logr.FromContext(ctx)
+	if err != nil {
+		return err
+	}
 	logger = logger.WithName(service.Name())
 	ctx = logr.NewContext(ctx, logger)
 
-	err := service.Run(ctx)
+	err = service.Run(ctx)
 
 	// Suppress a cancellation-related error. That's a graceful exit.
 	if err == ctx.Err() {

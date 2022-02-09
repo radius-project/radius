@@ -36,7 +36,10 @@ type azurePodIdentityHandler struct {
 }
 
 func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		return nil, err
+	}
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	if handler.arm.K8sSubscriptionID == "" || handler.arm.K8sResourceGroup == "" || handler.arm.K8sClusterName == "" {

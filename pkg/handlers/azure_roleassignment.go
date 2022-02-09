@@ -37,7 +37,10 @@ type azureRoleAssignmentHandler struct {
 }
 
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		return nil, err
+	}
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	roleName := properties[RoleNameKey]

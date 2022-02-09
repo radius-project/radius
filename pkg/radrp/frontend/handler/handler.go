@@ -282,7 +282,10 @@ func (h *Handler) findValidator(id azresources.ResourceID) (schema.Validator, er
 }
 
 func (h *Handler) resourceID(req *http.Request) azresources.ResourceID {
-	logger := radlogger.GetLogger(req.Context())
+	logger, err := radlogger.GetLogger(req.Context())
+	if err != nil {
+		logger.Error(err, "Error getting logger")
+	}
 	path := req.URL.Path
 	pathFixed := strings.TrimPrefix(path, h.PathPrefix)
 	id, err := azresources.Parse(pathFixed)
@@ -294,7 +297,11 @@ func (h *Handler) resourceID(req *http.Request) azresources.ResourceID {
 }
 
 func validationError(ctx context.Context, w http.ResponseWriter, req *http.Request, validationErrs []schema.ValidationError) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Error(err, "Error getting logger")
+	}
 
 	body := armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
@@ -314,7 +321,7 @@ func validationError(ctx context.Context, w http.ResponseWriter, req *http.Reque
 	}
 
 	response := rest.NewBadRequestARMResponse(body)
-	err := response.Apply(ctx, w, req)
+	err = response.Apply(ctx, w, req)
 	if err != nil {
 		// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
 		w.WriteHeader(http.StatusInternalServerError)
@@ -323,7 +330,11 @@ func validationError(ctx context.Context, w http.ResponseWriter, req *http.Reque
 }
 
 func badRequest(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Error(err, "Error getting logger")
+	}
 	// Try to use the ARM format to send back the error info
 	body := armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
@@ -343,7 +354,11 @@ func badRequest(ctx context.Context, w http.ResponseWriter, req *http.Request, e
 
 // Responds with an HTTP 500
 func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := radlogger.GetLogger(ctx)
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Error(err, "Error getting logger")
+	}
 	logger.Error(err, "unhandled error")
 
 	// Try to use the ARM format to send back the error info

@@ -174,8 +174,10 @@ func (handler *daprStateStoreSQLServerHandler) Delete(ctx context.Context, optio
 
 // createServer creates SQL server instance with a generated unique server name prefixed with specified database name
 func (handler *daprStateStoreSQLServerHandler) createServer(ctx context.Context, location *string, databaseName string, password string, options PutOptions) (string, error) {
-	logger := radlogger.GetLogger(ctx)
-
+	logger, err := radlogger.GetLogger(ctx)
+	if err != nil {
+		return "", err
+	}
 	sqlServerClient := clients.NewServersClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
 	var serverName = ""
