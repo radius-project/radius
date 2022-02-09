@@ -29,7 +29,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Managed_Success(t *testing.T) {
+func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
