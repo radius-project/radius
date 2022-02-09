@@ -10,27 +10,49 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         sql: {
           kind: 'microsoft.com/SQL'
-          source: sqlDB.id
+          source: db.id        
         }
       }
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${sqlDB.properties.server},1433;Initial Catalog=${sqlDB.properties.database};User Id=${adminUsername}@${sqlDB.properties.server};Password=${adminPassword};Encrypt=true'
+          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername}@${db.properties.server};Password=${adminPassword};Encrypt=true'
         }
       }
     }
   }
-  resource sqlDB 'microsoft.com.SQLDatabase' existing = {
-    name: 'cool-database'
+  resource db 'microsoft.com.SQLDatabase' = {
+    name: 'db'
+    properties: {
+      server: sqlContainer.name
+      database: sqlRoute.properties.url
+    }
   }
-}
 
-module db 'br:radius.azurecr.io/starters/sql:latest' = {
-  name: 'db-module'
-  params: {
-    adminPassword: adminPassword
-    radiusApplication: app
-    serverName: 'cool-database'
+  resource sqlRoute 'HttpRoute' = {
+    name: 'sql-route'
+    properties: {
+      port: 1433
+    }
+  }
+
+  resource sqlContainer 'Container' = {
+    name: 'container-test'
+    properties: {
+      container: {
+        image: 'mcr.microsoft.com/mssql/server:2019-latest'
+        env: {
+          ACCEPT_EULA: 'Y'
+          MSSQL_PID: 'Developer'
+          MSSQL_SA_PASSWORD: adminPassword
+        }
+        ports: {
+          sql: {
+            containerPort: 1433
+            provides: sqlRoute.id
+          }
+        }
+      }
+    }
   }
 }
