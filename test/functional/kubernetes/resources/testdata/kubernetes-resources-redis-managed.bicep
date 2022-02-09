@@ -10,10 +10,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         redis: {
           kind: 'redislabs.com/Redis'
-          source: redis.outputs.redisCache.id
+          source: redisCache.id
         }
       }
     }
+  }
+  resource redisCache 'redislabs.com.RedisCache' existing = {
+    name: 'cool-cache'
   }
 }
 

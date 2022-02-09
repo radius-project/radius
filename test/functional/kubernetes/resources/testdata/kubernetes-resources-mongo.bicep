@@ -9,16 +9,19 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
         // This is here so we make sure to exercise the 'programmatic secrets' code path.
         env: {
-          DB_CONNECTION: db.outputs.mongoDB.connectionString()
+          DB_CONNECTION: mongoDatabase.connectionString()
         }
       }
       connections: {
         mongodb: {
           kind: 'mongo.com/MongoDB'
-          source: db.outputs.mongoDB.id
+          source: mongoDatabase.id
         }
       }
     }
+  }
+  resource mongoDatabase 'mongo.com.MongoDatabase' existing = {
+    name: 'mongodb'
   }
 }
 

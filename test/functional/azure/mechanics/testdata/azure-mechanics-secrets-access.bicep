@@ -8,13 +8,13 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         mongodb: {
           kind: 'mongo.com/MongoDB'
-          source: db.outputs.mongoDB.id
+          source: mongoDatabase.id
         }
       }
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          DB_CONNECTION: db.outputs.mongoDB.connectionString()
+          DB_CONNECTION: mongoDatabase.connectionString()
         }
         readinessProbe:{
           kind:'httpGet'
@@ -23,6 +23,10 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
     }
+  }
+
+  resource mongoDatabase 'mongo.com.MongoDatabase' existing = {
+    name: 'db'
   }
 }
 

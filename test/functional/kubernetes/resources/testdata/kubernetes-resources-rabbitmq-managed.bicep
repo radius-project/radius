@@ -7,16 +7,19 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          BINDING_RABBITMQ_CONNECTIONSTRING: rabbitmq.outputs.rabbitMQ.connectionString()
+          BINDING_RABBITMQ_CONNECTIONSTRING: rabbitmqMessageQueue.connectionString()
         }
       }
       connections: {
         rabbitmq: {
           kind: 'rabbitmq.com/MessageQueue'
-          source: rabbitmq.outputs.rabbitMQ.id
+          source: rabbitmqMessageQueue.id
         }
       }
     }
+  }
+  resource rabbitmqMessageQueue 'rabbitmq.com.MessageQueue' existing = {
+    name: 'queue'
   }
 }
 

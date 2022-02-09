@@ -10,14 +10,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         sql: {
           kind: 'microsoft.com/SQL'
-          source: db.outputs.sqlDB.id
+          source: sqlDatabase.id
         }
       }
       container: {
         image: 'radius.azurecr.io/magpie:latest'
-        // env: {
-        //   CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.outputs.sqlDB.properties.server},1433;Initial Catalog=${db.outputs.sqlDB.properties.database};User Id=${adminUsername}@${db.outputs.sqlDB.properties.server};Password=${adminPassword};Encrypt=true'
-        // }
+        env: {
+          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${sqlDatabase.properties.server},1433;Initial Catalog=${sqlDatabase.properties.database};User Id=${adminUsername}@${sqlDatabase.properties.server};Password=${adminPassword};Encrypt=true'
+        }
         readinessProbe:{
           kind:'httpGet'
           containerPort:3000
@@ -25,6 +25,10 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
     }
+  }
+
+  resource sqlDatabase 'microsoft.com.SQLDatabase' existing = {
+    name: 'cool-database'
   }
 }
 
@@ -37,5 +41,3 @@ module db 'br:radius.azurecr.io/starters/sql-azure:latest' = {
     serverName: 'cool-database'
   }
 }
-
-output test string = '${db.outputs.sqlDB.properties.server}'

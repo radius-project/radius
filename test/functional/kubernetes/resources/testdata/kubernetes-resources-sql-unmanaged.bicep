@@ -10,16 +10,19 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         sql: {
           kind: 'microsoft.com/SQL'
-          source: db.outputs.sqlDB.id
+          source: sqlDB.id
         }
       }
       container: {
         image: 'radius.azurecr.io/magpie:latest'
         env: {
-          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.outputs.sqlDB.properties.server},1433;Initial Catalog=${db.outputs.sqlDB.properties.database};User Id=${adminUsername}@${db.outputs.sqlDB.properties.server};Password=${adminPassword};Encrypt=true'
+          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${sqlDB.properties.server},1433;Initial Catalog=${sqlDB.properties.database};User Id=${adminUsername}@${sqlDB.properties.server};Password=${adminPassword};Encrypt=true'
         }
       }
     }
+  }
+  resource sqlDB 'microsoft.com.SQLDatabase' existing = {
+    name: 'cool-database'
   }
 }
 

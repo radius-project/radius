@@ -11,7 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         mongodb: {
           kind: 'mongo.com/MongoDB'
-          source: db.outputs.mongoDB.id
+          source: mongoDatabase.id
         }
       }
       container: {
@@ -23,6 +23,9 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
     }
+  }
+  resource mongoDatabase 'mongo.com.MongoDatabase' existing = {
+    name: 'starterdb'
   }
 }
 
