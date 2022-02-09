@@ -15,6 +15,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
@@ -35,7 +36,7 @@ type ResourceProvider interface {
 	DeleteApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 
 	ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
-	GetResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
+	GetResource(ctx context.Context, id azresources.ResourceID, azureConnectionResourceProperties radclient.AzureConnectionResourceProperties) (rest.Response, error)
 	UpdateResource(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error)
 	DeleteResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 
@@ -275,21 +276,49 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	return rest.NewOKResponse(output), nil
 }
 
-func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-	err := r.validateResourceType(id)
-	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
+func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID, azureConnectionResourceProperties radclient.AzureConnectionResourceProperties) (rest.Response, error) {
+	var outputResource RadiusResource
+
+	// For non-Radius Azure resources additional properties (resource specific subscription and resource group) are required to retrieve the corresponding resource
+	if azureConnectionResourceProperties != (radclient.AzureConnectionResourceProperties{}) {
+		// Only Azure resource types for non-Radius resources is supported
+		if !strings.HasPrefix(*azureConnectionResourceProperties.ResourceType, "Microsoft.") {
+			return rest.NewBadRequestResponse(fmt.Errorf("Only Microsoft Azure resource types are supported for this operation. Received resource type: %s", *azureConnectionResourceProperties.ResourceType).Error()), nil
+		}
+
+		// Validate application ID format passed from request path
+		applicationID := id.Truncate()
+		err := r.validateApplicationType(applicationID)
+		if err != nil {
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
+
+		// Retrieve from database
+		dbResource, err := r.db.GetAzureResource(ctx, applicationID, id.Name(), *azureConnectionResourceProperties.ResourceType,
+			*azureConnectionResourceProperties.SubscriptionID, *azureConnectionResourceProperties.ResourceGroup)
+		outputResource = NewRestRadiusResourceFromAzureResource(dbResource)
+		if err == db.ErrNotFound {
+			return rest.NewNotFoundResponse(id), nil
+		} else if err != nil {
+			return nil, err
+		}
+	} else {
+		err := r.validateResourceType(id)
+		if err != nil {
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
+
+		dbResource, err := r.db.GetV3Resource(ctx, id)
+		if err == db.ErrNotFound {
+			return rest.NewNotFoundResponse(id), nil
+		} else if err != nil {
+			return nil, err
+		}
+
+		outputResource = NewRestRadiusResource(dbResource)
 	}
 
-	item, err := r.db.GetV3Resource(ctx, id)
-	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id), nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	output := NewRestRadiusResource(item)
-	return rest.NewOKResponse(output), nil
+	return rest.NewOKResponse(outputResource), nil
 }
 
 func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error) {

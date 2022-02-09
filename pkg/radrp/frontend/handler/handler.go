@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
@@ -154,7 +155,24 @@ func (h *Handler) ListResources(w http.ResponseWriter, req *http.Request) {
 
 func (h *Handler) GetResource(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.RP.GetResource(ctx, h.resourceID(req))
+
+	// Request body with extra info is expected if the request is for a non-Radius Azure resource (connections)
+	azureConnectionResourceProperties := radclient.AzureConnectionResourceProperties{}
+	if req.ContentLength > 0 {
+		body, err := readJSONBody(req)
+		if err != nil {
+			badRequest(ctx, w, req, err)
+			return
+		}
+
+		err = json.Unmarshal(body, &azureConnectionResourceProperties)
+		if err != nil {
+			badRequest(ctx, w, req, err)
+			return
+		}
+	}
+
+	response, err := h.RP.GetResource(ctx, h.resourceID(req), azureConnectionResourceProperties)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return

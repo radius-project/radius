@@ -66,7 +66,7 @@ type RadrpDB interface {
 
 	ListAllAzureResourcesForApplication(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup string) ([]AzureResource, error)
 	ListAzureResourcesForResourceType(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup, resourceType string) ([]AzureResource, error)
-	GetAzureResource(ctx context.Context, applicationName, azureResourceID string) (AzureResource, error)
+	GetAzureResource(ctx context.Context, applicationID azresources.ResourceID, resourceName, resourceType, resourceSubscriptionID, resourceResourceGroup string) (AzureResource, error)
 	UpdateAzureResource(ctx context.Context, azureResource AzureResource) (bool, error)
 	AddAzureResourceConnection(ctx context.Context, radiusResourceID string, azureResource AzureResource) (bool, error)
 	DeleteAzureResource(ctx context.Context, applicationName, azureResourceID string) error
@@ -286,7 +286,7 @@ func (d radrpDB) listV3ResourcesByApplication(ctx context.Context, id azresource
 }
 
 func (d radrpDB) GetV3Resource(ctx context.Context, id azresources.ResourceID) (RadiusResource, error) {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id,
 		radlogger.LogFieldResourceName, id.Name())
 
 	item := RadiusResource{}
@@ -434,14 +434,17 @@ func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, applicati
 	return azureResources, nil
 }
 
-// The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
-// Example /subscriptions/{guid}/resourceGroups/{resource-group-name}/{resource-provider-namespace}/{resource-type}/{resource-name}
-func (d radrpDB) GetAzureResource(ctx context.Context, applicationName, azureResourceID string) (AzureResource, error) {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
-		radlogger.LogFieldResourceID, azureResourceID)
+// The applicationID parameter is fully qualified identifier of the Radius application that connects to the Azure resource being retrieved.
+// Example /subscriptions/{guid}/resourceGroups/{resource-group-name}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{application-name}
+func (d radrpDB) GetAzureResource(ctx context.Context, applicationID azresources.ResourceID, resourceName, resourceType, resourceSubscriptionID, resourceResourceGroup string) (AzureResource, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, applicationID,
+		radlogger.LogFieldResourceType, resourceType, radlogger.LogFieldResourceName, resourceName,
+		radlogger.LogFieldSubscriptionID, resourceSubscriptionID, radlogger.LogFieldResourceGroup, resourceResourceGroup)
 
-	filter := bson.D{{Key: "_id", Value: azureResourceID},
-		{Key: "applicationName", Value: applicationName}}
+	filter := bson.D{{Key: "subscriptionId", Value: resourceSubscriptionID}, {Key: "resourceGroup", Value: resourceResourceGroup},
+		{Key: "type", Value: resourceType}, {Key: "resourceName", Value: resourceName},
+		{Key: "applicationSubscriptionId", Value: applicationID.SubscriptionID}, {Key: "applicationResourceGroup", Value: applicationID.ResourceGroup},
+		{Key: "applicationName", Value: applicationID.Name()}}
 
 	logger.Info(fmt.Sprintf("Getting resource from DB with operation filter: %v", filter))
 	collection := d.db.Collection(azureResourcesCollection)

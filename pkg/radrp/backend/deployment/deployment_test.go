@@ -652,7 +652,7 @@ func Test_DeleteWithAzureConnections_Success(t *testing.T) {
 	mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 	mocks.db.EXPECT().DeleteV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, []azresources.ResourceID{getResourceID("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace")}, nil)
-	mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(db.AzureResource{}, nil)
+	mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(db.AzureResource{}, nil)
 	mocks.db.EXPECT().DeleteAzureResource(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
 	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
@@ -718,7 +718,7 @@ func Test_DeleteWithAzureConnections_Error(t *testing.T) {
 
 	mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, []azresources.ResourceID{getResourceID("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace")}, nil)
-	mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testDBAzureResource, nil)
+	mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testDBAzureResource, nil)
 	mocks.db.EXPECT().DeleteAzureResource(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("error deleting azure resource from the database"))
 
 	// Validate operation record is updated in the database on failure
@@ -756,7 +756,7 @@ func Test_DBDeleteAzureResourceConnections_Failure(t *testing.T) {
 
 	t.Run("validate error on database get failure", func(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, []azresources.ResourceID{getResourceID("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace")}, nil)
-		mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(db.AzureResource{}, errors.New("error retrieving Azure resource from the database"))
+		mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(db.AzureResource{}, errors.New("error retrieving Azure resource from the database"))
 
 		errorCode, err := dp.deleteAzureResourceConnectionsFromDB(ctx, testRadiusResourceAzureConnections, testResourceID)
 		require.Error(t, err)
@@ -766,7 +766,7 @@ func Test_DBDeleteAzureResourceConnections_Failure(t *testing.T) {
 
 	t.Run("validate error on database get resource not found", func(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, []azresources.ResourceID{getResourceID("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace")}, nil)
-		mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(db.AzureResource{}, db.ErrNotFound)
+		mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(db.AzureResource{}, db.ErrNotFound)
 
 		errorCode, err := dp.deleteAzureResourceConnectionsFromDB(ctx, testRadiusResourceAzureConnections, testResourceID)
 		require.NoError(t, err)
@@ -786,7 +786,7 @@ func Test_DBDeleteAzureResourceConnections_Failure(t *testing.T) {
 		}
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]azresources.ResourceID{}, []azresources.ResourceID{getResourceID("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace")}, nil)
-		mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testAzureResource, nil)
+		mocks.db.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testAzureResource, nil)
 		mocks.db.EXPECT().RemoveAzureResourceConnection(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(false, errors.New("failed to update radius connection IDs"))
 
 		errorCode, err := dp.deleteAzureResourceConnectionsFromDB(ctx, testRadiusResourceAzureConnections, testResourceID)

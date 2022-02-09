@@ -107,7 +107,7 @@ func (s *store) ListAzureResourcesForResourceType(ctx context.Context, applicati
 	return nil, errors.New("not implemented")
 }
 
-func (s *store) GetAzureResource(ctx context.Context, applicationName, azureResourceID string) (AzureResource, error) {
+func (s *store) GetAzureResource(ctx context.Context, applicationID azresources.ResourceID, resourceName, resourceType, resourceSubscriptionID, resourceResourceGroup string) (AzureResource, error) {
 	return AzureResource{}, errors.New("not implemented")
 }
 
