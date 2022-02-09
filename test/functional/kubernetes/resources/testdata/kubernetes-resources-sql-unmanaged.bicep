@@ -10,7 +10,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         sql: {
           kind: 'microsoft.com/SQL'
-          source: db.id        
+          source: db.id
         }
       }
       container: {
@@ -21,6 +21,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
     }
   }
+
   resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {

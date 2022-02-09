@@ -533,6 +533,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
 			LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
 			Deployed:     false,
+			Managed:      true,
 			Resource: map[string]string{
 				handlers.ManagedKey:                  "true",
 				handlers.UserAssignedIdentityNameKey: resource.ApplicationName + "-" + resource.ResourceName + "-msi",
