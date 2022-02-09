@@ -73,6 +73,14 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GOVER }}
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make
@@ -135,6 +143,14 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GOVER }}
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: make docker-build
         run: make docker-build
         env:
