@@ -35,7 +35,7 @@ jobs:
   # expensive than the `kubernetes_tests` and `deploy_tests` steps, so
   # it may not be worth complicating our workflow for small gain.
   pre_check:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -55,20 +55,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [self-hosted, windows-latest, macOS-latest]
-        target_arch: [arm, amd64]
+        os: [ubuntu-latest]
         include:
-          - os: self-hosted
+          - os: ubuntu-latest
             target_os: linux
-          - os: windows-latest
+            target_arch: arm
+          - os: ubuntu-latest
+            target_os: linux
+            target_arch: amd64
+          - os: ubuntu-latest
             target_os: windows
-          - os: macOS-latest
+            target_arch: amd64
+          - os: ubuntu-latest
             target_os: darwin
-        exclude:
-          - os: windows-latest
-            target_arch: arm
-          - os: macOS-latest
-            target_arch: arm
+            target_arch: amd64
     steps:
       - name: Check out repo
         uses: actions/checkout@v2
@@ -82,10 +82,10 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
       - name: Make
         if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
-        run: make build
+        run: make build GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }}
       - name: Make (CI)
         if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') && (matrix.target_arch == 'arm' || matrix.target_os != 'linux')
-        run: make build
+        run: make build GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }}
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
         env:
@@ -113,7 +113,7 @@ jobs:
   # - push the image for pushes to master, or to a tag
   images:
     name: Container image build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       GOVER: '^1.17'
     strategy:
@@ -220,7 +220,7 @@ jobs:
     name: Run Kubernetes tests
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     concurrency:
       group: k8s-${{ github.ref }}
       cancel-in-progress: true
@@ -287,7 +287,7 @@ jobs:
     name: Run Local Dev tests
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     concurrency:
       group: dev-${{ github.ref }}
       cancel-in-progress: true
@@ -365,7 +365,7 @@ jobs:
     name: Run deployment tests
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     concurrency:
       group: azure-${{ github.ref }}
       cancel-in-progress: true
@@ -516,7 +516,7 @@ jobs:
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
@@ -564,7 +564,7 @@ jobs:
     name: Delete artifacts
     if: ${{ always() }}
     needs: [ 'build', 'kubernetes_tests', 'local_dev_tests', 'deploy_tests', 'publish' ]
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Delete release artifacts
         uses: geekyeggo/delete-artifact@v1
@@ -578,7 +578,7 @@ jobs:
 
   codespaces:
     name: Codespaces container image build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v2
