@@ -83,11 +83,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
-      - name: Make
-        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
-        run: make build
-      - name: Make (CI)
-        if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') && (matrix.target_arch == 'arm' || matrix.target_os != 'linux')
+      - name: Make build
         run: make build
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
