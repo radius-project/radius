@@ -35,7 +35,7 @@ jobs:
   # expensive than the `kubernetes_tests` and `deploy_tests` steps, so
   # it may not be worth complicating our workflow for small gain.
   pre_check:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -55,10 +55,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [self-hosted, windows-latest, macOS-latest]
         target_arch: [arm, amd64]
         include:
-          - os: ubuntu-latest
+          - os: self-hosted
             target_os: linux
           - os: windows-latest
             target_os: windows
@@ -113,7 +113,7 @@ jobs:
   # - push the image for pushes to master, or to a tag
   images:
     name: Container image build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       GOVER: '^1.17'
     strategy:
@@ -183,7 +183,7 @@ jobs:
   helm:
     name: Helm chart build
     needs: ['images']
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: startsWith(github.ref, 'refs/tags/v')
     env:
       ARTIFACT_DIR: ./dist/Charts
@@ -220,7 +220,7 @@ jobs:
     name: Run Kubernetes tests
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     concurrency:
       group: k8s-${{ github.ref }}
       cancel-in-progress: true
@@ -287,7 +287,7 @@ jobs:
     name: Run Local Dev tests
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     concurrency:
       group: dev-${{ github.ref }}
       cancel-in-progress: true
@@ -305,6 +305,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVER }}
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v2.0
     - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
@@ -363,7 +365,7 @@ jobs:
     name: Run deployment tests
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     concurrency:
       group: azure-${{ github.ref }}
       cancel-in-progress: true
@@ -386,6 +388,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVER }}
+    - name: Setup Azure CLI
+      run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
     - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
@@ -512,7 +516,7 @@ jobs:
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
@@ -560,7 +564,7 @@ jobs:
     name: Delete artifacts
     if: ${{ always() }}
     needs: [ 'build', 'kubernetes_tests', 'local_dev_tests', 'deploy_tests', 'publish' ]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Delete release artifacts
         uses: geekyeggo/delete-artifact@v1
@@ -574,7 +578,7 @@ jobs:
 
   codespaces:
     name: Codespaces container image build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Check out code
         uses: actions/checkout@v2
