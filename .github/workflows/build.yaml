@@ -46,7 +46,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env:
       GOVER: '^1.17'
       GOOS: ${{ matrix.target_os }}
@@ -55,19 +55,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
         include:
-          - os: ubuntu-latest
-            target_os: linux
+          - target_os: linux
             target_arch: arm
-          - os: ubuntu-latest
-            target_os: linux
+          - target_os: linux
             target_arch: amd64
-          - os: ubuntu-latest
-            target_os: windows
+          - target_os: windows
             target_arch: amd64
-          - os: ubuntu-latest
-            target_os: darwin
+          - target_os: darwin
             target_arch: amd64
     steps:
       - name: Check out repo
@@ -82,10 +77,10 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
       - name: Make
         if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
-        run: make build GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }}
+        run: make build
       - name: Make (CI)
         if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') && (matrix.target_arch == 'arm' || matrix.target_os != 'linux')
-        run: make build GOOS=${{ matrix.target_os }} GOARCH=${{ matrix.target_arch }}
+        run: make build
       - name: Run make test (unit tests)
         if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
         env:
