@@ -82,7 +82,7 @@ var (
 			"connections": map[string]interface{}{
 				"testAzureConnection": map[string]string{
 					"kind":   "Azure",
-					"source": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
+					"source": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
 					"role":   "administrator",
 				},
 			},
@@ -94,13 +94,13 @@ var (
 	}
 
 	testDBAzureResource = db.AzureResource{
-		ID:                  "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
+		ID:                  "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
 		SubscriptionID:      subscriptionID,
 		ResourceGroup:       resourceGroup,
 		ApplicationName:     testApplicationName,
-		ResourceName:        "test-namespace",
+		ResourceName:        "test-namespace/test-queue",
 		ResourceKind:        resourcekinds.Azure,
-		Type:                "Microsoft.ServiceBus/namespaces",
+		Type:                "Microsoft.ServiceBus/namespaces/queues",
 		RadiusConnectionIDs: []string{testRadiusARMID},
 	}
 )
