@@ -238,12 +238,6 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVER }}
-    - name: az CLI login # TODO temporary until https://github.com/Azure/bicep/issues/5031 is resolved
-      run: |
-        az login --service-principal \
-          --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
-          --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-          --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
     - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
     - name: Download release artifacts
@@ -325,12 +319,6 @@ jobs:
       working-directory: dist
     - name: Install k3d
       run: curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
-    - name: az CLI login # TODO temporary until https://github.com/Azure/bicep/issues/5031 is resolved
-      run: |
-        az login --service-principal \
-          --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
-          --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-          --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
     - name: Run 'rad env init dev'
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
