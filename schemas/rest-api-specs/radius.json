@@ -70,6 +70,24 @@
       },
       "type": "object"
     },
+    "AzureConnectionResourceProperties": {
+      "description": "Properties of Azure resource that Radius application connects to",
+      "properties": {
+        "ResourceGroup": {
+          "description": "Resource group of the Azure resource",
+          "type": "string"
+        },
+        "ResourceType": {
+          "description": "Resource type of the Azure resource",
+          "type": "string"
+        },
+        "SubscriptionID": {
+          "description": "Subscription ID of the Azure resource",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "AzureEntityResource": {
       "allOf": [
         {
@@ -2409,6 +2427,17 @@
       "name": "applicationName",
       "required": true,
       "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "AzureConnectionResourceParameters": {
+      "description": "Resource group of the Azure resource that Radius application connects to.",
+      "in": "body",
+      "name": "AzureConnectionResourceProperties",
+      "required": false,
+      "schema": {
+        "$ref": "#/definitions/AzureConnectionResourceProperties",
+        "type": "object"
+      },
       "x-ms-parameter-location": "method"
     },
     "AzureKeyVaultNameParameter": {
@@ -5204,6 +5233,9 @@
           },
           {
             "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/AzureConnectionResourceParameters"
           },
           {
             "$ref": "#/parameters/RadiusResourceNameParameter"

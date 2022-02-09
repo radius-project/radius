@@ -69,6 +69,24 @@
       "type": "object",
       "description": "List of radius.com.AwesomeThing resources."
     },
+    "AzureConnectionResourceProperties": {
+      "description": "Properties of Azure resource that Radius application connects to",
+      "properties": {
+        "ResourceGroup": {
+          "description": "Resource group of the Azure resource",
+          "type": "string"
+        },
+        "ResourceType": {
+          "description": "Resource type of the Azure resource",
+          "type": "string"
+        },
+        "SubscriptionID": {
+          "description": "Subscription ID of the Azure resource",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "RadiusResourceList": {
       "properties": {
         "value": {
@@ -102,6 +120,17 @@
       "required": true,
       "in": "path",
       "name": "awesomeThingName"
+    },
+    "AzureConnectionResourceParameters": {
+      "description": "Resource group of the Azure resource that Radius application connects to.",
+      "in": "body",
+      "name": "AzureConnectionResourceProperties",
+      "required": false,
+      "schema": {
+        "$ref": "#/definitions/AzureConnectionResourceProperties",
+        "type": "object"
+      },
+      "x-ms-parameter-location": "method"
     },
     "RadiusResourceTypeParameter": {
       "x-ms-parameter-location": "method",
@@ -182,6 +211,9 @@
           },
           {
             "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/AzureConnectionResourceParameters"
           },
           {
             "$ref": "#/parameters/RadiusResourceNameParameter"

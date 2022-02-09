@@ -166,6 +166,9 @@ func (client *RadiusResourceClient) getCreateRequest(ctx context.Context, resour
 	reqQP.Set("api-version", "2018-09-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header.Set("Accept", "application/json")
+	if options != nil && options.AzureConnectionResourceProperties != nil {
+		return req, runtime.MarshalAsJSON(req, *options.AzureConnectionResourceProperties)
+	}
 	return req, nil
 }
 
