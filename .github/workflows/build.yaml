@@ -314,10 +314,10 @@ jobs:
         path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
   
   local_dev_tests:
-    name: Run Local Dev tests
+    name: Run K3s Local Dev tests
     needs: [ 'build', 'images', 'pre_check' ]
-    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: ubuntu-latest
+    if: ${{ false }}
+    runs-on: self-hosted
     concurrency:
       group: dev-${{ github.ref }}
       cancel-in-progress: true
