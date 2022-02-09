@@ -317,7 +317,7 @@ jobs:
     name: Run Local Dev tests
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     concurrency:
       group: dev-${{ github.ref }}
       cancel-in-progress: true
