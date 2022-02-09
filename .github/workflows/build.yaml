@@ -237,7 +237,7 @@ jobs:
     name: Run Kubernetes tests
     needs: [ 'build', 'images', 'pre_check' ]
     if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     concurrency:
       group: k8s-${{ github.ref }}
       cancel-in-progress: true
