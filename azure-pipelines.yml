@@ -42,9 +42,7 @@ steps:
     dapr/dapr init -k --wait --timeout 600
   displayName: Download and install dapr
 - script: |
-    # TODO export path to right place
-    echo '##vso[task.setvariable variable=path]$(PATH):/dir/to/whatever'
-- script: |
+    export PATH=$(Build.SourcesDirectory)/dist:$PATH
     mkdir ~/.rad
     dist/rad env init kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag $(RELEASE_VERSION)
 - script: |
