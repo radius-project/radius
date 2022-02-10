@@ -220,6 +220,30 @@ jobs:
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz --force
   
+  run_functional_tests:
+    name: Trigger Functional tests in Azure Pipeline
+    needs: [ 'build', 'images', 'pre_check' ]
+    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
+    runs-on: self-hosted
+    concurrency:
+      group: k8s-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Go ${{ env.GOVER }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GOVER }}
+    - name: Parse release version and set environment variables
+      run: python ./.github/scripts/get_release_version.py
+    - uses: Azure/pipelines@v1
+      with:
+        azure-devops-project-url: 'https://dev.azure.com/azure-octo/Incubations'
+        azure-pipeline-name: 'project-radius.radius'
+        azure-devops-token: '${{ secrets.AZUREOCTO_PAT }}'
+        azure-pipeline-variables:  '{"REL_VERSION": "${{ env.REL_VERSION }}", "REL_CHANNEL": "${{ env.REL_CHANNEL }}"}'
+
   local_dev_tests:
     name: Run K3s Local Dev tests
     needs: [ 'build', 'images', 'pre_check' ]
