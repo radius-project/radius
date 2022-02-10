@@ -15,6 +15,10 @@ variables:
   value: radius.azurecr.io
 - name: K8S_FUNCTIONALTEST_TIMEOUT
   value: 20m
+- name: REL_CHANNEL
+  value: edge
+- name: REL_VERSION
+  value: pr-1919
 steps:
 - task: GoTool@0
   inputs:
@@ -22,9 +26,6 @@ steps:
 # - script: python ./.github/scripts/get_release_version.py
 #   displayName: Parse release version and set environment variables
  # $(System.PullRequest.PullRequestNumber)
-- script: |
-    export REL_CHANNEL=edge
-    export REL_VERSION=pr-1919
 - script: |
     make build
     cp ./dist/linux_amd64/release/rad ./dist/
@@ -46,7 +47,7 @@ steps:
 - script: |
     export PATH=$(Build.SourcesDirectory)/dist:$PATH
     mkdir ~/.rad
-    dist/rad env init kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag $RELEASE_VERSION
+    dist/rad env init kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag ${{ variables.REL_VERSION }}
   displayName: rad env init kubernetes
 - script: |
     export PATH=$(Build.SourcesDirectory)/dist:$PATH
