@@ -17,9 +17,9 @@ variables:
   value: 20m
 
 stages:
-- stage: test-image-build
+- stage: image_build
   jobs:
-  - job: publish-docker-image
+  - job: publish_docker_image
     pool:
       vmImage: 'ubuntu-latest'
     steps:
@@ -45,7 +45,7 @@ stages:
       displayName: publish container
 
 - stage: functional-test
-  dependsOn: build
+  dependsOn: image_build
   jobs:
   - job: Kubernetes
     #variables:
