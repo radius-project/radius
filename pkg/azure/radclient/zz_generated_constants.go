@@ -207,7 +207,7 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
-// DaprSecretStorePropertiesKind - The Dapr Secret Store kind.
+// DaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
 type DaprSecretStorePropertiesKind string
 
 const (

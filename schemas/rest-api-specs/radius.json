@@ -739,7 +739,7 @@
       ],
       "properties": {
         "kind": {
-          "description": "The Dapr Secret Store kind.",
+          "description": "Radius kind for Dapr Secret Store",
           "enum": [
             "generic"
           ],
@@ -750,7 +750,7 @@
           "type": "object"
         },
         "type": {
-          "description": "Dapr Secret Store type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/",
           "example": [
             "secretstores.hashicorp.vault"
           ],

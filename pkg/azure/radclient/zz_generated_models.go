@@ -1161,13 +1161,13 @@ func (d *DaprPubSubTopicResource) UnmarshalJSON(data []byte) error {
 
 type DaprSecretStoreProperties struct {
 	BasicResourceProperties
-	// REQUIRED; The Dapr Secret Store kind.
+	// REQUIRED; Radius kind for Dapr Secret Store
 	Kind *DaprSecretStorePropertiesKind `json:"kind,omitempty"`
 
 	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// REQUIRED; Dapr Secret Store type. These strings match the format used by Dapr Kubernetes configuration format.
+	// REQUIRED; Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 	Type *string `json:"type,omitempty"`
 
 	// REQUIRED; Dapr component version
