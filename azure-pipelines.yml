@@ -13,6 +13,9 @@ steps:
 # - script: python ./.github/scripts/get_release_version.py
 #   displayName: Parse release version and set environment variables
 - script: |
+    export REL_CHANNEL=edge
+    export REL_VERSION=pr-$(System.PullRequest.PullRequestNumber)
+- script: |
     make build
     cp ./dist/linux_amd64/release/rad ./dist/
     chmod +x rad
