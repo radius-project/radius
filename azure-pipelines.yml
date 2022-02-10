@@ -19,7 +19,7 @@ variables:
 - name: REL_CHANNEL
   value: edge
 - name: REL_VERSION
-  value: ado-$(Build.BuildNumber)
+  value: pr-ado-$(Build.BuildNumber)
 
 stages:
 - stage: ImageBuild
