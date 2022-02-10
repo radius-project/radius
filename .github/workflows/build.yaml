@@ -401,6 +401,8 @@ jobs:
     env:
       GOVER: '^1.17'
 
+      REGISTRY: radius.azurecr.io
+
       # Timeout used for Azure functional tests
       AZURE_FUNCTIONALTEST_TIMEOUT: 30m
 
@@ -511,7 +513,7 @@ jobs:
         go run cmd/testenv/main.go \
           update-rp \
           --configpath ~/.rad/config.yaml \
-          --image radiusteam/radius-rp:${{ env.REL_VERSION }} \
+          --image ${{ env.REGISTRY }}/radius-rp:${{ env.REL_VERSION }} \
           --check-version ${{ env.REL_VERSION }}
     - name: Download Bicep
       run: |
