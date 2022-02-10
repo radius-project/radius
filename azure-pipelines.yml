@@ -6,6 +6,15 @@
 pool:
   vmImage: ubuntu-latest
 
+variables:
+- name: RADIUS_CHART_LOCATION
+  value: deploy/Chart/
+- name: RADIUS_CONTAINER_LOG_BASE
+  value: dist/container_logs
+- name: DOCKER_REGISTRY
+  value: radius.azurecr.io
+- name: K8S_FUNCTIONALTEST_TIMEOUT
+  value: 20m
 steps:
 - task: GoTool@0
   inputs:
@@ -32,21 +41,21 @@ steps:
     chmod +x "dapr/dapr"
     dapr/dapr init -k --wait --timeout 600
   displayName: Download and install dapr
-# - script: |
-#     # TODO export path to right place
-#     echo '##vso[task.setvariable variable=path]$(PATH):/dir/to/whatever'
-# - script: |
-#     mkdir ~/.rad
-#     dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
-# - script: |
-#     export PATH=$GITHUB_WORKSPACE/dist:$PATH
-#     cd $GITHUB_WORKSPACE
-#     which rad || { echo "cannot find rad"; exit 1; }
-#     rad bicep download
-# - script: |
-#     export PATH=$GITHUB_WORKSPACE/dist:$PATH
-#     export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
-#     export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-#     make test-functional-kubernetes
+- script: |
+    # TODO export path to right place
+    echo '##vso[task.setvariable variable=path]$(PATH):/dir/to/whatever'
+- script: |
+    mkdir ~/.rad
+    dist/rad env init kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag $(RELEASE_VERSION)
+- script: |
+    export PATH=$(Build.SourcesDirectory)/dist:$PATH
+    cd $(Build.SourcesDirectory)
+    which rad || { echo "cannot find rad"; exit 1; }
+    rad bicep download
+- script: |
+    export PATH=$(Build.SourcesDirectory)/dist:$PATH
+    export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
+    export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
+    make test-functional-kubernetes
 
 
