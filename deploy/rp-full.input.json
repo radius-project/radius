@@ -36,7 +36,7 @@
         },
         "image": {
             "type": "string",
-            "defaultValue": "[format('radiusteam/radius-rp:{0}', if(equals(parameters('channel'), 'edge'), 'latest', parameters('channel')))]",
+            "defaultValue": "[format('radius.azurecr.io/radius-rp:{0}', if(equals(parameters('channel'), 'edge'), 'latest', parameters('channel')))]",
             "metadata": {
                 "description": "The container image to deploy."
             }

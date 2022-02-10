@@ -120,21 +120,7 @@ jobs:
     runs-on: self-hosted
     env:
       GOVER: '^1.17'
-    strategy:
-      fail-fast: false
-      matrix:
-        destination: ['acr', 'dockerhub']
-        include:
-        - destination: acr
-          registry: radius.azurecr.io
-          login_server: radius.azurecr.io
-          username_secret: DOCKER_USERNAME
-          password_secret: DOCKER_PASSWORD
-        - destination: dockerhub
-          registry: radiusteam
-          login_server: https://index.docker.io/v1/
-          username_secret: RADIUSTEAM_DOCKERHUB_USERNAME
-          password_secret: RADIUSTEAM_DOCKERHUB_PASSWORD
+      REGISTRY: radius.azurecr.io
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -160,42 +146,42 @@ jobs:
       - name: make docker-build
         run: make docker-build
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: latest
       - name: make docker-build (PR)
         run: make docker-build
         if: startsWith(github.ref, 'refs/pull/')
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make docker-build (release)
         run: make docker-build
         if: startsWith(github.ref, 'refs/tags/v')
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
       - uses: azure/docker-login@v1
         with:
-          login-server: ${{ matrix.login_server }}
-          username: '${{ secrets[matrix.username_secret] }}'
-          password: '${{ secrets[matrix.password_secret] }}'
+          login-server: ${{ env.REGISTRY }}
+          username: '${{ secrets.DOCKER_USERNAME }}'
+          password: '${{ secrets.DOCKER_PASSWORD }}'
       - name: make docker-push (latest)
         run: make docker-push
         if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to main or tag
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: latest
       - name: make docker-push (PR)
         run: make docker-push
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make docker-push (release)
         run: make docker-push
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
   helm:
     name: Helm chart build
@@ -316,7 +302,7 @@ jobs:
   local_dev_tests:
     name: Run K3s Local Dev tests
     needs: [ 'build', 'images', 'pre_check' ]
-    if: ${{ false }}
+    if: ${{ false }} # Skip the job until we revisit this dev env test - https://github.com/project-radius/radius/issues/1907
     runs-on: self-hosted
     concurrency:
       group: dev-${{ github.ref }}
@@ -414,6 +400,8 @@ jobs:
       cancel-in-progress: true
     env:
       GOVER: '^1.17'
+
+      REGISTRY: radius.azurecr.io
 
       # Timeout used for Azure functional tests
       AZURE_FUNCTIONALTEST_TIMEOUT: 30m
@@ -525,7 +513,7 @@ jobs:
         go run cmd/testenv/main.go \
           update-rp \
           --configpath ~/.rad/config.yaml \
-          --image radiusteam/radius-rp:${{ env.REL_VERSION }} \
+          --image ${{ env.REGISTRY }}/radius-rp:${{ env.REL_VERSION }} \
           --check-version ${{ env.REL_VERSION }}
     - name: Download Bicep
       run: |
@@ -631,57 +619,3 @@ jobs:
             rad_cli_darwin_amd64
             rad_cli_linux_arm
           failOnError: false
-
-  codespaces:
-    name: Codespaces container image build
-    runs-on: self-hosted
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-      - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Cache Docker layers
-        uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: '${{ secrets.RADIUSTEAM_DOCKERHUB_USERNAME }}'
-          password: '${{ secrets.RADIUSTEAM_DOCKERHUB_PASSWORD }}'
-      - name: Build and push - Codespaces (latest)
-        if: (github.ref == 'refs/heads/main') # push image on push to main
-        uses: docker/build-push-action@v2
-        with:
-          context: ./.devcontainer/tutorials-codespace/
-          builder: ${{ steps.buildx.outputs.name }}
-          push: true
-          tags:  radiusteam/radcodespace:latest
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-      - name: Build and push - Codespaces (PR)
-        if: startsWith(github.ref, 'refs/pull/') # push image on pr
-        uses: docker/build-push-action@v2
-        with:
-          context: ./.devcontainer/tutorials-codespace/
-          builder: ${{ steps.buildx.outputs.name }}
-          push: false # don't push image on pr
-          tags:  radiusteam/radcodespace:${{ env.REL_VERSION }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-      - name: Build and push - Codespaces (release)
-        if: startsWith(github.ref, 'refs/tags/v') # push image on tag
-        uses: docker/build-push-action@v2
-        with:
-          context: ./.devcontainer/tutorials-codespace/
-          builder: ${{ steps.buildx.outputs.name }}
-          push: true
-          tags:  radiusteam/radcodespace:${{ env.REL_CHANNEL }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
