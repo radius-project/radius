@@ -3,7 +3,6 @@
   "name": "name",
   "kind": "mongodb.com/Mongo@v1alpha1",
   "properties": {
-    "managed": true,
     "resource": "foo",
     "host": "host",
     "port": 80,

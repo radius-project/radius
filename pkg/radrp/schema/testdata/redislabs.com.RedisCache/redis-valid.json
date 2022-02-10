@@ -2,7 +2,6 @@
   "id": "id",
   "name": "name",
   "properties": {
-    "managed": true,
     "host": "localhost",
     "port": 6380,
     "secrets": {

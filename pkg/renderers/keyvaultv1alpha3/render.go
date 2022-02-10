@@ -36,47 +36,29 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 
 	output := renderers.RendererOutput{}
 
-	if properties.Managed != nil && *properties.Managed {
-		if properties.Resource != nil && *properties.Resource != "" {
-			return renderers.RendererOutput{}, renderers.ErrResourceSpecifiedForManagedResource
-		}
-
-		resource := outputresource.OutputResource{
-			Resource: map[string]string{
-				handlers.ManagedKey: "true",
-			},
-			Deployed:     false,
-			LocalID:      outputresource.LocalIDKeyVault,
-			Managed:      true,
-			ResourceKind: resourcekinds.AzureKeyVault,
-		}
-
-		output.Resources = append(output.Resources, resource)
-	} else {
-		if properties.Resource == nil || *properties.Resource == "" {
-			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
-		}
-
-		vaultID, err := renderers.ValidateResourceID(*properties.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-
-		resource := outputresource.OutputResource{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
-			Managed:      false,
-			Deployed:     true,
-			Resource: map[string]string{
-				handlers.ManagedKey: "false",
-
-				handlers.KeyVaultIDKey:   vaultID.ID,
-				handlers.KeyVaultNameKey: vaultID.Types[0].Name,
-			},
-		}
-
-		output.Resources = append(output.Resources, resource)
+	if properties.Resource == nil || *properties.Resource == "" {
+		return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
 	}
+
+	vaultID, err := renderers.ValidateResourceID(*properties.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	resource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDKeyVault,
+		ResourceKind: resourcekinds.AzureKeyVault,
+		Managed:      false,
+		Deployed:     true,
+		Resource: map[string]string{
+			handlers.ManagedKey: "false",
+
+			handlers.KeyVaultIDKey:   vaultID.ID,
+			handlers.KeyVaultNameKey: vaultID.Types[0].Name,
+		},
+	}
+
+	output.Resources = append(output.Resources, resource)
 
 	output.ComputedValues = map[string]renderers.ComputedValueReference{
 		"uri": {

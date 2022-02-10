@@ -34,64 +34,6 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Azure_Render_Managed_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := AzureRenderer{}
-
-	resource := renderers.RendererResource{
-		ApplicationName: applicationName,
-		ResourceName:    resourceName,
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": true,
-		},
-	}
-
-	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
-	require.NoError(t, err)
-
-	require.Len(t, output.Resources, 2)
-	accountResource := output.Resources[0]
-	databaseResource := output.Resources[1]
-
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosAccount, accountResource.ResourceKind)
-
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.ResourceKind)
-
-	expectedAccount := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.CosmosDBAccountBaseName: "test-db",
-		handlers.CosmosDBAccountKindKey:  string(documentdb.DatabaseAccountKindMongoDB),
-	}
-	require.Equal(t, expectedAccount, accountResource.Resource)
-
-	expectedDatabase := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.CosmosDBAccountBaseName: "test-db",
-		handlers.CosmosDBDatabaseNameKey: "test-db",
-	}
-	require.Equal(t, expectedDatabase, databaseResource.Resource)
-
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"database": {
-			Value: resource.ResourceName,
-		},
-	}
-	require.Equal(t, expectedComputedValues, output.ComputedValues)
-
-	expectedSecretValues := map[string]renderers.SecretValueReference{
-		ConnectionStringValue: {
-			LocalID:       cosmosAccountDependency.LocalID,
-			Action:        "listConnectionStrings",
-			ValueSelector: "/connectionStrings/0/connectionString",
-			Transformer:   resourcekinds.AzureCosmosDBMongo,
-		},
-	}
-	require.Equal(t, expectedSecretValues, output.SecretValues)
-}
-
 func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
@@ -152,6 +94,7 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
+
 func Test_Azure_Render_Unmanaged_UserSpecifiedSecrets(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}

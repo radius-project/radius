@@ -36,18 +36,13 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	}
 
 	outputResources := []outputresource.OutputResource{}
-	if properties.Managed != nil && *properties.Managed {
-		redisCacheOutputResource := RenderManaged(resource.ResourceName, properties)
 
-		outputResources = append(outputResources, redisCacheOutputResource)
-	} else {
-		redisCacheOutputResource, err := RenderUnmanaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-		if redisCacheOutputResource != nil {
-			outputResources = append(outputResources, *redisCacheOutputResource)
-		}
+	redisCacheOutputResource, err := RenderUnmanaged(resource.ResourceName, properties)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+	if redisCacheOutputResource != nil {
+		outputResources = append(outputResources, *redisCacheOutputResource)
 	}
 
 	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
@@ -57,20 +52,6 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil
-}
-
-func RenderManaged(resourceName string, properties radclient.RedisCacheResourceProperties) outputresource.OutputResource {
-	redisCacheOutputResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureRedis,
-		ResourceKind: resourcekinds.AzureRedis,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:    "true",
-			handlers.RedisBaseName: resourceName,
-		},
-	}
-
-	return redisCacheOutputResource
 }
 
 func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourceProperties) (*outputresource.OutputResource, error) {

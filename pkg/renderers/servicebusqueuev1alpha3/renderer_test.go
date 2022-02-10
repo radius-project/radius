@@ -27,38 +27,6 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Managed_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := Renderer{}
-
-	dependencies := map[string]renderers.RendererDependency{}
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": true,
-			"queue":   "cool-queue",
-		},
-	}
-
-	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
-	require.NoError(t, err)
-
-	require.Len(t, result.Resources, 1)
-	output := result.Resources[0]
-
-	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, output.LocalID)
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, output.ResourceKind)
-	require.True(t, output.Managed)
-
-	expected := map[string]string{
-		handlers.ManagedKey:             "true",
-		handlers.ServiceBusQueueNameKey: "cool-queue",
-	}
-	require.Equal(t, expected, output.Resource)
-}
-
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}

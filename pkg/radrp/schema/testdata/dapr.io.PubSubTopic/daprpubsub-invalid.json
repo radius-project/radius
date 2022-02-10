@@ -2,7 +2,6 @@
   "id": "id",
   "name": "name",
   "properties": {
-    "kind": "any",
     "foo": "bar",
     "topic": "fun coding"
   }

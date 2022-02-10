@@ -37,9 +37,6 @@
           "$ref": "#/definitions/DaprStateStoreAzureTableStorageResourceProperties"
         },
         {
-          "$ref": "#/definitions/DaprStateStoreAnyResourceProperties"
-        },
-        {
           "$ref": "#/definitions/DaprStateStoreGenericResourceProperties"
         }
       ]
@@ -48,20 +45,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "managed",
         "kind"
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
-          "type": "boolean",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ]
-        },
         "kind": {
           "description": "The Dapr StateStore kind.",
           "type": "string",
@@ -70,7 +56,7 @@
           ]
         },
         "resource": {
-          "description": "PubSub resource, for unmanaged",
+          "description": "PubSub resource",
           "type": "string"
         }
       }
@@ -79,20 +65,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "managed",
         "kind"
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
-          "type": "boolean",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ]
-        },
         "kind": {
           "description": "The Dapr StateStore kind.",
           "type": "string",
@@ -106,20 +81,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "managed",
         "kind"
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
-          "type": "boolean",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ]
-        },
         "kind": {
           "description": "The Dapr StateStore kind.",
           "type": "string",
@@ -128,24 +92,8 @@
           ]
         },
         "resource": {
-          "description": "PubSub resource, for unmanaged",
+          "description": "PubSub resource",
           "type": "string"
-        }
-      }
-    },
-    "DaprStateStoreAnyResourceProperties": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "kind"
-      ],
-      "properties": {
-        "kind": {
-          "description": "The Dapr StateStore kind",
-          "type": "string",
-          "enum": [
-            "any"
-          ]
         }
       }
     },

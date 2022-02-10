@@ -27,41 +27,6 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Managed_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := Renderer{}
-
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-vault",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": true,
-		},
-	}
-
-	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
-	require.NoError(t, err)
-
-	require.Equal(t, outputresource.LocalIDKeyVault, output.Resources[0].LocalID)
-	require.Equal(t, resourcekinds.AzureKeyVault, output.Resources[0].ResourceKind)
-
-	expectedProperties := map[string]string{
-		handlers.ManagedKey: "true",
-	}
-	require.Equal(t, expectedProperties, output.Resources[0].Resource)
-
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"uri": {
-			LocalID:           outputresource.LocalIDKeyVault,
-			PropertyReference: handlers.KeyVaultURIKey,
-		},
-	}
-
-	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Empty(t, output.SecretValues)
-}
-
 func Test_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}

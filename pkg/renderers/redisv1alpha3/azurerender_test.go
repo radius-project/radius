@@ -20,39 +20,6 @@ const (
 	resourceName    = "test-redis"
 )
 
-func Test_Render_Managed_Azure_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := AzureRenderer{}
-
-	resource := renderers.RendererResource{
-		ApplicationName: applicationName,
-		ResourceName:    resourceName,
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": true,
-		},
-	}
-
-	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
-	require.NoError(t, err)
-
-	require.Len(t, output.Resources, 1)
-
-	require.Equal(t, outputresource.LocalIDAzureRedis, output.Resources[0].LocalID)
-	require.Equal(t, resourcekinds.AzureRedis, output.Resources[0].ResourceKind)
-	require.Equal(t, true, output.Resources[0].Managed)
-
-	expectedProperties := map[string]string{
-		handlers.ManagedKey:    "true",
-		handlers.RedisBaseName: resourceName,
-	}
-	require.Equal(t, expectedProperties, output.Resources[0].Resource)
-
-	expectedComputedValues, expectedSecretValues := expectedComputedAndSecretValues()
-	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, expectedSecretValues, output.SecretValues)
-}
-
 func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}

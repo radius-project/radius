@@ -31,9 +31,6 @@
           "$ref": "#/definitions/DaprPubSubTopicAzureServiceBusResourceProperties"
         },
         {
-          "$ref": "#/definitions/DaprPubSubTopicAnyResourceProperties"
-        },
-        {
           "$ref": "#/definitions/DaprPubSubTopicGenericResourceProperties"
         }
       ]
@@ -45,10 +42,6 @@
         "kind"
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
-          "type": "boolean"
-        },
         "kind": {
           "description": "The Dapr Pub/Sub kind. These strings match the format used by Dapr Kubernetes configuration format.",
           "type": "string",
@@ -59,25 +52,7 @@
           "type": "string"
         },
         "resource": {
-          "description": "PubSub resource, for unmanaged",
-          "type": "string"
-        }
-      }
-    },
-    "DaprPubSubTopicAnyResourceProperties": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "kind"
-      ],
-      "properties": {
-        "kind": {
-          "description": "The Dapr Pub/Sub kind.",
-          "type": "string",
-          "enum": ["any"]
-        },
-        "topic": {
-          "description": "PubSub topic",
+          "description": "PubSub resource",
           "type": "string"
         }
       }

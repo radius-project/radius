@@ -43,10 +43,6 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		return renderers.RendererOutput{}, err
 	}
 
-	if properties.Managed != nil && *properties.Managed {
-		return renderers.RendererOutput{}, errors.New("only 'managed: false' SQL databases are supported")
-	}
-
 	if properties.Resource == nil || *properties.Resource == "" {
 		// Server and database names are required if no resource id
 		if properties.Server == nil || *properties.Server == "" {

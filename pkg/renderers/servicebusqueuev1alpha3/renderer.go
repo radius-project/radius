@@ -7,7 +7,6 @@ package servicebusqueuev1alpha3
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -37,50 +36,30 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	}
 
 	var output outputresource.OutputResource
-	if properties.Managed != nil && *properties.Managed {
-		if to.String(properties.Queue) == "" {
-			return renderers.RendererOutput{}, errors.New("the 'topic' field is required when 'managed=true'")
-		}
 
-		if to.String(properties.Resource) != "" {
-			return renderers.RendererOutput{}, renderers.ErrResourceSpecifiedForManagedResource
-		}
+	if to.String(properties.Resource) == "" {
+		return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
+	}
 
-		// generate data we can use to manage a servicebus queue
-		output = outputresource.OutputResource{
-			LocalID:      outputresource.LocalIDAzureServiceBusQueue,
-			ResourceKind: resourcekinds.AzureServiceBusQueue,
-			Managed:      true,
-			Resource: map[string]string{
-				handlers.ManagedKey:             "true",
-				handlers.ServiceBusQueueNameKey: to.String(properties.Queue),
-			},
-		}
-	} else {
-		if to.String(properties.Resource) == "" {
-			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
-		}
+	queueID, err := renderers.ValidateResourceID(to.String(properties.Resource), QueueResourceType, "ServiceBus Queue")
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 
-		queueID, err := renderers.ValidateResourceID(to.String(properties.Resource), QueueResourceType, "ServiceBus Queue")
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
+	// TODO : Need to create an output resource for service bus namespace
+	output = outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDAzureServiceBusQueue,
+		ResourceKind: resourcekinds.AzureServiceBusQueue,
+		Managed:      false,
+		Resource: map[string]string{
+			handlers.ManagedKey: "false",
 
-		// TODO : Need to create an output resource for service bus namespace
-		output = outputresource.OutputResource{
-			LocalID:      outputresource.LocalIDAzureServiceBusQueue,
-			ResourceKind: resourcekinds.AzureServiceBusQueue,
-			Managed:      false,
-			Resource: map[string]string{
-				handlers.ManagedKey: "false",
-
-				// Truncate the queue part of the ID to make an ID for the namespace
-				handlers.ServiceBusNamespaceIDKey:   azresources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),
-				handlers.ServiceBusQueueIDKey:       queueID.ID,
-				handlers.ServiceBusNamespaceNameKey: queueID.Types[0].Name,
-				handlers.ServiceBusQueueNameKey:     queueID.Types[1].Name,
-			},
-		}
+			// Truncate the queue part of the ID to make an ID for the namespace
+			handlers.ServiceBusNamespaceIDKey:   azresources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),
+			handlers.ServiceBusQueueIDKey:       queueID.ID,
+			handlers.ServiceBusNamespaceNameKey: queueID.Types[0].Name,
+			handlers.ServiceBusQueueNameKey:     queueID.Types[1].Name,
+		},
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{

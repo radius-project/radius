@@ -39,21 +39,13 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 	}
 
 	resources := []outputresource.OutputResource{}
-	if properties.Managed != nil && *properties.Managed {
-		results, err := RenderManaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
 
-		resources = append(resources, results...)
-	} else {
-		results, err := RenderUnmanaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-
-		resources = append(resources, results...)
+	results, err := RenderUnmanaged(resource.ResourceName, properties)
+	if err != nil {
+		return renderers.RendererOutput{}, err
 	}
+
+	resources = append(resources, results...)
 
 	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
 
@@ -62,38 +54,6 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil
-}
-
-func RenderManaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource != nil && *properties.Resource != "" {
-		return nil, renderers.ErrResourceSpecifiedForManagedResource
-	}
-
-	cosmosAccountResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosAccount,
-		ResourceKind: resourcekinds.AzureCosmosAccount,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
-			handlers.CosmosDBAccountBaseName: name,
-			handlers.CosmosDBAccountKindKey:  string(documentdb.DatabaseAccountKindMongoDB),
-		},
-	}
-
-	// generate data we can use to manage a cosmosdb instance
-	databaseResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
-		ResourceKind: resourcekinds.AzureCosmosDBMongo,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
-			handlers.CosmosDBAccountBaseName: name,
-			handlers.CosmosDBDatabaseNameKey: name,
-		},
-		Dependencies: []outputresource.Dependency{cosmosAccountDependency},
-	}
-
-	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
 
 func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
