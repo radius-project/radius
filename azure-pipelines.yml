@@ -3,8 +3,9 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
-pool:
-  vmImage: ubuntu-latest
+trigger: none
+
+pr: [ main ]
 
 variables:
 - name: RADIUS_CHART_LOCATION
