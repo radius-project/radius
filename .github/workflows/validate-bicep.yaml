@@ -16,6 +16,8 @@ jobs:
     steps:
     - name: Check out repo
       uses: actions/checkout@v2
+    - name: Setup Azure CLI
+      run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
     - name: az Login
       uses: azure/login@v1
       with:
