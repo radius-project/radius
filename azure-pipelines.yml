@@ -15,6 +15,10 @@ variables:
   value: radius.azurecr.io
 - name: K8S_FUNCTIONALTEST_TIMEOUT
   value: 20m
+- name: REL_CHANNEL
+  value: edge
+- name: REL_VERSION
+  value: ado-$(Build.BuildNumber)
 
 stages:
 - stage: ImageBuild
@@ -35,8 +39,6 @@ stages:
         command: login
         containerRegistry: radius-acr
     - script: |
-        export REL_CHANNEL=edge
-        export REL_VERSION=ado-$BUILD_BUILDNUMBER
         export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
 
@@ -49,10 +51,6 @@ stages:
   dependsOn: ImageBuild
   jobs:
   - job: Kubernetes
-    variables:
-      # map the output variable from A into this job
-      REL_CHANNEL: $[ stageDependencies.ImageBuild.PublishContainerImage.outputs['REL_CHANNEL'] ]
-      REL_VERSION: $[ stageDependencies.ImageBuild.PublishContainerImage.outputs['REL_VERSION'] ]
     pool:
       vmImage: 'ubuntu-latest'
     steps:
