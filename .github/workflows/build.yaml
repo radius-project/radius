@@ -120,21 +120,7 @@ jobs:
     runs-on: self-hosted
     env:
       GOVER: '^1.17'
-    strategy:
-      fail-fast: false
-      matrix:
-        destination: ['acr', 'dockerhub']
-        include:
-        - destination: acr
-          registry: radius.azurecr.io
-          login_server: radius.azurecr.io
-          username_secret: DOCKER_USERNAME
-          password_secret: DOCKER_PASSWORD
-        - destination: dockerhub
-          registry: radiusteam
-          login_server: https://index.docker.io/v1/
-          username_secret: RADIUSTEAM_DOCKERHUB_USERNAME
-          password_secret: RADIUSTEAM_DOCKERHUB_PASSWORD
+      REGISTRY: radius.azurecr.io
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -160,42 +146,42 @@ jobs:
       - name: make docker-build
         run: make docker-build
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: latest
       - name: make docker-build (PR)
         run: make docker-build
         if: startsWith(github.ref, 'refs/pull/')
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make docker-build (release)
         run: make docker-build
         if: startsWith(github.ref, 'refs/tags/v')
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
       - uses: azure/docker-login@v1
         with:
-          login-server: ${{ matrix.login_server }}
-          username: '${{ secrets[matrix.username_secret] }}'
-          password: '${{ secrets[matrix.password_secret] }}'
+          login-server: ${{ env.REGISTRY }}
+          username: '${{ secrets.DOCKER_USERNAME }}'
+          password: '${{ secrets.DOCKER_PASSWORD }}'
       - name: make docker-push (latest)
         run: make docker-push
         if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to main or tag
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: latest
       - name: make docker-push (PR)
         run: make docker-push
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make docker-push (release)
         run: make docker-push
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
         env:
-          DOCKER_REGISTRY: ${{ matrix.registry }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
   helm:
     name: Helm chart build
@@ -316,7 +302,7 @@ jobs:
   local_dev_tests:
     name: Run K3s Local Dev tests
     needs: [ 'build', 'images', 'pre_check' ]
-    if: ${{ false }}
+    if: ${{ false }} # Skip the job until we revisit this dev env test - https://github.com/project-radius/radius/issues/1907
     runs-on: self-hosted
     concurrency:
       group: dev-${{ github.ref }}
