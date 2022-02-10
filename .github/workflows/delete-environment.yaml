@@ -12,7 +12,7 @@ on:
 jobs:
   delete-environment:
     name: Delete Environment
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       GOVER: '^1.17'
       GOPROXY: https://proxy.golang.org
@@ -60,21 +60,13 @@ jobs:
             --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ github.event.client_payload.environment}} \
             --yes \
-            --verbose
+            --verbose \
+            --no-wait
       - name: Delete Environment Contol Plane Resource Group
         run: |
           az group delete \
             --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group RE-${{ github.event.client_payload.environment}} \
             --yes \
-            --verbose
-      - name: Create issue on failure
-        uses: JasonEtco/create-an-issue@v2
-        if: failure()
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WORKFLOWID: ${{ github.run_id }}
-          WORKFLOWURL: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
-        with:
-          filename: .github/ISSUE_TEMPLATE/environment-failure.md
+            --verbose \
+            --no-wait

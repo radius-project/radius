@@ -12,7 +12,7 @@ on:
 jobs:
   create-environment:
     name: Create Environment
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       GOVER: '^1.17'
       GOPROXY: https://proxy.golang.org
