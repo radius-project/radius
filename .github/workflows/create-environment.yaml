@@ -39,6 +39,8 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GOVER }}
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
         # we use node for generating a UUID for the resource group name
       - uses: actions/setup-node@v2
         with:
