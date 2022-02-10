@@ -18,7 +18,7 @@ steps:
 - script: |
     make build
     cp ./dist/linux_amd64/release/rad ./dist/
-    chmod +x rad
+    chmod +x ./dist/rad
   displayName: Build and copy rad exe
 - script: | 
     mkdir -p kind/
