@@ -29,21 +29,21 @@ steps:
     chmod +x "dapr/dapr"
     dapr/dapr init -k --wait --timeout 600
   displayName: Download and install daprdapr
-- script: |
-    # TODO export path to right place
-    echo '##vso[task.setvariable variable=path]$(PATH):/dir/to/whatever'
-- script: |
-    mkdir ~/.rad
-    dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
-- script: |
-    export PATH=$GITHUB_WORKSPACE/dist:$PATH
-    cd $GITHUB_WORKSPACE
-    which rad || { echo "cannot find rad"; exit 1; }
-    rad bicep download
-- script: |
-    export PATH=$GITHUB_WORKSPACE/dist:$PATH
-    export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
-    export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-    make test-functional-kubernetes
+# - script: |
+#     # TODO export path to right place
+#     echo '##vso[task.setvariable variable=path]$(PATH):/dir/to/whatever'
+# - script: |
+#     mkdir ~/.rad
+#     dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
+# - script: |
+#     export PATH=$GITHUB_WORKSPACE/dist:$PATH
+#     cd $GITHUB_WORKSPACE
+#     which rad || { echo "cannot find rad"; exit 1; }
+#     rad bicep download
+# - script: |
+#     export PATH=$GITHUB_WORKSPACE/dist:$PATH
+#     export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
+#     export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+#     make test-functional-kubernetes
 
 
