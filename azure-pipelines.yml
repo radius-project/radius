@@ -37,6 +37,7 @@ stages:
     - script: |
         export REL_CHANNEL=edge
         export REL_VERSION=ado-$BUILD_BUILDNUMBER
+        export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
 
         # set environment global environment variable
