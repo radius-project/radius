@@ -3,17 +3,47 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
-trigger:
-- main
-
 pool:
   vmImage: ubuntu-latest
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
+- task: GoTool@0
+  inputs:
+    version: '1.17'
+- script: python ./.github/scripts/get_release_version.py
+  displayName: Parse release version and set environment variables
 - script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+    make build
+    cp ./dist/linux_amd64/release/rad ./dist/
+    chmod +x rad
+  displayName: Build and copy rad exe
+- script: | 
+    mkdir -p kind/
+    curl -sSLo "kind/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v0.11.0/kind-linux-amd64"
+    chmod +x "kind/kind"
+    kind create cluster --name radius --wait 60s
+- script: |
+    mkdir -p dapr/
+    curl -sSLo "dapr/" "https://github.com/dapr/cli/releases/download/v1.5.1/dapr_linux_amd64.tar.gz"
+    tar -xzf dapr/dapr_linux_amd64.tar.gz
+    chmod +x "dapr/dapr"
+    dapr/dapr init -k --wait --timeout 600
+  displayName: Download and install daprdapr
+- script: |
+    # TODO export path to right place
+    echo '##vso[task.setvariable variable=path]$(PATH):/dir/to/whatever'
+- script: |
+    mkdir ~/.rad
+    dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
+- script: |
+    export PATH=$GITHUB_WORKSPACE/dist:$PATH
+    cd $GITHUB_WORKSPACE
+    which rad || { echo "cannot find rad"; exit 1; }
+    rad bicep download
+- script: |
+    export PATH=$GITHUB_WORKSPACE/dist:$PATH
+    export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
+    export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+    make test-functional-kubernetes
+
+
