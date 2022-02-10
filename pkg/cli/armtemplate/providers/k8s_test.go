@@ -106,10 +106,8 @@ func TestGetDeployedResource(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeDynamicClient := fake.NewSimpleDynamicClient(fakeScheme(), tc.resources...)
-			logger, err := logr.FromContext(context.Background())
-			require.NoError(t, err)
 			store := NewK8sProvider(
-				logger,
+				logr.FromContextOrDiscard(context.Background()),
 				fakeDynamicClient,
 				fakeRestMapper(),
 			)
@@ -127,10 +125,8 @@ func TestGetDeployedResource(t *testing.T) {
 }
 
 func TestExtractGroupVersionResourceName(t *testing.T) {
-	logger, err := logr.FromContext(context.Background())
-	require.NoError(t, err)
 	store := NewK8sProvider(
-		logger,
+		logr.FromContextOrDiscard(context.Background()),
 		fake.NewSimpleDynamicClient(runtime.NewScheme()),
 		fakeRestMapper(),
 	)

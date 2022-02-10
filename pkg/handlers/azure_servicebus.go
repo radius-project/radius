@@ -48,10 +48,7 @@ type azureServiceBusQueueHandler struct {
 }
 
 func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return nil, err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Inside Put for Kind: %s", options.Resource.ResourceKind))
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
@@ -62,7 +59,7 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 	}
 
 	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	err = ValidateResourceIDsForUnmanagedResource(properties, ServiceBusNamespaceIDKey, ServiceBusQueueIDKey)
+	err := ValidateResourceIDsForUnmanagedResource(properties, ServiceBusNamespaceIDKey, ServiceBusQueueIDKey)
 	if err != nil {
 		return nil, err
 	}

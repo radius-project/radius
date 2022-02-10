@@ -53,11 +53,7 @@ type deploymentProcessor struct {
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresources.ResourceID, radiusResource db.RadiusResource) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
-	logger = logger.WithValues(radlogger.LogFieldOperationID, operationID.ID)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, operationID.ID)
 	resourceID := operationID.Truncate()
 
 	// Render
@@ -121,11 +117,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, operationID azresourc
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresources.ResourceID, resource db.RadiusResource) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
-	logger = logger.WithValues(radlogger.LogFieldOperationID, operationID.ID)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, operationID.ID)
 	resourceID := operationID.Truncate()
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
@@ -247,11 +239,7 @@ func (dp *deploymentProcessor) deleteAzureResourceConnectionsFromDB(ctx context.
 }
 
 func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource) (renderers.RendererOutput, []azresources.ResourceID, *armerrors.ErrorDetails, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return renderers.RendererOutput{}, nil, nil, err
-	}
-
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s, application: %s", resource.ResourceName, resource.ApplicationName))
 	renderer, armerr, err := dp.getResourceRenderer(resourceID)
 	if err != nil {
@@ -327,10 +315,8 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID azresources.Resour
 // Deploys rendered output resources in order of dependencies
 // returns deployedRadiusResource - updated radius resource state that should be persisted in the database
 func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, resourceID azresources.ResourceID, resource db.RadiusResource, rendererOutput renderers.RendererOutput) (db.RadiusResource, *armerrors.ErrorDetails, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return db.RadiusResource{}, nil, err
-	}
+	logger := radlogger.GetLogger(ctx)
+
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
@@ -514,11 +500,8 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 }
 
 func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource, healthCheckOptions healthcontract.HealthCheckOptions) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		logger.Error(err, "Getting logger failed.")
-		return
-	}
+	logger := radlogger.GetLogger(ctx)
+
 	msg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:   healthcontract.ActionRegister,
 		Resource: resource,
@@ -530,11 +513,7 @@ func (dp *deploymentProcessor) registerOutputResourceForHealthChecks(ctx context
 }
 
 func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx context.Context, resource healthcontract.HealthResource) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		logger.Error(err, "Getting logger failed.")
-		return
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info("Unregistering resource with the health service...", resource.Identity.AsLogValues()...)
 	msg := healthcontract.ResourceHealthRegistrationMessage{
 		Action:   healthcontract.ActionUnregister,
@@ -545,11 +524,8 @@ func (dp *deploymentProcessor) unregisterOutputResourceForHealthChecks(ctx conte
 
 // Retrieves and updates existing database entry for the operation
 func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.OperationStatus, operationResourceID azresources.ResourceID, armerr *armerrors.ErrorDetails) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		logger.Error(err, "Getting logger failed.")
-		return
-	}
+	logger := radlogger.GetLogger(ctx)
+
 	operation, err := dp.db.GetOperationByID(ctx, operationResourceID)
 	if err == db.ErrNotFound {
 		// Operation entry should have been created in the db before we get here

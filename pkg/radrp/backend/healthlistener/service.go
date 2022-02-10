@@ -32,10 +32,7 @@ func (s *Service) Name() string {
 }
 
 func (s *Service) Run(ctx context.Context) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 
 	dbclient, err := s.Options.DBClientFactory(ctx)
 	if err != nil {
@@ -58,12 +55,7 @@ func (s *Service) Run(ctx context.Context) error {
 }
 
 func (s *Service) UpdateHealth(ctx context.Context, healthUpdateMsg healthcontract.ResourceHealthDataMessage) bool {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		logger.Error(err, "Error getting logger")
-		return false
-	}
-	logger = logger.WithValues(healthUpdateMsg.Resource.Identity.AsLogValues()...)
+	logger := radlogger.GetLogger(ctx).WithValues(healthUpdateMsg.Resource.Identity.AsLogValues()...)
 	logger.Info(fmt.Sprintf("Received health state change notification from health service. Updating health in DB with state: %s", healthUpdateMsg.HealthState))
 
 	// This is the ID of the Radius Resource that 'owns' the output resource being updated.

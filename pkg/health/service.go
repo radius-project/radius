@@ -45,13 +45,9 @@ func (s *Service) Run(ctx context.Context) error {
 	db := db.NewRadHealthDB(dbclient)
 
 	healthmodel := azure.NewAzureHealthModel(*s.Options.Arm, k8s, &sync.WaitGroup{})
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get logger: %w", err)
 
-	}
 	monitorOptions := MonitorOptions{
-		Logger:                      logger,
+		Logger:                      radlogger.GetLogger(ctx),
 		DB:                          db,
 		ResourceRegistrationChannel: s.Options.HealthChannels.ResourceRegistrationWithHealthChannel,
 		HealthProbeChannel:          s.Options.HealthChannels.HealthToRPNotificationChannel,

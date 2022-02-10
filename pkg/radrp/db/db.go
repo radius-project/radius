@@ -81,16 +81,12 @@ func (d radrpDB) GetOperationByID(ctx context.Context, id azresources.ResourceID
 	item := &Operation{}
 
 	filter := bson.D{{Key: "_id", Value: id.ID}}
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return item, err
-	}
-	logger = logger.WithValues(
+	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldOperationID, id)
 	logger.Info(fmt.Sprintf("Getting operation from DB with operation filter: %s", filter))
 	col := d.db.Collection(operationsCollection)
 	result := col.FindOne(ctx, filter)
-	err = result.Err()
+	err := result.Err()
 	if err == mongo.ErrNoDocuments {
 		logger.Info("operation was not found.")
 		return nil, ErrNotFound
@@ -110,11 +106,7 @@ func (d radrpDB) GetOperationByID(ctx context.Context, id azresources.ResourceID
 func (d radrpDB) PatchOperationByID(ctx context.Context, id azresources.ResourceID, patch *Operation) (bool, error) {
 	options := options.Update().SetUpsert(true)
 	filter := bson.D{{Key: "_id", Value: id.ID}}
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return false, err
-	}
-	logger = logger.WithValues(
+	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldOperationID, id)
 	update := bson.D{{Key: "$set", Value: patch}}
 
@@ -131,16 +123,12 @@ func (d radrpDB) PatchOperationByID(ctx context.Context, id azresources.Resource
 
 func (d radrpDB) DeleteOperationByID(ctx context.Context, id azresources.ResourceID) error {
 	filter := bson.D{{Key: "_id", Value: id.ID}}
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
-	logger = logger.WithValues(
+	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldOperationID, id)
 	logger.Info(fmt.Sprintf("Deleting operation from DB with operation filter: %s", filter))
 	col := d.db.Collection(operationsCollection)
 	result := col.FindOneAndDelete(ctx, filter)
-	err = result.Err()
+	err := result.Err()
 	if err == mongo.ErrNoDocuments {
 		return nil
 	} else if err != nil {
@@ -152,13 +140,8 @@ func (d radrpDB) DeleteOperationByID(ctx context.Context, id azresources.Resourc
 }
 
 func (d radrpDB) ListV3Applications(ctx context.Context, id azresources.ResourceID) ([]ApplicationResource, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id.ID)
 	items := make([]ApplicationResource, 0)
-
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return items, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppID, id.ID)
 
 	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup}}
 
@@ -179,11 +162,7 @@ func (d radrpDB) ListV3Applications(ctx context.Context, id azresources.Resource
 }
 
 func (d radrpDB) GetV3Application(ctx context.Context, id azresources.ResourceID) (ApplicationResource, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return ApplicationResource{}, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppID, id.ID)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id.ID)
 	item := ApplicationResource{}
 
 	filter := bson.D{{Key: "_id", Value: id.ID}}
@@ -191,7 +170,7 @@ func (d radrpDB) GetV3Application(ctx context.Context, id azresources.ResourceID
 	logger.Info(fmt.Sprintf("Getting application from DB with operation filter: %s", filter))
 	col := d.db.Collection(applicationsV3Collection)
 	result := col.FindOne(ctx, filter)
-	err = result.Err()
+	err := result.Err()
 	if err == mongo.ErrNoDocuments {
 		return item, ErrNotFound
 	} else if err != nil {
@@ -207,11 +186,7 @@ func (d radrpDB) GetV3Application(ctx context.Context, id azresources.ResourceID
 }
 
 func (d radrpDB) UpdateV3ApplicationDefinition(ctx context.Context, application ApplicationResource) (bool, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return false, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppID, application.ID)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, application.ID)
 
 	// Creates a new document entry if an existing document with matching ID is not found
 	options := options.Update().SetUpsert(true)
@@ -230,11 +205,7 @@ func (d radrpDB) UpdateV3ApplicationDefinition(ctx context.Context, application 
 }
 
 func (d radrpDB) DeleteV3Application(ctx context.Context, id azresources.ResourceID) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppID, id.ID)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id.ID)
 
 	// Ensure resources do not exist for this application
 	application, err := d.GetV3Application(ctx, id)
@@ -289,13 +260,9 @@ func (d radrpDB) ListV3Resources(ctx context.Context, id azresources.ResourceID)
 }
 
 func (d radrpDB) listV3ResourcesByApplication(ctx context.Context, id azresources.ResourceID, applicationName string, all bool) ([]RadiusResource, error) {
-	items := make([]RadiusResource, 0)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.ID)
 
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return items, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldResourceID, id.ID)
+	items := make([]RadiusResource, 0)
 
 	filter := bson.D{{Key: "subscriptionId", Value: id.SubscriptionID}, {Key: "resourceGroup", Value: id.ResourceGroup},
 		{Key: "applicationName", Value: applicationName}}
@@ -319,14 +286,10 @@ func (d radrpDB) listV3ResourcesByApplication(ctx context.Context, id azresource
 }
 
 func (d radrpDB) GetV3Resource(ctx context.Context, id azresources.ResourceID) (RadiusResource, error) {
-	item := RadiusResource{}
-
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return item, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppID, id,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id,
 		radlogger.LogFieldResourceName, id.Name())
+
+	item := RadiusResource{}
 
 	application, err := d.GetV3Application(ctx, id.Truncate())
 	if err != nil {
@@ -356,11 +319,7 @@ func (d radrpDB) GetV3Resource(ctx context.Context, id azresources.ResourceID) (
 }
 
 func (d radrpDB) UpdateV3ResourceDefinition(ctx context.Context, id azresources.ResourceID, resource RadiusResource) (bool, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return false, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppID, id,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id,
 		radlogger.LogFieldResourceName, id.Name())
 
 	// Creates a new document entry if an existing document with matching ID is not found
@@ -384,11 +343,7 @@ func (d radrpDB) UpdateV3ResourceDefinition(ctx context.Context, id azresources.
 }
 
 func (d radrpDB) UpdateV3ResourceStatus(ctx context.Context, id azresources.ResourceID, resource RadiusResource) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppID, id,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id,
 		radlogger.LogFieldResourceName, id.Name())
 
 	// Creates a new document entry if an existing document with matching ID is not found
@@ -406,7 +361,7 @@ func (d radrpDB) UpdateV3ResourceStatus(ctx context.Context, id azresources.Reso
 
 	logger.Info(fmt.Sprintf("Updating resource status in DB with operation filter: %s", filter))
 	col := d.db.Collection(resourcesCollection)
-	_, err = col.UpdateOne(ctx, filter, update, options)
+	_, err := col.UpdateOne(ctx, filter, update, options)
 	if err != nil {
 		return fmt.Errorf("error updating resource status: %w", err)
 	}
@@ -415,18 +370,14 @@ func (d radrpDB) UpdateV3ResourceStatus(ctx context.Context, id azresources.Reso
 }
 
 func (d radrpDB) DeleteV3Resource(ctx context.Context, id azresources.ResourceID) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppID, id,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppID, id,
 		radlogger.LogFieldResourceName, id.Name())
 	filter := bson.D{{Key: "_id", Value: id.ID}}
 
 	logger.Info(fmt.Sprintf("Deleting resource from DB with operation filter: %s", filter))
 	col := d.db.Collection(resourcesCollection)
 	result := col.FindOneAndDelete(ctx, filter)
-	err = result.Err()
+	err := result.Err()
 	if err == mongo.ErrNoDocuments {
 		return nil
 	} else if err != nil {
@@ -455,11 +406,7 @@ func (d radrpDB) ListAzureResourcesForResourceType(ctx context.Context, applicat
 }
 
 func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, applicationName, applicationSubscriptionID, applicationResourceGroup string, filterByType bool, resourceType string) ([]AzureResource, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return nil, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppName, applicationName,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
 		radlogger.LogFieldSubscriptionID, applicationSubscriptionID, radlogger.LogFieldResourceGroup, applicationResourceGroup)
 
 	filter := bson.D{{Key: "applicationSubscriptionId", Value: applicationSubscriptionID},
@@ -490,11 +437,7 @@ func (d radrpDB) listAzureResourcesForApplication(ctx context.Context, applicati
 // The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
 // Example /subscriptions/{guid}/resourceGroups/{resource-group-name}/{resource-provider-namespace}/{resource-type}/{resource-name}
 func (d radrpDB) GetAzureResource(ctx context.Context, applicationName, azureResourceID string) (AzureResource, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return AzureResource{}, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppName, applicationName,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
 		radlogger.LogFieldResourceID, azureResourceID)
 
 	filter := bson.D{{Key: "_id", Value: azureResourceID},
@@ -503,7 +446,7 @@ func (d radrpDB) GetAzureResource(ctx context.Context, applicationName, azureRes
 	logger.Info(fmt.Sprintf("Getting resource from DB with operation filter: %v", filter))
 	collection := d.db.Collection(azureResourcesCollection)
 	dbResult := collection.FindOne(ctx, filter)
-	err = dbResult.Err()
+	err := dbResult.Err()
 	if err == mongo.ErrNoDocuments {
 		return AzureResource{}, ErrNotFound
 	} else if err != nil {
@@ -522,11 +465,7 @@ func (d radrpDB) GetAzureResource(ctx context.Context, applicationName, azureRes
 // Creates a new Azure resource document with the values specified in `resource` parameter if an entry doesn't exist.
 // If an entry already exists, radiusConnectionIDs array will be updated to include the value specified in resource.RadiusConnectionIDs
 func (d radrpDB) UpdateAzureResource(ctx context.Context, azureResource AzureResource) (bool, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return false, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppName, azureResource.ApplicationName,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, azureResource.ApplicationName,
 		radlogger.LogFieldResourceID, azureResource.ID)
 
 	// Creates a new document entry if an existing document with matching ID is not found
@@ -581,11 +520,7 @@ func (d radrpDB) UpdateAzureResource(ctx context.Context, azureResource AzureRes
 // Adds specified `radiusResourceID` to radiusConnectionIDs in existing document matching resource id of the specified `azureResource`
 // The radiusResourceID parameter is fully qualified resource identifier of the radius resource that connects to azure resource.
 func (d radrpDB) AddAzureResourceConnection(ctx context.Context, radiusResourceID string, azureResource AzureResource) (bool, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return false, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppName, azureResource.ApplicationName,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, azureResource.ApplicationName,
 		radlogger.LogFieldResourceID, azureResource.ID)
 
 	// Setting upsert to true creates a new document entry if the existing entry for id
@@ -623,11 +558,7 @@ func (d radrpDB) AddAzureResourceConnection(ctx context.Context, radiusResourceI
 // The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
 // Example /subscriptions/{guid}/resourceGroups/{resource-group-name}/{resource-provider-namespace}/{resource-type}/{resource-name}
 func (d radrpDB) DeleteAzureResource(ctx context.Context, applicationName, azureResourceID string) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppName, applicationName,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
 		radlogger.LogFieldResourceID, azureResourceID)
 
 	filter := bson.D{{Key: "_id", Value: azureResourceID},
@@ -636,7 +567,7 @@ func (d radrpDB) DeleteAzureResource(ctx context.Context, applicationName, azure
 	logger.Info(fmt.Sprintf("Deleting azure resource from DB with filter: %s", filter))
 	collection := d.db.Collection(azureResourcesCollection)
 	result := collection.FindOneAndDelete(ctx, filter)
-	err = result.Err()
+	err := result.Err()
 	if err == mongo.ErrNoDocuments {
 		logger.Info("No existing resource to delete was found in the database for filter: %v", filter)
 		return nil
@@ -650,11 +581,7 @@ func (d radrpDB) DeleteAzureResource(ctx context.Context, applicationName, azure
 // Removes specified `radiusResourceID` from radiusConnectionIDs in existing document matching resource id of the specified azure resource ResourceID
 // The azureResourceID parameter is fully qualified resource ID of the referenced azure resource from Radius application
 func (d radrpDB) RemoveAzureResourceConnection(ctx context.Context, applicationName, radiusResourceID, azureResourceID string) (bool, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return false, err
-	}
-	logger = logger.WithValues(radlogger.LogFieldAppName, applicationName,
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldAppName, applicationName,
 		radlogger.LogFieldResourceID, azureResourceID)
 
 	// Setting upsert to false prevents creation of a new document entry if not existent document match is found for the provided azureResource id.

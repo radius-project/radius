@@ -24,10 +24,7 @@ import (
 // '/subscriptions/{subscription-id}/resourceGroups/{resource-group-name}/providers/{resource-provider}/{resource-type}/{resource-name}'
 // roleNameOrID - Name of the role ('Reader') or definition id ('acdd72a7-3385-48ef-bd42-f606fba81ae7') for the role to be assigned.
 func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, principalID, scope, roleNameOrID string) (*authorization.RoleAssignment, error) {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return nil, err
-	}
+	logger := radlogger.GetLogger(ctx)
 
 	roleDefinitionID, err := getRoleDefinitionID(ctx, auth, subscriptionID, scope, roleNameOrID)
 	if err != nil {

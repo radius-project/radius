@@ -41,10 +41,7 @@ func (s *Service) Name() string {
 }
 
 func (s *Service) Run(ctx context.Context) error {
-	logger, err := logr.FromContext(ctx)
-	if err != nil {
-		return err
-	}
+	logger := logr.FromContextOrDiscard(ctx)
 
 	scheme := clientgoscheme.Scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))

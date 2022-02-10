@@ -48,10 +48,7 @@ func NewOKResponse(body interface{}) Response {
 }
 
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusOK), radlogger.LogHTTPStatusCode, http.StatusOK)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -81,10 +78,7 @@ func NewCreatedResponse(body interface{}) Response {
 }
 
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), radlogger.LogHTTPStatusCode, http.StatusCreated)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -115,10 +109,7 @@ func NewCreatedAsyncResponse(body interface{}, location string) Response {
 }
 
 func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), radlogger.LogHTTPStatusCode, http.StatusCreated)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -166,10 +157,7 @@ func NewAcceptedAsyncResponse(body interface{}, location string) Response {
 }
 
 func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), radlogger.LogHTTPStatusCode, http.StatusAccepted)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -246,10 +234,7 @@ func NewBadRequestARMResponse(body armerrors.ErrorResponse) Response {
 }
 
 func (r *BadRequestResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), radlogger.LogHTTPStatusCode, http.StatusBadRequest)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -294,10 +279,7 @@ func NewValidationErrorResponse(errors validator.ValidationErrors) Response {
 }
 
 func (r *ValidationErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), radlogger.LogHTTPStatusCode, http.StatusBadRequest)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -335,10 +317,7 @@ func NewNotFoundResponse(id azresources.ResourceID) Response {
 }
 
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), radlogger.LogHTTPStatusCode, http.StatusNotFound)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -375,10 +354,7 @@ func NewConflictResponse(message string) Response {
 }
 
 func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusConflict), radlogger.LogHTTPStatusCode, http.StatusConflict)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -407,10 +383,7 @@ func NewInternalServerErrorARMResponse(body armerrors.ErrorResponse) Response {
 }
 
 func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger, err := radlogger.GetLogger(ctx)
-	if err != nil {
-		return err
-	}
+	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusInternalServerError), radlogger.LogHTTPStatusCode, http.StatusInternalServerError)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")

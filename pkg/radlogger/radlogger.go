@@ -117,15 +117,13 @@ func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	return log, nil
 }
 
-func WrapLogContext(ctx context.Context, keyValues ...interface{}) (context.Context, error) {
-	logger, err := logr.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
+func WrapLogContext(ctx context.Context, keyValues ...interface{}) context.Context {
+	logger := logr.FromContextOrDiscard(ctx)
+
 	ctx = logr.NewContext(ctx, logger.WithValues(keyValues...))
-	return ctx, nil
+	return ctx
 }
 
-func GetLogger(ctx context.Context) (logr.Logger, error) {
-	return logr.FromContext(ctx)
+func GetLogger(ctx context.Context) logr.Logger {
+	return logr.FromContextOrDiscard(ctx)
 }
