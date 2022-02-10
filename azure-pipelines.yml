@@ -76,4 +76,9 @@ jobs:
       make build
       cp ./dist/linux_amd64/release/rad ./dist/
       chmod +x ./dist/rad
-  
+  # - script: |
+  #     az login --service-principal \
+  #         --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+  #         --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+  #         --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+
