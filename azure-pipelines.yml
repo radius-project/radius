@@ -19,7 +19,7 @@ variables:
 stages:
 - stage: ImageBuild
   jobs:
-  - job: publish_docker_image
+  - job: PublishContainerImage
     pool:
       vmImage: 'ubuntu-latest'
     steps:
@@ -41,18 +41,18 @@ stages:
         make docker-build && make docker-push
 
         # set environment global environment variable
-        echo "##vso[task.setvariable variable=REL_CHANNEL;]$REL_CHANNEL"
-        echo "##vso[task.setvariable variable=REL_VERSION;]$REL_VERSION"
+        echo "##vso[task.setvariable variable=REL_CHANNEL;isOutput=true]$REL_CHANNEL"
+        echo "##vso[task.setvariable variable=REL_VERSION;isOutput=true]$REL_VERSION"
       displayName: publish container
 
 - stage: FunctionalTest
   dependsOn: ImageBuild
   jobs:
   - job: Kubernetes
-    #variables:
+    variables:
       # map the output variable from A into this job
-    #  REL_CHANNEL: $[ stageDependencies.test-image-build.publish-docker-image.outputs['REL_CHANNEL'] ]
-    #  REL_VERSION: $[ stageDependencies.test-image-build.publish-docker-image.outputs['REL_VERSION'] ]
+      REL_CHANNEL: $[ stageDependencies.ImageBuild.PublishContainerImage.outputs['REL_CHANNEL'] ]
+      REL_VERSION: $[ stageDependencies.ImageBuild.PublishContainerImage.outputs['REL_VERSION'] ]
     pool:
       vmImage: 'ubuntu-latest'
     steps:
