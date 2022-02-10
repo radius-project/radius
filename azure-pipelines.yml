@@ -17,7 +17,7 @@ variables:
   value: 20m
 
 stages:
-- stage: image_build
+- stage: ImageBuild
   jobs:
   - job: publish_docker_image
     pool:
@@ -44,8 +44,8 @@ stages:
         echo "##vso[task.setvariable variable=REL_VERSION;]$REL_VERSION"
       displayName: publish container
 
-- stage: functional-test
-  dependsOn: image_build
+- stage: FunctionalTest
+  dependsOn: ImageBuild
   jobs:
   - job: Kubernetes
     #variables:
