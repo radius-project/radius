@@ -36,7 +36,7 @@ steps:
     kind create cluster --name radius --wait 60s
 - script: |
     mkdir -p dapr/
-    curl -sSLo "dapr/" "https://github.com/dapr/cli/releases/download/v1.5.1/dapr_linux_amd64.tar.gz"
+    curl -sSLo "dapr/dapr_linux_amd64.tar.gz" "https://github.com/dapr/cli/releases/download/v1.5.1/dapr_linux_amd64.tar.gz"
     tar -xzf dapr/dapr_linux_amd64.tar.gz
     chmod +x "dapr/dapr"
     dapr/dapr init -k --wait --timeout 600
