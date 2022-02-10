@@ -10,8 +10,8 @@ steps:
 - task: GoTool@0
   inputs:
     version: '1.17'
-- script: python ./.github/scripts/get_release_version.py
-  displayName: Parse release version and set environment variables
+# - script: python ./.github/scripts/get_release_version.py
+#   displayName: Parse release version and set environment variables
 - script: |
     make build
     cp ./dist/linux_amd64/release/rad ./dist/
