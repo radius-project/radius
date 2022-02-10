@@ -46,12 +46,14 @@ steps:
 - script: |
     export PATH=$(Build.SourcesDirectory)/dist:$PATH
     mkdir ~/.rad
-    dist/rad env init kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag $(RELEASE_VERSION)
+    dist/rad env init kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag $RELEASE_VERSION
+  displayName: rad env init kubernetes
 - script: |
     export PATH=$(Build.SourcesDirectory)/dist:$PATH
     cd $(Build.SourcesDirectory)
     which rad || { echo "cannot find rad"; exit 1; }
     rad bicep download
+  displayName: rad bicep download
 - script: |
     export PATH=$(Build.SourcesDirectory)/dist:$PATH
     export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
