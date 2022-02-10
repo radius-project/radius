@@ -7,6 +7,3 @@
 
 # Default rule: anything that doesn't match a more specific rule goes here
 * @project-radius/Radius-Eng
-
-# Docs rule: any PR that touches docs goes here
-/docs/ @project-radius/Radius-PM
