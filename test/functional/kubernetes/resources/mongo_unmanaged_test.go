@@ -30,7 +30,7 @@ func TestMongoUnmanaged(t *testing.T) {
 							outputresource.LocalIDScrapedSecret: validation.NewOutputResource(
 								outputresource.LocalIDScrapedSecret,
 								outputresource.TypeKubernetes,
-								resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+								resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

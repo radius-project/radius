@@ -49,8 +49,8 @@ func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 						ResourceName:    "todoapp",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -58,8 +58,8 @@ func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 						ResourceName:    "db",
 						ResourceType:    microsoftsqlv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureSqlServer:         validation.NewOutputResource(outputresource.LocalIDAzureSqlServer, outputresource.TypeARM, resourcekinds.AzureSqlServer, false, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureSqlServerDatabase: validation.NewOutputResource(outputresource.LocalIDAzureSqlServerDatabase, outputresource.TypeARM, resourcekinds.AzureSqlServerDatabase, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureSqlServer:         validation.NewOutputResource(outputresource.LocalIDAzureSqlServer, outputresource.TypeARM, resourcekinds.AzureSqlServer, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureSqlServerDatabase: validation.NewOutputResource(outputresource.LocalIDAzureSqlServerDatabase, outputresource.TypeARM, resourcekinds.AzureSqlServerDatabase, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
