@@ -21,9 +21,7 @@ func Test_KubernetesRenderer_Render_Unmanaged(t *testing.T) {
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": false,
-		},
+		Definition:      map[string]interface{}{},
 	}
 
 	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})

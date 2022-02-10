@@ -49,27 +49,10 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 	}
 
 	var account *storage.Account
-	if properties[StorageAccountIDKey] == "" {
-		generated, err := generateStorageAccountName(ctx, handler.arm, properties[ResourceName])
-		if err != nil {
-			return nil, err
-		}
 
-		name := *generated
-
-		account, err = createStorageAccount(ctx, handler.arm, name, *options)
-		if err != nil {
-			return nil, err
-		}
-
-		// store storage account so we can delete later
-		properties[StorageAccountNameKey] = *account.Name
-		properties[StorageAccountIDKey] = *account.ID
-	} else {
-		account, err = getStorageAccountByID(ctx, handler.arm, properties[StorageAccountIDKey])
-		if err != nil {
-			return nil, err
-		}
+	account, err = getStorageAccountByID(ctx, handler.arm, properties[StorageAccountIDKey])
+	if err != nil {
+		return nil, err
 	}
 
 	// Use the identity of the table storage as the thing to monitor
@@ -90,18 +73,10 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 
 func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.ExistingOutputResource.PersistedProperties
-	accountName := properties[StorageAccountNameKey]
 
 	err := handler.DeleteDaprStateStore(ctx, properties)
 	if err != nil {
 		return err
-	}
-
-	if properties[ManagedKey] == "true" {
-		err = deleteStorageAccount(ctx, handler.arm, accountName)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil

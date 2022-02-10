@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/keys"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
@@ -43,47 +42,18 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 		return nil, err
 	}
 
-	if properties[CosmosDBDatabaseIDKey] == "" {
-		var cosmosDBAccountName string
-		if properties, ok := options.DependencyProperties[outputresource.LocalIDAzureCosmosAccount]; ok {
-			cosmosDBAccountName = properties[CosmosDBAccountNameKey]
-		}
-
-		database, err := handler.CreateDatabase(ctx, cosmosDBAccountName, properties[CosmosDBDatabaseNameKey], *options)
-		if err != nil {
-			return nil, err
-		}
-
-		// store db so we can delete later
-		properties[CosmosDBDatabaseIDKey] = *database.ID
-		properties[CosmosDBAccountNameKey] = cosmosDBAccountName
-		options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
-	} else {
-		// User managed resource
-		// This is mostly called for the side-effect of verifying that the database exists.
-		database, err := handler.GetDatabaseByID(ctx, properties[CosmosDBDatabaseIDKey])
-		if err != nil {
-			return nil, err
-		}
-
-		options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
+	// This is mostly called for the side-effect of verifying that the database exists.
+	database, err := handler.GetDatabaseByID(ctx, properties[CosmosDBDatabaseIDKey])
+	if err != nil {
+		return nil, err
 	}
+
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 
 	return properties, nil
 }
 
 func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.ExistingOutputResource.PersistedProperties
-	if properties[ManagedKey] != "true" {
-		// User managed resources aren't deleted by radius, skip this step.
-		return nil
-	}
-
-	// Delete CosmosDB Mongo database
-	err := handler.DeleteDatabase(ctx, properties[CosmosDBAccountNameKey], properties[CosmosDBDatabaseNameKey])
-	if err != nil {
-		return err
-	}
 
 	return nil
 }

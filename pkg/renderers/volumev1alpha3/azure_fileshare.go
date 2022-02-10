@@ -64,9 +64,7 @@ func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumePrope
 	storageAccountResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureFileShareStorageAccount,
 		ResourceKind: resourcekinds.AzureFileShareStorageAccount,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:                     "false",
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,
 			handlers.FileShareStorageAccountNameKey: storageAccountID.Types[0].Name,
 		},
@@ -75,9 +73,7 @@ func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumePrope
 	fileshareResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureFileShare,
 		ResourceKind: resourcekinds.AzureFileShare,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:                     "false",
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,
 			handlers.FileShareStorageAccountNameKey: storageAccountID.Types[0].Name,
 			handlers.FileShareIDKey:                 fileshareID.ID,

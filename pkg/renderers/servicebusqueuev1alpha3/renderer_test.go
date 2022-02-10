@@ -49,10 +49,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, output.LocalID)
 	require.Equal(t, resourcekinds.AzureServiceBusQueue, output.ResourceKind)
-	require.False(t, output.Managed)
 
 	expected := map[string]string{
-		handlers.ManagedKey:                 "false",
 		handlers.ServiceBusNamespaceIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
 		handlers.ServiceBusNamespaceNameKey: "test-namespace",
 		handlers.ServiceBusQueueIDKey:       "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/queues/test-queue",
@@ -70,8 +68,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		ApplicationName: "test-app",
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": false,
+		Definition:      map[string]interface{}{
 			// Resource is required
 		},
 	}

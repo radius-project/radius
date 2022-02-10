@@ -37,7 +37,6 @@ type Renderer struct {
 
 type Properties struct {
 	Kind     string `json:"kind"`
-	Managed  bool   `json:"managed"`
 	Resource string `json:"resource"`
 }
 
@@ -52,9 +51,6 @@ func GetDaprPubSubAzureServiceBus(resource renderers.RendererResource) (renderer
 		return renderers.RendererOutput{}, err
 	}
 	var output outputresource.OutputResource
-	if to.String(properties.Topic) != "" {
-		return renderers.RendererOutput{}, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
-	}
 
 	if to.String(properties.Resource) == "" {
 		return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
@@ -68,9 +64,7 @@ func GetDaprPubSubAzureServiceBus(resource renderers.RendererResource) (renderer
 	output = outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureServiceBusTopic,
 		ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:              "false",
 			handlers.ResourceName:            resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
@@ -134,9 +128,7 @@ func GetDaprPubSubAzureGeneric(resource renderers.RendererResource) (renderers.R
 	output := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDaprPubSubGeneric,
 		ResourceKind: resourcekinds.DaprPubSubTopicGeneric,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:              "false",
 			handlers.ResourceName:            resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",

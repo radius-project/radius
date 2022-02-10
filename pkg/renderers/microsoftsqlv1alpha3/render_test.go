@@ -83,9 +83,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": false,
-		},
+		Definition:      map[string]interface{}{},
 	}
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{

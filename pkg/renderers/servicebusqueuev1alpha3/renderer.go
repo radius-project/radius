@@ -50,9 +50,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	output = outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureServiceBusQueue,
 		ResourceKind: resourcekinds.AzureServiceBusQueue,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey: "false",
 
 			// Truncate the queue part of the ID to make an ID for the namespace
 			handlers.ServiceBusNamespaceIDKey:   azresources.MakeID(queueID.SubscriptionID, queueID.ResourceGroup, queueID.Types[0]),

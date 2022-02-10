@@ -19,8 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-// NewARMHandler creates a ResourceHandler for 'generic' ARM resources. This currently only supports
-// user-managed resources.
+// NewARMHandler creates a ResourceHandler for 'generic' ARM resources.
 func NewARMHandler(arm armauth.ArmConfig) ResourceHandler {
 	return &armHandler{arm: arm}
 }
@@ -30,11 +29,7 @@ type armHandler struct {
 }
 
 func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	// We only support user-managed resources. Do a GET just to validate that the resource exists.
-	if options.Resource.Managed {
-		return nil, fmt.Errorf("ARM handler only supports user-managed resources")
-	}
-
+	// Do a GET just to validate that the resource exists.
 	resource, err := getByID(ctx, handler.arm.SubscriptionID, handler.arm.Auth, options.Resource.Identity)
 	if err != nil {
 		return nil, err
@@ -51,11 +46,6 @@ func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[st
 }
 
 func (handler *armHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	if options.ExistingOutputResource.Managed {
-		return fmt.Errorf("ARM handler only supports user-managed resources")
-	}
-
-	// We only support user-managed resources, do nothing.
 	return nil
 }
 

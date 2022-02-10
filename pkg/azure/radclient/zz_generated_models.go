@@ -894,9 +894,6 @@ type DaprPubSubTopicAzureServiceBusResourceProperties struct {
 	DaprPubSubTopicProperties
 	// PubSub resource
 	Resource *string `json:"resource,omitempty"`
-
-	// PubSub topic
-	Topic *string `json:"topic,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicAzureServiceBusResourceProperties.
@@ -904,7 +901,6 @@ func (d DaprPubSubTopicAzureServiceBusResourceProperties) MarshalJSON() ([]byte,
 	objectMap := make(map[string]interface{})
 	d.DaprPubSubTopicProperties.marshalInternal(objectMap, "pubsub.azure.servicebus")
 	populate(objectMap, "resource", d.Resource)
-	populate(objectMap, "topic", d.Topic)
 	return json.Marshal(objectMap)
 }
 
@@ -919,9 +915,6 @@ func (d *DaprPubSubTopicAzureServiceBusResourceProperties) UnmarshalJSON(data []
 		switch key {
 		case "resource":
 			err = unpopulate(val, &d.Resource)
-			delete(rawMsg, key)
-		case "topic":
-			err = unpopulate(val, &d.Topic)
 			delete(rawMsg, key)
 		}
 		if err != nil {

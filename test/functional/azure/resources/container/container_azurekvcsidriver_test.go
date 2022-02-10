@@ -62,7 +62,6 @@ func Test_ContainerAzureKeyVaultCSIDriver(t *testing.T) {
 								SkipLocalIDWhenMatching: true,
 								OutputResourceType:      outputresource.TypeARM,
 								ResourceKind:            resourcekinds.AzureRoleAssignment,
-								Managed:                 true,
 								VerifyStatus:            false,
 							},
 							outputresource.LocalIDAADPodIdentity: validation.NewOutputResource(outputresource.LocalIDAADPodIdentity, outputresource.TypeAADPodIdentity, resourcekinds.AzurePodIdentity, true, false, rest.OutputResourceStatus{}),

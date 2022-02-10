@@ -40,10 +40,8 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureRedis, output.Resources[0].LocalID)
 	require.Equal(t, resourcekinds.AzureRedis, output.Resources[0].ResourceKind)
-	require.Equal(t, false, output.Resources[0].Managed)
 
 	expectedProperties := map[string]string{
-		handlers.ManagedKey:         "false",
 		handlers.RedisResourceIdKey: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Cache/Redis/test-redis",
 		handlers.RedisNameKey:       resourceName,
 	}
@@ -106,9 +104,7 @@ func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": false,
-		},
+		Definition:      map[string]interface{}{},
 	}
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})

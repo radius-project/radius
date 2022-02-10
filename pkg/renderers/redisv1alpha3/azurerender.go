@@ -74,9 +74,7 @@ func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourc
 	redisCacheOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureRedis,
 		ResourceKind: resourcekinds.AzureRedis,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:         "false",
 			handlers.RedisResourceIdKey: redisResourceID.ID,
 			handlers.RedisNameKey:       redisResourceID.Name(),
 		},

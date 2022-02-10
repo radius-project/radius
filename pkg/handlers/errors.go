@@ -11,10 +11,6 @@ import (
 )
 
 func ValidateResourceIDsForUnmanagedResource(properties map[string]string, keys ...string) error {
-	if properties[ManagedKey] == "true" || properties[ManagedKey] == "" {
-		return nil
-	}
-
 	missing := []string{}
 	for _, k := range keys {
 		_, ok := properties[k]

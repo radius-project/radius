@@ -2,7 +2,6 @@
   "id": "id",
   "name": "name",
   "properties": {
-    "kind": "pubsub.azure.servicebus",
-    "topic": "fun coding"
+    "kind": "pubsub.azure.servicebus"
   }
 }

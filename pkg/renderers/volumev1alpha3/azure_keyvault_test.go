@@ -103,7 +103,6 @@ func Test_MakeSecretProviderClass(t *testing.T) {
 		},
 	})
 	require.Equal(t, outputresource.TypeKubernetes, or.ResourceKind)
-	require.Equal(t, true, or.Managed)
 
 	expectedSecretObjects := []provider.KeyVaultObject{
 		{

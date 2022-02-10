@@ -26,7 +26,6 @@ type OutputResource struct {
 	// ResourceKind specifies the 'kind' used to look up the resource handler for processing.
 	ResourceKind string
 	Deployed     bool
-	Managed      bool
 	Resource     interface{}
 	Dependencies []Dependency // resources that are required to be deployed before this resource can be deployed
 	Status       OutputResourceStatus
@@ -106,7 +105,6 @@ func NewKubernetesOutputResource(localID string, obj runtime.Object, objectMeta 
 	return OutputResource{
 		LocalID:      localID,
 		Deployed:     false,
-		Managed:      true,
 		ResourceKind: resourcekinds.Kubernetes,
 		Identity:     resourcemodel.NewKubernetesIdentity(obj, objectMeta),
 		Resource:     obj,

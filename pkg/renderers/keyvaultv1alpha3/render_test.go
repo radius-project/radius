@@ -47,7 +47,6 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.AzureKeyVault, output.Resources[0].ResourceKind)
 
 	expectedProperties := map[string]string{
-		handlers.ManagedKey:      "false",
 		handlers.KeyVaultIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.KeyVault/vaults/test-vault",
 		handlers.KeyVaultNameKey: "test-vault",
 	}
@@ -72,9 +71,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		ApplicationName: "test-app",
 		ResourceName:    "test-vault",
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": false,
-		},
+		Definition:      map[string]interface{}{},
 	}
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})

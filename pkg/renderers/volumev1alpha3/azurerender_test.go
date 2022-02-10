@@ -64,14 +64,12 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.AzureFileShare, fileshareResource.ResourceKind)
 
 	expectedAccount := map[string]string{
-		handlers.ManagedKey:                     "false",
 		handlers.FileShareStorageAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
 		handlers.FileShareStorageAccountNameKey: "test-account",
 	}
 	require.Equal(t, expectedAccount, accountResource.Resource)
 
 	expectedFileShare := map[string]string{
-		handlers.ManagedKey:                     "false",
 		handlers.FileShareStorageAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
 		handlers.FileShareStorageAccountNameKey: "test-account",
 		handlers.FileShareIDKey:                 "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/fileservices/default/shares/test-share",
@@ -111,8 +109,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"managed": false,
-			"kind":    PersistentVolumeKindAzureFileShare,
+			"kind": PersistentVolumeKindAzureFileShare,
 		},
 	}
 

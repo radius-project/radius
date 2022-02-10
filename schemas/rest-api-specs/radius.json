@@ -584,10 +584,6 @@
         "resource": {
           "description": "PubSub resource",
           "type": "string"
-        },
-        "topic": {
-          "description": "PubSub topic",
-          "type": "string"
         }
       },
       "required": [

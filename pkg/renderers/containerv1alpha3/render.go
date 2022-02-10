@@ -579,9 +579,7 @@ func (r Renderer) makeManagedIdentity(ctx context.Context, resource renderers.Re
 		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
 		LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
 		Deployed:     false,
-		Managed:      true,
 		Resource: map[string]string{
-			handlers.ManagedKey:                  "true",
 			handlers.UserAssignedIdentityNameKey: managedIdentityName,
 		},
 	}
@@ -609,10 +607,8 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 	outputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAADPodIdentity,
 		ResourceKind: resourcekinds.AzurePodIdentity,
-		Managed:      true,
 		Deployed:     false,
 		Resource: map[string]string{
-			handlers.ManagedKey:         "true",
 			handlers.PodIdentityNameKey: podIdentityName,
 			handlers.PodNamespaceKey:    resource.ApplicationName,
 		},
@@ -671,7 +667,6 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 		roleAssignment := outputresource.OutputResource{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
 			LocalID:      localID,
-			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         roleName,
@@ -703,7 +698,6 @@ func (r Renderer) makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx context.Conte
 		roleAssignment := outputresource.OutputResource{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
 			LocalID:      localID,
-			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         roleName,

@@ -23,7 +23,7 @@ var sqlServerDependency outputresource.Dependency = outputresource.Dependency{
 	LocalID: outputresource.LocalIDAzureSqlServer,
 }
 
-var ErrorResourceOrServerNameMissingFromUnmanagedResource = errors.New("either the 'resource' or 'server'/'database' is required when 'managed' is not specified")
+var ErrorResourceOrServerNameMissingFromUnmanagedResource = errors.New("either the 'resource' or 'server'/'database' is required")
 
 var _ renderers.Renderer = (*Renderer)(nil)
 

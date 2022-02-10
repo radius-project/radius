@@ -61,7 +61,6 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.ResourceKind)
 
 	expectedAccount := map[string]string{
-		handlers.ManagedKey:             "false",
 		handlers.CosmosDBAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
 		handlers.CosmosDBAccountNameKey: "test-account",
 		handlers.CosmosDBAccountKindKey: string(documentdb.DatabaseAccountKindMongoDB),
@@ -69,7 +68,6 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expectedAccount, accountResource.Resource)
 
 	expectedDatabase := map[string]string{
-		handlers.ManagedKey:              "false",
 		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
 		handlers.CosmosDBAccountNameKey:  "test-account",
 		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
@@ -141,9 +139,7 @@ func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": false,
-		},
+		Definition:      map[string]interface{}{},
 	}
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})

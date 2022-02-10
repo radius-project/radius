@@ -7,7 +7,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/project-radius/radius/pkg/azure/armauth"
@@ -37,49 +36,18 @@ func (handler *azureCosmosAccountHandler) Put(ctx context.Context, options *PutO
 		return nil, err
 	}
 
-	accountKind, ok := properties[CosmosDBAccountKindKey]
-	if !ok {
-		return nil, fmt.Errorf("property value %q is required", CosmosDBAccountKindKey)
+	// This is mostly called for the side-effect of verifying that the account exists.
+	account, err := handler.GetCosmosDBAccountByID(ctx, properties[CosmosDBAccountIDKey])
+	if err != nil {
+		return nil, err
 	}
 
-	var account *documentdb.DatabaseAccountGetResults
-	if properties[CosmosDBAccountIDKey] == "" {
-		// If the account resourceID doesn't exist, then this is a radius managed resource
-		account, err = handler.CreateCosmosDBAccount(ctx, properties, documentdb.DatabaseAccountKind(accountKind), *options)
-		if err != nil {
-			return nil, err
-		}
-
-		options.Resource.Identity = resourcemodel.NewARMIdentity(*account.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
-		properties[CosmosDBAccountIDKey] = *account.ID
-		properties[CosmosDBAccountNameKey] = *account.Name
-	} else {
-		// This is mostly called for the side-effect of verifying that the account exists.
-		account, err = handler.GetCosmosDBAccountByID(ctx, properties[CosmosDBAccountIDKey])
-		if err != nil {
-			return nil, err
-		}
-
-		options.Resource.Identity = resourcemodel.NewARMIdentity(*account.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
-	}
+	options.Resource.Identity = resourcemodel.NewARMIdentity(*account.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 
 	return properties, nil
 }
 
 func (handler *azureCosmosAccountHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.ExistingOutputResource.PersistedProperties
-	if properties[ManagedKey] != "true" {
-		// For an 'unmanaged' resource we don't need to do anything, just forget it.
-		return nil
-	}
-
-	// Delete CosmosDB account
-	accountName := properties[CosmosDBAccountNameKey]
-	err := handler.DeleteCosmosDBAccount(ctx, accountName)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

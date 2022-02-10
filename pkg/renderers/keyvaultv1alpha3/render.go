@@ -48,11 +48,8 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	resource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDKeyVault,
 		ResourceKind: resourcekinds.AzureKeyVault,
-		Managed:      false,
 		Deployed:     true,
 		Resource: map[string]string{
-			handlers.ManagedKey: "false",
-
 			handlers.KeyVaultIDKey:   vaultID.ID,
 			handlers.KeyVaultNameKey: vaultID.Types[0].Name,
 		},

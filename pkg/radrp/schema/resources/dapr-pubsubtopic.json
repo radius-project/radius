@@ -47,10 +47,6 @@
           "type": "string",
           "enum": ["pubsub.azure.servicebus"]
         },
-        "topic": {
-          "description": "PubSub topic",
-          "type": "string"
-        },
         "resource": {
           "description": "PubSub resource",
           "type": "string"

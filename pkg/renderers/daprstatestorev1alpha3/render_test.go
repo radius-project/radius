@@ -52,7 +52,6 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		Definition: map[string]interface{}{
 			"kind":     "state.azure.tablestorage",
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
-			"managed":  false,
 		},
 	}
 
@@ -64,10 +63,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, output.LocalID)
 	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, output.ResourceKind)
-	require.False(t, output.Managed)
 
 	expected := map[string]string{
-		handlers.ManagedKey:              "false",
 		handlers.KubernetesNameKey:       "test-resource",
 		handlers.KubernetesNamespaceKey:  "test-app",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
@@ -90,7 +87,6 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 		Definition: map[string]interface{}{
 			"kind":     "state.azure.tablestorage",
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
-			"managed":  false,
 		},
 	}
 
@@ -109,8 +105,7 @@ func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"kind":    "state.azure.tablestorage",
-			"managed": false,
+			"kind": "state.azure.tablestorage",
 		},
 	}
 
@@ -129,8 +124,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"managed": true,
-			"kind":    "state.azure.cosmosdb",
+			"kind": "state.azure.cosmosdb",
 		},
 	}
 
@@ -166,7 +160,6 @@ func Test_Render_Azure_Generic_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreGeneric, output.LocalID)
 	require.Equal(t, resourcekinds.DaprStateStoreGeneric, output.ResourceKind)
-	require.False(t, output.Managed)
 
 	metadata := map[string]interface{}{
 		"foo": "bar",
@@ -175,7 +168,6 @@ func Test_Render_Azure_Generic_Success(t *testing.T) {
 	require.NoError(t, err, "Could not serialize metadata")
 
 	expected := map[string]string{
-		handlers.ManagedKey:              "true",
 		handlers.KubernetesNameKey:       "test-resource",
 		handlers.KubernetesNamespaceKey:  "test-app",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",

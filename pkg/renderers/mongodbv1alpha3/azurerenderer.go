@@ -80,7 +80,6 @@ func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties
 		LocalID:      outputresource.LocalIDAzureCosmosAccount,
 		ResourceKind: resourcekinds.AzureCosmosAccount,
 		Resource: map[string]string{
-			handlers.ManagedKey:             "false",
 			handlers.CosmosDBAccountIDKey:   cosmosAccountID.ID,
 			handlers.CosmosDBAccountNameKey: databaseID.Types[0].Name,
 			handlers.CosmosDBAccountKindKey: string(documentdb.DatabaseAccountKindMongoDB),
@@ -91,7 +90,6 @@ func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties
 		LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
 		ResourceKind: resourcekinds.AzureCosmosDBMongo,
 		Resource: map[string]string{
-			handlers.ManagedKey:              "false",
 			handlers.CosmosDBAccountIDKey:    cosmosAccountID.ID,
 			handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
 			handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,

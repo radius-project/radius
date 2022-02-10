@@ -67,9 +67,7 @@ func TestInvalidKubernetesMissingQueueName(t *testing.T) {
 		ApplicationName: "test-app",
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": true,
-		},
+		Definition:      map[string]interface{}{},
 	}
 
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
