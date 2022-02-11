@@ -200,7 +200,7 @@ jobs:
 
   kubernetes_tests:
     name: Run Kubernetes tests
-    needs: [ 'build', 'images', 'pre_check' ]
+    needs: [ 'build', 'images' ]
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     runs-on: self-hosted
     env:
@@ -277,7 +277,7 @@ jobs:
 
   local_dev_tests:
     name: Run K3s Local Dev tests
-    needs: [ 'build', 'images', 'pre_check' ]
+    needs: [ 'build', 'images' ]
     if: ${{ false }} # Skip the job until we revisit this dev env test - https://github.com/project-radius/radius/issues/1907
     runs-on: self-hosted
     env:
@@ -365,8 +365,8 @@ jobs:
 
   deploy_tests:
     name: Run deployment tests
-    needs: [ 'build', 'images', 'pre_check' ]
-    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
+    needs: [ 'build', 'images' ]
+    if: ${{ startsWith(github.ref, 'refs/pull/') }} # run on PR
     runs-on: self-hosted
     env:
       GOVER: '^1.17'
