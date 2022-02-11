@@ -577,7 +577,7 @@ jobs:
   delete_artifacts:
     name: Delete artifacts
     if: ${{ always() }}
-    needs: [ 'build', 'kubernetes_tests', 'local_dev_tests', 'publish' ]
+    needs: [ 'build', 'local_dev_tests', 'publish' ]
     runs-on: self-hosted
     steps:
       - name: Delete release artifacts
