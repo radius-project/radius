@@ -31,9 +31,17 @@ stages:
     - task: GoTool@0
       inputs:
         version: '1.17'
-    # - script: python ./.github/scripts/get_release_version.py
-    #   displayName: Parse release version and set environment variables
-    # $(System.PullRequest.PullRequestNumber)
+    - script: |
+        echo "##vso[task.setvariable variable=goBuildCache;isOutput=true]$(go env GOCACHE)"
+      displayName: Set Go cache paths
+      name: gocachepath
+    - task: Cache@2
+      inputs:
+        key: 'go | "$(Agent.OS)" | go.mod'
+        restoreKeys: | 
+          go | "$(Agent.OS)"
+        path: $(gocachepath.goBuildCache)
+      displayName: Cache GO packages
     - task: Docker@2
       displayName: Login to ACR
       inputs:
@@ -42,10 +50,6 @@ stages:
     - script: |
         export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
-
-        # set environment global environment variable
-        echo "##vso[task.setvariable variable=REL_CHANNEL;isOutput=true]$REL_CHANNEL"
-        echo "##vso[task.setvariable variable=REL_VERSION;isOutput=true]$REL_VERSION"
       displayName: publish container
 
 - stage: FunctionalTest
@@ -58,9 +62,17 @@ stages:
     - task: GoTool@0
       inputs:
         version: '1.17'
-    # - script: python ./.github/scripts/get_release_version.py
-    #   displayName: Parse release version and set environment variables
-    # $(System.PullRequest.PullRequestNumber)
+    - script: |
+        echo "##vso[task.setvariable variable=goBuildCache;isOutput=true]$(go env GOCACHE)"
+      displayName: Set Go cache paths
+      name: gocachepath
+    - task: Cache@2
+      inputs:
+        key: 'go | "$(Agent.OS)" | go.mod'
+        restoreKeys: | 
+          go | "$(Agent.OS)"
+        path: $(gocachepath.goBuildCache)
+      displayName: Cache GO packages
     - script: |
         echo channel: $REL_CHANNEL, version: $REL_VERSION
         make build
