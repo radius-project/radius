@@ -16,10 +16,16 @@ variables:
   value: radius.azurecr.io
 - name: K8S_FUNCTIONALTEST_TIMEOUT
   value: 20m
+- name: AZURE_FUNCTIONALTEST_TIMEOUT
+  value: 20m
 - name: REL_CHANNEL
   value: edge
 - name: REL_VERSION
   value: pr-ado-$(Build.BuildNumber)
+- name: INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID
+  value: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourcegroups/radiusrplogs/providers/microsoft.operationalinsights/workspaces/rplogs"
+- name: INTEGRATION_TEST_SUBSCRIPTION_ID
+  value: "85716382-7362-45c3-ae03-2126e459a123"
 
 stages:
 - stage: ImageBuild
@@ -119,9 +125,66 @@ stages:
         make build
         cp ./dist/linux_amd64/release/rad ./dist/
         chmod +x ./dist/rad
-    # - script: |
-    #     az login --service-principal \
-    #         --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
-    #         --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-    #         --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+    - script: |
+        az login --service-principal \
+            --username $(INTEGRATION_TEST_SP_APP_ID) \
+            --password $(INTEGRATION_TEST_SP_PASSWORD) \
+            --tenant $(INTEGRATION_TEST_TENANT_ID)
+      env:
+        INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
+        INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
+        INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
+    - bash: |
+        export RANID=$(date +%s%N)
+        arr=("eastus" "westeurope" "westus2")
+        index=$(expr $RANID % 3)
+        export LOCATION=${arr[$index]}
+        echo "##vso[task.setvariable variable=RADENVIRONMENT]rad-$RANID"
+        go run cmd/rad/main.go \
+              env init azure \
+              -e rad-$RANID \
+              --subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+              --resource-group rad-$RANID \
+              --location $LOCATION \
+              --loganalytics-workspace-id "${{ variables.INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID }}"
+    - script: |
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        rad env merge-credentials
+        go run cmd/testenv/main.go \
+            update-rp \
+            --configpath ~/.rad/config.yaml \
+            --image ${{ variables.DOCKER_REGISTRY }}/radius-rp:${{ variables.REL_VERSION }} \
+            --check-version ${{ variables.REL_VERSION }}
+    - script: |
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        cd $(Build.SourcesDirectory)
+        which rad || { echo "cannot find rad"; exit 1; }
+        rad bicep download
+      displayName: rad bicep download
+    - script: |
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        make test-functional-azure
+      env:
+        INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
+        INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
+        INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
+        TEST_TIMEOUT: ${{ variables.AZURE_FUNCTIONALTEST_TIMEOUT }}
+    - script: |
+        az group delete \
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --resource-group $(RADENVIRONMENT) \
+          --yes \
+          --verbose \
+          --no-wait
+        az group delete \
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --resource-group RE-$(RADENVIRONMENT) \
+          --yes \
+          --verbose \
+          --no-wait
+      displayName: Delete environment resource groups
+      condition: always()
+      continueOnError: 'true'
+        
+        
 
