@@ -171,13 +171,13 @@ stages:
         TEST_TIMEOUT: ${{ variables.AZURE_FUNCTIONALTEST_TIMEOUT }}
     - script: |
         az group delete \
-          --subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
           --resource-group $(RADENVIRONMENT) \
           --yes \
           --verbose \
           --no-wait
         az group delete \
-          --subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
           --resource-group RE-$(RADENVIRONMENT) \
           --yes \
           --verbose \
