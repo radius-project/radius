@@ -219,10 +219,11 @@ jobs:
       - name: Push helm chart to ACR
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.REL_CHANNEL }}.0.tgz --force
+
   kubernetes_tests:
     name: Run Kubernetes tests
     needs: [ 'build', 'images', 'pre_check' ]
-    if: ${{ startsWith(github.ref, 'refs/pull/') && needs.pre_check.outputs.should_skip != 'true' }} # run on PR
+    if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     runs-on: self-hosted
     concurrency:
       group: k8s-${{ github.ref }}
@@ -298,7 +299,7 @@ jobs:
       with:
         name: container_logs
         path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
-  
+
   local_dev_tests:
     name: Run K3s Local Dev tests
     needs: [ 'build', 'images', 'pre_check' ]

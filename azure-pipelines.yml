@@ -3,17 +3,113 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
-trigger:
-- main
+trigger: none
 
-pool:
-  vmImage: ubuntu-latest
+pr: [ main ]
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+- name: RADIUS_CHART_LOCATION
+  value: deploy/Chart/
+- name: RADIUS_CONTAINER_LOG_BASE
+  value: dist/container_logs
+- name: DOCKER_REGISTRY
+  value: radius.azurecr.io
+- name: K8S_FUNCTIONALTEST_TIMEOUT
+  value: 20m
+- name: REL_CHANNEL
+  value: edge
+- name: REL_VERSION
+  value: pr-ado-$(Build.BuildNumber)
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+stages:
+- stage: ImageBuild
+  jobs:
+  - job: PublishContainerImage
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: GoTool@0
+      inputs:
+        version: '1.17'
+    # - script: python ./.github/scripts/get_release_version.py
+    #   displayName: Parse release version and set environment variables
+    # $(System.PullRequest.PullRequestNumber)
+    - task: Docker@2
+      displayName: Login to ACR
+      inputs:
+        command: login
+        containerRegistry: radius-acr
+    - script: |
+        export DOCKER_TAG_VERSION=$REL_VERSION
+        make docker-build && make docker-push
+
+        # set environment global environment variable
+        echo "##vso[task.setvariable variable=REL_CHANNEL;isOutput=true]$REL_CHANNEL"
+        echo "##vso[task.setvariable variable=REL_VERSION;isOutput=true]$REL_VERSION"
+      displayName: publish container
+
+- stage: FunctionalTest
+  dependsOn: ImageBuild
+  jobs:
+  - job: Kubernetes
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: GoTool@0
+      inputs:
+        version: '1.17'
+    # - script: python ./.github/scripts/get_release_version.py
+    #   displayName: Parse release version and set environment variables
+    # $(System.PullRequest.PullRequestNumber)
+    - script: |
+        echo channel: $REL_CHANNEL, version: $REL_VERSION
+        make build
+        cp ./dist/linux_amd64/release/rad ./dist/
+        chmod +x ./dist/rad
+      displayName: Build and copy rad exe
+    - script: | 
+        mkdir -p kind/
+        curl -sSLo "kind/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v0.11.0/kind-linux-amd64"
+        chmod +x "kind/kind"
+        kind create cluster --name radius --wait 60s
+    - script: |
+        mkdir -p dapr/
+        curl -sSLo "dapr/dapr_linux_amd64.tar.gz" "https://github.com/dapr/cli/releases/download/v1.5.1/dapr_linux_amd64.tar.gz"
+        cd dapr/
+        tar -xzf dapr_linux_amd64.tar.gz
+        chmod +x "dapr"
+        ./dapr init -k --wait --timeout 600
+      displayName: Download and install dapr
+    - script: |
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        mkdir ~/.rad
+        dist/rad env init kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag ${{ variables.REL_VERSION }}
+      displayName: rad env init kubernetes
+    - script: |
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        cd $(Build.SourcesDirectory)
+        which rad || { echo "cannot find rad"; exit 1; }
+        rad bicep download
+      displayName: rad bicep download
+    - script: |
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
+        export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
+        make test-functional-kubernetes
+  - job: Azure
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: GoTool@0
+      inputs:
+        version: '1.17'
+    - script: |
+        make build
+        cp ./dist/linux_amd64/release/rad ./dist/
+        chmod +x ./dist/rad
+    # - script: |
+    #     az login --service-principal \
+    #         --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+    #         --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+    #         --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+
