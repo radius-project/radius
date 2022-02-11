@@ -22,6 +22,10 @@ variables:
   value: edge
 - name: REL_VERSION
   value: pr-ado-$(Build.BuildNumber)
+- name: INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID
+  value: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourcegroups/radiusrplogs/providers/microsoft.operationalinsights/workspaces/rplogs"
+- name: INTEGRATION_TEST_SUBSCRIPTION_ID
+  value: "85716382-7362-45c3-ae03-2126e459a123"
 
 stages:
 - stage: ImageBuild
