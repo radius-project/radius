@@ -18,7 +18,7 @@ on:
       - release/*
 jobs:
   linter_check:
-    name: Check lint and code generation
+    name: Lint
     runs-on: self-hosted
     env:
       GOVER: '^1.17'
