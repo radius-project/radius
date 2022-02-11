@@ -6,16 +6,16 @@
 name: Check code is up-to-date
 
 on:
-  push:
-    branches:
-      - main
-      - release/*
-    tags:
-      - v*
   pull_request:
     branches:
       - main
       - release/*
+
+concurrency:
+  # Cancel the previously triggered build for only PR build.
+  group: lint-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   linter_check:
     name: Lint
