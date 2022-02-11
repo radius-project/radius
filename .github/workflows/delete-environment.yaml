@@ -11,6 +11,7 @@ on:
     - delete-environment
 jobs:
   delete-environment:
+    if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     name: Delete Environment
     runs-on: self-hosted
     env:

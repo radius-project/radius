@@ -11,6 +11,7 @@ on:
     - create-environment
 jobs:
   create-environment:
+    if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     name: Create Environment
     runs-on: self-hosted
     env:
