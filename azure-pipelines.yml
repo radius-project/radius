@@ -139,6 +139,7 @@ stages:
         arr=("eastus" "westeurope" "westus2")
         index=$(expr $RANID % 3)
         export LOCATION=${arr[$index]}
+        echo "##vso[task.setvariable variable=RADENVIRONMENT]rad-$RANID"
         go run cmd/rad/main.go \
               env init azure \
               -e rad-$RANID \
@@ -169,8 +170,19 @@ stages:
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
         TEST_TIMEOUT: ${{ variables.AZURE_FUNCTIONALTEST_TIMEOUT }}
     - script: |
-        go run cmd/rad/main.go \
-              env delete \
-              --yes
+        az group delete \
+          --subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --resource-group $(RADENVIRONMENT) \
+          --yes \
+          --verbose \
+          --no-wait
+        az group delete \
+          --subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --resource-group RE-$(RADENVIRONMENT) \
+          --yes \
+          --verbose \
+          --no-wait
+      displayName: Delete environment resource groups
+        
         
 
