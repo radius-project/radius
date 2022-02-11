@@ -164,5 +164,9 @@ stages:
         INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
         TEST_TIMEOUT: ${{ variables.AZURE_FUNCTIONALTEST_TIMEOUT }}
+    - script: |
+        go run cmd/rad/main.go \
+              env delete \
+              --yes
         
 
