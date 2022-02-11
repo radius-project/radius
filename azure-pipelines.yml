@@ -183,6 +183,8 @@ stages:
           --verbose \
           --no-wait
       displayName: Delete environment resource groups
+      condition: always()
+      continueOnError: 'true'
         
         
 
