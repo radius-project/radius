@@ -34,8 +34,8 @@ type azureCosmosDBSQLDBHandler struct {
 func (handler *azureCosmosDBSQLDBHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
-	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	err := ValidateResourceIDsForUnmanagedResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
+	// This assertion is important so we don't start creating/modifying a resource
+	err := ValidateResourceIDsForResource(properties, CosmosDBAccountIDKey, CosmosDBDatabaseIDKey)
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Render_Unmanaged_Success(t *testing.T) {
+func Test_Render_Success(t *testing.T) {
 	renderer := Renderer{}
 
 	dependencies := map[string]renderers.RendererDependency{}
@@ -54,7 +54,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expected, output.Resource)
 }
 
-func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Render_InvalidResourceType(t *testing.T) {
 	renderer := Renderer{}
 
 	dependencies := map[string]renderers.RendererDependency{}

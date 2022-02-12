@@ -45,7 +45,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind"
+        "kind",
+        "resource"
       ],
       "properties": {
         "kind": {
@@ -61,27 +62,12 @@
         }
       }
     },
-    "DaprStateStoreRedisResourceProperties": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "kind"
-      ],
-      "properties": {
-        "kind": {
-          "description": "The Dapr StateStore kind.",
-          "type": "string",
-          "enum": [
-            "state.redis"
-          ]
-        }
-      }
-    },
     "DaprStateStoreAzureTableStorageResourceProperties": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind"
+        "kind",
+        "resource"
       ],
       "properties": {
         "kind": {

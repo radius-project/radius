@@ -12,7 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 )
 
-var ErrResourceMissingForUnmanagedResource = errors.New("the 'resource' field is required")
+var ErrResourceMissingForResource = errors.New("the 'resource' field is required")
 
 func ValidateResourceID(id string, resourceType azresources.KnownType, description string) (azresources.ResourceID, error) {
 	parsed, err := azresources.Parse(id)

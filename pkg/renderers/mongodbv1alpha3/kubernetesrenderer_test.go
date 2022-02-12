@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_KubernetesRenderer_Render_Unmanaged(t *testing.T) {
+func Test_KubernetesRenderer_Render(t *testing.T) {
 	ctx := createContext(t)
 	renderer := KubernetesRenderer{}
 

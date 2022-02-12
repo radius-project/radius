@@ -20,7 +20,7 @@ const (
 	resourceName    = "test-redis"
 )
 
-func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
+func Test_Azure_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -52,7 +52,7 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_Azure_Render_Unmanaged_User_Secrets(t *testing.T) {
+func Test_Azure_Render_User_Secrets(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -96,7 +96,7 @@ func Test_Azure_Render_Unmanaged_User_Secrets(t *testing.T) {
 	require.Equal(t, 0, len(output.SecretValues))
 }
 
-func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {
+func Test_Azure_Render_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -109,10 +109,10 @@ func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
 }
 
-func Test_Azure_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Azure_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 

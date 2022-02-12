@@ -15,9 +15,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func TestMongoUnmanaged(t *testing.T) {
-	template := "testdata/kubernetes-resources-mongo-unmanaged/kubernetes-resources-mongo-unmanaged.bicep"
-	application := "kubernetes-resources-mongo-unmanaged"
+func TestMongo(t *testing.T) {
+	template := "testdata/kubernetes-resources-mongo/kubernetes-resources-mongo.bicep"
+	application := "kubernetes-resources-mongo"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
@@ -45,7 +45,7 @@ func TestMongoUnmanaged(t *testing.T) {
 				},
 			},
 		},
-	}, loadResources("testdata/kubernetes-resources-mongo-unmanaged", ".input.yaml")...)
+	}, loadResources("testdata/kubernetes-resources-mongo", ".input.yaml")...)
 
 	test.Test(t)
 }

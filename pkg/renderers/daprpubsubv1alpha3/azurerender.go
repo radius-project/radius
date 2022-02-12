@@ -53,7 +53,7 @@ func GetDaprPubSubAzureServiceBus(resource renderers.RendererResource) (renderer
 	var output outputresource.OutputResource
 
 	if to.String(properties.Resource) == "" {
-		return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
+		return renderers.RendererOutput{}, renderers.ErrResourceMissingForResource
 	}
 
 	topicID, err := renderers.ValidateResourceID(to.String(properties.Resource), TopicResourceType, "ServiceBus Topic")

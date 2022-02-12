@@ -23,7 +23,7 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outpu
 	localID := outputresource.LocalIDDaprStateStoreAzureStorage
 
 	if properties.Resource == nil || *properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForResource
 	}
 	accountID, err := renderers.ValidateResourceID(*properties.Resource, StorageAccountResourceType, "Storage Account")
 	if err != nil {

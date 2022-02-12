@@ -18,9 +18,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MongoDBUnmanaged(t *testing.T) {
-	application := "azure-resources-mongodb-unmanaged"
-	template := "testdata/azure-resources-mongodb-unmanaged.bicep"
+func Test_MongoDB(t *testing.T) {
+	application := "azure-resources-mongodb"
+	template := "testdata/azure-resources-mongodb.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
@@ -29,7 +29,7 @@ func Test_MongoDBUnmanaged(t *testing.T) {
 					{
 						Type: azresources.DocumentDBDatabaseAccounts,
 						Tags: map[string]string{
-							"radiustest": "azure-resources-mongodb-unmanaged",
+							"radiustest": "azure-resources-mongodb",
 						},
 						Children: []validation.ExpectedChildResource{
 							{

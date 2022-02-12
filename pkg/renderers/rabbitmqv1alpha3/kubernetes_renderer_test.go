@@ -26,7 +26,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func TestRenderUnmanaged(t *testing.T) {
+func TestRender(t *testing.T) {
 	ctx := createContext(t)
 	renderer := KubernetesRenderer{}
 

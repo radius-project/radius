@@ -27,7 +27,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Unmanaged_Success(t *testing.T) {
+func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
@@ -63,7 +63,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 }
 
-func Test_Render_Unmanaged_MissingResource(t *testing.T) {
+func Test_Render_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
@@ -76,10 +76,10 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
 }
 
-func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 

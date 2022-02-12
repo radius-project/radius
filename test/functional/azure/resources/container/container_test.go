@@ -9,15 +9,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/gateway"
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
-	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/validation"
@@ -33,18 +30,8 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	template := "testdata/azure-resources-container-httproute.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
-			AzureResources: &validation.AzureResourceSet{
-				Resources: []validation.ExpectedResource{
-					{
-						Type: azresources.StorageStorageAccounts,
-						Tags: map[string]string{
-							keys.TagRadiusApplication: application,
-							keys.TagRadiusResource:    "myshare",
-						},
-					},
-				},
-			},
+			Executor:       azuretest.NewDeployStepExecutor(template),
+			AzureResources: &validation.AzureResourceSet{},
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -71,15 +58,6 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
-						},
-					},
-					{
-						ApplicationName: application,
-						ResourceName:    "myshare",
-						ResourceType:    volumev1alpha3.ResourceType,
-						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureFileShare:               validation.NewOutputResource(outputresource.LocalIDAzureFileShare, outputresource.TypeARM, resourcekinds.AzureFileShare, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureFileShareStorageAccount: validation.NewOutputResource(outputresource.LocalIDAzureFileShareStorageAccount, outputresource.TypeARM, resourcekinds.AzureFileShareStorageAccount, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

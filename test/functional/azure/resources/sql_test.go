@@ -18,9 +18,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
-	application := "azure-resources-microsoft-sql-unmanaged"
-	template := "testdata/azure-resources-microsoft-sql-unmanaged.bicep"
+func Test_MicrosoftSQL_WithoutResourceID(t *testing.T) {
+	application := "azure-resources-microsoft-sql"
+	template := "testdata/azure-resources-microsoft-sql.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
@@ -29,7 +29,7 @@ func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 					{
 						Type: azresources.SqlServers,
 						Tags: map[string]string{
-							"radiustest": "azure-resources-microsoft-sql-unmanaged",
+							"radiustest": "azure-resources-microsoft-sql",
 						},
 						Children: []validation.ExpectedChildResource{
 							{

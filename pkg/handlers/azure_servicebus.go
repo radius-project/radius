@@ -56,13 +56,13 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 		return nil, fmt.Errorf("missing required property '%s'", ServiceBusQueueNameKey)
 	}
 
-	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	err := ValidateResourceIDsForUnmanagedResource(properties, ServiceBusNamespaceIDKey, ServiceBusQueueIDKey)
+	// This assertion is important so we don't start creating/modifying an resource
+	err := ValidateResourceIDsForResource(properties, ServiceBusNamespaceIDKey, ServiceBusQueueIDKey)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Info(fmt.Sprintf("Validated unmanaged resource IDs - Namespace: %s, Queue: %s", ServiceBusNamespaceIDKey, ServiceBusQueueIDKey))
+	logger.Info(fmt.Sprintf("Validated resource IDs - Namespace: %s, Queue: %s", ServiceBusNamespaceIDKey, ServiceBusQueueIDKey))
 	var namespace *servicebus.SBNamespace
 
 	// This is mostly called for the side-effect of verifying that the servicebus namespace exists.

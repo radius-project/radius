@@ -37,7 +37,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 
 	outputResources := []outputresource.OutputResource{}
 
-	redisCacheOutputResource, err := RenderUnmanaged(resource.ResourceName, properties)
+	redisCacheOutputResource, err := RenderResource(resource.ResourceName, properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -54,7 +54,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	}, nil
 }
 
-func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourceProperties) (*outputresource.OutputResource, error) {
+func RenderResource(resourceName string, properties radclient.RedisCacheResourceProperties) (*outputresource.OutputResource, error) {
 	if properties.Secrets != nil {
 		// When the user-specified secret is present, this is the usecase where the user is running
 		// their own custom Redis instance (using a container, or hosted elsewhere).
@@ -63,7 +63,7 @@ func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourc
 		return nil, nil
 	}
 	if properties.Resource == nil || *properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForResource
 	}
 
 	redisResourceID, err := renderers.ValidateResourceID(*properties.Resource, RedisResourceType, "Redis Cache")

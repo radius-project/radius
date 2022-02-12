@@ -18,9 +18,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
-	application := "azure-resources-dapr-pubsub-servicebus-unmanaged"
-	template := "testdata/azure-resources-dapr-pubsub-servicebus-unmanaged.bicep"
+func Test_DaprPubSubServiceBus(t *testing.T) {
+	application := "azure-resources-dapr-pubsub-servicebus"
+	template := "testdata/azure-resources-dapr-pubsub-servicebus.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),

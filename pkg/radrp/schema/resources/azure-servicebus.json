@@ -28,13 +28,9 @@
         }
       ],
       "required": [
-        "queue"
+        "resource"
       ],
       "properties": {
-        "queue": {
-          "description": "The name of the queue",
-          "type": "string"
-        },
         "resource": {
           "description": "The ID of the user-managed ServiceBus queue to use",
           "type": "string"

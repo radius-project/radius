@@ -40,7 +40,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Unmanaged_Success(t *testing.T) {
+func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
@@ -75,7 +75,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expected, output.Resource)
 }
 
-func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
@@ -95,7 +95,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	require.Equal(t, "the 'resource' field must refer to a Storage Account", err.Error())
 }
 
-func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
+func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{SupportedAzureStateStoreKindValues}
 
@@ -111,7 +111,7 @@ func Test_Render_Unmanaged_SpecifiesUmanagedWithoutResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
 }
 
 func Test_Render_UnsupportedKind(t *testing.T) {

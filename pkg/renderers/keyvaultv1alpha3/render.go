@@ -37,7 +37,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	output := renderers.RendererOutput{}
 
 	if properties.Resource == nil || *properties.Resource == "" {
-		return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
+		return renderers.RendererOutput{}, renderers.ErrResourceMissingForResource
 	}
 
 	vaultID, err := renderers.ValidateResourceID(*properties.Resource, KeyVaultResourceType, outputresource.LocalIDKeyVault)

@@ -25,6 +25,9 @@
           "$ref": "basic-resource.json#/definitions/BasicResourceProperties"
         }
       ],
+      "required": [
+        "resource"
+      ],
       "type": "object",
       "additionalProperties": false,
       "properties": {

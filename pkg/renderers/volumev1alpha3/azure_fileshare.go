@@ -32,7 +32,7 @@ func GetAzureFileShareVolume(ctx context.Context, arm armauth.ArmConfig, resourc
 
 	resources := []outputresource.OutputResource{}
 
-	results, err := RenderUnmanaged(resource.ResourceName, properties)
+	results, err := RenderResource(resource.ResourceName, properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -48,9 +48,9 @@ func GetAzureFileShareVolume(ctx context.Context, arm armauth.ArmConfig, resourc
 	}, nil
 }
 
-func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
+func RenderResource(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == nil || *properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForResource
 	}
 
 	fileshareID, err := renderers.ValidateResourceID(*properties.Resource, AzureFileShareResourceType, "Azure File Share")

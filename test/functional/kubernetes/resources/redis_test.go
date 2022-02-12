@@ -15,9 +15,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func TestRedisUnmanaged(t *testing.T) {
-	template := "testdata/kubernetes-resources-redis-unmanaged/kubernetes-resources-redis-unmanaged.bicep"
-	application := "kubernetes-resources-redis-unmanaged"
+func TestRedis(t *testing.T) {
+	template := "testdata/kubernetes-resources-redis/kubernetes-resources-redis.bicep"
+	application := "kubernetes-resources-redis"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
@@ -45,7 +45,7 @@ func TestRedisUnmanaged(t *testing.T) {
 				},
 			},
 		},
-	}, loadResources("testdata/kubernetes-resources-redis-unmanaged", ".input.yaml")...)
+	}, loadResources("testdata/kubernetes-resources-redis", ".input.yaml")...)
 
 	test.Test(t)
 }

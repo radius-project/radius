@@ -1,5 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-mongodb-unmanaged'
+  name: 'azure-resources-mongodb'
   
   resource webapp 'Container' = {
     name: 'todoapp'
@@ -34,7 +34,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   location: resourceGroup().location
   kind: 'MongoDB'
   tags: {
-    radiustest: 'azure-resources-mongodb-unmanaged'
+    radiustest: 'azure-resources-mongodb'
   }
   properties: {
     consistencyPolicy: {

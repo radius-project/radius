@@ -40,7 +40,7 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 
 	resources := []outputresource.OutputResource{}
 
-	results, err := RenderUnmanaged(resource.ResourceName, properties)
+	results, err := RenderResource(resource.ResourceName, properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -56,7 +56,7 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 	}, nil
 }
 
-func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
+func RenderResource(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
 	if properties.Secrets != nil {
 		// When the user-specified secret is present, this is the usecase where the user is running
 		// their own custom Redis instance (using a container, or hosted elsewhere).
@@ -65,7 +65,7 @@ func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties
 		return nil, nil
 	}
 	if properties.Resource == nil || *properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForResource
 	}
 
 	databaseID, err := renderers.ValidateResourceID(*properties.Resource, CosmosMongoResourceType, "CosmosDB Mongo Database")

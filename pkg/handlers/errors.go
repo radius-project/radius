@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func ValidateResourceIDsForUnmanagedResource(properties map[string]string, keys ...string) error {
+func ValidateResourceIDsForResource(properties map[string]string, keys ...string) error {
 	missing := []string{}
 	for _, k := range keys {
 		_, ok := properties[k]
@@ -24,5 +24,5 @@ func ValidateResourceIDsForUnmanagedResource(properties map[string]string, keys 
 		return nil
 	}
 
-	return fmt.Errorf("missing required properties %v for an unmanaged resource", strings.Join(missing, ", "))
+	return fmt.Errorf("missing required properties %v for resource", strings.Join(missing, ", "))
 }

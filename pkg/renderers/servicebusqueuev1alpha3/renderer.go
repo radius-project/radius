@@ -38,7 +38,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	var output outputresource.OutputResource
 
 	if to.String(properties.Resource) == "" {
-		return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
+		return renderers.RendererOutput{}, renderers.ErrResourceMissingForResource
 	}
 
 	queueID, err := renderers.ValidateResourceID(to.String(properties.Resource), QueueResourceType, "ServiceBus Queue")

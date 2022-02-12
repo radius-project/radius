@@ -39,7 +39,8 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind"
+        "kind",
+        "resource"
       ],
       "properties": {
         "kind": {

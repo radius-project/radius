@@ -42,8 +42,8 @@ type daprStateStoreAzureStorageHandler struct {
 func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
-	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	err := ValidateResourceIDsForUnmanagedResource(properties, StorageAccountIDKey)
+	// This assertion is important so we don't start creating/modifying a resource
+	err := ValidateResourceIDsForResource(properties, StorageAccountIDKey)
 	if err != nil {
 		return nil, err
 	}

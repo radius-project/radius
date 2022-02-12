@@ -37,8 +37,8 @@ type azureKeyVaultHandler struct {
 func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
-	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	err := ValidateResourceIDsForUnmanagedResource(properties, KeyVaultIDKey)
+	// This assertion is important so we don't start creating/modifying a resource
+	err := ValidateResourceIDsForResource(properties, KeyVaultIDKey)
 	if err != nil {
 		return nil, err
 	}
