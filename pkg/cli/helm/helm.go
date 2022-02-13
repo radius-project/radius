@@ -69,8 +69,12 @@ func helmChartFromRepo(version string, config *helm.Configuration, repoUrl strin
 	pull.Settings = &cli.EnvSettings{}
 
 	// If version isn't set, it will use the latest version.
-	if version != "" && version != "edge" {
+	if version != "" {
 		pull.Version = version
+	} else {
+		// Support prerelease builds when the version is unspecified. We always specify
+		// the version for a release build.
+		pull.Devel = true
 	}
 
 	dir, err := createTempDir()
