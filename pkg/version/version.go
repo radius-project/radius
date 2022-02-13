@@ -38,6 +38,10 @@ func NewVersionInfo() VersionInfo {
 	}
 }
 
+func IsEdgeChannel() bool {
+	return channel == "edge"
+}
+
 // Channel returns the designated channel for downloads of assets.
 //
 // For a real release this will be the major.minor - for any other build it's the same

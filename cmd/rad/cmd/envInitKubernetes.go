@@ -170,7 +170,16 @@ func installRadius(ctx context.Context, client client_go.Interface, runtimeClien
 		return err
 	}
 
-	err = helm.ApplyRadiusHelmChart(chartPath, version.NewVersionInfo().Channel, image, tag)
+	// chartVersion is optional for an edge build - we'll get the latest available
+	// in that case
+	chartVersion := ""
+	if !version.IsEdgeChannel() {
+		// For a non-edge CLI we want to install the latest build that matches
+		// the current channel.
+		chartVersion = fmt.Sprintf("~%s.0", version.Channel())
+	}
+
+	err = helm.ApplyRadiusHelmChart(chartPath, chartVersion, image, tag)
 	if err != nil {
 		return err
 	}

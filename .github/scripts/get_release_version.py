@@ -17,8 +17,23 @@
 
 # We set the environment variable UPDATE_RELEASE if it's a full release (tagged and not prerelease)
 
+# We set the environment variable CHART_VERSION based on the kind of build. This is used for
+# versioning our helm chart ONLY.
+#
+# CHART_VERSION is:
+#
+# '0.42.42-dev' for most builds
+# '0.42.42-pr-<pull request #>' for PR builds
+# '1.0.0-rc1' (the full version): for a tagged prerelease
+# '1.0.0' (major.minor.patch): for a tagged release
+#
+# note: we always install the helm chart using the tilde-range syntax to match our behavior
+# based on channels. For example '--version ~0.9.0' will install the latest 0.9.X build
+# which matches how we do other versioning/installation operations.
+
 # REL_VERSION is used to stamp versions into binaries
 # REL_CHANNEL is used to upload assets to different paths
+# CHART_VERSION is used to set the version of the helm chart
 
 # This way a 1.0 user can download 1.0.1, etc.
 
@@ -42,6 +57,10 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
         print("Setting: {}".format(version))
         githubEnv.write(version + "\n")
 
+        chart = "CHART_VERSION=0.42.42-dev"
+        print("Setting: {}".format(chart))
+        githubEnv.write(chart + "\n")
+
         channel = "REL_CHANNEL=edge"
         print("Setting: {}".format(channel))
         githubEnv.write(channel + "\n")
@@ -55,6 +74,10 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
         version = "REL_VERSION=pr-{}".format(match.group(1))
         print("Setting: {}".format(version))
         githubEnv.write(version + "\n")
+
+        chart = "CHART_VERSION=0.42.42-pr-{}".format(match.group(1))
+        print("Setting: {}".format(chart))
+        githubEnv.write(chart + "\n")
 
         channel = "REL_CHANNEL=edge"
         print("Setting: {}".format(channel))
@@ -73,6 +96,10 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
             print("Setting: {}".format(version))
             githubEnv.write(version + "\n")
 
+            chart = "CHART_VERSION={}".format(match.group("version"))
+            print("Setting: {}".format(chart))
+            githubEnv.write(chart + "\n")
+
             channel = "REL_CHANNEL={}.{}".format(match.group("major"), match.group("minor"))
             print("Setting: {}".format(channel))
             githubEnv.write(channel + "\n")
@@ -88,6 +115,10 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
             print("Setting: {}".format(version))
             githubEnv.write(version + "\n")
 
+            chart = "CHART_VERSION={}".format(match.group("version"))
+            print("Setting: {}".format(chart))
+            githubEnv.write(chart + "\n")
+
             channel = "REL_CHANNEL={}".format(match.group("version"))
             print("Setting: {}".format(channel))
             githubEnv.write(channel + "\n")
@@ -97,6 +128,10 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
     version = "REL_VERSION=edge"
     print("Setting: {}".format(version))
     githubEnv.write(version + "\n")
+
+    chart = "CHART_VERSION=0.42.42-dev"
+    print("Setting: {}".format(chart))
+    githubEnv.write(chart + "\n")
 
     channel = "REL_CHANNEL=edge"
     print("Setting: {}".format(channel))

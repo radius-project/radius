@@ -2,5 +2,6 @@ apiVersion: v2
 name: radius
 description: Radius controller for Kubernetes
 type: application
-version: 0.9.0 # Only update major and minor version here, we force push the chart on each tag update to the same version.
-
+# We automate versioning of the chart during publishing.
+# The value here is only used for a dev build.
+version: '42.42.42-dev'
