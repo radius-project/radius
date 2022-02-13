@@ -82,8 +82,6 @@ func unmarshalDaprStateStoreResourcePropertiesClassification(rawMsg json.RawMess
 		b = &DaprStateStoreGenericResourceProperties{}
 	case "state.azure.tablestorage":
 		b = &DaprStateStoreAzureTableStorageResourceProperties{}
-	case "state.redis":
-		b = &DaprStateStoreRedisResourceProperties{}
 	case "state.sqlserver":
 		b = &DaprStateStoreSQLServerResourceProperties{}
 	default:

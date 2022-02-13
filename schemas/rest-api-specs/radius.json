@@ -135,6 +135,9 @@
           "type": "string"
         }
       },
+      "required": [
+        "resource"
+      ],
       "type": "object"
     },
     "AzureKeyVaultResource": {
@@ -219,17 +222,13 @@
         }
       ],
       "properties": {
-        "queue": {
-          "description": "The name of the queue",
-          "type": "string"
-        },
         "resource": {
           "description": "The ID of the user-managed ServiceBus queue to use",
           "type": "string"
         }
       },
       "required": [
-        "queue"
+        "resource"
       ],
       "type": "object"
     },
@@ -587,7 +586,8 @@
         }
       },
       "required": [
-        "kind"
+        "kind",
+        "resource"
       ],
       "type": "object",
       "x-ms-discriminator-value": "pubsub.azure.servicebus"
@@ -786,7 +786,8 @@
         }
       },
       "required": [
-        "kind"
+        "kind",
+        "resource"
       ],
       "type": "object",
       "x-ms-discriminator-value": "state.azure.tablestorage"
@@ -840,19 +841,6 @@
       ],
       "type": "object"
     },
-    "DaprStateStoreRedisResourceProperties": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprStateStoreResourceProperties"
-        }
-      ],
-      "required": [
-        "kind"
-      ],
-      "type": "object",
-      "x-ms-discriminator-value": "state.redis"
-    },
     "DaprStateStoreResource": {
       "allOf": [
         {
@@ -903,7 +891,8 @@
         }
       },
       "required": [
-        "kind"
+        "kind",
+        "resource"
       ],
       "type": "object",
       "x-ms-discriminator-value": "state.sqlserver"

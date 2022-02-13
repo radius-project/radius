@@ -1,6 +1,5 @@
 {
   "properties": {
-    "queue": "some-queue",
     "resource": "some-resource"
   }
 }

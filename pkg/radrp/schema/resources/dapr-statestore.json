@@ -31,9 +31,6 @@
           "$ref": "#/definitions/DaprStateStoreSqlServerResourceProperties"
         },
         {
-          "$ref": "#/definitions/DaprStateStoreRedisResourceProperties"
-        },
-        {
           "$ref": "#/definitions/DaprStateStoreAzureTableStorageResourceProperties"
         },
         {

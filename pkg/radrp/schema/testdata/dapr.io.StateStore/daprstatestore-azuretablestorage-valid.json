@@ -2,6 +2,7 @@
   "id": "id",
   "name": "name",
   "properties": {
-    "kind": "state.azure.tablestorage"
+    "kind": "state.azure.tablestorage",
+    "resource": "test"
   }
 }

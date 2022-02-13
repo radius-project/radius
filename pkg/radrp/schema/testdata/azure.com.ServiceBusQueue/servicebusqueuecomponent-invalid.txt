@@ -1,3 +1,2 @@
 (root).properties.resource: Invalid type. Expected: string, given: integer
 (root).properties: Additional property someUnknownProperty is not allowed
-(root).properties: queue is required

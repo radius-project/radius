@@ -238,7 +238,7 @@ func (a AzureKeyVaultList) MarshalJSON() ([]byte, error) {
 
 type AzureKeyVaultProperties struct {
 	BasicResourceProperties
-	// The ID of the user-managed KeyVault to use
+	// REQUIRED; The ID of the user-managed KeyVault to use
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -384,10 +384,7 @@ func (a AzureServiceBusList) MarshalJSON() ([]byte, error) {
 
 type AzureServiceBusProperties struct {
 	BasicResourceProperties
-	// REQUIRED; The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
-	// The ID of the user-managed ServiceBus queue to use
+	// REQUIRED; The ID of the user-managed ServiceBus queue to use
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -395,7 +392,6 @@ type AzureServiceBusProperties struct {
 func (a AzureServiceBusProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	a.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "queue", a.Queue)
 	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
@@ -409,9 +405,6 @@ func (a *AzureServiceBusProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "queue":
-			err = unpopulate(val, &a.Queue)
-			delete(rawMsg, key)
 		case "resource":
 			err = unpopulate(val, &a.Resource)
 			delete(rawMsg, key)
@@ -892,7 +885,7 @@ type DaprIoStateStoreListOptions struct {
 
 type DaprPubSubTopicAzureServiceBusResourceProperties struct {
 	DaprPubSubTopicProperties
-	// PubSub resource
+	// REQUIRED; PubSub resource
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -1246,7 +1239,7 @@ func (d *DaprSidecarTrait) UnmarshalJSON(data []byte) error {
 
 type DaprStateStoreAzureTableStorageResourceProperties struct {
 	DaprStateStoreResourceProperties
-	// PubSub resource
+	// REQUIRED; PubSub resource
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -1345,17 +1338,6 @@ func (d DaprStateStoreList) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-type DaprStateStoreRedisResourceProperties struct {
-	DaprStateStoreResourceProperties
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreRedisResourceProperties.
-func (d DaprStateStoreRedisResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "state.redis")
-	return json.Marshal(objectMap)
-}
-
 // DaprStateStoreResource - Resource for Dapr state store
 type DaprStateStoreResource struct {
 	ProxyResource
@@ -1397,8 +1379,8 @@ func (d *DaprStateStoreResource) UnmarshalJSON(data []byte) error {
 // DaprStateStoreResourcePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetDaprStateStoreResourceProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprStateStoreAzureTableStorageResourceProperties, *DaprStateStoreGenericResourceProperties, *DaprStateStoreRedisResourceProperties,
-// - *DaprStateStoreResourceProperties, *DaprStateStoreSqlServerResourceProperties
+// - *DaprStateStoreAzureTableStorageResourceProperties, *DaprStateStoreGenericResourceProperties, *DaprStateStoreResourceProperties,
+// - *DaprStateStoreSqlServerResourceProperties
 type DaprStateStoreResourcePropertiesClassification interface {
 	// GetDaprStateStoreResourceProperties returns the DaprStateStoreResourceProperties content of the underlying type.
 	GetDaprStateStoreResourceProperties() *DaprStateStoreResourceProperties
@@ -1450,7 +1432,7 @@ func (d *DaprStateStoreResourceProperties) unmarshalInternal(rawMsg map[string]j
 
 type DaprStateStoreSQLServerResourceProperties struct {
 	DaprStateStoreResourceProperties
-	// PubSub resource
+	// REQUIRED; PubSub resource
 	Resource *string `json:"resource,omitempty"`
 }
 

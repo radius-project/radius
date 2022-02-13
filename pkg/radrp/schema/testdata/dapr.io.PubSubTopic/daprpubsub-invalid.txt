@@ -1,2 +1,3 @@
 (root).properties: Additional property foo is not allowed
 (root).properties: kind is required
+(root).properties: resource is required
