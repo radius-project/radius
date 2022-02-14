@@ -730,6 +730,63 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
+    "DaprSecretStoreProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "kind": {
+          "description": "Radius kind for Dapr Secret Store",
+          "enum": [
+            "generic"
+          ],
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/",
+          "example": [
+            "secretstores.hashicorp.vault"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "type",
+        "version",
+        "metadata"
+      ],
+      "type": "object"
+    },
+    "DaprSecretStoreResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource for Dapr Secret Store.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprSecretStoreProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
     "DaprSidecarTrait": {
       "additionalProperties": false,
       "allOf": [
