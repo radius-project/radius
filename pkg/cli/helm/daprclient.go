@@ -71,6 +71,7 @@ func runDaprHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) er
 func RunDaprHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = timeout
+	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(daprReleaseName)
 	return err
 }
