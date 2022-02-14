@@ -233,11 +233,7 @@ func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client)
 	return err
 }
 
-<<<<<<< Updated upstream
 func installDapr(ctx context.Context, runtimeClient runtime_client.Client) error {
-=======
-func installDapr(ctx context.Context, runtime1Client runtime_client.Client) error {
->>>>>>> Stashed changes
 	err := helm.ApplyDaprHelmChart(DaprVersion)
 	if err != nil {
 		return err
