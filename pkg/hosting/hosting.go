@@ -167,7 +167,7 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 
 func (host *Host) runService(ctx context.Context, service Service, messages chan<- LifecycleMessage) error {
 	// Create a new logger and context for the service to use.
-	logger := logr.FromContext(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 	logger = logger.WithName(service.Name())
 	ctx = logr.NewContext(ctx, logger)
 

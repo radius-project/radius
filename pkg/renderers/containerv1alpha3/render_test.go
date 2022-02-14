@@ -922,7 +922,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 			InitialDelaySeconds: 30,
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
-			Handler: v1.Handler{
+			ProbeHandler: v1.ProbeHandler{
 				HTTPGet: &v1.HTTPGetAction{
 					Path: "/healthz",
 					Port: intstr.FromInt(8080),
@@ -985,7 +985,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 			InitialDelaySeconds: 30,
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
-			Handler: v1.Handler{
+			ProbeHandler: v1.ProbeHandler{
 				HTTPGet: nil,
 				TCPSocket: &v1.TCPSocketAction{
 					Port: intstr.FromInt(8080),
@@ -1041,7 +1041,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 			InitialDelaySeconds: 30,
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
-			Handler: v1.Handler{
+			ProbeHandler: v1.ProbeHandler{
 				HTTPGet:   nil,
 				TCPSocket: nil,
 				Exec: &v1.ExecAction{
@@ -1094,7 +1094,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 			InitialDelaySeconds: DefaultInitialDelaySeconds,
 			FailureThreshold:    DefaultFailureThreshold,
 			PeriodSeconds:       DefaultPeriodSeconds,
-			Handler: v1.Handler{
+			ProbeHandler: v1.ProbeHandler{
 				HTTPGet:   nil,
 				TCPSocket: nil,
 				Exec: &v1.ExecAction{

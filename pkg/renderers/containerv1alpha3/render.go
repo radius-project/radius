@@ -427,9 +427,9 @@ func (r Renderer) makeHealthProbe(p radclient.HealthProbePropertiesClassificatio
 	switch probe := p.(type) {
 	case *radclient.HTTPGetHealthProbeProperties:
 		// Set the probe spec
-		probeSpec.Handler.HTTPGet = &corev1.HTTPGetAction{}
-		probeSpec.Handler.HTTPGet.Port = intstr.FromInt(int(to.Int32(probe.ContainerPort)))
-		probeSpec.Handler.HTTPGet.Path = to.String(probe.Path)
+		probeSpec.ProbeHandler.HTTPGet = &corev1.HTTPGetAction{}
+		probeSpec.ProbeHandler.HTTPGet.Port = intstr.FromInt(int(to.Int32(probe.ContainerPort)))
+		probeSpec.ProbeHandler.HTTPGet.Path = to.String(probe.Path)
 		httpHeaders := []corev1.HTTPHeader{}
 		for k, v := range probe.Headers {
 			httpHeaders = append(httpHeaders, corev1.HTTPHeader{
@@ -437,7 +437,7 @@ func (r Renderer) makeHealthProbe(p radclient.HealthProbePropertiesClassificatio
 				Value: to.String(v),
 			})
 		}
-		probeSpec.Handler.HTTPGet.HTTPHeaders = httpHeaders
+		probeSpec.ProbeHandler.HTTPGet.HTTPHeaders = httpHeaders
 		c := containerHealthProbeConfig{
 			initialDelaySeconds: probe.InitialDelaySeconds,
 			failureThreshold:    probe.FailureThreshold,
@@ -446,7 +446,7 @@ func (r Renderer) makeHealthProbe(p radclient.HealthProbePropertiesClassificatio
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	case *radclient.TCPHealthProbeProperties:
 		// Set the probe spec
-		probeSpec.Handler.TCPSocket = &corev1.TCPSocketAction{}
+		probeSpec.ProbeHandler.TCPSocket = &corev1.TCPSocketAction{}
 		probeSpec.TCPSocket.Port = intstr.FromInt(int(to.Int32(probe.ContainerPort)))
 		c := containerHealthProbeConfig{
 			initialDelaySeconds: probe.InitialDelaySeconds,
@@ -456,7 +456,7 @@ func (r Renderer) makeHealthProbe(p radclient.HealthProbePropertiesClassificatio
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	case *radclient.ExecHealthProbeProperties:
 		// Set the probe spec
-		probeSpec.Handler.Exec = &corev1.ExecAction{}
+		probeSpec.ProbeHandler.Exec = &corev1.ExecAction{}
 		probeSpec.Exec.Command = strings.Split(to.String(probe.Command), " ")
 		c := containerHealthProbeConfig{
 			initialDelaySeconds: probe.InitialDelaySeconds,

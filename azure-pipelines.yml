@@ -101,8 +101,8 @@ stages:
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag ${{ variables.REL_VERSION }}
-      displayName: rad env init kubernetes
+        dist/rad env install kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag ${{ variables.REL_VERSION }}
+      displayName: rad env install kubernetes
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         cd $(Build.SourcesDirectory)
@@ -114,6 +114,12 @@ stages:
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-kubernetes
+    - script: |
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        dist/rad env uninstall kubernetes
+        ./.github/scripts/namespace-is-empty.sh
+      displayName: rad env uninstall kubernetes
+
   - job: Azure
     pool:
       vmImage: 'ubuntu-latest'

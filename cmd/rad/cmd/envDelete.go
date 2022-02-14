@@ -73,7 +73,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		// 1. Delete all applications
 		// 2. Delete all radius resources in the customer/user resource group (ex custom resource provider)
 		// 3. Delete control plane resource group
-		if err = deleteAllApplications(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID, az); err != nil {
+		if err = deleteAllApplications(cmd.Context(), az); err != nil {
 			return err
 		}
 
@@ -88,6 +88,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 
 	dev, ok := env.(*environments.LocalEnvironment)
 	if ok {
+
 		if !yes {
 			confirmed, err := prompt.Confirm(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/n]?", dev.ClusterName))
 			if err != nil {
@@ -106,6 +107,25 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	kub, ok := env.(*environments.KubernetesEnvironment)
+	if ok {
+		if !yes {
+			confirmed, err := prompt.Confirm(fmt.Sprintf("Environment %s and all applications will be deleted. Continue deleting? [y/n]?", kub.Name))
+			if err != nil {
+				return err
+			}
+
+			if !confirmed {
+				output.LogInfo("Delete cancelled.")
+				return nil
+			}
+		}
+
+		if err = deleteAllApplications(cmd.Context(), kub); err != nil {
+			return err
+		}
+	}
+
 	output.LogInfo("Environment deleted")
 
 	// Delete env from the config, update default env if needed
@@ -117,7 +137,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 }
 
 // deleteAllApplications deletes all applications from a resource group.
-func deleteAllApplications(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string, env *environments.AzureCloudEnvironment) error {
+func deleteAllApplications(ctx context.Context, env environments.Environment) error {
 	client, err := environments.CreateManagementClient(ctx, env)
 	if err != nil {
 		return err

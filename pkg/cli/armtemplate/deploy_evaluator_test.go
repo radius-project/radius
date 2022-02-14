@@ -208,7 +208,7 @@ func loadFakeK8sProvider(dir string) map[string]providers.Provider {
 	})
 	fakeDynamicClient := fake.NewSimpleDynamicClient(fakeScheme(), objects...)
 	provider := providers.NewK8sProvider(
-		logr.FromContext(context.Background()),
+		logr.FromContextOrDiscard(context.Background()),
 		fakeDynamicClient,
 		fakeRestMapper())
 

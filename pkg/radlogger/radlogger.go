@@ -97,7 +97,7 @@ func NewLogger(name string) (logr.Logger, func(), error) {
 
 	zapLogger, err := InitRadLoggerConfig()
 	if err != nil {
-		return nil, nil, err
+		return logr.Discard(), nil, err
 	}
 	logger := zapr.NewLogger(zapLogger).WithName(name)
 
@@ -118,11 +118,12 @@ func NewTestLogger(t *testing.T) (logr.Logger, error) {
 }
 
 func WrapLogContext(ctx context.Context, keyValues ...interface{}) context.Context {
-	logger := logr.FromContext(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
+
 	ctx = logr.NewContext(ctx, logger.WithValues(keyValues...))
 	return ctx
 }
 
 func GetLogger(ctx context.Context) logr.Logger {
-	return logr.FromContext(ctx)
+	return logr.FromContextOrDiscard(ctx)
 }
