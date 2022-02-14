@@ -27,6 +27,7 @@ func init() {
 
 func envUninstallKubernetes(cmd *cobra.Command, args []string) error {
 	err := kubectl.RunCLICommandSilent("delete", "gatewayclasses", "haproxy", "--ignore-not-found", "true")
+
 	if err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func envUninstallKubernetes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+  
 	err = helm.RunHAProxyHelmUninstall(helmConf)
 	if err != nil {
 		return err
