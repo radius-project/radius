@@ -111,7 +111,6 @@ stages:
         rad env uninstall kubernetes
         ./.github/scripts/namespace-is-empty.sh
       displayName: rad env uninstall kubernetes
-
   - job: Azure
     pool:
       vmImage: 'ubuntu-latest'
