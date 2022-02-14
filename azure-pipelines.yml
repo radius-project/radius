@@ -115,8 +115,8 @@ stages:
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-kubernetes
     - script: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        rad env uninstall kubernetes
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        dist/rad env uninstall kubernetes
         ./.github/scripts/namespace-is-empty.sh
       displayName: rad env uninstall kubernetes
 
