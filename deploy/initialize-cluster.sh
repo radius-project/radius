@@ -7,14 +7,16 @@ set -eux
 # The script might run with retries before succeeding. It's OK to dirty the state of the container
 # because each run has a separate container.
 
-if [[ "$#" -ne 2 ]]
+if [[ "$#" -ne 4 ]]
 then
-  echo "usage: initialize-cluster.sh <resource-group> <cluster-name>"
+  echo "usage: initialize-cluster.sh <resource-group> <cluster-name> <chart-version> <image-tag>"
   exit 1
 fi
 
 RESOURCE_GROUP=$1
 CLUSTER_NAME=$2
+CHART_VERSION=$3
+IMAGE_TAG=$4
 
 az aks get-credentials --name $CLUSTER_NAME --resource-group $RESOURCE_GROUP
 
@@ -58,13 +60,24 @@ done
 
 for i in {1..5}
 do
-  echo "adding haproxy-ingress helm chart - attempt $i"
+  echo "adding haproxy-ingress helm repo - attempt $i"
   helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
   if [[ "$?" -eq 0 ]]
   then
     break
   fi
 done
+
+for i in {1..5}
+do
+  echo "adding radius helm repo - attempt $i"
+  az acr helm repo add -n radius
+  if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
+
 for i in {1..5}
 do
   echo "updating helm repos- attempt $i"
@@ -114,7 +127,7 @@ do
   fi
 done
 
-# Install nginx-ingress
+# Install haproxy-ingress
 for i in {1..5}
 do
   echo "listing dapr pods - attempt $i"
@@ -157,6 +170,23 @@ for i in {1..5}
 do
   echo "listing radius-haproxy-ingress pods - attempt $i"
   if ./kubectl get pods -n radius-system
+  then
+    break
+  fi
+done
+
+for i in {1..5}
+do
+  echo "installing radius runtime - attempt $i"
+  helm upgrade \
+    radius radius/radius \
+    --install \
+    --create-namespace \
+    --namespace radius-system \
+    --version $CHART_VERSION \
+    --set tag=$IMAGE_TAG
+    --wait
+  if [[ "$?" -eq 0 ]]
   then
     break
   fi
