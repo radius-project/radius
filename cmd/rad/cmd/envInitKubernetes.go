@@ -30,6 +30,7 @@ import (
 const (
 	HAProxyVersion    = "0.13.4"
 	GatewayCRDVersion = "v0.3.0"
+	DaprVersion       = "1.6.0"
 )
 
 var envInitKubernetesCmd = &cobra.Command{
@@ -233,7 +234,7 @@ func applyGatewayClass(ctx context.Context, runtimeClient runtime_client.Client)
 }
 
 func installDapr(ctx context.Context, runtimeClient runtime_client.Client) error {
-	err := helm.ApplyDaprHelmChart(version.NewVersionInfo().Channel)
+	err := helm.ApplyDaprHelmChart(DaprVersion)
 	if err != nil {
 		return err
 	}
