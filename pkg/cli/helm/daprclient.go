@@ -31,7 +31,7 @@ func ApplyDaprHelmChart(version string) error {
 
 	helmChart, err := helmChartFromRepo(version, helmConf, daprHelmRepo, daprReleaseName)
 	if err != nil {
-		return fmt.Errorf("failed to get haproxy chart, err: %w, helm output: %s", err, helmOutput.String())
+		return fmt.Errorf("failed to get dapr chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
