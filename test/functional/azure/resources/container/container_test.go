@@ -57,7 +57,6 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -92,20 +91,6 @@ func Test_ContainerHttpBinding(t *testing.T) {
 				volume := matches.Items[0].Spec.Volumes[volIndex]
 				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
 				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
-
-				// Verify persistent volume
-				found = false
-				for index, vol := range matches.Items[0].Spec.Volumes {
-					if vol.Name == "my-volume2" {
-						found = true
-						volIndex = index
-					}
-				}
-				require.True(t, found, "persistent volume did not get mounted")
-				volume = matches.Items[0].Spec.Volumes[volIndex]
-				require.NotNil(t, volume.AzureFile, "volumes azure file should have not been nil but it is")
-				require.Equal(t, volume.AzureFile.ShareName, "myshare")
-				require.Equal(t, volume.AzureFile.SecretName, "backend")
 			},
 		},
 	})
