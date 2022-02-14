@@ -102,6 +102,7 @@ func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 func RunHAProxyHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = timeout
+	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(haproxyReleaseName)
 	return err
 }

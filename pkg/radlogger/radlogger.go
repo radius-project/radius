@@ -97,7 +97,7 @@ func NewLogger(name string) (logr.Logger, func(), error) {
 
 	zapLogger, err := InitRadLoggerConfig()
 	if err != nil {
-		return logr.Logger{}, nil, err
+		return logr.Discard(), nil, err
 	}
 	logger := zapr.NewLogger(zapLogger).WithName(name)
 

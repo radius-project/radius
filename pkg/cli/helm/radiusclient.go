@@ -100,6 +100,7 @@ func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = timeout
+	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(radiusReleaseName)
 	return err
 }

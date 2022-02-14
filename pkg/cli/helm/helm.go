@@ -67,6 +67,8 @@ func helmChartFromRepo(version string, config *helm.Configuration, repoUrl strin
 	pull := helm.NewPull()
 	pull.RepoURL = repoUrl
 	pull.Settings = &cli.EnvSettings{}
+	pullopt := helm.WithConfig(config)
+	pullopt(pull)
 
 	// If version isn't set, it will use the latest version.
 	if version != "" {
