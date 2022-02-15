@@ -71,7 +71,7 @@ done
 for i in {1..5}
 do
   echo "adding radius helm repo - attempt $i"
-  az acr helm repo add -n radius
+  helm repo add radius https://radius.azurecr.io/helm/v1/repo
   if [[ "$?" -eq 0 ]]
   then
     break
