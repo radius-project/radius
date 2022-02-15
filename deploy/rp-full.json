@@ -29,6 +29,13 @@
             },
             "type": "string"
         },
+        "chartVersion": {
+            "defaultValue": "[if(equals(parameters('channel'), 'edge'), '0.42.42-dev', format('~{0}.0', parameters('channel')))]",
+            "metadata": {
+                "description": "The helm chart version."
+            },
+            "type": "string"
+        },
         "clusterName": {
             "defaultValue": "[concat('radius-aks-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
@@ -60,6 +67,13 @@
             "defaultValue": "[format('radius.azurecr.io/radius-rp:{0}', if(equals(parameters('channel'), 'edge'), 'latest', parameters('channel')))]",
             "metadata": {
                 "description": "The container image to deploy."
+            },
+            "type": "string"
+        },
+        "imageTag": {
+            "defaultValue": "[if(equals(parameters('channel'), 'edge'), 'latest', parameters('channel'))]",
+            "metadata": {
+                "description": "The container image tag to deploy."
             },
             "type": "string"
         },
@@ -152,6 +166,9 @@
                     "accountName": {
                         "value": "[parameters('accountName')]"
                     },
+                    "chartVersion": {
+                        "value": "[parameters('chartVersion')]"
+                    },
                     "clusterName": {
                         "value": "[parameters('clusterName')]"
                     },
@@ -166,6 +183,9 @@
                     },
                     "image": {
                         "value": "[parameters('image')]"
+                    },
+                    "imageTag": {
+                        "value": "[parameters('imageTag')]"
                     },
                     "logAnalyticsWorkspaceID": {
                         "value": "[parameters('logAnalyticsWorkspaceID')]"
@@ -199,6 +219,9 @@
                         "accountName": {
                             "type": "string"
                         },
+                        "chartVersion": {
+                            "type": "string"
+                        },
                         "clusterName": {
                             "type": "string"
                         },
@@ -212,6 +235,9 @@
                             "type": "string"
                         },
                         "image": {
+                            "type": "string"
+                        },
+                        "imageTag": {
                             "type": "string"
                         },
                         "logAnalyticsWorkspaceID": {
@@ -409,7 +435,7 @@
                             "location": "[resourceGroup().location]",
                             "name": "deploy-radius-runtime",
                             "properties": {
-                                "arguments": "[concat('\"', resourceGroup().name, '\" \"', parameters('clusterName'), '\"')]",
+                                "arguments": "[concat('\"', resourceGroup().name, '\" \"', parameters('clusterName'), '\" \"', parameters('chartVersion'),'\" \"', parameters('imageTag'), '\"')]",
                                 "azCliVersion": "2.0.80",
                                 "cleanupPreference": "OnSuccess",
                                 "forceUpdateTag": 1,

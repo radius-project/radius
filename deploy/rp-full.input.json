@@ -41,6 +41,13 @@
                 "description": "The container image to deploy."
             }
         },
+        "imageTag": {
+            "type": "string",
+            "defaultValue": "[if(equals(parameters('channel'), 'edge'), 'latest', parameters('channel'))]",
+            "metadata": {
+                "description": "The container image tag to deploy."
+            }
+        },
         "siteName": {
             "type": "string",
             "defaultValue": "[concat('radius-rp-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
@@ -74,6 +81,13 @@
             "defaultValue": "radius-rp-db",
             "metadata": {
                 "description": "The database name."
+            }
+        },
+        "chartVersion": {
+            "type": "string",
+            "defaultValue": "[if(equals(parameters('channel'), 'edge'), '0.42.42-dev', format('~{0}.0', parameters('channel')))]",
+            "metadata": {
+                "description": "The helm chart version."
             }
         },
         "clusterName": {
@@ -156,6 +170,9 @@
                     "clusterName": {
                         "value": "[parameters('clusterName')]"
                     },
+                    "chartVersion": {
+                        "value": "[parameters('chartVersion')]"
+                    },
                     "controlPlaneResourceGroup": {
                         "value": "[parameters('controlPlaneResourceGroup')]"
                     },
@@ -167,6 +184,9 @@
                     },
                     "image": {
                         "value": "[parameters('image')]"
+                    },
+                    "imageTag": {
+                        "value": "[parameters('imageTag')]"
                     },
                     "registryId": {
                         "value": "[parameters('registryId')]"
@@ -200,6 +220,9 @@
                         "accountName": {
                             "type": "string"
                         },
+                        "chartVersion": {
+                            "type": "string"
+                        },
                         "clusterName": {
                             "type": "string"
                         },
@@ -213,6 +236,9 @@
                             "type": "string"
                         },
                         "image": {
+                            "type": "string"
+                        },
+                        "imageTag": {
                             "type": "string"
                         },
                         "registryId": {
@@ -425,7 +451,7 @@
                             "properties": {
                                 "forceUpdateTag": 1,
                                 "azCliVersion": "2.0.80",
-                                "arguments": "[concat('\"', resourceGroup().name, '\" \"', parameters('clusterName'), '\"')]",
+                                "arguments": "[concat('\"', resourceGroup().name, '\" \"', parameters('clusterName'), '\" \"', parameters('chartVersion'),'\" \"', parameters('imageTag'), '\"')]",
                                 "primaryScriptUri": "[parameters('_scriptUri')]",
                                 "supportingScriptUris": [],
                                 "timeout": "PT30M",

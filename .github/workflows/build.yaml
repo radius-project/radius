@@ -165,7 +165,7 @@ jobs:
     name: Helm chart build
     needs: ['images']
     runs-on: self-hosted
-    if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/pull/')
+    if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/pull/') || (github.ref == 'refs/heads/main')
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
