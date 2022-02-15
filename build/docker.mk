@@ -37,7 +37,7 @@ endif
 .PHONY: docker-push-$(1)
 docker-push-$(1):
 	@echo "$(ARROW) Pushing image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
-	docker push $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)
+	docker push $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)
 endef
 
 # defines a target for each image

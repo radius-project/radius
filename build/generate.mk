@@ -66,7 +66,7 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./...
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+CONTROLLER_GEN = $(shell pwd)/bin/controller-gen$(BINARY_EXT)
 generate-controller-gen-installed:
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
 
