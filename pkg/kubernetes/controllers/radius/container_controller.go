@@ -9,16 +9,19 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	radruntime "github.com/project-radius/radius/pkg/kubernetes/api/radius/runtime/v1alpha3"
+	"github.com/project-radius/radius/pkg/kubernetes/converters"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/cri-api/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -38,17 +41,39 @@ type ContainerController struct {
 
 func (r *ContainerController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("namespace", req.Namespace, "name", req.Name)
-	log.Info("Hello there")
 
 	container := radruntime.Container{}
 	err := r.Get(ctx, req.NamespacedName, &container)
 	if errors.IsNotFound(err) {
 		// Could be deleted after we got the notification
+		log.Info("container was deleted")
 		return ctrl.Result{}, nil
 	} else if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	log = log.WithValues(
+		"application", container.Spec.ApplicationName,
+		"resourceName", container.Spec.ResourceName,
+		"resourceType", container.Spec.ResourceType)
+
+	deployment := converters.ContainerToDeployment(&container)
+	err = controllerutil.SetControllerReference(&container, deployment, r.Scheme)
+	if err != nil {
+		r.Recorder.Eventf(&container, corev1.EventTypeWarning, "Failed", "Failed to set owner: %s", err)
+		return ctrl.Result{}, err
+	}
+
+	err = r.Client.Patch(ctx, deployment, client.Apply, client.FieldOwner(kubernetes.FieldManager))
+	if err != nil {
+		r.Recorder.Eventf(&container, corev1.EventTypeWarning, "Failed", "Failed to reconcile deployment: %s", err)
+		return ctrl.Result{}, err
+	}
+
+	// TODO status
+
+	log.Info("Successfully reconciled container")
+	r.Recorder.Event(&container, corev1.EventTypeNormal, "Succeeded", "Successfully reconciled deployment")
 	return ctrl.Result{}, nil
 }
 

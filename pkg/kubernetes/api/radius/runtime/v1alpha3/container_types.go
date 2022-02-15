@@ -6,13 +6,30 @@
 package v1alpha3
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ContainerSpec defines the desired state of a Container.
 type ContainerSpec struct {
+	// Name of the application.
+	ApplicationName string `json:"applicationName"`
+
+	// Name of the resource
+	ResourceName string `json:"resourceName"`
+
+	// Type of the resource
+	ResourceType string `json:"resourceType"`
+
 	// Container image to run
-	Image string `json:"image"`
+	Container corev1.Container `json:"container"`
+
+	// List of volumes that can be mounted by containers.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes
+	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge,retainKeys
+	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
 }
 
 type ContainerStatus struct {
