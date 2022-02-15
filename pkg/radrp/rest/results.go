@@ -123,6 +123,10 @@ func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter,
 		Path:   r.Location,
 	}
 
+	logger.Info(fmt.Sprintf("###### location: %s", location.String()))
+	logger.Info(fmt.Sprintf("###### location: %s", req.URL.Scheme))
+	logger.Info(fmt.Sprintf("###### location: %s", req.URL))
+
 	// In production this is the header we get from app service for the 'real' protocol
 	protocol := req.Header.Get(textproto.CanonicalMIMEHeaderKey("X-Forwarded-Proto"))
 	if protocol != "" {
@@ -130,7 +134,8 @@ func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter,
 	}
 
 	if location.Scheme == "" {
-		location.Scheme = "http"
+		logger.Info("###### SET SCHEME")
+		location.Scheme = "https"
 	}
 
 	w.Header().Add("Content-Type", "application/json")
@@ -171,6 +176,10 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 		Path:   r.Location,
 	}
 
+	logger.Info(fmt.Sprintf("###### location: %s", location.String()))
+	logger.Info(fmt.Sprintf("###### location: %s", req.URL.Scheme))
+	logger.Info(fmt.Sprintf("###### location: %s", req.URL))
+
 	// In production this is the header we get from app service for the 'real' protocol
 	protocol := req.Header.Get(textproto.CanonicalMIMEHeaderKey("X-Forwarded-Proto"))
 	if protocol != "" {
@@ -178,7 +187,7 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 	}
 
 	if location.Scheme == "" {
-		location.Scheme = "http"
+		location.Scheme = "https"
 	}
 
 	logger.Info(fmt.Sprintf("Returning location: %s", location.String()))

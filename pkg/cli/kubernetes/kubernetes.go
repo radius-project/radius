@@ -37,6 +37,7 @@ import (
 )
 
 const APIServerBasePath = "/apis/api.radius.dev/v1alpha3"
+const DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
 
 func ReadKubeConfig() (*api.Config, error) {
 	var kubeConfig string
@@ -106,7 +107,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 	var baseURL string
 	var roundTripper http.RoundTripper
 	if overrideURL != "" {
-		baseURL = strings.TrimSuffix(overrideURL, "/")
+		baseURL = strings.TrimSuffix(overrideURL, "/") + DeploymentEngineBasePath
 		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
 	} else {
 		restConfig, err := GetConfig(context)
@@ -119,7 +120,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 			return "", nil, err
 		}
 
-		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + DeploymentEngineBasePath
 		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
 	return baseURL, roundTripper, nil
