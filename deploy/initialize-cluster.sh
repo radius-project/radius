@@ -163,18 +163,6 @@ EOF
   fi
 done
 
-
-# Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
-# ex: https://github.com/project-radius/radius/issues/29 https://github.com/project-radius/radius/issues/39
-for i in {1..5}
-do
-  echo "listing radius-haproxy-ingress pods - attempt $i"
-  if ./kubectl get pods -n radius-system
-  then
-    break
-  fi
-done
-
 for i in {1..5}
 do
   echo "installing radius runtime - attempt $i"
@@ -184,9 +172,20 @@ do
     --create-namespace \
     --namespace radius-system \
     --version $CHART_VERSION \
-    --set tag=$IMAGE_TAG
+    --set tag=$IMAGE_TAG \
     --wait
   if [[ "$?" -eq 0 ]]
+  then
+    break
+  fi
+done
+
+# Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
+# ex: https://github.com/project-radius/radius/issues/29 https://github.com/project-radius/radius/issues/39
+for i in {1..5}
+do
+  echo "listing radius-haproxy-ingress pods - attempt $i"
+  if ./kubectl get pods -n radius-system
   then
     break
   fi
