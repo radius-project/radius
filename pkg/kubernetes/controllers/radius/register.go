@@ -23,9 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
-	bicepcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/bicep"
 	"github.com/project-radius/radius/pkg/kubernetes/webhook"
 	"github.com/project-radius/radius/pkg/model"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
@@ -106,19 +104,9 @@ func NewRadiusController(options *Options) *RadiusController {
 		resources = append(resources, resource)
 	}
 
-	template := &bicepcontroller.DeploymentTemplateReconciler{
-		Client:        options.Client,
-		DynamicClient: options.Dynamic,
-		Scheme:        options.Scheme,
-		RESTMapper:    options.RestMapper,
-		Log:           options.Log.WithName("controllers").WithName("DeploymentTemplate"),
-		Recorder:      options.Recorder,
-	}
-
 	return &RadiusController{
 		application: application,
 		resources:   resources,
-		template:    template,
 		options:     options,
 	}
 }
@@ -126,7 +114,6 @@ func NewRadiusController(options *Options) *RadiusController {
 type RadiusController struct {
 	application *ApplicationReconciler
 	resources   []*ResourceReconciler
-	template    *bicepcontroller.DeploymentTemplateReconciler
 	options     *Options
 }
 
@@ -177,11 +164,6 @@ func (c *RadiusController) Run(ctx context.Context) error {
 		}
 	}
 
-	err = c.template.SetupWithManager(mgr, c.options.ResourceTypes)
-	if err != nil {
-		return err
-	}
-
 	if !c.options.SkipWebhooks {
 		if err = (&radiusv1alpha3.Application{}).SetupWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("failed to setup Application webhook: %w", err)
@@ -189,10 +171,6 @@ func (c *RadiusController) Run(ctx context.Context) error {
 
 		if err = (&webhook.ResourceWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("failed to setup Resource webhook: %w", err)
-		}
-
-		if err = (&bicepv1alpha3.DeploymentTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("failed to setup DeploymentTemplate webhook: %w", err)
 		}
 	}
 

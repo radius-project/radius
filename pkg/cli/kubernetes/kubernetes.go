@@ -39,6 +39,10 @@ import (
 const APIServerBasePath = "/apis/api.radius.dev/v1alpha3"
 const DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
 
+var (
+	Scheme = runtime.NewScheme()
+)
+
 func ReadKubeConfig() (*api.Config, error) {
 	var kubeConfig string
 	if home := homeDir(); home != "" {
