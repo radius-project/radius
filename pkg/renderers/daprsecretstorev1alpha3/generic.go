@@ -62,8 +62,8 @@ func GetDaprSecretStoreAzureGeneric(resource renderers.RendererResource) ([]outp
 	return []outputresource.OutputResource{output}, nil
 }
 
-func GetDaprStateStoreKubernetesGeneric(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
-	properties := radclient.DaprSecretStoreGenericResourceProperties{}
+func GetDaprSecretStoreKubernetesGeneric(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
+	properties := radclient.DaprSecretStoreProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return nil, err

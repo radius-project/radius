@@ -10,9 +10,10 @@ package radclient
 
 import (
 	"encoding/json"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"reflect"
 	"time"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 )
 
 // ApplicationBeginCreateOrUpdateOptions contains the optional parameters for the Application.BeginCreateOrUpdate method.
@@ -79,8 +80,8 @@ func (a *ApplicationResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &a.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -172,8 +173,8 @@ func (a *AzureEntityResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "etag":
-				err = unpopulate(val, &a.Etag)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Etag)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -213,11 +214,11 @@ func (a *AzureFileShareVolumeProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "managed":
-				err = unpopulate(val, &a.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Managed)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &a.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Resource)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -270,11 +271,11 @@ func (a *AzureKeyVaultProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "managed":
-				err = unpopulate(val, &a.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Managed)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &a.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Resource)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -311,8 +312,8 @@ func (a *AzureKeyVaultResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &a.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -364,20 +365,20 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "certificates":
-				err = unpopulate(val, &a.Certificates)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Certificates)
+			delete(rawMsg, key)
 		case "keys":
-				err = unpopulate(val, &a.Keys)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Keys)
+			delete(rawMsg, key)
 		case "managed":
-				err = unpopulate(val, &a.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Managed)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &a.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Resource)
+			delete(rawMsg, key)
 		case "secrets":
-				err = unpopulate(val, &a.Secrets)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Secrets)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -434,14 +435,14 @@ func (a *AzureServiceBusProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "managed":
-				err = unpopulate(val, &a.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Managed)
+			delete(rawMsg, key)
 		case "queue":
-				err = unpopulate(val, &a.Queue)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Queue)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &a.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Resource)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -478,8 +479,8 @@ func (a *AzureServiceBusResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &a.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &a.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -522,8 +523,8 @@ func (b *BasicResourceProperties) unmarshalInternal(rawMsg map[string]json.RawMe
 		var err error
 		switch key {
 		case "status":
-				err = unpopulate(val, &b.Status)
-				delete(rawMsg, key)
+			err = unpopulate(val, &b.Status)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -649,7 +650,7 @@ type ContainerProperties struct {
 	BasicResourceProperties
 	// Dictionary of
 	Connections map[string]*ContainerConnection `json:"connections,omitempty"`
-	Container *ContainerPropertiesContainer `json:"container,omitempty"`
+	Container   *ContainerPropertiesContainer   `json:"container,omitempty"`
 
 	// Traits spec of the resource
 	Traits []ResourceTraitClassification `json:"traits,omitempty"`
@@ -675,14 +676,14 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "connections":
-				err = unpopulate(val, &c.Connections)
-				delete(rawMsg, key)
+			err = unpopulate(val, &c.Connections)
+			delete(rawMsg, key)
 		case "container":
-				err = unpopulate(val, &c.Container)
-				delete(rawMsg, key)
+			err = unpopulate(val, &c.Container)
+			delete(rawMsg, key)
 		case "traits":
-				c.Traits, err = unmarshalResourceTraitClassificationArray(val)
-				delete(rawMsg, key)
+			c.Traits, err = unmarshalResourceTraitClassificationArray(val)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -736,23 +737,23 @@ func (c *ContainerPropertiesContainer) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "env":
-				err = unpopulate(val, &c.Env)
-				delete(rawMsg, key)
+			err = unpopulate(val, &c.Env)
+			delete(rawMsg, key)
 		case "image":
-				err = unpopulate(val, &c.Image)
-				delete(rawMsg, key)
+			err = unpopulate(val, &c.Image)
+			delete(rawMsg, key)
 		case "livenessProbe":
-				c.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
-				delete(rawMsg, key)
+			c.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+			delete(rawMsg, key)
 		case "ports":
-				err = unpopulate(val, &c.Ports)
-				delete(rawMsg, key)
+			err = unpopulate(val, &c.Ports)
+			delete(rawMsg, key)
 		case "readinessProbe":
-				c.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
-				delete(rawMsg, key)
+			c.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+			delete(rawMsg, key)
 		case "volumes":
-				c.Volumes, err = unmarshalVolumeClassificationMap(val)
-				delete(rawMsg, key)
+			c.Volumes, err = unmarshalVolumeClassificationMap(val)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -786,8 +787,8 @@ func (c *ContainerResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &c.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &c.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -844,8 +845,8 @@ func (d *DaprInvokeHTTPRouteResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &d.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -941,8 +942,8 @@ func (d *DaprPubSubTopicAnyResourceProperties) UnmarshalJSON(data []byte) error 
 		var err error
 		switch key {
 		case "topic":
-				err = unpopulate(val, &d.Topic)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Topic)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -986,14 +987,14 @@ func (d *DaprPubSubTopicAzureServiceBusResourceProperties) UnmarshalJSON(data []
 		var err error
 		switch key {
 		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Managed)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &d.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Resource)
+			delete(rawMsg, key)
 		case "topic":
-				err = unpopulate(val, &d.Topic)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Topic)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1037,14 +1038,14 @@ func (d *DaprPubSubTopicGenericResourceProperties) UnmarshalJSON(data []byte) er
 		var err error
 		switch key {
 		case "metadata":
-				err = unpopulate(val, &d.Metadata)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Metadata)
+			delete(rawMsg, key)
 		case "type":
-				err = unpopulate(val, &d.Type)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Type)
+			delete(rawMsg, key)
 		case "version":
-				err = unpopulate(val, &d.Version)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Version)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1086,7 +1087,9 @@ type DaprPubSubTopicProperties struct {
 }
 
 // GetDaprPubSubTopicProperties implements the DaprPubSubTopicPropertiesClassification interface for type DaprPubSubTopicProperties.
-func (d *DaprPubSubTopicProperties) GetDaprPubSubTopicProperties() *DaprPubSubTopicProperties { return d }
+func (d *DaprPubSubTopicProperties) GetDaprPubSubTopicProperties() *DaprPubSubTopicProperties {
+	return d
+}
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicProperties.
 func (d *DaprPubSubTopicProperties) UnmarshalJSON(data []byte) error {
@@ -1108,8 +1111,8 @@ func (d *DaprPubSubTopicProperties) unmarshalInternal(rawMsg map[string]json.Raw
 		var err error
 		switch key {
 		case "kind":
-				err = unpopulate(val, &d.Kind)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Kind)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1146,8 +1149,8 @@ func (d *DaprPubSubTopicResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				d.Properties, err = unmarshalDaprPubSubTopicPropertiesClassification(val)
-				delete(rawMsg, key)
+			d.Properties, err = unmarshalDaprPubSubTopicPropertiesClassification(val)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1195,17 +1198,17 @@ func (d *DaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "kind":
-				err = unpopulate(val, &d.Kind)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Kind)
+			delete(rawMsg, key)
 		case "metadata":
-				err = unpopulate(val, &d.Metadata)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Metadata)
+			delete(rawMsg, key)
 		case "type":
-				err = unpopulate(val, &d.Type)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Type)
+			delete(rawMsg, key)
 		case "version":
-				err = unpopulate(val, &d.Version)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Version)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1242,8 +1245,8 @@ func (d *DaprSecretStoreResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &d.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1296,20 +1299,20 @@ func (d *DaprSidecarTrait) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "appId":
-				err = unpopulate(val, &d.AppID)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.AppID)
+			delete(rawMsg, key)
 		case "appPort":
-				err = unpopulate(val, &d.AppPort)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.AppPort)
+			delete(rawMsg, key)
 		case "config":
-				err = unpopulate(val, &d.Config)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Config)
+			delete(rawMsg, key)
 		case "protocol":
-				err = unpopulate(val, &d.Protocol)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Protocol)
+			delete(rawMsg, key)
 		case "provides":
-				err = unpopulate(val, &d.Provides)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Provides)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1360,11 +1363,11 @@ func (d *DaprStateStoreAzureTableStorageResourceProperties) UnmarshalJSON(data [
 		var err error
 		switch key {
 		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Managed)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &d.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Resource)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1408,14 +1411,14 @@ func (d *DaprStateStoreGenericResourceProperties) UnmarshalJSON(data []byte) err
 		var err error
 		switch key {
 		case "metadata":
-				err = unpopulate(val, &d.Metadata)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Metadata)
+			delete(rawMsg, key)
 		case "type":
-				err = unpopulate(val, &d.Type)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Type)
+			delete(rawMsg, key)
 		case "version":
-				err = unpopulate(val, &d.Version)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Version)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1464,8 +1467,8 @@ func (d *DaprStateStoreRedisResourceProperties) UnmarshalJSON(data []byte) error
 		var err error
 		switch key {
 		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Managed)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1502,8 +1505,8 @@ func (d *DaprStateStoreResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				d.Properties, err = unmarshalDaprStateStoreResourcePropertiesClassification(val)
-				delete(rawMsg, key)
+			d.Properties, err = unmarshalDaprStateStoreResourcePropertiesClassification(val)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1532,7 +1535,9 @@ type DaprStateStoreResourceProperties struct {
 }
 
 // GetDaprStateStoreResourceProperties implements the DaprStateStoreResourcePropertiesClassification interface for type DaprStateStoreResourceProperties.
-func (d *DaprStateStoreResourceProperties) GetDaprStateStoreResourceProperties() *DaprStateStoreResourceProperties { return d }
+func (d *DaprStateStoreResourceProperties) GetDaprStateStoreResourceProperties() *DaprStateStoreResourceProperties {
+	return d
+}
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreResourceProperties.
 func (d *DaprStateStoreResourceProperties) UnmarshalJSON(data []byte) error {
@@ -1554,8 +1559,8 @@ func (d *DaprStateStoreResourceProperties) unmarshalInternal(rawMsg map[string]j
 		var err error
 		switch key {
 		case "kind":
-				err = unpopulate(val, &d.Kind)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Kind)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1595,11 +1600,11 @@ func (d *DaprStateStoreSQLServerResourceProperties) UnmarshalJSON(data []byte) e
 		var err error
 		switch key {
 		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Managed)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &d.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &d.Resource)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1649,11 +1654,11 @@ func (e *EphemeralVolume) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "managedStore":
-				err = unpopulate(val, &e.ManagedStore)
-				delete(rawMsg, key)
+			err = unpopulate(val, &e.ManagedStore)
+			delete(rawMsg, key)
 		case "mountPath":
-				err = unpopulate(val, &e.MountPath)
-				delete(rawMsg, key)
+			err = unpopulate(val, &e.MountPath)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1755,17 +1760,17 @@ func (e *ExecHealthProbeProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "command":
-				err = unpopulate(val, &e.Command)
-				delete(rawMsg, key)
+			err = unpopulate(val, &e.Command)
+			delete(rawMsg, key)
 		case "failureThreshold":
-				err = unpopulate(val, &e.FailureThreshold)
-				delete(rawMsg, key)
+			err = unpopulate(val, &e.FailureThreshold)
+			delete(rawMsg, key)
 		case "initialDelaySeconds":
-				err = unpopulate(val, &e.InitialDelaySeconds)
-				delete(rawMsg, key)
+			err = unpopulate(val, &e.InitialDelaySeconds)
+			delete(rawMsg, key)
 		case "periodSeconds":
-				err = unpopulate(val, &e.PeriodSeconds)
-				delete(rawMsg, key)
+			err = unpopulate(val, &e.PeriodSeconds)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1854,8 +1859,8 @@ func (g *GatewayResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &g.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &g.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1912,23 +1917,23 @@ func (h *HTTPGetHealthProbeProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "containerPort":
-				err = unpopulate(val, &h.ContainerPort)
-				delete(rawMsg, key)
+			err = unpopulate(val, &h.ContainerPort)
+			delete(rawMsg, key)
 		case "failureThreshold":
-				err = unpopulate(val, &h.FailureThreshold)
-				delete(rawMsg, key)
+			err = unpopulate(val, &h.FailureThreshold)
+			delete(rawMsg, key)
 		case "headers":
-				err = unpopulate(val, &h.Headers)
-				delete(rawMsg, key)
+			err = unpopulate(val, &h.Headers)
+			delete(rawMsg, key)
 		case "initialDelaySeconds":
-				err = unpopulate(val, &h.InitialDelaySeconds)
-				delete(rawMsg, key)
+			err = unpopulate(val, &h.InitialDelaySeconds)
+			delete(rawMsg, key)
 		case "path":
-				err = unpopulate(val, &h.Path)
-				delete(rawMsg, key)
+			err = unpopulate(val, &h.Path)
+			delete(rawMsg, key)
 		case "periodSeconds":
-				err = unpopulate(val, &h.PeriodSeconds)
-				delete(rawMsg, key)
+			err = unpopulate(val, &h.PeriodSeconds)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2056,8 +2061,8 @@ func (h *HTTPRouteResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &h.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &h.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2106,8 +2111,8 @@ func (h *HealthProbeProperties) unmarshalInternal(rawMsg map[string]json.RawMess
 		var err error
 		switch key {
 		case "kind":
-				err = unpopulate(val, &h.Kind)
-				delete(rawMsg, key)
+			err = unpopulate(val, &h.Kind)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2187,8 +2192,8 @@ func (m *ManualScalingTrait) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "replicas":
-				err = unpopulate(val, &m.Replicas)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Replicas)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2269,17 +2274,17 @@ func (m *MicrosoftSQLDatabaseProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "database":
-				err = unpopulate(val, &m.Database)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Database)
+			delete(rawMsg, key)
 		case "managed":
-				err = unpopulate(val, &m.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Managed)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &m.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Resource)
+			delete(rawMsg, key)
 		case "server":
-				err = unpopulate(val, &m.Server)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Server)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2316,8 +2321,8 @@ func (m *MicrosoftSQLDatabaseResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &m.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2389,20 +2394,20 @@ func (m *MongoDBResourceProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "host":
-				err = unpopulate(val, &m.Host)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Host)
+			delete(rawMsg, key)
 		case "managed":
-				err = unpopulate(val, &m.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Managed)
+			delete(rawMsg, key)
 		case "port":
-				err = unpopulate(val, &m.Port)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Port)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &m.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Resource)
+			delete(rawMsg, key)
 		case "secrets":
-				err = unpopulate(val, &m.Secrets)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Secrets)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2463,8 +2468,8 @@ func (m *MongoDatabaseResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &m.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &m.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2500,7 +2505,7 @@ type OperationDisplay struct {
 	Description *string `json:"description,omitempty" azure:"ro"`
 
 	// READ-ONLY; The concise, localized friendly name for the operation; suitable for dropdowns. E.g. "Create or Update Virtual Machine", "Restart Virtual
-// Machine".
+	// Machine".
 	Operation *string `json:"operation,omitempty" azure:"ro"`
 
 	// READ-ONLY; The localized friendly form of the resource provider name, e.g. "Microsoft Monitoring Insights" or "Microsoft Compute".
@@ -2578,33 +2583,33 @@ func (o *OperationStatusResult) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "endTime":
-				var aux timeRFC3339
-				err = unpopulate(val, &aux)
-				o.EndTime = (*time.Time)(&aux)
-				delete(rawMsg, key)
+			var aux timeRFC3339
+			err = unpopulate(val, &aux)
+			o.EndTime = (*time.Time)(&aux)
+			delete(rawMsg, key)
 		case "error":
-				err = unpopulate(val, &o.Error)
-				delete(rawMsg, key)
+			err = unpopulate(val, &o.Error)
+			delete(rawMsg, key)
 		case "id":
-				err = unpopulate(val, &o.ID)
-				delete(rawMsg, key)
+			err = unpopulate(val, &o.ID)
+			delete(rawMsg, key)
 		case "name":
-				err = unpopulate(val, &o.Name)
-				delete(rawMsg, key)
+			err = unpopulate(val, &o.Name)
+			delete(rawMsg, key)
 		case "operations":
-				err = unpopulate(val, &o.Operations)
-				delete(rawMsg, key)
+			err = unpopulate(val, &o.Operations)
+			delete(rawMsg, key)
 		case "percentComplete":
-				err = unpopulate(val, &o.PercentComplete)
-				delete(rawMsg, key)
+			err = unpopulate(val, &o.PercentComplete)
+			delete(rawMsg, key)
 		case "startTime":
-				var aux timeRFC3339
-				err = unpopulate(val, &aux)
-				o.StartTime = (*time.Time)(&aux)
-				delete(rawMsg, key)
+			var aux timeRFC3339
+			err = unpopulate(val, &aux)
+			o.StartTime = (*time.Time)(&aux)
+			delete(rawMsg, key)
 		case "status":
-				err = unpopulate(val, &o.Status)
-				delete(rawMsg, key)
+			err = unpopulate(val, &o.Status)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2646,14 +2651,14 @@ func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "mountPath":
-				err = unpopulate(val, &p.MountPath)
-				delete(rawMsg, key)
+			err = unpopulate(val, &p.MountPath)
+			delete(rawMsg, key)
 		case "rbac":
-				err = unpopulate(val, &p.Rbac)
-				delete(rawMsg, key)
+			err = unpopulate(val, &p.Rbac)
+			delete(rawMsg, key)
 		case "source":
-				err = unpopulate(val, &p.Source)
-				delete(rawMsg, key)
+			err = unpopulate(val, &p.Source)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2671,7 +2676,7 @@ type Plan struct {
 	Name *string `json:"name,omitempty"`
 
 	// REQUIRED; The 3rd Party artifact that is being procured. E.g. NewRelic. Product maps to the OfferID specified for the artifact at the time of Data Market
-// onboarding.
+	// onboarding.
 	Product *string `json:"product,omitempty"`
 
 	// REQUIRED; The publisher of the 3rd Party Artifact that is being bought. E.g. NewRelic
@@ -2738,8 +2743,8 @@ func (r *RabbitMQMessageQueueResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &r.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2783,14 +2788,14 @@ func (r *RabbitMQMessageQueueResourceProperties) UnmarshalJSON(data []byte) erro
 		var err error
 		switch key {
 		case "managed":
-				err = unpopulate(val, &r.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Managed)
+			delete(rawMsg, key)
 		case "queue":
-				err = unpopulate(val, &r.Queue)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Queue)
+			delete(rawMsg, key)
 		case "secrets":
-				err = unpopulate(val, &r.Secrets)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Secrets)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2853,8 +2858,8 @@ func (r *RadiusResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &r.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2932,8 +2937,8 @@ func (r *RedisCacheResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				err = unpopulate(val, &r.Properties)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Properties)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -2957,8 +2962,8 @@ type RedisCacheResourceProperties struct {
 	Port *int32 `json:"port,omitempty"`
 
 	// The ID of the user-managed Redis cache to use for this resource
-	Resource *string `json:"resource,omitempty"`
-	Secrets *RedisCacheResourcePropertiesSecrets `json:"secrets,omitempty"`
+	Resource *string                              `json:"resource,omitempty"`
+	Secrets  *RedisCacheResourcePropertiesSecrets `json:"secrets,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisCacheResourceProperties.
@@ -2983,20 +2988,20 @@ func (r *RedisCacheResourceProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "host":
-				err = unpopulate(val, &r.Host)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Host)
+			delete(rawMsg, key)
 		case "managed":
-				err = unpopulate(val, &r.Managed)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Managed)
+			delete(rawMsg, key)
 		case "port":
-				err = unpopulate(val, &r.Port)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Port)
+			delete(rawMsg, key)
 		case "resource":
-				err = unpopulate(val, &r.Resource)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Resource)
+			delete(rawMsg, key)
 		case "secrets":
-				err = unpopulate(val, &r.Secrets)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Secrets)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3075,14 +3080,14 @@ func (r *Resource) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
 		var err error
 		switch key {
 		case "id":
-				err = unpopulate(val, &r.ID)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.ID)
+			delete(rawMsg, key)
 		case "name":
-				err = unpopulate(val, &r.Name)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Name)
+			delete(rawMsg, key)
 		case "type":
-				err = unpopulate(val, &r.Type)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Type)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3097,27 +3102,27 @@ type ResourceModelWithAllowedPropertySet struct {
 	Identity *ResourceModelWithAllowedPropertySetIdentity `json:"identity,omitempty"`
 
 	// Metadata used by portal/tooling/etc to render different UX experiences for resources of the same type; e.g. ApiApps are a kind of Microsoft.Web/sites
-// type. If supported, the resource provider must
-// validate and persist this value.
+	// type. If supported, the resource provider must
+	// validate and persist this value.
 	Kind *string `json:"kind,omitempty"`
 
 	// The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// The fully qualified resource ID of the resource that manages this resource. Indicates if this resource is managed by another Azure resource. If this
-// is present, complete mode deployment will not
-// delete the resource if it is removed from the template since it is managed by another resource.
-	ManagedBy *string `json:"managedBy,omitempty"`
-	Plan *ResourceModelWithAllowedPropertySetPlan `json:"plan,omitempty"`
-	SKU *ResourceModelWithAllowedPropertySetSKU `json:"sku,omitempty"`
+	// is present, complete mode deployment will not
+	// delete the resource if it is removed from the template since it is managed by another resource.
+	ManagedBy *string                                  `json:"managedBy,omitempty"`
+	Plan      *ResourceModelWithAllowedPropertySetPlan `json:"plan,omitempty"`
+	SKU       *ResourceModelWithAllowedPropertySetSKU  `json:"sku,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
 
 	// READ-ONLY; The etag field is not required. If it is provided in the response body, it must also be provided as a header per the normal etag convention.
-// Entity tags are used for comparing two or more entities
-// from the same requested resource. HTTP/1.1 uses entity tags in the etag (section 14.19), If-Match (section 14.24), If-None-Match (section 14.26), and
-// If-Range (section 14.27) header fields.
+	// Entity tags are used for comparing two or more entities
+	// from the same requested resource. HTTP/1.1 uses entity tags in the etag (section 14.19), If-Match (section 14.24), If-None-Match (section 14.26), and
+	// If-Range (section 14.27) header fields.
 	Etag *string `json:"etag,omitempty" azure:"ro"`
 
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -3162,7 +3167,7 @@ type ResourceModelWithAllowedPropertySetSKU struct {
 // ResourceStatus - Status of a resources.
 type ResourceStatus struct {
 	// Health state of the resources
-	HealthState *string `json:"healthState,omitempty"`
+	HealthState     *string                  `json:"healthState,omitempty"`
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 
 	// Provisioning state of the resources
@@ -3215,8 +3220,8 @@ func (r *ResourceTrait) unmarshalInternal(rawMsg map[string]json.RawMessage) err
 		var err error
 		switch key {
 		case "kind":
-				err = unpopulate(val, &r.Kind)
-				delete(rawMsg, key)
+			err = unpopulate(val, &r.Kind)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3228,7 +3233,7 @@ func (r *ResourceTrait) unmarshalInternal(rawMsg map[string]json.RawMessage) err
 // RouteStatus - Status of a route.
 type RouteStatus struct {
 	// Health state of the route
-	HealthState *string `json:"healthState,omitempty"`
+	HealthState     *string                  `json:"healthState,omitempty"`
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 
 	// Provisioning state of the route
@@ -3319,27 +3324,27 @@ func (s *SystemData) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "createdAt":
-				var aux timeRFC3339
-				err = unpopulate(val, &aux)
-				s.CreatedAt = (*time.Time)(&aux)
-				delete(rawMsg, key)
+			var aux timeRFC3339
+			err = unpopulate(val, &aux)
+			s.CreatedAt = (*time.Time)(&aux)
+			delete(rawMsg, key)
 		case "createdBy":
-				err = unpopulate(val, &s.CreatedBy)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.CreatedBy)
+			delete(rawMsg, key)
 		case "createdByType":
-				err = unpopulate(val, &s.CreatedByType)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.CreatedByType)
+			delete(rawMsg, key)
 		case "lastModifiedAt":
-				var aux timeRFC3339
-				err = unpopulate(val, &aux)
-				s.LastModifiedAt = (*time.Time)(&aux)
-				delete(rawMsg, key)
+			var aux timeRFC3339
+			err = unpopulate(val, &aux)
+			s.LastModifiedAt = (*time.Time)(&aux)
+			delete(rawMsg, key)
 		case "lastModifiedBy":
-				err = unpopulate(val, &s.LastModifiedBy)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.LastModifiedBy)
+			delete(rawMsg, key)
 		case "lastModifiedByType":
-				err = unpopulate(val, &s.LastModifiedByType)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.LastModifiedByType)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3385,17 +3390,17 @@ func (t *TCPHealthProbeProperties) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "containerPort":
-				err = unpopulate(val, &t.ContainerPort)
-				delete(rawMsg, key)
+			err = unpopulate(val, &t.ContainerPort)
+			delete(rawMsg, key)
 		case "failureThreshold":
-				err = unpopulate(val, &t.FailureThreshold)
-				delete(rawMsg, key)
+			err = unpopulate(val, &t.FailureThreshold)
+			delete(rawMsg, key)
 		case "initialDelaySeconds":
-				err = unpopulate(val, &t.InitialDelaySeconds)
-				delete(rawMsg, key)
+			err = unpopulate(val, &t.InitialDelaySeconds)
+			delete(rawMsg, key)
 		case "periodSeconds":
-				err = unpopulate(val, &t.PeriodSeconds)
-				delete(rawMsg, key)
+			err = unpopulate(val, &t.PeriodSeconds)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3444,11 +3449,11 @@ func (t *TrackedResource) unmarshalInternal(rawMsg map[string]json.RawMessage) e
 		var err error
 		switch key {
 		case "location":
-				err = unpopulate(val, &t.Location)
-				delete(rawMsg, key)
+			err = unpopulate(val, &t.Location)
+			delete(rawMsg, key)
 		case "tags":
-				err = unpopulate(val, &t.Tags)
-				delete(rawMsg, key)
+			err = unpopulate(val, &t.Tags)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3497,8 +3502,8 @@ func (v *Volume) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
 		var err error
 		switch key {
 		case "kind":
-				err = unpopulate(val, &v.Kind)
-				delete(rawMsg, key)
+			err = unpopulate(val, &v.Kind)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3578,8 +3583,8 @@ func (v *VolumeProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) 
 		var err error
 		switch key {
 		case "kind":
-				err = unpopulate(val, &v.Kind)
-				delete(rawMsg, key)
+			err = unpopulate(val, &v.Kind)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3616,8 +3621,8 @@ func (v *VolumeResource) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "properties":
-				v.Properties, err = unmarshalVolumePropertiesClassification(val)
-				delete(rawMsg, key)
+			v.Properties, err = unmarshalVolumePropertiesClassification(val)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -3645,4 +3650,3 @@ func unpopulate(data json.RawMessage, v interface{}) error {
 	}
 	return json.Unmarshal(data, v)
 }
-

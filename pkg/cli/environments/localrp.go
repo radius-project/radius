@@ -68,7 +68,7 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 		SubscriptionID: e.SubscriptionID,
 		ResourceGroup:  e.ResourceGroup,
 		Providers: map[string]providers.Provider{
-			providers.AzureProviderImport: &providers.AzureProvider{
+			providers.RadiusProviderImport: &providers.AzureProvider{
 				Authorizer:     nil,
 				BaseURL:        e.URL,
 				SubscriptionID: e.SubscriptionID,

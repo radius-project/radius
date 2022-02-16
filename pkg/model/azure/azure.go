@@ -171,6 +171,11 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			ResourceHandler: handlers.NewDaprStateStoreGenericHandler(arm, k8s),
 		},
 		{
+			Kind:            resourcekinds.DaprSecretStoreGeneric,
+			HealthHandler:   handlers.NewDaprSecretStoreGenericHealthHandler(arm, k8s),
+			ResourceHandler: handlers.NewDaprSecretStoreGenericHandler(arm, k8s),
+		},
+		{
 			Kind:            resourcekinds.DaprPubSubTopicAzureServiceBus,
 			HealthHandler:   handlers.NewDaprPubSubServiceBusHealthHandler(arm, k8s),
 			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
