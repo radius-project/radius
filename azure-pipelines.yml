@@ -91,14 +91,6 @@ stages:
         chmod +x "kind/kind"
         kind create cluster --name radius --wait 60s
     - script: |
-        mkdir -p dapr/
-        curl -sSLo "dapr/dapr_linux_amd64.tar.gz" "https://github.com/dapr/cli/releases/download/v1.5.1/dapr_linux_amd64.tar.gz"
-        cd dapr/
-        tar -xzf dapr_linux_amd64.tar.gz
-        chmod +x "dapr"
-        ./dapr init -k --wait --timeout 600
-      displayName: Download and install dapr
-    - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
         dist/rad env install kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag ${{ variables.REL_VERSION }}
@@ -119,7 +111,6 @@ stages:
         dist/rad env uninstall kubernetes
         ./.github/scripts/namespace-is-empty.sh
       displayName: rad env uninstall kubernetes
-
   - job: Azure
     pool:
       vmImage: 'ubuntu-latest'

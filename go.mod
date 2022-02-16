@@ -30,6 +30,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/novln/docker-parser v1.0.0
+	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.7.0
@@ -159,7 +160,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
