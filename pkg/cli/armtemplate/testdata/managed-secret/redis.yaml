@@ -12,7 +12,7 @@ metadata:
     radius.dev/application: kubernetes-resources-redis
     radius.dev/resource: redis
     radius.dev/resource-type: redislabs.com.RedisCache
-  name: kubernetes-resources-redis-redis
+  name: kubernetes-resources-redis
   namespace: default
 spec:
   application: kubernetes-resources-redis
