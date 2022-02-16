@@ -9,7 +9,7 @@
 package radclient
 
 const (
-	module  = "radclient"
+	module = "radclient"
 	version = "v0.0.1"
 )
 
@@ -22,7 +22,7 @@ const (
 
 // PossibleActionTypeValues returns the possible values for the ActionType const type.
 func PossibleActionTypeValues() []ActionType {
-	return []ActionType{
+	return []ActionType{	
 		ActionTypeInternal,
 	}
 }
@@ -37,13 +37,13 @@ type CertificateObjectPropertiesEncoding string
 
 const (
 	CertificateObjectPropertiesEncodingBase64 CertificateObjectPropertiesEncoding = "base64"
-	CertificateObjectPropertiesEncodingHex    CertificateObjectPropertiesEncoding = "hex"
-	CertificateObjectPropertiesEncodingUTF8   CertificateObjectPropertiesEncoding = "utf-8"
+	CertificateObjectPropertiesEncodingHex CertificateObjectPropertiesEncoding = "hex"
+	CertificateObjectPropertiesEncodingUTF8 CertificateObjectPropertiesEncoding = "utf-8"
 )
 
 // PossibleCertificateObjectPropertiesEncodingValues returns the possible values for the CertificateObjectPropertiesEncoding const type.
 func PossibleCertificateObjectPropertiesEncodingValues() []CertificateObjectPropertiesEncoding {
-	return []CertificateObjectPropertiesEncoding{
+	return []CertificateObjectPropertiesEncoding{	
 		CertificateObjectPropertiesEncodingBase64,
 		CertificateObjectPropertiesEncodingHex,
 		CertificateObjectPropertiesEncodingUTF8,
@@ -65,7 +65,7 @@ const (
 
 // PossibleCertificateObjectPropertiesFormatValues returns the possible values for the CertificateObjectPropertiesFormat const type.
 func PossibleCertificateObjectPropertiesFormatValues() []CertificateObjectPropertiesFormat {
-	return []CertificateObjectPropertiesFormat{
+	return []CertificateObjectPropertiesFormat{	
 		CertificateObjectPropertiesFormatPem,
 		CertificateObjectPropertiesFormatPfx,
 	}
@@ -81,13 +81,13 @@ type CertificateObjectPropertiesValue string
 
 const (
 	CertificateObjectPropertiesValueCertificate CertificateObjectPropertiesValue = "certificate"
-	CertificateObjectPropertiesValuePrivatekey  CertificateObjectPropertiesValue = "privatekey"
-	CertificateObjectPropertiesValuePublickey   CertificateObjectPropertiesValue = "publickey"
+	CertificateObjectPropertiesValuePrivatekey CertificateObjectPropertiesValue = "privatekey"
+	CertificateObjectPropertiesValuePublickey CertificateObjectPropertiesValue = "publickey"
 )
 
 // PossibleCertificateObjectPropertiesValueValues returns the possible values for the CertificateObjectPropertiesValue const type.
 func PossibleCertificateObjectPropertiesValueValues() []CertificateObjectPropertiesValue {
-	return []CertificateObjectPropertiesValue{
+	return []CertificateObjectPropertiesValue{	
 		CertificateObjectPropertiesValueCertificate,
 		CertificateObjectPropertiesValuePrivatekey,
 		CertificateObjectPropertiesValuePublickey,
@@ -104,12 +104,12 @@ type CheckNameAvailabilityReason string
 
 const (
 	CheckNameAvailabilityReasonAlreadyExists CheckNameAvailabilityReason = "AlreadyExists"
-	CheckNameAvailabilityReasonInvalid       CheckNameAvailabilityReason = "Invalid"
+	CheckNameAvailabilityReasonInvalid CheckNameAvailabilityReason = "Invalid"
 )
 
 // PossibleCheckNameAvailabilityReasonValues returns the possible values for the CheckNameAvailabilityReason const type.
 func PossibleCheckNameAvailabilityReasonValues() []CheckNameAvailabilityReason {
-	return []CheckNameAvailabilityReason{
+	return []CheckNameAvailabilityReason{	
 		CheckNameAvailabilityReasonAlreadyExists,
 		CheckNameAvailabilityReasonInvalid,
 	}
@@ -124,23 +124,23 @@ func (c CheckNameAvailabilityReason) ToPtr() *CheckNameAvailabilityReason {
 type ContainerConnectionKind string
 
 const (
-	ContainerConnectionKindAzure                   ContainerConnectionKind = "azure"
-	ContainerConnectionKindAzureComKeyVault        ContainerConnectionKind = "azure.com/KeyVault"
+	ContainerConnectionKindAzure ContainerConnectionKind = "azure"
+	ContainerConnectionKindAzureComKeyVault ContainerConnectionKind = "azure.com/KeyVault"
 	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
-	ContainerConnectionKindDaprIoInvokeHTTP        ContainerConnectionKind = "dapr.io/InvokeHttp"
-	ContainerConnectionKindDaprIoPubSubTopic       ContainerConnectionKind = "dapr.io/PubSubTopic"
-	ContainerConnectionKindDaprIoStateStore        ContainerConnectionKind = "dapr.io/StateStore"
-	ContainerConnectionKindGrpc                    ContainerConnectionKind = "Grpc"
-	ContainerConnectionKindHTTP                    ContainerConnectionKind = "Http"
-	ContainerConnectionKindMicrosoftComSQL         ContainerConnectionKind = "microsoft.com/SQL"
-	ContainerConnectionKindMongoComMongoDB         ContainerConnectionKind = "mongo.com/MongoDB"
+	ContainerConnectionKindDaprIoInvokeHTTP ContainerConnectionKind = "dapr.io/InvokeHttp"
+	ContainerConnectionKindDaprIoPubSubTopic ContainerConnectionKind = "dapr.io/PubSubTopic"
+	ContainerConnectionKindDaprIoStateStore ContainerConnectionKind = "dapr.io/StateStore"
+	ContainerConnectionKindGrpc ContainerConnectionKind = "Grpc"
+	ContainerConnectionKindHTTP ContainerConnectionKind = "Http"
+	ContainerConnectionKindMicrosoftComSQL ContainerConnectionKind = "microsoft.com/SQL"
+	ContainerConnectionKindMongoComMongoDB ContainerConnectionKind = "mongo.com/MongoDB"
 	ContainerConnectionKindRabbitmqComMessageQueue ContainerConnectionKind = "rabbitmq.com/MessageQueue"
-	ContainerConnectionKindRedislabsComRedis       ContainerConnectionKind = "redislabs.com/Redis"
+	ContainerConnectionKindRedislabsComRedis ContainerConnectionKind = "redislabs.com/Redis"
 )
 
 // PossibleContainerConnectionKindValues returns the possible values for the ContainerConnectionKind const type.
 func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
-	return []ContainerConnectionKind{
+	return []ContainerConnectionKind{	
 		ContainerConnectionKindAzure,
 		ContainerConnectionKindAzureComKeyVault,
 		ContainerConnectionKindAzureComServiceBusQueue,
@@ -171,7 +171,7 @@ const (
 
 // PossibleContainerPortProtocolValues returns the possible values for the ContainerPortProtocol const type.
 func PossibleContainerPortProtocolValues() []ContainerPortProtocol {
-	return []ContainerPortProtocol{
+	return []ContainerPortProtocol{	
 		ContainerPortProtocolTCP,
 		ContainerPortProtocolUDP,
 	}
@@ -186,15 +186,15 @@ func (c ContainerPortProtocol) ToPtr() *ContainerPortProtocol {
 type CreatedByType string
 
 const (
-	CreatedByTypeApplication     CreatedByType = "Application"
-	CreatedByTypeKey             CreatedByType = "Key"
+	CreatedByTypeApplication CreatedByType = "Application"
+	CreatedByTypeKey CreatedByType = "Key"
 	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
-	CreatedByTypeUser            CreatedByType = "User"
+	CreatedByTypeUser CreatedByType = "User"
 )
 
 // PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
 func PossibleCreatedByTypeValues() []CreatedByType {
-	return []CreatedByType{
+	return []CreatedByType{	
 		CreatedByTypeApplication,
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
@@ -216,7 +216,7 @@ const (
 
 // PossibleDaprSecretStorePropertiesKindValues returns the possible values for the DaprSecretStorePropertiesKind const type.
 func PossibleDaprSecretStorePropertiesKindValues() []DaprSecretStorePropertiesKind {
-	return []DaprSecretStorePropertiesKind{
+	return []DaprSecretStorePropertiesKind{	
 		DaprSecretStorePropertiesKindGeneric,
 	}
 }
@@ -236,7 +236,7 @@ const (
 
 // PossibleDaprSidecarTraitProtocolValues returns the possible values for the DaprSidecarTraitProtocol const type.
 func PossibleDaprSidecarTraitProtocolValues() []DaprSidecarTraitProtocol {
-	return []DaprSidecarTraitProtocol{
+	return []DaprSidecarTraitProtocol{	
 		DaprSidecarTraitProtocolGrpc,
 		DaprSidecarTraitProtocolHTTP,
 	}
@@ -252,12 +252,12 @@ type EncryptionStatus string
 
 const (
 	EncryptionStatusDisabled EncryptionStatus = "disabled"
-	EncryptionStatusEnabled  EncryptionStatus = "enabled"
+	EncryptionStatusEnabled EncryptionStatus = "enabled"
 )
 
 // PossibleEncryptionStatusValues returns the possible values for the EncryptionStatus const type.
 func PossibleEncryptionStatusValues() []EncryptionStatus {
-	return []EncryptionStatus{
+	return []EncryptionStatus{	
 		EncryptionStatusDisabled,
 		EncryptionStatusEnabled,
 	}
@@ -272,13 +272,13 @@ func (c EncryptionStatus) ToPtr() *EncryptionStatus {
 type EphemeralVolumeManagedStore string
 
 const (
-	EphemeralVolumeManagedStoreDisk   EphemeralVolumeManagedStore = "disk"
+	EphemeralVolumeManagedStoreDisk EphemeralVolumeManagedStore = "disk"
 	EphemeralVolumeManagedStoreMemory EphemeralVolumeManagedStore = "memory"
 )
 
 // PossibleEphemeralVolumeManagedStoreValues returns the possible values for the EphemeralVolumeManagedStore const type.
 func PossibleEphemeralVolumeManagedStoreValues() []EphemeralVolumeManagedStore {
-	return []EphemeralVolumeManagedStore{
+	return []EphemeralVolumeManagedStore{	
 		EphemeralVolumeManagedStoreDisk,
 		EphemeralVolumeManagedStoreMemory,
 	}
@@ -293,14 +293,14 @@ func (c EphemeralVolumeManagedStore) ToPtr() *EphemeralVolumeManagedStore {
 type Origin string
 
 const (
-	OriginSystem     Origin = "system"
-	OriginUser       Origin = "user"
+	OriginSystem Origin = "system"
+	OriginUser Origin = "user"
 	OriginUserSystem Origin = "user,system"
 )
 
 // PossibleOriginValues returns the possible values for the Origin const type.
 func PossibleOriginValues() []Origin {
-	return []Origin{
+	return []Origin{	
 		OriginSystem,
 		OriginUser,
 		OriginUserSystem,
@@ -316,13 +316,13 @@ func (c Origin) ToPtr() *Origin {
 type PersistentVolumeRbac string
 
 const (
-	PersistentVolumeRbacRead  PersistentVolumeRbac = "read"
+	PersistentVolumeRbacRead PersistentVolumeRbac = "read"
 	PersistentVolumeRbacWrite PersistentVolumeRbac = "write"
 )
 
 // PossiblePersistentVolumeRbacValues returns the possible values for the PersistentVolumeRbac const type.
 func PossiblePersistentVolumeRbacValues() []PersistentVolumeRbac {
-	return []PersistentVolumeRbac{
+	return []PersistentVolumeRbac{	
 		PersistentVolumeRbacRead,
 		PersistentVolumeRbacWrite,
 	}
@@ -337,15 +337,15 @@ func (c PersistentVolumeRbac) ToPtr() *PersistentVolumeRbac {
 type SKUTier string
 
 const (
-	SKUTierFree     SKUTier = "Free"
-	SKUTierBasic    SKUTier = "Basic"
+	SKUTierFree SKUTier = "Free"
+	SKUTierBasic SKUTier = "Basic"
 	SKUTierStandard SKUTier = "Standard"
-	SKUTierPremium  SKUTier = "Premium"
+	SKUTierPremium SKUTier = "Premium"
 )
 
 // PossibleSKUTierValues returns the possible values for the SKUTier const type.
 func PossibleSKUTierValues() []SKUTier {
-	return []SKUTier{
+	return []SKUTier{	
 		SKUTierFree,
 		SKUTierBasic,
 		SKUTierStandard,
@@ -363,13 +363,13 @@ type SecretObjectPropertiesEncoding string
 
 const (
 	SecretObjectPropertiesEncodingBase64 SecretObjectPropertiesEncoding = "base64"
-	SecretObjectPropertiesEncodingHex    SecretObjectPropertiesEncoding = "hex"
-	SecretObjectPropertiesEncodingUTF8   SecretObjectPropertiesEncoding = "utf-8"
+	SecretObjectPropertiesEncodingHex SecretObjectPropertiesEncoding = "hex"
+	SecretObjectPropertiesEncodingUTF8 SecretObjectPropertiesEncoding = "utf-8"
 )
 
 // PossibleSecretObjectPropertiesEncodingValues returns the possible values for the SecretObjectPropertiesEncoding const type.
 func PossibleSecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEncoding {
-	return []SecretObjectPropertiesEncoding{
+	return []SecretObjectPropertiesEncoding{	
 		SecretObjectPropertiesEncodingBase64,
 		SecretObjectPropertiesEncodingHex,
 		SecretObjectPropertiesEncodingUTF8,
@@ -380,3 +380,4 @@ func PossibleSecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEnco
 func (c SecretObjectPropertiesEncoding) ToPtr() *SecretObjectPropertiesEncoding {
 	return &c
 }
+
