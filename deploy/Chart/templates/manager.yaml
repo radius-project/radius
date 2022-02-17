@@ -56,6 +56,18 @@ spec:
           readOnly: true
         securityContext:
           allowPrivilegeEscalation: false
+      - env:
+        - name: ASPNETCORE_URLS
+          value: https://+:5000
+        image: radius.azurecr.io/bicep-extensibility:latest
+        name: bicep-extensibility
+        ports:
+        - containerPort: 5000
+          name: bicep-extensibility
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+      
       - args:
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=127.0.0.1:8080
@@ -136,5 +148,19 @@ spec:
       name: https
       protocol: TCP
       targetPort: 6443
+  selector:
+    control-plane: controller-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bicep-extensibility
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 5000
+      name: http
+      protocol: TCP
+      targetPort: 5000
   selector:
     control-plane: controller-manager
