@@ -13,7 +13,7 @@ resource mongoSecret 'kubernetes.core/Secret@v1' existing = {
 }
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'kubernetes-resources-mongo-unmanaged'
+  name: 'kubernetes-resources-mongo'
 
   resource webapp 'Container' = {
     name: 'todoapp'

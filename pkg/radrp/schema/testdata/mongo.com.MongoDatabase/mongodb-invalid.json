@@ -3,7 +3,6 @@
   "name": 42,
   "kind": "mongodb.com/Mongo@v1alpha1",
   "properties": {
-    "managed": true,
     "extra": "foo",
     "host": 42,
     "port": "should-be-number",

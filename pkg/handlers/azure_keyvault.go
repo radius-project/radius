@@ -37,34 +37,19 @@ type azureKeyVaultHandler struct {
 func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
-	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	err := ValidateResourceIDsForUnmanagedResource(properties, KeyVaultIDKey)
+	// This assertion is important so we don't start creating/modifying a resource
+	err := ValidateResourceIDsForResource(properties, KeyVaultIDKey)
 	if err != nil {
 		return nil, err
 	}
 
-	if properties[KeyVaultIDKey] == "" {
-		// If we have already created this resource we would have stored the name and ID.
-		vaultName := GenerateRandomName("kv")
-
-		kv, err := handler.CreateKeyVault(ctx, vaultName, *options)
-		if err != nil {
-			return nil, err
-		}
-
-		// store vault so we can use later
-		properties[KeyVaultNameKey] = *kv.Name
-		properties[KeyVaultIDKey] = *kv.ID
-		properties[KeyVaultURIKey] = *kv.Properties.VaultURI
-	} else {
-		// This is mostly called for the side-effect of verifying that the keyvault exists.
-		kv, err := handler.GetKeyVaultByID(ctx, properties[KeyVaultIDKey])
-		if err != nil {
-			return nil, err
-		}
-
-		properties[KeyVaultURIKey] = *kv.Properties.VaultURI
+	// This is mostly called for the side-effect of verifying that the keyvault exists.
+	kv, err := handler.GetKeyVaultByID(ctx, properties[KeyVaultIDKey])
+	if err != nil {
+		return nil, err
 	}
+
+	properties[KeyVaultURIKey] = *kv.Properties.VaultURI
 
 	if options.Resource.Deployed {
 		return properties, nil
@@ -75,19 +60,6 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOption
 }
 
 func (handler *azureKeyVaultHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.ExistingOutputResource.PersistedProperties
-	if properties[ManagedKey] != "true" {
-		// For an 'unmanaged' resource we don't need to do anything, just forget it.
-		return nil
-	}
-
-	vaultName := properties[KeyVaultNameKey]
-
-	err := handler.DeleteKeyVault(ctx, vaultName)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

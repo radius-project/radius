@@ -2,7 +2,6 @@
   "id": "id",
   "name": "name",
   "properties": {
-    "managed": true,
     "queue": "queue",
     "secrets": {
       "connectionString": "connection://string"

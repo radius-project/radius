@@ -2,8 +2,7 @@
   "id": "id",
   "name": "name",
   "properties": {
-    "managed": true,
     "kind": "pubsub.azure.servicebus",
-    "topic": "fun coding"
+    "resource": "test"
   }
 }

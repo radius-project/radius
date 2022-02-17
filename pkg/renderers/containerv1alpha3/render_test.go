@@ -495,7 +495,6 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
 			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole1"),
-			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole1",
@@ -510,7 +509,6 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
 			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole2"),
-			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole2",
@@ -533,9 +531,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
 			LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
 			Deployed:     false,
-			Managed:      true,
 			Resource: map[string]string{
-				handlers.ManagedKey:                  "true",
 				handlers.UserAssignedIdentityNameKey: resource.ApplicationName + "-" + resource.ResourceName + "-msi",
 			},
 		},
@@ -549,10 +545,8 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			LocalID:      outputresource.LocalIDAADPodIdentity,
 			ResourceKind: resourcekinds.AzurePodIdentity,
-			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
-				handlers.ManagedKey:         "true",
 				handlers.PodIdentityNameKey: fmt.Sprintf("podid-%s-%s", strings.ToLower(resource.ApplicationName), strings.ToLower(resource.ResourceName)),
 				handlers.PodNamespaceKey:    resource.ApplicationName,
 			},
@@ -613,7 +607,6 @@ func Test_Render_AzureConnection(t *testing.T) {
 		{
 			ResourceKind: resourcekinds.AzureRoleAssignment,
 			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
-			Managed:      true,
 			Deployed:     false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         expectedRole,

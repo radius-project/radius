@@ -23,7 +23,7 @@ var sqlServerDependency outputresource.Dependency = outputresource.Dependency{
 	LocalID: outputresource.LocalIDAzureSqlServer,
 }
 
-var ErrorResourceOrServerNameMissingFromUnmanagedResource = errors.New("either the 'resource' or 'server'/'database' is required when 'managed' is not specified")
+var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
 
 var _ renderers.Renderer = (*Renderer)(nil)
 
@@ -43,18 +43,14 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		return renderers.RendererOutput{}, err
 	}
 
-	if properties.Managed != nil && *properties.Managed {
-		return renderers.RendererOutput{}, errors.New("only 'managed: false' SQL databases are supported")
-	}
-
 	if properties.Resource == nil || *properties.Resource == "" {
 		// Server and database names are required if no resource id
 		if properties.Server == nil || *properties.Server == "" {
-			return renderers.RendererOutput{}, ErrorResourceOrServerNameMissingFromUnmanagedResource
+			return renderers.RendererOutput{}, ErrorResourceOrServerNameMissingFromResource
 		}
 
 		if properties.Database == nil || *properties.Database == "" {
-			return renderers.RendererOutput{}, ErrorResourceOrServerNameMissingFromUnmanagedResource
+			return renderers.RendererOutput{}, ErrorResourceOrServerNameMissingFromResource
 		}
 
 		computedValues := map[string]renderers.ComputedValueReference{

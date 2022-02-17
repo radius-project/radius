@@ -18,7 +18,7 @@ const (
 	resourceName    = "test-rabbitmq"
 )
 
-func Test_Azure_Render_Unmanaged_User_Secrets(t *testing.T) {
+func Test_Azure_Render_User_Secrets(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 

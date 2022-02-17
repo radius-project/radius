@@ -187,10 +187,7 @@ func (a *AzureEntityResource) UnmarshalJSON(data []byte) error {
 
 type AzureFileShareVolumeProperties struct {
 	VolumeProperties
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
-	Managed *bool `json:"managed,omitempty"`
-
-	// The ID of the user-managed volume to use for this resource
+	// The ID of the volume to use for this resource
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -198,7 +195,6 @@ type AzureFileShareVolumeProperties struct {
 func (a AzureFileShareVolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	a.VolumeProperties.marshalInternal(objectMap, "azure.com.fileshare")
-	populate(objectMap, "managed", a.Managed)
 	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
@@ -212,9 +208,6 @@ func (a *AzureFileShareVolumeProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "managed":
-				err = unpopulate(val, &a.Managed)
-				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &a.Resource)
 				delete(rawMsg, key)
@@ -244,10 +237,7 @@ func (a AzureKeyVaultList) MarshalJSON() ([]byte, error) {
 
 type AzureKeyVaultProperties struct {
 	BasicResourceProperties
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
-	Managed *Enum2 `json:"managed,omitempty"`
-
-	// The ID of the user-managed KeyVault to use
+	// REQUIRED; The ID of the user-managed KeyVault to use
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -255,7 +245,6 @@ type AzureKeyVaultProperties struct {
 func (a AzureKeyVaultProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	a.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "managed", a.Managed)
 	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
@@ -269,9 +258,6 @@ func (a *AzureKeyVaultProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "managed":
-				err = unpopulate(val, &a.Managed)
-				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &a.Resource)
 				delete(rawMsg, key)
@@ -332,10 +318,7 @@ type AzureKeyVaultVolumeProperties struct {
 	// The KeyVault keys that this volume exposes
 	Keys map[string]*KeyObjectProperties `json:"keys,omitempty"`
 
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
-	Managed *bool `json:"managed,omitempty"`
-
-	// The ID of the user-managed keyvault to use for this volume resource
+	// The ID of the keyvault to use for this volume resource
 	Resource *string `json:"resource,omitempty"`
 
 	// The KeyVault secrets that this volume exposes
@@ -348,7 +331,6 @@ func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
 	a.VolumeProperties.marshalInternal(objectMap, "azure.com.keyvault")
 	populate(objectMap, "certificates", a.Certificates)
 	populate(objectMap, "keys", a.Keys)
-	populate(objectMap, "managed", a.Managed)
 	populate(objectMap, "resource", a.Resource)
 	populate(objectMap, "secrets", a.Secrets)
 	return json.Marshal(objectMap)
@@ -368,9 +350,6 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "keys":
 				err = unpopulate(val, &a.Keys)
-				delete(rawMsg, key)
-		case "managed":
-				err = unpopulate(val, &a.Managed)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &a.Resource)
@@ -404,13 +383,7 @@ func (a AzureServiceBusList) MarshalJSON() ([]byte, error) {
 
 type AzureServiceBusProperties struct {
 	BasicResourceProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this resource.
-	Managed *Enum3 `json:"managed,omitempty"`
-
-	// REQUIRED; The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
-	// The ID of the user-managed ServiceBus queue to use
+	// REQUIRED; The ID of the user-managed ServiceBus queue to use
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -418,8 +391,6 @@ type AzureServiceBusProperties struct {
 func (a AzureServiceBusProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	a.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "managed", a.Managed)
-	populate(objectMap, "queue", a.Queue)
 	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
@@ -433,12 +404,6 @@ func (a *AzureServiceBusProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "managed":
-				err = unpopulate(val, &a.Managed)
-				delete(rawMsg, key)
-		case "queue":
-				err = unpopulate(val, &a.Queue)
-				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &a.Resource)
 				delete(rawMsg, key)
@@ -917,62 +882,17 @@ type DaprIoStateStoreListOptions struct {
 	// placeholder for future optional parameters
 }
 
-type DaprPubSubTopicAnyResourceProperties struct {
-	DaprPubSubTopicProperties
-	// PubSub topic
-	Topic *string `json:"topic,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicAnyResourceProperties.
-func (d DaprPubSubTopicAnyResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprPubSubTopicProperties.marshalInternal(objectMap, "any")
-	populate(objectMap, "topic", d.Topic)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubTopicAnyResourceProperties.
-func (d *DaprPubSubTopicAnyResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "topic":
-				err = unpopulate(val, &d.Topic)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := d.DaprPubSubTopicProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
 type DaprPubSubTopicAzureServiceBusResourceProperties struct {
 	DaprPubSubTopicProperties
-	// Indicates if the resource is Radius-managed. If false, a resource is required
-	Managed *bool `json:"managed,omitempty"`
-
-	// PubSub resource, for unmanaged
+	// REQUIRED; PubSub resource
 	Resource *string `json:"resource,omitempty"`
-
-	// PubSub topic
-	Topic *string `json:"topic,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubTopicAzureServiceBusResourceProperties.
 func (d DaprPubSubTopicAzureServiceBusResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	d.DaprPubSubTopicProperties.marshalInternal(objectMap, "pubsub.azure.servicebus")
-	populate(objectMap, "managed", d.Managed)
 	populate(objectMap, "resource", d.Resource)
-	populate(objectMap, "topic", d.Topic)
 	return json.Marshal(objectMap)
 }
 
@@ -985,14 +905,8 @@ func (d *DaprPubSubTopicAzureServiceBusResourceProperties) UnmarshalJSON(data []
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &d.Resource)
-				delete(rawMsg, key)
-		case "topic":
-				err = unpopulate(val, &d.Topic)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1072,8 +986,7 @@ func (d DaprPubSubTopicList) MarshalJSON() ([]byte, error) {
 // DaprPubSubTopicPropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetDaprPubSubTopicProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprPubSubTopicAnyResourceProperties, *DaprPubSubTopicAzureServiceBusResourceProperties, *DaprPubSubTopicGenericResourceProperties,
-// - *DaprPubSubTopicProperties
+// - *DaprPubSubTopicAzureServiceBusResourceProperties, *DaprPubSubTopicGenericResourceProperties, *DaprPubSubTopicProperties
 type DaprPubSubTopicPropertiesClassification interface {
 	// GetDaprPubSubTopicProperties returns the DaprPubSubTopicProperties content of the underlying type.
 	GetDaprPubSubTopicProperties() *DaprPubSubTopicProperties
@@ -1321,23 +1234,9 @@ func (d *DaprSidecarTrait) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type DaprStateStoreAnyResourceProperties struct {
-	DaprStateStoreResourceProperties
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreAnyResourceProperties.
-func (d DaprStateStoreAnyResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "any")
-	return json.Marshal(objectMap)
-}
-
 type DaprStateStoreAzureTableStorageResourceProperties struct {
 	DaprStateStoreResourceProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-	Managed *Enum11 `json:"managed,omitempty"`
-
-	// PubSub resource, for unmanaged
+	// REQUIRED; PubSub resource
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -1345,7 +1244,6 @@ type DaprStateStoreAzureTableStorageResourceProperties struct {
 func (d DaprStateStoreAzureTableStorageResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "state.azure.tablestorage")
-	populate(objectMap, "managed", d.Managed)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -1359,9 +1257,6 @@ func (d *DaprStateStoreAzureTableStorageResourceProperties) UnmarshalJSON(data [
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &d.Resource)
 				delete(rawMsg, key)
@@ -1440,43 +1335,6 @@ func (d DaprStateStoreList) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-type DaprStateStoreRedisResourceProperties struct {
-	DaprStateStoreResourceProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-	Managed *Enum11 `json:"managed,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type DaprStateStoreRedisResourceProperties.
-func (d DaprStateStoreRedisResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "state.redis")
-	populate(objectMap, "managed", d.Managed)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type DaprStateStoreRedisResourceProperties.
-func (d *DaprStateStoreRedisResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := d.DaprStateStoreResourceProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
 // DaprStateStoreResource - Resource for Dapr state store
 type DaprStateStoreResource struct {
 	ProxyResource
@@ -1518,8 +1376,8 @@ func (d *DaprStateStoreResource) UnmarshalJSON(data []byte) error {
 // DaprStateStoreResourcePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetDaprStateStoreResourceProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprStateStoreAnyResourceProperties, *DaprStateStoreAzureTableStorageResourceProperties, *DaprStateStoreGenericResourceProperties,
-// - *DaprStateStoreRedisResourceProperties, *DaprStateStoreResourceProperties, *DaprStateStoreSqlServerResourceProperties
+// - *DaprStateStoreAzureTableStorageResourceProperties, *DaprStateStoreGenericResourceProperties, *DaprStateStoreResourceProperties,
+// - *DaprStateStoreSqlServerResourceProperties
 type DaprStateStoreResourcePropertiesClassification interface {
 	// GetDaprStateStoreResourceProperties returns the DaprStateStoreResourceProperties content of the underlying type.
 	GetDaprStateStoreResourceProperties() *DaprStateStoreResourceProperties
@@ -1569,10 +1427,7 @@ func (d *DaprStateStoreResourceProperties) unmarshalInternal(rawMsg map[string]j
 
 type DaprStateStoreSQLServerResourceProperties struct {
 	DaprStateStoreResourceProperties
-	// REQUIRED; Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-	Managed *Enum11 `json:"managed,omitempty"`
-
-	// PubSub resource, for unmanaged
+	// REQUIRED; PubSub resource
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -1580,7 +1435,6 @@ type DaprStateStoreSQLServerResourceProperties struct {
 func (d DaprStateStoreSQLServerResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	d.DaprStateStoreResourceProperties.marshalInternal(objectMap, "state.sqlserver")
-	populate(objectMap, "managed", d.Managed)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -1594,9 +1448,6 @@ func (d *DaprStateStoreSQLServerResourceProperties) UnmarshalJSON(data []byte) e
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "managed":
-				err = unpopulate(val, &d.Managed)
-				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &d.Resource)
 				delete(rawMsg, key)
@@ -2238,10 +2089,7 @@ type MicrosoftSQLDatabaseProperties struct {
 	// The name of the SQL database.
 	Database *string `json:"database,omitempty"`
 
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
-	Managed *bool `json:"managed,omitempty"`
-
-	// The ID of the user-managed SQL database to use for this resource.
+	// The ID of the SQL database to use for this resource.
 	Resource *string `json:"resource,omitempty"`
 
 	// The fully qualified domain name of the SQL database.
@@ -2253,7 +2101,6 @@ func (m MicrosoftSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	m.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "database", m.Database)
-	populate(objectMap, "managed", m.Managed)
 	populate(objectMap, "resource", m.Resource)
 	populate(objectMap, "server", m.Server)
 	return json.Marshal(objectMap)
@@ -2270,9 +2117,6 @@ func (m *MicrosoftSQLDatabaseProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "database":
 				err = unpopulate(val, &m.Database)
-				delete(rawMsg, key)
-		case "managed":
-				err = unpopulate(val, &m.Managed)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &m.Resource)
@@ -2354,16 +2198,13 @@ type MongoDBResourceProperties struct {
 	// The host name of the MongoDB to which you are connecting
 	Host *string `json:"host,omitempty"`
 
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified
-	Managed *bool `json:"managed,omitempty"`
-
 	// The port value of the MongoDB to which you are connecting
 	Port *int32 `json:"port,omitempty"`
 
-	// The ID of the user-managed DB with Mongo API to use for this resource.
+	// The ID of the DB with Mongo API to use for this resource.
 	Resource *string `json:"resource,omitempty"`
 
-	// Secrets provided by unmanaged resources,
+	// Secrets provided by resources,
 	Secrets *MongoDBResourcePropertiesSecrets `json:"secrets,omitempty"`
 }
 
@@ -2372,7 +2213,6 @@ func (m MongoDBResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	m.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "host", m.Host)
-	populate(objectMap, "managed", m.Managed)
 	populate(objectMap, "port", m.Port)
 	populate(objectMap, "resource", m.Resource)
 	populate(objectMap, "secrets", m.Secrets)
@@ -2390,9 +2230,6 @@ func (m *MongoDBResourceProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "host":
 				err = unpopulate(val, &m.Host)
-				delete(rawMsg, key)
-		case "managed":
-				err = unpopulate(val, &m.Managed)
 				delete(rawMsg, key)
 		case "port":
 				err = unpopulate(val, &m.Port)
@@ -2414,7 +2251,7 @@ func (m *MongoDBResourceProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MongoDBResourcePropertiesSecrets - Secrets provided by unmanaged resources,
+// MongoDBResourcePropertiesSecrets - Secrets provided by resources,
 type MongoDBResourcePropertiesSecrets struct {
 	// The connection string used to connect to this DB
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -2756,10 +2593,7 @@ type RabbitMQMessageQueueResourceProperties struct {
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
 
-	// Indicates if the resource is Radius-managed.
-	Managed *bool `json:"managed,omitempty"`
-
-	// Secrets provided by unmanaged resources,
+	// Secrets provided by resources,
 	Secrets *RabbitMQMessageQueueResourcePropertiesSecrets `json:"secrets,omitempty"`
 }
 
@@ -2767,7 +2601,6 @@ type RabbitMQMessageQueueResourceProperties struct {
 func (r RabbitMQMessageQueueResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	r.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "managed", r.Managed)
 	populate(objectMap, "queue", r.Queue)
 	populate(objectMap, "secrets", r.Secrets)
 	return json.Marshal(objectMap)
@@ -2782,9 +2615,6 @@ func (r *RabbitMQMessageQueueResourceProperties) UnmarshalJSON(data []byte) erro
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "managed":
-				err = unpopulate(val, &r.Managed)
-				delete(rawMsg, key)
 		case "queue":
 				err = unpopulate(val, &r.Queue)
 				delete(rawMsg, key)
@@ -2802,7 +2632,7 @@ func (r *RabbitMQMessageQueueResourceProperties) UnmarshalJSON(data []byte) erro
 	return nil
 }
 
-// RabbitMQMessageQueueResourcePropertiesSecrets - Secrets provided by unmanaged resources,
+// RabbitMQMessageQueueResourcePropertiesSecrets - Secrets provided by resources,
 type RabbitMQMessageQueueResourcePropertiesSecrets struct {
 	// The connection string used to connect to this RabbitMQ instance
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -2950,13 +2780,10 @@ type RedisCacheResourceProperties struct {
 	// The host name of the redis cache to which you are connecting
 	Host *string `json:"host,omitempty"`
 
-	// Indicates if the resource is Radius-managed. If false, a Resource must be specified.
-	Managed *bool `json:"managed,omitempty"`
-
 	// The port value of the redis cache to which you are connecting
 	Port *int32 `json:"port,omitempty"`
 
-	// The ID of the user-managed Redis cache to use for this resource
+	// The ID of the Redis cache to use for this resource
 	Resource *string `json:"resource,omitempty"`
 	Secrets *RedisCacheResourcePropertiesSecrets `json:"secrets,omitempty"`
 }
@@ -2966,7 +2793,6 @@ func (r RedisCacheResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	r.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "host", r.Host)
-	populate(objectMap, "managed", r.Managed)
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "secrets", r.Secrets)
@@ -2984,9 +2810,6 @@ func (r *RedisCacheResourceProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "host":
 				err = unpopulate(val, &r.Host)
-				delete(rawMsg, key)
-		case "managed":
-				err = unpopulate(val, &r.Managed)
 				delete(rawMsg, key)
 		case "port":
 				err = unpopulate(val, &r.Port)

@@ -32,7 +32,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Unmanaged_Success(t *testing.T) {
+func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
 		VolumeRenderers: map[string]RendererType{
@@ -64,14 +64,12 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.AzureFileShare, fileshareResource.ResourceKind)
 
 	expectedAccount := map[string]string{
-		handlers.ManagedKey:                     "false",
 		handlers.FileShareStorageAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
 		handlers.FileShareStorageAccountNameKey: "test-account",
 	}
 	require.Equal(t, expectedAccount, accountResource.Resource)
 
 	expectedFileShare := map[string]string{
-		handlers.ManagedKey:                     "false",
 		handlers.FileShareStorageAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
 		handlers.FileShareStorageAccountNameKey: "test-account",
 		handlers.FileShareIDKey:                 "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/fileservices/default/shares/test-share",
@@ -98,7 +96,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_Render_Unmanaged_MissingResource(t *testing.T) {
+func Test_Render_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
 		VolumeRenderers: map[string]RendererType{
@@ -111,17 +109,16 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"managed": false,
-			"kind":    PersistentVolumeKindAzureFileShare,
+			"kind": PersistentVolumeKindAzureFileShare,
 		},
 	}
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
 }
 
-func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{
 		VolumeRenderers: map[string]RendererType{
@@ -142,55 +139,4 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a Azure File Share", err.Error())
-}
-
-func Test_Render_Managed_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := AzureRenderer{
-		VolumeRenderers: map[string]RendererType{
-			PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
-		},
-	}
-
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-share",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": true,
-			"kind":    PersistentVolumeKindAzureFileShare,
-		},
-	}
-
-	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
-	require.NoError(t, err)
-
-	require.Equal(t, outputresource.LocalIDAzureFileShareStorageAccount, output.Resources[0].LocalID)
-	require.Equal(t, resourcekinds.AzureFileShareStorageAccount, output.Resources[0].ResourceKind)
-	require.Equal(t, outputresource.LocalIDAzureFileShare, output.Resources[1].LocalID)
-	require.Equal(t, resourcekinds.AzureFileShare, output.Resources[1].ResourceKind)
-
-	expectedProperties := map[string]string{
-		handlers.ManagedKey:                           "true",
-		handlers.AzureFileShareStorageAccountBaseName: "azurestorageaccount",
-	}
-	require.Equal(t, expectedProperties, output.Resources[0].Resource)
-
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		StorageAccountName: {
-			LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
-			Value:   "AzureFileShareStorageAccount",
-		},
-	}
-	require.Equal(t, expectedComputedValues, output.ComputedValues)
-
-	expectedSecretValues := map[string]renderers.SecretValueReference{
-		StorageKeyValue: {
-			LocalID:       storageAccountDependency.LocalID,
-			Action:        "listKeys",
-			ValueSelector: "/keys/0/value",
-			Transformer:   "",
-		},
-	}
-	require.Equal(t, expectedSecretValues, output.SecretValues)
 }

@@ -268,63 +268,6 @@ func (c EncryptionStatus) ToPtr() *EncryptionStatus {
 	return &c
 }
 
-// Enum11 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-type Enum11 bool
-
-const (
-	Enum11True Enum11 = true
-)
-
-// PossibleEnum11Values returns the possible values for the Enum11 const type.
-func PossibleEnum11Values() []Enum11 {
-	return []Enum11{	
-		Enum11True,
-	}
-}
-
-// ToPtr returns a *Enum11 pointing to the current value.
-func (c Enum11) ToPtr() *Enum11 {
-	return &c
-}
-
-// Enum2 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
-type Enum2 bool
-
-const (
-	Enum2True Enum2 = true
-)
-
-// PossibleEnum2Values returns the possible values for the Enum2 const type.
-func PossibleEnum2Values() []Enum2 {
-	return []Enum2{	
-		Enum2True,
-	}
-}
-
-// ToPtr returns a *Enum2 pointing to the current value.
-func (c Enum2) ToPtr() *Enum2 {
-	return &c
-}
-
-// Enum3 - Indicates if the resource is Radius-managed. For now only true is accepted for this resource.
-type Enum3 bool
-
-const (
-	Enum3True Enum3 = true
-)
-
-// PossibleEnum3Values returns the possible values for the Enum3 const type.
-func PossibleEnum3Values() []Enum3 {
-	return []Enum3{	
-		Enum3True,
-	}
-}
-
-// ToPtr returns a *Enum3 pointing to the current value.
-func (c Enum3) ToPtr() *Enum3 {
-	return &c
-}
-
 // EphemeralVolumeManagedStore - Backing store for the ephemeral volume
 type EphemeralVolumeManagedStore string
 

@@ -36,56 +36,26 @@ type daprPubSubServiceBusHandler struct {
 func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
-	// topic name must be specified by the user
-	topicName, ok := properties[ServiceBusTopicNameKey]
-	if !ok {
-		return nil, fmt.Errorf("missing required property '%s'", ServiceBusTopicIDKey)
-	}
-
-	// This assertion is important so we don't start creating/modifying an unmanaged resource
-	err := ValidateResourceIDsForUnmanagedResource(properties, ServiceBusNamespaceIDKey, ServiceBusTopicIDKey)
+	// This assertion is important so we don't start creating/modifying a resource
+	err := ValidateResourceIDsForResource(properties, ServiceBusNamespaceIDKey, ServiceBusTopicIDKey)
 	if err != nil {
 		return nil, err
 	}
 
 	var namespace *servicebus.SBNamespace
-	if properties[ServiceBusNamespaceIDKey] == "" {
-		// If we don't have an ID already then we will need to create a new one.
-		namespace, err = handler.LookupSharedManagedNamespaceFromResourceGroup(ctx, options.ApplicationName)
-		if err != nil {
-			return nil, err
-		}
 
-		if namespace == nil {
-			namespace, err = handler.CreateNamespace(ctx, options.ApplicationName)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		properties[ServiceBusNamespaceNameKey] = *namespace.Name
-		properties[ServiceBusNamespaceIDKey] = *namespace.ID
-	} else {
-		// This is mostly called for the side-effect of verifying that the servicebus namespace exists.
-		namespace, err = handler.GetNamespaceByID(ctx, properties[ServiceBusNamespaceIDKey])
-		if err != nil {
-			return nil, err
-		}
+	// This is mostly called for the side-effect of verifying that the servicebus namespace exists.
+	namespace, err = handler.GetNamespaceByID(ctx, properties[ServiceBusNamespaceIDKey])
+	if err != nil {
+		return nil, err
 	}
 
 	var topic *servicebus.SBTopic
-	if properties[ServiceBusTopicIDKey] == "" {
-		topic, err = handler.CreateTopic(ctx, *namespace.Name, topicName)
-		if err != nil {
-			return nil, err
-		}
-		properties[ServiceBusTopicIDKey] = *topic.ID
-	} else {
-		// This is mostly called for the side-effect of verifying that the servicebus queue exists.
-		topic, err = handler.GetTopicByID(ctx, properties[ServiceBusTopicIDKey])
-		if err != nil {
-			return nil, err
-		}
+
+	// This is mostly called for the side-effect of verifying that the servicebus queue exists.
+	topic, err = handler.GetTopicByID(ctx, properties[ServiceBusTopicIDKey])
+	if err != nil {
+		return nil, err
 	}
 
 	// Use the identity of the topic as the thing to monitor.
@@ -107,26 +77,9 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *Pu
 func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	properties := options.ExistingOutputResource.PersistedProperties
 
-	namespaceName := properties[ServiceBusNamespaceNameKey]
-	topicName := properties[ServiceBusTopicNameKey]
-
 	err := handler.DeleteDaprPubSub(ctx, properties)
 	if err != nil {
 		return err
-	}
-
-	if properties[ManagedKey] == "true" {
-		deleteNamespace, err := handler.DeleteTopic(ctx, namespaceName, topicName)
-		if err != nil {
-			return err
-		}
-
-		if deleteNamespace {
-			err = handler.DeleteNamespace(ctx, namespaceName)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil

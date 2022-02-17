@@ -19,16 +19,12 @@ import (
 type StateStoreFunc = func(renderers.RendererResource) ([]outputresource.OutputResource, error)
 
 var SupportedAzureStateStoreKindValues = map[string]StateStoreFunc{
-	"any":                      GetDaprStateStoreAzureAny,
 	"state.azure.tablestorage": GetDaprStateStoreAzureStorage,
-	"state.sqlserver":          GetDaprStateStoreSQLServer,
 	"generic":                  GetDaprStateStoreAzureGeneric,
 }
 
 var SupportedKubernetesStateStoreKindValues = map[string]StateStoreFunc{
-	"any":         GetDaprStateStoreKubernetesAny,
-	"state.redis": GetDaprStateStoreKubernetesRedis,
-	"generic":     GetDaprStateStoreKubernetesGeneric,
+	"generic": GetDaprStateStoreKubernetesGeneric,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)

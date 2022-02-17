@@ -8,7 +8,6 @@ package redisv1alpha3
 import "github.com/project-radius/radius/pkg/azure/azresources"
 
 const (
-	Port         = 6379
 	ResourceType = "redislabs.com.RedisCache"
 )
 

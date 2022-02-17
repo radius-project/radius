@@ -26,7 +26,6 @@ type OutputResource struct {
 
 	// Identity specifies the identity of the resource in the underlying platform.
 	Identity resourcemodel.ResourceIdentity `bson:"identity"`
-	Managed  bool                           `bson:"managed"`
 
 	// We persist properties returned from the resource handler for later use when
 	// processing the same resource again.

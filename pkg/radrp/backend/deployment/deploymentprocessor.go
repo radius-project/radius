@@ -455,7 +455,6 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			LocalID:             outputResource.LocalID,
 			ResourceKind:        outputResource.ResourceKind,
 			Identity:            outputResource.Identity,
-			Managed:             outputResource.Managed,
 			PersistedProperties: properties,
 			Status: db.OutputResourceStatus{
 				ProvisioningState:        db.Provisioned,

@@ -39,7 +39,6 @@ type ApplicationStatus struct {
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
 	LocalID            string                         `json:"localID"`
-	Managed            bool                           `json:"managed"`
 	ResourceKind       string                         `json:"resourceKind"`
 	OutputResourceType string                         `json:"outputResourceType"`
 	OutputResourceInfo resourcemodel.ResourceIdentity `json:"outputResourceInfo"`

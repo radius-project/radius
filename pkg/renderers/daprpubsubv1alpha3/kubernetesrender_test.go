@@ -63,7 +63,6 @@ func Test_Render_Generic_Kubernetes_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprPubSubGeneric, output.LocalID)
 	require.Equal(t, resourcekinds.Kubernetes, output.ResourceKind)
-	require.False(t, output.Managed)
 
 	expected := unstructured.Unstructured{
 		Object: map[string]interface{}{

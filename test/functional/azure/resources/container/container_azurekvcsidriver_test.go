@@ -55,17 +55,16 @@ func Test_ContainerAzureKeyVaultCSIDriver(t *testing.T) {
 						ResourceName:    "backend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment:                  validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDUserAssignedManagedIdentity: validation.NewOutputResource(outputresource.LocalIDUserAssignedManagedIdentity, outputresource.TypeARM, resourcekinds.AzureUserAssignedManagedIdentity, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment:                  validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDUserAssignedManagedIdentity: validation.NewOutputResource(outputresource.LocalIDUserAssignedManagedIdentity, outputresource.TypeARM, resourcekinds.AzureUserAssignedManagedIdentity, false, rest.OutputResourceStatus{}),
 							// Since only secrets (no keys/certs) are mounted, only one role assignment is expected
 							"role-assignment-1": {
 								SkipLocalIDWhenMatching: true,
 								OutputResourceType:      outputresource.TypeARM,
 								ResourceKind:            resourcekinds.AzureRoleAssignment,
-								Managed:                 true,
 								VerifyStatus:            false,
 							},
-							outputresource.LocalIDAADPodIdentity: validation.NewOutputResource(outputresource.LocalIDAADPodIdentity, outputresource.TypeAADPodIdentity, resourcekinds.AzurePodIdentity, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAADPodIdentity: validation.NewOutputResource(outputresource.LocalIDAADPodIdentity, outputresource.TypeAADPodIdentity, resourcekinds.AzurePodIdentity, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -73,7 +72,7 @@ func Test_ContainerAzureKeyVaultCSIDriver(t *testing.T) {
 						ResourceName:    "myshare",
 						ResourceType:    volumev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDSecretProviderClass: validation.NewOutputResource(outputresource.LocalIDSecretProviderClass, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecretProviderClass: validation.NewOutputResource(outputresource.LocalIDSecretProviderClass, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

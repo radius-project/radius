@@ -32,7 +32,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 						ResourceName:    "publisher",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -40,7 +40,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 						ResourceName:    "pubsub",
 						ResourceType:    daprpubsubv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprPubSubGeneric: validation.NewOutputResource(outputresource.LocalIDDaprPubSubGeneric, outputresource.TypeKubernetes, resourcekinds.DaprPubSubTopicGeneric, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprPubSubGeneric: validation.NewOutputResource(outputresource.LocalIDDaprPubSubGeneric, outputresource.TypeKubernetes, resourcekinds.DaprPubSubTopicGeneric, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

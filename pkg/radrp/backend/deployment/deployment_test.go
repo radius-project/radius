@@ -45,12 +45,10 @@ var (
 		{
 			LocalID:      outputresource.LocalIDDeployment,
 			ResourceKind: resourcekinds.Kubernetes,
-			Managed:      true,
 		},
 		{
 			LocalID:      outputresource.LocalIDService,
 			ResourceKind: resourcekinds.Kubernetes,
-			Managed:      true,
 		},
 	}
 
@@ -206,7 +204,6 @@ func Test_DeployExistingResource_Success(t *testing.T) {
 		LocalID:      outputresource.LocalIDDeployment,
 		ResourceKind: resourcekinds.Kubernetes,
 		Deployed:     false,
-		Managed:      true,
 		Identity: resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
 			Data: resourcemodel.KubernetesIdentity{
@@ -418,7 +415,6 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 		LocalID:      outputresource.LocalIDDeployment,
 		ResourceKind: resourcekinds.Kubernetes,
 		Deployed:     true,
-		Managed:      true,
 		Identity: resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
 			Data: resourcemodel.KubernetesIdentity{
@@ -478,7 +474,6 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 		LocalID:      outputresource.LocalIDDeployment,
 		ResourceKind: resourcekinds.Kubernetes,
 		Deployed:     false,
-		Managed:      true,
 	}
 	rendererOutput := renderers.RendererOutput{
 		Resources: []outputresource.OutputResource{testOutputResource},
@@ -556,7 +551,6 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 				Kind: resourcemodel.IdentityKindKubernetes,
 			},
 			Deployed: true,
-			Managed:  true,
 		}
 		localRendererOutput := renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{localTestOutputResource},
@@ -589,7 +583,6 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 				Kind: resourcemodel.IdentityKindKubernetes,
 			},
 			Deployed: true,
-			Managed:  true,
 			Resource: map[string]interface{}{
 				"some-data": 3,
 			},
@@ -818,12 +811,10 @@ func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 		{
 			LocalID:      outputresource.LocalIDDeployment,
 			ResourceKind: resourcekinds.Kubernetes,
-			Managed:      true,
 		},
 		{
 			LocalID:      outputresource.LocalIDService,
 			ResourceKind: "foo",
-			Managed:      true,
 		},
 	}
 
@@ -880,7 +871,6 @@ func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 		LocalID:      outputresource.LocalIDSecret,
 		ResourceKind: resourcekinds.Kubernetes,
 		Deployed:     false,
-		Managed:      true,
 		Identity: resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
 			Data: resourcemodel.KubernetesIdentity{
@@ -920,7 +910,6 @@ func Test_Deploy_WithHealthMonitoring(t *testing.T) {
 		LocalID:      outputresource.LocalIDDeployment,
 		ResourceKind: resourcekinds.Kubernetes,
 		Deployed:     false,
-		Managed:      true,
 		Identity: resourcemodel.ResourceIdentity{
 			Kind: resourcemodel.IdentityKindKubernetes,
 			Data: resourcemodel.KubernetesIdentity{

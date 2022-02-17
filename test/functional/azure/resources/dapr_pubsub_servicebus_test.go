@@ -18,9 +18,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
-	application := "azure-resources-dapr-pubsub-servicebus-unmanaged"
-	template := "testdata/azure-resources-dapr-pubsub-servicebus-unmanaged.bicep"
+func Test_DaprPubSubServiceBus(t *testing.T) {
+	application := "azure-resources-dapr-pubsub-servicebus"
+	template := "testdata/azure-resources-dapr-pubsub-servicebus.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
@@ -49,8 +49,8 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 						ResourceName:    "publisher",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -58,7 +58,7 @@ func Test_DaprPubSubServiceBusUnmanaged(t *testing.T) {
 						ResourceName:    "pubsub",
 						ResourceType:    daprpubsubv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, resourcekinds.DaprPubSubTopicAzureServiceBus, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureServiceBusTopic: validation.NewOutputResource(outputresource.LocalIDAzureServiceBusTopic, outputresource.TypeARM, resourcekinds.DaprPubSubTopicAzureServiceBus, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

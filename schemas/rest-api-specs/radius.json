@@ -95,12 +95,8 @@
         }
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
-          "type": "boolean"
-        },
         "resource": {
-          "description": "The ID of the user-managed volume to use for this resource",
+          "description": "The ID of the volume to use for this resource",
           "type": "string"
         }
       },
@@ -134,21 +130,14 @@
         }
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ],
-          "type": "boolean"
-        },
         "resource": {
           "description": "The ID of the user-managed KeyVault to use",
           "type": "string"
         }
       },
+      "required": [
+        "resource"
+      ],
       "type": "object"
     },
     "AzureKeyVaultResource": {
@@ -191,12 +180,8 @@
           "description": "The KeyVault keys that this volume exposes",
           "type": "object"
         },
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
-          "type": "boolean"
-        },
         "resource": {
-          "description": "The ID of the user-managed keyvault to use for this volume resource",
+          "description": "The ID of the keyvault to use for this volume resource",
           "type": "string"
         },
         "secrets": {
@@ -237,28 +222,13 @@
         }
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this resource.",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ],
-          "type": "boolean"
-        },
-        "queue": {
-          "description": "The name of the queue",
-          "type": "string"
-        },
         "resource": {
           "description": "The ID of the user-managed ServiceBus queue to use",
           "type": "string"
         }
       },
       "required": [
-        "managed",
-        "queue"
+        "resource"
       ],
       "type": "object"
     },
@@ -602,25 +572,6 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
-    "DaprPubSubTopicAnyResourceProperties": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprPubSubTopicProperties"
-        }
-      ],
-      "properties": {
-        "topic": {
-          "description": "PubSub topic",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object",
-      "x-ms-discriminator-value": "any"
-    },
     "DaprPubSubTopicAzureServiceBusResourceProperties": {
       "additionalProperties": false,
       "allOf": [
@@ -629,21 +580,14 @@
         }
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a resource is required",
-          "type": "boolean"
-        },
         "resource": {
-          "description": "PubSub resource, for unmanaged",
-          "type": "string"
-        },
-        "topic": {
-          "description": "PubSub topic",
+          "description": "PubSub resource",
           "type": "string"
         }
       },
       "required": [
-        "kind"
+        "kind",
+        "resource"
       ],
       "type": "object",
       "x-ms-discriminator-value": "pubsub.azure.servicebus"
@@ -828,19 +772,6 @@
       "type": "object",
       "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
     },
-    "DaprStateStoreAnyResourceProperties": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprStateStoreResourceProperties"
-        }
-      ],
-      "required": [
-        "kind"
-      ],
-      "type": "object",
-      "x-ms-discriminator-value": "any"
-    },
     "DaprStateStoreAzureTableStorageResourceProperties": {
       "additionalProperties": false,
       "allOf": [
@@ -849,24 +780,14 @@
         }
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ],
-          "type": "boolean"
-        },
         "resource": {
-          "description": "PubSub resource, for unmanaged",
+          "description": "PubSub resource",
           "type": "string"
         }
       },
       "required": [
-        "managed",
-        "kind"
+        "kind",
+        "resource"
       ],
       "type": "object",
       "x-ms-discriminator-value": "state.azure.tablestorage"
@@ -920,32 +841,6 @@
       ],
       "type": "object"
     },
-    "DaprStateStoreRedisResourceProperties": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprStateStoreResourceProperties"
-        }
-      ],
-      "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ],
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "managed",
-        "kind"
-      ],
-      "type": "object",
-      "x-ms-discriminator-value": "state.redis"
-    },
     "DaprStateStoreResource": {
       "allOf": [
         {
@@ -990,24 +885,14 @@
         }
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this Resource",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ],
-          "type": "boolean"
-        },
         "resource": {
-          "description": "PubSub resource, for unmanaged",
+          "description": "PubSub resource",
           "type": "string"
         }
       },
       "required": [
-        "managed",
-        "kind"
+        "kind",
+        "resource"
       ],
       "type": "object",
       "x-ms-discriminator-value": "state.sqlserver"
@@ -1473,12 +1358,8 @@
           "description": "The name of the SQL database.",
           "type": "string"
         },
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
-          "type": "boolean"
-        },
         "resource": {
-          "description": "The ID of the user-managed SQL database to use for this resource.",
+          "description": "The ID of the SQL database to use for this resource.",
           "type": "string"
         },
         "server": {
@@ -1518,10 +1399,6 @@
           "description": "The host name of the MongoDB to which you are connecting",
           "type": "string"
         },
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified",
-          "type": "boolean"
-        },
         "port": {
           "description": "The port value of the MongoDB to which you are connecting",
           "example": [
@@ -1530,7 +1407,7 @@
           "type": "integer"
         },
         "resource": {
-          "description": "The ID of the user-managed DB with Mongo API to use for this resource.",
+          "description": "The ID of the DB with Mongo API to use for this resource.",
           "example": [
             "account::mongodb.id"
           ],
@@ -1538,7 +1415,7 @@
         },
         "secrets": {
           "additionalProperties": false,
-          "description": "Secrets provided by unmanaged resources,",
+          "description": "Secrets provided by resources,",
           "properties": {
             "connectionString": {
               "description": "The connection string used to connect to this DB",
@@ -1843,21 +1720,13 @@
         }
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed.",
-          "example": [
-            true,
-            false
-          ],
-          "type": "boolean"
-        },
         "queue": {
           "description": "The name of the queue",
           "type": "string"
         },
         "secrets": {
           "additionalProperties": false,
-          "description": "Secrets provided by unmanaged resources,",
+          "description": "Secrets provided by resources,",
           "properties": {
             "connectionString": {
               "description": "The connection string used to connect to this RabbitMQ instance",
@@ -1956,10 +1825,6 @@
           ],
           "type": "string"
         },
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. If false, a Resource must be specified.",
-          "type": "boolean"
-        },
         "port": {
           "description": "The port value of the redis cache to which you are connecting",
           "example": [
@@ -1969,7 +1834,7 @@
           "type": "integer"
         },
         "resource": {
-          "description": "The ID of the user-managed Redis cache to use for this resource",
+          "description": "The ID of the Redis cache to use for this resource",
           "example": [
             "account::redis.id"
           ],

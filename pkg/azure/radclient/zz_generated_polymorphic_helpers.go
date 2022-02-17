@@ -20,8 +20,6 @@ func unmarshalDaprPubSubTopicPropertiesClassification(rawMsg json.RawMessage) (D
 	}
 	var b DaprPubSubTopicPropertiesClassification
 	switch m["kind"] {
-	case "any":
-		b = &DaprPubSubTopicAnyResourceProperties{}
 	case "generic":
 		b = &DaprPubSubTopicGenericResourceProperties{}
 	case "pubsub.azure.servicebus":
@@ -80,14 +78,10 @@ func unmarshalDaprStateStoreResourcePropertiesClassification(rawMsg json.RawMess
 	}
 	var b DaprStateStoreResourcePropertiesClassification
 	switch m["kind"] {
-	case "any":
-		b = &DaprStateStoreAnyResourceProperties{}
 	case "generic":
 		b = &DaprStateStoreGenericResourceProperties{}
 	case "state.azure.tablestorage":
 		b = &DaprStateStoreAzureTableStorageResourceProperties{}
-	case "state.redis":
-		b = &DaprStateStoreRedisResourceProperties{}
 	case "state.sqlserver":
 		b = &DaprStateStoreSQLServerResourceProperties{}
 	default:

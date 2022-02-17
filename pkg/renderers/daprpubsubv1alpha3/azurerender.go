@@ -27,7 +27,6 @@ type PubSubFunc = func(renderers.RendererResource) (renderers.RendererOutput, er
 
 // SupportedAzurePubSubKindValues is a map of supported resource kinds for Azure and the associated renderer
 var SupportedAzurePubSubKindValues = map[string]PubSubFunc{
-	resourcekinds.DaprPubSubTopicAny:             GetDaprPubSubAny,
 	resourcekinds.DaprPubSubTopicAzureServiceBus: GetDaprPubSubAzureServiceBus,
 	resourcekinds.DaprPubSubTopicGeneric:         GetDaprPubSubAzureGeneric,
 }
@@ -38,17 +37,11 @@ type Renderer struct {
 
 type Properties struct {
 	Kind     string `json:"kind"`
-	Managed  bool   `json:"managed"`
 	Resource string `json:"resource"`
 }
 
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	return nil, nil, nil
-}
-
-func GetDaprPubSubAny(resource renderers.RendererResource) (renderers.RendererOutput, error) {
-	resource.Definition["managed"] = true
-	return GetDaprPubSubAzureServiceBus(resource)
 }
 
 func GetDaprPubSubAzureServiceBus(resource renderers.RendererResource) (renderers.RendererOutput, error) {
@@ -58,62 +51,31 @@ func GetDaprPubSubAzureServiceBus(resource renderers.RendererResource) (renderer
 		return renderers.RendererOutput{}, err
 	}
 	var output outputresource.OutputResource
-	if properties.Managed != nil && *properties.Managed {
-		topic := to.String(properties.Topic)
-		if topic == "" {
-			return renderers.RendererOutput{}, errors.New("the 'topic' field is required when 'managed=true'")
-		}
 
-		if to.String(properties.Resource) != "" {
-			return renderers.RendererOutput{}, renderers.ErrResourceSpecifiedForManagedResource
-		}
+	if to.String(properties.Resource) == "" {
+		return renderers.RendererOutput{}, renderers.ErrResourceMissingForResource
+	}
 
-		// generate data we can use to manage a servicebus topic
-		output = outputresource.OutputResource{
-			LocalID:      outputresource.LocalIDAzureServiceBusTopic,
-			ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Managed:      true,
-			Resource: map[string]string{
-				handlers.ManagedKey:              "true",
-				handlers.ResourceName:            resource.ResourceName,
-				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-				handlers.ServiceBusTopicNameKey:  topic,
-			},
-		}
-	} else {
-		if to.String(properties.Topic) != "" {
-			return renderers.RendererOutput{}, errors.New("the 'topic' cannot be specified when 'managed' is not specified")
-		}
+	topicID, err := renderers.ValidateResourceID(to.String(properties.Resource), TopicResourceType, "ServiceBus Topic")
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 
-		if to.String(properties.Resource) == "" {
-			return renderers.RendererOutput{}, renderers.ErrResourceMissingForUnmanagedResource
-		}
+	output = outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDAzureServiceBusTopic,
+		ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
+		Resource: map[string]string{
+			handlers.ResourceName:            resource.ResourceName,
+			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
+			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+			handlers.KubernetesKindKey:       "Component",
 
-		topicID, err := renderers.ValidateResourceID(to.String(properties.Resource), TopicResourceType, "ServiceBus Topic")
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-
-		output = outputresource.OutputResource{
-			LocalID:      outputresource.LocalIDAzureServiceBusTopic,
-			ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Managed:      false,
-			Resource: map[string]string{
-				handlers.ManagedKey:              "false",
-				handlers.ResourceName:            resource.ResourceName,
-				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-
-				// Truncate the topic part of the ID to make an ID for the namespace
-				handlers.ServiceBusNamespaceIDKey:   topicID.Truncate().ID,
-				handlers.ServiceBusTopicIDKey:       topicID.ID,
-				handlers.ServiceBusNamespaceNameKey: topicID.Types[0].Name,
-				handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,
-			},
-		}
+			// Truncate the topic part of the ID to make an ID for the namespace
+			handlers.ServiceBusNamespaceIDKey:   topicID.Truncate().ID,
+			handlers.ServiceBusTopicIDKey:       topicID.ID,
+			handlers.ServiceBusNamespaceNameKey: topicID.Types[0].Name,
+			handlers.ServiceBusTopicNameKey:     topicID.Types[1].Name,
+		},
 	}
 
 	values := map[string]renderers.ComputedValueReference{
@@ -166,9 +128,7 @@ func GetDaprPubSubAzureGeneric(resource renderers.RendererResource) (renderers.R
 	output := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDaprPubSubGeneric,
 		ResourceKind: resourcekinds.DaprPubSubTopicGeneric,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:              "false",
 			handlers.ResourceName:            resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",

@@ -59,7 +59,6 @@ func GetDaprPubSubAzureGenericKubernetes(resource renderers.RendererResource) (r
 	output := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDaprPubSubGeneric,
 		ResourceKind: resourcekinds.Kubernetes,
-		Managed:      false,
 		Resource:     &pubsubResource,
 	}
 

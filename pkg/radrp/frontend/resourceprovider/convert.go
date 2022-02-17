@@ -123,7 +123,6 @@ func NewRestOutputResourceStatus(original []db.OutputResource) []rest.OutputReso
 			ResourceKind:       r.ResourceKind,
 			OutputResourceInfo: r.Identity,
 			OutputResourceType: string(r.Identity.Kind),
-			Managed:            r.Managed,
 			Status: rest.OutputResourceStatus{
 				HealthState:              r.Status.HealthState,
 				HealthErrorDetails:       r.Status.HealthStateErrorDetails,
