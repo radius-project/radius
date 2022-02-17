@@ -65,15 +65,7 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(func() {
-		v, err := cli.LoadConfig(configHolder.ConfigFilePath)
-		if err != nil {
-			fmt.Printf("Error: failed to load config: %v\n", err)
-			os.Exit(1)
-		}
-
-		configHolder.Config = v
-	})
+	cobra.OnInitialize(initConfig)
 
 	// Initialize support for --version
 	RootCmd.Version = "foo" // needs to be set to non-empty string, actual version is set via SetVersionTemplate()
@@ -114,4 +106,14 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	}
 
 	return holder.Config
+}
+
+func initConfig() {
+	v, err := cli.LoadConfig(configHolder.ConfigFilePath)
+	if err != nil {
+		fmt.Printf("Error: failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	configHolder.Config = v
 }
