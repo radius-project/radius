@@ -28,15 +28,15 @@ import (
 )
 
 const (
-	testLocation    = "test-location"
-	testID          = "test-id"
-	subscriptionID  = "test-subscription"
-	resourceGroup   = "test-resource-group"
-	providerName    = "radiusv3"
-	applicationName = "test-application"
-	resourceType    = "Container" // Need to use a real resource type
-	resourceName    = "test-resource"
-	operationName   = "test-operation"
+	testLocation      = "test-location"
+	testID            = "test-id"
+	appSubscriptionID = "test-subscription"
+	appResourceGroup  = "test-resource-group"
+	providerName      = "radiusv3"
+	applicationName   = "test-application"
+	resourceType      = "Container" // Need to use a real resource type
+	resourceName      = "test-resource"
+	operationName     = "test-operation"
 )
 
 type testcase struct {
@@ -52,8 +52,8 @@ var testRadiusResource []db.RadiusResource = []db.RadiusResource{
 	{
 		ID:                testID,
 		Type:              id.Type(),
-		SubscriptionID:    subscriptionID,
-		ResourceGroup:     resourceGroup,
+		SubscriptionID:    appSubscriptionID,
+		ResourceGroup:     appResourceGroup,
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: "string(rest.SuccededStatus)",
@@ -221,8 +221,8 @@ func Test_AllEndpoints_RejectInvalidApplicationType(t *testing.T) {
 
 	id := parseOrPanic(fmt.Sprintf(
 		"/subscriptions/%s/resourceGroups/%s/providers/%s/%s/%s/%s",
-		subscriptionID,
-		resourceGroup,
+		appSubscriptionID,
+		appResourceGroup,
 		azresources.CustomProvidersResourceProviders,
 		providerName,
 		"InvalidApplicationType", applicationName))
@@ -345,8 +345,8 @@ func Test_ListApplications_Success(t *testing.T) {
 		{
 			ID:              appID,
 			Type:            id.Type(),
-			SubscriptionID:  subscriptionID,
-			ResourceGroup:   resourceGroup,
+			SubscriptionID:  appSubscriptionID,
+			ResourceGroup:   appResourceGroup,
 			ApplicationName: applicationName,
 			Tags: map[string]string{
 				"tag": "value",
@@ -391,8 +391,8 @@ func Test_GetApplication_Success(t *testing.T) {
 	data := db.ApplicationResource{
 		ID:              testID,
 		Type:            id.Type(),
-		SubscriptionID:  subscriptionID,
-		ResourceGroup:   resourceGroup,
+		SubscriptionID:  appSubscriptionID,
+		ResourceGroup:   appResourceGroup,
 		ApplicationName: applicationName,
 		Tags: map[string]string{
 			"tag": "value",
@@ -444,8 +444,8 @@ func Test_UpdateApplication_Success(t *testing.T) {
 			expected := db.ApplicationResource{
 				ID:              id.ID,
 				Type:            id.Type(),
-				SubscriptionID:  subscriptionID,
-				ResourceGroup:   resourceGroup,
+				SubscriptionID:  appSubscriptionID,
+				ResourceGroup:   appResourceGroup,
 				ApplicationName: applicationName,
 				Tags: map[string]string{
 					"tag": "value",
@@ -524,8 +524,8 @@ func Test_ListAllResources_Success(t *testing.T) {
 		{
 			ID:                testID,
 			Type:              requestID.Type(),
-			SubscriptionID:    subscriptionID,
-			ResourceGroup:     resourceGroup,
+			SubscriptionID:    appSubscriptionID,
+			ResourceGroup:     appResourceGroup,
 			ApplicationName:   applicationName,
 			ResourceName:      resourceName,
 			ProvisioningState: string(rest.SuccededStatus),
@@ -544,8 +544,8 @@ func Test_ListAllResources_Success(t *testing.T) {
 			ResourceKind:              resourcekinds.Azure,
 			Type:                      "Microsoft.ServiceBus/namespaces",
 			ApplicationName:           applicationName,
-			ApplicationSubscriptionID: subscriptionID,
-			ApplicationResourceGroup:  resourceGroup,
+			ApplicationSubscriptionID: appSubscriptionID,
+			ApplicationResourceGroup:  appResourceGroup,
 			RadiusConnectionIDs:       []string{testID},
 		},
 	}
@@ -565,8 +565,12 @@ func Test_ListAllResources_Success(t *testing.T) {
 				Type: requestID.Type(),
 				Name: resourceName,
 				Properties: map[string]interface{}{
-					"data":              true,
-					"provisioningState": string(rest.SuccededStatus),
+					"resourceGroup":             appResourceGroup,
+					"subscriptionID":            appSubscriptionID,
+					"applicationResourceGroup":  appResourceGroup,
+					"applicationSubscriptionID": appSubscriptionID,
+					"data":                      true,
+					"provisioningState":         string(rest.SuccededStatus),
 					"status": rest.ResourceStatus{
 						ProvisioningState: "Provisioned",
 						HealthState:       "Healthy",
@@ -575,10 +579,15 @@ func Test_ListAllResources_Success(t *testing.T) {
 				},
 			},
 			{
-				ID:         azureConnectionID,
-				Type:       "Microsoft.ServiceBus/namespaces",
-				Name:       "az-resource-name",
-				Properties: map[string]interface{}{},
+				ID:   azureConnectionID,
+				Type: "Microsoft.ServiceBus/namespaces",
+				Name: "az-resource-name",
+				Properties: map[string]interface{}{
+					"resourceGroup":             "az-resource-rg",
+					"subscriptionID":            "az-resource-subscription",
+					"applicationResourceGroup":  appResourceGroup,
+					"applicationSubscriptionID": appSubscriptionID,
+				},
 			},
 		},
 	}
@@ -607,8 +616,8 @@ func Test_ListResources_Success(t *testing.T) {
 		{
 			ID:                testID,
 			Type:              id.Type(),
-			SubscriptionID:    subscriptionID,
-			ResourceGroup:     resourceGroup,
+			SubscriptionID:    appSubscriptionID,
+			ResourceGroup:     appResourceGroup,
 			ApplicationName:   applicationName,
 			ResourceName:      resourceName,
 			ProvisioningState: string(rest.SuccededStatus),
@@ -630,8 +639,12 @@ func Test_ListResources_Success(t *testing.T) {
 				Type: id.Type(),
 				Name: resourceName,
 				Properties: map[string]interface{}{
-					"data":              true,
-					"provisioningState": "Succeeded",
+					"resourceGroup":             appResourceGroup,
+					"subscriptionID":            appSubscriptionID,
+					"applicationResourceGroup":  appResourceGroup,
+					"applicationSubscriptionID": appSubscriptionID,
+					"data":                      true,
+					"provisioningState":         "Succeeded",
 					"status": rest.ResourceStatus{
 						ProvisioningState: "Provisioned",
 						HealthState:       "Healthy",
@@ -652,8 +665,8 @@ func Test_GetResource_Success(t *testing.T) {
 	data := db.RadiusResource{
 		ID:                testID,
 		Type:              id.Type(),
-		SubscriptionID:    subscriptionID,
-		ResourceGroup:     resourceGroup,
+		SubscriptionID:    appSubscriptionID,
+		ResourceGroup:     appResourceGroup,
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.SuccededStatus),
@@ -672,8 +685,12 @@ func Test_GetResource_Success(t *testing.T) {
 		Type: id.Type(),
 		Name: resourceName,
 		Properties: map[string]interface{}{
-			"data":              true,
-			"provisioningState": "Succeeded",
+			"resourceGroup":             appResourceGroup,
+			"subscriptionID":            appSubscriptionID,
+			"applicationResourceGroup":  appResourceGroup,
+			"applicationSubscriptionID": appSubscriptionID,
+			"data":                      true,
+			"provisioningState":         "Succeeded",
 			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
@@ -702,8 +719,8 @@ func Test_UpdateResource_Success(t *testing.T) {
 			expected := db.RadiusResource{
 				ID:                id.ID,
 				Type:              id.Type(),
-				SubscriptionID:    subscriptionID,
-				ResourceGroup:     resourceGroup,
+				SubscriptionID:    appSubscriptionID,
+				ResourceGroup:     appResourceGroup,
 				ApplicationName:   applicationName,
 				ResourceName:      resourceName,
 				ProvisioningState: string(rest.DeployingStatus),
@@ -736,8 +753,12 @@ func Test_UpdateResource_Success(t *testing.T) {
 		Type: id.Type(),
 		Name: resourceName,
 		Properties: map[string]interface{}{
-			"data":              true,
-			"provisioningState": string(rest.DeployingStatus),
+			"resourceGroup":             appResourceGroup,
+			"subscriptionID":            appSubscriptionID,
+			"applicationResourceGroup":  appResourceGroup,
+			"applicationSubscriptionID": appSubscriptionID,
+			"data":                      true,
+			"provisioningState":         string(rest.DeployingStatus),
 			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
@@ -770,8 +791,8 @@ func Test_DeleteResource_Success(t *testing.T) {
 	data := db.RadiusResource{
 		ID:                id.ID,
 		Type:              id.Type(),
-		SubscriptionID:    subscriptionID,
-		ResourceGroup:     resourceGroup,
+		SubscriptionID:    appSubscriptionID,
+		ResourceGroup:     appResourceGroup,
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.SuccededStatus),
@@ -810,8 +831,12 @@ func Test_DeleteResource_Success(t *testing.T) {
 		Type: id.Type(),
 		Name: resourceName,
 		Properties: map[string]interface{}{
-			"data":              true,
-			"provisioningState": string(rest.DeletingStatus),
+			"resourceGroup":             appResourceGroup,
+			"subscriptionID":            appSubscriptionID,
+			"applicationResourceGroup":  appResourceGroup,
+			"applicationSubscriptionID": appSubscriptionID,
+			"data":                      true,
+			"provisioningState":         string(rest.DeletingStatus),
 			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
@@ -906,8 +931,8 @@ func Test_GetOperation_SuccessfulDeploy(t *testing.T) {
 	data := db.RadiusResource{
 		ID:                id.Truncate().ID,
 		Type:              id.Truncate().Type(),
-		SubscriptionID:    subscriptionID,
-		ResourceGroup:     resourceGroup,
+		SubscriptionID:    appSubscriptionID,
+		ResourceGroup:     appResourceGroup,
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.SuccededStatus),
@@ -926,8 +951,12 @@ func Test_GetOperation_SuccessfulDeploy(t *testing.T) {
 		Type: id.Truncate().Type(),
 		Name: resourceName,
 		Properties: map[string]interface{}{
-			"data":              true,
-			"provisioningState": string(rest.SuccededStatus),
+			"resourceGroup":             appResourceGroup,
+			"subscriptionID":            appSubscriptionID,
+			"applicationResourceGroup":  appResourceGroup,
+			"applicationSubscriptionID": appSubscriptionID,
+			"data":                      true,
+			"provisioningState":         string(rest.SuccededStatus),
 			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
@@ -948,8 +977,8 @@ func Test_GetOperation_DeployInProgress(t *testing.T) {
 	data := db.RadiusResource{
 		ID:                id.Truncate().ID,
 		Type:              id.Truncate().Type(),
-		SubscriptionID:    subscriptionID,
-		ResourceGroup:     resourceGroup,
+		SubscriptionID:    appSubscriptionID,
+		ResourceGroup:     appResourceGroup,
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.DeployingStatus),
@@ -968,8 +997,12 @@ func Test_GetOperation_DeployInProgress(t *testing.T) {
 		Type: id.Truncate().Type(),
 		Name: resourceName,
 		Properties: map[string]interface{}{
-			"data":              true,
-			"provisioningState": string(rest.DeployingStatus),
+			"resourceGroup":             appResourceGroup,
+			"subscriptionID":            appSubscriptionID,
+			"applicationResourceGroup":  appResourceGroup,
+			"applicationSubscriptionID": appSubscriptionID,
+			"data":                      true,
+			"provisioningState":         string(rest.DeployingStatus),
 			"status": rest.ResourceStatus{
 				ProvisioningState: "Provisioned",
 				HealthState:       "Healthy",
@@ -990,8 +1023,8 @@ func Test_OutputResponseWithHealthStatus(t *testing.T) {
 	data := db.RadiusResource{
 		ID:                id.Truncate().ID,
 		Type:              id.Truncate().Type(),
-		SubscriptionID:    subscriptionID,
-		ResourceGroup:     resourceGroup,
+		SubscriptionID:    appSubscriptionID,
+		ResourceGroup:     appResourceGroup,
 		ApplicationName:   applicationName,
 		ResourceName:      resourceName,
 		ProvisioningState: string(rest.SuccededStatus),
@@ -1027,8 +1060,12 @@ func Test_OutputResponseWithHealthStatus(t *testing.T) {
 		Type: id.Truncate().Type(),
 		Name: resourceName,
 		Properties: map[string]interface{}{
-			"data":              true,
-			"provisioningState": string(rest.SuccededStatus),
+			"resourceGroup":             appResourceGroup,
+			"subscriptionID":            appSubscriptionID,
+			"applicationResourceGroup":  appResourceGroup,
+			"applicationSubscriptionID": appSubscriptionID,
+			"data":                      true,
+			"provisioningState":         string(rest.SuccededStatus),
 			"status": rest.ResourceStatus{
 				ProvisioningState: rest.ProvisioningStateProvisioned,
 				HealthState:       healthcontract.HealthStateHealthy, // Aggregation should show Healthy
@@ -1082,8 +1119,8 @@ func parseOrPanic(resourceID string) azresources.ResourceID {
 func applicationListID() string {
 	return fmt.Sprintf(
 		"/subscriptions/%s/resourceGroups/%s/providers/%s/%s/%s",
-		subscriptionID,
-		resourceGroup,
+		appSubscriptionID,
+		appResourceGroup,
 		azresources.CustomProvidersResourceProviders,
 		providerName,
 		azresources.ApplicationResourceType)
