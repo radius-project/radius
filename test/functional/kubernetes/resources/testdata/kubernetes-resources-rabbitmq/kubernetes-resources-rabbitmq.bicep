@@ -3,12 +3,14 @@ import kubernetes from kubernetes
 resource rabbitmqService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'rabbitmq-svc'
+    namespace: 'default'
   }
 }
 
 resource rabbitmqSecret 'kubernetes.core/Secret@v1' existing = {
   metadata: {
     name: 'rabbitmq-pw'
+    namespace: 'default'
   }
 }
 

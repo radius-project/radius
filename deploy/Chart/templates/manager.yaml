@@ -58,12 +58,12 @@ spec:
           allowPrivilegeEscalation: false
       - env:
         - name: ASPNETCORE_URLS
-          value: https://+:5000
+          value: http://+:5000
         image: radius.azurecr.io/bicep-extensibility:latest
         name: bicep-extensibility
         ports:
         - containerPort: 5000
-          name: bicep-extensibility
+          name: bicepext
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
