@@ -42,8 +42,8 @@ func GetDaprSecretStoreAzureGeneric(resource renderers.RendererResource) ([]outp
 
 	// generate data we can use to connect to a Storage Account
 	output := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDDaprStateStoreGeneric,
-		ResourceKind: resourcekinds.DaprStateStoreGeneric,
+		LocalID:      outputresource.LocalIDDaprSecretStoreGeneric,
+		ResourceKind: resourcekinds.DaprSecretStoreGeneric,
 		Managed:      false,
 		Resource: map[string]string{
 			handlers.ManagedKey:              "true",

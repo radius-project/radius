@@ -8,6 +8,7 @@
     "azure.com.ServiceBusQueue": "resources/azure-servicebus.json#/definitions/AzureServiceBusResource",
     "dapr.io.PubSubTopic": "resources/dapr-pubsubtopic.json#/definitions/DaprPubSubTopicResource",
     "dapr.io.StateStore": "resources/dapr-statestore.json#/definitions/DaprStateStoreResource",
+    "dapr.io.SecretStore": "resources/dapr-secretstore.json#/definitions/DaprSecretStoreResource",
     "microsoft.com.SQLDatabase": "resources/microsoft-sql.json#/definitions/MicrosoftSQLDatabaseResource",
     "mongo.com.MongoDatabase": "resources/mongodb.json#/definitions/MongoDatabaseResource",
     "rabbitmq.com.MessageQueue": "resources/rabbitmq.json#/definitions/RabbitMQMessageQueueResource",
