@@ -160,7 +160,8 @@ stages:
           --create-namespace \
           --namespace radius-system \
           --set tag=${{ variables.REL_VERSION }} \
-          --wait
+          --wait \
+          --debug
       displayName: update runtime to match PR
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
