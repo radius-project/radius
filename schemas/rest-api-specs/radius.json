@@ -2014,10 +2014,14 @@
       "x-ms-azure-resource": true
     },
     "ResourceStatus": {
-      "description": "Status of a resources.",
+      "description": "Status of a resource.",
       "properties": {
+        "healthErrorDetails": {
+          "description": "Health errors for the resource",
+          "type": "string"
+        },
         "healthState": {
-          "description": "Health state of the resources",
+          "description": "Health state of the resource",
           "type": "string"
         },
         "outputResources": {
@@ -2026,8 +2030,12 @@
           },
           "type": "array"
         },
+        "provisioningErrorDetails": {
+          "description": "Provisioning errors for the resource",
+          "type": "string"
+        },
         "provisioningState": {
-          "description": "Provisioning state of the resources",
+          "description": "Provisioning state of the resource",
           "type": "string"
         }
       },
