@@ -766,7 +766,7 @@ func Test_UpdateResource_Success(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, rest.NewAcceptedAsyncResponse(expected, oid.ID), response)
+	require.Equal(t, rest.NewAcceptedAsyncResponse(expected, oid.ID, "http"), response)
 
 	// Drain completion to ensure operation finishes
 	<-test.completions
@@ -844,7 +844,7 @@ func Test_DeleteResource_Success(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, rest.NewAcceptedAsyncResponse(expected, oid.ID), response)
+	require.Equal(t, rest.NewAcceptedAsyncResponse(expected, oid.ID, "http"), response)
 
 	// Drain completion to ensure operation finishes
 	<-test.completions
@@ -1010,7 +1010,7 @@ func Test_GetOperation_DeployInProgress(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, rest.NewAcceptedAsyncResponse(expected, id.ID), response)
+	require.Equal(t, rest.NewAcceptedAsyncResponse(expected, id.ID, "http"), response)
 }
 
 func Test_OutputResponseWithHealthStatus(t *testing.T) {
@@ -1103,7 +1103,7 @@ func createRPTest(t *testing.T) test {
 	db := db.NewMockRadrpDB(ctrl)
 	deploy := deployment.NewMockDeploymentProcessor(ctrl)
 	completions := make(chan struct{})
-	rp := NewResourceProvider(db, deploy, completions)
+	rp := NewResourceProvider(db, deploy, completions, "http")
 	return test{rp: rp, db: db, deploy: deploy, completions: completions}
 }
 
