@@ -3064,19 +3064,19 @@ type ResourceModelWithAllowedPropertySetSKU struct {
 	SKU
 }
 
-// ResourceStatus - Status of a resources.
+// ResourceStatus - Status of a resource.
 type ResourceStatus struct {
-	// Health errors for the application
+	// Health errors for the resource
 	HealthErrorDetails *string `json:"healthErrorDetails,omitempty"`
 
-	// Health state of the application
+	// Health state of the resource
 	HealthState *string `json:"healthState,omitempty"`
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 
-	// Provisioning errors for the application
+	// Provisioning errors for the resource
 	ProvisioningErrorDetails *string `json:"provisioningErrorDetails,omitempty"`
 
-	// Provisioning state of the resources
+	// Provisioning state of the resource
 	ProvisioningState *string `json:"provisioningState,omitempty"`
 }
 
