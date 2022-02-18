@@ -3066,9 +3066,15 @@ type ResourceModelWithAllowedPropertySetSKU struct {
 
 // ResourceStatus - Status of a resources.
 type ResourceStatus struct {
-	// Health state of the resources
+	// Health errors for the application
+	HealthErrorDetails *string `json:"healthErrorDetails,omitempty"`
+
+	// Health state of the application
 	HealthState *string `json:"healthState,omitempty"`
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+
+	// Provisioning errors for the application
+	ProvisioningErrorDetails *string `json:"provisioningErrorDetails,omitempty"`
 
 	// Provisioning state of the resources
 	ProvisioningState *string `json:"provisioningState,omitempty"`
@@ -3077,8 +3083,10 @@ type ResourceStatus struct {
 // MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
 func (r ResourceStatus) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "healthErrorDetails", r.HealthErrorDetails)
 	populate(objectMap, "healthState", r.HealthState)
 	populate(objectMap, "outputResources", r.OutputResources)
+	populate(objectMap, "provisioningErrorDetails", r.ProvisioningErrorDetails)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	return json.Marshal(objectMap)
 }

@@ -2016,8 +2016,12 @@
     "ResourceStatus": {
       "description": "Status of a resources.",
       "properties": {
+        "healthErrorDetails": {
+          "description": "Health errors for the application",
+          "type": "string"
+        },
         "healthState": {
-          "description": "Health state of the resources",
+          "description": "Health state of the application",
           "type": "string"
         },
         "outputResources": {
@@ -2025,6 +2029,10 @@
             "$ref": "#/definitions/OutputResource"
           },
           "type": "array"
+        },
+        "provisioningErrorDetails": {
+          "description": "Provisioning errors for the application",
+          "type": "string"
         },
         "provisioningState": {
           "description": "Provisioning state of the resources",
