@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "definitions": {
-    "GenericResource": {
-      "description": "Generic Resource",
+    "ExtenderResource": {
+      "description": "Extender Resource",
       "type": "object",
       "x-ms-azure-resource": true,
       "allOf": [
@@ -15,11 +15,11 @@
       ],
       "properties": {
         "properties": {
-          "$ref": "#/definitions/GenericProperties"
+          "$ref": "#/definitions/ExtenderProperties"
         }
       }
     },
-    "GenericProperties": {
+    "ExtenderProperties": {
       "allOf": [
         {
           "$ref": "basic-resource.json#/definitions/BasicResourceProperties"

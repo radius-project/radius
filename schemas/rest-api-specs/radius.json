@@ -1024,6 +1024,44 @@
       "type": "object",
       "x-ms-discriminator-value": "exec"
     },
+    "ExtenderProperties": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "additionalProperties": true,
+          "properties": {},
+          "type": "object"
+        },
+        "secrets": {
+          "additionalProperties": true,
+          "properties": {},
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "ExtenderResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Extender Resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ExtenderProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
     "GatewayList": {
       "description": "List of Gateway resources.",
       "properties": {
@@ -1078,44 +1116,6 @@
           "$ref": "#/definitions/GatewayProperties"
         }
       },
-      "type": "object",
-      "x-ms-azure-resource": true
-    },
-    "GenericProperties": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
-      ],
-      "properties": {
-        "properties": {
-          "additionalProperties": true,
-          "properties": {},
-          "type": "object"
-        },
-        "secrets": {
-          "additionalProperties": true,
-          "properties": {},
-          "type": "object"
-        }
-      },
-      "type": "object"
-    },
-    "GenericResource": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProxyResource"
-        }
-      ],
-      "description": "Generic Resource",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/GenericProperties"
-        }
-      },
-      "required": [
-        "properties"
-      ],
       "type": "object",
       "x-ms-azure-resource": true
     },
