@@ -145,7 +145,7 @@ jobs:
           password: '${{ secrets.DOCKER_PASSWORD }}'
       - name: make docker-push (latest)
         run: make docker-push
-        if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to main or tag
+        if: (github.ref == 'refs/heads/main') && startsWith(github.ref, 'refs/tags/v') # push latest tag only when it is an official release.
         env:
           DOCKER_REGISTRY: ${{ env.REGISTRY }}
           DOCKER_TAG_VERSION: latest
