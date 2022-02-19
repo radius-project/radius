@@ -52,7 +52,7 @@ stages:
       displayName: Login to ACR
       inputs:
         command: login
-        containerRegistry: radius-acr
+        containerRegistry: radiusdev-acr
     - script: |
         export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
