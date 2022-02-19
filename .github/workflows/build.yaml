@@ -23,7 +23,8 @@ concurrency:
 
 env:
   GOVER: '^1.17'
-  REGISTRY: ${{ startsWith(github.ref, 'refs/tags/v') && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
+  # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
+  REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
 
 jobs:
   build:
