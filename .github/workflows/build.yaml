@@ -201,7 +201,6 @@ jobs:
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     runs-on: self-hosted
     env:
-      DOCKER_REGISTRY: ${{ env.REGISTRY  }}
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
@@ -249,7 +248,7 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env install kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
+        dist/rad env install kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
     - name: Download Bicep
@@ -282,7 +281,6 @@ jobs:
     if: ${{ false }} # Skip the job until we revisit this dev env test - https://github.com/project-radius/radius/issues/1907
     runs-on: self-hosted
     env:
-      DOCKER_REGISTRY: ${{ env.REGISTRY  }}
       # Timeout used for functional tests
       LOCALDEV_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
@@ -325,7 +323,7 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init dev --name dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
+        dist/rad env init dev --name dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
     - name: Dapr tool installer
