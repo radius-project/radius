@@ -21,12 +21,15 @@ concurrency:
   group: build-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+env:
+  GOVER: '^1.17'
+  REGISTRY: ${{ startsWith(github.ref, 'refs/tags/v') && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
+
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: self-hosted
     env:
-      GOVER: '^1.17'
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
@@ -96,9 +99,6 @@ jobs:
   images:
     name: Container image build
     runs-on: self-hosted
-    env:
-      GOVER: '^1.17'
-      REGISTRY: radius.azurecr.io
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -168,7 +168,6 @@ jobs:
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
-      REGISTRY: radius.azurecr.io
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -202,8 +201,7 @@ jobs:
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     runs-on: self-hosted
     env:
-      GOVER: '^1.17'
-      DOCKER_REGISTRY: radius.azurecr.io
+      DOCKER_REGISTRY: ${{ env.REGISTRY  }}
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
@@ -284,8 +282,7 @@ jobs:
     if: ${{ false }} # Skip the job until we revisit this dev env test - https://github.com/project-radius/radius/issues/1907
     runs-on: self-hosted
     env:
-      GOVER: '^1.17'
-      DOCKER_REGISTRY: radius.azurecr.io
+      DOCKER_REGISTRY: ${{ env.REGISTRY  }}
       # Timeout used for functional tests
       LOCALDEV_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
@@ -372,9 +369,7 @@ jobs:
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     runs-on: self-hosted
     env:
-      GOVER: '^1.17'
-
-      REGISTRY: radius.azurecr.io
+      DOCKER_REGISTRY: ${{ env.REGISTRY  }}
 
       # Timeout used for Azure functional tests
       AZURE_FUNCTIONALTEST_TIMEOUT: 30m
