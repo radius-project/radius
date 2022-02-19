@@ -48,7 +48,7 @@ type Renderer struct {
 
 	// RoleAssignmentMap is an optional map of connection kind -> []Role Assignment. Used to configure managed
 	// identity permissions for cloud resources. This will be nil in environments that don't support role assignments.
-	RoleAssignmentMap map[radclient.ContainerConnectionKind]RoleAssignmentData
+	RoleAssignmentMap map[radclient.ConnectionKind]RoleAssignmentData
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
@@ -68,7 +68,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 		}
 
 		// Non-radius Azure connections that are accessible from Radius container resource.
-		if *connection.Kind == radclient.ContainerConnectionKindAzure {
+		if *connection.Kind == radclient.ConnectionKindAzure {
 			azureResourceIDs = append(azureResourceIDs, resourceID)
 			continue
 		}
@@ -563,7 +563,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererRes
 	return output
 }
 
-func (r Renderer) isIdentitySupported(connection radclient.ContainerConnection) bool {
+func (r Renderer) isIdentitySupported(connection radclient.Connection) bool {
 	if r.RoleAssignmentMap == nil || connection.Kind == nil {
 		return false
 	}
@@ -619,10 +619,10 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.
-func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection radclient.ContainerConnection, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
+func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection radclient.Connection, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
 	var roleNames []string
 	var armResourceIdentifier string
-	if *connection.Kind == radclient.ContainerConnectionKindAzure {
+	if *connection.Kind == radclient.ConnectionKindAzure {
 		if len(connection.Roles) < 1 {
 			return nil, fmt.Errorf("rbac permissions are required to access Azure connections")
 		}

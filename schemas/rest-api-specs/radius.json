@@ -359,9 +359,9 @@
       },
       "type": "object"
     },
-    "ContainerConnection": {
+    "Connection": {
       "additionalProperties": false,
-      "description": "Specifies a connection from the container to another resource",
+      "description": "Specifies a connection to another resource",
       "properties": {
         "kind": {
           "description": "The kind of connection",
@@ -396,6 +396,44 @@
       "required": [
         "kind",
         "source"
+      ],
+      "type": "object"
+    },
+    "Container": {
+      "additionalProperties": false,
+      "description": "Definition of a container.",
+      "properties": {
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "image": {
+          "description": "The registry and image to download and run in your container",
+          "type": "string"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties"
+        },
+        "ports": {
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerPort"
+          },
+          "type": "object"
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties"
+        },
+        "volumes": {
+          "additionalProperties": {
+            "$ref": "#/definitions/Volume"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "image"
       ],
       "type": "object"
     },
@@ -451,46 +489,12 @@
       "properties": {
         "connections": {
           "additionalProperties": {
-            "$ref": "#/definitions/ContainerConnection"
+            "$ref": "#/definitions/Connection"
           },
           "type": "object"
         },
         "container": {
-          "additionalProperties": false,
-          "properties": {
-            "env": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            },
-            "image": {
-              "description": "The registry and image to download and run in your container",
-              "type": "string"
-            },
-            "livenessProbe": {
-              "$ref": "#/definitions/HealthProbeProperties"
-            },
-            "ports": {
-              "additionalProperties": {
-                "$ref": "#/definitions/ContainerPort"
-              },
-              "type": "object"
-            },
-            "readinessProbe": {
-              "$ref": "#/definitions/HealthProbeProperties"
-            },
-            "volumes": {
-              "additionalProperties": {
-                "$ref": "#/definitions/Volume"
-              },
-              "type": "object"
-            }
-          },
-          "required": [
-            "image"
-          ],
-          "type": "object"
+          "$ref": "#/definitions/Container"
         },
         "traits": {
           "description": "Traits spec of the resource",
