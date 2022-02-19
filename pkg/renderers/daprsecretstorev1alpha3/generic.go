@@ -17,7 +17,7 @@ import (
 )
 
 func GetDaprSecretStoreAzureGeneric(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
-	properties := radclient.DaprStateStoreGenericResourceProperties{}
+	properties := radclient.DaprSecretStoreProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func GetDaprSecretStoreKubernetesGeneric(resource renderers.RendererResource) ([
 	}
 
 	output := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDDaprStateStoreGeneric,
+		LocalID:      outputresource.LocalIDDaprSecretStoreGeneric,
 		ResourceKind: resourcekinds.Kubernetes,
 		Managed:      false,
 		Resource:     &secretstoreResource,

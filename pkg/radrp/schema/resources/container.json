@@ -195,6 +195,7 @@
             "dapr.io/InvokeHttp",
             "dapr.io/PubSubTopic",
             "dapr.io/StateStore",
+            "dapr.io/SecretStore",
             "Grpc",
             "Http",
             "microsoft.com/SQL",

@@ -129,6 +129,7 @@ const (
 	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
 	ContainerConnectionKindDaprIoInvokeHTTP ContainerConnectionKind = "dapr.io/InvokeHttp"
 	ContainerConnectionKindDaprIoPubSubTopic ContainerConnectionKind = "dapr.io/PubSubTopic"
+	ContainerConnectionKindDaprIoSecretStore ContainerConnectionKind = "dapr.io/SecretStore"
 	ContainerConnectionKindDaprIoStateStore ContainerConnectionKind = "dapr.io/StateStore"
 	ContainerConnectionKindGrpc ContainerConnectionKind = "Grpc"
 	ContainerConnectionKindHTTP ContainerConnectionKind = "Http"
@@ -146,6 +147,7 @@ func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
 		ContainerConnectionKindAzureComServiceBusQueue,
 		ContainerConnectionKindDaprIoInvokeHTTP,
 		ContainerConnectionKindDaprIoPubSubTopic,
+		ContainerConnectionKindDaprIoSecretStore,
 		ContainerConnectionKindDaprIoStateStore,
 		ContainerConnectionKindGrpc,
 		ContainerConnectionKindHTTP,
