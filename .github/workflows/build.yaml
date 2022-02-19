@@ -367,8 +367,6 @@ jobs:
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     runs-on: self-hosted
     env:
-      DOCKER_REGISTRY: ${{ env.REGISTRY  }}
-
       # Timeout used for Azure functional tests
       AZURE_FUNCTIONALTEST_TIMEOUT: 30m
 
