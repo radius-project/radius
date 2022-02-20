@@ -22,6 +22,8 @@ func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validat
 	h := Handler{RP: rp, ValidatorFactory: validatorFactory, PathPrefix: swaggerDocRoute}
 	var subrouter *mux.Router
 
+	// TODO path should adhere to https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#case-insensitivity-for-requests
+	// for case sensitivity
 	var providerPath = fmt.Sprintf(
 		"%s/subscriptions/{%s}/resource{[gG]}roups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
 		swaggerDocRoute,

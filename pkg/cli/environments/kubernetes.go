@@ -88,28 +88,6 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	}, nil
 }
 
-// func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-// 	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	dynamicClient, err := kubernetes.CreateDynamicClient(e.Context)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	typedClient, _, err := kubernetes.CreateTypedClient(e.Context)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &kubernetes.KubernetesDeploymentClient{
-// 		Client:    client,
-// 		Dynamic:   dynamicClient,
-// 		Typed:     typedClient,
-// 		Namespace: e.Namespace,
-// 	}, nil
-// }
-
 func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
 	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
