@@ -25,7 +25,7 @@ type KubernetesEnvironment struct {
 	Namespace                  string `mapstructure:"namespace" validate:"required"`
 	DefaultApplication         string `mapstructure:"defaultapplication,omitempty"`
 	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
-	APIDeploymentEngineBaseURL string `mapstructure:"apiserverdeploymentenginebaseurl,omitempty"`
+	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
