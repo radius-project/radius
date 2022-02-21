@@ -53,12 +53,13 @@ import (
 
 var options EnvOptions
 var testEnv *envtest.Environment
+var cancel context.CancelFunc
 
 const (
 	retries = 10
 )
 
-func StartController() error {
+func StartController() (*EnvOptions, error) {
 	assetsDirectory := os.Getenv("KUBEBUILDER_ASSETS")
 
 	if assetsDirectory == "" {
@@ -66,8 +67,35 @@ func StartController() error {
 		var err error
 		assetsDirectory, err = getEnvTestBinaryPath()
 		if err != nil {
-			return fmt.Errorf("failed to call setup-envtest to find path: %w", err)
+			return nil, fmt.Errorf("failed to call setup-envtest to find path: %w", err)
 		}
+	}
+
+	original, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	// Walk "up" until we can find 'kubernetestest' on disk
+	testRootDirectory := original
+	for {
+		_, err := os.Stat(filepath.Join(testRootDirectory, "kubernetestest"))
+		if os.IsNotExist(err) {
+			testRootDirectory = filepath.Dir(testRootDirectory)
+
+			if testRootDirectory == "/" || testRootDirectory == filepath.VolumeName(original) {
+				return nil, fmt.Errorf("could not find kubernetestest directory")
+			}
+
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+
+		// Check for the root directory so we don't infinite loop.
+
+		// Found
+		break
 	}
 
 	opts := zap.Options{
@@ -77,11 +105,13 @@ func StartController() error {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "deploy", "Chart", "crds")},
+		CRDDirectoryPaths: []string{
+			filepath.Join(testRootDirectory, "..", "deploy", "Chart", "crds"),
+		},
 		ErrorIfCRDPathMissing: true,
 		BinaryAssetsDirectory: assetsDirectory,
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join("..", "..", "kubernetestest")},
+			Paths: []string{filepath.Join(testRootDirectory, "kubernetestest")},
 		},
 	}
 
@@ -91,29 +121,29 @@ func StartController() error {
 	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
 	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
+	//+kubebuilder:scaffold:scheme
 
 	cfg, err := testEnv.Start()
 	if err != nil {
-		return fmt.Errorf("failed to initialize environment: %w", err)
+		return nil, fmt.Errorf("failed to initialize environment: %w", err)
 	}
-
-	//+kubebuilder:scaffold:scheme
 
 	dynamicClient, err := dynamic.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create dynamic kubernetes client: %w", err)
+		return nil, fmt.Errorf("failed to create dynamic kubernetes client: %w", err)
 	}
 
 	k8s, err := k8s.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create kubernetes client: %w", err)
+		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
 
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create discovery client: %w", err)
+		return nil, fmt.Errorf("failed to create discovery client: %w", err)
 	}
+
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -125,7 +155,7 @@ func StartController() error {
 		MetricsBindAddress: "0",
 	})
 	if err != nil {
-		return fmt.Errorf("failed to initialize manager: %w", err)
+		return nil, fmt.Errorf("failed to initialize manager: %w", err)
 	}
 
 	controllerOptions := radcontroller.Options{
@@ -154,11 +184,13 @@ func StartController() error {
 
 	controller := radcontroller.NewRadiusController(&controllerOptions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	ctx, cc := context.WithCancel(context.Background())
+	cancel = cc
 	go func() {
-		_ = controller.Run(context.Background())
+		_ = controller.Run(ctx)
 	}()
 
 	// Make sure the webhook is started
@@ -169,7 +201,7 @@ func StartController() error {
 		if err != nil {
 			if i == retries-1 {
 				// if we can't connect after 10 attempts, fail
-				return fmt.Errorf("failed to connect to webhook: %w", err)
+				return nil, fmt.Errorf("failed to connect to webhook: %w", err)
 			}
 			time.Sleep(time.Second)
 			continue
@@ -179,16 +211,21 @@ func StartController() error {
 	}
 
 	options = EnvOptions{
-		K8s:     k8s,
-		Dynamic: dynamicClient,
-		Scheme:  mgr.GetScheme(),
-		Mapper:  mapper,
+		K8s:           k8s,
+		RuntimeClient: mgr.GetClient(),
+		Dynamic:       dynamicClient,
+		Scheme:        mgr.GetScheme(),
+		Mapper:        mapper,
 	}
 
-	return nil
+	return &options, nil
 }
 
 func StopController() error {
+	if cancel != nil {
+		cancel()
+	}
+
 	return testEnv.Stop()
 }
 
@@ -273,10 +310,11 @@ type ControllerTest struct {
 }
 
 type EnvOptions struct {
-	K8s     *k8s.Clientset
-	Dynamic dynamic.Interface
-	Scheme  *runtime.Scheme
-	Mapper  *restmapper.DeferredDiscoveryRESTMapper
+	K8s           *k8s.Clientset
+	RuntimeClient client.Client
+	Dynamic       dynamic.Interface
+	Scheme        *runtime.Scheme
+	Mapper        *restmapper.DeferredDiscoveryRESTMapper
 }
 
 func NewControllerTest(ctx context.Context, row ControllerStep) ControllerTest {

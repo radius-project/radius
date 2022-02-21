@@ -16,7 +16,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	err := kubernetestest.StartController()
+	_, err := kubernetestest.StartController()
 	if err != nil {
 		panic(err)
 	}
