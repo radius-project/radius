@@ -86,6 +86,7 @@ webhooks:
     - rabbitmqmessagequeues
     - httproutes
     - dapriostatestores
+    - dapriosecretstores
   sideEffects: None
 - admissionReviewVersions:
   - v1

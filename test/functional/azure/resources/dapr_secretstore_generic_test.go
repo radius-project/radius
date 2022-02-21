@@ -11,15 +11,15 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
-	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/daprsecretstorev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_DaprSecretStoreGeneric(t *testing.T) {
-	application := "azure-resources-dapr-statestore-generic"
-	template := "testdata/azure-resources-dapr-statestore-generic.bicep"
+	application := "azure-resources-dapr-secretstore-generic"
+	template := "testdata/azure-resources-dapr-secretstore-generic.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor:           azuretest.NewDeployStepExecutor(template),
@@ -39,7 +39,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 					{
 						ApplicationName: application,
 						ResourceName:    "secretstore-generic",
-						ResourceType:    daprstatestorev1alpha3.ResourceType,
+						ResourceType:    daprsecretstorev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDaprStateStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreGeneric, outputresource.TypeKubernetes, resourcekinds.DaprStateStoreGeneric, false, false, rest.OutputResourceStatus{}),
 						},

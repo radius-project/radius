@@ -327,7 +327,7 @@ func (in *DaprIOSecretStoreList) DeepCopyInto(out *DaprIOSecretStoreList) {
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]DaprIOStateStore, len(*in))
+		*out = make([]DaprIOSecretStore, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

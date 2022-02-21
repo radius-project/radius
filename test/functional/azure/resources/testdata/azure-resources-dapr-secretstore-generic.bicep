@@ -16,7 +16,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
   
-  resource secretstore 'dapr.io.StateStore@v1alpha3' = {
+  resource secretstore 'dapr.io.SecretStore@v1alpha3' = {
     name: 'secretstore-generic'
     properties: {
       kind: 'generic'

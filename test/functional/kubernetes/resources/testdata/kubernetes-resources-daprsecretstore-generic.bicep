@@ -5,7 +5,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'myapp'
     properties: {
       connections: {
-        daprstatestore: {
+        daprsecretstore: {
           kind: 'dapr.io/SecretStore'
           source: secretstore.id
         }

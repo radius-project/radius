@@ -16,8 +16,8 @@ import (
 )
 
 func Test_DaprSecretStore_Generic(t *testing.T) {
-	template := "testdata/kubernetes-resources-daprstatestore-generic.bicep"
-	application := "kubernetes-resources-daprstatestore-generic"
+	template := "testdata/kubernetes-resources-daprsecretstore-generic.bicep"
+	application := "kubernetes-resources-daprsecretstore-generic"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
@@ -34,7 +34,7 @@ func Test_DaprSecretStore_Generic(t *testing.T) {
 						ApplicationName: application,
 						ResourceName:    "secretstore",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprStateStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreGeneric, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprSecretStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprSecretStoreGeneric, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
