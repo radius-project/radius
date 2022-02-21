@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/project-radius/radius/pkg/azure/aks"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
 	"github.com/project-radius/radius/pkg/cli/azure"
@@ -64,11 +65,25 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+	auth, err := armauth.GetArmAuthorizer()
+	if err != nil {
+		return nil, err
+	}
+
 	client := localrp.LocalRPDeploymentClient{
 		SubscriptionID: e.SubscriptionID,
 		ResourceGroup:  e.ResourceGroup,
 		Providers: map[string]providers.Provider{
+			// Send ARM types to Azure
 			providers.AzureProviderImport: &providers.AzureProvider{
+				Authorizer:     auth,
+				BaseURL:        "https://management.azure.com",
+				SubscriptionID: e.SubscriptionID,
+				ResourceGroup:  e.ResourceGroup,
+			},
+
+			// Send Radius types to the local RP
+			providers.RadiusProviderImport: &providers.AzureProvider{
 				Authorizer:     nil,
 				BaseURL:        e.URL,
 				SubscriptionID: e.SubscriptionID,
