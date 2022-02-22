@@ -71,6 +71,12 @@ func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 	return section, nil
 }
 
+func UpdateEnvironmentSectionOnCreation(v *viper.Viper, env EnvironmentSection, name string) {
+	//assign default env to latest env if not empty otherwise assign resourceGroup
+	env.Default = name
+	UpdateEnvironmentSection(v, env);
+}
+
 // UpdateEnvironmentSection updates the EnvironmentSection in radius config.
 func UpdateEnvironmentSection(v *viper.Viper, env EnvironmentSection) {
 	v.Set(EnvironmentKey, env)
