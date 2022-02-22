@@ -16,14 +16,14 @@ define generateDockerTargets
 ifeq ($(strip $(4)),go)
 .PHONY: docker-build-$(1)
 docker-build-$(1): build-$(1)-linux-amd64
-	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
+	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	$(eval DOCKER_OUT_DIR=$(OUT_DIR)/docker/linux_amd64)
 	@mkdir -p $(DOCKER_OUT_DIR)/$(1)
 	@cp -v $(3) $(DOCKER_OUT_DIR)/$(1)
 	@cp -v $(BINS_OUT_DIR_linux_amd64)/$(1) $(DOCKER_OUT_DIR)/$(1)
 
 	cd $(DOCKER_OUT_DIR)/$(1) && docker build $(2) \
-		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
+		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
 else
@@ -36,7 +36,7 @@ docker-build-$(1):
 endif
 .PHONY: docker-push-$(1)
 docker-push-$(1):
-	@echo "$(ARROW) Pushing image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
+	@echo "$(ARROW) Pushing image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	docker push $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)
 endef
 

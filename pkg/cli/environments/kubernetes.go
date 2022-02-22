@@ -69,21 +69,21 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		return nil, err
 	}
 
-	dc := azclients.NewDeploymentsClientWithBaseURI(url, "temp")
+	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.Namespace)
 
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
 
 	dc.Sender = &sender{RoundTripper: roundTripper}
 
-	op := azclients.NewOperationsClientWithBaseUri(url, "temp")
+	op := azclients.NewOperationsClientWithBaseUri(url, e.Namespace)
 	op.PollingDelay = 5 * time.Second
 	op.Sender = &sender{RoundTripper: roundTripper}
 
 	return &azure.ARMDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
-		SubscriptionID:   "temp",
+		SubscriptionID:   e.Namespace,
 		ResourceGroup:    e.Namespace,
 	}, nil
 }

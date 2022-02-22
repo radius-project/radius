@@ -39,8 +39,12 @@ import (
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
-const APIServerBasePath = "/apis/api.radius.dev/v1alpha3"
-const DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
+const (
+	APIServerBasePath        = "/apis/api.radius.dev/v1alpha3"
+	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
+	Location                 = "Location"
+	AzureAsyncOperation      = "Azure-AsyncOperation"
+)
 
 var (
 	Scheme = runtime.NewScheme()
@@ -301,19 +305,19 @@ func (t *LocationRewriteRoundTripper) RoundTrip(request *http.Request) (*http.Re
 		return nil, err
 	}
 
-	value, ok := res.Header[textproto.CanonicalMIMEHeaderKey("Location")]
+	value, ok := res.Header[textproto.CanonicalMIMEHeaderKey(Location)]
 	if ok && len(value) > 0 {
 		u := GetFixedHeader(value, t.Scheme, t.Host)
 		if u != nil {
-			res.Header[textproto.CanonicalMIMEHeaderKey("Location")] = []string{u.String()}
+			res.Header[textproto.CanonicalMIMEHeaderKey(Location)] = []string{u.String()}
 		}
 	}
 
-	valueAsync, ok := res.Header[textproto.CanonicalMIMEHeaderKey("Azure-AsyncOperation")]
+	valueAsync, ok := res.Header[textproto.CanonicalMIMEHeaderKey(AzureAsyncOperation)]
 	if ok && len(valueAsync) > 0 {
 		u := GetFixedHeader(valueAsync, t.Scheme, t.Host)
 		if u != nil {
-			res.Header[textproto.CanonicalMIMEHeaderKey("Azure-AsyncOperation")] = []string{u.String()}
+			res.Header[textproto.CanonicalMIMEHeaderKey(AzureAsyncOperation)] = []string{u.String()}
 		}
 	}
 

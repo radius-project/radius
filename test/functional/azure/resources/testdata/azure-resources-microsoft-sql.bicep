@@ -30,7 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
-      resource: server::db.id
+      resource: server::dbinner.id
     }
   }
 }
@@ -46,7 +46,7 @@ resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
     administratorLoginPassword: adminPassword
   }
 
-  resource db 'databases' = {
+  resource dbinner 'databases' = {
     name: 'cool-database'
     location: resourceGroup().location
   }
