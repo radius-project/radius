@@ -111,6 +111,8 @@ stages:
         dist/rad env uninstall kubernetes
         ./.github/scripts/namespace-is-empty.sh
       displayName: rad env uninstall kubernetes
+    - publish: $(Build.SourcesDirectory)/dist/container_logs
+      displayName: Publish container logs
   - job: Azure
     pool:
       vmImage: 'ubuntu-latest'
