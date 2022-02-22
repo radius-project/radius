@@ -52,7 +52,7 @@ stages:
       displayName: Login to ACR
       inputs:
         command: login
-        containerRegistry: radiusdev-acr  # Service connection for ACR: https://dev.azure.com/azure-octo/Incubations/_settings/adminservices?resourceId=09d4666f-2486-4dbf-a599-f95622e1ad29
+        containerRegistry: radiusdev-acr  # Service connection of radiusdev ACR: https://dev.azure.com/azure-octo/Incubations/_settings/adminservices?resourceId=09d4666f-2486-4dbf-a599-f95622e1ad29
     - script: |
         export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
