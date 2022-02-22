@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/kubernetes/kubectl"
 	"github.com/spf13/cobra"
 )
@@ -50,5 +51,8 @@ func envUninstallKubernetes(cmd *cobra.Command, args []string) error {
 
 	err = helm.RunRadiusHelmUninstall(helmConf)
 
+	if err == nil {
+		output.LogInfo("Finished uninstalling resources from namespace: %s", helm.RadiusSystemNamespace)
+	}
 	return err
 }
