@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -100,6 +101,7 @@ func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 }
 
 func RunHAProxyHelmUninstall(helmConf *helm.Configuration) error {
+	output.LogInfo("Uninstalling HAProxy Ingress from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true

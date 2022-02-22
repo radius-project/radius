@@ -42,7 +42,7 @@ func envUninstallKubernetes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-  
+
 	err = helm.RunHAProxyHelmUninstall(helmConf)
 	if err != nil {
 		return err
