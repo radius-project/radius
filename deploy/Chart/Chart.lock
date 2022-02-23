@@ -1,0 +1,6 @@
+dependencies:
+- name: deployment-engine
+  repository: https://radius.azurecr.io/helm/v1/repo
+  version: 0.42.42-dev-59049750b80002dbf44bc77b24ca6cc905559f34
+digest: sha256:200eb2373ff44313a71685dc576cba33cc0e4ab9f4b1676e47e61e145a71acd0
+generated: "2022-02-23T14:38:50.901181-08:00"

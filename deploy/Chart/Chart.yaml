@@ -13,5 +13,5 @@ dependencies:
   #   version: '42.42.42-dev'
   #   repository: "file://apiserver"
   - name: deployment-engine
-    version: '0.9.0-alpha-7847883b898fe7a2a9712f9b6a6388d7ef7c275f'
+    version: '0.42.42-dev-59049750b80002dbf44bc77b24ca6cc905559f34'
     repository: https://radius.azurecr.io/helm/v1/repo
