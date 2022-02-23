@@ -8,10 +8,7 @@ version: '0.42.42-dev'
 dependencies:
   - name: radius
     version: '0.42.42-dev'
-    repository: "file://radius"
-  # - name: apiserver
-  #   version: '42.42.42-dev'
-  #   repository: "file://apiserver"
+    repository: "file://dependency_chart/radius"
   - name: deployment-engine
     version: '0.42.42-dev-59049750b80002dbf44bc77b24ca6cc905559f34'
     repository: https://radius.azurecr.io/helm/v1/repo

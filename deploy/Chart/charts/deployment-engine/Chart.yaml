@@ -1,0 +1,5 @@
+apiVersion: v2
+description: Radius implementation of the ARM Deployment Engine
+name: deployment-engine
+type: application
+version: 0.42.42-dev-59049750b80002dbf44bc77b24ca6cc905559f34
