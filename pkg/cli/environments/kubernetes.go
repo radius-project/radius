@@ -7,7 +7,11 @@ package environments
 
 import (
 	"context"
+	"net/http"
+	"time"
 
+	"github.com/Azure/go-autorest/autorest"
+	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -15,12 +19,13 @@ import (
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
 type KubernetesEnvironment struct {
-	Name               string `mapstructure:"name" validate:"required"`
-	Kind               string `mapstructure:"kind" validate:"required"`
-	Context            string `mapstructure:"context" validate:"required"`
-	Namespace          string `mapstructure:"namespace" validate:"required"`
-	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
-	APIServerBaseURL   string `mapstructure:"apiserverbaseurl,omitempty"`
+	Name                       string `mapstructure:"name" validate:"required"`
+	Kind                       string `mapstructure:"kind" validate:"required"`
+	Context                    string `mapstructure:"context" validate:"required"`
+	Namespace                  string `mapstructure:"namespace" validate:"required"`
+	DefaultApplication         string `mapstructure:"defaultapplication,omitempty"`
+	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
+	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
@@ -47,25 +52,39 @@ func (e *KubernetesEnvironment) GetStatusLink() string {
 	return ""
 }
 
+var _ autorest.Sender = (*sender)(nil)
+
+type sender struct {
+	RoundTripper http.RoundTripper
+}
+
+func (s *sender) Do(request *http.Request) (*http.Response, error) {
+	return s.RoundTripper.RoundTrip(request)
+}
+
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
-	if err != nil {
-		return nil, err
-	}
-	dynamicClient, err := kubernetes.CreateDynamicClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
-	typedClient, _, err := kubernetes.CreateTypedClient(e.Context)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return &kubernetes.KubernetesDeploymentClient{
-		Client:    client,
-		Dynamic:   dynamicClient,
-		Typed:     typedClient,
-		Namespace: e.Namespace,
+	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.Namespace)
+
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
+
+	dc.Sender = &sender{RoundTripper: roundTripper}
+
+	op := azclients.NewOperationsClientWithBaseUri(url, e.Namespace)
+	op.PollingDelay = 5 * time.Second
+	op.Sender = &sender{RoundTripper: roundTripper}
+
+	return &azure.ARMDeploymentClient{
+		Client:           dc,
+		OperationsClient: op,
+		SubscriptionID:   e.Namespace,
+		ResourceGroup:    e.Namespace,
 	}, nil
 }
 

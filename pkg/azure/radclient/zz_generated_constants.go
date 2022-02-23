@@ -120,44 +120,44 @@ func (c CheckNameAvailabilityReason) ToPtr() *CheckNameAvailabilityReason {
 	return &c
 }
 
-// ContainerConnectionKind - The kind of connection
-type ContainerConnectionKind string
+// ConnectionKind - The kind of connection
+type ConnectionKind string
 
 const (
-	ContainerConnectionKindAzure ContainerConnectionKind = "azure"
-	ContainerConnectionKindAzureComKeyVault ContainerConnectionKind = "azure.com/KeyVault"
-	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
-	ContainerConnectionKindDaprIoInvokeHTTP ContainerConnectionKind = "dapr.io/InvokeHttp"
-	ContainerConnectionKindDaprIoPubSubTopic ContainerConnectionKind = "dapr.io/PubSubTopic"
-	ContainerConnectionKindDaprIoStateStore ContainerConnectionKind = "dapr.io/StateStore"
-	ContainerConnectionKindGrpc ContainerConnectionKind = "Grpc"
-	ContainerConnectionKindHTTP ContainerConnectionKind = "Http"
-	ContainerConnectionKindMicrosoftComSQL ContainerConnectionKind = "microsoft.com/SQL"
-	ContainerConnectionKindMongoComMongoDB ContainerConnectionKind = "mongo.com/MongoDB"
-	ContainerConnectionKindRabbitmqComMessageQueue ContainerConnectionKind = "rabbitmq.com/MessageQueue"
-	ContainerConnectionKindRedislabsComRedis ContainerConnectionKind = "redislabs.com/Redis"
+	ConnectionKindAzure ConnectionKind = "azure"
+	ConnectionKindAzureComKeyVault ConnectionKind = "azure.com/KeyVault"
+	ConnectionKindAzureComServiceBusQueue ConnectionKind = "azure.com/ServiceBusQueue"
+	ConnectionKindDaprIoInvokeHTTP ConnectionKind = "dapr.io/InvokeHttp"
+	ConnectionKindDaprIoPubSubTopic ConnectionKind = "dapr.io/PubSubTopic"
+	ConnectionKindDaprIoStateStore ConnectionKind = "dapr.io/StateStore"
+	ConnectionKindGrpc ConnectionKind = "Grpc"
+	ConnectionKindHTTP ConnectionKind = "Http"
+	ConnectionKindMicrosoftComSQL ConnectionKind = "microsoft.com/SQL"
+	ConnectionKindMongoComMongoDB ConnectionKind = "mongo.com/MongoDB"
+	ConnectionKindRabbitmqComMessageQueue ConnectionKind = "rabbitmq.com/MessageQueue"
+	ConnectionKindRedislabsComRedis ConnectionKind = "redislabs.com/Redis"
 )
 
-// PossibleContainerConnectionKindValues returns the possible values for the ContainerConnectionKind const type.
-func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
-	return []ContainerConnectionKind{	
-		ContainerConnectionKindAzure,
-		ContainerConnectionKindAzureComKeyVault,
-		ContainerConnectionKindAzureComServiceBusQueue,
-		ContainerConnectionKindDaprIoInvokeHTTP,
-		ContainerConnectionKindDaprIoPubSubTopic,
-		ContainerConnectionKindDaprIoStateStore,
-		ContainerConnectionKindGrpc,
-		ContainerConnectionKindHTTP,
-		ContainerConnectionKindMicrosoftComSQL,
-		ContainerConnectionKindMongoComMongoDB,
-		ContainerConnectionKindRabbitmqComMessageQueue,
-		ContainerConnectionKindRedislabsComRedis,
+// PossibleConnectionKindValues returns the possible values for the ConnectionKind const type.
+func PossibleConnectionKindValues() []ConnectionKind {
+	return []ConnectionKind{	
+		ConnectionKindAzure,
+		ConnectionKindAzureComKeyVault,
+		ConnectionKindAzureComServiceBusQueue,
+		ConnectionKindDaprIoInvokeHTTP,
+		ConnectionKindDaprIoPubSubTopic,
+		ConnectionKindDaprIoStateStore,
+		ConnectionKindGrpc,
+		ConnectionKindHTTP,
+		ConnectionKindMicrosoftComSQL,
+		ConnectionKindMongoComMongoDB,
+		ConnectionKindRabbitmqComMessageQueue,
+		ConnectionKindRedislabsComRedis,
 	}
 }
 
-// ToPtr returns a *ContainerConnectionKind pointing to the current value.
-func (c ContainerConnectionKind) ToPtr() *ContainerConnectionKind {
+// ToPtr returns a *ConnectionKind pointing to the current value.
+func (c ConnectionKind) ToPtr() *ConnectionKind {
 	return &c
 }
 

@@ -551,7 +551,11 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 				if event.Type == watchk8s.Error {
 					status, ok := event.Object.(*metav1.Status)
 					if ok {
-						t.Errorf("pod watch error with status reason: %s, message: %s", status.Reason, status.Message)
+						if status.Reason == "Expired" {
+							t.Logf("skipped pod watch expiration error: %s", status.Message)
+						} else {
+							t.Errorf("pod watch error with status reason: %s, message: %s", status.Reason, status.Message)
+						}
 					}
 				}
 				require.IsTypef(t, &corev1.Pod{}, event.Object, "object %T is not a pod", event.Object)

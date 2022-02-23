@@ -29,7 +29,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/hosting"
-	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/project-radius/radius/pkg/kubernetes/apiserver"
 	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
@@ -49,8 +48,6 @@ func init() {
 	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
 
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
-
-	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 
 	//+kubebuilder:scaffold:scheme
 }

@@ -37,13 +37,14 @@ const (
 )
 
 // NewResourceProvider creates a new ResourceProvider.
-func NewResourceProvider(client controller_runtime.Client, baseURL string) resourceprovider.ResourceProvider {
-	return &rp{client: client, baseURL: baseURL}
+func NewResourceProvider(client controller_runtime.Client, baseURL string, scheme string) resourceprovider.ResourceProvider {
+	return &rp{client: client, baseURL: baseURL, scheme: scheme}
 }
 
 type rp struct {
 	client  controller_runtime.Client
 	baseURL string
+	scheme  string
 }
 
 // As a general design principle, returning an error from the RP signals an internal error (500).
@@ -450,7 +451,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 		return nil, err
 	}
 
-	return rest.NewAcceptedAsyncResponse(output, r.baseURL+oid.ID), nil
+	return rest.NewAcceptedAsyncResponse(output, r.baseURL+oid.ID, r.scheme), nil
 }
 
 func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
@@ -612,7 +613,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 	if resource.Status.Phrase != "Deployed" || resource.Generation != resource.Status.ObservedGeneration {
 		// Operation is still processing.
 		// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
-		return rest.NewAcceptedAsyncResponse(output, r.baseURL+id.ID), nil
+		return rest.NewAcceptedAsyncResponse(output, r.baseURL+id.ID, r.scheme), nil
 	}
 
 	return rest.NewOKResponse(output), nil

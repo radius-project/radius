@@ -24,7 +24,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'mongo.com.MongoDatabase' = {
     name: 'db'
     properties: {
-      resource: account::db.id
+      resource: account::dbinner.id
     }
   }
 }
@@ -50,7 +50,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     databaseAccountOfferType: 'Standard'
   }
 
-  resource db 'mongodbDatabases' = {
+  resource dbinner 'mongodbDatabases' = {
     name: 'mydb'
     properties: {
       resource: {

@@ -544,20 +544,10 @@ type CheckNameAvailabilityResponse struct {
 	Reason *CheckNameAvailabilityReason `json:"reason,omitempty"`
 }
 
-// ContainerBeginCreateOrUpdateOptions contains the optional parameters for the Container.BeginCreateOrUpdate method.
-type ContainerBeginCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ContainerBeginDeleteOptions contains the optional parameters for the Container.BeginDelete method.
-type ContainerBeginDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ContainerConnection - Specifies a connection from the container to another resource
-type ContainerConnection struct {
+// Connection - Specifies a connection to another resource
+type Connection struct {
 	// REQUIRED; The kind of connection
-	Kind *ContainerConnectionKind `json:"kind,omitempty"`
+	Kind *ConnectionKind `json:"kind,omitempty"`
 
 	// REQUIRED; The source of the connection
 	Source *string `json:"source,omitempty"`
@@ -566,13 +556,91 @@ type ContainerConnection struct {
 	Roles []*string `json:"roles,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ContainerConnection.
-func (c ContainerConnection) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type Connection.
+func (c Connection) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "kind", c.Kind)
 	populate(objectMap, "roles", c.Roles)
 	populate(objectMap, "source", c.Source)
 	return json.Marshal(objectMap)
+}
+
+// Container - Definition of a container.
+type Container struct {
+	// REQUIRED; The registry and image to download and run in your container
+	Image *string `json:"image,omitempty"`
+
+	// Dictionary of
+	Env map[string]*string `json:"env,omitempty"`
+
+	// Properties for readiness/liveness probe
+	LivenessProbe HealthProbePropertiesClassification `json:"livenessProbe,omitempty"`
+
+	// Dictionary of
+	Ports map[string]*ContainerPort `json:"ports,omitempty"`
+
+	// Properties for readiness/liveness probe
+	ReadinessProbe HealthProbePropertiesClassification `json:"readinessProbe,omitempty"`
+
+	// Dictionary of
+	Volumes map[string]VolumeClassification `json:"volumes,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type Container.
+func (c Container) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "env", c.Env)
+	populate(objectMap, "image", c.Image)
+	populate(objectMap, "livenessProbe", c.LivenessProbe)
+	populate(objectMap, "ports", c.Ports)
+	populate(objectMap, "readinessProbe", c.ReadinessProbe)
+	populate(objectMap, "volumes", c.Volumes)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type Container.
+func (c *Container) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "env":
+				err = unpopulate(val, &c.Env)
+				delete(rawMsg, key)
+		case "image":
+				err = unpopulate(val, &c.Image)
+				delete(rawMsg, key)
+		case "livenessProbe":
+				c.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+				delete(rawMsg, key)
+		case "ports":
+				err = unpopulate(val, &c.Ports)
+				delete(rawMsg, key)
+		case "readinessProbe":
+				c.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+				delete(rawMsg, key)
+		case "volumes":
+				c.Volumes, err = unmarshalVolumeClassificationMap(val)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ContainerBeginCreateOrUpdateOptions contains the optional parameters for the Container.BeginCreateOrUpdate method.
+type ContainerBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ContainerBeginDeleteOptions contains the optional parameters for the Container.BeginDelete method.
+type ContainerBeginDeleteOptions struct {
+	// placeholder for future optional parameters
 }
 
 // ContainerGetOptions contains the optional parameters for the Container.Get method.
@@ -613,8 +681,10 @@ type ContainerPort struct {
 type ContainerProperties struct {
 	BasicResourceProperties
 	// Dictionary of
-	Connections map[string]*ContainerConnection `json:"connections,omitempty"`
-	Container *ContainerPropertiesContainer `json:"container,omitempty"`
+	Connections map[string]*Connection `json:"connections,omitempty"`
+
+	// Definition of a container.
+	Container *Container `json:"container,omitempty"`
 
 	// Traits spec of the resource
 	Traits []ResourceTraitClassification `json:"traits,omitempty"`
@@ -655,73 +725,6 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 	}
 	if err := c.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
-	}
-	return nil
-}
-
-type ContainerPropertiesContainer struct {
-	// REQUIRED; The registry and image to download and run in your container
-	Image *string `json:"image,omitempty"`
-
-	// Dictionary of
-	Env map[string]*string `json:"env,omitempty"`
-
-	// Properties for readiness/liveness probe
-	LivenessProbe HealthProbePropertiesClassification `json:"livenessProbe,omitempty"`
-
-	// Dictionary of
-	Ports map[string]*ContainerPort `json:"ports,omitempty"`
-
-	// Properties for readiness/liveness probe
-	ReadinessProbe HealthProbePropertiesClassification `json:"readinessProbe,omitempty"`
-
-	// Dictionary of
-	Volumes map[string]VolumeClassification `json:"volumes,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ContainerPropertiesContainer.
-func (c ContainerPropertiesContainer) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "env", c.Env)
-	populate(objectMap, "image", c.Image)
-	populate(objectMap, "livenessProbe", c.LivenessProbe)
-	populate(objectMap, "ports", c.Ports)
-	populate(objectMap, "readinessProbe", c.ReadinessProbe)
-	populate(objectMap, "volumes", c.Volumes)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerPropertiesContainer.
-func (c *ContainerPropertiesContainer) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "env":
-				err = unpopulate(val, &c.Env)
-				delete(rawMsg, key)
-		case "image":
-				err = unpopulate(val, &c.Image)
-				delete(rawMsg, key)
-		case "livenessProbe":
-				c.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
-				delete(rawMsg, key)
-		case "ports":
-				err = unpopulate(val, &c.Ports)
-				delete(rawMsg, key)
-		case "readinessProbe":
-				c.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
-				delete(rawMsg, key)
-		case "volumes":
-				c.Volumes, err = unmarshalVolumeClassificationMap(val)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }

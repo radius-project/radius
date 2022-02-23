@@ -123,6 +123,14 @@ func NewDeploymentsClient(subscriptionID string, authorizer autorest.Authorizer)
 	return dc
 }
 
+func NewDeploymentsClientWithBaseURI(uri string, subscriptionID string) resources.DeploymentsClient {
+	dc := resources.NewDeploymentsClientWithBaseURI(uri, subscriptionID)
+	// Don't set a timeout, the user can cancel the command if they want a timeout.
+	dc.PollingDuration = 0
+
+	return dc
+}
+
 func NewWebClient(subscriptionID string, authorizer autorest.Authorizer) web.AppsClient {
 	webc := web.NewAppsClient(subscriptionID)
 	webc.Authorizer = authorizer
@@ -224,6 +232,12 @@ func NewFileSharesClient(subscriptionID string, authorizer autorest.Authorizer) 
 func NewOperationsClient(subscriptionID string, authorizer autorest.Authorizer) resources.DeploymentOperationsClient {
 	doc := resources.NewDeploymentOperationsClient(subscriptionID)
 	doc.Authorizer = authorizer
+	doc.PollingDuration = 0
+	return doc
+}
+
+func NewOperationsClientWithBaseUri(uri string, subscriptionID string) resources.DeploymentOperationsClient {
+	doc := resources.NewDeploymentOperationsClientWithBaseURI(uri, subscriptionID)
 	doc.PollingDuration = 0
 	return doc
 }
