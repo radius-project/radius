@@ -16,10 +16,6 @@ import (
 )
 
 const (
-	appName                = "test-app"
-	resourceName           = "test-resource"
-	daprVersion            = "dapr.io/v1alpha1"
-	k8sKind                = "Component"
 	secretStoreType        = "azure.keyvault"
 	daprSecretStoreVersion = "v1"
 )

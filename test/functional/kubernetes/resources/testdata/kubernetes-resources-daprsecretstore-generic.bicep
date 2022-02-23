@@ -1,5 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'kubernetes-resources-daprstatestore-generic'
+  name: 'kubernetes-resources-daprsecretstore-generic'
 
   resource myapp 'Container' = {
     name: 'myapp'
