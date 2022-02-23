@@ -102,10 +102,11 @@ func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req 
 type CreatedAsyncResponse struct {
 	Body     interface{}
 	Location string
+	Scheme   string
 }
 
-func NewCreatedAsyncResponse(body interface{}, location string) Response {
-	return &CreatedAsyncResponse{Body: body, Location: location}
+func NewCreatedAsyncResponse(body interface{}, location string, scheme string) Response {
+	return &CreatedAsyncResponse{Body: body, Location: location, Scheme: scheme}
 }
 
 func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
@@ -130,7 +131,7 @@ func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter,
 	}
 
 	if location.Scheme == "" {
-		location.Scheme = "http"
+		location.Scheme = r.Scheme
 	}
 
 	w.Header().Add("Content-Type", "application/json")
@@ -150,10 +151,11 @@ func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter,
 type AcceptedAsyncResponse struct {
 	Body     interface{}
 	Location string
+	Scheme   string
 }
 
-func NewAcceptedAsyncResponse(body interface{}, location string) Response {
-	return &AcceptedAsyncResponse{Body: body, Location: location}
+func NewAcceptedAsyncResponse(body interface{}, location string, scheme string) Response {
+	return &AcceptedAsyncResponse{Body: body, Location: location, Scheme: scheme}
 }
 
 func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
@@ -178,7 +180,7 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 	}
 
 	if location.Scheme == "" {
-		location.Scheme = "http"
+		location.Scheme = r.Scheme
 	}
 
 	logger.Info(fmt.Sprintf("Returning location: %s", location.String()))

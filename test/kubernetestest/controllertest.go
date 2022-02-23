@@ -30,7 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	bicepv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/bicep/v1alpha3"
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
 	controllers "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
 	radcontroller "github.com/project-radius/radius/pkg/kubernetes/controllers/radius"
@@ -120,7 +119,6 @@ func StartController() (*EnvOptions, error) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(radiusv1alpha3.AddToScheme(scheme))
-	utilruntime.Must(bicepv1alpha3.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 
 	cfg, err := testEnv.Start()

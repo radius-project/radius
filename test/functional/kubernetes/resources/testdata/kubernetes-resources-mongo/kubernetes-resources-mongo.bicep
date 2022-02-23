@@ -3,12 +3,14 @@ import kubernetes from kubernetes
 resource mongoService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'mongo-svc'
+    namespace: 'default'
   }
 }
 
 resource mongoSecret 'kubernetes.core/Secret@v1' existing = {
   metadata: {
     name: 'mongo-pw'
+    namespace: 'default'
   }
 }
 

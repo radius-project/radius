@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,15 +29,36 @@ import (
 	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
-const APIServerBasePath = "/apis/api.radius.dev/v1alpha3"
+const (
+	APIServerBasePath        = "/apis/api.radius.dev/v1alpha3"
+	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
+	Location                 = "Location"
+	AzureAsyncOperation      = "Azure-AsyncOperation"
+)
+
+var (
+	Scheme = runtime.NewScheme()
+)
+
+func init() {
+	// Adds all types to the client.Client scheme
+	// Any time we add a new type to to radius,
+	// we need to add it here.
+	// TODO centralize these calls.
+	_ = clientgoscheme.AddToScheme(Scheme)
+	_ = radiusv1alpha3.AddToScheme(Scheme)
+	_ = gatewayv1alpha1.AddToScheme(Scheme)
+}
 
 func ReadKubeConfig() (*api.Config, error) {
 	var kubeConfig string
@@ -68,7 +90,7 @@ func CreateExtensionClient(context string) (clientset.Interface, error) {
 	return client, err
 }
 
-func CreateRestRoundTripper(context string, overrideURL string) (http.RoundTripper, error) {
+func CreateRestRoundTripper(context string, group string, overrideURL string) (http.RoundTripper, error) {
 	if overrideURL != "" {
 		return http.DefaultTransport, nil
 	}
@@ -77,7 +99,7 @@ func CreateRestRoundTripper(context string, overrideURL string) (http.RoundTripp
 	if err != nil {
 		return nil, err
 	}
-	gv := schema.GroupVersion{Group: "api.radius.dev", Version: "v1alpha3"}
+	gv := schema.GroupVersion{Group: group, Version: "v1alpha3"}
 	merged.GroupVersion = &gv
 	merged.APIPath = "/apis"
 	merged.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
@@ -92,6 +114,40 @@ func CreateRestRoundTripper(context string, overrideURL string) (http.RoundTripp
 
 func CreateAPIServerConnection(context string, overrideURL string) (string, *arm.Connection, error) {
 
+	baseURL, roundTripper, err := GetBaseUrlAndRoundTripper(overrideURL, "api.radius.dev", context)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
+		HTTPClient: &KubernetesTransporter{Client: roundTripper},
+	}), nil
+}
+
+func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string) (string, http.RoundTripper, error) {
+	var baseURL string
+	var roundTripper http.RoundTripper
+	if overrideURL != "" {
+		baseURL = strings.TrimSuffix(overrideURL, "/") + DeploymentEngineBasePath
+		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
+	} else {
+		restConfig, err := GetConfig(context)
+		if err != nil {
+			return "", nil, err
+		}
+
+		roundTripper, err = CreateRestRoundTripper(context, "api.bicep.dev", overrideURL)
+		if err != nil {
+			return "", nil, err
+		}
+
+		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + DeploymentEngineBasePath
+		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
+	}
+	return baseURL, roundTripper, nil
+}
+
+func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
 	if overrideURL != "" {
@@ -103,7 +159,7 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 			return "", nil, err
 		}
 
-		roundTripper, err = CreateRestRoundTripper(context, overrideURL)
+		roundTripper, err = CreateRestRoundTripper(context, group, overrideURL)
 		if err != nil {
 			return "", nil, err
 		}
@@ -111,10 +167,7 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
 		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
-
-	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
-		HTTPClient: &KubernetesTransporter{Client: roundTripper},
-	}), nil
+	return baseURL, roundTripper, nil
 }
 
 func CreateRestConfig(context string) (*rest.Config, error) {
@@ -252,31 +305,45 @@ func (t *LocationRewriteRoundTripper) RoundTrip(request *http.Request) (*http.Re
 		return nil, err
 	}
 
-	value, ok := res.Header[textproto.CanonicalMIMEHeaderKey("Location")]
-	if !ok || len(value) == 0 {
-		return res, nil
+	value, ok := res.Header[textproto.CanonicalMIMEHeaderKey(Location)]
+	if ok && len(value) > 0 {
+		u := GetFixedHeader(value, t.Scheme, t.Host)
+		if u != nil {
+			res.Header[textproto.CanonicalMIMEHeaderKey(Location)] = []string{u.String()}
+		}
 	}
 
+	valueAsync, ok := res.Header[textproto.CanonicalMIMEHeaderKey(AzureAsyncOperation)]
+	if ok && len(valueAsync) > 0 {
+		u := GetFixedHeader(valueAsync, t.Scheme, t.Host)
+		if u != nil {
+			res.Header[textproto.CanonicalMIMEHeaderKey(AzureAsyncOperation)] = []string{u.String()}
+		}
+	}
+
+	return res, nil
+}
+
+func GetFixedHeader(value []string, scheme string, host string) *url.URL {
 	// OK we have a location value, try to parse as a URL and then rewrite.
 	// Location is specified to contain a single value so just use the first one.
 	u, err := url.Parse(value[0])
 	if err != nil {
 		// If we fail to parse the location value just skip rewiting. Our usage of Location should always be valid.
-		return res, nil
+		return nil
 	}
 
 	if u.Scheme == "" {
 		// If we don't have a fully-qualified URL then just skip rewriting. Our usage of Location should always be fully-qualified.
-		return res, nil
+		return nil
 	}
 
-	if t.Scheme != "" {
-		u.Scheme = t.Scheme
+	if scheme != "" {
+		u.Scheme = scheme
 	}
-	u.Host = t.Host
+	u.Host = host
 
-	res.Header[textproto.CanonicalMIMEHeaderKey("Location")] = []string{u.String()}
-	return res, nil
+	return u
 }
 
 func NewLocationRewriteRoundTripper(prefix string, inner http.RoundTripper) *LocationRewriteRoundTripper {
