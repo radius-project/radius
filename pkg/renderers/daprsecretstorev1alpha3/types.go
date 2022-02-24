@@ -11,6 +11,5 @@ const (
 
 type Properties struct {
 	Kind     string `json:"kind"`
-	Managed  bool   `json:"managed"`
 	Resource string `json:"resource"`
 }

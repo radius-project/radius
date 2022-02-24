@@ -74,7 +74,15 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 		SubscriptionID: e.SubscriptionID,
 		ResourceGroup:  e.ResourceGroup,
 		Providers: map[string]providers.Provider{
+			// Send ARM types to Azure
+			providers.AzureProviderImport: &providers.AzureProvider{
+				Authorizer:     auth,
+				BaseURL:        "https://management.azure.com",
+				SubscriptionID: e.SubscriptionID,
+				ResourceGroup:  e.ResourceGroup,
+			},
 
+			// Send Radius types to the local RP
 			providers.RadiusProviderImport: &providers.AzureProvider{
 				Authorizer:     nil,
 				BaseURL:        e.URL,

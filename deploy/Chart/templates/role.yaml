@@ -239,6 +239,32 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
+  - dapriosecretstores
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - radius.dev
+  resources:
+  - dapriosecretstores/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
+  - dapriosecretstores/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radius.dev
+  resources:
   - dapriostatestores
   verbs:
   - create
@@ -265,7 +291,6 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriosecretstores
   - extenders
   verbs:
   - create
@@ -278,14 +303,12 @@ rules:
 - apiGroups:
   - radius.dev
   resources:
-  - dapriosecretstores/finalizers
   - extenders/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
-  - dapriosecretstores/status
   - extenders/status
   verbs:
   - get

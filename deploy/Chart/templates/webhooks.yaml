@@ -90,8 +90,14 @@ webhooks:
     - rabbitmqmessagequeues
     - httproutes
     - dapriostatestores
+<<<<<<< HEAD
     - dapriosecretstores
+=======
+<<<<<<< HEAD
+>>>>>>> b734d3cf (Add support for generic dapr secret stores)
     - extenders
+=======
+>>>>>>> fbaf96a3 (Add support for generic dapr secret stores)
   sideEffects: None
 - admissionReviewVersions:
   - v1

@@ -28,7 +28,6 @@ func Test_ConstructDaprSecretStoreGeneric(t *testing.T) {
 	require.NoError(t, err, "Failed to serialize metadata")
 
 	properties := map[string]string{
-		ManagedKey:              "false",
 		ResourceName:            resourceName,
 		KubernetesNamespaceKey:  appName,
 		KubernetesAPIVersionKey: daprVersion,

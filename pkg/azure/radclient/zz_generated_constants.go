@@ -124,39 +124,6 @@ func (c CheckNameAvailabilityReason) ToPtr() *CheckNameAvailabilityReason {
 type ConnectionKind string
 
 const (
-
-	ContainerConnectionKindAzure ContainerConnectionKind = "azure"
-	ContainerConnectionKindAzureComKeyVault ContainerConnectionKind = "azure.com/KeyVault"
-	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
-	ContainerConnectionKindDaprIoInvokeHTTP ContainerConnectionKind = "dapr.io/InvokeHttp"
-	ContainerConnectionKindDaprIoPubSubTopic ContainerConnectionKind = "dapr.io/PubSubTopic"
-	ContainerConnectionKindDaprIoSecretStore ContainerConnectionKind = "dapr.io/SecretStore"
-	ContainerConnectionKindDaprIoStateStore ContainerConnectionKind = "dapr.io/StateStore"
-	ContainerConnectionKindGrpc ContainerConnectionKind = "Grpc"
-	ContainerConnectionKindHTTP ContainerConnectionKind = "Http"
-	ContainerConnectionKindMicrosoftComSQL ContainerConnectionKind = "microsoft.com/SQL"
-	ContainerConnectionKindMongoComMongoDB ContainerConnectionKind = "mongo.com/MongoDB"
-	ContainerConnectionKindRabbitmqComMessageQueue ContainerConnectionKind = "rabbitmq.com/MessageQueue"
-	ContainerConnectionKindRedislabsComRedis ContainerConnectionKind = "redislabs.com/Redis"
-)
-
-// PossibleContainerConnectionKindValues returns the possible values for the ContainerConnectionKind const type.
-func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
-	return []ContainerConnectionKind{	
-		ContainerConnectionKindAzure,
-		ContainerConnectionKindAzureComKeyVault,
-		ContainerConnectionKindAzureComServiceBusQueue,
-		ContainerConnectionKindDaprIoInvokeHTTP,
-		ContainerConnectionKindDaprIoPubSubTopic,
-		ContainerConnectionKindDaprIoSecretStore,
-		ContainerConnectionKindDaprIoStateStore,
-		ContainerConnectionKindGrpc,
-		ContainerConnectionKindHTTP,
-		ContainerConnectionKindMicrosoftComSQL,
-		ContainerConnectionKindMongoComMongoDB,
-		ContainerConnectionKindRabbitmqComMessageQueue,
-		ContainerConnectionKindRedislabsComRedis,
-
 	ConnectionKindAzure ConnectionKind = "azure"
 	ConnectionKindAzureComKeyVault ConnectionKind = "azure.com/KeyVault"
 	ConnectionKindAzureComServiceBusQueue ConnectionKind = "azure.com/ServiceBusQueue"
@@ -186,7 +153,6 @@ func PossibleConnectionKindValues() []ConnectionKind {
 		ConnectionKindMongoComMongoDB,
 		ConnectionKindRabbitmqComMessageQueue,
 		ConnectionKindRedislabsComRedis,
-
 	}
 }
 
