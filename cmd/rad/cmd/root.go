@@ -6,7 +6,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -66,12 +65,6 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	// Initialize support for --version
-	RootCmd.Version = "foo" // needs to be set to non-empty string, actual version is set via SetVersionTemplate()
-	buf := new(bytes.Buffer)
-	writeVersionString(output.FormatList, buf)
-	RootCmd.SetVersionTemplate(buf.String())
 
 	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 
