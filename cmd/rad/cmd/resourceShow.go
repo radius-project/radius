@@ -6,6 +6,9 @@
 package cmd
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -24,6 +27,8 @@ var resourceShowCmd = &cobra.Command{
 func init() {
 	resourceShowCmd.PersistentFlags().StringP("type", "t", "", "The resource type")
 	resourceShowCmd.PersistentFlags().StringP("resource", "r", "", "The resource name")
+	resourceShowCmd.Flags().StringP("resource-group", "g", "", "Resource Group of the resource. This parameter is required if the resource type is a Microsoft Azure resource.")
+	resourceShowCmd.Flags().StringP("resource-subscription-id", "s", "", "Subscription id of the resource. This parameter is required if the resource type is a Microsoft Azure resource.")
 	resourceCmd.AddCommand(resourceShowCmd)
 }
 
@@ -39,9 +44,21 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resourceType, resourceName, err := cli.RequireResource(cmd, args)
+	azureResource, err := isAzureConnectionResource(cmd, args)
 	if err != nil {
 		return err
+	}
+	var resourceType, resourceName, resourceGroup, resourceSubscriptionID string
+	if azureResource {
+		resourceType, resourceName, resourceGroup, resourceSubscriptionID, err = cli.RequireAzureResource(cmd, args)
+		if err != nil {
+			return err
+		}
+	} else {
+		resourceType, resourceName, err = cli.RequireResource(cmd, args)
+		if err != nil {
+			return err
+		}
 	}
 
 	client, err := environments.CreateManagementClient(cmd.Context(), env)
@@ -49,7 +66,7 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resource, err := client.ShowResource(cmd.Context(), applicationName, resourceType, resourceName)
+	resource, err := client.ShowResource(cmd.Context(), applicationName, resourceType, resourceName, resourceGroup, resourceSubscriptionID)
 	if err != nil {
 		return err
 	}
@@ -65,4 +82,25 @@ func showResource(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func isAzureConnectionResource(cmd *cobra.Command, args []string) (bool, error) {
+	resourceType, err := cmd.Flags().GetString("type")
+	if err != nil {
+		return false, err
+	}
+
+	if resourceType == "" {
+		if len(args) > 0 {
+			resourceType = args[0]
+		} else {
+			return false, fmt.Errorf("Resource type is required")
+		}
+	}
+
+	if strings.HasPrefix(resourceType, "Microsoft.") {
+		return true, nil
+	}
+
+	return false, nil
 }

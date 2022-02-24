@@ -193,7 +193,7 @@ func Test_Handler(t *testing.T) {
 		},
 		{
 			Method:      "GET",
-			Description: "GetResourceAzureConnection",
+			Description: "GetResource_AzureConnection",
 			URI:         baseURI + "/test-application/test-resource-type/test-resource?ResourceSubscriptionID=test-subscription&ResourceGroup=test-resource-group&ResourceType=Microsoft.Storage/Accounts",
 			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any())

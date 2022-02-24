@@ -15,6 +15,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"golang.org/x/sync/errgroup"
@@ -154,9 +155,22 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 	return err
 }
 
-func (dm *ARMManagementClient) ShowResource(ctx context.Context, appName string, resourceType string, name string) (interface{}, error) {
+func (dm *ARMManagementClient) ShowResource(ctx context.Context, appName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error) {
+	var options radclient.RadiusResourceGetOptions
+
+	if resourceSubscriptionID != "" && strings.HasPrefix(resourceType, "Microsoft.") {
+		options = radclient.RadiusResourceGetOptions{
+			ResourceGroup:          to.StringPtr(resourceGroup),
+			ResourceType:           to.StringPtr(resourceType),
+			ResourceSubscriptionID: to.StringPtr(resourceSubscriptionID),
+		}
+
+		// For Azure resources full resource type is passed in properties. "Azure" is used as generic type to route all azure resource types requests to Radius RP.
+		resourceType = "AzureConnection"
+	}
+
 	client := radclient.NewRadiusResourceClient(dm.Connection, dm.SubscriptionID)
-	result, err := client.Get(ctx, dm.ResourceGroup, appName, resourceType, name, nil)
+	result, err := client.Get(ctx, dm.ResourceGroup, appName, resourceType, resourceName, &options)
 	if err != nil {
 		return nil, err
 	}

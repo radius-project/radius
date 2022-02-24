@@ -174,7 +174,7 @@ var testcases = []testcase{
 		id: parseOrPanic(resourceID(applicationName, resourceType, resourceName)),
 	},
 	{
-		description: "GetResourceAzureConnection",
+		description: "GetResource_AzureConnection",
 		verb:        "Get",
 		invoke: func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
 			return rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{
@@ -271,11 +271,11 @@ func Test_AllEndpoints_RejectInvalidResourceID(t *testing.T) {
 
 	for _, testcase := range testcases {
 		var testID azresources.ResourceID
-		if testcase.description == "GetResourceAzureConnection" || testcase.description == "ListAllResourcesByApplication" {
+		if testcase.description == "GetResource_AzureConnection" || testcase.description == "ListAllResourcesByApplication" {
 			testID = parseOrPanic(fmt.Sprintf(
 				"/subscriptions/%s/resourceGroups/%s/providers/%s/%s/%s",
-				subscriptionID,
-				resourceGroup,
+				appSubscriptionID,
+				appResourceGroup,
 				azresources.CustomProvidersResourceProviders,
 				providerName,
 				"InvalidApplicationResourceType"))

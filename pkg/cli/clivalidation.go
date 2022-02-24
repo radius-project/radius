@@ -103,6 +103,14 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 	return results[0], results[1], nil
 }
 
+func RequireAzureResource(cmd *cobra.Command, args []string) (resourceType, resourceName, resourceGroup, subscriptionID string, err error) {
+	results, err := requiredMultiple(cmd, args, "type", "resource", "resource-group", "resource-subscription-id")
+	if err != nil {
+		return "", "", "", "", err
+	}
+	return results[0], results[1], results[2], results[3], nil
+}
+
 func RequireOutput(cmd *cobra.Command) (string, error) {
 	return cmd.Flags().GetString("output")
 }
