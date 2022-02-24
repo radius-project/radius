@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+      "AzureConnectionResource": {
+        "description": "Interface for generic resource -- useful for listing resources without specifying a type",
+        "type": "object",
+        "x-ms-azure-resource": true,
+        "allOf": [
+          {
+            "$ref": "../common-types.json#/definitions/ProxyResource"
+          }
+        ],
+        "required": [
+          "properties"
+        ],
+        "properties": {
+          "properties": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+  

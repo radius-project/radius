@@ -147,6 +147,77 @@ type AzureComServiceBusQueueListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// AzureConnectionBeginCreateOrUpdateOptions contains the optional parameters for the AzureConnection.BeginCreateOrUpdate method.
+type AzureConnectionBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureConnectionBeginDeleteOptions contains the optional parameters for the AzureConnection.BeginDelete method.
+type AzureConnectionBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureConnectionGetOptions contains the optional parameters for the AzureConnection.Get method.
+type AzureConnectionGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureConnectionList - List of AzureConnection resources.
+type AzureConnectionList struct {
+	// REQUIRED; List of AzureConnection resources.
+	Value []*AzureConnectionResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type AzureConnectionList.
+func (a AzureConnectionList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", a.Value)
+	return json.Marshal(objectMap)
+}
+
+// AzureConnectionListOptions contains the optional parameters for the AzureConnection.List method.
+type AzureConnectionListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureConnectionResource - Interface for generic resource -- useful for listing resources without specifying a type
+type AzureConnectionResource struct {
+	ProxyResource
+	// REQUIRED; Any object
+	Properties map[string]interface{} `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type AzureConnectionResource.
+func (a AzureConnectionResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	a.ProxyResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", a.Properties)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureConnectionResource.
+func (a *AzureConnectionResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &a.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := a.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // AzureEntityResource - The resource model definition for an Azure Resource Manager resource with an etag.
 type AzureEntityResource struct {
 	Resource

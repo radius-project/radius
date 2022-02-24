@@ -70,6 +70,40 @@
       },
       "type": "object"
     },
+    "AzureConnectionList": {
+      "description": "List of AzureConnection resources.",
+      "properties": {
+        "value": {
+          "description": "List of AzureConnection resources.",
+          "items": {
+            "$ref": "#/definitions/AzureConnectionResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "AzureConnectionResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Interface for generic resource -- useful for listing resources without specifying a type",
+      "properties": {
+        "properties": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
     "AzureEntityResource": {
       "allOf": [
         {
@@ -2411,6 +2445,14 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
+    "AzureConnectionNameParameter": {
+      "description": "The name of the AzureConnection resource.",
+      "in": "path",
+      "name": "azureConnectionName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
     "AzureKeyVaultNameParameter": {
       "description": "The name of the azure.com.KeyVault resource.",
       "in": "path",
@@ -2757,6 +2799,188 @@
         },
         "tags": [
           "Application"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection": {
+      "get": {
+        "description": "List the AzureConnection resources deployed in the application.",
+        "operationId": "AzureConnection_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of AzureConnection resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "AzureConnection"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}": {
+      "delete": {
+        "description": "Deletes a AzureConnection resource.",
+        "operationId": "AzureConnection_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/AzureConnectionNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the AzureConnection will complete asynchronously."
+          },
+          "204": {
+            "description": "The AzureConnection resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "AzureConnection"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a AzureConnection resource by name.",
+        "operationId": "AzureConnection_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/AzureConnectionNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The AzureConnection resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "AzureConnection"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a AzureConnection resource.",
+        "operationId": "AzureConnection_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/AzureConnectionNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a AzureConnection resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing AzureConnection resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          "201": {
+            "description": "The new AzureConnection resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          "202": {
+            "description": "The existing AzureConnection resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "AzureConnection"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {

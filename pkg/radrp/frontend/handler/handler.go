@@ -8,6 +8,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -157,17 +158,24 @@ func (h *Handler) ListResources(w http.ResponseWriter, req *http.Request) {
 func (h *Handler) GetResource(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
-	// Query parameters with extra info is expected if the request is for a non-Radius Azure resource (connections)
+	resourceID := h.resourceID(req)
+	routeResourceType := resourceID.Types[len(resourceID.Types)-1].Type
+
 	azureConnectionResourceProperties := radclient.RadiusResourceGetOptions{}
-	if len(req.URL.Query()) > 1 {
-		azureConnectionResourceProperties = radclient.RadiusResourceGetOptions{
-			ResourceSubscriptionID: to.StringPtr(req.URL.Query().Get("ResourceSubscriptionID")),
-			ResourceGroup:          to.StringPtr(req.URL.Query().Get("ResourceGroup")),
-			ResourceType:           to.StringPtr(req.URL.Query().Get("ResourceType")),
+	// Query parameters with extra info is expected if the request is for a non-Radius Azure resource (connections)
+	if routeResourceType == schema.AzureConnectionResourceType {
+		if len(req.URL.Query()) <= 2 {
+			badRequest(ctx, w, req, errors.New("resource group, resource subscription id, and resource type are required query parameters for Azure connection resource"))
+		} else {
+			azureConnectionResourceProperties = radclient.RadiusResourceGetOptions{
+				ResourceSubscriptionID: to.StringPtr(req.URL.Query().Get("ResourceSubscriptionID")),
+				ResourceGroup:          to.StringPtr(req.URL.Query().Get("ResourceGroup")),
+				ResourceType:           to.StringPtr(req.URL.Query().Get("ResourceType")),
+			}
 		}
 	}
 
-	response, err := h.RP.GetResource(ctx, h.resourceID(req), azureConnectionResourceProperties)
+	response, err := h.RP.GetResource(ctx, resourceID, azureConnectionResourceProperties)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
