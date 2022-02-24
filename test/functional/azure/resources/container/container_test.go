@@ -9,15 +9,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/gateway"
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
-	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/validation"
@@ -33,18 +30,8 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	template := "testdata/azure-resources-container-httproute.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
-			AzureResources: &validation.AzureResourceSet{
-				Resources: []validation.ExpectedResource{
-					{
-						Type: azresources.StorageStorageAccounts,
-						Tags: map[string]string{
-							keys.TagRadiusApplication: application,
-							keys.TagRadiusResource:    "myshare",
-						},
-					},
-				},
-			},
+			Executor:       azuretest.NewDeployStepExecutor(template),
+			AzureResources: &validation.AzureResourceSet{},
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -52,8 +39,8 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						ResourceName:    "frontend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -61,7 +48,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						ResourceName:    "backend",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -69,17 +56,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 						ResourceName:    "backend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-						},
-					},
-					{
-						ApplicationName: application,
-						ResourceName:    "myshare",
-						ResourceType:    volumev1alpha3.ResourceType,
-						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureFileShare:               validation.NewOutputResource(outputresource.LocalIDAzureFileShare, outputresource.TypeARM, resourcekinds.AzureFileShare, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureFileShareStorageAccount: validation.NewOutputResource(outputresource.LocalIDAzureFileShareStorageAccount, outputresource.TypeARM, resourcekinds.AzureFileShareStorageAccount, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -114,20 +91,6 @@ func Test_ContainerHttpBinding(t *testing.T) {
 				volume := matches.Items[0].Spec.Volumes[volIndex]
 				require.NotNil(t, volume.EmptyDir, "volumes emptydir should have not been nil but it is")
 				require.Equal(t, volume.EmptyDir.Medium, corev1.StorageMediumMemory, "volumes medium should be memory, instead it had: %v", volume.EmptyDir.Medium)
-
-				// Verify persistent volume
-				found = false
-				for index, vol := range matches.Items[0].Spec.Volumes {
-					if vol.Name == "my-volume2" {
-						found = true
-						volIndex = index
-					}
-				}
-				require.True(t, found, "persistent volume did not get mounted")
-				volume = matches.Items[0].Spec.Volumes[volIndex]
-				require.NotNil(t, volume.AzureFile, "volumes azure file should have not been nil but it is")
-				require.Equal(t, volume.AzureFile.ShareName, "myshare")
-				require.Equal(t, volume.AzureFile.SecretName, "backend")
 			},
 		},
 	})
@@ -175,8 +138,8 @@ func Test_ContainerGateway(t *testing.T) {
 						ResourceName:    "frontend",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDService:   validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDHttpRoute: validation.NewOutputResource(outputresource.LocalIDHttpRoute, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDService:   validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDHttpRoute: validation.NewOutputResource(outputresource.LocalIDHttpRoute, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -184,7 +147,7 @@ func Test_ContainerGateway(t *testing.T) {
 						ResourceName:    "gateway",
 						ResourceType:    gateway.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDGateway: validation.NewOutputResource(outputresource.LocalIDGateway, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDGateway: validation.NewOutputResource(outputresource.LocalIDGateway, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -192,8 +155,8 @@ func Test_ContainerGateway(t *testing.T) {
 						ResourceName:    "frontend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -201,7 +164,7 @@ func Test_ContainerGateway(t *testing.T) {
 						ResourceName:    "backend",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -209,7 +172,7 @@ func Test_ContainerGateway(t *testing.T) {
 						ResourceName:    "backend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -246,8 +209,8 @@ func Test_ContainerManualScale(t *testing.T) {
 						ResourceName:    "frontend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -255,7 +218,7 @@ func Test_ContainerManualScale(t *testing.T) {
 						ResourceName:    "backend",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -263,7 +226,7 @@ func Test_ContainerManualScale(t *testing.T) {
 						ResourceName:    "backend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -299,7 +262,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 						ResourceName:    "backend",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

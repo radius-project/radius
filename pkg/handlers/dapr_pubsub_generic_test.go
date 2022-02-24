@@ -24,7 +24,6 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 	daprVersion := "dapr.io/v1alpha1"
 	k8sKind := "Component"
 	properties := map[string]string{
-		ManagedKey:              "false",
 		ResourceName:            resourceName,
 		KubernetesNamespaceKey:  appName,
 		KubernetesAPIVersionKey: daprVersion,

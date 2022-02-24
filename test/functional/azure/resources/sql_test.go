@@ -18,9 +18,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
-	application := "azure-resources-microsoft-sql-unmanaged"
-	template := "testdata/azure-resources-microsoft-sql-unmanaged.bicep"
+func Test_MicrosoftSQL_WithoutResourceID(t *testing.T) {
+	application := "azure-resources-microsoft-sql"
+	template := "testdata/azure-resources-microsoft-sql.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template),
@@ -29,7 +29,7 @@ func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 					{
 						Type: azresources.SqlServers,
 						Tags: map[string]string{
-							"radiustest": "azure-resources-microsoft-sql-unmanaged",
+							"radiustest": "azure-resources-microsoft-sql",
 						},
 						Children: []validation.ExpectedChildResource{
 							{
@@ -49,8 +49,8 @@ func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 						ResourceName:    "todoapp",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -58,8 +58,8 @@ func Test_MicrosoftSQL_UnmanagedWithoutResourceID(t *testing.T) {
 						ResourceName:    "db",
 						ResourceType:    microsoftsqlv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDAzureSqlServer:         validation.NewOutputResource(outputresource.LocalIDAzureSqlServer, outputresource.TypeARM, resourcekinds.AzureSqlServer, false, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAzureSqlServerDatabase: validation.NewOutputResource(outputresource.LocalIDAzureSqlServerDatabase, outputresource.TypeARM, resourcekinds.AzureSqlServerDatabase, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureSqlServer:         validation.NewOutputResource(outputresource.LocalIDAzureSqlServer, outputresource.TypeARM, resourcekinds.AzureSqlServer, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAzureSqlServerDatabase: validation.NewOutputResource(outputresource.LocalIDAzureSqlServerDatabase, outputresource.TypeARM, resourcekinds.AzureSqlServerDatabase, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

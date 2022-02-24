@@ -1,0 +1,14 @@
+{
+  "id": "id",
+  "name": "name",
+  "properties": {
+    "properties": {
+      "key1": "value1",
+      "key2": "value2"
+    },
+    "secrets": {
+      "secret1":"cred1",
+      "secret2":"cred2"
+    }
+  }
+}

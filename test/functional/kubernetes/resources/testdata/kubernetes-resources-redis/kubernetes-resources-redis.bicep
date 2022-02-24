@@ -3,17 +3,19 @@ import kubernetes from kubernetes
 resource redisService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'redis-svc'
+    namespace: 'default'
   }
 }
 
 resource redisSecret 'kubernetes.core/Secret@v1' existing = {
   metadata: {
     name: 'redis-pw'
+    namespace: 'default'
   }
 }
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'kubernetes-resources-redis-unmanaged'
+  name: 'kubernetes-resources-redis'
 
   resource webapp 'Container' = {
     name: 'todoapp'

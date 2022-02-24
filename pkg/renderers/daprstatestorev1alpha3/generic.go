@@ -44,9 +44,7 @@ func GetDaprStateStoreAzureGeneric(resource renderers.RendererResource) ([]outpu
 	output := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDaprStateStoreGeneric,
 		ResourceKind: resourcekinds.DaprStateStoreGeneric,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
 			handlers.KubernetesNameKey:       resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
@@ -88,7 +86,6 @@ func GetDaprStateStoreKubernetesGeneric(resource renderers.RendererResource) ([]
 	output := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDaprStateStoreGeneric,
 		ResourceKind: resourcekinds.Kubernetes,
-		Managed:      false,
 		Resource:     &statestoreResource,
 	}
 

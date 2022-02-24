@@ -34,7 +34,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Unmanaged_Success(t *testing.T) {
+func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
@@ -75,7 +75,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 }
 
-func Test_Render_Unmanaged_MissingResource(t *testing.T) {
+func Test_Render_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
@@ -83,9 +83,7 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": false,
-		},
+		Definition:      map[string]interface{}{},
 	}
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{
@@ -93,10 +91,10 @@ func Test_Render_Unmanaged_MissingResource(t *testing.T) {
 		Dependencies: map[string]renderers.RendererDependency{},
 	})
 	require.Error(t, err)
-	require.Equal(t, ErrorResourceOrServerNameMissingFromUnmanagedResource.Error(), err.Error())
+	require.Equal(t, ErrorResourceOrServerNameMissingFromResource.Error(), err.Error())
 }
 
-func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
@@ -114,7 +112,7 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	require.Equal(t, "the 'resource' field must refer to a SQL Database", err.Error())
 }
 
-func Test_Render_Unmanaged_Kubernetes_InvalidResourceID(t *testing.T) {
+func Test_Render_Kubernetes_InvalidResourceID(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{Kubernetes: true}
 

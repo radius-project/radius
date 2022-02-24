@@ -39,21 +39,13 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 	}
 
 	resources := []outputresource.OutputResource{}
-	if properties.Managed != nil && *properties.Managed {
-		results, err := RenderManaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
 
-		resources = append(resources, results...)
-	} else {
-		results, err := RenderUnmanaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-
-		resources = append(resources, results...)
+	results, err := RenderResource(resource.ResourceName, properties)
+	if err != nil {
+		return renderers.RendererOutput{}, err
 	}
+
+	resources = append(resources, results...)
 
 	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
 
@@ -64,39 +56,7 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 	}, nil
 }
 
-func RenderManaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource != nil && *properties.Resource != "" {
-		return nil, renderers.ErrResourceSpecifiedForManagedResource
-	}
-
-	cosmosAccountResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosAccount,
-		ResourceKind: resourcekinds.AzureCosmosAccount,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
-			handlers.CosmosDBAccountBaseName: name,
-			handlers.CosmosDBAccountKindKey:  string(documentdb.DatabaseAccountKindMongoDB),
-		},
-	}
-
-	// generate data we can use to manage a cosmosdb instance
-	databaseResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
-		ResourceKind: resourcekinds.AzureCosmosDBMongo,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:              "true",
-			handlers.CosmosDBAccountBaseName: name,
-			handlers.CosmosDBDatabaseNameKey: name,
-		},
-		Dependencies: []outputresource.Dependency{cosmosAccountDependency},
-	}
-
-	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
-}
-
-func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
+func RenderResource(name string, properties radclient.MongoDBResourceProperties) ([]outputresource.OutputResource, error) {
 	if properties.Secrets != nil {
 		// When the user-specified secret is present, this is the usecase where the user is running
 		// their own custom Redis instance (using a container, or hosted elsewhere).
@@ -105,7 +65,7 @@ func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties
 		return nil, nil
 	}
 	if properties.Resource == nil || *properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForResource
 	}
 
 	databaseID, err := renderers.ValidateResourceID(*properties.Resource, CosmosMongoResourceType, "CosmosDB Mongo Database")
@@ -120,7 +80,6 @@ func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties
 		LocalID:      outputresource.LocalIDAzureCosmosAccount,
 		ResourceKind: resourcekinds.AzureCosmosAccount,
 		Resource: map[string]string{
-			handlers.ManagedKey:             "false",
 			handlers.CosmosDBAccountIDKey:   cosmosAccountID.ID,
 			handlers.CosmosDBAccountNameKey: databaseID.Types[0].Name,
 			handlers.CosmosDBAccountKindKey: string(documentdb.DatabaseAccountKindMongoDB),
@@ -131,7 +90,6 @@ func RenderUnmanaged(name string, properties radclient.MongoDBResourceProperties
 		LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
 		ResourceKind: resourcekinds.AzureCosmosDBMongo,
 		Resource: map[string]string{
-			handlers.ManagedKey:              "false",
 			handlers.CosmosDBAccountIDKey:    cosmosAccountID.ID,
 			handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
 			handlers.CosmosDBAccountNameKey:  databaseID.Types[0].Name,

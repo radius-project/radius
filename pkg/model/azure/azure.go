@@ -39,7 +39,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 	// Leave RoleNames field empty if no default roles are supported for a connection kind.
 	//
 	// For a primer on how to read this data, see the KeyVault case.
-	roleAssignmentMap := map[radclient.ContainerConnectionKind]containerv1alpha3.RoleAssignmentData{
+	roleAssignmentMap := map[radclient.ConnectionKind]containerv1alpha3.RoleAssignmentData{
 
 		// Example of how to read this data:
 		//
@@ -47,14 +47,14 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		// - Look up the dependency based on the connection.Source (azure.com.KeyVault)
 		// - Find the output resource matching LocalID of that dependency (Microsoft.KeyVault/vaults)
 		// - Apply the roles in RoleNames (Key Vault Secrets User, Key Vault Crypto User)
-		radclient.ContainerConnectionKindAzureComKeyVault: {
+		radclient.ConnectionKindAzureComKeyVault: {
 			LocalID: outputresource.LocalIDKeyVault,
 			RoleNames: []string{
 				"Key Vault Secrets User",
 				"Key Vault Crypto User",
 			},
 		},
-		radclient.ContainerConnectionKindAzure: {
+		radclient.ConnectionKindAzure: {
 			// RBAC for non-Radius Azure resources. Supports user specified roles.
 			// More information can be found here: https://github.com/project-radius/radius/issues/1321
 		},
@@ -166,11 +166,6 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			Kind:            resourcekinds.DaprStateStoreAzureStorage,
 			HealthHandler:   handlers.NewDaprStateStoreAzureStorageHealthHandler(arm, k8s),
 			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-		},
-		{
-			Kind:            resourcekinds.DaprStateStoreSQLServer,
-			HealthHandler:   handlers.NewDaprStateStoreSQLServerHealthHandler(arm, k8s),
-			ResourceHandler: handlers.NewDaprStateStoreGenericHandler(arm, k8s),
 		},
 		{
 			Kind:            resourcekinds.DaprStateStoreGeneric,

@@ -66,9 +66,9 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./...
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+CONTROLLER_GEN = $(shell pwd)/bin/controller-gen$(BINARY_EXT)
 generate-controller-gen-installed:
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..
@@ -79,12 +79,12 @@ TMP_DIR=$$(mktemp -d) ;\
 cd $$TMP_DIR ;\
 go mod init tmp ;\
 echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+GOBIN=$(PROJECT_DIR)/bin go get -u $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
 
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
+CRD_OPTIONS ?= "+crd"
 generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes deployment manifests
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) \
 		rbac:roleName=radius-manager-role \

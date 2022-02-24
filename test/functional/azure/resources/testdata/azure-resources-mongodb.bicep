@@ -1,5 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-mongodb-unmanaged'
+  name: 'azure-resources-mongodb'
   
   resource webapp 'Container' = {
     name: 'todoapp'
@@ -24,7 +24,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'mongo.com.MongoDatabase' = {
     name: 'db'
     properties: {
-      resource: account::db.id
+      resource: account::dbinner.id
     }
   }
 }
@@ -34,7 +34,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   location: resourceGroup().location
   kind: 'MongoDB'
   tags: {
-    radiustest: 'azure-resources-mongodb-unmanaged'
+    radiustest: 'azure-resources-mongodb'
   }
   properties: {
     consistencyPolicy: {
@@ -50,7 +50,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     databaseAccountOfferType: 'Standard'
   }
 
-  resource db 'mongodbDatabases' = {
+  resource dbinner 'mongodbDatabases' = {
     name: 'mydb'
     properties: {
       resource: {

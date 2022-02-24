@@ -20,40 +20,7 @@ const (
 	resourceName    = "test-redis"
 )
 
-func Test_Render_Managed_Azure_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := AzureRenderer{}
-
-	resource := renderers.RendererResource{
-		ApplicationName: applicationName,
-		ResourceName:    resourceName,
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": true,
-		},
-	}
-
-	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
-	require.NoError(t, err)
-
-	require.Len(t, output.Resources, 1)
-
-	require.Equal(t, outputresource.LocalIDAzureRedis, output.Resources[0].LocalID)
-	require.Equal(t, resourcekinds.AzureRedis, output.Resources[0].ResourceKind)
-	require.Equal(t, true, output.Resources[0].Managed)
-
-	expectedProperties := map[string]string{
-		handlers.ManagedKey:    "true",
-		handlers.RedisBaseName: resourceName,
-	}
-	require.Equal(t, expectedProperties, output.Resources[0].Resource)
-
-	expectedComputedValues, expectedSecretValues := expectedComputedAndSecretValues()
-	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, expectedSecretValues, output.SecretValues)
-}
-
-func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
+func Test_Azure_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -73,10 +40,8 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureRedis, output.Resources[0].LocalID)
 	require.Equal(t, resourcekinds.AzureRedis, output.Resources[0].ResourceKind)
-	require.Equal(t, false, output.Resources[0].Managed)
 
 	expectedProperties := map[string]string{
-		handlers.ManagedKey:         "false",
 		handlers.RedisResourceIdKey: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Cache/Redis/test-redis",
 		handlers.RedisNameKey:       resourceName,
 	}
@@ -87,7 +52,7 @@ func Test_Azure_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_Azure_Render_Unmanaged_User_Secrets(t *testing.T) {
+func Test_Azure_Render_User_Secrets(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -131,7 +96,7 @@ func Test_Azure_Render_Unmanaged_User_Secrets(t *testing.T) {
 	require.Equal(t, 0, len(output.SecretValues))
 }
 
-func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {
+func Test_Azure_Render_MissingResource(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 
@@ -139,17 +104,15 @@ func Test_Azure_Render_Unmanaged_MissingResource(t *testing.T) {
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"managed": false,
-		},
+		Definition:      map[string]interface{}{},
 	}
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForUnmanagedResource.Error(), err.Error())
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
 }
 
-func Test_Azure_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Azure_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := AzureRenderer{}
 

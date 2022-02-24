@@ -3,12 +3,14 @@ import kubernetes from kubernetes
 resource redisService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'redis-master'
+    namespace: 'default'
   }
 }
 
 resource redisSecret 'kubernetes.core/Secret@v1' existing = {
   metadata: {
     name: 'redis'
+    namespace: 'default'
   }
 }
 

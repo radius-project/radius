@@ -6,8 +6,6 @@
 package handlers
 
 const (
-	ManagedKey = "managed"
-
 	KubernetesAPIVersionKey = "kubernetesapiversion"
 	KubernetesKindKey       = "kuberneteskind"
 	KubernetesNamespaceKey  = "kubernetesnamespace"

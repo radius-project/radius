@@ -32,8 +32,8 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 						ResourceName:    "myapp",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -41,7 +41,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 						ResourceName:    "statestore-generic",
 						ResourceType:    daprstatestorev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprStateStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreGeneric, outputresource.TypeKubernetes, resourcekinds.DaprStateStoreGeneric, false, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprStateStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreGeneric, outputresource.TypeKubernetes, resourcekinds.DaprStateStoreGeneric, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

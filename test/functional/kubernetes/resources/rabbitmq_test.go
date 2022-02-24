@@ -16,8 +16,8 @@ import (
 )
 
 func TestRabbitMQ(t *testing.T) {
-	template := "testdata/kubernetes-resources-rabbitmq-unmanaged/kubernetes-resources-rabbitmq-unmanaged.bicep"
-	application := "kubernetes-resources-rabbitmq-unmanaged"
+	template := "testdata/kubernetes-resources-rabbitmq/kubernetes-resources-rabbitmq.bicep"
+	application := "kubernetes-resources-rabbitmq"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
@@ -30,7 +30,7 @@ func TestRabbitMQ(t *testing.T) {
 							outputresource.LocalIDScrapedSecret: validation.NewOutputResource(
 								outputresource.LocalIDScrapedSecret,
 								outputresource.TypeKubernetes,
-								resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+								resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
@@ -43,7 +43,7 @@ func TestRabbitMQ(t *testing.T) {
 				},
 			},
 		},
-	}, loadResources("testdata/kubernetes-resources-rabbitmq-unmanaged", ".input.yaml")...)
+	}, loadResources("testdata/kubernetes-resources-rabbitmq", ".input.yaml")...)
 
 	test.Test(t)
 }

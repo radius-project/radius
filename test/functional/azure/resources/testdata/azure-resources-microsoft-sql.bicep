@@ -2,7 +2,7 @@ var adminUsername = 'cooluser'
 var adminPassword = 'p@ssw0rd'
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-microsoft-sql-unmanaged'
+  name: 'azure-resources-microsoft-sql'
 
   resource webapp 'Container' = {
     name: 'todoapp'
@@ -30,7 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
-      resource: server::db.id
+      resource: server::dbinner.id
     }
   }
 }
@@ -39,14 +39,14 @@ resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: 'sql-${uniqueString(resourceGroup().id)}'
   location: resourceGroup().location
   tags: {
-    radiustest: 'azure-resources-microsoft-sql-unmanaged'
+    radiustest: 'azure-resources-microsoft-sql'
   }
   properties: {
     administratorLogin: adminUsername
     administratorLoginPassword: adminPassword
   }
 
-  resource db 'databases' = {
+  resource dbinner 'databases' = {
     name: 'cool-database'
     location: resourceGroup().location
   }

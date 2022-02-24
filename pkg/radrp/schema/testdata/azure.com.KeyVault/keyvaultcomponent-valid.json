@@ -1,5 +1,5 @@
 {
   "properties": {
-    "managed": true
+    "resource": "some-resource"
   }
 }

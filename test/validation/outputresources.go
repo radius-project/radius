@@ -37,7 +37,6 @@ type ExpectedOutputResource struct {
 	LocalID            string
 	OutputResourceType string
 	ResourceKind       string
-	Managed            bool
 	Status             rest.OutputResourceStatus
 	VerifyStatus       bool
 
@@ -48,12 +47,11 @@ type ExpectedOutputResource struct {
 	SkipLocalIDWhenMatching bool
 }
 
-func NewOutputResource(localID, outputResourceType, resourceKind string, managed bool, verifyStatus bool, status rest.OutputResourceStatus) ExpectedOutputResource {
+func NewOutputResource(localID, outputResourceType, resourceKind string, verifyStatus bool, status rest.OutputResourceStatus) ExpectedOutputResource {
 	return ExpectedOutputResource{
 		LocalID:            localID,
 		OutputResourceType: outputResourceType,
 		ResourceKind:       resourceKind,
-		Managed:            managed,
 		Status:             status,
 		VerifyStatus:       verifyStatus,
 	}
@@ -196,8 +194,7 @@ func convertFromGenericToRestOutputResource(obj resources.GenericResource) ([]re
 
 func (e ExpectedOutputResource) IsMatch(a rest.OutputResource) bool {
 	match := e.OutputResourceType == a.OutputResourceType &&
-		e.ResourceKind == a.ResourceKind &&
-		e.Managed == a.Managed
+		e.ResourceKind == a.ResourceKind
 
 	if !e.SkipLocalIDWhenMatching {
 		match = match && e.LocalID == a.LocalID

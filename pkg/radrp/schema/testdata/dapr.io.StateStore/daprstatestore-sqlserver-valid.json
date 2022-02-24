@@ -2,7 +2,7 @@
   "id": "id",
   "name": "name",
   "properties": {
-    "managed": true,
-    "kind": "state.sqlserver"
+    "kind": "state.sqlserver",
+    "resource": "test"
   }
 }

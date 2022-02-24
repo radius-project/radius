@@ -120,10 +120,11 @@ func (c CheckNameAvailabilityReason) ToPtr() *CheckNameAvailabilityReason {
 	return &c
 }
 
-// ContainerConnectionKind - The kind of connection
-type ContainerConnectionKind string
+// ConnectionKind - The kind of connection
+type ConnectionKind string
 
 const (
+
 	ContainerConnectionKindAzure ContainerConnectionKind = "azure"
 	ContainerConnectionKindAzureComKeyVault ContainerConnectionKind = "azure.com/KeyVault"
 	ContainerConnectionKindAzureComServiceBusQueue ContainerConnectionKind = "azure.com/ServiceBusQueue"
@@ -155,11 +156,42 @@ func PossibleContainerConnectionKindValues() []ContainerConnectionKind {
 		ContainerConnectionKindMongoComMongoDB,
 		ContainerConnectionKindRabbitmqComMessageQueue,
 		ContainerConnectionKindRedislabsComRedis,
+
+	ConnectionKindAzure ConnectionKind = "azure"
+	ConnectionKindAzureComKeyVault ConnectionKind = "azure.com/KeyVault"
+	ConnectionKindAzureComServiceBusQueue ConnectionKind = "azure.com/ServiceBusQueue"
+	ConnectionKindDaprIoInvokeHTTP ConnectionKind = "dapr.io/InvokeHttp"
+	ConnectionKindDaprIoPubSubTopic ConnectionKind = "dapr.io/PubSubTopic"
+	ConnectionKindDaprIoStateStore ConnectionKind = "dapr.io/StateStore"
+	ConnectionKindGrpc ConnectionKind = "Grpc"
+	ConnectionKindHTTP ConnectionKind = "Http"
+	ConnectionKindMicrosoftComSQL ConnectionKind = "microsoft.com/SQL"
+	ConnectionKindMongoComMongoDB ConnectionKind = "mongo.com/MongoDB"
+	ConnectionKindRabbitmqComMessageQueue ConnectionKind = "rabbitmq.com/MessageQueue"
+	ConnectionKindRedislabsComRedis ConnectionKind = "redislabs.com/Redis"
+)
+
+// PossibleConnectionKindValues returns the possible values for the ConnectionKind const type.
+func PossibleConnectionKindValues() []ConnectionKind {
+	return []ConnectionKind{	
+		ConnectionKindAzure,
+		ConnectionKindAzureComKeyVault,
+		ConnectionKindAzureComServiceBusQueue,
+		ConnectionKindDaprIoInvokeHTTP,
+		ConnectionKindDaprIoPubSubTopic,
+		ConnectionKindDaprIoStateStore,
+		ConnectionKindGrpc,
+		ConnectionKindHTTP,
+		ConnectionKindMicrosoftComSQL,
+		ConnectionKindMongoComMongoDB,
+		ConnectionKindRabbitmqComMessageQueue,
+		ConnectionKindRedislabsComRedis,
+
 	}
 }
 
-// ToPtr returns a *ContainerConnectionKind pointing to the current value.
-func (c ContainerConnectionKind) ToPtr() *ContainerConnectionKind {
+// ToPtr returns a *ConnectionKind pointing to the current value.
+func (c ConnectionKind) ToPtr() *ConnectionKind {
 	return &c
 }
 
@@ -267,63 +299,6 @@ func PossibleEncryptionStatusValues() []EncryptionStatus {
 
 // ToPtr returns a *EncryptionStatus pointing to the current value.
 func (c EncryptionStatus) ToPtr() *EncryptionStatus {
-	return &c
-}
-
-// Enum11 - Indicates if the resource is Radius-managed. For now only true is accepted for this Resource
-type Enum11 bool
-
-const (
-	Enum11True Enum11 = true
-)
-
-// PossibleEnum11Values returns the possible values for the Enum11 const type.
-func PossibleEnum11Values() []Enum11 {
-	return []Enum11{	
-		Enum11True,
-	}
-}
-
-// ToPtr returns a *Enum11 pointing to the current value.
-func (c Enum11) ToPtr() *Enum11 {
-	return &c
-}
-
-// Enum2 - Indicates if the resource is Radius-managed. If false, a Resource must be specified. (KeyVault currently only supports true)
-type Enum2 bool
-
-const (
-	Enum2True Enum2 = true
-)
-
-// PossibleEnum2Values returns the possible values for the Enum2 const type.
-func PossibleEnum2Values() []Enum2 {
-	return []Enum2{	
-		Enum2True,
-	}
-}
-
-// ToPtr returns a *Enum2 pointing to the current value.
-func (c Enum2) ToPtr() *Enum2 {
-	return &c
-}
-
-// Enum3 - Indicates if the resource is Radius-managed. For now only true is accepted for this resource.
-type Enum3 bool
-
-const (
-	Enum3True Enum3 = true
-)
-
-// PossibleEnum3Values returns the possible values for the Enum3 const type.
-func PossibleEnum3Values() []Enum3 {
-	return []Enum3{	
-		Enum3True,
-	}
-}
-
-// ToPtr returns a *Enum3 pointing to the current value.
-func (c Enum3) ToPtr() *Enum3 {
 	return &c
 }
 

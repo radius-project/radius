@@ -28,24 +28,9 @@
         }
       ],
       "required": [
-        "managed",
-        "queue"
+        "resource"
       ],
       "properties": {
-        "managed": {
-          "description": "Indicates if the resource is Radius-managed. For now only true is accepted for this resource.",
-          "type": "boolean",
-          "enum": [
-            true
-          ],
-          "example": [
-            true
-          ]
-        },
-        "queue": {
-          "description": "The name of the queue",
-          "type": "string"
-        },
         "resource": {
           "description": "The ID of the user-managed ServiceBus queue to use",
           "type": "string"

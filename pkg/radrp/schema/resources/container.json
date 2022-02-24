@@ -30,45 +30,11 @@
         "connections": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/ContainerConnection"
+            "$ref": "compute-resource.json#/definitions/Connection"
           }
         },
         "container": {
-          "type": "object",
-          "required": [
-            "image"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "image": {
-              "description": "The registry and image to download and run in your container",
-              "type": "string"
-            },
-            "env": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            },
-            "ports": {
-              "type": "object",
-              "additionalProperties": {
-                "$ref": "#/definitions/ContainerPort"
-              }
-            },
-            "readinessProbe": {
-              "$ref": "#/definitions/HealthProbeProperties"
-            },
-            "livenessProbe": {
-              "$ref": "#/definitions/HealthProbeProperties"
-            },
-            "volumes": {
-              "type": "object",
-              "additionalProperties": {
-                "$ref": "#/definitions/Volume"
-              }
-            }
-          }
+          "$ref": "compute-resource.json#/definitions/Container"
         },
         "traits": {
           "type": "array",
@@ -79,6 +45,7 @@
         }
       },
       "additionalProperties": false
+
     },
     "ContainerPort": {
       "description": "Specifies a listening port for the container",
@@ -343,6 +310,7 @@
         "kind",
         "command"
       ]
+
     }
   }
 }

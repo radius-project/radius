@@ -17,9 +17,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MicrosoftSQL_Unmanaged(t *testing.T) {
-	application := "kubernetes-resources-sql-unmanaged"
-	template := "testdata/kubernetes-resources-sql-unmanaged.bicep"
+func Test_MicrosoftSQL(t *testing.T) {
+	application := "kubernetes-resources-sql"
+	template := "testdata/kubernetes-resources-sql.bicep"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template),
@@ -30,8 +30,8 @@ func Test_MicrosoftSQL_Unmanaged(t *testing.T) {
 						ResourceName:    "todoapp",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{

@@ -31,21 +31,13 @@ func GetAzureFileShareVolume(ctx context.Context, arm armauth.ArmConfig, resourc
 	}
 
 	resources := []outputresource.OutputResource{}
-	if properties.Managed != nil && *properties.Managed {
-		results, err := RenderManaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
 
-		resources = append(resources, results...)
-	} else {
-		results, err := RenderUnmanaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-
-		resources = append(resources, results...)
+	results, err := RenderResource(resource.ResourceName, properties)
+	if err != nil {
+		return renderers.RendererOutput{}, err
 	}
+
+	resources = append(resources, results...)
 
 	computedValues, secretValues := MakeSecretsAndValuesForAzureFileShare(storageAccountDependency.LocalID)
 
@@ -56,38 +48,9 @@ func GetAzureFileShareVolume(ctx context.Context, arm armauth.ArmConfig, resourc
 	}, nil
 }
 
-func RenderManaged(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
-	if properties.Resource != nil && *properties.Resource != "" {
-		return nil, renderers.ErrResourceSpecifiedForManagedResource
-	}
-
-	storageAccountResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureFileShareStorageAccount,
-		ResourceKind: resourcekinds.AzureFileShareStorageAccount,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:                           "true",
-			handlers.AzureFileShareStorageAccountBaseName: "azurestorageaccount",
-		},
-	}
-
-	fileshareResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureFileShare,
-		ResourceKind: resourcekinds.AzureFileShare,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:       "true",
-			handlers.FileShareNameKey: name,
-		},
-		Dependencies: []outputresource.Dependency{storageAccountDependency},
-	}
-
-	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
-}
-
-func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
+func RenderResource(name string, properties radclient.AzureFileShareVolumeProperties) ([]outputresource.OutputResource, error) {
 	if properties.Resource == nil || *properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForResource
 	}
 
 	fileshareID, err := renderers.ValidateResourceID(*properties.Resource, AzureFileShareResourceType, "Azure File Share")
@@ -101,9 +64,7 @@ func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumePrope
 	storageAccountResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureFileShareStorageAccount,
 		ResourceKind: resourcekinds.AzureFileShareStorageAccount,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:                     "false",
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,
 			handlers.FileShareStorageAccountNameKey: storageAccountID.Types[0].Name,
 		},
@@ -112,9 +73,7 @@ func RenderUnmanaged(name string, properties radclient.AzureFileShareVolumePrope
 	fileshareResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureFileShare,
 		ResourceKind: resourcekinds.AzureFileShare,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:                     "false",
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,
 			handlers.FileShareStorageAccountNameKey: storageAccountID.Types[0].Name,
 			handlers.FileShareIDKey:                 fileshareID.ID,

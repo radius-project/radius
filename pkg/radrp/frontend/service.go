@@ -63,7 +63,7 @@ func (s *Service) Run(ctx context.Context) error {
 	secretClient := renderers.NewSecretValueClient(*s.Options.Arm)
 
 	db := db.NewRadrpDB(dbclient)
-	rp := resourceprovider.NewResourceProvider(db, deployment.NewDeploymentProcessor(appmodel, db, &s.Options.HealthChannels, secretClient, k8s), nil)
+	rp := resourceprovider.NewResourceProvider(db, deployment.NewDeploymentProcessor(appmodel, db, &s.Options.HealthChannels, secretClient, k8s), nil, "http")
 
 	ctx = logr.NewContext(ctx, logger)
 	server := server.NewServer(ctx, server.ServerOptions{

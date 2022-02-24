@@ -36,18 +36,13 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	}
 
 	outputResources := []outputresource.OutputResource{}
-	if properties.Managed != nil && *properties.Managed {
-		redisCacheOutputResource := RenderManaged(resource.ResourceName, properties)
 
-		outputResources = append(outputResources, redisCacheOutputResource)
-	} else {
-		redisCacheOutputResource, err := RenderUnmanaged(resource.ResourceName, properties)
-		if err != nil {
-			return renderers.RendererOutput{}, err
-		}
-		if redisCacheOutputResource != nil {
-			outputResources = append(outputResources, *redisCacheOutputResource)
-		}
+	redisCacheOutputResource, err := RenderResource(resource.ResourceName, properties)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+	if redisCacheOutputResource != nil {
+		outputResources = append(outputResources, *redisCacheOutputResource)
 	}
 
 	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
@@ -59,21 +54,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 	}, nil
 }
 
-func RenderManaged(resourceName string, properties radclient.RedisCacheResourceProperties) outputresource.OutputResource {
-	redisCacheOutputResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureRedis,
-		ResourceKind: resourcekinds.AzureRedis,
-		Managed:      true,
-		Resource: map[string]string{
-			handlers.ManagedKey:    "true",
-			handlers.RedisBaseName: resourceName,
-		},
-	}
-
-	return redisCacheOutputResource
-}
-
-func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourceProperties) (*outputresource.OutputResource, error) {
+func RenderResource(resourceName string, properties radclient.RedisCacheResourceProperties) (*outputresource.OutputResource, error) {
 	if properties.Secrets != nil {
 		// When the user-specified secret is present, this is the usecase where the user is running
 		// their own custom Redis instance (using a container, or hosted elsewhere).
@@ -82,7 +63,7 @@ func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourc
 		return nil, nil
 	}
 	if properties.Resource == nil || *properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForUnmanagedResource
+		return nil, renderers.ErrResourceMissingForResource
 	}
 
 	redisResourceID, err := renderers.ValidateResourceID(*properties.Resource, RedisResourceType, "Redis Cache")
@@ -93,9 +74,7 @@ func RenderUnmanaged(resourceName string, properties radclient.RedisCacheResourc
 	redisCacheOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureRedis,
 		ResourceKind: resourcekinds.AzureRedis,
-		Managed:      false,
 		Resource: map[string]string{
-			handlers.ManagedKey:         "false",
 			handlers.RedisResourceIdKey: redisResourceID.ID,
 			handlers.RedisNameKey:       redisResourceID.Name(),
 		},

@@ -22,54 +22,27 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outpu
 	resourceKind := resourcekinds.DaprStateStoreAzureStorage
 	localID := outputresource.LocalIDDaprStateStoreAzureStorage
 
-	if properties.Managed == nil {
-		return nil, renderers.ErrManagedUnspecified
+	if properties.Resource == nil || *properties.Resource == "" {
+		return nil, renderers.ErrResourceMissingForResource
+	}
+	accountID, err := renderers.ValidateResourceID(*properties.Resource, StorageAccountResourceType, "Storage Account")
+	if err != nil {
+		return nil, err
 	}
 
-	if *properties.Managed {
-		if properties.Resource != nil && *properties.Resource != "" {
-			return nil, renderers.ErrResourceSpecifiedForManagedResource
-		}
-		resource := outputresource.OutputResource{
-			LocalID:      localID,
-			ResourceKind: resourceKind,
-			Managed:      true,
-			Resource: map[string]string{
-				handlers.ManagedKey:              "true",
-				handlers.KubernetesNameKey:       resource.ResourceName,
-				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-				handlers.ResourceName:            resource.ResourceName,
-			},
-		}
+	// generate data we can use to connect to a Storage Account
+	outputResource := outputresource.OutputResource{
+		LocalID:      localID,
+		ResourceKind: resourceKind,
+		Resource: map[string]string{
+			handlers.KubernetesNameKey:       resource.ResourceName,
+			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
+			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+			handlers.KubernetesKindKey:       "Component",
 
-		return []outputresource.OutputResource{resource}, nil
-	} else {
-		if properties.Resource == nil || *properties.Resource == "" {
-			return nil, renderers.ErrResourceMissingForUnmanagedResource
-		}
-		accountID, err := renderers.ValidateResourceID(*properties.Resource, StorageAccountResourceType, "Storage Account")
-		if err != nil {
-			return nil, err
-		}
-
-		// generate data we can use to connect to a Storage Account
-		resource := outputresource.OutputResource{
-			LocalID:      localID,
-			ResourceKind: resourceKind,
-			Managed:      false,
-			Resource: map[string]string{
-				handlers.ManagedKey:              "false",
-				handlers.KubernetesNameKey:       resource.ResourceName,
-				handlers.KubernetesNamespaceKey:  resource.ApplicationName,
-				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-				handlers.KubernetesKindKey:       "Component",
-
-				handlers.StorageAccountIDKey:   accountID.ID,
-				handlers.StorageAccountNameKey: accountID.Types[0].Name,
-			},
-		}
-		return []outputresource.OutputResource{resource}, nil
+			handlers.StorageAccountIDKey:   accountID.ID,
+			handlers.StorageAccountNameKey: accountID.Types[0].Name,
+		},
 	}
+	return []outputresource.OutputResource{outputResource}, nil
 }

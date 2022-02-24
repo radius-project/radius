@@ -2,7 +2,6 @@
   "id": 42,
   "name": 42,
   "properties": {
-    "managed": true,
     "kind": "dapr.io/RedisState"
   }
 }

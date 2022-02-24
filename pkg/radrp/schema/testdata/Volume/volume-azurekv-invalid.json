@@ -1,6 +1,5 @@
 {
   "properties": {
-    "managed": true,
     "kind": "azure.com.keyvault",
     "secrets": {
       "mysecret-1": {

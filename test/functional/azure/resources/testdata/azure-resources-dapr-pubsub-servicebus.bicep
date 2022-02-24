@@ -1,5 +1,5 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-dapr-pubsub-servicebus-unmanaged'
+  name: 'azure-resources-dapr-pubsub-servicebus'
 
   resource publisher 'Container' = {
     name: 'publisher'
@@ -45,7 +45,7 @@ resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
   name: 'ns-${guid(resourceGroup().name)}'
   location: resourceGroup().location
   tags: {
-    radiustest: 'azure-resources-dapr-pubsub-servicebus-unmanaged'
+    radiustest: 'azure-resources-dapr-pubsub-servicebus'
   }
 
   resource topic 'topics' = {

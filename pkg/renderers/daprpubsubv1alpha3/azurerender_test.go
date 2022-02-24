@@ -17,65 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Render_Managed_Success_DefaultName(t *testing.T) {
-	renderer := Renderer{}
-
-	dependencies := map[string]renderers.RendererDependency{}
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"kind":    resourcekinds.DaprPubSubTopicAzureServiceBus,
-			"managed": true,
-			"topic":   "cool-topic",
-		},
-	}
-
-	renderer.PubSubs = SupportedAzurePubSubKindValues
-	result, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
-	require.NoError(t, err)
-
-	require.Len(t, result.Resources, 1)
-	output := result.Resources[0]
-
-	require.Equal(t, outputresource.LocalIDAzureServiceBusTopic, output.LocalID)
-	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceKind)
-	require.True(t, output.Managed)
-
-	expected := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.ResourceName:            "test-resource",
-		handlers.KubernetesNamespaceKey:  "test-app",
-		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-		handlers.KubernetesKindKey:       "Component",
-		handlers.ServiceBusTopicNameKey:  "cool-topic",
-	}
-	require.Equal(t, expected, output.Resource)
-}
-
-func Test_Render_Managed_MissingTopic(t *testing.T) {
-	renderer := Renderer{}
-
-	dependencies := map[string]renderers.RendererDependency{}
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"kind":    resourcekinds.DaprPubSubTopicAzureServiceBus,
-			"managed": true,
-			// Topic is required
-		},
-	}
-
-	renderer.PubSubs = SupportedAzurePubSubKindValues
-	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
-	require.Error(t, err)
-	require.Equal(t, "the 'topic' field is required when 'managed=true'", err.Error())
-}
-
-func Test_Render_Unmanaged_Success(t *testing.T) {
+func Test_Render_Success(t *testing.T) {
 	renderer := Renderer{}
 
 	dependencies := map[string]renderers.RendererDependency{}
@@ -85,7 +27,6 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"kind":     resourcekinds.DaprPubSubTopicAzureServiceBus,
-			"managed":  false,
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
 		},
 	}
@@ -99,10 +40,8 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureServiceBusTopic, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceKind)
-	require.False(t, output.Managed)
 
 	expected := map[string]string{
-		handlers.ManagedKey:                 "false",
 		handlers.ResourceName:               "test-resource",
 		handlers.KubernetesNamespaceKey:     "test-app",
 		handlers.KubernetesAPIVersionKey:    "dapr.io/v1alpha1",
@@ -115,7 +54,7 @@ func Test_Render_Unmanaged_Success(t *testing.T) {
 	require.Equal(t, expected, output.Resource)
 }
 
-func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
+func Test_Render_InvalidResourceType(t *testing.T) {
 	renderer := Renderer{}
 
 	dependencies := map[string]renderers.RendererDependency{}
@@ -133,63 +72,6 @@ func Test_Render_Unmanaged_InvalidResourceType(t *testing.T) {
 	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Topic", err.Error())
-}
-
-func Test_Render_Unmanaged_SpecifiesTopicWithResource(t *testing.T) {
-	renderer := Renderer{}
-
-	dependencies := map[string]renderers.RendererDependency{}
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"kind":     resourcekinds.DaprPubSubTopicAzureServiceBus,
-			"topic":    "not-allowed",
-			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/topics/test-topic",
-		},
-	}
-
-	renderer.PubSubs = SupportedAzurePubSubKindValues
-	_, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
-	require.Error(t, err)
-	require.Equal(t, "the 'topic' cannot be specified when 'managed' is not specified", err.Error())
-}
-
-func Test_Render_Any_Success(t *testing.T) {
-	renderer := Renderer{}
-
-	dependencies := map[string]renderers.RendererDependency{}
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"kind":  resourcekinds.DaprPubSubTopicAny,
-			"topic": "cool-topic",
-		},
-	}
-
-	renderer.PubSubs = SupportedAzurePubSubKindValues
-	result, err := renderer.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
-	require.NoError(t, err)
-
-	require.Len(t, result.Resources, 1)
-	output := result.Resources[0]
-
-	require.Equal(t, outputresource.LocalIDAzureServiceBusTopic, output.LocalID)
-	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceKind)
-	require.True(t, output.Managed)
-
-	expected := map[string]string{
-		handlers.ManagedKey:              "true",
-		handlers.ResourceName:            "test-resource",
-		handlers.KubernetesNamespaceKey:  "test-app",
-		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-		handlers.KubernetesKindKey:       "Component",
-		handlers.ServiceBusTopicNameKey:  "cool-topic",
-	}
-	require.Equal(t, expected, output.Resource)
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
@@ -219,7 +101,6 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprPubSubGeneric, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicGeneric, output.ResourceKind)
-	require.False(t, output.Managed)
 
 	metadata := map[string]interface{}{
 		"foo": "bar",
@@ -228,7 +109,6 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.NoError(t, err, "Could not serialize metadata")
 
 	expected := map[string]string{
-		handlers.ManagedKey:              "false",
 		handlers.ResourceName:            resource.ResourceName,
 		handlers.KubernetesNamespaceKey:  resource.ApplicationName,
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",

@@ -49,8 +49,8 @@ type ResourceProvider interface {
 }
 
 // NewResourceProvider creates a new ResourceProvider.
-func NewResourceProvider(db db.RadrpDB, deploy deployment.DeploymentProcessor, completions chan<- struct{}) ResourceProvider {
-	return &rp{db: db, deploy: deploy, completions: completions}
+func NewResourceProvider(db db.RadrpDB, deploy deployment.DeploymentProcessor, completions chan<- struct{}, scheme string) ResourceProvider {
+	return &rp{db: db, deploy: deploy, completions: completions, scheme: scheme}
 }
 
 type rp struct {
@@ -62,6 +62,7 @@ type rp struct {
 	//
 	// DO NOT use this to implement product functionality, this is a hook for testing.
 	completions chan<- struct{}
+	scheme      string
 }
 
 // As a general design principle, returning an error from the RP signals an internal error (500).
@@ -326,7 +327,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 	r.ProcessDeploymentBackground(ctx, oid, item)
 
 	output := NewRestRadiusResource(item)
-	return rest.NewAcceptedAsyncResponse(output, oid.ID), nil
+	return rest.NewAcceptedAsyncResponse(output, oid.ID, r.scheme), nil
 }
 
 func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
@@ -363,7 +364,7 @@ func (r *rp) DeleteResource(ctx context.Context, id azresources.ResourceID) (res
 	r.ProcessDeletionBackground(ctx, oid, item)
 
 	output := NewRestRadiusResource(item)
-	return rest.NewAcceptedAsyncResponse(output, oid.ID), nil
+	return rest.NewAcceptedAsyncResponse(output, oid.ID, r.scheme), nil
 }
 
 func (r *rp) ListSecrets(ctx context.Context, input ListSecretsInput) (rest.Response, error) {
@@ -477,7 +478,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 
 	// 3. Operation is still processing.
 	// The ARM-RPC spec wants us to keep returning 202 from here until the operation is complete.
-	return rest.NewAcceptedAsyncResponse(output, id.ID), nil
+	return rest.NewAcceptedAsyncResponse(output, id.ID, r.scheme), nil
 }
 
 func (r *rp) GetSwaggerDoc(ctx context.Context) (rest.Response, error) {
