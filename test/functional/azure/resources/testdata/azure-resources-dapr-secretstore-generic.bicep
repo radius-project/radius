@@ -1,11 +1,11 @@
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'azure-resources-dapr-secretstore-generic'
+  name: 'secret'
 
   resource myapp 'Container' = {
     name: 'myapp'
     properties: {
       connections: {
-        daprstatestore: {
+        daprsecretstore: {
           kind: 'dapr.io/SecretStore'
           source: secretstore.id
         }
@@ -20,7 +20,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'secretstore-generic'
     properties: {
       kind: 'generic'
-      type: 'azure.keyvault'
+      type: 'secretstores.azure.keyvault'
       metadata: {
         foo: 'bar'
       }

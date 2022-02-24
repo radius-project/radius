@@ -13,7 +13,7 @@ export class DaprSecretStoreBinding implements Binding {
 
         this.name = map['SECRETSTORENAME'];
         if (!this.name) {
-            throw new Error('SECRETSTORENAME is required');
+            throw new Error('SECRETSTORENAME is  required');
         }
         // This is safe to construct. It doesn't hit the network until you use it.
         this.client = new DaprClient('localhost', process.env.DAPR_HTTP_PORT)
