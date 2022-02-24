@@ -194,14 +194,9 @@ func Test_Handler(t *testing.T) {
 		{
 			Method:      "GET",
 			Description: "GetResourceAzureConnection",
-			URI:         baseURI + "/test-application/test-resource-type/test-resource",
+			URI:         baseURI + "/test-application/test-resource-type/test-resource?ResourceSubscriptionID=test-subscription&ResourceGroup=test-resource-group&ResourceType=Microsoft.Storage/Accounts",
 			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
 				return mock.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any())
-			},
-			Body: map[string]interface{}{
-				"ResourceGroup":  "test-resource-group",
-				"ResourceType":   "Microsoft.Storage/Accounts",
-				"SubscriptionID": "test-subscription",
 			},
 		},
 		{
@@ -264,7 +259,7 @@ func Test_Handler(t *testing.T) {
 					})
 				} else {
 					if strings.HasPrefix(testcase.Description, "GetResource") {
-						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.AzureConnectionResourceProperties) (rest.Response, error) {
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.RadiusResourceGetOptions) (rest.Response, error) {
 							return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
 						})
 					} else { // List
@@ -302,7 +297,7 @@ func Test_Handler(t *testing.T) {
 					})
 				} else {
 					if strings.HasPrefix(testcase.Description, "GetResource") {
-						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.AzureConnectionResourceProperties) (rest.Response, error) {
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.RadiusResourceGetOptions) (rest.Response, error) {
 							return nil, fmt.Errorf("error!")
 						})
 					} else { // List
@@ -344,7 +339,7 @@ func Test_Handler(t *testing.T) {
 					})
 				} else {
 					if strings.HasPrefix(testcase.Description, "GetResource") {
-						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.AzureConnectionResourceProperties) (rest.Response, error) {
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.RadiusResourceGetOptions) (rest.Response, error) {
 							return &FaultingResponse{}, nil
 						})
 					} else { // List

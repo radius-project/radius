@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -156,19 +157,13 @@ func (h *Handler) ListResources(w http.ResponseWriter, req *http.Request) {
 func (h *Handler) GetResource(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
-	// Request body with extra info is expected if the request is for a non-Radius Azure resource (connections)
-	azureConnectionResourceProperties := radclient.AzureConnectionResourceProperties{}
-	if req.ContentLength > 0 {
-		body, err := readJSONBody(req)
-		if err != nil {
-			badRequest(ctx, w, req, err)
-			return
-		}
-
-		err = json.Unmarshal(body, &azureConnectionResourceProperties)
-		if err != nil {
-			badRequest(ctx, w, req, err)
-			return
+	// Query parameters with extra info is expected if the request is for a non-Radius Azure resource (connections)
+	azureConnectionResourceProperties := radclient.RadiusResourceGetOptions{}
+	if len(req.URL.Query()) > 1 {
+		azureConnectionResourceProperties = radclient.RadiusResourceGetOptions{
+			ResourceSubscriptionID: to.StringPtr(req.URL.Query().Get("ResourceSubscriptionID")),
+			ResourceGroup:          to.StringPtr(req.URL.Query().Get("ResourceGroup")),
+			ResourceType:           to.StringPtr(req.URL.Query().Get("ResourceType")),
 		}
 	}
 

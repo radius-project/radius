@@ -147,18 +147,6 @@ type AzureComServiceBusQueueListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureConnectionResourceProperties - Properties of Azure resource that Radius application connects to
-type AzureConnectionResourceProperties struct {
-	// Resource group of the Azure resource
-	ResourceGroup *string `json:"ResourceGroup,omitempty"`
-
-	// Resource type of the Azure resource
-	ResourceType *string `json:"ResourceType,omitempty"`
-
-	// Subscription ID of the Azure resource
-	SubscriptionID *string `json:"SubscriptionID,omitempty"`
-}
-
 // AzureEntityResource - The resource model definition for an Azure Resource Manager resource with an etag.
 type AzureEntityResource struct {
 	Resource
@@ -2800,8 +2788,12 @@ type RadiusResourceBeginDeleteOptions struct {
 
 // RadiusResourceGetOptions contains the optional parameters for the RadiusResource.Get method.
 type RadiusResourceGetOptions struct {
-	// Resource group of the Azure resource that Radius application connects to.
-	AzureConnectionResourceProperties *AzureConnectionResourceProperties
+	// Resource group of the Azure resource that Radius application connects to
+	ResourceGroup *string
+	// Subscription ID of the Azure resource that Radius application connects to
+	ResourceSubscriptionID *string
+	// Resource type of the Azure resource that Radius application connects to
+	ResourceType *string
 }
 
 // RadiusResourceList - List of RadiusResource resources.

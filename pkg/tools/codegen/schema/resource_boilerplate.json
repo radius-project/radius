@@ -1,25 +1,5 @@
 {
   "definitions": {
-    {{ if .IsGenericResource }}
-    "AzureConnectionResourceProperties": {
-      "properties": {
-        "SubscriptionID": {
-          "description": "Subscription ID of the Azure resource",
-          "type": "string"
-        },
-        "ResourceGroup": {
-          "description": "Resource group of the Azure resource",
-          "type": "string"
-        },
-        "ResourceType": {
-          "description": "Resource type of the Azure resource",
-          "type": "string"
-        }
-      },
-      "type": "object",
-      "description": "Properties of Azure resource that Radius application connects to"
-    },
-    {{ end }}
     "{{ .ListType }}": {
       "properties": {
         "value": {
@@ -47,16 +27,29 @@
       "in": "path",
       "name": "{{ .TypeParameterName }}"
     },
-    "AzureConnectionResourceParameters": {
+    "ResourceSubscriptionIDParameter": {
       "x-ms-parameter-location": "method",
-      "description": "Resource group of the Azure resource that Radius application connects to.",
-      "schema": {
-        "type": "object",
-        "$ref": "#/definitions/AzureConnectionResourceProperties"
-      },
+      "description": "Subscription ID of the Azure resource that Radius application connects to",
+      "type": "string",
       "required": false,
-      "in": "body",
-      "name": "AzureConnectionResourceProperties"
+      "in": "query",
+      "name": "ResourceSubscriptionID"
+    },
+    "ResourceGroupParameter": {
+      "x-ms-parameter-location": "method",
+      "description": "Resource group of the Azure resource that Radius application connects to",
+      "type": "string",
+      "required": false,
+      "in": "query",
+      "name": "ResourceGroup"
+    },
+    "ResourceTypeParameter": {
+      "x-ms-parameter-location": "method",
+      "description": "Resource type of the Azure resource that Radius application connects to",
+      "type": "string",
+      "required": false,
+      "in": "query",
+      "name": "ResourceType"
     },
     {{ end }}
     "{{ .NameParameterType }}": {
@@ -138,7 +131,13 @@
             "$ref": "#/parameters/{{ .TypeParameterType }}"
           },
           {
-            "$ref": "#/parameters/AzureConnectionResourceParameters"
+            "$ref": "#/parameters/ResourceSubscriptionIDParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceTypeParameter"
           },
           {{ end }}
           {

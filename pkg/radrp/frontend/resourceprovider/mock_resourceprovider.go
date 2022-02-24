@@ -98,7 +98,7 @@ func (mr *MockResourceProviderMockRecorder) GetOperation(arg0, arg1 interface{})
 }
 
 // GetResource mocks base method.
-func (m *MockResourceProvider) GetResource(arg0 context.Context, arg1 azresources.ResourceID, arg2 radclient.AzureConnectionResourceProperties) (rest.Response, error) {
+func (m *MockResourceProvider) GetResource(arg0 context.Context, arg1 azresources.ResourceID, arg2 radclient.RadiusResourceGetOptions) (rest.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetResource", arg0, arg1, arg2)
 	ret0, _ := ret[0].(rest.Response)

@@ -163,7 +163,7 @@ var testcases = []testcase{
 		description: "GetResource",
 		verb:        "Get",
 		invoke: func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-			return rp.GetResource(ctx, id, radclient.AzureConnectionResourceProperties{})
+			return rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{})
 		},
 		setupDB: func(database *db.MockRadrpDB, err error) {
 			database.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).
@@ -177,10 +177,10 @@ var testcases = []testcase{
 		description: "GetResourceAzureConnection",
 		verb:        "Get",
 		invoke: func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-			return rp.GetResource(ctx, id, radclient.AzureConnectionResourceProperties{
-				ResourceGroup:  to.StringPtr("test-resourcegroup"),
-				ResourceType:   to.StringPtr("Microsoft.Storage/Accounts"),
-				SubscriptionID: to.StringPtr("test-resourcesubscription"),
+			return rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{
+				ResourceGroup:          to.StringPtr("test-resourcegroup"),
+				ResourceType:           to.StringPtr("Microsoft.Storage/Accounts"),
+				ResourceSubscriptionID: to.StringPtr("test-resourcesubscription"),
 			})
 		},
 		setupDB: func(database *db.MockRadrpDB, err error) {
@@ -704,7 +704,7 @@ func Test_GetResource_Success(t *testing.T) {
 	}
 	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
 
-	response, err := test.rp.GetResource(ctx, id, radclient.AzureConnectionResourceProperties{})
+	response, err := test.rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{})
 	require.NoError(t, err)
 
 	expected := RadiusResource{
@@ -733,10 +733,10 @@ func Test_GetResource_InvalidAzureConnectionResourceType(t *testing.T) {
 	test := createRPTest(t)
 	id := parseOrPanic(resourceID(applicationName, "Accounts", resourceName))
 
-	response, err := test.rp.GetResource(ctx, id, radclient.AzureConnectionResourceProperties{
-		ResourceGroup:  to.StringPtr("test-resourcegroup"),
-		ResourceType:   to.StringPtr("Storage/Accounts"),
-		SubscriptionID: to.StringPtr("test-resourcesubscription"),
+	response, err := test.rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{
+		ResourceGroup:          to.StringPtr("test-resourcegroup"),
+		ResourceType:           to.StringPtr("Storage/Accounts"),
+		ResourceSubscriptionID: to.StringPtr("test-resourcesubscription"),
 	})
 	require.NoError(t, err)
 	expected := armerrors.ErrorResponse{

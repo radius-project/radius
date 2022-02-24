@@ -36,7 +36,7 @@ type ResourceProvider interface {
 	DeleteApplication(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 
 	ListResources(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
-	GetResource(ctx context.Context, id azresources.ResourceID, azureConnectionResourceProperties radclient.AzureConnectionResourceProperties) (rest.Response, error)
+	GetResource(ctx context.Context, id azresources.ResourceID, azureConnectionResourceProperties radclient.RadiusResourceGetOptions) (rest.Response, error)
 	UpdateResource(ctx context.Context, id azresources.ResourceID, body []byte) (rest.Response, error)
 	DeleteResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error)
 
@@ -276,11 +276,11 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	return rest.NewOKResponse(output), nil
 }
 
-func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID, azureConnectionResourceProperties radclient.AzureConnectionResourceProperties) (rest.Response, error) {
+func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID, azureConnectionResourceProperties radclient.RadiusResourceGetOptions) (rest.Response, error) {
 	var outputResource RadiusResource
 
 	// For non-Radius Azure resources additional properties (resource specific subscription and resource group) are required to retrieve the corresponding resource
-	if azureConnectionResourceProperties != (radclient.AzureConnectionResourceProperties{}) {
+	if azureConnectionResourceProperties != (radclient.RadiusResourceGetOptions{}) {
 		// Only Azure resource types for non-Radius resources is supported
 		if !strings.HasPrefix(*azureConnectionResourceProperties.ResourceType, "Microsoft.") {
 			return rest.NewBadRequestResponse(fmt.Errorf("Only Microsoft Azure resource types are supported for this operation. Received resource type: %s", *azureConnectionResourceProperties.ResourceType).Error()), nil
@@ -295,7 +295,7 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID, azureCo
 
 		// Retrieve from database
 		dbResource, err := r.db.GetAzureResource(ctx, applicationID, id.Name(), *azureConnectionResourceProperties.ResourceType,
-			*azureConnectionResourceProperties.SubscriptionID, *azureConnectionResourceProperties.ResourceGroup)
+			*azureConnectionResourceProperties.ResourceSubscriptionID, *azureConnectionResourceProperties.ResourceGroup)
 		outputResource = NewRestRadiusResourceFromAzureResource(dbResource)
 		if err == db.ErrNotFound {
 			return rest.NewNotFoundResponse(id), nil

@@ -533,7 +533,7 @@ func Test_GetResource(t *testing.T) {
 
 	rp := NewResourceProvider(c, BaseURL, "http")
 
-	response, err := rp.GetResource(context.Background(), id, radclient.AzureConnectionResourceProperties{})
+	response, err := rp.GetResource(context.Background(), id, radclient.RadiusResourceGetOptions{})
 	require.NoError(t, err)
 
 	expected := resourceprovider.RadiusResource{
