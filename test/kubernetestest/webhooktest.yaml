@@ -56,7 +56,11 @@ webhooks:
     - rabbitmqcomponents
     - httproutes
     - dapriostatestorecomponents
+<<<<<<< HEAD
     - extendercomponents
+=======
+    - dapriosecretstorecomponents
+>>>>>>> a8d807b9 (Add support for generic dapr secret stores)
   sideEffects: None
 - admissionReviewVersions:
   - v1

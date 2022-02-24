@@ -51,6 +51,7 @@ const (
 	LocalIDDaprStateStoreComponent      = "DaprStateStoreComponent"
 	LocalIDDaprStateStoreSQLServer      = "DaprStateStoreSQLServer"
 	LocalIDDaprStateStoreGeneric        = "DaprStateStoreGeneric"
+	LocalIDDaprSecretStoreGeneric       = "DaprSecretStoreGeneric"
 	LocalIDDeployment                   = "Deployment"
 	LocalIDGateway                      = "Gateway"
 	LocalIDHttpRoute                    = "HttpRoute"

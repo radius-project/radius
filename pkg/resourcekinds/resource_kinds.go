@@ -22,6 +22,7 @@ const (
 	DaprPubSubTopicGeneric           = "generic"
 	DaprPubSubTopicAzureServiceBus   = "pubsub.azure.servicebus"
 	DaprStateStoreGeneric            = "dapr.io.statestore"
+	DaprSecretStoreGeneric           = "dapr.io.secretstore"
 	DaprPubSubGeneric                = "dapr.io.pubsubtopic"
 	AzureCosmosAccount               = "azure.cosmosdb.account"
 	AzureCosmosDBMongo               = "azure.cosmosdb.mongo"

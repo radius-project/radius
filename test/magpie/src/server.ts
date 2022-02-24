@@ -3,6 +3,7 @@ import * as http from 'http';
 import { loadBindings, BindingStatus, BindingProvider } from './binding'
 import { DaprPubSubBinding } from './bindings/daprpubsub';
 import { DaprStateStoreBinding } from './bindings/daprstatestore';
+import { DaprSecretStoreBinding } from './bindings/daprsecretstore';
 import { KeyVaultBinding } from './bindings/keyvault'
 import { MicrosoftSqlBinding } from './bindings/microsoftsql'
 import { MongoBinding } from './bindings/mongo'
@@ -22,6 +23,7 @@ const providers: {[key: string]: BindingProvider }= {
     'SQL': (map) => new MicrosoftSqlBinding(map),
     'REDIS': (map) => new RedisBinding(map),
     'DAPRSTATESTORE': (map) => new DaprStateStoreBinding(map),
+    'DAPRSECRETSTORE': (map) => new DaprSecretStoreBinding(map),
     'RABBITMQ' : (map) => new RabbitMQBinding(map),
 };
 

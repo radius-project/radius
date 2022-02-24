@@ -14,6 +14,7 @@ var kindMap = map[string]string{
 	"Container":                 "Container",
 	"dapr.io.PubSubTopic":       "DaprIOPubSubTopic",
 	"dapr.io.StateStore":        "DaprIOStateStore",
+	"dapr.io.SecretStore":       "DaprIOSecretStore",
 	"dapr.io.InvokeHttpRoute":   "DaprIOInvokeHttpRoute",
 	"mongo.com.MongoDatabase":   "MongoDatabase",
 	"rabbitmq.com.MessageQueue": "RabbitMQMessageQueue",

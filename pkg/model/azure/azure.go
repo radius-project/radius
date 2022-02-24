@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/daprpubsubv1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/daprsecretstorev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/extenderv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/gateway"
@@ -94,6 +95,12 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 				StateStores: daprstatestorev1alpha3.SupportedAzureStateStoreKindValues,
 			},
 		},
+		{
+			ResourceType: daprsecretstorev1alpha3.ResourceType,
+			Renderer: &daprsecretstorev1alpha3.Renderer{
+				SecretStores: daprsecretstorev1alpha3.SupportedAzureSecretStoreKindValues,
+			},
+		},
 
 		// Portable
 		{
@@ -159,6 +166,11 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 
 				return false
 			},
+		},
+		{
+			Kind:            resourcekinds.DaprSecretStoreGeneric,
+			HealthHandler:   handlers.NewDaprSecretStoreGenericHealthHandler(arm, k8s),
+			ResourceHandler: handlers.NewDaprSecretStoreGenericHandler(arm, k8s),
 		},
 		{
 			Kind:            resourcekinds.DaprStateStoreAzureStorage,
