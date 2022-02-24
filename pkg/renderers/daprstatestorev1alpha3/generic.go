@@ -14,6 +14,8 @@ import (
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func GetDaprStateStoreAzureGeneric(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
@@ -87,6 +89,10 @@ func GetDaprStateStoreKubernetesGeneric(resource renderers.RendererResource) ([]
 		LocalID:      outputresource.LocalIDDaprStateStoreGeneric,
 		ResourceKind: resourcekinds.Kubernetes,
 		Resource:     &statestoreResource,
+		Identity: resourcemodel.NewKubernetesIdentity(&statestoreResource, v1.ObjectMeta{
+			Name:      resource.ResourceName,
+			Namespace: resource.ApplicationName,
+		}),
 	}
 
 	return []outputresource.OutputResource{output}, nil

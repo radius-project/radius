@@ -333,7 +333,13 @@ func (r *ResourceReconciler) RenderResource(ctx context.Context, req ctrl.Reques
 	}
 
 	for i := range output.Resources {
-		output.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateNotProvisioned
+		o := output.Resources[i].Resource.(runtime.Object)
+		if _, ok := DefaultWatchTypes[o.GetObjectKind().GroupVersionKind().Kind]; !ok {
+			// These output resources are not watched and their state would not change later.
+			// Mark them as Provisioned and Healthy
+			output.Resources[i].Status.ProvisioningState = kubernetes.ProvisioningStateNotProvisioned
+			output.Resources[i].Status.HealthState = healthcontract.HealthStateNotApplicable
+		}
 	}
 
 	log.Info("rendered output resources", "count", len(output.Resources))
