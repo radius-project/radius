@@ -14,6 +14,7 @@ import (
 	"runtime"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/project-radius/radius/pkg/version"
 )
 
 const radBicepEnvVar = "RAD_BICEP"
