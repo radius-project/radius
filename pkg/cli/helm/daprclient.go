@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -68,6 +69,7 @@ func runDaprHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) er
 }
 
 func RunDaprHelmUninstall(helmConf *helm.Configuration) error {
+	output.LogInfo("Uninstalling Dapr from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
