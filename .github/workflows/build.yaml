@@ -71,7 +71,7 @@ jobs:
       - name: Make build
         run: make build
       - name: Run make test (unit tests)
-        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
           GOTEST_OPTS: '-race'
         run: |
