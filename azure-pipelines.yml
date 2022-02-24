@@ -161,6 +161,7 @@ stages:
           --install \
           --create-namespace \
           --namespace radius-system \
+          --set container=${{ variables.DOCKER_REGISTRY }}/radius-controller \
           --set tag=${{ variables.REL_VERSION }} \
           --wait \
           --debug
