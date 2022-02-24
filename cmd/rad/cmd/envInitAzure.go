@@ -71,7 +71,7 @@ rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NA
 }
 
 func initAzureRadEnvironment(cmd *cobra.Command, args []string) error {
-	a, err := _validate(cmd, args)
+	a, err := validate(cmd, args)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ type arguments struct {
 	LogAnalyticsWorkspaceID string
 }
 
-func _validate(cmd *cobra.Command, args []string) (arguments, error) {
+func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	interactive, err := cmd.Flags().GetBool("interactive")
 	if err != nil {
 		return arguments{}, err
