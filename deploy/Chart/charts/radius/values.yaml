@@ -1,4 +1,2 @@
 container: radius.azurecr.io/radius-controller
 tag: 0.9 # Tag for radius-controller image.
-deploymentEngine: radius.azurecr.io/deployment-engine
-deploymentEngineTag: latest
