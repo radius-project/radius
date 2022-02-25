@@ -1,17 +1,9 @@
----
-type: docs
-title: "How to create and publish a Project Radius release"
-linkTitle: "Release process"
-description: "How we create Radius releases"
-weight: 80
----
-
+# How to create and publish a Project Radius release"
 
 Our release process for Project Radius is based on git tags. Pushing a new tag with the format: `v.<major>.<minor>.<patch>` will trigger a release build.
 
-{{% alert title="🚌🚌🚌 Busfactor Warning 🚌🚌🚌" color="warning" %}}
+> 🚌🚌🚌 Busfactor Warning 🚌🚌🚌 <br>
 Currently performing a release involves our custom Bicep compiler - which is in a private fork. We'll update these instructions in the future when this moves to a shared repository.
-{{% /alert %}}
 
 ## Pre-requisites
 
@@ -101,8 +93,7 @@ Each release belongs to a *channel* named like `<major>.<minor>`. Releases will 
 - Download `rad-bicep` from the `0.1` channel
 - Create an environment using the `0.1` version of the RP and environment setup script
 
-{{% alert title="⚠️ Compatibility ⚠️" color="warning" %}}
+> ⚠️ Compatibility ⚠️ <br>
 At this time we do not guarantee compatibility across releases or provide a migration path. For example, the behavior of a `0.1` `rad` CLI talking to a `0.2` control plane is unspecifed. We expect the project to change too frequently to provide compatibility guarantees at this time.
-{{% /alert %}}
 
 Conceptually we scope channels to a major+minor pair because this allows us to freely patch assets as needed without needing to change the intermediate pieces. For example pushing a `v0.1.1` tag will update the assets in the `v0.1` channel. This works as long as it is a *true* patch release and maintains compatibility.

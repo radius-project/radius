@@ -1,9 +1,4 @@
----
-type: docs
-title: "Your first commit: Debugging the CLI"
-linkTitle: "Debugging the CLI"
-weight: 90
----
+# Your first commit: Debugging the CLI
 
 ## Debugging your changes
 
@@ -46,11 +41,7 @@ Replace the contents with the following text:
 }
 ```
 
-{{% alert title="Explanation" color="primary" %}}
-This is a basic Go debugger configuration that is set up to launch the `rad` CLI.
-
-You can create definitions for any set of debug settings you want to keep handy.
-{{% /alert %}}
+> This is a basic Go debugger configuration that is set up to launch the `rad` CLI. You can create definitions for any set of debug settings you want to keep handy.
 
 ### Running with the debugger
 
@@ -64,18 +55,16 @@ Now you can launch the CLI in the debugger. Press `F5` to launch the debugger. A
 
 After some time the program will start and the breakpoint should be hit.
 
-{{% alert title="macOS permissions" color="warning" %}}
-The first time you debug on macOS with a given version of Go you will be prompted to enter your password.
-
-It is normal for this to take 1-2 minutes for the prompt to appear the first time.
-{{% /alert %}}
+>**macOS permissions** <br>
+The first time you debug on macOS with a given version of Go you will be prompted to enter your password. It is normal for this to take 1-2 minutes for the prompt to appear the first time.
 
 <img width="600px" src="main-breakpoint-hit.png" alt="Hitting a breakpoint">
 
 You can play around with the various debugger features, like stepping into code. When you're done, hit the red square *stop* icon in the debugger tools to end the debugging session.
 
-{{< button text="Next step: Run tests" page="first-commit-05-running-tests.md" >}}
+## Next step
+- [Run tests](first-commit-05-running-tests.md)
 
 ## Related Links
 
-- [Debugging Go with VS Code]({{< ref debugging-go-with-vscode >}})
+- [Debugging Go with VS Code](../../debugging-go-with-vscode.md)

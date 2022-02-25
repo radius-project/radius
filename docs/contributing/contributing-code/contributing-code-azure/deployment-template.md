@@ -1,10 +1,4 @@
----
-type: docs
-title: "Use a custom deployment template"
-linkTitle: "Deployment template"
-description: "How to pass in a deployment template file to the Radius CLI"
-weight: 60
----
+# Use a custom deployment template"
 
 # Testing environment setup
 

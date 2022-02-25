@@ -1,10 +1,4 @@
----
-type: docs
-title: "Writing Radius functional tests"
-linkTitle: "Writing functional tests"
-description: "How to write Radius functional tests"
-weight: 250
----
+# Writing Radius functional tests
 
 You can find the functional tests under `./test/functional`. A functional tests (in our terminology) is a test that interacts with real hosting enviroments (Azure, Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
 

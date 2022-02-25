@@ -1,10 +1,4 @@
----
-type: docs
-title: "Contributing to Project Radius"
-linkTitle: "Contributing"
-description: "Guides and requirements for contributing to Project Radius"
-weight: 70
----
+# Contributing to Project Radius"
 
 ## Architecture
 
@@ -26,17 +20,14 @@ As Project Radius is still being developed, some of the information here is spec
 
 Here are some examples of how this kind of information will be emphasized.
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 A description of how things will work in the future.
-{{% /alert %}}
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 A description of a gap or limitation that we currently have.
-{{% /alert %}}
 
-{{% alert title="❓ Open Question ❓" color="warning" %}}
+>❓ Open Question ❓<br>
 A description of something we don't quite know yet. 
-{{% /alert %}}
 
 ## Current state
 
@@ -76,9 +67,8 @@ The `rad` CLI provides features in three major areas:
 
 It can be hard to draw a clear line between *management* and *troubleshooting*, but I think the distinction is useful even through it is sometimes ambiguous. In general the CLI needs to interact both the management plane of the hosting platform (ARM in Azure) as well as the data plane of the hosting platform (logs, port-forwards).
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 We currently implement all functionality in the CLI as a monolith (Kubernetes, Azure, etc.). In the future we may choose to adopt a decentralized plugin model to factor out extensions for cloud providers such as Azure and other proprietary tech.
-{{% /alert %}}
 
 ### Environment setup
 
@@ -94,7 +84,7 @@ Conceptually, any hosting platform that Radius could target in the future is an 
 
 #### Azure
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 Currently we only support Azure cloud as an environment.
 
 Azure environments have some notable limitations for now to work as a **user-mode PaaS**. 
@@ -103,9 +93,8 @@ Azure environments have some notable limitations for now to work as a **user-mod
 - We support a very limited set of Azure regions based on the availability of resources we use.
 
 Our environment setup is driven by an ARM template and a deployment script (used to initialize AKS). These operations are part of `rad env init azure`. This is needed today because each environment is self-contained (single-tenant) and does not share resources with other subscriptions or other environments in the same subscription.
-{{% /alert %}}
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 When we have built a fully-managed Azure service it will remove the need for environment setup to create resources in Azure. It will simply add configuration locally. The control-plane and hosting platform will be centrally-managed as multitenant services like other production Azure services.
 
 A managed service will include the full suite of integrations that users expect.
@@ -113,35 +102,31 @@ A managed service will include the full suite of integrations that users expect.
 - `az` CLI
 - Azure Portal
 - Azure SDKs
-{{% /alert %}}
 
-{{% alert title="❓ Open Question ❓" color="warning" %}}
+>❓ Open Question ❓<br>
 There is an open question here about the branding of Radius in Azure in our future state as well as the level of consistency to aim for with other Azure tools like `az` CLI. 
 
 Due to the open-source nature and goals of Radius we blur the lines between a 1st party offering and 3rd party offering. 
-{{% /alert %}}
 
 Management operations use the ARM protocol to communicate with the Radius API as an Azure resource provider. We have authored an OpenAPI spec for the Radius API and used autorest to generate client code to drive our CLI experiences. We rely on the `az` CLI for authentication and expect users to have it installed for interations with Azure.
 
 Troubleshooting operations use ARM to retrieve credentials for the environment's AKS cluster and then communicate with it directly using the Kubernetes client libraries. 
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 In the future it's likely that we'll need to talk to some other data plane for troubleshooting in addition to AKS/Kubernetes. 
-{{% /alert %}}
 
 #### Kubernetes
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 Environment setup for Kubernetes will install required infrastructure via Helm charts to perform required setup on the cluster. Each cluster will need a one-time setup operation to install all of the Radius control-plane components. For example, we might install the Radius API (`radius-operator`) and Deployment Engine to the `radius-system` namespace.
 
 Once Radius has been installed for the cluster, users then become free to treat each namespace as an environment. Each application must be defined in a single namespace including both the Radius resources (`Application`, `Component`) as well as the supporting output resources (Kubernetes types like `Deployment` and `Service`). Users are free to use namespaces as an organization and RBAC tool - multiple applications per-namespace are allowed. 
 
 On the implementation side, we can use much of `kubectl`s functionality as libraries to enable interop with Kubernetes, for example we can use the full suite of `kubectl`s authentication libraries. Management operations and troubleshooting operations will use the Kubernetes client libraries to interact with Radius concepts and the Kubernetes data plane.
-{{% /alert %}}
 
 ### Application Model & Bicep
 
-The application model represents a set of core concepts for deploying and managing cloud-native applications. The application model has extensive coverage via its own [conceptual documentation]({{< ref appmodel-concept >}}). This section will focus on the technical details of the representation.
+The application model represents a set of core concepts for deploying and managing cloud-native applications. The application model has extensive coverage via its own [conceptual documentation](https://edge.radapp.dev/concepts/appmodel-concept/). This section will focus on the technical details of the representation.
 
 We use Bicep because it's an expressive and productive language for describing infrastructure and deployments. Using Bicep for Azure allows a transparent abstraction over the rest of Azure - Radius can reference ARM types and vice-versa. In the future the same will be possible for Kubernetes, Bicep will support seamless interop between Kubernetes types and Radius types.
 
@@ -157,7 +142,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
 An ARM type would have a name/version like `Microsoft.Radius/application@2020-01-01`. 
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 We make sure of several ARM-isms today but it's likely we'll gain further distance as we embrace Kubernetes more.
 
 For example our objects allow users to set all of the top-level ARM resource properties, and additionally wrap all of our data in a `properties` node. We'll remove this in the future to simplify the authoring experience and ensure that we're neither coupled to ARM or Kubernetes.
@@ -251,13 +236,11 @@ Application model features (Components, Routes, Scopes, Traits) must be defined 
 
 Regardless of the hosting platform the bodies of our types (eg. everything inside `spec` in Kubernetes, everything inside `properties` in ARM will be consistent.) By using schemas to define the defintions we can easily support all of these targets in full fidelty because its just the wrappers that are different. This is important to achieve velocity because we will support a large number of these types and want to make authoring them easy.
 
-{{% /alert %}}
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 We currently do a translation of types but not of structure in the Bicep compiler. We code-generate different ARM types for our output like `radius.dev/Application` -> `Microsoft.CustomProviders/provider/Application`.
 
 We do not currently perform any translation of the structure of the output.
-{{% /alert %}}
 
 ### Deployment Engine
 
@@ -265,9 +248,8 @@ The ARM deployment engine is responsible for translating an ARM JSON template in
 
 In Azure the ARM deployment engine is a centrally-hosted component that calls into other resource providers.
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 The ARM team plans to decouple the deployment engine and release it as a separate microservice with neutral branding. This is a key enabler for our Kubernetes strategy since we'll conceptually have the same components involved.
-{{% /alert %}}
 
 The ARM deployment engine handles the translation from a group of resources with order dependencies to individual operations on resources.
 
@@ -316,7 +298,7 @@ The Radius API is responsible for communicating changes in status and failures v
 - Azure: Radius API implements the ARM-RPC protocol in accordance with ARM's strong consistency semantics
 - Kubernetes: Radius API implements validation using webhooks, communicates changes in status using events and the CRD status field
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 Currently in Azure we implement this with a Custom Resource Provider. This is a feature for public extensibility of the ARM control plane and comes with some limitiations.
 
 Custom resource providers are per-resource-group, meaning that the RP has to be explicitly provisioned for each resource group where the user wants to deploy applications.
@@ -324,17 +306,15 @@ Custom resource providers are per-resource-group, meaning that the RP has to be 
 Custom resource providers have a simplified model for interactions between the RP and ARM and don't include all of the features like preflight validation or what-if. Custom resource provider objects are not visible in the Azure portal.
 
 We are operating in this mode because building a production RP is a significant investment in upfront cost and ongoing maintenance. Opening up an RP as a preview service for public access  has a significant ongoing maintenance cost due to the long deprecation period.
-{{% /alert %}}
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 In the future Radius will have a production multi-tenant RP using the RPaaS progamming model for the managed service.
 
 In the future Radius will have Kubernetes controllers for its objects as part of the OSS Kubernetes offering.
-{{% /alert %}}
 
 #### Radius API in Azure
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 It is important to understand first of all that a resource provider is just a REST+JSON website that implements the [ARM-RPC Protocol](https://github.com/Azure/azure-resource-manager-rpc).
 
 The current state in Azure reflects the *user-mode PaaS* stage of the project. We have made architecture decisions that optimize for simplicity, productivity, and cost that would not be acceptable tradeoffs in a production service.
@@ -357,9 +337,8 @@ Some of the tradeoffs here:
 - We don't have any dataplane services (non-ARM services)
 
 **Why App Service???** is a frequently asked question. Fundamentally an RP is a website that's publicly accessible and has a routable hostname. App Service comes with all of these features built-in and is trivial to manage.
-{{% /alert %}}
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 For building a production RP [RPaaS](https://armwiki.azurewebsites.net/rpaas/overview.html) is the strongly required model.
 
 The best way to think about RPaaS is that it is a simplified way to implement a resource provider. The actual contract for an RP is [very complex](https://github.com/Azure/azure-resource-manager-rpc). RPaaS moves the storage of the ARM resource data into a centralized system and requires the service to only handle changes to state instead of the whole process for CRUD operations.
@@ -375,15 +354,13 @@ Some of the main differences:
 - We would use an HA geo-replicated SKU of CosmosDB for storing our state
 - Our authentication setup will be more complex and fine-grained
 - We would use production quality logging and telemetry systems
-{{% /alert %}}
 
 #### Radius API in Kubernetes
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 We have not built this yet, but we have good clarity on how it will work.
 
 The architecture for Kubernetes is simple because Kubernetes controllers provide everything we need in a simple model. In Kubernetes all that's needed is the controller(s) - no external storage or external-facing systems are required.
-{{% /alert %}}
 
 ### Radius control plane
 
@@ -417,15 +394,13 @@ Example:
 - Azure + Serverless: `radius.dev/Container` maps to an Azure managed service
 - Kubernetes: `radius.dev/Container` maps to a Kubernetes deployment
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 The current implementation of the control plane only understands Azure + AKS as a hosting platform, the *backend* is not pluggable.
-{{% /alert %}}
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 The current implementation of the control plane is quite naive and doesn't totally satisfy our requirements.
-{{% /alert %}}
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 
 The results of desired state computation (rendering) are a set of objects per-component that reflect the desired state of the hosting platform as well as how to fetch the values of *bindings* (the logical connection points between the components). We call these objects *output resources*. 
 
@@ -446,25 +421,21 @@ It is critical the the rendering process of a component has the following charac
   - Guarantee: rendering output can be diffed against current state because current state is not a moving target
 - Can complete without knowing the outputs of other components
   - Guarantee: the per-operation work done by the control plane scales with complexity rather than application size
-{{% /alert %}}
 
 #### Gathering actual state
 
 In order to apply the desired state we need to reconcile it with the actual state of the hosting platform. This is a pluggable concern that is part of the Radius API and specialized to the hosting environment.
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 We currently track the *expected* state of resources for Azure in our database. This is not the same as the *actual state* because it is based on our book-keeping and not the real source of truth (ARM).
 
 Another way of saying this is that we have not implemented drift-detection. We do not provide any guarantees when a user changes or deletes a Radius-managed resource in Azure.
-{{% /alert %}}
 
-{{% alert title="❓ Open Question ❓" color="warning" %}}
+>❓ Open Question ❓<br>
 We will need to learn from some others how to implement this for Azure. Some other teams that run app-model projects within their team have already implemented good approaches that we can learn from.
-{{% /alert %}}
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 In Kubernetes this is very easy to accomplish, it is built-in to the controller framework.
-{{% /alert %}}
 
 #### Applying desired state
 
@@ -477,19 +448,16 @@ We need to communicate with potentially multiple systems in this layer. The set 
 
 Conceptually this is an open set. We could target any hosting platform's native resource format as long as it provides the right guarantees for idempotency.
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 We currently have a set of hand-coded *handlers* that deal with specified Azure resource types. Over time this will become the exception not the norm. We need to build the processing logic to handle ARM resources in a generic form - and only hand-code special cases when absolutely required.
-{{% /alert %}}
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 We currrently build an ordering of all components and apply their desired state in dependency order of the components. This comes with the limitation that cycles in dependecies between output resources of components are not supported.
-{{% /alert %}}
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 In the future we will use the output of the rendering phase to apply state in the dependency order of the output resources, not the dependency order of the components.
 
 [This issue](https://github.com/project-radius/radius/issues/300) describes the future state.
-{{% /alert %}}
 
 ### Hosting platform
 
@@ -499,7 +467,7 @@ We require the ability to run containers right now as we don't currently target 
 
 #### Azure
 
-{{% alert title="🚧 Under Construction 🚧" color="info" %}}
+> 🚧 Under Construction 🚧 <br>
 Due the *user-mode PaaS* phase of the project that we're currently in we've made choices that optimize for simplicitly and velocity. We're using AKS as a compute runtime because it is easy to configure and extend and also allows us to make progress on both Azure ARC and pure Kubernetes hosting platforms.
 
 This choice comes with some drawbacks, in a few ways it provides a different user-experience than our goal state:
@@ -507,19 +475,16 @@ This choice comes with some drawbacks, in a few ways it provides a different use
 - The AKS cluster is visible in the user's subscription
 - AKS (at least in default config) is a very expensive way to host a small application
 - Kubernetes leaks details that are visible to application code (DNS, environment variables)
-{{% /alert %}}
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 The future state for Azure involves us managing serverless compute services directly rather than using AKS as the compute runtime. This will require more investment from us and more explicit management of concerns like networking that are not challenges for us on AKS
-{{% /alert %}}
 
-{{% alert title="❓ Open Question ❓" color="warning" %}}
+>❓ Open Question ❓<br>
 The exact plans for the compute runtime on Azure are TBD. This has overlap with other product planning discussions and so the discussion about this topic won't take place on GitHub.
-{{% /alert %}}
 
 #### Kubernetes
 
-{{% alert title="🚀 Future State 🚀" color="success" %}}
+> 🚀 Future State 🚀 <br>
 We have not yet built a standalone Kubernetes hosting platform. However we know a lot about the shape because the options for Kubernetes are public OSS projects.
 
 Since Kubernetes is already ideal for compute workloads, we only need to answer what will be done for non-compute workloads. The emphasis will be on extensibility and flexibility as Kubernetes itself doesn't provide the answers.
@@ -534,4 +499,3 @@ For example we'll likely provide a built-in solution for common types like *Mong
 Compared to the Azure offering, it is expected that Kubernetes will require more configuration to deliver the same capabilities. This is reflective of the fact that there are more options and more choices on Kubernetes than on cloud providers with a suite of hosted services. For example we may not provide an on-by-default experience for log aggregation of Kubernetes, but provide the user with several good options to configure one.
 
 The menu of extensibility and configurabiity is a key call-to-action to build an OSS community. Users are best served by an array of options, and those options are best maintained by those with an interest in those technologies.
-{{% /alert %}}

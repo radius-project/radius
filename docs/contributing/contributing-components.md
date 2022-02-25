@@ -1,18 +1,11 @@
----
-type: docs
-title: "Contributing to Project Radius documentation"
-linkTitle: "Components"
-description: "How to contribute new Radius components"
-weight: 300
----
+# Contributing to Project Radius documentation
 
-{{% alert title="👷‍♂️ Under construction 🚧" color="warning" %}}
+> 👷‍♂️ Under construction 🚧 <br>
 This page is still under construction. Please come back soon once the Radius team has time to plan out how to create components in an extensible way.
-{{% /alert %}}
 
 ## Documentation
 
-All components need to have a page under the [Resource library]({{< ref resources >}}). Each page needs to have:
+All components need to have a page under the [Resource library](https://github.com/project-radius/docs/tree/edge/docs/content/resources). Each page needs to have:
 
 - Overview section which describes what the component does and why people would use it.
 - Configuration section which describes every value which you could provide when defining a component, along with example values for each field.

@@ -1,10 +1,4 @@
----
-type: docs
-title: "Running Radius resource provider locally"
-linkTitle: "Run RP locally"
-description: "How to get a local deployment of the Radius resource provider up and running"
-weight: 20
----
+# Running Radius resource provider locally
 
 You can run the Radius RP locally using:
 
@@ -125,4 +119,4 @@ Open `cmd/rp/main.go` and then launch the debugger from VSCode.
 
 ## Next: Testing locally
 
-Move over to [testing locally]({{<ref testing-locally.md>}}).
+Move over to [testing locally](./testing-locally.md).

@@ -1,10 +1,4 @@
----
-type: docs
-title: "Your first commit: Prerequisites"
-linkTitle: "Prerequisites"
-description: "How to setup your system to begin developing for Radius"
-weight: 50
----
+# Your first commit: Prerequisites
 
 ## Operating system
 
@@ -39,10 +33,10 @@ This is the list of core dependencies to install for the most common tasks. In g
 - [Node.js](https://nodejs.org/en/)
 - [Golangci-lint](https://golangci-lint.run/usage/install/#local-installation)
 
-{{% alert title="Package managers" color="primary" %}}
+## Package managers
 On our supported OSes using a package manager to install these dependencies is a much easier way to keep them updated. 
 - For macOS, this likely means you should be using [Homebrew](https://brew.sh/).
 - On Linux, use your distro's package manager.
-{{% /alert %}}
 
-{{< button text="Next step: Install development tools" page="first-commit-01-development-tools.md" >}}
+## Next step
+- [Install development tools](first-commit-01-development-tools.md)

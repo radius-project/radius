@@ -1,9 +1,4 @@
----
-type: docs
-title: "Understanding Radius repo code organization"
-linkTitle: "Code Organization"
-weight: 100
----
+# Understanding Radius repo code organization
 
 This document describes the high-level organization of code for the Radius repository. The goal of this document is to capture most of the important details, not every single thing will be described here.
 

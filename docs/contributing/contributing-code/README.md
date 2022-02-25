@@ -1,17 +1,9 @@
----
-type: docs
-title: "Developing Project Radius"
-linkTitle: "Code"
-description: "How to contribute to the Project Radius codebase"
-weight: 40
----
+# Developing Project Radius
 
 ## What to contribute
 
-For now, we're looking for help with issues labeled as *Help Wanted*. You can find a query [here](https://github.com/project-radius/radius/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22).
+For now, we're looking for help with issues labeled as *Good First Issue*. You can find a query [here](https://github.com/project-radius/radius/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 ## Getting started
 
-For your first commit and PR to Project Radius you should start with the step-by-step [first-commit guide]({{< ref contributing-code-first-commit >}}).
-
-## Sections
+For your first commit and PR to Project Radius you should start with the step-by-step [first-commit guide](./contributing-code-first-commit/first-commit-00-prerequisites.md).

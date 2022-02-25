@@ -1,10 +1,4 @@
----
-type: docs
-title: "Your first commit: Creating a pull request"
-linkTitle: "Creating a pull request"
-description: Creating your first Radius PR
-weight: 110
----
+# Your first commit: Creating a pull request
 
 ## Your first pull request
 

@@ -1,10 +1,7 @@
----
-type: docs
-title: "Running the Kubernetes integration tests locally"
-linkTitle: "Run controller locally"
-description: "How to get the Radius Kubernetes controller running locally"
-weight: 20
----
+# Running the Kubernetes integration tests locally
+
+> 👷‍♂️ Under construction 🚧 <br>
+Some of this information may be obsolete or out of date. Proceed with caution.
 
 ## Running integration tests
 

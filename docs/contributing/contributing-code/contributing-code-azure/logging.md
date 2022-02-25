@@ -1,10 +1,4 @@
----
-type: docs
-title: "Radius resource provider logging"
-linkTitle: "Resource provider logging"
-description: "Logging in Radius resource provider"
-weight: 30
----
+# Radius resource provider logging
 
 The Radius RP logs will be used for debugging and troubleshooting Radius deployments and end-to-end deployment tests. These logs should therefore provide meaningful information and context which would be needed for troubleshooting.
 

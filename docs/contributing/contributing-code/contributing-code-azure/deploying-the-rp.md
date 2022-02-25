@@ -1,14 +1,6 @@
----
-type: docs
-title: "Deploy a custom Radius resource provider"
-linkTitle: "Deploy custom RP"
-description: "How to deploy a custom build of the Radius resource provider to an Azure environment"
-weight: 40
----
+# Deploy a custom Radius resource provider"
 
-{{% alert title="Note" color="warning" %}}
-This guide will cover deploying a Radius environment to Azure manually. This is part of the job that's done by `rad env init azure`. This workflow is useful when you need to test changes to the templates, or when you need to override a setting that's not provided by the CLI.
-{{% /alert %}}
+> This guide will cover deploying a Radius environment to Azure manually. This is part of the job that's done by `rad env init azure`. This workflow is useful when you need to test changes to the templates, or when you need to override a setting that's not provided by the CLI.
 
 ### Step 1: (Optional) Build & Push the Image
 

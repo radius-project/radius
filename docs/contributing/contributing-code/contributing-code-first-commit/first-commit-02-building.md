@@ -1,10 +1,4 @@
----
-type: docs
-title: "Your first commit: Building"
-linkTitle: "Building"
-description: Building Radius on your local machine
-weight: 70
----
+# Your first commit: Building
 
 ## Building the code
 
@@ -75,4 +69,5 @@ Use "rad [command] --help" for more information about a command.
 
 If you got this far then you're able to build, and you should move to the next step.
 
-{{< button text="Next step: Work on the CLI" page="first-commit-03-working-on-cli.md" >}}
+## Next step:
+- [Work on the CLI](first-commit-03-working-on-cli.md)

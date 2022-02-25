@@ -1,10 +1,4 @@
----
-type: docs
-title: "Your first commit: Running tests"
-linkTitle: "Running tests"
-description: How to run unit tests on your local machine
-weight: 100
----
+# Your first commit: Running tests
 
 ## Running tests
 
@@ -57,4 +51,5 @@ Open `./pkg/rad/config_test.go` in the editor. Each test function has the option
 
 <img width="600px" src="unittest-commands.png" alt="Commands to launch for a unit test"><br />
 
-{{< button text="Next step: Create a PR" page="first-commit-06-creating-a-pr.md" >}}
+## Next step
+-  [Create a PR](first-commit-06-creating-a-pr.md)

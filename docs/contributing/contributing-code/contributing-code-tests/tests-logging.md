@@ -1,10 +1,4 @@
----
-type: docs
-title: "Radius tests logging"
-linkTitle: "Radius tests logging"
-description: "Logging in Radius tests"
-weight: 30
----
+# Radius tests logging
 
 The Radius tests redirect the Resource Provider logger output to the testing error log. This can be done as below:-
 

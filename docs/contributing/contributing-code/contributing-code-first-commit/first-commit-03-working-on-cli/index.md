@@ -1,10 +1,4 @@
----
-type: docs
-title: "Your first commit: Working on the CLI"
-linkTitle: "Working on the CLI"
-description: Try out updating and running the Radius CLI
-weight: 80
----
+# Your first commit: Working on the CLI
 
 ## Making a change to the CLI
 
@@ -18,9 +12,8 @@ If you're using VS Code, entring `code .` at the command line from the root dire
 
 Open the file `cmd/rad/main.go`. This is the entry point of the `rad` CLI.
 
-{{% alert title="VSCode tip" color="primary" %}}
+> **VSCode tip** <br>
 Using VS Code you can hit `Command+P` (or `Ctrl+P`) and get a search bar for files that does fuzzy searching. For instance typing `main` would let you pick the file from a short list. With practice this can make navigation very fast.
-{{% /alert %}}
 
 You should see code like the following:
 
@@ -80,8 +73,9 @@ Flags:
 Use "rad [command] --help" for more information about a command.
 ```
 
-{{< button text="Next step: Debug the CLI" page="first-commit-04-debugging-cli.md" >}}
+## Next step
+- [Debug the CLI](first-commit-04-debugging-cli.md)
 
 ## Related Links
 
-- [Running the CLI from source]({{< ref running-rad-cli >}})
+- [Running the CLI from source](../../contributing-code-cli/running-rad-cli.md)

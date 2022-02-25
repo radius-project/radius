@@ -1,10 +1,4 @@
----
-type: docs
-title: "Build the Radius CLI"
-linkTitle: "Build CLI"
-description: "How to build a local version of the Radius CLI"
-weight: 10
----
+# Build the Radius CLI
 
 For a lot of your development tasks you will need to build `rad` from source instead of using a binary.
 
