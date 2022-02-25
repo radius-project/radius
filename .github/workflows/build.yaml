@@ -41,6 +41,8 @@ jobs:
           - target_os: linux
             target_arch: arm
           - target_os: linux
+            target_arch: arm64
+          - target_os: linux
             target_arch: amd64
           - target_os: windows
             target_arch: amd64
@@ -73,13 +75,13 @@ jobs:
       - name: Make build
         run: make build
       - name: Run make test (unit tests)
-        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
           GOTEST_OPTS: '-race'
         run: |
           make test
       - name: Run make test-localenv (local development tests)
-        if: matrix.target_arch != 'arm' && matrix.target_os == 'linux'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: make test-localenv
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
@@ -537,6 +539,16 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v2
         with:
+          name: rad_cli_linux_arm
+          path: rad_cli_linux_arm
+      - name: Download release artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: rad_cli_linux_arm64
+          path: rad_cli_linux_arm64
+      - name: Download release artifacts
+        uses: actions/download-artifact@v2
+        with:
           name: rad_cli_linux_amd64
           path: rad_cli_linux_amd64
       - name: Download release artifacts
@@ -558,6 +570,20 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        with:
+          source_dir: rad_cli_linux_arm
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: true
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
+        with:
+          source_dir: rad_cli_linux_arm64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          sync: true
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm64/ --pattern rad --timeout 300'
       - uses: bacongobbler/azure-blob-storage-upload@v1.2.0
         with:
           source_dir: rad_cli_windows_amd64
