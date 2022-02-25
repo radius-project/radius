@@ -13,7 +13,7 @@ variables:
 - name: RADIUS_CONTAINER_LOG_BASE
   value: dist/container_logs
 - name: DOCKER_REGISTRY
-  value: radius.azurecr.io
+  value: radiusdev.azurecr.io
 - name: K8S_FUNCTIONALTEST_TIMEOUT
   value: 20m
 - name: AZURE_FUNCTIONALTEST_TIMEOUT
@@ -52,7 +52,7 @@ stages:
       displayName: Login to ACR
       inputs:
         command: login
-        containerRegistry: radius-acr
+        containerRegistry: radiusdev-acr  # Service connection of radiusdev ACR: https://dev.azure.com/azure-octo/Incubations/_settings/adminservices?resourceId=09d4666f-2486-4dbf-a599-f95622e1ad29
     - script: |
         export DOCKER_TAG_VERSION=$REL_VERSION
         make docker-build && make docker-push
@@ -161,6 +161,7 @@ stages:
           --install \
           --create-namespace \
           --namespace radius-system \
+          --set container=${{ variables.DOCKER_REGISTRY }}/radius-controller \
           --set tag=${{ variables.REL_VERSION }} \
           --wait \
           --debug

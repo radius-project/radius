@@ -21,12 +21,16 @@ concurrency:
   group: build-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+env:
+  GOVER: '^1.17'
+  # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
+  DOCKER_REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
+
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: self-hosted
     env:
-      GOVER: '^1.17'
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
       GOPROXY: https://proxy.golang.org
@@ -93,9 +97,6 @@ jobs:
   images:
     name: Container image build
     runs-on: self-hosted
-    env:
-      GOVER: '^1.17'
-      REGISTRY: radius.azurecr.io
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -121,42 +122,42 @@ jobs:
       - name: make docker-build
         run: make docker-build
         env:
-          DOCKER_REGISTRY: ${{ env.REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
       - name: make docker-build (PR)
         run: make docker-build
         if: startsWith(github.ref, 'refs/pull/')
         env:
-          DOCKER_REGISTRY: ${{ env.REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make docker-build (release)
         run: make docker-build
         if: startsWith(github.ref, 'refs/tags/v')
         env:
-          DOCKER_REGISTRY: ${{ env.REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
       - uses: azure/docker-login@v1
         with:
-          login-server: ${{ env.REGISTRY }}
+          login-server: ${{ env.DOCKER_REGISTRY }}
           username: '${{ secrets.DOCKER_USERNAME }}'
           password: '${{ secrets.DOCKER_PASSWORD }}'
       - name: make docker-push (latest)
         run: make docker-push
         if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # push image on push to main or tag
         env:
-          DOCKER_REGISTRY: ${{ env.REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
       - name: make docker-push (PR)
         run: make docker-push
         if: startsWith(github.ref, 'refs/pull/') # push image on pr
         env:
-          DOCKER_REGISTRY: ${{ env.REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: make docker-push (release)
         run: make docker-push
         if: startsWith(github.ref, 'refs/tags/v') # push image on tag
         env:
-          DOCKER_REGISTRY: ${{ env.REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
   helm:
     name: Helm chart build
@@ -165,7 +166,6 @@ jobs:
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
-      REGISTRY: radius.azurecr.io
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -199,8 +199,6 @@ jobs:
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     runs-on: self-hosted
     env:
-      GOVER: '^1.17'
-      DOCKER_REGISTRY: radius.azurecr.io
       # Timeout used for Kubernetes functional tests
       K8S_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
@@ -281,8 +279,6 @@ jobs:
     if: ${{ false }} # Skip the job until we revisit this dev env test - https://github.com/project-radius/radius/issues/1907
     runs-on: self-hosted
     env:
-      GOVER: '^1.17'
-      DOCKER_REGISTRY: radius.azurecr.io
       # Timeout used for functional tests
       LOCALDEV_FUNCTIONALTEST_TIMEOUT: 20m
       RADIUS_CONTAINER_LOG_BASE: dist/container_logs
@@ -369,10 +365,6 @@ jobs:
     if: ${{ false }} # Disable until we switch back to github action from ADO pipeline.
     runs-on: self-hosted
     env:
-      GOVER: '^1.17'
-
-      REGISTRY: radius.azurecr.io
-
       # Timeout used for Azure functional tests
       AZURE_FUNCTIONALTEST_TIMEOUT: 30m
 
@@ -483,7 +475,7 @@ jobs:
         go run cmd/testenv/main.go \
           update-rp \
           --configpath ~/.rad/config.yaml \
-          --image ${{ env.REGISTRY }}/radius-rp:${{ env.REL_VERSION }} \
+          --image ${{ env.DOCKER_REGISTRY }}/radius-rp:${{ env.REL_VERSION }} \
           --check-version ${{ env.REL_VERSION }}
     - name: Download Bicep
       run: |
