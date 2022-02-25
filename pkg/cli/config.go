@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
+	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // EnvironmentKey is the key used for the environment section
@@ -69,6 +70,13 @@ func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 	}
 
 	return section, nil
+}
+
+func UpdateEnvironmentSectionOnCreation(v *viper.Viper, env EnvironmentSection, environmentName string) {
+	//assign default env to latest env if not empty otherwise assign resourceGroup
+	env.Default = environmentName
+	output.LogInfo("Using environment: %v", environmentName)
+	UpdateEnvironmentSection(v, env);
 }
 
 // UpdateEnvironmentSection updates the EnvironmentSection in radius config.
