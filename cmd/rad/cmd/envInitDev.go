@@ -23,116 +23,115 @@ var envInitLocalCmd = &cobra.Command{
 	Use:   "dev",
 	Short: "Initializes a local development environment",
 	Long:  `Initializes a local development environment`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromContext(cmd.Context())
-		env, err := cli.ReadEnvironmentSection(config)
+	RunE: initDevRadEnvironment,
+}
+
+func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
+	config := ConfigFromContext(cmd.Context())
+	env, err := cli.ReadEnvironmentSection(config)
+	if err != nil {
+		return err
+	}
+
+	// Gather inputs and validate
+	interactive, err := cmd.Flags().GetBool("interactive")
+	if err != nil {
+		return err
+	}
+
+	chartPath, err := cmd.Flags().GetString("chart")
+	if err != nil {
+		return err
+	}
+
+	image, err := cmd.Flags().GetString("image")
+	if err != nil {
+		return err
+	}
+
+	tag, err := cmd.Flags().GetString("tag")
+	if err != nil {
+		return err
+	}
+
+	var params *DevEnvironmentParams
+	if interactive {
+		params, err = envInitDevConfigInteractive(cmd)
+		if err != nil {
+			return err
+		}
+	} else {
+		params, err = envInitDevConfigNonInteractive(cmd)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, foundConflict := env.Items[params.Name]
+	if foundConflict {
+		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s to delete or select a different name", params.Name, params.Name)
+	}
+
+	// Create environment
+	step := output.BeginStep("Creating Cluster...")
+	cluster, err := k3d.CreateCluster(cmd.Context(), params.Name)
+	if err != nil {
+		return err
+	}
+	output.CompleteStep(step)
+
+	step = output.BeginStep("Installing Radius...")
+
+	client, runtimeClient, _, err := createKubernetesClients(cluster.ContextName)
+	if err != nil {
+		return err
+	}
+
+	namespace := "default"
+	err = installRadius(cmd.Context(), client, runtimeClient, namespace, chartPath, image, tag)
+	if err != nil {
+		return err
+	}
+
+	// We don't want to use the host network option with HA Proxy on K3d. K3d supports LoadBalancer services,
+	// using the host network would cause a conflict.
+	err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: false})
+	if err != nil {
+		return err
+	}
+
+	output.CompleteStep(step)
+
+	// Persist settings
+	env.Items[params.Name] = map[string]interface{}{
+		"kind":        "dev",
+		"context":     cluster.ContextName,
+		"clustername": cluster.ClusterName,
+		"namespace":   "default",
+		"registry": &environments.Registry{
+			PushEndpoint: cluster.RegistryPushEndpoint,
+			PullEndpoint: cluster.RegistryPullEndpoint,
+		},
+	}
+
+	if params.Providers != nil {
+		providerData := map[string]interface{}{}
+		err = mapstructure.Decode(params.Providers, &providerData)
 		if err != nil {
 			return err
 		}
 
-		// Gather inputs and validate
-		interactive, err := cmd.Flags().GetBool("interactive")
-		if err != nil {
-			return err
-		}
+		env.Items[params.Name]["providers"] = providerData
+	}
 
-		chartPath, err := cmd.Flags().GetString("chart")
-		if err != nil {
-			return err
-		}
+	cli.UpdateEnvironmentSectionOnCreation(config, env, params.Name)
 
-		image, err := cmd.Flags().GetString("image")
-		if err != nil {
-			return err
-		}
+	err = cli.SaveConfig(config)
+	if err != nil {
+		return err
+	}
 
-		tag, err := cmd.Flags().GetString("tag")
-		if err != nil {
-			return err
-		}
-
-		var params *DevEnvironmentParams
-		if interactive {
-			params, err = envInitDevConfigInteractive(cmd)
-			if err != nil {
-				return err
-			}
-		} else {
-			params, err = envInitDevConfigNonInteractive(cmd)
-			if err != nil {
-				return err
-			}
-		}
-
-		_, foundConflict := env.Items[params.Name]
-		if foundConflict {
-			return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s to delete or select a different name", params.Name, params.Name)
-		}
-
-		// Create environment
-		step := output.BeginStep("Creating Cluster...")
-		cluster, err := k3d.CreateCluster(cmd.Context(), params.Name)
-		if err != nil {
-			return err
-		}
-		output.CompleteStep(step)
-
-		step = output.BeginStep("Installing Radius...")
-
-		client, runtimeClient, _, err := createKubernetesClients(cluster.ContextName)
-		if err != nil {
-			return err
-		}
-
-		namespace := "default"
-		err = installRadius(cmd.Context(), client, runtimeClient, namespace, chartPath, image, tag)
-		if err != nil {
-			return err
-		}
-
-		// We don't want to use the host network option with HA Proxy on K3d. K3d supports LoadBalancer services,
-		// using the host network would cause a conflict.
-		err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: false})
-		if err != nil {
-			return err
-		}
-
-		output.CompleteStep(step)
-
-		// Persist settings
-		env.Items[params.Name] = map[string]interface{}{
-			"kind":        "dev",
-			"context":     cluster.ContextName,
-			"clustername": cluster.ClusterName,
-			"namespace":   "default",
-			"registry": &environments.Registry{
-				PushEndpoint: cluster.RegistryPushEndpoint,
-				PullEndpoint: cluster.RegistryPullEndpoint,
-			},
-		}
-
-		if params.Providers != nil {
-			providerData := map[string]interface{}{}
-			err = mapstructure.Decode(params.Providers, &providerData)
-			if err != nil {
-				return err
-			}
-
-			env.Items[params.Name]["providers"] = providerData
-		}
-		if len(env.Items) == 1 {
-			env.Default = params.Name
-		}
-
-		cli.UpdateEnvironmentSection(config, env)
-
-		err = cli.SaveConfig(config)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	},
+	return nil
 }
 
 func envInitDevConfigInteractive(cmd *cobra.Command) (*DevEnvironmentParams, error) {

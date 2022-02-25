@@ -67,42 +67,44 @@ rad env init azure -i
 ## already exists Radius will connect to it instead of deploying a new one.
 rad env init azure -e myenv --subscription-id SUB-ID-GUID --resource-group RG-NAME --location westus2
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		a, err := validate(cmd, args)
+	RunE: initAzureRadEnvironment,
+}
+
+func initAzureRadEnvironment(cmd *cobra.Command, args []string) error {
+	a, err := validate(cmd, args)
+	if err != nil {
+		return err
+	}
+
+	if a.Interactive {
+		authorizer, err := auth.NewAuthorizerFromCLI()
 		if err != nil {
 			return err
 		}
 
-		if a.Interactive {
-			authorizer, err := auth.NewAuthorizerFromCLI()
-			if err != nil {
-				return err
-			}
-
-			selectedSub, err := selectSubscription(cmd.Context(), authorizer)
-			if err != nil {
-				return err
-			}
-			a.SubscriptionID = selectedSub.SubscriptionID
-
-			a.ResourceGroup, err = selectResourceGroup(cmd.Context(), authorizer, selectedSub)
-			if err != nil {
-				return err
-			}
-
-			a.Name, err = selectEnvironmentName(cmd.Context(), a.ResourceGroup)
-			if err != nil {
-				return err
-			}
+		selectedSub, err := selectSubscription(cmd.Context(), authorizer)
+		if err != nil {
+			return err
 		}
+		a.SubscriptionID = selectedSub.SubscriptionID
 
-		err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry, a.LogAnalyticsWorkspaceID)
+		a.ResourceGroup, err = selectResourceGroup(cmd.Context(), authorizer, selectedSub)
 		if err != nil {
 			return err
 		}
 
-		return nil
-	},
+		a.Name, err = selectEnvironmentName(cmd.Context(), a.ResourceGroup)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry, a.LogAnalyticsWorkspaceID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func init() {
@@ -709,10 +711,8 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		"controlPlaneResourceGroup": controlPlaneResourceGroup,
 		"clusterName":               clusterName,
 	}
-	if len(env.Items) == 1 {
-		env.Default = name
-	}
-	cli.UpdateEnvironmentSection(config, env)
+	
+	cli.UpdateEnvironmentSectionOnCreation(config, env, name)
 
 	err = cli.SaveConfig(config)
 	if err != nil {
