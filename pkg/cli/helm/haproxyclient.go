@@ -94,6 +94,7 @@ func addHAProxyValues(helmChart *chart.Chart, options HAProxyOptions) error {
 func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = haproxyReleaseName
+	installClient.Timeout = timeout
 	installClient.Namespace = RadiusSystemNamespace
 
 	_, err := installClient.Run(helmChart, helmChart.Values)

@@ -79,6 +79,7 @@ func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage 
 func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = radiusReleaseName
+	installClient.Timeout = timeout
 	installClient.Namespace = RadiusSystemNamespace
 	_, err := installClient.Run(helmChart, helmChart.Values)
 	return err

@@ -62,6 +62,7 @@ func ApplyDaprHelmChart(version string) error {
 func runDaprHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = daprReleaseName
+	installClient.Timeout = timeout
 	installClient.Namespace = RadiusSystemNamespace
 
 	_, err := installClient.Run(helmChart, helmChart.Values)
