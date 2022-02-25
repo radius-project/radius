@@ -15,7 +15,7 @@ assignees: ''
 **OS/rad version**
 <!--What operating system and rad cli version are you running?-->
 
-<!-- PASTE OUTPUT OF rad --version -->
+<!-- PASTE OUTPUT OF rad version -->
 
 **Screenshots**
 <!--If applicable, add screenshots to help explain your problem-->
