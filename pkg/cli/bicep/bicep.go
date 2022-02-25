@@ -14,6 +14,7 @@ import (
 	"runtime"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/project-radius/radius/pkg/version"
 )
 
 const radBicepEnvVar = "RAD_BICEP"
@@ -150,11 +151,11 @@ func getDownloadURI() (string, error) {
 	}
 
 	if runtime.GOOS == "darwin" {
-		return fmt.Sprintf(downloadURIFmt, "pr-189", "macos-x64", filename), nil
+		return fmt.Sprintf(downloadURIFmt, version.Channel(), "macos-x64", filename), nil
 	} else if runtime.GOOS == "linux" {
-		return fmt.Sprintf(downloadURIFmt, "pr-189", "linux-x64", filename), nil
+		return fmt.Sprintf(downloadURIFmt, version.Channel(), "linux-x64", filename), nil
 	} else if runtime.GOOS == "windows" {
-		return fmt.Sprintf(downloadURIFmt, "pr-189", "windows-x64", filename), nil
+		return fmt.Sprintf(downloadURIFmt, version.Channel(), "windows-x64", filename), nil
 	} else {
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
