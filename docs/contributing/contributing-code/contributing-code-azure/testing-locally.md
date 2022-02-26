@@ -63,6 +63,8 @@ environment:
 
 Now you can run `rad env switch local` and use this environment just like you'd use any other.
 
+**TEMPORARY:** due to limitations in our parsing code for deployment templates, you will need to set the environment variable: `BICEP_SYMBOLIC_NAME_CODEGEN_EXPERIMENTAL` to `false` to avoid errors when deploying to the local environment. This will be fixed in a future release when we move our ARM deployment processing to the real Deployment Engine rather than using our own parsing code.
+
 ## Known Limitations
 
 Since we're simulating the role of centralized ARM features like deployment templates there are some inherent limitations.
