@@ -1,4 +1,4 @@
-# Use a custom deployment template"
+# Use a custom deployment template
 
 # Testing environment setup
 

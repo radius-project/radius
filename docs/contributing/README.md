@@ -1,4 +1,4 @@
-# Contributing to Project Radius"
+# Contributing to Project Radius
 
 ## Architecture
 

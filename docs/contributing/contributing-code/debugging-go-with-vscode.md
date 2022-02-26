@@ -1,4 +1,4 @@
-# Debugging Radius with Visual Studio Code"
+# Debugging Radius with Visual Studio Code
 
 VSCode has good support for debugging VSCode, it's just a little unintuitive to set up.
 

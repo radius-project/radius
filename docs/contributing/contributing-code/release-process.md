@@ -1,4 +1,4 @@
-# How to create and publish a Project Radius release"
+# How to create and publish a Project Radius release
 
 Our release process for Project Radius is based on git tags. Pushing a new tag with the format: `v.<major>.<minor>.<patch>` will trigger a release build.
 

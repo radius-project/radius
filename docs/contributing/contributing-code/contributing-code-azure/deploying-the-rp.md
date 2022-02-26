@@ -1,4 +1,4 @@
-# Deploy a custom Radius resource provider"
+# Deploy a custom Radius resource provider
 
 > This guide will cover deploying a Radius environment to Azure manually. This is part of the job that's done by `rad env init azure`. This workflow is useful when you need to test changes to the templates, or when you need to override a setting that's not provided by the CLI.
 
