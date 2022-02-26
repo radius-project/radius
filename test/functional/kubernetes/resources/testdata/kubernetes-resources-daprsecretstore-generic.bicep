@@ -20,9 +20,9 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'secretstore'
     properties: {
       kind: 'generic'
-      type: 'azure.keyvault'
+      type: 'secretstores.kubernetes'
       metadata: {
-        foo: 'bar'
+        name: 'somename'
       }
       version: 'v1'
     }
