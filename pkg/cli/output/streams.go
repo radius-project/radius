@@ -9,26 +9,34 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/fatih/color"
 )
 
-// NewStreamGroup creates a new StreamGroup for the given writer.
+// NewStreamGroup creates a new StreamGroup for the given writer. All functionality of StreamGroup can be used concurrently.
 func NewStreamGroup(out io.Writer) *StreamGroup {
-	return &StreamGroup{out: out}
+	mutex := sync.Mutex{}
+	return &StreamGroup{out: out, mutex: &mutex}
 }
 
-// StreamGroup represents a group of related output streams of different colors.
+// StreamGroup represents a group of related output streams of different colors. All functionality of StreamGroup can be used concurrently.
 type StreamGroup struct {
 	index int
 	out   io.Writer
+
+	// The mutex protects access to index and to out. This mutex will be shared with Streams created from this StreamGroup.
+	mutex *sync.Mutex
 }
 
 func (sg *StreamGroup) NewStream(name string) *Stream {
+	sg.mutex.Lock()
+	defer sg.mutex.Unlock()
+
 	primary := color.New(colorList[sg.index])
 	secondary := color.New(colorList[sg.index], color.Faint)
 	sg.index++
-	return &Stream{name: name, primary: primary, secondary: secondary, out: sg.out}
+	return &Stream{name: name, primary: primary, secondary: secondary, out: sg.out, mutex: sg.mutex}
 }
 
 // Gives us 6 colors x 2 shades = 12 to cycle through where no consecutive entry is similar.
@@ -54,9 +62,14 @@ type Stream struct {
 	secondary *color.Color
 	out       io.Writer
 	name      string
+
+	// mutex is used to protect access to out. mutex is shared across a whole StreamGroup.
+	mutex *sync.Mutex
 }
 
 func (s *Stream) Print(text string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	// NOTE: we're intentionally doing this as a single Fprintf call to avoid interleaving.
 	// If you try to separate the two colors into two lines then you'll end up with interleaving
 	// between colors.
