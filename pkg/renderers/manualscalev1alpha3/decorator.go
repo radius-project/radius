@@ -33,14 +33,14 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	// Let the inner renderer do its work
 	output, err := r.Inner.Render(ctx, options)
 	if err != nil {
-		return renderers.RendererOutput{}, nil
+		return renderers.RendererOutput{}, err
 	}
 	resource := options.Resource
 
 	container := radclient.ContainerProperties{}
 	err = resource.ConvertDefinition(&container)
 	if err != nil {
-		return renderers.RendererOutput{}, nil
+		return renderers.RendererOutput{}, err
 	}
 
 	for _, t := range container.Traits {

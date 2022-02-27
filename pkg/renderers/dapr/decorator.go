@@ -60,12 +60,12 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	dependencies := options.Dependencies
 	output, err := r.Inner.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	if err != nil {
-		return renderers.RendererOutput{}, nil
+		return renderers.RendererOutput{}, err
 	}
 
 	trait, err := r.FindTrait(resource)
 	if err != nil {
-		return renderers.RendererOutput{}, nil
+		return renderers.RendererOutput{}, err
 	}
 
 	if trait == nil {
