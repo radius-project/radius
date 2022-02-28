@@ -18,7 +18,12 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/clients"
+
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	AzureConnectionARMResourceType = "AzureConnection"
 )
 
 type ARMManagementClient struct {
@@ -158,7 +163,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 func (dm *ARMManagementClient) ShowResource(ctx context.Context, appName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error) {
 	var options radclient.RadiusResourceGetOptions
 
-	if resourceSubscriptionID != "" && strings.HasPrefix(resourceType, "Microsoft.") {
+	if KnownAzureResourceType(resourceType) {
 		options = radclient.RadiusResourceGetOptions{
 			ResourceGroup:          to.StringPtr(resourceGroup),
 			ResourceType:           to.StringPtr(resourceType),
@@ -166,7 +171,7 @@ func (dm *ARMManagementClient) ShowResource(ctx context.Context, appName, resour
 		}
 
 		// For Azure resources full resource type is passed in properties. "Azure" is used as generic type to route all azure resource types requests to Radius RP.
-		resourceType = "AzureConnection"
+		resourceType = AzureConnectionARMResourceType
 	}
 
 	client := radclient.NewRadiusResourceClient(dm.Connection, dm.SubscriptionID)
@@ -181,4 +186,12 @@ func isNotFound(err error) bool {
 	var httpresp azcore.HTTPResponse
 	ok := errors.As(err, &httpresp)
 	return ok && httpresp.RawResponse().StatusCode == http.StatusNotFound
+}
+
+func KnownAzureResourceType(resourceType string) bool {
+	if strings.HasPrefix(resourceType, "Microsoft.") && !strings.HasPrefix(resourceType, "Microsoft.CustomProviders") {
+		return true
+	}
+
+	return false
 }

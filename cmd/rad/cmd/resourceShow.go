@@ -7,9 +7,9 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -50,10 +50,14 @@ func showResource(cmd *cobra.Command, args []string) error {
 	}
 	var resourceType, resourceName, resourceGroup, resourceSubscriptionID string
 	if azureResource {
-		resourceType, resourceName, resourceGroup, resourceSubscriptionID, err = cli.RequireAzureResource(cmd, args)
+		azureResource, err := cli.RequireAzureResource(cmd, args)
 		if err != nil {
 			return err
 		}
+		resourceName = azureResource.Name
+		resourceType = azureResource.ResourceType
+		resourceGroup = azureResource.ResourceGroup
+		resourceSubscriptionID = azureResource.SubscriptionID
 	} else {
 		resourceType, resourceName, err = cli.RequireResource(cmd, args)
 		if err != nil {
@@ -98,7 +102,7 @@ func isAzureConnectionResource(cmd *cobra.Command, args []string) (bool, error) 
 		}
 	}
 
-	if strings.HasPrefix(resourceType, "Microsoft.") {
+	if azure.KnownAzureResourceType(resourceType) {
 		return true, nil
 	}
 
