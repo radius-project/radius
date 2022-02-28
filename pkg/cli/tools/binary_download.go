@@ -7,6 +7,8 @@ package tools
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path"
 	"runtime"
@@ -91,6 +93,41 @@ func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
 	} else {
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
+}
+
+func DownloadToFolder(filepath string, resp *http.Response) error {
+	// create folders
+	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
+	}
+
+	// will truncate the file if it exists
+	out, err := os.Create(filepath)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %v", filepath, err)
+	}
+	defer out.Close()
+
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to write file %s: %v", filepath, err)
+	}
+
+	// get the filemode so we can mark it as executable
+	file, err := out.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
+	}
+
+	// make file executable by everyone
+	err = out.Chmod(file.Mode() | 0111)
+	if err != nil {
+		return fmt.Errorf("failed to change permissons for %s: %v", filepath, err)
+	}
+
+	return nil
 }
 
 func getFilename(base string) (string, error) {

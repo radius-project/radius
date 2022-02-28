@@ -7,22 +7,21 @@ package de
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"os"
-	"path"
 
 	"github.com/project-radius/radius/pkg/cli/tools"
 )
 
 const radDEEnvVar = "RAD_DE"
+const binaryName = "arm-de"
 
 // Placeholders are for: channel, platform, filename
 const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/de/%s/%s/%s"
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
 func IsDEInstalled() (bool, error) {
-	filepath, err := tools.GetLocalFilepath()
+	filepath, err := tools.GetLocalFilepath(radDEEnvVar, binaryName)
 	if err != nil {
 		return false, err
 	}
@@ -39,7 +38,7 @@ func IsDEInstalled() (bool, error) {
 
 // DeleteBicep cleans our local copy of bicep
 func DeleteDE() error {
-	filepath, err := tools.GetLocalFilepath()
+	filepath, err := tools.GetLocalFilepath(radDEEnvVar, binaryName)
 	if err != nil {
 		return err
 	}
@@ -54,7 +53,7 @@ func DeleteDE() error {
 
 // DownloadBicep updates our local copy of bicep
 func DownloadDE() error {
-	uri, err := tools.GetDownloadURI(downloadURIFmt, "arm-de")
+	uri, err := tools.GetDownloadURI(downloadURIFmt, binaryName)
 	if err != nil {
 		return err
 	}
@@ -69,41 +68,9 @@ func DownloadDE() error {
 		return fmt.Errorf("failed to download bicep from '%s'with status code: %d", uri, resp.StatusCode)
 	}
 
-	filepath, err := GetLocalBicepFilepath()
+	filepath, err := tools.GetLocalFilepath(radDEEnvVar, binaryName)
 	if err != nil {
 		return err
 	}
-
-	// create folders
-	err = os.MkdirAll(path.Dir(filepath), os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
-	}
-
-	// will truncate the file if it exists
-	out, err := os.Create(filepath)
-	if err != nil {
-		return fmt.Errorf("failed to create file %s: %v", filepath, err)
-	}
-	defer out.Close()
-
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to write file %s: %v", filepath, err)
-	}
-
-	// get the filemode so we can mark it as executable
-	file, err := out.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
-	}
-
-	// make file executable by everyone
-	err = out.Chmod(file.Mode() | 0111)
-	if err != nil {
-		return fmt.Errorf("failed to change permissons for %s: %v", filepath, err)
-	}
-
-	return nil
+	return tools.DownloadToFolder(filepath, resp)
 }

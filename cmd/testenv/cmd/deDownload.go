@@ -8,7 +8,7 @@ package cmd
 import (
 	"fmt"
 
-	bicep "github.com/project-radius/radius/pkg/cli/de"
+	"github.com/project-radius/radius/pkg/cli/de"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
@@ -26,7 +26,7 @@ var deDeleteCmd = &cobra.Command{
 	Long:  `Removes the local copy of the bicep compiler`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		output.LogInfo("removing local copy of bicep...")
-		ok, err := bicep.IsBicepInstalled()
+		ok, err := de.IsDEInstalled()
 		if err != nil {
 			return err
 		}
@@ -36,7 +36,7 @@ var deDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		err = bicep.DeleteBicep()
+		err = de.DeleteDE()
 		return err
 	},
 }
