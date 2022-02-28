@@ -1664,6 +1664,88 @@ func (e *ExecHealthProbeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type ExtenderProperties struct {
+	BasicResourceProperties
+	// Dictionary of
+	Properties map[string]interface{} `json:"properties,omitempty"`
+
+	// Dictionary of
+	Secrets map[string]interface{} `json:"secrets,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderProperties.
+func (e ExtenderProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	e.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "properties", e.Properties)
+	populate(objectMap, "secrets", e.Secrets)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderProperties.
+func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &e.Properties)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, &e.Secrets)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := e.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ExtenderResource - Extender Resource
+type ExtenderResource struct {
+	ProxyResource
+	// REQUIRED
+	Properties *ExtenderProperties `json:"properties,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderResource.
+func (e ExtenderResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	e.ProxyResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", e.Properties)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderResource.
+func (e *ExtenderResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &e.Properties)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := e.ProxyResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // GatewayBeginCreateOrUpdateOptions contains the optional parameters for the Gateway.BeginCreateOrUpdate method.
 type GatewayBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -1733,88 +1815,6 @@ func (g GatewayResource) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type GatewayResource.
 func (g *GatewayResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &g.Properties)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := g.ProxyResource.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-type GenericProperties struct {
-	BasicResourceProperties
-	// Dictionary of
-	Properties map[string]interface{} `json:"properties,omitempty"`
-
-	// Dictionary of
-	Secrets map[string]interface{} `json:"secrets,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type GenericProperties.
-func (g GenericProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	g.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "properties", g.Properties)
-	populate(objectMap, "secrets", g.Secrets)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type GenericProperties.
-func (g *GenericProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "properties":
-				err = unpopulate(val, &g.Properties)
-				delete(rawMsg, key)
-		case "secrets":
-				err = unpopulate(val, &g.Secrets)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if err := g.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
-		return err
-	}
-	return nil
-}
-
-// GenericResource - Generic Resource
-type GenericResource struct {
-	ProxyResource
-	// REQUIRED
-	Properties *GenericProperties `json:"properties,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type GenericResource.
-func (g GenericResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	g.ProxyResource.marshalInternal(objectMap)
-	populate(objectMap, "properties", g.Properties)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type GenericResource.
-func (g *GenericResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
