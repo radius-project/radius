@@ -943,6 +943,122 @@ type DaprIoStateStoreListResult struct {
 	DaprStateStoreList
 }
 
+// ExtenderCreateOrUpdatePollerResponse contains the response from method Extender.CreateOrUpdate.
+type ExtenderCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *ExtenderCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l ExtenderCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (ExtenderCreateOrUpdateResponse, error) {
+	respType := ExtenderCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.ExtenderResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a ExtenderCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *ExtenderCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *ExtenderClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("ExtenderClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &ExtenderCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// ExtenderCreateOrUpdateResponse contains the response from method Extender.CreateOrUpdate.
+type ExtenderCreateOrUpdateResponse struct {
+	ExtenderCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtenderCreateOrUpdateResult contains the result from method Extender.CreateOrUpdate.
+type ExtenderCreateOrUpdateResult struct {
+	ExtenderResource
+}
+
+// ExtenderDeletePollerResponse contains the response from method Extender.Delete.
+type ExtenderDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *ExtenderDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l ExtenderDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (ExtenderDeleteResponse, error) {
+	respType := ExtenderDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a ExtenderDeletePollerResponse from the provided client and resume token.
+func (l *ExtenderDeletePollerResponse) Resume(ctx context.Context, client *ExtenderClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("ExtenderClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &ExtenderDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// ExtenderDeleteResponse contains the response from method Extender.Delete.
+type ExtenderDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtenderGetResponse contains the response from method Extender.Get.
+type ExtenderGetResponse struct {
+	ExtenderGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtenderGetResult contains the result from method Extender.Get.
+type ExtenderGetResult struct {
+	ExtenderResource
+}
+
+// ExtenderListResponse contains the response from method Extender.List.
+type ExtenderListResponse struct {
+	ExtenderListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtenderListResult contains the result from method Extender.List.
+type ExtenderListResult struct {
+	ExtenderList
+}
+
 // GatewayCreateOrUpdatePollerResponse contains the response from method Gateway.CreateOrUpdate.
 type GatewayCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.

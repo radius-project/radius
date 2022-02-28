@@ -19,7 +19,7 @@ const (
 	StatefulSet                      = "StatefulSet"
 	SecretProviderClass              = "SecretProviderClass"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
-	DaprPubSubTopicGeneric           = "generic"
+	DaprPubSubTopicGeneric           = "dapr.generic"
 	DaprPubSubTopicAzureServiceBus   = "pubsub.azure.servicebus"
 	DaprStateStoreGeneric            = "dapr.io.statestore"
 	DaprPubSubGeneric                = "dapr.io.pubsubtopic"
@@ -37,4 +37,5 @@ const (
 	AzureRedis                       = "azure.redis"
 	AzureFileShare                   = "azure.fileshare"
 	AzureFileShareStorageAccount     = "azure.fileshare.account"
+	Extender                         = "extender"
 )

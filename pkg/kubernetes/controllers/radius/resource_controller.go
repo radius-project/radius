@@ -69,6 +69,7 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;watch;list;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="apps",resources=statefulsets,verbs=get;watch;list;create;update;patch;delete
 //+kubebuilder:rbac:groups="dapr.io",resources=components,verbs=get;watch;list;create;update;patch;delete
@@ -112,6 +113,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=microsoftcomsqldatabases,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=microsoftcomsqldatabases/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=microsoftcomsqldatabases/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=extenders,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=extenders/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=extenders/finalizers,verbs=update
 
 func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("resource", req.NamespacedName)

@@ -22,6 +22,7 @@ var kindMap = map[string]string{
 	"HttpRoute":                 "HttpRoute",
 	"GrpcRoute":                 "GrpcRoute",
 	"Gateway":                   "Gateway",
+	"Extender":                  "Extender",
 }
 
 // TODO this should be removed and instead we should use the CR definitions to know about the arm mapping

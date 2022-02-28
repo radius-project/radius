@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/daprpubsubv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
+	"github.com/project-radius/radius/pkg/renderers/extenderv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/gateway"
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/microsoftsqlv1alpha3"
@@ -72,6 +73,10 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 			Renderer: &daprpubsubv1alpha3.Renderer{
 				PubSubs: daprpubsubv1alpha3.SupportedKubernetesPubSubKindValues,
 			},
+		},
+		{
+			ResourceType: extenderv1alpha3.ResourceType,
+			Renderer:     &extenderv1alpha3.KubernetesRenderer{},
 		},
 	}
 	outputResources := []model.OutputResourceModel{

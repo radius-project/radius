@@ -25,7 +25,11 @@ type client struct {
 	ARM armauth.ArmConfig
 }
 
-func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error) {
+func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string, value string) (interface{}, error) {
+	if value != "" {
+		// The secret reference contains the value itself
+		return value, nil
+	}
 	arm, ok := identity.Data.(resourcemodel.ARMIdentity)
 	if !ok {
 		return nil, fmt.Errorf("unsupported resource type: %+v. Currently only ARM resources are supported", identity)
@@ -42,10 +46,10 @@ func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.Resourc
 		return nil, err
 	}
 
-	value, _, err := pointer.Get(response.Body)
+	secretValue, _, err := pointer.Get(response.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	return value, err
+	return secretValue, err
 }
