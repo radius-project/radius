@@ -38,8 +38,9 @@ var (
 )
 
 const (
-	ApplicationResourceType = "Application"
-	GenericResourceType     = "RadiusResource"
+	ApplicationResourceType     = "Application"
+	GenericResourceType         = "RadiusResource"
+	AzureConnectionResourceType = "AzureConnection"
 
 	ContainerType = "Container"
 )

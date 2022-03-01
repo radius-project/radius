@@ -107,18 +107,18 @@ func (mr *MockRadrpDBMockRecorder) DeleteV3Resource(arg0, arg1 interface{}) *gom
 }
 
 // GetAzureResource mocks base method.
-func (m *MockRadrpDB) GetAzureResource(arg0 context.Context, arg1, arg2 string) (AzureResource, error) {
+func (m *MockRadrpDB) GetAzureResource(arg0 context.Context, arg1 azresources.ResourceID, arg2, arg3, arg4, arg5 string) (AzureResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAzureResource", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetAzureResource", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(AzureResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAzureResource indicates an expected call of GetAzureResource.
-func (mr *MockRadrpDBMockRecorder) GetAzureResource(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockRadrpDBMockRecorder) GetAzureResource(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAzureResource", reflect.TypeOf((*MockRadrpDB)(nil).GetAzureResource), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAzureResource", reflect.TypeOf((*MockRadrpDB)(nil).GetAzureResource), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // GetOperationByID mocks base method.

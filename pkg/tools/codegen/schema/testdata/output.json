@@ -103,6 +103,30 @@
       "in": "path",
       "name": "awesomeThingName"
     },
+    "ResourceSubscriptionIDParameter": {
+      "x-ms-parameter-location": "method",
+      "description": "Subscription ID of the Azure resource that Radius application connects to",
+      "type": "string",
+      "required": false,
+      "in": "query",
+      "name": "ResourceSubscriptionID"
+    },
+    "ResourceGroupParameter": {
+      "x-ms-parameter-location": "method",
+      "description": "Resource group of the Azure resource that Radius application connects to",
+      "type": "string",
+      "required": false,
+      "in": "query",
+      "name": "ResourceGroup"
+    },
+    "ResourceTypeParameter": {
+      "x-ms-parameter-location": "method",
+      "description": "Resource type of the Azure resource that Radius application connects to",
+      "type": "string",
+      "required": false,
+      "in": "query",
+      "name": "ResourceType"
+    },
     "RadiusResourceTypeParameter": {
       "x-ms-parameter-location": "method",
       "description": "The type of the RadiusResource.",
@@ -182,6 +206,15 @@
           },
           {
             "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceSubscriptionIDParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceTypeParameter"
           },
           {
             "$ref": "#/parameters/RadiusResourceNameParameter"

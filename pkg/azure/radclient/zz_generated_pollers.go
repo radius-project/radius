@@ -272,6 +272,92 @@ func (p *AzureComServiceBusQueueDeletePoller) ResumeToken() (string, error) {
 	return p.pt.ResumeToken()
 }
 
+// AzureConnectionCreateOrUpdatePoller provides polling facilities until the operation reaches a terminal state.
+type AzureConnectionCreateOrUpdatePoller struct {
+	pt *azcore.Poller
+}
+
+// Done returns true if the LRO has reached a terminal state.
+func (p *AzureConnectionCreateOrUpdatePoller) Done() bool {
+	return p.pt.Done()
+}
+
+// Poll fetches the latest state of the LRO.  It returns an HTTP response or error.
+// If the LRO has completed successfully, the poller's state is updated and the HTTP
+// response is returned.
+// If the LRO has completed with failure or was cancelled, the poller's state is
+// updated and the error is returned.
+// If the LRO has not reached a terminal state, the poller's state is updated and
+// the latest HTTP response is returned.
+// If Poll fails, the poller's state is unmodified and the error is returned.
+// Calling Poll on an LRO that has reached a terminal state will return the final
+// HTTP response or error.
+func (p *AzureConnectionCreateOrUpdatePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final AzureConnectionCreateOrUpdateResponse will be returned.
+func (p *AzureConnectionCreateOrUpdatePoller) FinalResponse(ctx context.Context) (AzureConnectionCreateOrUpdateResponse, error) {
+	respType := AzureConnectionCreateOrUpdateResponse{}
+	resp, err := p.pt.FinalResponse(ctx, &respType.AzureConnectionResource)
+	if err != nil {
+		return AzureConnectionCreateOrUpdateResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// ResumeToken returns a value representing the poller that can be used to resume
+// the LRO at a later time. ResumeTokens are unique per service operation.
+func (p *AzureConnectionCreateOrUpdatePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+
+// AzureConnectionDeletePoller provides polling facilities until the operation reaches a terminal state.
+type AzureConnectionDeletePoller struct {
+	pt *azcore.Poller
+}
+
+// Done returns true if the LRO has reached a terminal state.
+func (p *AzureConnectionDeletePoller) Done() bool {
+	return p.pt.Done()
+}
+
+// Poll fetches the latest state of the LRO.  It returns an HTTP response or error.
+// If the LRO has completed successfully, the poller's state is updated and the HTTP
+// response is returned.
+// If the LRO has completed with failure or was cancelled, the poller's state is
+// updated and the error is returned.
+// If the LRO has not reached a terminal state, the poller's state is updated and
+// the latest HTTP response is returned.
+// If Poll fails, the poller's state is unmodified and the error is returned.
+// Calling Poll on an LRO that has reached a terminal state will return the final
+// HTTP response or error.
+func (p *AzureConnectionDeletePoller) Poll(ctx context.Context) (*http.Response, error) {
+	return p.pt.Poll(ctx)
+}
+
+	// FinalResponse performs a final GET to the service and returns the final response
+	// for the polling operation. If there is an error performing the final GET then an error is returned.
+	// If the final GET succeeded then the final AzureConnectionDeleteResponse will be returned.
+func (p *AzureConnectionDeletePoller) FinalResponse(ctx context.Context) (AzureConnectionDeleteResponse, error) {
+	respType := AzureConnectionDeleteResponse{}
+	resp, err := p.pt.FinalResponse(ctx, nil)
+	if err != nil {
+		return AzureConnectionDeleteResponse{}, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// ResumeToken returns a value representing the poller that can be used to resume
+// the LRO at a later time. ResumeTokens are unique per service operation.
+func (p *AzureConnectionDeletePoller) ResumeToken() (string, error) {
+	return p.pt.ResumeToken()
+}
+
 // ContainerCreateOrUpdatePoller provides polling facilities until the operation reaches a terminal state.
 type ContainerCreateOrUpdatePoller struct {
 	pt *azcore.Poller

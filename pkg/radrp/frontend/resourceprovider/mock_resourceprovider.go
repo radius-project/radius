@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	azresources "github.com/project-radius/radius/pkg/azure/azresources"
+	radclient "github.com/project-radius/radius/pkg/azure/radclient"
 	rest "github.com/project-radius/radius/pkg/radrp/rest"
 )
 
@@ -97,18 +98,18 @@ func (mr *MockResourceProviderMockRecorder) GetOperation(arg0, arg1 interface{})
 }
 
 // GetResource mocks base method.
-func (m *MockResourceProvider) GetResource(arg0 context.Context, arg1 azresources.ResourceID) (rest.Response, error) {
+func (m *MockResourceProvider) GetResource(arg0 context.Context, arg1 azresources.ResourceID, arg2 radclient.RadiusResourceGetOptions) (rest.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResource", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetResource", arg0, arg1, arg2)
 	ret0, _ := ret[0].(rest.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetResource indicates an expected call of GetResource.
-func (mr *MockResourceProviderMockRecorder) GetResource(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockResourceProviderMockRecorder) GetResource(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResource", reflect.TypeOf((*MockResourceProvider)(nil).GetResource), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResource", reflect.TypeOf((*MockResourceProvider)(nil).GetResource), arg0, arg1, arg2)
 }
 
 // GetSwaggerDoc mocks base method.

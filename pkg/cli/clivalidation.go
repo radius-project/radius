@@ -14,6 +14,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+type AzureResource struct {
+	Name           string
+	ResourceType   string
+	ResourceGroup  string
+	SubscriptionID string
+}
+
 // Used by commands that require a named environment to be an azure cloud environment.
 func ValidateNamedEnvironment(config *viper.Viper, name string) (environments.Environment, error) {
 	env, err := ReadEnvironmentSection(config)
@@ -101,6 +108,19 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 		return "", "", err
 	}
 	return results[0], results[1], nil
+}
+
+func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource AzureResource, err error) {
+	results, err := requiredMultiple(cmd, args, "type", "resource", "resource-group", "resource-subscription-id")
+	if err != nil {
+		return AzureResource{}, err
+	}
+	return AzureResource{
+		Name:           results[0],
+		ResourceType:   results[1],
+		ResourceGroup:  results[2],
+		SubscriptionID: results[3],
+	}, nil
 }
 
 func RequireOutput(cmd *cobra.Command) (string, error) {

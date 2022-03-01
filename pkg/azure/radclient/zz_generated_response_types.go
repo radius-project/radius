@@ -363,6 +363,122 @@ type AzureComServiceBusQueueListResult struct {
 	AzureServiceBusList
 }
 
+// AzureConnectionCreateOrUpdatePollerResponse contains the response from method AzureConnection.CreateOrUpdate.
+type AzureConnectionCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *AzureConnectionCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l AzureConnectionCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (AzureConnectionCreateOrUpdateResponse, error) {
+	respType := AzureConnectionCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.AzureConnectionResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a AzureConnectionCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *AzureConnectionCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *AzureConnectionClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("AzureConnectionClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &AzureConnectionCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// AzureConnectionCreateOrUpdateResponse contains the response from method AzureConnection.CreateOrUpdate.
+type AzureConnectionCreateOrUpdateResponse struct {
+	AzureConnectionCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureConnectionCreateOrUpdateResult contains the result from method AzureConnection.CreateOrUpdate.
+type AzureConnectionCreateOrUpdateResult struct {
+	AzureConnectionResource
+}
+
+// AzureConnectionDeletePollerResponse contains the response from method AzureConnection.Delete.
+type AzureConnectionDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *AzureConnectionDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l AzureConnectionDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (AzureConnectionDeleteResponse, error) {
+	respType := AzureConnectionDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a AzureConnectionDeletePollerResponse from the provided client and resume token.
+func (l *AzureConnectionDeletePollerResponse) Resume(ctx context.Context, client *AzureConnectionClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("AzureConnectionClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &AzureConnectionDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// AzureConnectionDeleteResponse contains the response from method AzureConnection.Delete.
+type AzureConnectionDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureConnectionGetResponse contains the response from method AzureConnection.Get.
+type AzureConnectionGetResponse struct {
+	AzureConnectionGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureConnectionGetResult contains the result from method AzureConnection.Get.
+type AzureConnectionGetResult struct {
+	AzureConnectionResource
+}
+
+// AzureConnectionListResponse contains the response from method AzureConnection.List.
+type AzureConnectionListResponse struct {
+	AzureConnectionListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// AzureConnectionListResult contains the result from method AzureConnection.List.
+type AzureConnectionListResult struct {
+	AzureConnectionList
+}
+
 // ContainerCreateOrUpdatePollerResponse contains the response from method Container.CreateOrUpdate.
 type ContainerCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.
