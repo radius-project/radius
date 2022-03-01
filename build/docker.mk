@@ -5,6 +5,7 @@
 
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
+DOCKER_TAG__MAGPIE_VERSION?=magpiego
 
 ##@ Docker Images
 
@@ -29,10 +30,17 @@ docker-build-$(1): build-$(1)-linux-amd64
 else
 docker-build-$(1):
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
+	ifeq ($(strip $(1)),magpie)
+			docker build $(2) -f $(3) \
+		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG__MAGPIE_VERSION) \
+		--label org.opencontainers.image.version="$(REL_VERSION)" \
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+	else
 	docker build $(2) -f $(3) \
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+	endif	
 endif
 .PHONY: docker-push-$(1)
 docker-push-$(1):
@@ -45,7 +53,7 @@ DOCKER_IMAGES := radius-rp radius-controller
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
 
 # magpie comes from our test directory.
-$(eval $(call generateDockerTargets,magpie,./test/magpie/,./test/magpie/Dockerfile))
+$(eval $(call generateDockerTargets,magpie,./test/magpiego/,./test/magpiego/Dockerfile))
 
 # list of 'outputs' to build all images
 DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-magpie

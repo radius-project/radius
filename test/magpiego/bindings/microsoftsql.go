@@ -1,0 +1,42 @@
+package bindings
+
+import (
+	"context"
+	"database/sql"
+	"log"
+
+	_ "github.com/denisenkom/go-mssqldb"
+)
+
+func MicrosoftSqlBinding(envParams map[string]string) BindingStatus {
+	//From https://docs.microsoft.com/en-us/azure/azure-sql/database/connect-query-go
+	connString := envParams["CONNECTIONSTRING"]
+	if connString == "" {
+		log.Fatal("CONNECTIONSTRING is required")
+		return BindingStatus{false, "CONNECTIONSTRING is required"}
+	}
+	db, err := sql.Open("sqlserver", connString)
+	if err != nil {
+		log.Fatal("Error creating connection pool - ", err.Error())
+		return BindingStatus{false, "Connection to mssql db failed"}
+	}
+	ctx := context.Background()
+	err = db.PingContext(ctx)
+	if err != nil {
+		log.Fatal("failed to ping mssqldb - ", err.Error())
+		return BindingStatus{false, "failed to ping mssqldb"}
+	}
+	stmt, err := db.Prepare("select 1 as number")
+	if err != nil {
+		log.Fatal("mssql access failed - ", err.Error())
+		return BindingStatus{true, "database access failed"}
+	}
+	defer stmt.Close()
+	row := stmt.QueryRow()
+	err = row.Scan()
+	if err != nil {
+		log.Fatal("mssql access failed - ", err.Error())
+		return BindingStatus{true, "mssql database access failed"}
+	}
+	return BindingStatus{true, "mssql database accessed"}
+}
