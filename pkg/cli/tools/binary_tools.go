@@ -57,7 +57,7 @@ func getOverridePath(overrideEnvVarName string, binaryName string) (string, erro
 
 	if !file.IsDir() {
 		// Since is a development-only setting, we're cool with being noisy about it.
-		fmt.Printf("%s overridden to %s", override)
+		fmt.Printf("%s overridden to %s", binaryName, override)
 		fmt.Println()
 		return override, nil
 	}
