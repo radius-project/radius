@@ -22,17 +22,17 @@ var deCmd = &cobra.Command{
 
 var deDeleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "Delete installed bicep compiler",
-	Long:  `Removes the local copy of the bicep compiler`,
+	Short: "Delete installed Deployment Engine",
+	Long:  `Removes the local copy of the Deployment Engine`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		output.LogInfo("removing local copy of bicep...")
+		output.LogInfo("removing local copy of Deployment Engine...")
 		ok, err := de.IsDEInstalled()
 		if err != nil {
 			return err
 		}
 
 		if !ok {
-			output.LogInfo("bicep is not installed")
+			output.LogInfo("Deployment Engine is not installed")
 			return err
 		}
 

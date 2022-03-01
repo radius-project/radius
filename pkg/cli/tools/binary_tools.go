@@ -17,10 +17,10 @@ import (
 	"github.com/project-radius/radius/pkg/version"
 )
 
-// GetLocalFilepath returns the local bicep file path. It does not verify that the file
+// GetLocalFilepath returns the local binary file path. It does not verify that the file
 // exists on disk.
 func GetLocalFilepath(overrideEnvVarName string, binaryName string) (string, error) {
-	override, err := getBicepOverridePath(overrideEnvVarName, binaryName)
+	override, err := getOverridePath(overrideEnvVarName, binaryName)
 	if err != nil {
 		return "", err
 	} else if override != "" {
@@ -40,7 +40,7 @@ func GetLocalFilepath(overrideEnvVarName string, binaryName string) (string, err
 	return path.Join(home, ".rad", "bin", filename), nil
 }
 
-func getBicepOverridePath(overrideEnvVarName string, binaryName string) (string, error) {
+func getOverridePath(overrideEnvVarName string, binaryName string) (string, error) {
 	override := os.Getenv(overrideEnvVarName)
 	if override == "" {
 		// not overridden
@@ -52,12 +52,12 @@ func getBicepOverridePath(overrideEnvVarName string, binaryName string) (string,
 
 	file, err := os.Stat(override)
 	if err != nil {
-		return "", fmt.Errorf("cannot locate rad-bicep on overridden path %s: %v", override, err)
+		return "", fmt.Errorf("cannot locate %s on overridden path %s: %v", binaryName, override, err)
 	}
 
 	if !file.IsDir() {
 		// Since is a development-only setting, we're cool with being noisy about it.
-		fmt.Printf("rad bicep overridden to %s", override)
+		fmt.Printf("%s overridden to %s", override)
 		fmt.Println()
 		return override, nil
 	}
@@ -69,11 +69,11 @@ func getBicepOverridePath(overrideEnvVarName string, binaryName string) (string,
 	override = path.Join(override, filename)
 	_, err = os.Stat(override)
 	if err != nil {
-		return "override", fmt.Errorf("cannot locate rad-bicep on overridden path %s: %v", override, err)
+		return "override", fmt.Errorf("cannot locate %s on overridden path %s: %v", binaryName, override, err)
 	}
 
 	// Since is a development-only setting, we're cool with being noisy about it.
-	fmt.Printf("rad bicep overridden to %s", override)
+	fmt.Printf("%s overridden to %s", binaryName, override)
 	fmt.Println()
 	return override, nil
 }
