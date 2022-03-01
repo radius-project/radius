@@ -19,7 +19,7 @@ const binaryName = "arm-de"
 // Placeholders are for: channel, platform, filename
 const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/de/%s/%s/%s"
 
-// IsBicepInstalled returns true if our local copy of bicep is installed
+// IsDEInstalled returns true if our local copy of arm-de is installed
 func IsDEInstalled() (bool, error) {
 	filepath, err := tools.GetLocalFilepath(radDEEnvVar, binaryName)
 	if err != nil {
@@ -36,7 +36,7 @@ func IsDEInstalled() (bool, error) {
 	return true, nil
 }
 
-// DeleteBicep cleans our local copy of bicep
+// DeleteDE cleans our local copy of arm-de
 func DeleteDE() error {
 	filepath, err := tools.GetLocalFilepath(radDEEnvVar, binaryName)
 	if err != nil {
@@ -51,7 +51,7 @@ func DeleteDE() error {
 	return nil
 }
 
-// DownloadBicep updates our local copy of bicep
+// DownloadDE updates our local copy of arm-de
 func DownloadDE() error {
 	uri, err := tools.GetDownloadURI(downloadURIFmt, binaryName)
 	if err != nil {
@@ -60,12 +60,12 @@ func DownloadDE() error {
 
 	resp, err := http.Get(uri)
 	if err != nil {
-		return fmt.Errorf("failed to download bicep: %v", err)
+		return fmt.Errorf("failed to download arm-de: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("failed to download bicep from '%s'with status code: %d", uri, resp.StatusCode)
+		return fmt.Errorf("failed to download arm-de from '%s'with status code: %d", uri, resp.StatusCode)
 	}
 
 	filepath, err := tools.GetLocalFilepath(radDEEnvVar, binaryName)
