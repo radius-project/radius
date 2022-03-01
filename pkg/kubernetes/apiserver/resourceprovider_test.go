@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
@@ -532,7 +533,7 @@ func Test_GetResource(t *testing.T) {
 
 	rp := NewResourceProvider(c, BaseURL, "http")
 
-	response, err := rp.GetResource(context.Background(), id)
+	response, err := rp.GetResource(context.Background(), id, radclient.RadiusResourceGetOptions{})
 	require.NoError(t, err)
 
 	expected := resourceprovider.RadiusResource{

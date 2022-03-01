@@ -12,9 +12,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	radclient "github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
@@ -161,13 +163,31 @@ var testcases = []testcase{
 		description: "GetResource",
 		verb:        "Get",
 		invoke: func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-			return rp.GetResource(ctx, id)
+			return rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{})
 		},
 		setupDB: func(database *db.MockRadrpDB, err error) {
 			database.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).
 				Times(1).DoAndReturn(func(interface{}, interface{}) (db.RadiusResource, error) {
 				return db.RadiusResource{}, err
 			})
+		},
+		id: parseOrPanic(resourceID(applicationName, resourceType, resourceName)),
+	},
+	{
+		description: "GetResource_AzureConnection",
+		verb:        "Get",
+		invoke: func(rp ResourceProvider, ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+			return rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{
+				ResourceGroup:          to.StringPtr("test-resourcegroup"),
+				ResourceType:           to.StringPtr("Microsoft.Storage/Accounts"),
+				ResourceSubscriptionID: to.StringPtr("test-resourcesubscription"),
+			})
+		},
+		setupDB: func(database *db.MockRadrpDB, err error) {
+			database.EXPECT().GetAzureResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).
+				DoAndReturn(func(interface{}, interface{}, interface{}, interface{}, interface{}, interface{}) (db.AzureResource, error) {
+					return db.AzureResource{}, err
+				})
 		},
 		id: parseOrPanic(resourceID(applicationName, resourceType, resourceName)),
 	},
@@ -247,19 +267,26 @@ func Test_AllEndpoints_RejectInvalidApplicationType(t *testing.T) {
 
 func Test_AllEndpoints_RejectInvalidResourceID(t *testing.T) {
 	ctx := createContext(t)
-
-	// None of our endpoints will support this ID.
 	id := parseOrPanic(resourceID(applicationName, "InvalidResourceType", resourceName))
 
 	for _, testcase := range testcases {
-		if testcase.description == "ListAllResourcesByApplication" {
-			continue
+		var testID azresources.ResourceID
+		if testcase.description == "GetResource_AzureConnection" || testcase.description == "ListAllResourcesByApplication" {
+			testID = parseOrPanic(fmt.Sprintf(
+				"/subscriptions/%s/resourceGroups/%s/providers/%s/%s/%s",
+				appSubscriptionID,
+				appResourceGroup,
+				azresources.CustomProvidersResourceProviders,
+				providerName,
+				"InvalidApplicationResourceType"))
+		} else {
+			testID = id
 		}
 
 		t.Run(testcase.description, func(t *testing.T) {
 			test := createRPTest(t)
 
-			response, err := testcase.invoke(test.rp, ctx, id)
+			response, err := testcase.invoke(test.rp, ctx, testID)
 			require.NoError(t, err)
 
 			expected := armerrors.ErrorResponse{
@@ -677,7 +704,7 @@ func Test_GetResource_Success(t *testing.T) {
 	}
 	test.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(1).Return(data, nil)
 
-	response, err := test.rp.GetResource(ctx, id)
+	response, err := test.rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{})
 	require.NoError(t, err)
 
 	expected := RadiusResource{
@@ -699,6 +726,26 @@ func Test_GetResource_Success(t *testing.T) {
 		},
 	}
 	require.Equal(t, rest.NewOKResponse(expected), response)
+}
+
+func Test_GetResource_InvalidAzureConnectionResourceType(t *testing.T) {
+	ctx := createContext(t)
+	test := createRPTest(t)
+	id := parseOrPanic(resourceID(applicationName, "Accounts", resourceName))
+
+	response, err := test.rp.GetResource(ctx, id, radclient.RadiusResourceGetOptions{
+		ResourceGroup:          to.StringPtr("test-resourcegroup"),
+		ResourceType:           to.StringPtr("Storage/Accounts"),
+		ResourceSubscriptionID: to.StringPtr("test-resourcesubscription"),
+	})
+	require.NoError(t, err)
+	expected := armerrors.ErrorResponse{
+		Error: armerrors.ErrorDetails{
+			Code:    armerrors.Invalid,
+			Message: "Only Microsoft Azure resource types are supported for this operation. Received resource type: Storage/Accounts",
+		},
+	}
+	require.Equal(t, rest.NewBadRequestARMResponse(expected), response)
 }
 
 func Test_UpdateResource_Success(t *testing.T) {

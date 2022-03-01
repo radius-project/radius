@@ -111,7 +111,7 @@ type ManagementClient interface {
 	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) error
 
-	ShowResource(ctx context.Context, applicationName string, resourceType string, resourceName string) (interface{}, error)
+	ShowResource(ctx context.Context, applicationName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
 }
 

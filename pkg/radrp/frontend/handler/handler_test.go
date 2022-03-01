@@ -13,12 +13,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
@@ -186,7 +188,15 @@ func Test_Handler(t *testing.T) {
 			Description: "GetResource",
 			URI:         baseURI + "/test-application/test-resource-type/test-resource",
 			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
-				return mock.EXPECT().GetResource(gomock.Any(), gomock.Any())
+				return mock.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any())
+			},
+		},
+		{
+			Method:      "GET",
+			Description: "GetResource_AzureConnection",
+			URI:         baseURI + "/test-application/test-resource-type/test-resource?ResourceSubscriptionID=test-subscription&ResourceGroup=test-resource-group&ResourceType=Microsoft.Storage/Accounts",
+			Expect: func(mock *resourceprovider.MockResourceProvider) *gomock.Call {
+				return mock.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any())
 			},
 		},
 		{
@@ -248,9 +258,15 @@ func Test_Handler(t *testing.T) {
 						return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
 					})
 				} else {
-					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-						return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
-					})
+					if strings.HasPrefix(testcase.Description, "GetResource") {
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.RadiusResourceGetOptions) (rest.Response, error) {
+							return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
+						})
+					} else { // List
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+							return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
+						})
+					}
 				}
 
 				var err error
@@ -280,9 +296,15 @@ func Test_Handler(t *testing.T) {
 						return nil, fmt.Errorf("error!")
 					})
 				} else {
-					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-						return nil, fmt.Errorf("error!")
-					})
+					if strings.HasPrefix(testcase.Description, "GetResource") {
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.RadiusResourceGetOptions) (rest.Response, error) {
+							return nil, fmt.Errorf("error!")
+						})
+					} else { // List
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+							return nil, fmt.Errorf("error!")
+						})
+					}
 				}
 
 				var err error
@@ -316,9 +338,15 @@ func Test_Handler(t *testing.T) {
 						return &FaultingResponse{}, nil
 					})
 				} else {
-					testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-						return &FaultingResponse{}, nil
-					})
+					if strings.HasPrefix(testcase.Description, "GetResource") {
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID, azureConnectionProperties radclient.RadiusResourceGetOptions) (rest.Response, error) {
+							return &FaultingResponse{}, nil
+						})
+					} else { // List
+						testcase.Expect(test.rp).Times(1).DoAndReturn(func(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+							return &FaultingResponse{}, nil
+						})
+					}
 				}
 
 				var err error

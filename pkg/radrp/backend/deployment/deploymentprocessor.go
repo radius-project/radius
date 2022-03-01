@@ -210,7 +210,8 @@ func (dp *deploymentProcessor) deleteAzureResourceConnectionsFromDB(ctx context.
 	}
 
 	for _, azureResourceID := range azureDependencyIDs {
-		azureResource, err := dp.db.GetAzureResource(ctx, radiusResource.ApplicationName, azureResourceID.ID)
+		azureResource, err := dp.db.GetAzureResource(ctx, radiusResourceID.Truncate(), azureResourceID.QualifiedName(), azureResourceID.Type(),
+			azureResourceID.SubscriptionID, azureResourceID.ResourceGroup)
 		if err != nil {
 			if err == db.ErrNotFound {
 				// nothing to delete
@@ -265,7 +266,7 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 		return renderers.RendererOutput{}, nil, armerr, err
 	}
 
-	rendererDependencies, err := dp.fetchDepenendencies(ctx, radiusDependencyResourceIDs)
+	rendererDependencies, err := dp.fetchDependencies(ctx, radiusDependencyResourceIDs)
 	if err != nil {
 		armerr := &armerrors.ErrorDetails{
 			Code:    armerrors.Internal,
@@ -547,7 +548,7 @@ func (dp *deploymentProcessor) updateOperation(ctx context.Context, status rest.
 }
 
 // Returns fully qualified radius resource identifier to RendererDependency map
-func (dp *deploymentProcessor) fetchDepenendencies(ctx context.Context, dependencyResourceIDs []azresources.ResourceID) (map[string]renderers.RendererDependency, error) {
+func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, dependencyResourceIDs []azresources.ResourceID) (map[string]renderers.RendererDependency, error) {
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, dependencyResourceID := range dependencyResourceIDs {
 		// Fetch resource from db

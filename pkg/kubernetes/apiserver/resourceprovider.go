@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/armtemplate"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
@@ -314,7 +315,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 	return rest.NewOKResponse(output), nil
 }
 
-func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID, azureConnectionResourceProperties radclient.RadiusResourceGetOptions) (rest.Response, error) {
 	namespace := id.ResourceGroup
 	application := radiusv1alpha3.Application{}
 
