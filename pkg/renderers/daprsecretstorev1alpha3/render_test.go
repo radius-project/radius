@@ -27,7 +27,7 @@ const (
 	resourceName           = "test-resource"
 	daprVersion            = "dapr.io/v1alpha1"
 	k8sKind                = "Component"
-	secretStoreType        = "azure.keyvault"
+	secretStoreType        = "secretstores.azure.keyvault"
 	daprSecretStoreVersion = "v1"
 )
 
@@ -40,7 +40,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Success(t *testing.T) {
+func Test_Render_Azure_Generic_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{SupportedAzureSecretStoreKindValues}
 
@@ -50,8 +50,12 @@ func Test_Render_Success(t *testing.T) {
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"kind":     "state.azure.tablestorage",
-			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			"kind":    "generic",
+			"type":    "secretstores.azure.keyvault",
+			"version": "v1",
+			"metadata": map[string]interface{}{
+				"vaultName": "testVault",
+			},
 		},
 	}
 
@@ -61,57 +65,26 @@ func Test_Render_Success(t *testing.T) {
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, output.LocalID)
-	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, output.ResourceKind)
+	require.Equal(t, outputresource.LocalIDDaprSecretStoreGeneric, output.LocalID)
+	require.Equal(t, resourcekinds.DaprSecretStoreGeneric, output.ResourceKind)
+
+	metadata := map[string]interface{}{
+		"vaultName": "testVault",
+	}
+	metadataSerialized, err := json.Marshal(metadata)
+	require.NoError(t, err, "Could not serialize metadata")
 
 	expected := map[string]string{
 		handlers.KubernetesNameKey:       "test-resource",
 		handlers.KubernetesNamespaceKey:  "test-app",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
-		handlers.StorageAccountIDKey:     "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
-		handlers.StorageAccountNameKey:   "test-account",
+		handlers.ResourceName:            "test-resource",
+		handlers.GenericDaprTypeKey:      "secretstores.azure.keyvault",
+		handlers.GenericDaprVersionKey:   "v1",
+		handlers.GenericDaprMetadataKey:  string(metadataSerialized),
 	}
 	require.Equal(t, expected, output.Resource)
-}
-
-func Test_Render_InvalidResourceType(t *testing.T) {
-	ctx := createContext(t)
-	renderer := Renderer{SupportedAzureSecretStoreKindValues}
-
-	dependencies := map[string]renderers.RendererDependency{}
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"kind":     "generic",
-			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
-		},
-	}
-
-	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
-	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a Secret Store Account", err.Error())
-}
-
-func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
-	ctx := createContext(t)
-	renderer := Renderer{SupportedAzureSecretStoreKindValues}
-
-	dependencies := map[string]renderers.RendererDependency{}
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"kind": "generic",
-		},
-	}
-
-	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
-	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
 }
 
 func Test_Render_UnsupportedKind(t *testing.T) {
@@ -130,54 +103,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedAzureStateStoreKindValues)), err.Error())
-}
-
-func Test_Render_Azure_Generic_Success(t *testing.T) {
-	ctx := createContext(t)
-	renderer := Renderer{SupportedAzureSecretStoreKindValues}
-
-	dependencies := map[string]renderers.RendererDependency{}
-	resource := renderers.RendererResource{
-		ApplicationName: "test-app",
-		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"kind":    "generic",
-			"type":    "azure.keyvault",
-			"version": "v1",
-			"metadata": map[string]interface{}{
-				"foo": "bar",
-			},
-		},
-	}
-
-	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
-	require.NoError(t, err)
-
-	require.Len(t, result.Resources, 1)
-	output := result.Resources[0]
-
-	require.Equal(t, outputresource.LocalIDDaprStateStoreGeneric, output.LocalID)
-	require.Equal(t, resourcekinds.DaprStateStoreGeneric, output.ResourceKind)
-
-	metadata := map[string]interface{}{
-		"foo": "bar",
-	}
-	metadataSerialized, err := json.Marshal(metadata)
-	require.NoError(t, err, "Could not serialize metadata")
-
-	expected := map[string]string{
-		handlers.KubernetesNameKey:       "test-resource",
-		handlers.KubernetesNamespaceKey:  "test-app",
-		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
-		handlers.KubernetesKindKey:       "Component",
-		handlers.ResourceName:            "test-resource",
-		handlers.GenericDaprTypeKey:      "azure.keyvault",
-		handlers.GenericDaprVersionKey:   "v1",
-		handlers.GenericDaprMetadataKey:  string(metadataSerialized),
-	}
-	require.Equal(t, expected, output.Resource)
+	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedAzureSecretStoreKindValues)), err.Error())
 }
 
 func Test_Render_Azure_Generic_MissingMetadata(t *testing.T) {
@@ -250,7 +176,7 @@ func Test_Render_Azure_Generic_MissingVersion(t *testing.T) {
 
 func Test_Render_Kubernetes_Generic_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+	renderer := Renderer{SupportedKubernetesSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -259,7 +185,7 @@ func Test_Render_Kubernetes_Generic_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"kind":    "generic",
-			"type":    "localfile",
+			"type":    "secretstores.kubernetes",
 			"version": "v1",
 			"metadata": map[string]interface{}{
 				"foo": "bar",
@@ -273,7 +199,7 @@ func Test_Render_Kubernetes_Generic_Success(t *testing.T) {
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
 
-	require.Equal(t, outputresource.LocalIDDaprStateStoreGeneric, output.LocalID)
+	require.Equal(t, outputresource.LocalIDDaprSecretStoreGeneric, output.LocalID)
 	require.Equal(t, resourcekinds.Kubernetes, output.ResourceKind)
 
 	expected := unstructured.Unstructured{
@@ -302,7 +228,7 @@ func Test_Render_Kubernetes_Generic_Success(t *testing.T) {
 
 func Test_Render_Kubernetes_Generic_MissingMetadata(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+	renderer := Renderer{SupportedKubernetesSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -319,12 +245,12 @@ func Test_Render_Kubernetes_Generic_MissingMetadata(t *testing.T) {
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.Error())
+	require.Equal(t, "No metadata specified for Dapr component of type secretstores.kubernetes", err.Error())
 }
 
 func Test_Render_Kubernetes_Generic_MissingType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+	renderer := Renderer{SupportedKubernetesSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -347,7 +273,7 @@ func Test_Render_Kubernetes_Generic_MissingType(t *testing.T) {
 
 func Test_Render_Kubernetes_Generic_MissingVersion(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+	renderer := Renderer{SupportedKubernetesSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{

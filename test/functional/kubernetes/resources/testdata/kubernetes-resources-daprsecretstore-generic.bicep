@@ -22,7 +22,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       kind: 'generic'
       type: 'secretstores.kubernetes'
       metadata: {
-        name: 'somename'
+        name: 'test'
       }
       version: 'v1'
     }

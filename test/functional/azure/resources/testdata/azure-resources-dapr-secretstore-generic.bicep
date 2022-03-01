@@ -22,7 +22,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       kind: 'generic'
       type: 'secretstores.azure.keyvault'
       metadata: {
-        foo: 'bar'
+        vaultName: 'test'
       }
       version: 'v1'
       
