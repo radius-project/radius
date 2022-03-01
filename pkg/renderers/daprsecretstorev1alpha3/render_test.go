@@ -27,7 +27,6 @@ const (
 	resourceName           = "test-resource"
 	daprVersion            = "dapr.io/v1alpha1"
 	k8sKind                = "Component"
-	secretStoreType        = "secretstores.azure.keyvault"
 	daprSecretStoreVersion = "v1"
 )
 
