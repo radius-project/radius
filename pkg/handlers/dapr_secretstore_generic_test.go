@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	secretStoreType        = "azure.keyvault"
+	secretStoreType        = "secretstores.azure.keyvault"
 	daprSecretStoreVersion = "v1"
 )
 
