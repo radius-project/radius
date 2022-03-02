@@ -16,8 +16,6 @@ import (
 )
 
 func Test_DaprStateStore_Generic(t *testing.T) {
-	// TODO: #1999 - Skipping flaky test for now
-	t.SkipNow()
 	template := "testdata/kubernetes-resources-daprstatestore-generic.bicep"
 	application := "kubernetes-resources-daprstatestore-generic"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
