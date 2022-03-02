@@ -7,18 +7,18 @@ package environments
 
 import (
 	"context"
+	"net/http"
+	"time"
 
-	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
+	"github.com/Azure/go-autorest/autorest"
+	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/localrp"
 )
 
-var _ ServerLifecycleEnvironment = (*LocalEnvironment)(nil)
+// var _ ServerLifecycleEnvironment = (*LocalEnvironment)(nil)
 
 // LocalEnvironment represents a local test setup for Azure Cloud Radius environment.
 type LocalEnvironment struct {
@@ -35,8 +35,8 @@ type LocalEnvironment struct {
 
 	// APIServerBaseURL is an override for local debugging. This allows us us to run the controller + API Service outside the
 	// cluster.
-	APIServerBaseURL string     `mapstructure:"apiserverbaseurl,omitempty"`
-	Providers        *Providers `mapstructure:"providers"`
+	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
+	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
@@ -62,80 +62,91 @@ func (e *LocalEnvironment) GetContainerRegistry() *Registry {
 	return e.Registry
 }
 
-func (e *LocalEnvironment) HasAzureProvider() bool {
-	return e.Providers != nil && e.Providers.AzureProvider != nil
+// func (e *LocalEnvironment) HasAzureProvider() bool {
+// 	return e.Providers != nil && e.Providers.AzureProvider != nil
+// }
+
+// func (e *LocalEnvironment) GetAzureProviderDetails() (string, string) {
+// 	if e.HasAzureProvider() {
+// 		return e.Providers.AzureProvider.SubscriptionID, e.Providers.AzureProvider.ResourceGroup
+// 	}
+
+// 	// Use namespace unless we have an Azure subscription attached.
+// 	return e.Namespace, e.Namespace
+// }
+
+var _ autorest.Sender = (*devsender)(nil)
+
+type devsender struct {
+	RoundTripper http.RoundTripper
 }
 
-func (e *LocalEnvironment) GetAzureProviderDetails() (string, string) {
-	if e.HasAzureProvider() {
-		return e.Providers.AzureProvider.SubscriptionID, e.Providers.AzureProvider.ResourceGroup
-	}
-
-	// Use namespace unless we have an Azure subscription attached.
-	return e.Namespace, e.Namespace
+func (s *devsender) Do(request *http.Request) (*http.Response, error) {
+	return s.RoundTripper.RoundTrip(request)
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	baseURL, _, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context)
+
 	if err != nil {
 		return nil, err
 	}
 
-	roundTripper, err := kubernetes.CreateRestRoundTripper(e.Context, "api.radius.dev", e.APIServerBaseURL)
-	if err != nil {
-		return nil, err
+	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.Namespace)
+
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
+
+	dc.Sender = &devsender{RoundTripper: roundTripper}
+
+	op := azclients.NewOperationsClientWithBaseUri(url, e.Namespace)
+	op.PollingDelay = 5 * time.Second
+	op.Sender = &devsender{RoundTripper: roundTripper}
+
+	client := &azure.ARMDeploymentClient{
+		Client:           dc,
+		OperationsClient: op,
+		SubscriptionID:   e.Namespace,
+		ResourceGroup:    e.Namespace,
 	}
 
-	dynamic, err := kubernetes.CreateDynamicClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
+	// subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
-	restMapper, err := kubernetes.CreateRESTMapper(e.Context)
-	if err != nil {
-		return nil, err
-	}
+	// client := localrp.LocalRPDeploymentClient{
+	// 	SubscriptionID: subscriptionID,
+	// 	ResourceGroup:  resourceGroup,
 
-	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
-	client := localrp.LocalRPDeploymentClient{
-		SubscriptionID: subscriptionID,
-		ResourceGroup:  resourceGroup,
+	// 	RadiusSubscriptionID: e.Namespace, // YES: this supposed to be the namespace since we're talking to the API Service.
+	// 	RadiusResourceGroup:  e.Namespace,
 
-		RadiusSubscriptionID: e.Namespace, // YES: this supposed to be the namespace since we're talking to the API Service.
-		RadiusResourceGroup:  e.Namespace,
+	// 	// Local Dev supports Radius, Kubernetes, Modules, and optionally Azure
+	// 	Providers: map[string]providers.Provider{
+	// 		providers.RadiusProviderImport: &providers.AzureProvider{
+	// 			Authorizer:     nil, // Anonymous access in local dev
+	// 			BaseURL:        baseURL,
+	// 			SubscriptionID: e.Namespace, // YES: this supposed to be the namespace since we're talking to the API Service.
+	// 			ResourceGroup:  e.Namespace,
+	// 			RoundTripper:   roundTripper,
+	// 		},
+	// 		providers.KubernetesProviderImport: providers.NewK8sProvider(logr.Discard(), dynamic, restMapper),
+	// 	},
+	// }
 
-		// Local Dev supports Radius, Kubernetes, Modules, and optionally Azure
-		Providers: map[string]providers.Provider{
-			providers.RadiusProviderImport: &providers.AzureProvider{
-				Authorizer:     nil, // Anonymous access in local dev
-				BaseURL:        baseURL,
-				SubscriptionID: e.Namespace, // YES: this supposed to be the namespace since we're talking to the API Service.
-				ResourceGroup:  e.Namespace,
-				RoundTripper:   roundTripper,
-			},
-			providers.KubernetesProviderImport: providers.NewK8sProvider(logr.Discard(), dynamic, restMapper),
-		},
-	}
+	// if e.HasAzureProvider() {
+	// 	auth, err := armauth.GetArmAuthorizer()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-	client.Providers[providers.DeploymentProviderImport] = &providers.DeploymentProvider{
-		DeployFunc: client.DeployNested,
-	}
+	// 	client.Providers[providers.AzureProviderImport] = &providers.AzureProvider{
+	// 		Authorizer:     auth,
+	// 		BaseURL:        "https://management.azure.com",
+	// 		SubscriptionID: subscriptionID,
+	// 		ResourceGroup:  resourceGroup,
+	// 	}
+	// }
 
-	if e.HasAzureProvider() {
-		auth, err := armauth.GetArmAuthorizer()
-		if err != nil {
-			return nil, err
-		}
-
-		client.Providers[providers.AzureProviderImport] = &providers.AzureProvider{
-			Authorizer:     auth,
-			BaseURL:        "https://management.azure.com",
-			SubscriptionID: subscriptionID,
-			ResourceGroup:  resourceGroup,
-		}
-	}
-
-	return &client, nil
+	return client, nil
 }
 
 func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
@@ -162,12 +173,12 @@ func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.
 		return nil, err
 	}
 
-	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
+	// subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
 	return &azure.ARMManagementClient{
 		Connection:      connection,
-		SubscriptionID:  subscriptionID,
-		ResourceGroup:   resourceGroup,
+		SubscriptionID:  "temp",
+		ResourceGroup:   "temp",
 		EnvironmentName: e.Name,
 	}, nil
 }

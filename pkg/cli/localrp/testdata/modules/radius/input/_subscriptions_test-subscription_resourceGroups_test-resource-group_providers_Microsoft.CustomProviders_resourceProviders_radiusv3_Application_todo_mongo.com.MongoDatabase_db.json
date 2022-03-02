@@ -1,7 +1,0 @@
-{
-    "properties":{
-        "secrets": {
-            "connectionString": "cool-secret"
-        }
-    }
-}
