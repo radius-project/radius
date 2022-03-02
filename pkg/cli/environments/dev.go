@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -35,8 +36,9 @@ type LocalEnvironment struct {
 
 	// APIServerBaseURL is an override for local debugging. This allows us us to run the controller + API Service outside the
 	// cluster.
-	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
-	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
+	APIServerBaseURL           string     `mapstructure:"apiserverbaseurl,omitempty"`
+	APIDeploymentEngineBaseURL string     `mapstructure:"apideploymentenginebaseurl,omitempty"`
+	Providers                  *Providers `mapstructure:"providers"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
@@ -62,18 +64,18 @@ func (e *LocalEnvironment) GetContainerRegistry() *Registry {
 	return e.Registry
 }
 
-// func (e *LocalEnvironment) HasAzureProvider() bool {
-// 	return e.Providers != nil && e.Providers.AzureProvider != nil
-// }
+func (e *LocalEnvironment) HasAzureProvider() bool {
+	return e.Providers != nil && e.Providers.AzureProvider != nil
+}
 
-// func (e *LocalEnvironment) GetAzureProviderDetails() (string, string) {
-// 	if e.HasAzureProvider() {
-// 		return e.Providers.AzureProvider.SubscriptionID, e.Providers.AzureProvider.ResourceGroup
-// 	}
+func (e *LocalEnvironment) GetAzureProviderDetails() (string, string) {
+	if e.HasAzureProvider() {
+		return e.Providers.AzureProvider.SubscriptionID, e.Providers.AzureProvider.ResourceGroup + ":" + e.Namespace
+	}
 
-// 	// Use namespace unless we have an Azure subscription attached.
-// 	return e.Namespace, e.Namespace
-// }
+	// Use namespace unless we have an Azure subscription attached.
+	return e.Namespace, e.Namespace
+}
 
 var _ autorest.Sender = (*devsender)(nil)
 
@@ -92,22 +94,39 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		return nil, err
 	}
 
+	var auth autorest.Authorizer = nil
+
+	subscriptionId := e.Namespace
+	resourceGroup := e.Namespace
+
+	if e.HasAzureProvider() {
+		// HACK - throw ':' in the name to separate resource id and namespace.
+		// this will be fixed by UCP
+		subscriptionId, resourceGroup = e.GetAzureProviderDetails()
+		auth, err = armauth.GetArmAuthorizer()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.Namespace)
 
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
+	dc.Authorizer = auth
 
 	dc.Sender = &devsender{RoundTripper: roundTripper}
 
 	op := azclients.NewOperationsClientWithBaseUri(url, e.Namespace)
 	op.PollingDelay = 5 * time.Second
 	op.Sender = &devsender{RoundTripper: roundTripper}
+	op.Authorizer = auth
 
 	client := &azure.ARMDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
-		SubscriptionID:   e.Namespace,
-		ResourceGroup:    e.Namespace,
+		SubscriptionID:   subscriptionId,
+		ResourceGroup:    resourceGroup,
 	}
 
 	// subscriptionID, resourceGroup := e.GetAzureProviderDetails()

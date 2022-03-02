@@ -23,7 +23,7 @@ var envInitLocalCmd = &cobra.Command{
 	Use:   "dev",
 	Short: "Initializes a local development environment",
 	Long:  `Initializes a local development environment`,
-	RunE: initDevRadEnvironment,
+	RunE:  initDevRadEnvironment,
 }
 
 func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
@@ -218,7 +218,7 @@ func init() {
 	envInitLocalCmd.Flags().String("provider-azure-subscription", "", "Azure subscription for cloud resources")
 	envInitLocalCmd.Flags().String("provider-azure-resource-group", "", "Azure resource-group for cloud resources")
 
-	envInitLocalCmd.Flags().String("chart", "", "specify a file path to a helm chart to install Radius from")
+	envInitLocalCmd.Flags().String("chart", "c", "specify a file path to a helm chart to install Radius from")
 	envInitLocalCmd.Flags().String("image", "", "specify the radius controller image to use")
 	envInitLocalCmd.Flags().String("tag", "", "specify the radius controller tag to use")
 }
