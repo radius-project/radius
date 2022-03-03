@@ -1950,6 +1950,28 @@
           "readOnly": true,
           "type": "string"
         },
+        "status": {
+          "additionalProperties": false,
+          "description": "Status of an application.",
+          "properties": {
+            "healthErrorDetails": {
+              "description": "Health errors for the application",
+              "type": "string"
+            },
+            "healthState": {
+              "description": "Health state of the application",
+              "type": "string"
+            },
+            "provisioningErrorDetails": {
+              "description": "Provisioning errors for the application",
+              "type": "string"
+            },
+            "provisioningState": {
+              "description": "Provisioning state of the application",
+              "type": "string"
+            }
+          }
+        },
         "type": {
           "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
           "readOnly": true,
