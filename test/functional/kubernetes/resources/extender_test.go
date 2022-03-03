@@ -31,10 +31,6 @@ func TestExtender(t *testing.T) {
 								outputresource.LocalIDScrapedSecret,
 								outputresource.TypeKubernetes,
 								resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDExtender: validation.NewOutputResource(
-								outputresource.LocalIDExtender,
-								outputresource.TypeKubernetes,
-								resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

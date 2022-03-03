@@ -11,9 +11,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,9 +46,7 @@ func Test_Render_Success(t *testing.T) {
 	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 
-	require.Equal(t, 1, len(result.Resources))
-	require.Equal(t, outputresource.LocalIDExtender, result.Resources[0].LocalID)
-	require.Equal(t, resourcekinds.Extender, result.Resources[0].ResourceKind)
+	require.Equal(t, 0, len(result.Resources))
 
 	expected := map[string]renderers.ComputedValueReference{
 		"foo": {Value: "bar"},

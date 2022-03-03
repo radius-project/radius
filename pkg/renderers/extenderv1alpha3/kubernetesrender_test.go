@@ -8,14 +8,10 @@ package extenderv1alpha3
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -49,24 +45,7 @@ func Test_KubernetesRender_Render(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
-			{
-				LocalID:      outputresource.LocalIDExtender,
-				ResourceKind: resourcekinds.Kubernetes,
-				Resource: &corev1.ConfigMap{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "ConfigMap",
-						APIVersion: "v1",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: applicationName,
-						Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
-					},
-					Data: map[string]string{},
-				},
-			},
-		},
+		Resources: []outputresource.OutputResource{},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"host": {
 				Value: "hello.com",

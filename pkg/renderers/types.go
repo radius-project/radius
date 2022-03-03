@@ -131,7 +131,7 @@ type SecretValueTransformer interface {
 
 //go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/renderers github.com/project-radius/radius/pkg/renderers SecretValueClient
 type SecretValueClient interface {
-	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string, value string) (interface{}, error)
+	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }
 
 // ConvertDefinition can be used to convert `.Definition` to a strongly-typed struct.

@@ -10,10 +10,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
-	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -41,32 +39,12 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 		return renderers.RendererOutput{}, err
 	}
 
-	outputResources := []outputresource.OutputResource{}
-
-	extenderResource := corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      options.Resource.ResourceName,
-			Namespace: options.Resource.ApplicationName,
-			Labels:    kubernetes.MakeDescriptiveLabels(options.Resource.ApplicationName, options.Resource.ResourceName),
-		},
-		Data: map[string]string{},
-	}
-
 	computedValues := map[string]renderers.ComputedValueReference{}
 	for k, v := range properties.Properties {
 		computedValues[k] = renderers.ComputedValueReference{
 			Value: v,
 		}
 	}
-
-	outputResources = append(outputResources, outputresource.OutputResource{
-		ResourceKind: resourcekinds.Kubernetes,
-		LocalID:      outputresource.LocalIDExtender,
-		Resource:     &extenderResource})
 
 	secretValues := map[string]renderers.SecretValueReference{}
 	for k := range properties.Secrets {
@@ -77,7 +55,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 	}
 
 	return renderers.RendererOutput{
-		Resources:      outputResources,
+		Resources:      []outputresource.OutputResource{},
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil

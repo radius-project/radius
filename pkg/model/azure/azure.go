@@ -254,11 +254,6 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			HealthHandler:   handlers.NewAzureFileShareStorageAccountHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureFileShareStorageAccountHandler(arm),
 		},
-		{
-			Kind:            resourcekinds.Extender,
-			HealthHandler:   handlers.NewExtenderHealthHandler(arm),
-			ResourceHandler: handlers.NewExtenderHandler(arm),
-		},
 	}
 
 	return model.NewModel(radiusResourceModel, outputResourceModel)

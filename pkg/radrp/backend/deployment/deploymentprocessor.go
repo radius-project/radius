@@ -649,6 +649,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.
 
 func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.RadiusResource, reference db.SecretValueReference) (interface{}, error) {
 	if reference.Value != "" {
+		// The secret reference contains the value itself
 		return reference.Value, nil
 	}
 
@@ -665,7 +666,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 		return nil, fmt.Errorf("cannot find an output resource matching LocalID %q for dependency %q", reference.LocalID, dependency.ID)
 	}
 
-	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector, reference.Value)
+	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
 func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {

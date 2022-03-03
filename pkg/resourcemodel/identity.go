@@ -25,7 +25,6 @@ const (
 	IdentityKindARM            ResourceIdentityKind = "arm"
 	IdentityKindKubernetes     ResourceIdentityKind = "kubernetes"
 	IdentityKindAADPodIdentity ResourceIdentityKind = "aadpodidentity"
-	IdentityKindConfig         ResourceIdentityKind = "config"
 
 	// NOTE: you should only add new types here if you are adding a new **SYSTEM** for
 	// Radius to interface with OR if you are adding a new *pseudo-resource* type.
@@ -70,12 +69,6 @@ type AADPodIdentityIdentity struct {
 	Namespace      string `bson:"namespace" json:"namespace"`
 }
 
-// ConfigIdentity identifies a resource that is used to only save resource information as key-value pairs
-type ConfigIdentity struct {
-	ApplicationName string `bson:"appName" json:"appName"`
-	ResourceName    string `bson:"resourceName" json:"resourceName"`
-}
-
 func NewARMIdentity(id string, apiVersion string) ResourceIdentity {
 	return ResourceIdentity{
 		Kind: IdentityKindARM,
@@ -94,16 +87,6 @@ func NewKubernetesIdentity(obj runtime.Object, objectMeta metav1.ObjectMeta) Res
 			APIVersion: obj.GetObjectKind().GroupVersionKind().GroupVersion().String(),
 			Name:       objectMeta.Name,
 			Namespace:  objectMeta.Namespace,
-		},
-	}
-}
-
-func NewConfigIdentity(appName string, resourceName string) ResourceIdentity {
-	return ResourceIdentity{
-		Kind: IdentityKindConfig,
-		Data: ConfigIdentity{
-			ApplicationName: appName,
-			ResourceName:    resourceName,
 		},
 	}
 }
@@ -145,11 +128,6 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 	case IdentityKindAADPodIdentity:
 		a, _ := r.Data.(AADPodIdentityIdentity)
 		b, _ := other.Data.(AADPodIdentityIdentity)
-		return a == b
-
-	case IdentityKindConfig:
-		a, _ := r.Data.(ConfigIdentity)
-		b, _ := other.Data.(ConfigIdentity)
 		return a == b
 	}
 
@@ -279,14 +257,6 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 
 	case IdentityKindAADPodIdentity:
 		identity := AADPodIdentityIdentity{}
-		err = bson.Unmarshal(data.Data, &identity)
-		if err != nil {
-			return err
-		}
-		r.Data = identity
-		return nil
-	case IdentityKindConfig:
-		identity := ConfigIdentity{}
 		err = bson.Unmarshal(data.Data, &identity)
 		if err != nil {
 			return err

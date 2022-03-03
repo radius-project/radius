@@ -36,16 +36,16 @@ func (m *MockSecretValueClient) EXPECT() *MockSecretValueClientMockRecorder {
 }
 
 // FetchSecret mocks base method.
-func (m *MockSecretValueClient) FetchSecret(arg0 context.Context, arg1 resourcemodel.ResourceIdentity, arg2, arg3, arg4 string) (interface{}, error) {
+func (m *MockSecretValueClient) FetchSecret(arg0 context.Context, arg1 resourcemodel.ResourceIdentity, arg2, arg3 string) (interface{}, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FetchSecret", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "FetchSecret", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(interface{})
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FetchSecret indicates an expected call of FetchSecret.
-func (mr *MockSecretValueClientMockRecorder) FetchSecret(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockSecretValueClientMockRecorder) FetchSecret(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchSecret", reflect.TypeOf((*MockSecretValueClient)(nil).FetchSecret), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchSecret", reflect.TypeOf((*MockSecretValueClient)(nil).FetchSecret), arg0, arg1, arg2, arg3)
 }

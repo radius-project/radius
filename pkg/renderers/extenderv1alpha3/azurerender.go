@@ -13,8 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 const (
@@ -38,18 +36,10 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 		return renderers.RendererOutput{}, err
 	}
 
-	outputResources := []outputresource.OutputResource{}
-	extenderResource := outputresource.OutputResource{
-		Deployed:     false,
-		LocalID:      outputresource.LocalIDExtender,
-		ResourceKind: resourcekinds.Extender,
-		Identity:     resourcemodel.NewConfigIdentity(options.Resource.ApplicationName, options.Resource.ResourceName),
-	}
-	outputResources = append(outputResources, extenderResource)
 	computedValues, secretValues := MakeSecretsAndValues(options.Resource.ResourceName, properties)
 
 	return renderers.RendererOutput{
-		Resources:      outputResources,
+		Resources:      []outputresource.OutputResource{},
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil

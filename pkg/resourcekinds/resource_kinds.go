@@ -37,5 +37,4 @@ const (
 	AzureRedis                       = "azure.redis"
 	AzureFileShare                   = "azure.fileshare"
 	AzureFileShareStorageAccount     = "azure.fileshare.account"
-	Extender                         = "extender"
 )

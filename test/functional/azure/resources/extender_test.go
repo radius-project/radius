@@ -32,9 +32,7 @@ func Test_ExtenderResource(t *testing.T) {
 						ApplicationName: application,
 						ResourceName:    "twilio",
 						ResourceType:    extenderv1alpha3.ResourceType,
-						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDExtender: validation.NewOutputResource(outputresource.LocalIDExtender, outputresource.TypeConfig, resourcekinds.Extender, false, rest.OutputResourceStatus{}),
-						},
+						OutputResources: map[string]validation.ExpectedOutputResource{},
 					},
 					{
 						ApplicationName: application,
