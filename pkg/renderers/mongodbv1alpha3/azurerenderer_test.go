@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -21,8 +20,11 @@ import (
 )
 
 const (
-	applicationName = "test-app"
-	resourceName    = "test-db"
+	applicationName  = "test-app"
+	resourceName     = "test-db"
+	userName         = "admin"
+	password         = "deadbeef"
+	connectionString = "admin/deadbeef@localhost"
 )
 
 func createContext(t *testing.T) context.Context {
@@ -81,16 +83,7 @@ func Test_Azure_Render_Success(t *testing.T) {
 		},
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-
-	expectedSecretValues := map[string]renderers.SecretValueReference{
-		ConnectionStringValue: {
-			LocalID:       cosmosAccountDependency.LocalID,
-			Action:        "listConnectionStrings",
-			ValueSelector: "/connectionStrings/0/connectionString",
-			Transformer:   resourcekinds.AzureCosmosDBMongo,
-		},
-	}
-	require.Equal(t, expectedSecretValues, output.SecretValues)
+	require.Equal(t, 0, len(output.SecretValues))
 }
 
 func Test_Azure_Render_UserSpecifiedSecrets(t *testing.T) {
@@ -103,9 +96,9 @@ func Test_Azure_Render_UserSpecifiedSecrets(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"secrets": map[string]interface{}{
-				"username":         "admin",
-				"password":         "deadbeef",
-				"connectionString": "admin/deadbeef@localhost",
+				"username":         userName,
+				"password":         password,
+				"connectionString": connectionString,
 			},
 		},
 	}
@@ -117,18 +110,14 @@ func Test_Azure_Render_UserSpecifiedSecrets(t *testing.T) {
 		"database": {
 			Value: resource.ResourceName,
 		},
-		"password": {
-			Value: to.StringPtr("deadbeef"),
-		},
-		"username": {
-			Value: to.StringPtr("admin"),
-		},
-		"connectionString": {
-			Value: to.StringPtr("admin/deadbeef@localhost"),
-		},
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, 0, len(output.SecretValues))
+	expectedSecretValues := map[string]renderers.SecretValueReference{
+		ConnectionStringValue: {Value: connectionString},
+		UsernameStringValue: {Value: userName},
+		PasswordValue: {Value: password},
+	}
+	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
 func Test_Azure_Render_MissingResource(t *testing.T) {

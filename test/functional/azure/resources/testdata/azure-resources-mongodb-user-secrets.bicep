@@ -30,6 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'mongo:4.2'
         env: {
+          DBCONNECTION: mongo.connectionString()
           MONGO_INITDB_ROOT_USERNAME: username
           MONGO_INITDB_ROOT_PASSWORD: password
         }
