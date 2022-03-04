@@ -13,6 +13,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/project-radius/radius/pkg/cli/tools"
 )
 
 // Official regex for semver
@@ -27,7 +29,7 @@ func runBicep(args ...string) (string, error) {
 		return "", fmt.Errorf("rad-bicep not installed, run \"rad bicep download\" to install")
 	}
 
-	binPath, err := GetLocalBicepFilepath()
+	binPath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
 	if err != nil {
 		return "", fmt.Errorf("failed to find rad-bicep: %w", err)
 	}
