@@ -101,41 +101,27 @@ func RenderResource(name string, properties radclient.MongoDBResourceProperties)
 }
 
 func MakeSecretsAndValues(name string, properties radclient.MongoDBResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+	computedValues := map[string]renderers.ComputedValueReference{
+		DatabaseValue: {
+			Value: name,
+		},
+	}
 	if properties.Secrets == nil {
-		computedValues := map[string]renderers.ComputedValueReference{
-			DatabaseValue: {
-				Value: name,
-			},
-		}
-		secretValues := map[string]renderers.SecretValueReference{
-			ConnectionStringValue: {
-				LocalID: cosmosAccountDependency.LocalID,
-				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-				Action:        "listConnectionStrings",
-				ValueSelector: "/connectionStrings/0/connectionString",
-				Transformer:   resourcekinds.AzureCosmosDBMongo,
-			},
-		}
-
-		return computedValues, secretValues
+		return computedValues, nil
 	}
 
 	// Currently user-specfied secrets are stored in the `secrets` property of the resource, and
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
+	secretValues := map[string]renderers.SecretValueReference{}
+	secretValues[ConnectionStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.ConnectionString}
+	secretValues[UsernameStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.Username}
+	secretValues[PasswordValue] = renderers.SecretValueReference{Value: *properties.Secrets.Password}
+
 	return map[string]renderers.ComputedValueReference{
 		DatabaseValue: {
 			Value: name,
 		},
-		ConnectionStringValue: {
-			Value: properties.Secrets.ConnectionString,
-		},
-		UsernameStringValue: {
-			Value: properties.Secrets.Username,
-		},
-		PasswordValue: {
-			Value: properties.Secrets.Password,
-		},
-	}, nil
+	}, secretValues
 }
