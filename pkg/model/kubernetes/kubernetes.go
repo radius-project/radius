@@ -65,7 +65,7 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 		},
 		{
 			ResourceType: microsoftsqlv1alpha3.ResourceType,
-			Renderer:     &microsoftsqlv1alpha3.Renderer{},
+			Renderer:     &microsoftsqlv1alpha3.Renderer{Kubernetes: true},
 		},
 		{
 			ResourceType: daprpubsubv1alpha3.ResourceType,

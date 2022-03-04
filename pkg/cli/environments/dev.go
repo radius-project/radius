@@ -70,7 +70,7 @@ func (e *LocalEnvironment) HasAzureProvider() bool {
 
 func (e *LocalEnvironment) GetAzureProviderDetails() (string, string) {
 	if e.HasAzureProvider() {
-		return e.Providers.AzureProvider.SubscriptionID, e.Providers.AzureProvider.ResourceGroup + ":" + e.Namespace
+		return e.Providers.AzureProvider.SubscriptionID, e.Providers.AzureProvider.ResourceGroup
 	}
 
 	// Use namespace unless we have an Azure subscription attached.
@@ -99,17 +99,29 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 	subscriptionId := e.Namespace
 	resourceGroup := e.Namespace
 
+	tags := map[string]*string{}
+
 	if e.HasAzureProvider() {
-		// HACK - throw ':' in the name to separate resource id and namespace.
-		// this will be fixed by UCP
-		subscriptionId, resourceGroup = e.GetAzureProviderDetails()
+		azSubscriptionId, azResourceGroup := e.GetAzureProviderDetails()
+		tags["azureSubscriptionID"] = &azSubscriptionId
+		tags["azureResourceGroup"] = &azResourceGroup
+
+		// Get the location of the resource group for the deployment engine.
+
 		auth, err = armauth.GetArmAuthorizer()
 		if err != nil {
 			return nil, err
 		}
+
+		rgClient := azclients.NewGroupsClient(azSubscriptionId, auth)
+		resp, err := rgClient.Get(ctx, azResourceGroup)
+		if err != nil {
+			return nil, err
+		}
+		tags["azureLocation"] = resp.Location
 	}
 
-	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.Namespace)
+	dc := azclients.NewDeploymentsClientWithBaseURI(url, subscriptionId)
 
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
@@ -117,7 +129,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 
 	dc.Sender = &devsender{RoundTripper: roundTripper}
 
-	op := azclients.NewOperationsClientWithBaseUri(url, e.Namespace)
+	op := azclients.NewOperationsClientWithBaseUri(url, subscriptionId)
 	op.PollingDelay = 5 * time.Second
 	op.Sender = &devsender{RoundTripper: roundTripper}
 	op.Authorizer = auth
@@ -127,6 +139,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		OperationsClient: op,
 		SubscriptionID:   subscriptionId,
 		ResourceGroup:    resourceGroup,
+		Tags:             tags,
 	}
 
 	// subscriptionID, resourceGroup := e.GetAzureProviderDetails()
