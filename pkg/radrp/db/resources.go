@@ -55,4 +55,5 @@ type SecretValueReference struct {
 	Action        string `bson:"action,omitempty"`
 	ValueSelector string `bson:"valueSelector"`
 	Transformer   string `bson:"transformer,omitempty"`
+	Value         string `bson:"value,omitempty"`
 }

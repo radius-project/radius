@@ -315,10 +315,9 @@ func NewKubernetesRadiusResource(id azresources.ResourceID, input resourceprovid
 				return unstructured.Unstructured{}, nil, fmt.Errorf("secrets must be strings, got %T", v)
 			}
 			secrets[k] = str
+			// Redact the secrets but keep original keys in the template
+			rawSecrets[k] = "***"
 		}
-
-		// Redact the secrets
-		delete(properties, "secrets")
 	}
 
 	b, err := json.Marshal(template)

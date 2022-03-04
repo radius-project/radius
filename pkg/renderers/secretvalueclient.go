@@ -42,10 +42,10 @@ func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.Resourc
 		return nil, err
 	}
 
-	value, _, err := pointer.Get(response.Body)
+	secretValue, _, err := pointer.Get(response.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	return value, err
+	return secretValue, err
 }

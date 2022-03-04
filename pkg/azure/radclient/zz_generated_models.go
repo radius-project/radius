@@ -1735,6 +1735,39 @@ func (e *ExecHealthProbeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ExtenderBeginCreateOrUpdateOptions contains the optional parameters for the Extender.BeginCreateOrUpdate method.
+type ExtenderBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtenderBeginDeleteOptions contains the optional parameters for the Extender.BeginDelete method.
+type ExtenderBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtenderGetOptions contains the optional parameters for the Extender.Get method.
+type ExtenderGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtenderList - List of Extender resources.
+type ExtenderList struct {
+	// REQUIRED; List of Extender resources.
+	Value []*ExtenderResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderList.
+func (e ExtenderList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", e.Value)
+	return json.Marshal(objectMap)
+}
+
+// ExtenderListOptions contains the optional parameters for the Extender.List method.
+type ExtenderListOptions struct {
+	// placeholder for future optional parameters
+}
+
 type ExtenderProperties struct {
 	BasicResourceProperties
 	// Dictionary of

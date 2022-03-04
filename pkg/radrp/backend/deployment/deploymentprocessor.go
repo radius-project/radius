@@ -598,6 +598,7 @@ func convertSecretValues(input map[string]renderers.SecretValueReference) map[st
 			LocalID:       v.LocalID,
 			Action:        v.Action,
 			ValueSelector: v.ValueSelector,
+			Value:         v.Value,
 			Transformer:   v.Transformer,
 		}
 	}
@@ -647,6 +648,11 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.
 }
 
 func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.RadiusResource, reference db.SecretValueReference) (interface{}, error) {
+	if reference.Value != "" {
+		// The secret reference contains the value itself
+		return reference.Value, nil
+	}
+
 	var match *db.OutputResource
 	for _, outputResource := range dependency.Status.OutputResources {
 		if outputResource.LocalID == reference.LocalID {

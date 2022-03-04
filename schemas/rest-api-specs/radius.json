@@ -1079,6 +1079,22 @@
       "type": "object",
       "x-ms-discriminator-value": "exec"
     },
+    "ExtenderList": {
+      "description": "List of Extender resources.",
+      "properties": {
+        "value": {
+          "description": "List of Extender resources.",
+          "items": {
+            "$ref": "#/definitions/ExtenderResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
     "ExtenderProperties": {
       "allOf": [
         {
@@ -2548,6 +2564,14 @@
       "type": "string",
       "x-ms-parameter-location": "method"
     },
+    "ExtenderNameParameter": {
+      "description": "The name of the Extender resource.",
+      "in": "path",
+      "name": "extenderName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
     "GatewayNameParameter": {
       "description": "The name of the Gateway resource.",
       "in": "path",
@@ -3210,6 +3234,188 @@
         },
         "tags": [
           "Container"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender": {
+      "get": {
+        "description": "List the Extender resources deployed in the application.",
+        "operationId": "Extender_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Extender resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Extender"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}": {
+      "delete": {
+        "description": "Deletes a Extender resource.",
+        "operationId": "Extender_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Extender will complete asynchronously."
+          },
+          "204": {
+            "description": "The Extender resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Extender"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Extender resource by name.",
+        "operationId": "Extender_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Extender resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Extender"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Extender resource.",
+        "operationId": "Extender_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Extender resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Extender resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "201": {
+            "description": "The new Extender resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "202": {
+            "description": "The existing Extender resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Extender"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {

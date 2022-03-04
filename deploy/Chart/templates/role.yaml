@@ -8,6 +8,18 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - events
   verbs:
   - create
@@ -254,6 +266,7 @@ rules:
   - radius.dev
   resources:
   - dapriosecretstores
+  - extenders
   verbs:
   - create
   - delete
@@ -266,12 +279,14 @@ rules:
   - radius.dev
   resources:
   - dapriosecretstores/finalizers
+  - extenders/finalizers
   verbs:
   - update
 - apiGroups:
   - radius.dev
   resources:
   - dapriosecretstores/status
+  - extenders/status
   verbs:
   - get
   - patch
