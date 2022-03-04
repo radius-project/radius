@@ -116,8 +116,8 @@ func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource Azur
 		return AzureResource{}, err
 	}
 	return AzureResource{
-		Name:           results[0],
-		ResourceType:   results[1],
+		ResourceType:   results[0],
+		Name:           results[1],
 		ResourceGroup:  results[2],
 		SubscriptionID: results[3],
 	}, nil
