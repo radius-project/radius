@@ -10,4 +10,5 @@ const (
 	TypeARM            = "arm"
 	TypeKubernetes     = "kubernetes"
 	TypeAADPodIdentity = "aadpodidentity"
+	TypeConfig         = "config"
 )
