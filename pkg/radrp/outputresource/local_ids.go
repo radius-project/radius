@@ -45,6 +45,7 @@ const (
 	LocalIDAzureServiceBusQueue         = "AzureServiceBusQueue"
 	LocalIDAzureSqlServer               = "AzureSqlServer"
 	LocalIDAzureSqlServerDatabase       = "AzureSqlServerDatabase"
+	LocalIDExtender                      = "Extender"
 	LocalIDDaprPubSubGeneric            = "DaprPubSubGeneric"
 	LocalIDDaprStateStoreAzureStorage   = "DaprStateStoreAzureStorage"
 	LocalIDDaprStateStoreComponent      = "DaprStateStoreComponent"

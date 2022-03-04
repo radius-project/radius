@@ -263,7 +263,6 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 		}
 		r.Data = identity
 		return nil
-
 	default:
 		return fmt.Errorf("unknown identity kind: %q", r.Kind)
 	}

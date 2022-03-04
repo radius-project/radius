@@ -21,6 +21,11 @@ type SecretClient struct {
 }
 
 func (sc *SecretClient) LookupSecretValue(ctx context.Context, status radiusv1alpha3.ResourceStatus, secretReference renderers.SecretValueReference) (string, error) {
+	if secretReference.Value != "" {
+		// The secret reference contains the value itself
+		return secretReference.Value, nil
+	}
+
 	// Each value needs to be looked up in a secret where it's stored. The reference
 	// to the secret will be in the output resources.
 	outputResource, ok := status.Resources[secretReference.LocalID]
