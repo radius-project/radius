@@ -648,6 +648,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.
 }
 
 func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.RadiusResource, reference db.SecretValueReference) (interface{}, error) {
+	//TODO(#2030) Fail all user supplied secrets with empty values before deployment
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
