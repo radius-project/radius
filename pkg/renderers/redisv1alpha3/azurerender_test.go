@@ -30,6 +30,8 @@ func Test_Azure_Render_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Cache/Redis/test-redis",
+			"host": "localhost",
+			"port": 42,
 		},
 	}
 
@@ -47,9 +49,16 @@ func Test_Azure_Render_Success(t *testing.T) {
 	}
 	require.Equal(t, expectedProperties, output.Resources[0].Resource)
 
-	expectedComputedValues, expectedSecretValues := expectedComputedAndSecretValues()
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		"host": {
+			Value: "localhost",
+		},
+		"port": {
+			Value: "42",
+		},
+	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, expectedSecretValues, output.SecretValues)
+	require.Equal(t, 0, len(output.SecretValues))
 }
 
 func Test_Azure_Render_User_Secrets(t *testing.T) {
@@ -75,25 +84,9 @@ func Test_Azure_Render_User_Secrets(t *testing.T) {
 
 	require.Len(t, output.Resources, 0)
 
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"host": {
-			Value: "localhost",
-		},
-		"port": {
-			Value: "42",
-		},
-		"username": {
-			Value: "",
-		},
-		"password": {
-			Value: "deadbeef",
-		},
-		"connectionString": {
-			Value: "admin:deadbeef@localhost:42",
-		},
-	}
+	expectedComputedValues, expectedSecretValues := expectedComputedAndSecretValues()
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, 0, len(output.SecretValues))
+	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
 func Test_Azure_Render_MissingResource(t *testing.T) {
@@ -131,25 +124,20 @@ func Test_Azure_Render_InvalidResourceType(t *testing.T) {
 
 func expectedComputedAndSecretValues() (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"username": {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisUsernameKey,
-		},
 		"host": {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisHostKey,
+			Value: "localhost",
 		},
 		"port": {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisPortKey,
+			Value: "42",
 		},
 	}
 
 	expectedSecretValues := map[string]renderers.SecretValueReference{
 		"password": {
-			LocalID:       outputresource.LocalIDAzureRedis,
-			Action:        "listKeys",
-			ValueSelector: "/primaryKey",
+			Value: "deadbeef",
+		},
+		"connectionString": {
+			Value: "admin:deadbeef@localhost:42",
 		},
 	}
 

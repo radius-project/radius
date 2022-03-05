@@ -48,7 +48,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       port: redisRoute.properties.port
       secrets: {
         connectionString: '${redisRoute.properties.host}:${redisRoute.properties.port}'
-        password: ''
+        password: 'pwd'
       }
     }
   }

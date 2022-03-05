@@ -119,9 +119,5 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 	secretValues[UsernameStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.Username}
 	secretValues[PasswordValue] = renderers.SecretValueReference{Value: *properties.Secrets.Password}
 
-	return map[string]renderers.ComputedValueReference{
-		DatabaseValue: {
-			Value: name,
-		},
-	}, secretValues
+	return computedValues, secretValues
 }
