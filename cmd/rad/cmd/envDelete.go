@@ -121,7 +121,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if err = deleteAllApplications(cmd.Context(), kub); err != nil {
+		if err = runEnvUninstallKubernetes(); err != nil {
 			return err
 		}
 	}
