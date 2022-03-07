@@ -598,7 +598,7 @@ func convertSecretValues(input map[string]renderers.SecretValueReference) map[st
 			LocalID:       v.LocalID,
 			Action:        v.Action,
 			ValueSelector: v.ValueSelector,
-			Value:         v.Value,
+			Value:         &v.Value,
 			Transformer:   v.Transformer,
 		}
 	}
@@ -648,8 +648,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.
 }
 
 func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.RadiusResource, reference db.SecretValueReference) (interface{}, error) {
-	//TODO(#2030) Fail all user supplied secrets with empty values before deployment
-	if reference.Value != "" {
+	if reference.Value != nil {
 		// The secret reference contains the value itself
 		return reference.Value, nil
 	}

@@ -107,7 +107,16 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 		},
 	}
 	if properties.Secrets == nil {
-		return computedValues, nil
+		secretValues := map[string]renderers.SecretValueReference{
+			ConnectionStringValue: {
+				LocalID: cosmosAccountDependency.LocalID,
+				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				Action:        "listConnectionStrings",
+				ValueSelector: "/connectionStrings/0/connectionString",
+				Transformer:   resourcekinds.AzureCosmosDBMongo,
+			},
+		}
+		return computedValues, secretValues
 	}
 
 	// Currently user-specfied secrets are stored in the `secrets` property of the resource, and
