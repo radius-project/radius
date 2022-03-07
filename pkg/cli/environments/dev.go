@@ -168,10 +168,12 @@ func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.
 		return nil, err
 	}
 
+	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
+
 	return &azure.ARMManagementClient{
 		Connection:      connection,
-		SubscriptionID:  "temp",
-		ResourceGroup:   "temp",
+		SubscriptionID:  subscriptionID,
+		ResourceGroup:   resourceGroup,
 		EnvironmentName: e.Name,
 	}, nil
 }

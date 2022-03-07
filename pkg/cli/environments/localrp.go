@@ -86,7 +86,7 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 			providers.RadiusProviderImport: &providers.AzureProvider{
 				Authorizer:     nil,
 				BaseURL:        e.URL,
-				SubscriptionID: e.SubscriptionID, // YES: this supposed to be the namespace since we're talking to the API Service.
+				SubscriptionID: e.SubscriptionID,
 				ResourceGroup:  e.ResourceGroup,
 			},
 		},
