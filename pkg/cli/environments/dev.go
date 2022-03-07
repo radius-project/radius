@@ -19,8 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 )
 
-// var _ ServerLifecycleEnvironment = (*LocalEnvironment)(nil)
-
 // LocalEnvironment represents a local test setup for Azure Cloud Radius environment.
 type LocalEnvironment struct {
 	Name               string `mapstructure:"name" validate:"required"`
@@ -101,13 +99,14 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 
 	tags := map[string]*string{}
 
+	// To support Azure provider today, we need to inform the deployment engine about the Azure subscription.
+	// Using tags for now, would love to find a better way to do this if possible.
 	if e.HasAzureProvider() {
 		azSubscriptionId, azResourceGroup := e.GetAzureProviderDetails()
 		tags["azureSubscriptionID"] = &azSubscriptionId
 		tags["azureResourceGroup"] = &azResourceGroup
 
 		// Get the location of the resource group for the deployment engine.
-
 		auth, err = armauth.GetArmAuthorizer()
 		if err != nil {
 			return nil, err
@@ -142,42 +141,6 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		Tags:             tags,
 	}
 
-	// subscriptionID, resourceGroup := e.GetAzureProviderDetails()
-
-	// client := localrp.LocalRPDeploymentClient{
-	// 	SubscriptionID: subscriptionID,
-	// 	ResourceGroup:  resourceGroup,
-
-	// 	RadiusSubscriptionID: e.Namespace, // YES: this supposed to be the namespace since we're talking to the API Service.
-	// 	RadiusResourceGroup:  e.Namespace,
-
-	// 	// Local Dev supports Radius, Kubernetes, Modules, and optionally Azure
-	// 	Providers: map[string]providers.Provider{
-	// 		providers.RadiusProviderImport: &providers.AzureProvider{
-	// 			Authorizer:     nil, // Anonymous access in local dev
-	// 			BaseURL:        baseURL,
-	// 			SubscriptionID: e.Namespace, // YES: this supposed to be the namespace since we're talking to the API Service.
-	// 			ResourceGroup:  e.Namespace,
-	// 			RoundTripper:   roundTripper,
-	// 		},
-	// 		providers.KubernetesProviderImport: providers.NewK8sProvider(logr.Discard(), dynamic, restMapper),
-	// 	},
-	// }
-
-	// if e.HasAzureProvider() {
-	// 	auth, err := armauth.GetArmAuthorizer()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	client.Providers[providers.AzureProviderImport] = &providers.AzureProvider{
-	// 		Authorizer:     auth,
-	// 		BaseURL:        "https://management.azure.com",
-	// 		SubscriptionID: subscriptionID,
-	// 		ResourceGroup:  resourceGroup,
-	// 	}
-	// }
-
 	return client, nil
 }
 
@@ -204,8 +167,6 @@ func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.
 	if err != nil {
 		return nil, err
 	}
-
-	// subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
 	return &azure.ARMManagementClient{
 		Connection:      connection,

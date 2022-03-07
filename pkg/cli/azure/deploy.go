@@ -91,10 +91,6 @@ func (dc *ARMDeploymentClient) startDeployment(ctx context.Context, name string,
 	return &future, nil
 }
 
-func strptr(s string) *string {
-	return &s
-}
-
 func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExtended) (clients.DeploymentResult, error) {
 	if deployment.Properties == nil || deployment.Properties.OutputResources == nil {
 		return clients.DeploymentResult{}, nil
