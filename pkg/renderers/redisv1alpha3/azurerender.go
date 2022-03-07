@@ -115,7 +115,7 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 	//
 	// TODO(#1767): We need to store these in a secret store.
 	secretValues := map[string]renderers.SecretValueReference{
-		ConnectionStringValue: {},
+		ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
 		PasswordValue: {Value: *properties.Secrets.Password},
 	}
 	return computedValues, secretValues
