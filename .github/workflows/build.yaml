@@ -278,8 +278,7 @@ jobs:
   local_dev_tests:
     name: Run K3s Local Dev tests
     needs: [ 'build', 'images' ]
-    if: ${{ false }} # Skip the job until we revisit this dev env test - https://github.com/project-radius/radius/issues/1907
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       # Timeout used for functional tests
       LOCALDEV_FUNCTIONALTEST_TIMEOUT: 20m
