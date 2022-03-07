@@ -56,9 +56,14 @@ func Test_Azure_Render_Success(t *testing.T) {
 		"port": {
 			Value: "42",
 		},
+		"username": {
+			LocalID: "AzureRedis",
+			PropertyReference: "redisusername",
+		},
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, 0, len(output.SecretValues))
+	require.Equal(t, "/primaryKey", output.SecretValues[PasswordValue].ValueSelector)
+	require.Equal(t, "listKeys", output.SecretValues[PasswordValue].Action)
 }
 
 func Test_Azure_Render_User_Secrets(t *testing.T) {
@@ -129,6 +134,10 @@ func expectedComputedAndSecretValues() (map[string]renderers.ComputedValueRefere
 		},
 		"port": {
 			Value: "42",
+		},
+		"username": {
+			LocalID: "AzureRedis",
+			PropertyReference: "redisusername",
 		},
 	}
 
