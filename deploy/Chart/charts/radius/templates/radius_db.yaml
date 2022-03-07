@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: radius-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: radius-db
+spec:
+  replicas: 1
+  serviceName: radius-db
+  selector:
+    matchLabels:
+      app: radius-db
+  template:
+    metadata:
+      labels:
+        app: radius-db
+    spec:
+      serviceAccountName: radius-db
+      automountServiceAccountToken: true
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: mongo
+        image: mongo:5
+        command:
+        - "mongod"
+        - "--replSet=radius-db"
+        - "--bind_ip_all"
+        env:
+        - name: MONGO_INITDB_DATABASE
+          value: rpdb
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom: 
+            secretKeyRef: 
+              name: radius-db
+              key: adminUsername
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: radius-db
+              key: adminPassword
+        resources:
+          requests:
+            cpu: 0.2
+            memory: 200Mi
+          limits:
+            cpu: 1.0
+            memory: 1Gi
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: radius-db-storage-claim
+          mountPath: /data/db
+        securityContext:
+          allowPrivilegeEscalation: false
+      - name: replset-sidecar
+        image: cvallance/mongo-k8s-sidecar
+        env:
+        - name: MONGO_SIDECAR_POD_LABELS
+          value: "app=radius-db"
+        - name: KUBERNETES_MONGO_SERVICE_NAME
+          value: "radius-db"
+  volumeClaimTemplates:
+  - metadata:
+      name: radius-db-storage-claim
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "standard"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: radius-db
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: radius-db
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: radius-db
+subjects:
+- kind: ServiceAccount
+  name: radius-db
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: radius-db
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radius-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: radius-db
+stringData:
+  adminUsername: mongoadmin
+  adminPassword: securepassword
+  connectionString: 'mongodb://radius-db:27017/rpdb?authSource=admin'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radius-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: radius-db
+spec:
+  clusterIP: None
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: radius-db
