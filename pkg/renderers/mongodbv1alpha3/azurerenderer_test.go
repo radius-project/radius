@@ -83,7 +83,8 @@ func Test_Azure_Render_Success(t *testing.T) {
 		},
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, 0, len(output.SecretValues))
+	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[ConnectionStringValue].ValueSelector)
+	require.Equal(t, "listConnectionStrings", output.SecretValues[ConnectionStringValue].Action)
 }
 
 func Test_Azure_Render_UserSpecifiedSecrets(t *testing.T) {
