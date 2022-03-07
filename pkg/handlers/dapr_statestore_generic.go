@@ -70,17 +70,7 @@ func (handler *daprStateStoreGenericHandler) Put(ctx context.Context, options *P
 }
 
 func (handler *daprStateStoreGenericHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	properties := options.ExistingOutputResource.PersistedProperties
-	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": properties[KubernetesAPIVersionKey],
-			"kind":       properties[KubernetesKindKey],
-			"metadata": map[string]interface{}{
-				"name":      properties[KubernetesNameKey],
-				"namespace": properties[KubernetesNamespaceKey],
-			},
-		},
-	}
+	item := getDaprGenericForDelete(ctx, options)
 
 	err := client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 	if err != nil {

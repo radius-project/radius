@@ -6,6 +6,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -55,4 +56,20 @@ func constructDaprGeneric(properties map[string]string, appName string, resource
 		},
 	}
 	return item, nil
+}
+
+func getDaprGenericForDelete(ctx context.Context, options DeleteOptions) unstructured.Unstructured {
+	properties := options.ExistingOutputResource.PersistedProperties
+	item := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": properties[KubernetesAPIVersionKey],
+			"kind":       properties[KubernetesKindKey],
+			"metadata": map[string]interface{}{
+				"name":      properties[KubernetesNameKey],
+				"namespace": properties[KubernetesNamespaceKey],
+			},
+		},
+	}
+
+	return item
 }
