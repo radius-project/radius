@@ -650,7 +650,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.
 func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.RadiusResource, reference db.SecretValueReference) (interface{}, error) {
 	if reference.Value != nil {
 		// The secret reference contains the value itself
-		return reference.Value, nil
+		return *reference.Value, nil
 	}
 
 	var match *db.OutputResource
