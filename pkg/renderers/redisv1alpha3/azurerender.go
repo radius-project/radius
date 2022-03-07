@@ -95,16 +95,28 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 		"port": {
 			Value: strconv.Itoa(int(to.Int32(properties.Port))),
 		},
+		"username": {
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisUsernameKey,
+		},
 	}
 	if properties.Secrets == nil {
-		return computedValues, nil
+		secretValues := map[string]renderers.SecretValueReference{
+			"password": {
+				LocalID:       outputresource.LocalIDAzureRedis,
+				Action:        "listKeys",
+				ValueSelector: "/primaryKey",
+			},
+		}
+		return computedValues, secretValues
 	}
 	// Currently user-specfied secrets are stored in the `secrets` property of the resource, and
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
-	secretValues := map[string]renderers.SecretValueReference{}
-	secretValues[ConnectionStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.ConnectionString}
-	secretValues[PasswordValue] = renderers.SecretValueReference{Value: *properties.Secrets.Password}
+	secretValues := map[string]renderers.SecretValueReference{
+		ConnectionStringValue: {},
+		PasswordValue: {Value: *properties.Secrets.Password},
+	}
 	return computedValues, secretValues
 }
