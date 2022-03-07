@@ -114,10 +114,11 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
-	secretValues := map[string]renderers.SecretValueReference{}
-	secretValues[ConnectionStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.ConnectionString}
-	secretValues[UsernameStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.Username}
-	secretValues[PasswordValue] = renderers.SecretValueReference{Value: *properties.Secrets.Password}
+	secretValues := map[string]renderers.SecretValueReference{
+		ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
+		UsernameStringValue: {Value: *properties.Secrets.Username},
+		PasswordValue: {Value: *properties.Secrets.Password},
+	}
 
 	return computedValues, secretValues
 }
