@@ -27,7 +27,7 @@ jobs:
           container_name: 'environment'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern rp-full.json'
+          extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern rp-full.json --overwrite true'
       - name: Upload deployment script
         uses: bacongobbler/azure-blob-storage-upload@v1.2.0
         with:
@@ -35,7 +35,7 @@ jobs:
           container_name: 'environment'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern initialize-cluster.sh'
+          extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern initialize-cluster.sh --overwrite true'
       
       # The install scripts are not versioned. They go to tools/rad/install.{sh,ps1}
       - name: Upload install.sh
@@ -45,7 +45,7 @@ jobs:
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad --pattern install.sh'
+          extra_args: '--destination-path rad --pattern install.sh --overwrite true'
       - name: Upload install.ps1
         uses: bacongobbler/azure-blob-storage-upload@v1.2.0
         with:
@@ -53,7 +53,7 @@ jobs:
           container_name: 'tools'
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
-          extra_args: '--destination-path rad --pattern install.ps1'
+          extra_args: '--destination-path rad --pattern install.ps1 --overwrite true'
       
       # Logic: If this is a real release (tagged, non-rc) then compare to our existing full
       # release and see if it's newer. This prevents a patch release of an older vintage from overwriting
@@ -91,4 +91,4 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           source_dir: .
-          extra_args: '--pattern stable.txt' 
+          extra_args: '--pattern stable.txt --overwrite true' 
