@@ -770,11 +770,6 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/dapr.io.StateStore",
-                "routingType": "Proxy",
-                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-            },
-            {
                 "name": "Application/microsoft.com.SQLDatabase",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
