@@ -113,6 +113,7 @@ stages:
       displayName: rad env uninstall kubernetes
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
+      condition: always()
   - job: Azure
     pool:
       vmImage: 'ubuntu-latest'

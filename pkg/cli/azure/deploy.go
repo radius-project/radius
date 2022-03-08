@@ -27,6 +27,7 @@ type ARMDeploymentClient struct {
 	SubscriptionID   string
 	Client           resources.DeploymentsClient
 	OperationsClient resources.DeploymentOperationsClient
+	Tags             map[string]*string
 }
 
 var _ clients.DeploymentClient = (*ARMDeploymentClient)(nil)
@@ -81,6 +82,7 @@ func (dc *ARMDeploymentClient) startDeployment(ctx context.Context, name string,
 			Parameters: options.Parameters,
 			Mode:       resources.DeploymentModeIncremental,
 		},
+		Tags: dc.Tags,
 	})
 	if err != nil {
 		return nil, err
