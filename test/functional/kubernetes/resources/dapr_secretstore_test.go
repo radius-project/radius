@@ -27,14 +27,14 @@ func Test_DaprSecretStore_Generic(t *testing.T) {
 						ApplicationName: application,
 						ResourceName:    "myapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
 						ApplicationName: application,
 						ResourceName:    "secretstore",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprSecretStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprSecretStoreGeneric, outputresource.TypeKubernetes, resourcekinds.Kubernetes, true, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprSecretStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprSecretStoreGeneric, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
