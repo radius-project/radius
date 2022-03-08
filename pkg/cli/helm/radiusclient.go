@@ -34,7 +34,7 @@ func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage 
 
 	var helmChart *chart.Chart
 	if chartPath == "" {
-		helmChart, err = helmChartFromRepo(chartVersion, helmConf, radiusHelmRepo, radiusReleaseName)
+		helmChart, err = helmChartFromContainerRegistry(chartVersion, helmConf, radiusHelmRepo, radiusReleaseName)
 	} else {
 		helmChart, err = loader.Load(chartPath)
 	}
@@ -87,16 +87,30 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag string) error {
 	values := helmChart.Values
 
+	_, ok := values["global"]
+	if !ok {
+		values["global"] = make(map[string]interface{})
+	}
+	global := values["global"].(map[string]interface{})
+
+	_, ok = global["radius"]
+	if !ok {
+		global["radius"] = make(map[string]interface{})
+	}
+
+	radius := global["radius"].(map[string]interface{})
+
 	if containerImage != "" {
-		values["container"] = containerImage
+		radius["container"] = containerImage
 	}
 
 	if containerTag != "" {
-		values["tag"] = containerTag
+		radius["tag"] = containerTag
 	}
 
 	return nil
 }
+
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Radius from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)

@@ -1,0 +1,10 @@
+global:
+  engine:
+    image: radius.azurecr.io/deployment-engine
+    tag: latest
+  extensibility:
+    image: radius.azurecr.io/bicep-extensibility
+    tag: latest
+  radius:
+    container: radius.azurecr.io/radius-controller
+    tag: latest # Tag for radius-controller image.

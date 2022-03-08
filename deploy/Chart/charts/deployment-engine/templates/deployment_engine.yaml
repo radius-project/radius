@@ -31,7 +31,7 @@ spec:
           value: /bicep/cert/tls.crt
         - name: ASPNETCORE_Kestrel__Endpoints__HttpsPemCertFile__Certificate__KeyPath
           value: /bicep/cert/tls.key
-        image: {{ .Values.engine.image }}:{{ .Values.engine.tag }}
+        image: {{ .Values.global.engine.image }}:{{ .Values.global.engine.tag }}
         name: deployment-engine
         ports:
         - containerPort: 6443
@@ -46,7 +46,7 @@ spec:
       - env:
         - name: ASPNETCORE_URLS
           value: http://+:5000
-        image: {{ .Values.extensibility.image }}:{{ .Values.extensibility.tag }}
+        image: {{ .Values.global.extensibility.image }}:{{ .Values.global.extensibility.tag }}
         name: bicep-extensibility
         ports:
         - containerPort: 5000

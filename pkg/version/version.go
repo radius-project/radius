@@ -14,27 +14,30 @@ import (
 
 // Values for these are injected by the build.
 var (
-	channel = "edge"
-	release = "edge"
-	version = "edge"
-	commit  = "unknown"
+	channel      = "edge"
+	release      = "edge"
+	version      = "edge"
+	commit       = "unknown"
+	chartVersion = "0.42.42-dev"
 )
 
 // VersionInfo is used for a serializable representation of our versioning info.
 type VersionInfo struct {
-	Channel string `json:"channel"`
-	Commit  string `json:"commit"`
-	Release string `json:"release"`
-	Version string `json:"version"`
-	Bicep   string `json:"bicep"`
+	Channel      string `json:"channel"`
+	Commit       string `json:"commit"`
+	Release      string `json:"release"`
+	Version      string `json:"version"`
+	Bicep        string `json:"bicep"`
+	ChartVersion string `json:"chartVersion"`
 }
 
 func NewVersionInfo() VersionInfo {
 	return VersionInfo{
-		Channel: Channel(),
-		Commit:  Commit(),
-		Release: Release(),
-		Version: Version(),
+		Channel:      Channel(),
+		Commit:       Commit(),
+		Release:      Release(),
+		Version:      Version(),
+		ChartVersion: ChartVersion(),
 	}
 }
 
@@ -69,6 +72,12 @@ func Release() string {
 // This should only be used for informational purposes.
 func Version() string {
 	return version
+}
+
+// ChartVersion returns the version of the Helm Chart to be used by
+// Kubernetes, Dev, and potentially Azure environments
+func ChartVersion() string {
+	return chartVersion
 }
 
 // VersionString returns a formatted string representation of the version from a list of supported
