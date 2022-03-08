@@ -23,7 +23,7 @@ var envInitLocalCmd = &cobra.Command{
 	Use:   "dev",
 	Short: "Initializes a local development environment",
 	Long:  `Initializes a local development environment`,
-	RunE: initDevRadEnvironment,
+	RunE:  initDevRadEnvironment,
 }
 
 func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
