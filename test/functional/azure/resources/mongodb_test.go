@@ -78,6 +78,7 @@ func Test_MongoDB(t *testing.T) {
 }
 
 func Test_MongoDBUserSecrets(t *testing.T) {
+	// t.SkipNow()
 	application := "azure-resources-mongodb-user-secrets"
 	template := "testdata/azure-resources-mongodb-user-secrets.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

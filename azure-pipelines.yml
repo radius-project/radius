@@ -135,7 +135,7 @@ stages:
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
     - bash: |
         export RANID=$(date +%s%N)
-        arr=("eastus" "westeurope" "westus2")
+        arr=("westus2")
         index=$(expr $RANID % 3)
         export LOCATION=${arr[$index]}
         echo "##vso[task.setvariable variable=RADENVIRONMENT]rad-$RANID"
