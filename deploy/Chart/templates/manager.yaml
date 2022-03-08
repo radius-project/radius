@@ -46,6 +46,7 @@ spec:
           value: /radius/cert/tls.key
         image: {{ .Values.deploymentEngine }}:{{ .Values.deploymentEngineTag }}
         name: deployment-engine
+        imagePullPolicy: Always
         ports:
         - containerPort: 6443
           name: bicep-api
