@@ -1,4 +1,5 @@
 (root).properties.connections.frontend: Additional property anotherThing is not allowed
+(root).properties.connections.gateway.kind: properties.connections.gateway.kind must be one of the following: "azure", "azure.com/KeyVault", "azure.com/ServiceBusQueue", "dapr.io/InvokeHttp", "dapr.io/PubSubTopic", "dapr.io/StateStore", "dapr.io/SecretStore", "Grpc", "Http", "microsoft.com/SQL", "mongo.com/MongoDB", "rabbitmq.com/MessageQueue", "redislabs.com/Redis"
 (root).properties.connections.gateway: Additional property anotherThing is not allowed
 (root).properties.container.env.COol?: Invalid type. Expected: string, given: boolean
 (root).properties.container.image: Invalid type. Expected: string, given: integer
