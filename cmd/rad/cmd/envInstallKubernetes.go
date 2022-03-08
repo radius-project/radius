@@ -22,7 +22,7 @@ func init() {
 	envInstallCmd.AddCommand(envInstallKubernetesCmd)
 	envInstallKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
 	envInstallKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
-	envInstallKubernetesCmd.Flags().StringP("chart", "c", "", "Specify a file path to a helm chart to install radius from")
+	envInstallKubernetesCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
 	envInstallKubernetesCmd.Flags().String("image", "", "Specify the radius controller image to use")
 	envInstallKubernetesCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
 }
