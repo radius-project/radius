@@ -20,7 +20,7 @@ controller-crd-uninstall: generate-k8s-manifests  ## Uninstall CRDs from the K8s
 controller-deploy: docker-build-radius-controller docker-push-radius-controller controller-deploy-existing ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 
 controller-deploy-existing: generate-k8s-manifests ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	go run ./cmd/rad/main.go env init kubernetes -c deploy/Chart/ --image $(DOCKER_REGISTRY)/radius-controller --tag $(DOCKER_TAG_VERSION) 
+	go run ./cmd/rad/main.go env init kubernetes --chart deploy/Chart/ --image $(DOCKER_REGISTRY)/radius-controller --tag $(DOCKER_TAG_VERSION) 
 
 controller-undeploy: ## Uninstall controller from the K8s cluster specified in ~/.kube/config.
 	go run ./cmd/rad/main.go env uninstall kubernetes

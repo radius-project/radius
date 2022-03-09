@@ -15,6 +15,7 @@ spec:
       labels:
         control-plane: deployment-engine
     spec:
+      serviceAccountName: deployment-engine-manager
       containers:
       - args:
         - --kubernetes=true
