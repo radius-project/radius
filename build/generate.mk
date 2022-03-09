@@ -90,7 +90,7 @@ generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes
 		rbac:roleName=radius-manager-role \
 		paths="./..." \
 		output:crd:artifacts:config=deploy/Chart/crds/ \
-		output:rbac:artifacts:config=deploy/Chart/templates/ \
+		output:rbac:artifacts:config=deploy/Chart/charts/radius/templates/ \
 
 generate-controller: generate-controller-gen-installed ## Generate controller code
 	$(CONTROLLER_GEN) object:headerFile="boilerplate.go.txt" paths="./..."

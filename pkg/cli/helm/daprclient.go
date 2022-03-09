@@ -30,7 +30,7 @@ func ApplyDaprHelmChart(version string) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	helmChart, err := helmChartFromRepo(version, helmConf, daprHelmRepo, daprReleaseName)
+	helmChart, err := helmChartFromContainerRegistry(version, helmConf, daprHelmRepo, daprReleaseName)
 	if err != nil {
 		return fmt.Errorf("failed to get dapr chart, err: %w, helm output: %s", err, helmOutput.String())
 	}

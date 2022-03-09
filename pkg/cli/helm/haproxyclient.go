@@ -37,7 +37,7 @@ func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	helmChart, err := helmChartFromRepo(version, helmConf, haproxyHelmRepo, haproxyReleaseName)
+	helmChart, err := helmChartFromContainerRegistry(version, helmConf, haproxyHelmRepo, haproxyReleaseName)
 	if err != nil {
 		return fmt.Errorf("failed to get haproxy chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
