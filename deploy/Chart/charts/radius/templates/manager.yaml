@@ -28,47 +28,6 @@ spec:
         - containerPort: 8443
           name: https
       - args:
-        - --kubernetes=true
-        env:
-        - name: TLS_CERT_DIR
-          value: /radius/cert
-        - name: ASPNETCORE_URLS
-          value: https://+:6443
-        - name: kubernetes
-          value: "true"
-        - name: ASPNETCORE_Kestrel__Endpoints__HttpsPemCertFile__Url
-          value: https://+:6443
-        - name: ASPNETCORE_Logging__LogLevel__Default
-          value: "Debug"
-        - name: ASPNETCORE_Kestrel__Endpoints__HttpsPemCertFile__Certificate__Path
-          value: /radius/cert/tls.crt
-        - name: ASPNETCORE_Kestrel__Endpoints__HttpsPemCertFile__Certificate__KeyPath
-          value: /radius/cert/tls.key
-        image: {{ .Values.deploymentEngine }}:{{ .Values.deploymentEngineTag }}
-        name: deployment-engine
-        ports:
-        - containerPort: 6443
-          name: bicep-api
-          protocol: TCP
-        volumeMounts:
-        - name: cert
-          mountPath: /radius/cert
-          readOnly: true
-        securityContext:
-          allowPrivilegeEscalation: false
-      - env:
-        - name: ASPNETCORE_URLS
-          value: http://+:5000
-        image: radius.azurecr.io/bicep-extensibility:latest
-        name: bicep-extensibility
-        ports:
-        - containerPort: 5000
-          name: bicepext
-          protocol: TCP
-        securityContext:
-          allowPrivilegeEscalation: false
-      
-      - args:
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=127.0.0.1:8080
         - --leader-elect
@@ -77,7 +36,7 @@ spec:
         env:
         - name: TLS_CERT_DIR
           value: /radius/cert
-        image: {{ .Values.container }}:{{ .Values.tag }}
+        image: {{ .Values.global.radius.container }}:{{ .Values.global.radius.tag }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -134,33 +93,5 @@ spec:
       name: https
       protocol: TCP
       targetPort: 7443
-  selector:
-    control-plane: controller-manager
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: bicep-api
-  namespace: {{ .Release.Namespace }}
-spec:
-  ports:
-    - port: 443
-      name: https
-      protocol: TCP
-      targetPort: 6443
-  selector:
-    control-plane: controller-manager
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: bicep-extensibility
-  namespace: {{ .Release.Namespace }}
-spec:
-  ports:
-    - port: 5000
-      name: http
-      protocol: TCP
-      targetPort: 5000
   selector:
     control-plane: controller-manager

@@ -63,7 +63,7 @@ func locateChartFile(dirPath string) (string, error) {
 	return filepath.Join(dirPath, files[0].Name()), nil
 }
 
-func helmChartFromRepo(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
+func helmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pull := helm.NewPull()
 	pull.RepoURL = repoUrl
 	pull.Settings = &cli.EnvSettings{}

@@ -34,7 +34,7 @@ else
   GCFLAGS:="all=-N -l"
 endif
 
-LDFLAGS := "-s -w -X $(BASE_PACKAGE_NAME)/pkg/version.channel=$(REL_CHANNEL) -X $(BASE_PACKAGE_NAME)/pkg/version.release=$(REL_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.commit=$(GIT_COMMIT) -X $(BASE_PACKAGE_NAME)/pkg/version.version=$(GIT_VERSION)"
+LDFLAGS := "-s -w -X $(BASE_PACKAGE_NAME)/pkg/version.channel=$(REL_CHANNEL) -X $(BASE_PACKAGE_NAME)/pkg/version.release=$(REL_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.commit=$(GIT_COMMIT) -X $(BASE_PACKAGE_NAME)/pkg/version.version=$(GIT_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.chartVersion=$(CHART_VERSION)"
 GOARGS := -v -gcflags $(GCFLAGS) -ldflags $(LDFLAGS)
 
 export GO111MODULE ?= on
