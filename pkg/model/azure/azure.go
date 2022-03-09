@@ -11,6 +11,7 @@ import (
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/model"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
@@ -108,7 +109,7 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			Renderer:     &microsoftsqlv1alpha3.Renderer{},
 		},
 		{
-			ResourceType: mongodbv1alpha3.ResourceType,
+			ResourceType: renderers.ResourceType,
 			Renderer:     &mongodbv1alpha3.AzureRenderer{},
 		},
 		{

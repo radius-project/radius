@@ -8,6 +8,7 @@ package kubernetes
 import (
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
@@ -46,7 +47,7 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 			Renderer:     &daprsecretstorev1alpha3.Renderer{SecretStores: daprsecretstorev1alpha3.SupportedKubernetesSecretStoreKindValues},
 		},
 		{
-			ResourceType: mongodbv1alpha3.ResourceType,
+			ResourceType: renderers.ResourceType,
 			Renderer:     &mongodbv1alpha3.KubernetesRenderer{},
 		},
 		{

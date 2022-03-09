@@ -62,8 +62,8 @@ func Test_Azure_Render_Success(t *testing.T) {
 		},
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, "/primaryKey", output.SecretValues[PasswordValue].ValueSelector)
-	require.Equal(t, "listKeys", output.SecretValues[PasswordValue].Action)
+	require.Equal(t, "/primaryKey", output.SecretValues[renderers.PasswordStringHolder].ValueSelector)
+	require.Equal(t, "listKeys", output.SecretValues[renderers.PasswordStringHolder].Action)
 }
 
 func Test_Azure_Render_User_Secrets(t *testing.T) {
@@ -78,8 +78,8 @@ func Test_Azure_Render_User_Secrets(t *testing.T) {
 			"host": "localhost",
 			"port": 42,
 			"secrets": map[string]string{
-				"password":         "deadbeef",
-				"connectionString": "admin:deadbeef@localhost:42",
+				renderers.PasswordStringHolder:         "deadbeef",
+				renderers.ConnectionStringValue: "admin:deadbeef@localhost:42",
 			},
 		},
 	}
@@ -135,17 +135,17 @@ func expectedComputedAndSecretValues() (map[string]renderers.ComputedValueRefere
 		"port": {
 			Value: "42",
 		},
-		"username": {
-			LocalID: "AzureRedis",
-			PropertyReference: "redisusername",
+		renderers.UsernameStringValue: {
+			LocalID: outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisUsernameKey,
 		},
 	}
 
 	expectedSecretValues := map[string]renderers.SecretValueReference{
-		"password": {
+		renderers.PasswordStringHolder: {
 			Value: "deadbeef",
 		},
-		"connectionString": {
+		renderers.ConnectionStringValue: {
 			Value: "admin:deadbeef@localhost:42",
 		},
 	}

@@ -18,11 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
-const (
-	ConnectionStringValue = "connectionString"
-	PasswordValue         = "password"
-)
-
 var _ renderers.Renderer = (*AzureRenderer)(nil)
 
 type AzureRenderer struct {
@@ -115,8 +110,9 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 	//
 	// TODO(#1767): We need to store these in a secret store.
 	secretValues := map[string]renderers.SecretValueReference{
-		ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
-		PasswordValue: {Value: *properties.Secrets.Password},
+		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
+		renderers.PasswordStringHolder: {Value: *properties.Secrets.Password},
+		//TODO(#2050): Add support for redis username
 	}
 	return computedValues, secretValues
 }
