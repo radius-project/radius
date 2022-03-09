@@ -91,6 +91,7 @@ webhooks:
     - httproutes
     - dapriostatestores
     - extenders
+    - dapriosecretstores
   sideEffects: None
 - admissionReviewVersions:
   - v1

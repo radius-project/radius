@@ -37,6 +37,7 @@ var DefaultResourceTypes = []struct {
 	{&radiusv1alpha3.DaprIOInvokeHttpRoute{}, &radiusv1alpha3.DaprIOInvokeHttpRouteList{}},
 	{&radiusv1alpha3.DaprIOPubSubTopic{}, &radiusv1alpha3.DaprIOPubSubTopicList{}},
 	{&radiusv1alpha3.DaprIOStateStore{}, &radiusv1alpha3.DaprIOStateStoreList{}},
+	{&radiusv1alpha3.DaprIOSecretStore{}, &radiusv1alpha3.DaprIOSecretStoreList{}},
 	{&radiusv1alpha3.GrpcRoute{}, &radiusv1alpha3.GrpcRouteList{}},
 	{&radiusv1alpha3.HttpRoute{}, &radiusv1alpha3.HttpRouteList{}},
 	{&radiusv1alpha3.MongoDatabase{}, &radiusv1alpha3.MongoDatabaseList{}},

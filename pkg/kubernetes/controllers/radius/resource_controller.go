@@ -107,6 +107,9 @@ type ResourceReconciler struct {
 //+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestores,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestores/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=dapriostatestores/finalizers,verbs=update
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriosecretstores,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriosecretstores/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=radius.dev,resources=dapriosecretstores/finalizers,verbs=update
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=radius.dev,resources=gateways/finalizers,verbs=update

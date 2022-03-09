@@ -57,6 +57,7 @@ webhooks:
     - httproutes
     - dapriostatestorecomponents
     - extendercomponents
+    - dapriosecretstorecomponents
   sideEffects: None
 - admissionReviewVersions:
   - v1

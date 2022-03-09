@@ -827,6 +827,122 @@ type DaprIoPubSubTopicListResult struct {
 	DaprPubSubTopicList
 }
 
+// DaprIoSecretStoreCreateOrUpdatePollerResponse contains the response from method DaprIoSecretStore.CreateOrUpdate.
+type DaprIoSecretStoreCreateOrUpdatePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *DaprIoSecretStoreCreateOrUpdatePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l DaprIoSecretStoreCreateOrUpdatePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (DaprIoSecretStoreCreateOrUpdateResponse, error) {
+	respType := DaprIoSecretStoreCreateOrUpdateResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, &respType.DaprSecretStoreResource)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a DaprIoSecretStoreCreateOrUpdatePollerResponse from the provided client and resume token.
+func (l *DaprIoSecretStoreCreateOrUpdatePollerResponse) Resume(ctx context.Context, client *DaprIoSecretStoreClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("DaprIoSecretStoreClient.CreateOrUpdate", token, 	client.pl, client.createOrUpdateHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &DaprIoSecretStoreCreateOrUpdatePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// DaprIoSecretStoreCreateOrUpdateResponse contains the response from method DaprIoSecretStore.CreateOrUpdate.
+type DaprIoSecretStoreCreateOrUpdateResponse struct {
+	DaprIoSecretStoreCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoSecretStoreCreateOrUpdateResult contains the result from method DaprIoSecretStore.CreateOrUpdate.
+type DaprIoSecretStoreCreateOrUpdateResult struct {
+	DaprSecretStoreResource
+}
+
+// DaprIoSecretStoreDeletePollerResponse contains the response from method DaprIoSecretStore.Delete.
+type DaprIoSecretStoreDeletePollerResponse struct {
+	// Poller contains an initialized poller.
+	Poller *DaprIoSecretStoreDeletePoller
+
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// PollUntilDone will poll the service endpoint until a terminal state is reached or an error is received.
+func (l DaprIoSecretStoreDeletePollerResponse) PollUntilDone(ctx context.Context, freq time.Duration) (DaprIoSecretStoreDeleteResponse, error) {
+	respType := DaprIoSecretStoreDeleteResponse{}
+	resp, err := l.Poller.pt.PollUntilDone(ctx, freq, nil)
+	if err != nil {
+		return respType, err
+	}
+	respType.RawResponse = resp
+	return respType, nil
+}
+
+// Resume rehydrates a DaprIoSecretStoreDeletePollerResponse from the provided client and resume token.
+func (l *DaprIoSecretStoreDeletePollerResponse) Resume(ctx context.Context, client *DaprIoSecretStoreClient, token string) error {	pt, err := armruntime.NewPollerFromResumeToken("DaprIoSecretStoreClient.Delete", token, 	client.pl, client.deleteHandleError)
+	if err != nil {
+		return err
+	}
+	poller := &DaprIoSecretStoreDeletePoller {
+		pt: pt,
+	}
+	resp, err := poller.Poll(ctx)
+	if err != nil {
+		return err
+	}
+	l.Poller = poller
+	l.RawResponse = resp
+	return nil
+}
+
+// DaprIoSecretStoreDeleteResponse contains the response from method DaprIoSecretStore.Delete.
+type DaprIoSecretStoreDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoSecretStoreGetResponse contains the response from method DaprIoSecretStore.Get.
+type DaprIoSecretStoreGetResponse struct {
+	DaprIoSecretStoreGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoSecretStoreGetResult contains the result from method DaprIoSecretStore.Get.
+type DaprIoSecretStoreGetResult struct {
+	DaprSecretStoreResource
+}
+
+// DaprIoSecretStoreListResponse contains the response from method DaprIoSecretStore.List.
+type DaprIoSecretStoreListResponse struct {
+	DaprIoSecretStoreListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprIoSecretStoreListResult contains the result from method DaprIoSecretStore.List.
+type DaprIoSecretStoreListResult struct {
+	DaprSecretStoreList
+}
+
 // DaprIoStateStoreCreateOrUpdatePollerResponse contains the response from method DaprIoStateStore.CreateOrUpdate.
 type DaprIoStateStoreCreateOrUpdatePollerResponse struct {
 	// Poller contains an initialized poller.

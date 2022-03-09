@@ -16,21 +16,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewDaprStateStoreGenericHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
-	return &daprStateStoreGenericHandler{
+func NewDaprSecretStoreGenericHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
+	return &daprSecretStoreGenericHandler{
 		kubernetesHandler: kubernetesHandler{k8s: k8s},
 		arm:               arm,
 		k8s:               k8s,
 	}
 }
 
-type daprStateStoreGenericHandler struct {
+type daprSecretStoreGenericHandler struct {
 	kubernetesHandler
 	arm armauth.ArmConfig
 	k8s client.Client
 }
 
-func (handler *daprStateStoreGenericHandler) patchDaprStateStore(ctx context.Context, options *PutOptions, properties map[string]string) (unstructured.Unstructured, error) {
+func (handler *daprSecretStoreGenericHandler) patchDaprSecretStore(ctx context.Context, options *PutOptions, properties map[string]string) (unstructured.Unstructured, error) {
 	err := handler.PatchNamespace(ctx, properties[KubernetesNamespaceKey])
 	if err != nil {
 		return unstructured.Unstructured{}, err
@@ -48,10 +48,10 @@ func (handler *daprStateStoreGenericHandler) patchDaprStateStore(ctx context.Con
 	return item, nil
 }
 
-func (handler *daprStateStoreGenericHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+func (handler *daprSecretStoreGenericHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
-	item, err := handler.patchDaprStateStore(ctx, options, properties)
+	item, err := handler.patchDaprSecretStore(ctx, options, properties)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (handler *daprStateStoreGenericHandler) Put(ctx context.Context, options *P
 	return properties, nil
 }
 
-func (handler *daprStateStoreGenericHandler) Delete(ctx context.Context, options DeleteOptions) error {
+func (handler *daprSecretStoreGenericHandler) Delete(ctx context.Context, options DeleteOptions) error {
 	item := getDaprGenericForDelete(ctx, options)
 
 	err := client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
@@ -80,18 +80,18 @@ func (handler *daprStateStoreGenericHandler) Delete(ctx context.Context, options
 	return nil
 }
 
-func NewDaprStateStoreGenericHealthHandler(arm armauth.ArmConfig, k8s client.Client) HealthHandler {
-	return &daprStateStoreGenericHealthHandler{
+func NewDaprSecretStoreGenericHealthHandler(arm armauth.ArmConfig, k8s client.Client) HealthHandler {
+	return &daprSecretStoreGenericHealthHandler{
 		arm: arm,
 		k8s: k8s,
 	}
 }
 
-type daprStateStoreGenericHealthHandler struct {
+type daprSecretStoreGenericHealthHandler struct {
 	arm armauth.ArmConfig
 	k8s client.Client
 }
 
-func (handler *daprStateStoreGenericHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
+func (handler *daprSecretStoreGenericHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
 	return healthcontract.HealthCheckOptions{}
 }
