@@ -40,7 +40,7 @@ func (r *KubernetesRenderer) Render(ctx context.Context, options renderers.Rende
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{}
-	for k, v := range properties.Properties {
+	for k, v := range properties.AdditionalProperties {
 		computedValues[k] = renderers.ComputedValueReference{
 			Value: v,
 		}
