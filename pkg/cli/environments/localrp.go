@@ -7,16 +7,16 @@ package environments
 
 import (
 	"context"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/project-radius/radius/pkg/azure/aks"
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
-	"github.com/project-radius/radius/pkg/cli/armtemplate/providers"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/localrp"
 	k8s "k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,6 +30,10 @@ type LocalRPEnvironment struct {
 	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
 	ClusterName               string `mapstructure:"clustername" validate:"required"`
 	DefaultApplication        string `mapstructure:"defaultapplication,omitempty"`
+
+	// URL for the Deployment Engine, TODO run this as part of the start of a deployment
+	// if no URL is provided.
+	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl" validate:"required"`
 
 	// URL for the local RP
 	URL string `mapstructure:"url,omitempty" validate:"required"`
@@ -65,38 +69,43 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+	url := kubernetes.GetBaseUrlForDeploymentEngine(e.APIDeploymentEngineBaseURL)
+
 	auth, err := armauth.GetArmAuthorizer()
 	if err != nil {
 		return nil, err
 	}
+	tags := map[string]*string{}
 
-	client := localrp.LocalRPDeploymentClient{
-		SubscriptionID: e.SubscriptionID,
-		ResourceGroup:  e.ResourceGroup,
-		Providers: map[string]providers.Provider{
-			// Send ARM types to Azure
-			providers.AzureProviderImport: &providers.AzureProvider{
-				Authorizer:     auth,
-				BaseURL:        "https://management.azure.com",
-				SubscriptionID: e.SubscriptionID,
-				ResourceGroup:  e.ResourceGroup,
-			},
+	tags["azureSubscriptionID"] = &e.SubscriptionID
+	tags["azureResourceGroup"] = &e.ResourceGroup
 
-			// Send Radius types to the local RP
-			providers.RadiusProviderImport: &providers.AzureProvider{
-				Authorizer:     nil,
-				BaseURL:        e.URL,
-				SubscriptionID: e.SubscriptionID, // YES: this supposed to be the namespace since we're talking to the API Service.
-				ResourceGroup:  e.ResourceGroup,
-			},
-		},
+	rgClient := azclients.NewGroupsClient(e.SubscriptionID, auth)
+	resp, err := rgClient.Get(ctx, e.ResourceGroup)
+	if err != nil {
+		return nil, err
+	}
+	tags["azureLocation"] = resp.Location
+
+	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.SubscriptionID)
+
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
+	dc.Authorizer = auth
+
+	op := azclients.NewOperationsClientWithBaseUri(url, e.SubscriptionID)
+	op.PollingDelay = 5 * time.Second
+	op.Authorizer = auth
+
+	client := &azure.ARMDeploymentClient{
+		Client:           dc,
+		OperationsClient: op,
+		SubscriptionID:   e.SubscriptionID,
+		ResourceGroup:    e.ResourceGroup,
+		Tags:             tags,
 	}
 
-	client.Providers[providers.DeploymentProviderImport] = &providers.DeploymentProvider{
-		DeployFunc: client.DeployNested,
-	}
-
-	return &client, nil
+	return client, nil
 }
 
 func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
