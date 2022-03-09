@@ -2,18 +2,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    control-plane: controller-manager
-  name: bicep-controller-manager
+    control-plane: deployment-engine
+  name: bicep-deployment-engine
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: deployment-engine
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        control-plane: deployment-engine
     spec:
       containers:
       - args:
@@ -72,7 +72,7 @@ spec:
       protocol: TCP
       targetPort: 6443
   selector:
-    control-plane: controller-manager
+    control-plane: deployment-engine
 ---
 apiVersion: v1
 kind: Service
@@ -86,4 +86,4 @@ spec:
       protocol: TCP
       targetPort: 5000
   selector:
-    control-plane: controller-manager
+    control-plane: deployment-engine
