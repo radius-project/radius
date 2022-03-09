@@ -3,9 +3,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource twilio 'Extender@v1alpha3' = {
     name: 'twilio'
     properties: {
-      properties: {
-        fromNumber: '222-222-2222'
-      }
+      fromNumber: '222-222-2222'
       secrets: {
         accountSid: 'sid'
         authToken: 'token'

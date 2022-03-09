@@ -1770,8 +1770,8 @@ type ExtenderListOptions struct {
 
 type ExtenderProperties struct {
 	BasicResourceProperties
-	// Dictionary of
-	Properties map[string]interface{} `json:"properties,omitempty"`
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]interface{}
 
 	// Dictionary of
 	Secrets map[string]interface{} `json:"secrets,omitempty"`
@@ -1781,8 +1781,12 @@ type ExtenderProperties struct {
 func (e ExtenderProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	e.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "properties", e.Properties)
 	populate(objectMap, "secrets", e.Secrets)
+	if e.AdditionalProperties != nil {
+		for key, val := range e.AdditionalProperties {
+			objectMap[key] = val
+		}
+	}
 	return json.Marshal(objectMap)
 }
 
@@ -1795,9 +1799,6 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "properties":
-				err = unpopulate(val, &e.Properties)
-				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, &e.Secrets)
 				delete(rawMsg, key)
@@ -1808,6 +1809,21 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 	}
 	if err := e.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
+	}
+	for key, val := range rawMsg {
+	var err error
+		if e.AdditionalProperties == nil {
+			e.AdditionalProperties = map[string]interface{}{}
+		}
+		if val != nil {
+			var aux interface{}
+			err = json.Unmarshal(val, &aux)
+			e.AdditionalProperties[key] = aux
+		}
+		delete(rawMsg, key)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
