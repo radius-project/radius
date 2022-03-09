@@ -11,7 +11,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
@@ -58,7 +58,7 @@ func Test_MongoDB(t *testing.T) {
 					{
 						ApplicationName: application,
 						ResourceName:    "db",
-						ResourceType:    renderers.ResourceType,
+						ResourceType:    mongodbv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDAzureCosmosAccount: validation.NewOutputResource(outputresource.LocalIDAzureCosmosAccount, outputresource.TypeARM, resourcekinds.AzureCosmosAccount, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDAzureCosmosDBMongo: validation.NewOutputResource(outputresource.LocalIDAzureCosmosDBMongo, outputresource.TypeARM, resourcekinds.AzureCosmosDBMongo, false, rest.OutputResourceStatus{}),

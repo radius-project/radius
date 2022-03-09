@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	ResourceType          = "mongo.com.MongoDatabase"
 	ConnectionStringValue = "connectionString"
 	DatabaseValue         = "database"
 	UsernameStringValue   = "username"

@@ -20,7 +20,7 @@ func Test_KubernetesRenderer_Render(t *testing.T) {
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
-		ResourceType:    renderers.ResourceType,
+		ResourceType:    ResourceType,
 		Definition:      map[string]interface{}{},
 	}
 

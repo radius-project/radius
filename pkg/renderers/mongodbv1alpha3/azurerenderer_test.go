@@ -43,7 +43,7 @@ func Test_Azure_Render_Success(t *testing.T) {
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
-		ResourceType:    renderers.ResourceType,
+		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 		},
@@ -94,7 +94,7 @@ func Test_Azure_Render_UserSpecifiedSecrets(t *testing.T) {
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
-		ResourceType:    renderers.ResourceType,
+		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"secrets": map[string]interface{}{
 				"username":         userName,
@@ -128,7 +128,7 @@ func Test_Azure_Render_MissingResource(t *testing.T) {
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
-		ResourceType:    renderers.ResourceType,
+		ResourceType:    ResourceType,
 		Definition:      map[string]interface{}{},
 	}
 
@@ -144,7 +144,7 @@ func Test_Azure_Render_InvalidResourceType(t *testing.T) {
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
-		ResourceType:    renderers.ResourceType,
+		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/mongodbDatabases/test-database",
 		},

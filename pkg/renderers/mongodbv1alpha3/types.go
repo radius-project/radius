@@ -7,6 +7,10 @@ package mongodbv1alpha3
 
 import "github.com/project-radius/radius/pkg/azure/azresources"
 
+const (
+	ResourceType          = "mongo.com.MongoDatabase"
+)
+
 var CosmosMongoResourceType = azresources.KnownType{
 	Types: []azresources.ResourceType{
 		{
