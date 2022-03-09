@@ -75,6 +75,7 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 	if err != nil {
 		return nil, err
 	}
+
 	tags := map[string]*string{}
 
 	tags["azureSubscriptionID"] = &e.SubscriptionID
