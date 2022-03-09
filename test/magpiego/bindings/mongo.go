@@ -14,18 +14,18 @@ var ctx = context.TODO()
 func MongoBinding(envParams map[string]string) BindingStatus {
 	uri := envParams["CONNECTIONSTRING"]
 	if uri == "" {
-		log.Fatal("CONNECTIONSTRING is required")
+		log.Println("CONNECTIONSTRING is required")
 		return BindingStatus{false, "CONNECTIONSTRING is required"}
 	}
 	clientOptions := options.Client().ApplyURI(uri)
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		log.Fatal("mongodb connection failed", err.Error())
+		log.Println("mongodb connection failed", err.Error())
 		return BindingStatus{false, "mongodb connection failed"}
 	}
 	err = client.Ping(ctx, nil)
 	if err != nil {
-		log.Fatal("mongodb connection failed", err.Error())
+		log.Println("mongodb connection failed", err.Error())
 		return BindingStatus{false, "mongodb connection failed"}
 	}
 	return BindingStatus{true, "connected"}

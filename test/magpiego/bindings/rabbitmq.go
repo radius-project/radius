@@ -10,26 +10,26 @@ func RabbitMQBinding(envParams map[string]string) BindingStatus {
 	// From https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/go/send.go
 	connectionString := envParams["CONNECTIONSTRING"]
 	if connectionString == "" {
-		log.Fatal("CONNECTIONSTRING is required")
+		log.Println("CONNECTIONSTRING is required")
 		return BindingStatus{false, "CONNECTIONSTRING is required"}
 	}
 
 	queue := envParams["QUEUE"]
 	if queue == "" {
-		log.Fatal("QUEUE is required")
+		log.Println("QUEUE is required")
 		return BindingStatus{false, "QUEUE is required"}
 	}
 
 	conn, err := amqp.Dial(connectionString)
 	if err != nil {
-		log.Fatal("Failed to connect to RabbitMQ - ", err.Error())
+		log.Println("Failed to connect to RabbitMQ - ", err.Error())
 		return BindingStatus{false, "Failed to connect to RabbitMQ"}
 	}
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		log.Fatal("Failed to open a channel - ", err.Error())
+		log.Println("Failed to open a channel - ", err.Error())
 		return BindingStatus{false, "Failed to publish a message"}
 	}
 	defer ch.Close()
@@ -43,7 +43,7 @@ func RabbitMQBinding(envParams map[string]string) BindingStatus {
 		nil,     // arguments
 	)
 	if err != nil {
-		log.Fatal("Failed to declare a queue - ", err.Error())
+		log.Println("Failed to declare a queue - ", err.Error())
 		return BindingStatus{false, "Failed to declare a queue"}
 	}
 	msg := "Hello World!"
@@ -57,7 +57,7 @@ func RabbitMQBinding(envParams map[string]string) BindingStatus {
 			Body:        []byte(msg),
 		})
 	if err != nil {
-		log.Fatal("Failed to publish a message - ", err.Error())
+		log.Println("Failed to publish a message - ", err.Error())
 		return BindingStatus{false, "Failed to publish a message"}
 	}
 	log.Println("sent ", msg)

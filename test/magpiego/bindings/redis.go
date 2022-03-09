@@ -14,7 +14,7 @@ func RedisBinding(envParams map[string]string) BindingStatus {
 	var err error
 	redisHost := envParams["HOST"] + ":" + envParams["PORT"]
 	if redisHost == ":" {
-		log.Fatal("redis HOST and PORT are required")
+		log.Println("redis HOST and PORT are required")
 		return BindingStatus{false, "Redis HOST and PORT are required"}
 	}
 	redisPassword := envParams["PASSWORD"]
@@ -24,7 +24,7 @@ func RedisBinding(envParams map[string]string) BindingStatus {
 	ctx := context.Background()
 	err = client.Ping(ctx).Err()
 	if err != nil {
-		log.Fatalf("failed to connect with redis instance at %s - %v", redisHost, err.Error())
+		log.Println("failed to connect with redis instance at %s - %v", redisHost, err.Error())
 		return BindingStatus{false, "not connected"}
 	}
 	return BindingStatus{true, "connected"}

@@ -15,7 +15,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpie:latest'
+        image: 'radius.azurecr.io/magpiego:latest'
         ports: {
           web: {
             containerPort: 3000
@@ -40,7 +40,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpie:latest'
+        image: 'radius.azurecr.io/magpiego:latest'
         ports: {
           web: {
             containerPort: 3000

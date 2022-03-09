@@ -50,7 +50,7 @@ When adding a new functional test:
 		name: 'a'
 		properties: {
 		container: {
-			image: '${registry}/magpie:latest' // This image implements readiness checks
+			image: '${registry}/magpiego:latest' // This image implements readiness checks
 			env: {
 			COOL_SETTING: env
 			}

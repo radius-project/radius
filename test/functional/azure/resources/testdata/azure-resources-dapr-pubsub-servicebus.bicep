@@ -1,7 +1,7 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-dapr-pubsub-servicebus'
 
-  resource publisher 'Container' = {
+  resource publisher 'Container@v1alpha3' = {
     name: 'publisher'
     properties: {
       connections: {
@@ -11,7 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpie:latest'
+        image: 'radius.azurecr.io/magpiego:latest'
         env: {
           BINDING_DAPRPUBSUB_NAME: pubsub.name
           BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic
