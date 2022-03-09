@@ -7,6 +7,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radius.azurecr.io/magpiego:latest'
         env: {
+          DBCONNECTION: redis.connectionString()
         }
       }
       connections: {

@@ -83,37 +83,7 @@ func RenderResource(resourceName string, properties radclient.RedisCacheResource
 }
 
 func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	if properties.Secrets == nil {
-		computedValues := map[string]renderers.ComputedValueReference{
-			"host": {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: handlers.RedisHostKey,
-			},
-			"port": {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: handlers.RedisPortKey,
-			},
-			"username": {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: handlers.RedisUsernameKey,
-			},
-		}
-
-		secretValues := map[string]renderers.SecretValueReference{
-			"password": {
-				LocalID:       outputresource.LocalIDAzureRedis,
-				Action:        "listKeys",
-				ValueSelector: "/primaryKey",
-			},
-		}
-
-		return computedValues, secretValues
-	}
-	// Currently user-specfied secrets are stored in the `secrets` property of the resource, and
-	// thus serialized to our database.
-	//
-	// TODO(#1767): We need to store these in a secret store.
-	return map[string]renderers.ComputedValueReference{
+	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
 			Value: to.String(properties.Host),
 		},
@@ -121,13 +91,28 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 			Value: strconv.Itoa(int(to.Int32(properties.Port))),
 		},
 		"username": {
-			Value: "",
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisUsernameKey,
 		},
-		"password": {
-			Value: to.String(properties.Secrets.Password),
-		},
-		"connectionString": {
-			Value: to.String(properties.Secrets.ConnectionString),
-		},
-	}, nil
+	}
+	if properties.Secrets == nil {
+		secretValues := map[string]renderers.SecretValueReference{
+			"password": {
+				LocalID:       outputresource.LocalIDAzureRedis,
+				Action:        "listKeys",
+				ValueSelector: "/primaryKey",
+			},
+		}
+		return computedValues, secretValues
+	}
+	// Currently user-specfied secrets are stored in the `secrets` property of the resource, and
+	// thus serialized to our database.
+	//
+	// TODO(#1767): We need to store these in a secret store.
+	secretValues := map[string]renderers.SecretValueReference{
+		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
+		renderers.PasswordStringHolder: {Value: *properties.Secrets.Password},
+		//TODO(#2050): Add support for redis username
+	}
+	return computedValues, secretValues
 }
