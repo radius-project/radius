@@ -116,7 +116,7 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 // Note: Health for Azure resources has not been implemented yet and this computation does not take
 // Azure resources used by the Radius app  into account.
 func (r *rp) computeApplicationHealthState(ctx context.Context, id azresources.ResourceID) (rest.ApplicationStatus, error) {
-	radiusResources, err := r.getAllResources(ctx, id)
+	radiusResources, err := r.getAllResourcesUsingApplicationID(ctx, id)
 	if err != nil {
 		return rest.ApplicationStatus{}, err
 	}
@@ -211,7 +211,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 		return nil, err
 	}
 
-	output, err := r.getAllResources(ctx, id)
+	output, err := r.getAllResourcesUsingResourceID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,15 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 	return rest.NewOKResponse(output), nil
 }
 
-func (r *rp) getAllResources(ctx context.Context, id azresources.ResourceID) (resourceprovider.RadiusResourceList, error) {
+func (r *rp) getAllResourcesUsingApplicationID(ctx context.Context, id azresources.ResourceID) (resourceprovider.RadiusResourceList, error) {
+	return r.getAllResources(ctx, id, r.getApplicationNameFromApplicationResourceId)
+}
+
+func (r *rp) getAllResourcesUsingResourceID(ctx context.Context, id azresources.ResourceID) (resourceprovider.RadiusResourceList, error) {
+	return r.getAllResources(ctx, id, r.getApplicationNameFromResourceId)
+}
+
+func (r *rp) getAllResources(ctx context.Context, id azresources.ResourceID, getID func(id azresources.ResourceID) string) (resourceprovider.RadiusResourceList, error) {
 	output := resourceprovider.RadiusResourceList{}
 	namespace := id.ResourceGroup
 	for armType, kubernetesType := range armtemplate.GetSupportedTypes() {
@@ -233,7 +241,7 @@ func (r *rp) getAllResources(ctx context.Context, id azresources.ResourceID) (re
 			Kind:    kubernetesType + "List",
 		})
 		err := r.client.List(ctx, &items, controller_runtime.InNamespace(namespace), controller_runtime.MatchingLabels{
-			kubernetes.LabelRadiusApplication: r.getApplicationNameFromResourceId(id),
+			kubernetes.LabelRadiusApplication: getID(id),
 		})
 		if err != nil {
 			return resourceprovider.RadiusResourceList{}, err
