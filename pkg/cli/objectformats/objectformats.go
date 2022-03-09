@@ -63,3 +63,172 @@ func GetResourceTableFormat() output.FormatterOptions {
 		},
 	}
 }
+
+func GetAzureCloudEnvironmentTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
+			},
+			{
+				Heading:  "SUBSCRIPTION ID",
+				JSONPath: "{ .SubscriptionID }",
+			},
+			{
+				Heading:  "RESOURCE GROUP",
+				JSONPath: "{ .ResourceGroup }",
+			},
+			{
+				Heading:  "CONTROL PLANE RESOURCE GROUP",
+				JSONPath: "{ .ControlPlaneResourceGroup }",
+			},
+			{
+				Heading:  "CLUSTER NAME",
+				JSONPath: "{ .ClusterName }",
+			},
+			{
+				Heading:  "DEFAULT APPLICATION",
+				JSONPath: "{ .DefaultApplication }",
+			},
+		},
+	}
+}
+
+func GetLocalEnvironmentTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
+			},
+			{
+				Heading:  "DEFAULT APPLICATION",
+				JSONPath: "{ .DefaultApplication }",
+			},
+			{
+				Heading:  "CONTEXT",
+				JSONPath: "{ .Context }",
+			},
+			{
+				Heading:  "NAMESPACE",
+				JSONPath: "{ .Namespace }",
+			},
+			{
+				Heading:  "CLUSTER NAME",
+				JSONPath: "{ .ClusterName }",
+			},
+			{
+				Heading:  "API SERVER BASE URL",
+				JSONPath: "{ .APIServerBaseURL }",
+			},
+			{
+				Heading:  "API DEPLOYMENT ENGINER BASE URL",
+				JSONPath: "{ .APIDeploymentEngineBaseURL }",
+			},
+		},
+	}
+}
+
+func GetKubernetesEnvironmentTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
+			},
+			{
+				Heading:  "CONTEXT",
+				JSONPath: "{ .Context }",
+			},
+			{
+				Heading:  "NAMESPACE",
+				JSONPath: "{ .Namespace }",
+			},
+			{
+				Heading:  "DEFAULT APPLICATION",
+				JSONPath: "{ .DefaultApplication }",
+			},
+			{
+				Heading:  "API SERVER BASE URL",
+				JSONPath: "{ .APIServerBaseURL }",
+			},
+			{
+				Heading:  "API DEPLOYMENT ENGINER BASE URL",
+				JSONPath: "{ .APIDeploymentEngineBaseURL }",
+			},
+		},
+	}
+}
+
+func GetLocalRpTableEnvironmentFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
+			},
+			{
+				Heading:  "SUBSCRIPTION ID",
+				JSONPath: "{ .SubscriptionID }",
+			},
+			{
+				Heading:  "RESOURCE GROUP",
+				JSONPath: "{ .ResourceGroup }",
+			},
+			{
+				Heading:  "CONTROL PLANE RESOURCE GROUP",
+				JSONPath: "{ .ControlPlaneResourceGroup }",
+			},
+			{
+				Heading:  "CLUSTER NAME",
+				JSONPath: "{ .ClusterName }",
+			},
+			{
+				Heading:  "DEFAULT APPLICATION",
+				JSONPath: "{ .DefaultApplication }",
+			},
+			{
+				Heading:  "URL",
+				JSONPath: "{ .URL }",
+			},
+		},
+	}
+}
+
+func GetGenericEnvironmentTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
+			},
+			{
+				Heading:  "DEFAULT APPLICATION",
+				JSONPath: "{ .DefaultApplication }",
+			},
+		},
+	}
+}
+
+
