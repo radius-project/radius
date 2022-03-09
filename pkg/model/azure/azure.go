@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationModel {
+func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationModel {
 	// Configure RBAC support on connections based connection kind.
 	// Role names can be user input or default roles assigned by Radius.
 	// Leave RoleNames field empty if no default roles are supported for a connection kind.
@@ -127,20 +127,26 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			ResourceType: extenderv1alpha3.ResourceType,
 			Renderer:     &extenderv1alpha3.AzureRenderer{},
 		},
+	}
 
-		// Azure
-		{
-			ResourceType: keyvaultv1alpha3.ResourceType,
-			Renderer:     &keyvaultv1alpha3.Renderer{},
-		},
-		{
-			ResourceType: volumev1alpha3.ResourceType,
-			Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.GetSupportedRenderers(), Arm: arm},
-		},
-		{
-			ResourceType: servicebusqueuev1alpha3.ResourceType,
-			Renderer:     &servicebusqueuev1alpha3.Renderer{},
-		},
+	if arm != nil {
+		azureModel := []model.RadiusResourceModel{
+			// Azure
+			{
+				ResourceType: keyvaultv1alpha3.ResourceType,
+				Renderer:     &keyvaultv1alpha3.Renderer{},
+			},
+			{
+				ResourceType: volumev1alpha3.ResourceType,
+				Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.GetSupportedRenderers(), Arm: arm},
+			},
+			{
+				ResourceType: servicebusqueuev1alpha3.ResourceType,
+				Renderer:     &servicebusqueuev1alpha3.Renderer{},
+			},
+		}
+
+		radiusResourceModel = append(radiusResourceModel, azureModel...)
 	}
 
 	skipHealthCheckKubernetesKinds := map[string]bool{
@@ -192,6 +198,9 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 			HealthHandler:   handlers.NewDaprPubSubGenericHealthHandler(arm, k8s),
 			ResourceHandler: handlers.NewDaprPubSubGenericHandler(arm, k8s),
 		},
+	}
+
+	azureOutputResourceModel := []model.OutputResourceModel{
 		{
 			Kind:                   resourcekinds.AzureCosmosDBMongo,
 			HealthHandler:          handlers.NewAzureCosmosDBMongoHealthHandler(arm),
@@ -268,5 +277,8 @@ func NewAzureModel(arm armauth.ArmConfig, k8s client.Client) model.ApplicationMo
 		},
 	}
 
+	if arm != nil {
+		outputResourceModel = append(outputResourceModel, azureOutputResourceModel...)
+	}
 	return model.NewModel(radiusResourceModel, outputResourceModel)
 }

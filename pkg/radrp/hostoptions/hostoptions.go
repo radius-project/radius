@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/radrp/k8sauth"
@@ -37,6 +38,7 @@ type HostOptions struct {
 	// based on in-memory communication.
 	HealthChannels healthcontract.HealthChannels
 	K8sConfig      *rest.Config
+	RPIdentifier   string
 }
 
 func NewHostOptionsFromEnvironment() (HostOptions, error) {
@@ -67,7 +69,21 @@ func NewHostOptionsFromEnvironment() (HostOptions, error) {
 		DBClientFactory: dbClientFactory,
 		HealthChannels:  healthcontract.NewHealthChannels(),
 		K8sConfig:       k8s,
+		RPIdentifier:    getRPIdentifier(),
 	}, nil
+}
+
+func getRPIdentifier() string {
+	// The user can set this env variable to specify a unique name for the RP.
+	// This value will be used for logging can be used to correlate logs while troubleshooting
+	rpID, ok := os.LookupEnv("RP_ID")
+	if !ok {
+		// No unique ID for the RP has been provided
+		// Generate a random name
+		rpID = "radius-rp-" + uuid.NewString()
+		fmt.Printf("No RP Identifier specified. Setting the value to %s\n", rpID)
+	}
+	return rpID
 }
 
 func getRest() (string, bool, error) {
@@ -134,6 +150,7 @@ func getArm() (*armauth.ArmConfig, error) {
 		return nil, nil
 	}
 
+	fmt.Println("Using the provided ARM credentials")
 	arm, err := armauth.GetArmConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build ARM config: %w", err)

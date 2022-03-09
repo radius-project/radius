@@ -50,7 +50,7 @@ func getTenantID(ctx context.Context, arm armauth.ArmConfig) (string, error) {
 }
 
 // GetAzureKeyVaultVolume constructs a SecretProviderClass for Azure Key Vault CSI Driver volume
-func GetAzureKeyVaultVolume(ctx context.Context, arm armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func GetAzureKeyVaultVolume(ctx context.Context, arm *armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	properties := radclient.AzureKeyVaultVolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {
@@ -64,7 +64,7 @@ func GetAzureKeyVaultVolume(ctx context.Context, arm armauth.ArmConfig, resource
 	}
 
 	secretProviderClassName := resource.ResourceName + "-sp"
-	tenantID, err := getTenantID(ctx, arm)
+	tenantID, err := getTenantID(ctx, *arm)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("Unable to construct secret provider class. Failed to get tenant ID")
 	}

@@ -28,19 +28,19 @@ const (
 )
 
 // NewAzureUserAssignedManagedIdentityHandler initializes a new handler for resources of kind UserAssignedManagedIdentity
-func NewAzureUserAssignedManagedIdentityHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureUserAssignedManagedIdentityHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureUserAssignedManagedIdentityHandler{arm: arm}
 }
 
 type azureUserAssignedManagedIdentityHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
-	rgLocation, err := clients.GetResourceGroupLocation(ctx, handler.arm)
+	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm)
 	if err != nil {
 		return nil, err
 	}
@@ -74,12 +74,12 @@ func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Conte
 	return nil
 }
 
-func NewAzureUserAssignedManagedIdentityHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureUserAssignedManagedIdentityHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureUserAssignedManagedIdentityHealthHandler{arm: arm}
 }
 
 type azureUserAssignedManagedIdentityHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureUserAssignedManagedIdentityHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {

@@ -16,7 +16,7 @@ import (
 )
 
 type azureCosmosDBBaseHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 // CosmosDB metadata is stored in a properties map, the 'key' constants below track keys for different properties in the map

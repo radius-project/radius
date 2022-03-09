@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewDaprSecretStoreGenericHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
+func NewDaprSecretStoreGenericHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprSecretStoreGenericHandler{
 		kubernetesHandler: kubernetesHandler{k8s: k8s},
 		arm:               arm,
@@ -26,7 +26,7 @@ func NewDaprSecretStoreGenericHandler(arm armauth.ArmConfig, k8s client.Client) 
 
 type daprSecretStoreGenericHandler struct {
 	kubernetesHandler
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 	k8s client.Client
 }
 
@@ -80,7 +80,7 @@ func (handler *daprSecretStoreGenericHandler) Delete(ctx context.Context, option
 	return nil
 }
 
-func NewDaprSecretStoreGenericHealthHandler(arm armauth.ArmConfig, k8s client.Client) HealthHandler {
+func NewDaprSecretStoreGenericHealthHandler(arm *armauth.ArmConfig, k8s client.Client) HealthHandler {
 	return &daprSecretStoreGenericHealthHandler{
 		arm: arm,
 		k8s: k8s,
@@ -88,7 +88,7 @@ func NewDaprSecretStoreGenericHealthHandler(arm armauth.ArmConfig, k8s client.Cl
 }
 
 type daprSecretStoreGenericHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 	k8s client.Client
 }
 

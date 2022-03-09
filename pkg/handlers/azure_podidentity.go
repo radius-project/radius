@@ -27,12 +27,12 @@ const (
 	PodNamespaceKey    = "podnamespace"
 )
 
-func NewAzurePodIdentityHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzurePodIdentityHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azurePodIdentityHandler{arm: arm}
 }
 
 type azurePodIdentityHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -224,12 +224,12 @@ func (handler *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Contex
 	return nil
 }
 
-func NewAzurePodIdentityHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzurePodIdentityHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azurePodIdentityHealthHandler{arm: arm}
 }
 
 type azurePodIdentityHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azurePodIdentityHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {

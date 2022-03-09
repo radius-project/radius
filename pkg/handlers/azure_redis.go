@@ -30,14 +30,14 @@ const (
 	RedisPasswordKey         = "redispassword"
 )
 
-func NewAzureRedisHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureRedisHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureRedisHandler{
 		arm: arm,
 	}
 }
 
 type azureRedisHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureRedisHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -81,14 +81,14 @@ func (handler *azureRedisHandler) GetRedisByID(ctx context.Context, id string) (
 	return &redis, nil
 }
 
-func NewAzureRedisHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureRedisHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureRedisHealthHandler{
 		arm: arm,
 	}
 }
 
 type azureRedisHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureRedisHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {
