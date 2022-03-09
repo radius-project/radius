@@ -51,11 +51,11 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "a"),
-						validation.NewK8sObjectForResource(application, "b"),
+						validation.NewK8sPodForResource(application, "a"),
+						validation.NewK8sPodForResource(application, "b"),
 					},
 				},
 			},
@@ -96,11 +96,11 @@ func Test_CLI(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "a"),
-						validation.NewK8sObjectForResource(application, "b"),
+						validation.NewK8sPodForResource(application, "a"),
+						validation.NewK8sPodForResource(application, "b"),
 					},
 				},
 			},
