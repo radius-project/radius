@@ -1,2 +1,0 @@
-container: radius.azurecr.io/radius-controller
-tag: latest # Tag for radius-controller image.

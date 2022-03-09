@@ -1,6 +1,0 @@
-# engine:
-#   image: radius.azurecr.io/deployment-engine
-#   tag: latest
-# extensibility:
-#   image: radius.azurecr.io/bicep-extensibility
-#   tag: latest
