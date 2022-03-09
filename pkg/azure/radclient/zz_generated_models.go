@@ -936,6 +936,26 @@ type DaprIoPubSubTopicListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// DaprIoSecretStoreBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoSecretStore.BeginCreateOrUpdate method.
+type DaprIoSecretStoreBeginCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoSecretStoreBeginDeleteOptions contains the optional parameters for the DaprIoSecretStore.BeginDelete method.
+type DaprIoSecretStoreBeginDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoSecretStoreGetOptions contains the optional parameters for the DaprIoSecretStore.Get method.
+type DaprIoSecretStoreGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprIoSecretStoreListOptions contains the optional parameters for the DaprIoSecretStore.List method.
+type DaprIoSecretStoreListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // DaprIoStateStoreBeginCreateOrUpdateOptions contains the optional parameters for the DaprIoStateStore.BeginCreateOrUpdate method.
 type DaprIoStateStoreBeginCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -1144,6 +1164,19 @@ func (d *DaprPubSubTopicResource) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+// DaprSecretStoreList - List of dapr.io.SecretStore resources.
+type DaprSecretStoreList struct {
+	// REQUIRED; List of dapr.io.SecretStore resources.
+	Value []*DaprSecretStoreResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreList.
+func (d DaprSecretStoreList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
 }
 
 type DaprSecretStoreProperties struct {

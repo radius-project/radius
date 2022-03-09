@@ -712,6 +712,22 @@
       "type": "object",
       "x-ms-azure-resource": true
     },
+    "DaprSecretStoreList": {
+      "description": "List of dapr.io.SecretStore resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.SecretStore resources.",
+          "items": {
+            "$ref": "#/definitions/DaprSecretStoreResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
     "DaprSecretStoreProperties": {
       "additionalProperties": false,
       "allOf": [
@@ -2527,6 +2543,14 @@
       "description": "The name of the dapr.io.PubSubTopic resource.",
       "in": "path",
       "name": "daprPubSubTopicName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "DaprSecretStoreNameParameter": {
+      "description": "The name of the dapr.io.SecretStore resource.",
+      "in": "path",
+      "name": "daprSecretStoreName",
       "required": true,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -4702,6 +4726,188 @@
         },
         "tags": [
           "dapr.io.PubSubTopic"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.SecretStore": {
+      "get": {
+        "description": "List the dapr.io.SecretStore resources deployed in the application.",
+        "operationId": "dapr.io.SecretStore_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of dapr.io.SecretStore resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.SecretStore"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.SecretStore/{daprSecretStoreName}": {
+      "delete": {
+        "description": "Deletes a dapr.io.SecretStore resource.",
+        "operationId": "dapr.io.SecretStore_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprSecretStoreNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the dapr.io.SecretStore will complete asynchronously."
+          },
+          "204": {
+            "description": "The dapr.io.SecretStore resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.SecretStore"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a dapr.io.SecretStore resource by name.",
+        "operationId": "dapr.io.SecretStore_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprSecretStoreNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The dapr.io.SecretStore resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.SecretStore"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a dapr.io.SecretStore resource.",
+        "operationId": "dapr.io.SecretStore_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprSecretStoreNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.SecretStore resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing dapr.io.SecretStore resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "201": {
+            "description": "The new dapr.io.SecretStore resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "202": {
+            "description": "The existing dapr.io.SecretStore resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.SecretStore"
         ],
         "x-ms-long-running-operation": true,
         "x-ms-long-running-operation-options": {
