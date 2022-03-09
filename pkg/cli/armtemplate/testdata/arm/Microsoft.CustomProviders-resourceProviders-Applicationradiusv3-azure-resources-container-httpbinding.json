@@ -1,1 +1,0 @@
-{"id":"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/azure-resources-container-httpbinding","type":"Microsoft.CustomProviders/resourceProviders/Application","apiVersion":"2018-09-01-preview","name":"radiusv3/azure-resources-container-httpbinding","dependsOn":[],"body":{}}
