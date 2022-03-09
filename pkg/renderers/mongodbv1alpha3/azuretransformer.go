@@ -34,7 +34,7 @@ func (t *AzureTransformer) Transform(ctx context.Context, dependency renderers.R
 		return "", fmt.Errorf("failed to parse connection string as a URL: %w", err)
 	}
 
-	databaseName, ok := dependency.ComputedValues[DatabaseValue].(string)
+	databaseName, ok := dependency.ComputedValues[renderers.DatabaseValue].(string)
 	if !ok {
 		return nil, errors.New("expected the databaseName to be a string")
 	}

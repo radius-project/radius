@@ -9,10 +9,6 @@ import "github.com/project-radius/radius/pkg/azure/azresources"
 
 const (
 	ResourceType          = "mongo.com.MongoDatabase"
-	ConnectionStringValue = "connectionString"
-	DatabaseValue         = "database"
-	UsernameStringValue   = "username"
-	PasswordValue         = "password"
 )
 
 var CosmosMongoResourceType = azresources.KnownType{

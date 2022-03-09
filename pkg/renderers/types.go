@@ -15,6 +15,13 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
+const (
+	ConnectionStringValue = "connectionString"
+	DatabaseValue         = "database"
+	UsernameStringValue   = "username"
+	PasswordStringHolder  = "password"
+)
+
 //go:generate mockgen -destination=../../pkg/renderers/mock_renderer_v3.go -package=renderers github.com/project-radius/radius/pkg/renderers Renderer
 type Renderer interface {
 	GetDependencyIDs(ctx context.Context, resource RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error)

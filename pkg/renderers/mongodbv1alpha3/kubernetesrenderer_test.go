@@ -28,14 +28,14 @@ func Test_KubernetesRenderer_Render(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
-			"database": {
+			renderers.DatabaseValue: {
 				Value: resource.ResourceName,
 			},
 		},
 		SecretValues: map[string]renderers.SecretValueReference{
-			"connectionString": {
+			renderers.ConnectionStringValue: {
 				LocalID:       outputresource.LocalIDScrapedSecret,
-				ValueSelector: "connectionString",
+				ValueSelector: renderers.ConnectionStringValue,
 			},
 		},
 	}, output)
