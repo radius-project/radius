@@ -33,9 +33,7 @@ func Test_Render_Success(t *testing.T) {
 		ResourceName:    "test-resource",
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"properties": map[string]interface{}{
-				"foo": "bar",
-			},
+			"foo": "bar",
 			"secrets": map[string]interface{}{
 				"secretname": "secretvalue",
 			},

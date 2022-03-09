@@ -47,7 +47,7 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 
 func MakeSecretsAndValues(name string, properties radclient.ExtenderProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	computedValueReferences := map[string]renderers.ComputedValueReference{}
-	for k, v := range properties.Properties {
+	for k, v := range properties.AdditionalProperties {
 		computedValueReferences[k] = renderers.ComputedValueReference{
 			Value: v,
 		}
