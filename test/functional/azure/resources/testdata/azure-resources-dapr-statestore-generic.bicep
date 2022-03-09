@@ -12,7 +12,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
       }
       container: {
         image: 'radius.azurecr.io/magpiego:latest'
-      }
     }
   }
   
@@ -24,8 +23,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       metadata: {
         servers: 'zookeeper.default.svc.cluster.local:2181'
       }
-      version: 'v1'
-      
+      version: 'v1'     
     }
   }
 }
