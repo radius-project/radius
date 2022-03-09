@@ -21,7 +21,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'todoapp'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpie:latest'
+        image: 'radius.azurecr.io/magpiego:latest'
       }
       connections: {
         rabbitmq: {

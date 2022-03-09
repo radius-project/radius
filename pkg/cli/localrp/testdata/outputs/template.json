@@ -15,7 +15,7 @@
       "name": "[format('{0}/{1}/{2}', 'radiusv3', 'cool-app', 'container')]",
       "properties": {
         "container": {
-          "image": "radius.azurecr.io/magpie:latest"
+          "image": "radius.azurecr.io/magpiego:latest"
         }
       },
       "dependsOn": [

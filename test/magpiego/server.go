@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -36,7 +38,7 @@ func startMagpieServer() error {
 	}
 	err := server.ListenAndServe()
 	if err != nil {
-		log.Fatal("Failed to start magpie server")
+		log.Println("Failed to start magpie server")
 		return err
 	}
 	return nil
@@ -50,37 +52,43 @@ func setupServeMux() *mux.Router {
 }
 
 func statusHandler(res http.ResponseWriter, req *http.Request) {
+	log.Println("Get the status")
 	if req.Method != "GET" {
 		log.Print("Method not supported")
 		writeResponseHeader(res, http.StatusMethodNotAllowed, nil)
 		res.Header().Set("Allow", "GET")
 		return
 	}
+	var b []byte
+	var err error
 	bdings := bindings.LoadBindings(Providers)
 	healthy := false
-	var bindingStatuses []bindings.BindingStatus
-	for _, binding := range bdings {
-		bindingStatus := binding.BindingProviders(binding.EnvVars)
-		bindingStatuses = append(bindingStatuses, bindingStatus)
-		if !bindingStatus.Ok {
-			healthy = false
-		} else {
-			healthy = true
+	if bdings != nil {
+		var bindingStatuses []bindings.BindingStatus
+		for _, binding := range bdings {
+			bindingStatus := binding.BindingProviders(binding.EnvVars)
+			bindingStatuses = append(bindingStatuses, bindingStatus)
+			if !bindingStatus.Ok {
+				healthy = false
+			} else {
+				healthy = true
+			}
+		}
+		b, err = json.Marshal(bindingStatuses)
+		if err != nil {
+			log.Println("error marshaling status to json - ", err)
+			writeResponseHeader(res, 500, errors.New("Error getting status"))
+			return
 		}
 	}
-	b, err := json.Marshal(bindingStatuses)
-	if err != nil {
-		log.Fatal("error marshaling status to json - ", err)
-		writeResponseHeader(res, 500, nil)
-		return
-	}
+	log.Println(fmt.Sprintf("The binding statuses are %s and the status is %t", string(b), healthy))
 	if healthy {
 		writeResponseHeader(res, 200, nil)
+		res.Header().Set("Content-Type", "application/json")
+		res.Write(b)
 	} else {
-		writeResponseHeader(res, 500, nil)
+		writeResponseHeader(res, 500, errors.New("Error getting status"))
 	}
-	res.Header().Set("Content-Type", "application/json")
-	res.Write(b)
 }
 
 func backendHandler(res http.ResponseWriter, req *http.Request) {
@@ -94,7 +102,7 @@ func writeResponseHeader(res http.ResponseWriter, status int, err error) {
 	if err != nil {
 		size, err := res.Write([]byte(err.Error()))
 		if err != nil {
-			log.Fatal("Error response failed on writing ", size, " bytes with error ", err)
+			log.Println("Error response failed on writing ", size, " bytes with error ", err)
 		}
 	}
 }

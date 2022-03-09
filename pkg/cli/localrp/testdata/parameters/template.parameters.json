@@ -1,5 +1,5 @@
 {
   "image": {
-    "value": "radius.azurecr.io/magpie:latest"
+    "value": "radius.azurecr.io/magpiego:latest"
   }
 }

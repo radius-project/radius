@@ -8,7 +8,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'a'
     properties: {
       container: {
-        image: '${registry}/magpie:latest'
+        image: '${registry}/magpiego:latest'
         env: {
           COOL_SETTING: env
         }
@@ -20,7 +20,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'b'
     properties: {
       container: {
-        image: '${registry}/magpie:latest'
+        image: '${registry}/magpiego:latest'
       }
     }
   }
