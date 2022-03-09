@@ -20,14 +20,15 @@ const (
 )
 
 var Providers = map[string]bindings.BindingProvider{
-	"DAPRPUBSUB":     bindings.DaprPubSubBinding,
-	"KEYVAULT":       bindings.KeyVaultBinding,
-	"MONGODB":        bindings.MongoBinding,
-	"SERVICEBUS":     bindings.ServiceBusBinding,
-	"SQL":            bindings.MicrosoftSqlBinding,
-	"REDIS":          bindings.RedisBinding,
-	"DAPRSTATESTORE": bindings.DaprStateStoreBinding,
-	"RABBITMQ":       bindings.RabbitMQBinding,
+	"DAPRPUBSUB":      bindings.DaprPubSubBinding,
+	"KEYVAULT":        bindings.KeyVaultBinding,
+	"MONGODB":         bindings.MongoBinding,
+	"SERVICEBUS":      bindings.ServiceBusBinding,
+	"SQL":             bindings.MicrosoftSqlBinding,
+	"REDIS":           bindings.RedisBinding,
+	"DAPRSTATESTORE":  bindings.DaprStateStoreBinding,
+	"RABBITMQ":        bindings.RabbitMQBinding,
+	"DAPRSECRETSTORE": bindings.DaprSecretStoreBinding,
 }
 
 func startMagpieServer() error {
