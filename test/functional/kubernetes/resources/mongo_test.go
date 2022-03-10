@@ -35,12 +35,12 @@ func TestMongo(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						// This will ensure that all the connection-properties
 						// were populated correctly.
-						validation.NewK8sObjectForResource(application, "todoapp"),
+						validation.NewK8sPodForResource(application, "todoapp"),
 					},
 				},
 			},

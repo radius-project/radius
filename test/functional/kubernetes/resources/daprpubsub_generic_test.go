@@ -39,10 +39,10 @@ func Test_DaprPubSub_Generic(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "publisher"),
+						validation.NewK8sPodForResource(application, "publisher"),
 					},
 				},
 			},

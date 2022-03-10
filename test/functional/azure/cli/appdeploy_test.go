@@ -45,7 +45,7 @@ func Test_AppDeploy_ScaffoldedApp(t *testing.T) {
 	validation.ValidatePodsRunning(ctx, t, options.K8sClient, validation.K8sObjectSet{
 		Namespaces: map[string][]validation.K8sObject{
 			application: {
-				validation.NewK8sObjectForResource(application, "demo"),
+				validation.NewK8sPodForResource(application, "demo"),
 			},
 		},
 	})

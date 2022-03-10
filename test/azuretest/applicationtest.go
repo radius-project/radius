@@ -19,10 +19,7 @@ type Step struct {
 	Executor               StepExecutor
 	AzureResources         *validation.AzureResourceSet
 	RadiusResources        *validation.ResourceSet
-	Pods                   *validation.K8sObjectSet
-	HttpRoute              *validation.K8sObjectSet
-	Gateway                *validation.K8sObjectSet
-	Services               *validation.K8sObjectSet
+	Objects                *validation.K8sObjectSet
 	PostStepVerify         func(ctx context.Context, t *testing.T, at ApplicationTest)
 	SkipAzureResources     bool
 	SkipRadiusResources    bool
@@ -55,8 +52,8 @@ func NewApplicationTest(t *testing.T, application string, steps []Step) Applicat
 func (at ApplicationTest) CollectAllNamespaces() []string {
 	all := map[string]bool{}
 	for _, step := range at.Steps {
-		if step.Pods != nil {
-			for ns := range step.Pods.Namespaces {
+		if step.Objects != nil {
+			for ns := range step.Objects.Namespaces {
 				all[ns] = true
 			}
 		}
@@ -121,34 +118,16 @@ func (at ApplicationTest) Test(t *testing.T) {
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 
-			if step.Pods == nil && step.SkipResourceValidation {
+			if step.Objects == nil && step.SkipResourceValidation {
 				t.Logf("skipping validation of pods...")
-			} else if step.Pods == nil && step.Gateway == nil && step.HttpRoute == nil && step.Services == nil {
+			} else if step.Objects == nil {
 				require.Fail(t, "no pod set was specified and SkipResourceValidation == false, either specify a pod set or set SkipResourceValidation = true ")
 			} else {
 				// ValidatePodsRunning triggers its own assertions, no need to handle errors
-				if step.Pods != nil {
-					t.Logf("validating creation of pods for %s", step.Executor.GetDescription())
-					validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Pods)
-					t.Logf("finished creation of validating pods for %s", step.Executor.GetDescription())
-				}
-
-				if step.Gateway != nil {
-					t.Logf("validating creation of ingress for %s", step.Executor.GetDescription())
-					validation.ValidateGatewaysRunning(ctx, t, at.Options.Client, *step.Gateway)
-					t.Logf("finished creation of validating ingress for %s", step.Executor.GetDescription())
-				}
-
-				if step.HttpRoute != nil {
-					t.Logf("validating creation of ingress for %s", step.Executor.GetDescription())
-					validation.ValidateHttpRoutesRunning(ctx, t, at.Options.Client, *step.HttpRoute)
-					t.Logf("finished creation of validating ingress for %s", step.Executor.GetDescription())
-				}
-
-				if step.Services != nil {
-					t.Logf("validating creation of services for %s", step.Executor.GetDescription())
-					validation.ValidateServicesRunning(ctx, t, at.Options.K8sClient, *step.Services)
-					t.Logf("finished creation of validating services for %s", step.Executor.GetDescription())
+				if step.Objects != nil {
+					t.Logf("validating creation of objects for %s", step.Executor.GetDescription())
+					validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Objects)
+					t.Logf("finished creation of validating objects for %s", step.Executor.GetDescription())
 				}
 			}
 

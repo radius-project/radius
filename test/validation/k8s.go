@@ -340,6 +340,9 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 
 				// log all the data so its there if we need to analyze a failure
 				logPods(t, actualPods.Items)
+				v := corev1.Pod{}
+				va := v.GroupVersionKind()
+				t.Logf("%s", va)
 
 				// copy the list of expected pods so we can remove from it
 				//
@@ -349,8 +352,8 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 
 				for _, actualPod := range actualPods.Items {
 					// validate that this matches one of our expected pods
-					resourceId := fmt.Sprintf("%q/%s/%s", actualPod.GroupVersionKind(), actualPod.GetNamespace(), actualPod.GetName())
-					t.Logf(resourceId)
+					a := actualPod.GroupVersionKind()
+					t.Logf("%s", a)
 					index := matchesExpectedLabels(remaining, actualPod.Labels)
 					if index == nil {
 						// this is not a match

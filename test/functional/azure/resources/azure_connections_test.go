@@ -67,10 +67,10 @@ func Test_AzureConnections(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					applicationName: {
-						validation.NewK8sObjectForResource(applicationName, containerResourceName),
+						validation.NewK8sPodForResource(applicationName, containerResourceName),
 					},
 				},
 			},

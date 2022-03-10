@@ -66,10 +66,10 @@ func Test_MongoDB(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "todoapp"),
+						validation.NewK8sPodForResource(application, "todoapp"),
 					},
 				},
 			},
@@ -103,10 +103,10 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "todoapp"),
+						validation.NewK8sPodForResource(application, "todoapp"),
 					},
 				},
 			},
