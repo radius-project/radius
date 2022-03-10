@@ -6,12 +6,9 @@
 package environments
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
+	"net"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -22,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/localrp"
 	k8s "k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -75,14 +73,24 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	var deUrl string
-	var err error
-	completed := make(chan error)
+	var bindUrl string
 
 	if e.APIDeploymentEngineBaseURL == "" {
-		deUrl, err = e.StartDEProcess(completed)
+		// Bind to a random port on localhost
+		// There is a slight delay between getting a port and then
+		// the deployment engine binding to it, so hopefully this
+		// is reliable enough.
+		listener, err := net.Listen("tcp", ":0")
 		if err != nil {
 			return nil, err
 		}
+		port := listener.Addr().(*net.TCPAddr).Port
+		err = listener.Close()
+		if err != nil {
+			return nil, err
+		}
+		bindUrl = fmt.Sprintf("https://localhost:%d", port)
+		deUrl = kubernetes.GetBaseUrlForDeploymentEngine(bindUrl)
 	} else {
 		deUrl = kubernetes.GetBaseUrlForDeploymentEngine(e.APIDeploymentEngineBaseURL)
 	}
@@ -114,104 +122,19 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 	op.PollingDelay = 5 * time.Second
 	op.Authorizer = auth
 
-	client := &azure.ARMDeploymentClient{
-		Client:           dc,
-		OperationsClient: op,
-		SubscriptionID:   e.SubscriptionID,
-		ResourceGroup:    e.ResourceGroup,
-		Tags:             tags,
-		Completed:        completed,
+	client := &localrp.LocalRPDeploymentClient{
+		InnerClient: azure.ARMDeploymentClient{
+			Client:           dc,
+			OperationsClient: op,
+			SubscriptionID:   e.SubscriptionID,
+			ResourceGroup:    e.ResourceGroup,
+			Tags:             tags,
+		},
+		BindUrl:    bindUrl,
+		BackendUrl: e.URL,
 	}
 
 	return client, nil
-}
-
-func (e *LocalRPEnvironment) StartDEProcess(completed chan error) (string, error) {
-	// Start the deployment engine and make sure it is up and running.
-	installed, err := de.IsDEInstalled()
-	if err != nil {
-		return "", err
-	}
-
-	if !installed {
-		fmt.Println("Deployment Engine is not installed. Installing the latest version...")
-		if err = de.DownloadDE(); err != nil {
-			return "", err
-		}
-	}
-	// Cleanup existing processes
-
-	// syscall.Kill(, syscall.SIGTERM)
-
-	executable, err := de.GetDEPath()
-	if err != nil {
-		return "", err
-	}
-	startupErrs := make(chan error)
-	listenUrl := fmt.Sprintf("https://localhost:%d", 5001)
-	deUrl := kubernetes.GetBaseUrlForDeploymentEngine(listenUrl)
-	go func() {
-		defer close(startupErrs)
-
-		args := fmt.Sprintf("-- --radiusBackendUri=%s --ASPNETCORE_URLS=%s", e.URL, deUrl)
-		fullCmd := executable + " " + args
-		c := exec.Command(executable, args)
-		c.Stderr = os.Stderr
-		// c.Stdout = os.Stdout
-		stdout, err := c.StdoutPipe()
-		if err != nil {
-			startupErrs <- fmt.Errorf("failed to create pipe: %w", err)
-			return
-		}
-
-		err = c.Start()
-		if err != nil {
-			startupErrs <- fmt.Errorf("failed executing %q: %w", fullCmd, err)
-			return
-		}
-
-		startupErrs <- nil
-
-		// asyncronously copy to our buffer, we don't really need to observe
-		// errors here since it's copying into memory
-		buf := bytes.Buffer{}
-		go func() {
-			_, _ = io.Copy(&buf, stdout)
-		}()
-
-		// get completed.
-		failed := <-completed
-		err = c.Process.Signal(os.Kill)
-		if err != nil {
-			fmt.Println(fmt.Errorf("failed to send interrupt signal to %q: %w", fullCmd, err))
-			return
-		}
-
-		// Wait() will wait for us to finish draining stderr before returning the exit code
-		err = c.Wait()
-		if err != nil {
-			return
-		}
-
-		// read the content
-		bytes, err := io.ReadAll(&buf)
-		if err != nil {
-			fmt.Println(fmt.Errorf("failed to read de output: %w", err))
-			return
-		}
-
-		if failed != nil {
-			fmt.Println(fmt.Errorf("deployment failed: %w output: %s", failed, string(bytes)))
-		}
-
-	}()
-
-	startupErr := <-startupErrs
-	if startupErr != nil {
-		return "", startupErr
-	}
-
-	return deUrl, nil
 }
 
 func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
