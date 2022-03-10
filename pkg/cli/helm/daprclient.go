@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	daprReleaseName = "dapr"
-	daprHelmRepo    = "https://dapr.github.io/helm-charts/"
+	daprReleaseName   = "dapr"
+	daprHelmRepo      = "https://dapr.github.io/helm-charts/"
+	daprNotFoundError = "uninstall: Release not loaded: dapr: release: not found"
 )
 
 func ApplyDaprHelmChart(version string) error {
@@ -74,5 +75,9 @@ func RunDaprHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(daprReleaseName)
+	if err.Error() == daprNotFoundError {
+		output.LogInfo("Dapr not found")
+		return nil
+	}
 	return err
 }
