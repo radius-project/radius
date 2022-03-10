@@ -22,6 +22,7 @@ import (
 
 var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
 
+// Local RP Deployment Client to be used for local deployments to Azure environments
 type LocalRPDeploymentClient struct {
 	InnerClient azure.ARMDeploymentClient
 	BindUrl     string
@@ -30,7 +31,10 @@ type LocalRPDeploymentClient struct {
 
 func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	if dc.BindUrl != "" {
+		// channel for completion of the deployment
 		completed := make(chan error)
+
+		//
 		errs, err := dc.StartDEProcess(completed)
 		if err != nil {
 			return clients.DeploymentResult{}, err
@@ -88,7 +92,6 @@ func (dc *LocalRPDeploymentClient) StartDEProcess(completed chan error) (chan er
 		c := exec.Command(executable, args)
 		c.Env = append(c.Env, fmt.Sprintf("ASPNETCORE_URLS=%s", dc.BindUrl))
 		c.Stderr = os.Stderr
-		// c.Stdout = os.Stdout
 		stdout, err := c.StdoutPipe()
 		if err != nil {
 			startupErrs <- fmt.Errorf("failed to create pipe: %w", err)
