@@ -12,6 +12,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
@@ -19,9 +20,9 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
-	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // EnvironmentKey is the key used for the environment section
@@ -76,7 +77,7 @@ func UpdateEnvironmentSectionOnCreation(v *viper.Viper, env EnvironmentSection, 
 	//assign default env to latest env if not empty otherwise assign resourceGroup
 	env.Default = environmentName
 	output.LogInfo("Using environment: %v", environmentName)
-	UpdateEnvironmentSection(v, env);
+	UpdateEnvironmentSection(v, env)
 }
 
 // UpdateEnvironmentSection updates the EnvironmentSection in radius config.
@@ -125,6 +126,12 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	} else if err != nil {
 		return nil, err
 	}
+
+	// Dynamically load config file changes
+	config.OnConfigChange(func(e fsnotify.Event) {
+		fmt.Println("Config file changed:", e.Name)
+	})
+	config.WatchConfig()
 
 	return config, nil
 }
