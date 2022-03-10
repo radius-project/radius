@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	daprReleaseName   = "dapr"
-	daprHelmRepo      = "https://dapr.github.io/helm-charts/"
-	daprNotFoundError = "uninstall: Release not loaded: dapr: release: not found"
+	daprReleaseName = "dapr"
+	daprHelmRepo    = "https://dapr.github.io/helm-charts/"
 )
 
 func ApplyDaprHelmChart(version string) error {
