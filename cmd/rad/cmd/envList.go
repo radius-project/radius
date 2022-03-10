@@ -53,7 +53,7 @@ func getEnvConfigs(cmd *cobra.Command, args [] string) error {
 		fmt.Println()
 	} else {//default format is table
 		fmt.Println("Default: "+env.Default)
-			for key := range env.Items {
+		for key := range env.Items {
 			e,err := env.GetEnvironment(key)
 			if err != nil {
 				return err
