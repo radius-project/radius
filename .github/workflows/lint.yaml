@@ -19,7 +19,7 @@ concurrency:
 jobs:
   linter_check:
     name: Lint
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       GOVER: '^1.17'
       GOPROXY: https://proxy.golang.org
