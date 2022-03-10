@@ -107,5 +107,9 @@ func RunHAProxyHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(haproxyReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("HAProxy Ingress not found")
+		return nil
+	}
 	return err
 }

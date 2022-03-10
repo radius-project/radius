@@ -118,5 +118,9 @@ func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(radiusReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("Radius not found")
+		return nil
+	}
 	return err
 }
