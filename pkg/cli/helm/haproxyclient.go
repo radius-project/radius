@@ -7,6 +7,7 @@ package helm
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -60,7 +61,7 @@ func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(haproxyReleaseName)
-	if err == driver.ErrReleaseNotFound {
+	if errors.Is(err, driver.ErrReleaseNotFound) {
 
 		err = runHAProxyHelmInstall(helmConf, helmChart)
 		if err != nil {
