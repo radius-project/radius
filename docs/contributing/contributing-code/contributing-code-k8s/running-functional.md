@@ -40,11 +40,6 @@ The tests use our product functionality (the Radius config file) to configure th
 
 1. Place `rad` on your path.
 1. Make sure `rad-bicep` is downloaded (`rad bicep download`).
-1. Install dapr into the cluster by running
-
-   ```sh
-   dapr init -k --wait
-   ```
 
 1. Run:
 
@@ -60,14 +55,25 @@ You can also run/debug individual tests from VSCode.
 
 Instead of building and installing the Radius Kubernetes controller, you can run the controller locally as a standalone process and have it interact with the cluster accordingly.
 
-Prior to this, you will need to clone the Deployment Engine repo: https://github.com/project-radius/deployment-engine. This will Require installing .NET 6.0.
+Prior to this, you will need to run the Deployment Engine. You may either:
+- Clone the deployment engine repo https://github.com/project-radius/deployment-engine. This will require installing .NET 6.0 and executing:
+    
+    ```bash
+    cd deployment-engine # navigate to the repo
+    dotnet run --project src/DeploymentEngine/DeploymentEngine.csproj
+    ```
+- Run the deployment engine by downloading the binary via testenv:
+    
+    ```bash
+    go run cmd/testenv/main.go de download
+    ~/.rad/bin/arm-de
+    ```
 
 1. Create a Kubernetes cluster (KinD, AKS, etc.).
 1. Add CRDs to the cluster with `make controller-install`.
 1. Place `rad` on your path.
 1. Make sure `rad-bicep` is downloaded (`rad bicep download`).
-1. Install dapr into the cluster by running `dapr init -k --wait`.
-1. Add overrides to the `rad` environment to point to the local API server running AND the deployment engine. The API server is running on http://localhost:7443 by default and the deployment engine is running on https://localhost:7194 by default.
+1. Add overrides to the `rad` environment to point to the local API server running AND the deployment engine. The API server is running on http://localhost:7443 by default and the deployment engine is running on https://localhost:5001 or https://localhost:7194 by default.
 
 ```
 environment:
@@ -80,11 +86,7 @@ environment:
       apiserverbaseurl: http://localhost:7443
       apideploymentenginebaseurl: https://localhost:7194
 ```
-1. Run the Deployment Engine locally by navigating to the deployment engine repo:
-```bash
-cd deployment-engine # navigate to the repo
-dotnet run --project src/DeploymentEngine/DeploymentEngine.csproj
-```
+
 
 1. Set the environment variables `SKIP_APISERVICE_TLS` and `SKIP_WEBHOOKS` to `true` to skip TLS validation and skip webhooks (or in VSCode).
 1. Run the controller locally on command line or VSCode (cmd/radius-controller/main.go).
