@@ -6,7 +6,12 @@
 package environments
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -33,7 +38,7 @@ type LocalRPEnvironment struct {
 
 	// URL for the Deployment Engine, TODO run this as part of the start of a deployment
 	// if no URL is provided.
-	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl" validate:"required"`
+	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl"`
 
 	// URL for the local RP
 	URL string `mapstructure:"url,omitempty" validate:"required"`
@@ -69,7 +74,18 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url := kubernetes.GetBaseUrlForDeploymentEngine(e.APIDeploymentEngineBaseURL)
+	var deUrl string
+	var err error
+	completed := make(chan error)
+
+	if e.APIDeploymentEngineBaseURL == "" {
+		deUrl, err = e.StartDEProcess(completed)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		deUrl = kubernetes.GetBaseUrlForDeploymentEngine(e.APIDeploymentEngineBaseURL)
+	}
 
 	auth, err := armauth.GetArmAuthorizer()
 	if err != nil {
@@ -88,13 +104,13 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 	}
 	tags["azureLocation"] = resp.Location
 
-	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.SubscriptionID)
+	dc := azclients.NewDeploymentsClientWithBaseURI(deUrl, e.SubscriptionID)
 
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
 	dc.Authorizer = auth
 
-	op := azclients.NewOperationsClientWithBaseUri(url, e.SubscriptionID)
+	op := azclients.NewOperationsClientWithBaseUri(deUrl, e.SubscriptionID)
 	op.PollingDelay = 5 * time.Second
 	op.Authorizer = auth
 
@@ -104,9 +120,98 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 		SubscriptionID:   e.SubscriptionID,
 		ResourceGroup:    e.ResourceGroup,
 		Tags:             tags,
+		Completed:        completed,
 	}
 
 	return client, nil
+}
+
+func (e *LocalRPEnvironment) StartDEProcess(completed chan error) (string, error) {
+	// Start the deployment engine and make sure it is up and running.
+	installed, err := de.IsDEInstalled()
+	if err != nil {
+		return "", err
+	}
+
+	if !installed {
+		fmt.Println("Deployment Engine is not installed. Installing the latest version...")
+		if err = de.DownloadDE(); err != nil {
+			return "", err
+		}
+	}
+	// Cleanup existing processes
+
+	// syscall.Kill(, syscall.SIGTERM)
+
+	executable, err := de.GetDEPath()
+	if err != nil {
+		return "", err
+	}
+	startupErrs := make(chan error)
+	listenUrl := fmt.Sprintf("https://localhost:%d", 5001)
+	deUrl := kubernetes.GetBaseUrlForDeploymentEngine(listenUrl)
+	go func() {
+		defer close(startupErrs)
+
+		args := fmt.Sprintf("-- --radiusBackendUri=%s --ASPNETCORE_URLS=%s", e.URL, deUrl)
+		fullCmd := executable + " " + args
+		c := exec.Command(executable, args)
+		c.Stderr = os.Stderr
+		// c.Stdout = os.Stdout
+		stdout, err := c.StdoutPipe()
+		if err != nil {
+			startupErrs <- fmt.Errorf("failed to create pipe: %w", err)
+			return
+		}
+
+		err = c.Start()
+		if err != nil {
+			startupErrs <- fmt.Errorf("failed executing %q: %w", fullCmd, err)
+			return
+		}
+
+		startupErrs <- nil
+
+		// asyncronously copy to our buffer, we don't really need to observe
+		// errors here since it's copying into memory
+		buf := bytes.Buffer{}
+		go func() {
+			_, _ = io.Copy(&buf, stdout)
+		}()
+
+		// get completed.
+		failed := <-completed
+		err = c.Process.Signal(os.Kill)
+		if err != nil {
+			fmt.Println(fmt.Errorf("failed to send interrupt signal to %q: %w", fullCmd, err))
+			return
+		}
+
+		// Wait() will wait for us to finish draining stderr before returning the exit code
+		err = c.Wait()
+		if err != nil {
+			return
+		}
+
+		// read the content
+		bytes, err := io.ReadAll(&buf)
+		if err != nil {
+			fmt.Println(fmt.Errorf("failed to read de output: %w", err))
+			return
+		}
+
+		if failed != nil {
+			fmt.Println(fmt.Errorf("deployment failed: %w output: %s", failed, string(bytes)))
+		}
+
+	}()
+
+	startupErr := <-startupErrs
+	if startupErr != nil {
+		return "", startupErr
+	}
+
+	return deUrl, nil
 }
 
 func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {

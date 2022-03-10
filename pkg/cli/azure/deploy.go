@@ -28,17 +28,29 @@ type ARMDeploymentClient struct {
 	Client           resources.DeploymentsClient
 	OperationsClient resources.DeploymentOperationsClient
 	Tags             map[string]*string
+
+	// Only used in testing with local RP
+	// DE process that is started and killed before and after a deployment.
+	Completed chan error
 }
 
 var _ clients.DeploymentClient = (*ARMDeploymentClient)(nil)
 
 func (dc *ARMDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	// Used for graceful shutdown of the polling listener.
+	var err error
 	wg := sync.WaitGroup{}
 	defer func() {
 		wg.Wait()
 		if options.ProgressChan != nil {
 			close(options.ProgressChan)
+		}
+	}()
+
+	defer func() {
+		if dc.Completed != nil {
+			dc.Completed <- err
+			close(dc.Completed)
 		}
 	}()
 
@@ -131,6 +143,7 @@ func (dc *ARMDeploymentClient) waitForCompletion(ctx context.Context, future res
 	}
 
 	deployment, err := future.Result(dc.Client)
+
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
