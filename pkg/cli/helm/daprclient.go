@@ -7,6 +7,7 @@ package helm
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -48,7 +49,7 @@ func ApplyDaprHelmChart(version string) error {
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(daprReleaseName)
-	if err == driver.ErrReleaseNotFound {
+	if errors.Is(err, driver.ErrReleaseNotFound) {
 
 		err = runDaprHelmInstall(helmConf, helmChart)
 		if err != nil {
@@ -74,5 +75,9 @@ func RunDaprHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(daprReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("Dapr not found")
+		return nil
+	}
 	return err
 }

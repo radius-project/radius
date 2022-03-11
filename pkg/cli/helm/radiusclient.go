@@ -7,6 +7,7 @@ package helm
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -62,7 +63,7 @@ func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage 
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
-	if err == driver.ErrReleaseNotFound {
+	if errors.Is(err, driver.ErrReleaseNotFound) {
 		output.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", RadiusSystemNamespace)
 
 		err = runRadiusHelmInstall(helmConf, helmChart)
@@ -117,5 +118,9 @@ func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(radiusReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("Radius not found")
+		return nil
+	}
 	return err
 }
