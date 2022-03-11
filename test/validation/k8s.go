@@ -325,6 +325,7 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 
 // ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
 func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
+	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating pods in namespace %v", namespace)
 		var actualPods *corev1.PodList
@@ -340,9 +341,6 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 
 				// log all the data so its there if we need to analyze a failure
 				logPods(t, actualPods.Items)
-				v := corev1.Pod{}
-				va := v.GroupVersionKind()
-				t.Logf("%s", va)
 
 				// copy the list of expected pods so we can remove from it
 				//
@@ -353,7 +351,12 @@ func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clie
 				for _, actualPod := range actualPods.Items {
 					// validate that this matches one of our expected pods
 					a := actualPod.GroupVersionKind()
-					t.Logf("%s", a)
+					b := corev1.SchemeGroupVersion
+					mapping, err := restMapper.RESTMapping(actualPod.GroupVersionKind().GroupKind(), actualPod.GroupVersionKind().Version)
+
+					t.Logf("%s / %s", a, b)
+					t.Logf("%s / %s", mapping, err)
+
 					index := matchesExpectedLabels(remaining, actualPod.Labels)
 					if index == nil {
 						// this is not a match
