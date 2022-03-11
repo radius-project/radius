@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
 
 	"github.com/mitchellh/go-ps"
@@ -35,7 +36,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 		completed := make(chan error)
 
 		//
-		errs, err := dc.StartDEProcess(completed)
+		errs, err := dc.StartDEProcess(ctx, completed)
 		if err != nil {
 			return clients.DeploymentResult{}, err
 		}
@@ -54,7 +55,7 @@ func (dc *LocalRPDeploymentClient) Deploy(ctx context.Context, options clients.D
 	}
 }
 
-func (dc *LocalRPDeploymentClient) StartDEProcess(completed chan error) (chan error, error) {
+func (dc *LocalRPDeploymentClient) StartDEProcess(ctx context.Context, completed chan error) (chan error, error) {
 	// Start the deployment engine and make sure it is up and running.
 	installed, err := de.IsDEInstalled()
 	if err != nil {
@@ -74,8 +75,7 @@ func (dc *LocalRPDeploymentClient) StartDEProcess(completed chan error) (chan er
 	}
 	for _, p := range processes {
 		if p.Executable() == "arm-de" || p.Executable() == "arm-de.exe" {
-			fmt.Printf("Killing existing arm-de process with pid: %d\n", p.Pid())
-			syscall.Kill(p.Pid(), syscall.SIGKILL)
+			fmt.Printf("existing arm-de process with pid: %d, if this is a stray process, consider killing it.\n ", p.Pid())
 		}
 	}
 
@@ -83,61 +83,72 @@ func (dc *LocalRPDeploymentClient) StartDEProcess(completed chan error) (chan er
 	if err != nil {
 		return nil, err
 	}
-	startupErrs := make(chan error)
+	errs := make(chan error)
 	go func() {
-		defer close(startupErrs)
+		// Make sure we close the startup error channel as it is used for pushing the
+		defer close(errs)
 
-		args := fmt.Sprintf("-- --radiusBackendUri=%s", dc.BackendUrl)
-		fullCmd := executable + " " + args
-		c := exec.Command(executable, args)
-		c.Env = append(c.Env, fmt.Sprintf("ASPNETCORE_URLS=%s", dc.BindUrl))
+		args := []string{
+			"--",
+			fmt.Sprintf("--radiusBackendUri=%s", dc.BackendUrl),
+		}
+		buf := bytes.Buffer{}
+
+		c := exec.CommandContext(ctx, executable, args...)
+		c.Env = append(os.Environ(), fmt.Sprintf("ASPNETCORE_URLS=%s", dc.BindUrl))
 		c.Stderr = os.Stderr
-		stdout, err := c.StdoutPipe()
+		c.Stdout = &buf
+
 		if err != nil {
-			startupErrs <- fmt.Errorf("failed to create pipe: %w", err)
+			errs <- fmt.Errorf("failed to create pipe: %w", err)
 			return
 		}
 
 		err = c.Start()
 		if err != nil {
-			startupErrs <- fmt.Errorf("failed executing %q: %w", fullCmd, err)
+			errs <- fmt.Errorf("failed executing %q: %w", c.String(), err)
 			return
 		}
 
-		startupErrs <- nil
+		// Send a nil to the consumer to indicate that the deployment can continue
+		errs <- nil
 
-		// asyncronously copy to our buffer, we don't really need to observe
-		// errors here since it's copying into memory
-		buf := bytes.Buffer{}
-		go func() {
-			_, _ = io.Copy(&buf, stdout)
-		}()
+		exitCh := make(chan os.Signal, 1)
+		signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
 		// get completed.
-		failed := <-completed
-		err = c.Process.Signal(os.Kill)
-		if err != nil {
-			fmt.Println(fmt.Errorf("failed to send interrupt signal to %q: %w", fullCmd, err))
-			return
-		}
+		select {
+		case failed := <-completed:
+			err = c.Process.Signal(os.Kill)
+			if err != nil {
+				fmt.Println(fmt.Errorf("failed to send interrupt signal to %q: %w", c.String(), err))
+				return
+			}
 
-		// read the content
-		bytes, err := io.ReadAll(&buf)
-		if err != nil {
-			fmt.Println(fmt.Errorf("failed to read de output: %w", err))
-			return
-		}
+			// read the content
+			bytes, err := io.ReadAll(&buf)
+			if err != nil {
+				fmt.Println(fmt.Errorf("failed to read de output: %w", err))
+				return
+			}
 
-		if failed != nil {
-			fmt.Println(fmt.Errorf("deployment failed: %w output: %s", failed, string(bytes)))
+			if failed != nil {
+				fmt.Println(fmt.Errorf("deployment failed: %w output: %s", failed, string(bytes)))
+			}
+		case <-exitCh:
+			err = c.Process.Signal(os.Kill)
+			if err != nil {
+				fmt.Println(fmt.Errorf("failed to send interrupt signal to %q: %w", c.String(), err))
+				return
+			}
 		}
 
 	}()
 
-	startupErr := <-startupErrs
+	startupErr := <-errs
 	if startupErr != nil {
-		return startupErrs, startupErr
+		return errs, startupErr
 	}
 
-	return startupErrs, nil
+	return errs, nil
 }
