@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	watchk8s "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -48,18 +49,18 @@ type K8sObjectSet struct {
 }
 
 type K8sObject struct {
-	GroupVersionKind metav1.GroupVersionKind
-	Labels           map[string]string
+	GroupVersionResource schema.GroupVersionResource
+	Labels               map[string]string
 }
 
 func NewK8sPodForResource(application string, name string) K8sObject {
 	return K8sObject{
 		// NOTE: we use the selector labels here because the selector labels are intended
 		// to be determininistic. We might add things to the descriptive labels that are NON deterministic.
-		GroupVersionKind: metav1.GroupVersionKind{
-			Group:   "",
-			Version: "",
-			Kind:    "",
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: name,
 		},
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
@@ -67,10 +68,10 @@ func NewK8sPodForResource(application string, name string) K8sObject {
 
 func NewK8sGatewayForResource(application string, name string) K8sObject {
 	return K8sObject{
-		GroupVersionKind: metav1.GroupVersionKind{
-			Group:   "networking.x-k8s.io",
-			Version: "v1alpha1",
-			Kind:    "Gateway",
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "networking.x-k8s.io",
+			Version:  "v1alpha1",
+			Resource: name,
 		},
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
@@ -78,10 +79,10 @@ func NewK8sGatewayForResource(application string, name string) K8sObject {
 
 func NewK8sHttpRouteForResource(application string, name string) K8sObject {
 	return K8sObject{
-		GroupVersionKind: metav1.GroupVersionKind{
-			Group:   "networking.x-k8s.io",
-			Version: "v1alpha1",
-			Kind:    "HTTPRoute",
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "networking.x-k8s.io",
+			Version:  "v1alpha1",
+			Resource: name,
 		},
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
@@ -89,10 +90,10 @@ func NewK8sHttpRouteForResource(application string, name string) K8sObject {
 
 func NewK8sServiceForResource(application string, name string) K8sObject {
 	return K8sObject{
-		GroupVersionKind: metav1.GroupVersionKind{
-			Group:   "",
-			Version: "",
-			Kind:    "",
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "",
+			Resource: name,
 		},
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
@@ -257,68 +258,30 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 	log.Printf("Saved container logs to %s", filename)
 }
 
-// ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
+// // ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
 func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
-	for namespace, expectedPods := range expected.Namespaces {
-		t.Logf("validating pods in namespace %v", namespace)
-		var actualPods *corev1.PodList
-		applicationPods := []corev1.Pod{}
+	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
+	for namespace, expectedObjects := range expected.Namespaces {
+		t.Logf("validating objects in namespace %v", namespace)
 		for {
 			select {
 			case <-time.After(IntervalForResourceCreation):
-				t.Logf("at %s waiting for pods in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
+				for _, resource := range expectedObjects {
 
-				var err error
-				actualPods, err = k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-				require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
-
-				// log all the data so its there if we need to analyze a failure
-				logPods(t, actualPods.Items)
-
-				// copy the list of expected pods so we can remove from it
-				//
-				// this way we "check off" each pod as it is matched
-				remaining := make([]K8sObject, len(expectedPods))
-				copy(remaining, expectedPods)
-
-				for _, actualPod := range actualPods.Items {
-					// validate that this matches one of our expected pods
-					index := matchesExpectedLabels(remaining, actualPod.Labels)
-					if index == nil {
-						// this is not a match
-						t.Logf("unrecognized pod, could not find a match for Pod with namespace: %v name: %v labels: %v",
-							actualPod.Namespace,
-							actualPod.Name,
-							actualPod.Labels)
-						continue
+					r, err := restMapper.ResourceFor(resource.GroupVersionResource)
+					if err != nil {
+						assert.Failf(t, "fail to look for resource %s: %v", resource.GroupVersionResource.Resource, err)
 					}
-
-					// trim the list of 'remaining' pods
-					remaining = append(remaining[:*index], remaining[*index+1:]...)
-					applicationPods = append(applicationPods, actualPod)
+					log.Printf("Checking group: %s, version: %s, Resource: %s", resource.GroupVersionResource.Group, resource.GroupVersionResource.Version, resource.GroupVersionResource.Resource)
+					log.Printf("Kind: %s", r.Resource)
+					if r.Group == "networking.x-k8s.io" {
+						print("connected")
+					}
 				}
-
-				if len(remaining) == 0 {
-					goto podcheck
-				}
-				for _, remainingPod := range remaining {
-					t.Logf("failed to match pod in namespace %v with labels %v, retrying", namespace, remainingPod.Labels)
-				}
-
 			case <-ctx.Done():
-				assert.Fail(t, "timed out after waiting for pods to be created")
+				assert.Fail(t, "timed out after waiting for services to be created")
 				return
 			}
-		}
-
-		// Now check the status of the pods
-	podcheck:
-		for _, applicationPod := range applicationPods {
-			monitor := PodMonitor{
-				K8s: k8s,
-				Pod: applicationPod,
-			}
-			monitor.ValidateRunning(ctx, t)
 		}
 	}
 }
