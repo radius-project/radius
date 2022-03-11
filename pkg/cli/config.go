@@ -12,7 +12,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
@@ -128,9 +127,6 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	}
 
 	// Dynamically load config file changes
-	config.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Println("Config file changed:", e.Name)
-	})
 	config.WatchConfig()
 
 	return config, nil
