@@ -1,8 +1,12 @@
 package main
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 func main() {
-	log.Println("Starting magpie server at port ", port)
+	log.Println(fmt.Sprintf("Server running at http://localhost:%s", port))
+	log.Println(fmt.Sprintf("Check http://localhost:%s", port, "/healthz for status"))
 	startMagpieServer()
 }

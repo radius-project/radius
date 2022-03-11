@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -53,7 +52,6 @@ func setupServeMux() *mux.Router {
 }
 
 func statusHandler(res http.ResponseWriter, req *http.Request) {
-	log.Println("Get the status")
 	if req.Method != "GET" {
 		log.Print("Method not supported")
 		writeResponseHeader(res, http.StatusMethodNotAllowed, nil)
@@ -82,7 +80,6 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	log.Println(fmt.Sprintf("The binding statuses are %s and the status is %t", string(b), healthy))
 	if healthy {
 		writeResponseHeader(res, 200, nil)
 		res.Header().Set("Content-Type", "application/json")
