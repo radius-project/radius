@@ -61,7 +61,7 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 	var b []byte
 	var err error
 	bdings := bindings.LoadBindings(Providers)
-	healthy := false
+	healthy := true
 	if bdings != nil {
 		var bindingStatuses []bindings.BindingStatus
 		for _, binding := range bdings {
@@ -69,8 +69,6 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 			bindingStatuses = append(bindingStatuses, bindingStatus)
 			if !bindingStatus.Ok {
 				healthy = false
-			} else {
-				healthy = true
 			}
 		}
 		b, err = json.Marshal(bindingStatuses)
