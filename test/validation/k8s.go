@@ -263,6 +263,8 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
 		t.Logf("validating objects in namespace %v", namespace)
+		cms, err := k8s.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+		log.Printf("%s -- %s", cms, err)
 		for {
 			select {
 			case <-time.After(IntervalForResourceCreation):
