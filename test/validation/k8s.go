@@ -51,6 +51,7 @@ type K8sObjectSet struct {
 type K8sObject struct {
 	GroupVersionResource schema.GroupVersionResource
 	Labels               map[string]string
+	Kind                 string
 }
 
 func NewK8sPodForResource(application string, name string) K8sObject {
@@ -60,8 +61,9 @@ func NewK8sPodForResource(application string, name string) K8sObject {
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "",
 			Version:  "v1",
-			Resource: name,
+			Resource: "pods",
 		},
+		Kind:   "Pod",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }
@@ -71,8 +73,9 @@ func NewK8sGatewayForResource(application string, name string) K8sObject {
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "networking.x-k8s.io",
 			Version:  "v1alpha1",
-			Resource: name,
+			Resource: "gateways",
 		},
+		Kind:   "Gateway",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }
@@ -82,8 +85,9 @@ func NewK8sHttpRouteForResource(application string, name string) K8sObject {
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "networking.x-k8s.io",
 			Version:  "v1alpha1",
-			Resource: name,
+			Resource: "httproutes",
 		},
+		Kind:   "HTTPRoute",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }
@@ -92,9 +96,10 @@ func NewK8sServiceForResource(application string, name string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "",
-			Version:  "",
-			Resource: name,
+			Version:  "v1",
+			Resource: "services",
 		},
+		Kind:   "Service",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }
@@ -263,26 +268,34 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
 		t.Logf("validating objects in namespace %v", namespace)
-		cms, err := k8s.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
-		log.Printf("%s -- %s", cms, err)
+		remaining := make([]K8sObject, len(expectedObjects))
+		copy(remaining, expectedObjects)
 		for {
 			select {
 			case <-time.After(IntervalForResourceCreation):
-				for _, resource := range expectedObjects {
+				newRemaining := []K8sObject{}
+				for _, resource := range remaining {
+					r, err := restMapper.KindFor(resource.GroupVersionResource)
 
-					r, err := restMapper.ResourceFor(resource.GroupVersionResource)
 					if err != nil {
-						assert.Failf(t, "fail to look for resource %s: %v", resource.GroupVersionResource.Resource, err)
+						t.Logf("failed to find resource with %s", resource)
+						newRemaining = append(newRemaining, resource)
+						continue
 					}
-					log.Printf("Checking group: %s, version: %s, Resource: %s", resource.GroupVersionResource.Group, resource.GroupVersionResource.Version, resource.GroupVersionResource.Resource)
-					log.Printf("Kind: %s", r.Resource)
-					if r.Group == "networking.x-k8s.io" {
-						print("connected")
+
+					if r.Kind != resource.Kind {
+						t.Logf("Kind %s does not match resource %s", r.Kind, resource)
+						newRemaining = append(newRemaining, resource)
+						continue
 					}
 				}
+				remaining = newRemaining
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
 				return
+			}
+			if len(remaining) == 0 {
+				break
 			}
 		}
 	}

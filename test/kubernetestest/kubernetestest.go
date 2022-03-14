@@ -289,7 +289,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 				if step.Objects != nil {
 					t.Logf("validating creation of objects for %s", step.Executor.GetDescription())
-					validation.ValidateGatewaysRunning(ctx, t, at.Options.Client, *step.Objects)
+					validation.ValidateObjectsRunning(ctx, t, at.Options.K8sClient, *step.Objects)
 					t.Logf("finished creation of validating objects for %s", step.Executor.GetDescription())
 				}
 
