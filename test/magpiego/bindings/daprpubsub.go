@@ -9,9 +9,13 @@ import (
 	dapr "github.com/dapr/go-sdk/client"
 )
 
+// Use this with a values like:
+// - CONNECTION_DAPRPUBSUB_PUBSUBNAME
+// - CONNECTION_DAPRPUBSUB_TOPIC
+// - DAPR_GRPC_PORT
 func DaprPubSubBinding(envParams map[string]string) BindingStatus {
 	//From https://docs.dapr.io/developing-applications/building-blocks/pubsub/howto-publish-subscribe/
-	pubSubName := envParams["NAME"]
+	pubSubName := envParams["PUBSUBNAME"]
 	if pubSubName == "" {
 		log.Println("pub sub NAME is required")
 		return BindingStatus{false, "NAME is required"}
