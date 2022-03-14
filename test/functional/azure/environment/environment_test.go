@@ -87,7 +87,7 @@ func TestAzureEnvironment(t *testing.T) {
 			},
 		}
 
-		validation.ValidatePodsRunning(ctx, t, options.K8sClient, expectedPods)
+		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, expectedPods)
 	})
 }
 

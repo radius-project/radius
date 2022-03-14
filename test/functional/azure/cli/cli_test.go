@@ -52,7 +52,7 @@ func Test_CLI(t *testing.T) {
 	t.Logf("finished deploying %s from file %s", application, template)
 
 	// Running for the side effect of making sure the pods are started.
-	validation.ValidatePodsRunning(ctx, t, options.K8sClient, validation.K8sObjectSet{
+	validation.ValidateObjectsRunning(ctx, t, options.K8sClient, validation.K8sObjectSet{
 		Namespaces: map[string][]validation.K8sObject{
 			application: {
 				validation.NewK8sPodForResource(application, "a"),
@@ -192,7 +192,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	t.Logf("finished deploying %s from file %s", application, template)
 
 	// Running for the side effect of making sure the pods are started.
-	validation.ValidatePodsRunning(ctx, t, options.K8sClient, validation.K8sObjectSet{
+	validation.ValidateObjectsRunning(ctx, t, options.K8sClient, validation.K8sObjectSet{
 		Namespaces: map[string][]validation.K8sObject{
 			application: {
 				validation.NewK8sPodForResource(application, "a"),

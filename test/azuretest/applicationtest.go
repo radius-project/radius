@@ -123,10 +123,10 @@ func (at ApplicationTest) Test(t *testing.T) {
 			} else if step.Objects == nil {
 				require.Fail(t, "no pod set was specified and SkipResourceValidation == false, either specify a pod set or set SkipResourceValidation = true ")
 			} else {
-				// ValidatePodsRunning triggers its own assertions, no need to handle errors
+				// ValidateObjectsRunning triggers its own assertions, no need to handle errors
 				if step.Objects != nil {
 					t.Logf("validating creation of objects for %s", step.Executor.GetDescription())
-					validation.ValidatePodsRunning(ctx, t, at.Options.K8sClient, *step.Objects)
+					validation.ValidateObjectsRunning(ctx, t, at.Options.K8sClient, *step.Objects)
 					t.Logf("finished creation of validating objects for %s", step.Executor.GetDescription())
 				}
 			}
