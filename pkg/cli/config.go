@@ -6,16 +6,19 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
+	"github.com/gofrs/flock"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/cli/environments"
@@ -156,12 +159,29 @@ func SaveConfig(v *viper.Viper) error {
 		return fmt.Errorf("failed to find directory '%s': %w", dir, err)
 	}
 
+	// Acquire exclusive lock on the config file.
+	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
+	fileLock := flock.New(configFilePath)
+	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	locked, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
+	}
+
 	err = v.WriteConfigAs(configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to write config to '%s': %w", configFilePath, err)
 	}
 
 	fmt.Printf("Successfully wrote configuration to %v\n", configFilePath)
+
+	// Release lock on the config file
+	if locked {
+		if err := fileLock.Unlock(); err != nil {
+			return fmt.Errorf("failed to release lock on '%s': %w", configFilePath, err)
+		}
+	}
 	return nil
 }
 
