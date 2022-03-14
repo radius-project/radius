@@ -88,14 +88,10 @@ func (dc *LocalRPDeploymentClient) StartDEProcess(ctx context.Context, completed
 		// Make sure we close the startup error channel as it is used for pushing the
 		defer close(errs)
 
-		args := []string{
-			"--",
-			fmt.Sprintf("--radiusBackendUri=%s", dc.BackendUrl),
-		}
 		buf := bytes.Buffer{}
 
-		c := exec.CommandContext(ctx, executable, args...)
-		c.Env = append(os.Environ(), fmt.Sprintf("ASPNETCORE_URLS=%s", dc.BindUrl))
+		c := exec.CommandContext(ctx, executable)
+		c.Env = append(os.Environ(), fmt.Sprintf("ASPNETCORE_URLS=%s", dc.BindUrl), fmt.Sprintf("RADIUSBACKENDURL=%s", dc.BackendUrl))
 		c.Stderr = os.Stderr
 		c.Stdout = &buf
 

@@ -89,7 +89,7 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 		if err != nil {
 			return nil, err
 		}
-		bindUrl = fmt.Sprintf("https://localhost:%d", port)
+		bindUrl = fmt.Sprintf("http://localhost:%d", port)
 		deUrl = kubernetes.GetBaseUrlForDeploymentEngine(bindUrl)
 	} else {
 		deUrl = kubernetes.GetBaseUrlForDeploymentEngine(e.APIDeploymentEngineBaseURL)
