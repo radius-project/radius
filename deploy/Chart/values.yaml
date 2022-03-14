@@ -1,7 +1,7 @@
 global:
   engine:
     image: radius.azurecr.io/deployment-engine
-    tag: latest
+    tag: b792418e0dd01ce9979177806fc06158bdb64a1b
   extensibility:
     image: radius.azurecr.io/bicep-extensibility
     tag: latest
