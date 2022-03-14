@@ -25,8 +25,8 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
-      server: sqlContainer.name
-      database: sqlRoute.properties.url
+      server: sqlRoute.properties.url
+      database: 'database-name'
     }
   }
 
