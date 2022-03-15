@@ -95,7 +95,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	_, foundConflict := env.Items[environmentName]
 	if foundConflict {
-		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s to delete or select a different name", environmentName, environmentName)
+		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", environmentName, environmentName)
 	}
 
 	step := output.BeginStep("Installing Radius...")
