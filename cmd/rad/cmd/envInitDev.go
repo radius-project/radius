@@ -69,7 +69,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 
 	_, foundConflict := env.Items[params.Name]
 	if foundConflict {
-		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s to delete or select a different name", params.Name, params.Name)
+		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", params.Name, params.Name)
 	}
 
 	// Create environment

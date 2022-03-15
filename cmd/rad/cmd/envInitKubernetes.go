@@ -78,12 +78,27 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	step := output.BeginStep("Installing Radius...")
+	config := ConfigFromContext(cmd.Context())
+	env, err := cli.ReadEnvironmentSection(config)
+	if err != nil {
+		return err
+	}
 
 	client, runtimeClient, contextName, err := createKubernetesClients("")
 	if err != nil {
 		return err
 	}
+
+	if environmentName == "" {
+		environmentName = contextName
+	}
+
+	_, foundConflict := env.Items[environmentName]
+	if foundConflict {
+		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", environmentName, environmentName)
+	}
+
+	step := output.BeginStep("Installing Radius...")
 
 	err = installRadius(cmd.Context(), client, runtimeClient, namespace, chartPath, image, tag)
 	if err != nil {
@@ -101,17 +116,6 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	output.CompleteStep(step)
-
-	config := ConfigFromContext(cmd.Context())
-
-	env, err := cli.ReadEnvironmentSection(config)
-	if err != nil {
-		return err
-	}
-
-	if environmentName == "" {
-		environmentName = contextName
-	}
 
 	env.Items[environmentName] = map[string]interface{}{
 		"kind":      environments.KindKubernetes,
