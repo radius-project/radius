@@ -9,7 +9,7 @@ import (
 )
 
 func MicrosoftSqlBinding(envParams map[string]string) BindingStatus {
-	//From https://docs.microsoft.com/en-us/azure/azure-sql/database/connect-query-go
+	// From https://docs.microsoft.com/en-us/azure/azure-sql/database/connect-query-go
 	connString := envParams["CONNECTIONSTRING"]
 	if connString == "" {
 		log.Println("CONNECTIONSTRING is required")

@@ -25,7 +25,7 @@ type bindingTypeKey struct {
 
 func LoadBindings(registeredProviders map[string]BindingProvider) []Providers {
 	valueByBinding := make(map[string]map[string]string)
-	// We match env-vars using the form BINDING_<KIND>_VALUE, so group them by that structure.
+	// We match env-vars using the form CONNECTION_<KIND>_VALUE, so group them by that structure.
 	// Each binding type get a collection of key-value pairs
 	for _, env := range os.Environ() {
 		typeKeyPair, value := parseEnvVariable(strings.Trim(env, " "))
@@ -61,7 +61,7 @@ func parseEnvVariable(env string) (*bindingTypeKey, string) {
 	var typeKey bindingTypeKey
 	kvPair := strings.Split(env, "=")
 	envName := kvPair[0]
-	if !strings.HasPrefix(envName, "BINDING_") && !strings.HasPrefix(envName, "CONNECTION_") {
+	if !strings.HasPrefix(envName, "CONNECTION_") {
 		return &typeKey, ""
 	}
 	parts := strings.Split(strings.ToUpper(envName), "_")

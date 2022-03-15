@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 
@@ -38,7 +37,7 @@ func startMagpieServer() error {
 	}
 	err := server.ListenAndServe()
 	if err != nil {
-		log.Println("Failed to start magpie server")
+		log.Println("Error starting magpie server")
 		return err
 	}
 	return nil
@@ -54,7 +53,7 @@ func setupServeMux() *mux.Router {
 func statusHandler(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "GET" {
 		log.Print("Method not supported")
-		writeResponseHeader(res, http.StatusMethodNotAllowed, nil)
+		writeResponse(res, http.StatusMethodNotAllowed, nil)
 		res.Header().Set("Allow", "GET")
 		return
 	}
@@ -74,31 +73,26 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 		b, err = json.Marshal(bindingStatuses)
 		if err != nil {
 			log.Println("error marshaling status to json - ", err)
-			writeResponseHeader(res, 500, errors.New("Error getting status"))
+			writeResponse(res, 500, []byte("error marshaling status to json"))
 			return
 		}
 	}
 	if healthy {
-		writeResponseHeader(res, 200, nil)
-		res.Header().Set("Content-Type", "application/json")
-		res.Write(b)
+		writeResponse(res, 200, b)
 	} else {
-		writeResponseHeader(res, 500, errors.New("Error getting status"))
+		writeResponse(res, 500, b)
 	}
 }
 
 func backendHandler(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json")
-	writeResponseHeader(res, 200, nil)
-	res.Write([]byte("backend call response"))
+	writeResponse(res, 200, []byte("backend call response"))
 }
 
-func writeResponseHeader(res http.ResponseWriter, status int, err error) {
+func writeResponse(res http.ResponseWriter, status int, b []byte) {
 	res.WriteHeader(status)
+	res.Header().Set("Content-Type", "application/json")
+	size, err := res.Write(b)
 	if err != nil {
-		size, err := res.Write([]byte(err.Error()))
-		if err != nil {
-			log.Println("Error response failed on writing ", size, " bytes with error ", err)
-		}
+		log.Println("Error writing response of size - ", size, " err - ", err.Error())
 	}
 }

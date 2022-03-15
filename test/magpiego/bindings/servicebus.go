@@ -19,7 +19,7 @@ func ServiceBusBinding(envParams map[string]string) BindingStatus {
 		log.Println("CONNECTIONSTRING is required")
 		return BindingStatus{false, "CONNECTIONSTRING is required"}
 	}
-	//Client to connect to the service bus wirh the CONNECTIONSTRING as namespace
+	// Client to connect to the service bus wirh the CONNECTIONSTRING as namespace
 	// erroe out if the connection fails
 	ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connStr))
 	if err != nil {
@@ -27,7 +27,7 @@ func ServiceBusBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "Connection failed"}
 	}
 
-	//create a context to terminate the servicebus queue manager
+	// create a context to terminate the servicebus queue manager
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

@@ -14,7 +14,7 @@ import (
 // - CONNECTION_DAPRPUBSUB_TOPIC
 // - DAPR_GRPC_PORT
 func DaprPubSubBinding(envParams map[string]string) BindingStatus {
-	//From https://docs.dapr.io/developing-applications/building-blocks/pubsub/howto-publish-subscribe/
+	// From https://docs.dapr.io/developing-applications/building-blocks/pubsub/howto-publish-subscribe/
 	pubSubName := envParams["PUBSUBNAME"]
 	if pubSubName == "" {
 		log.Println("pub sub NAME is required")
@@ -31,7 +31,7 @@ func DaprPubSubBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "failed to publish Dapr"}
 	}
 	ctx := context.Background()
-	//Using Dapr SDK to publish a topic
+	// Using Dapr SDK to publish a topic
 	if err := client.PublishEvent(ctx, pubSubName, topic, []byte("hello, world!")); err != nil {
 		log.Println("failed to publish Dapr event - ", pubSubName, " error - ", err.Error())
 		return BindingStatus{false, "failed to publish Dapr"}
