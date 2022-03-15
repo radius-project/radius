@@ -31,23 +31,23 @@ type ArmConfig struct {
 }
 
 // GetArmConfig gets the configuration we use for managing ARM resources
-func GetArmConfig() (ArmConfig, error) {
+func GetArmConfig() (*ArmConfig, error) {
 	auth, err := GetArmAuthorizer()
 	if err != nil {
-		return ArmConfig{}, err
+		return &ArmConfig{}, err
 	}
 
 	subscriptionID := os.Getenv("ARM_SUBSCRIPTION_ID")
 	if subscriptionID == "" {
-		return ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID is missing")
+		return &ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID is missing")
 	}
 
 	resourceGroup := os.Getenv("ARM_RESOURCE_GROUP")
 	if resourceGroup == "" {
-		return ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
+		return &ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
 	}
 
-	return ArmConfig{
+	return &ArmConfig{
 		Auth:           auth,
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,

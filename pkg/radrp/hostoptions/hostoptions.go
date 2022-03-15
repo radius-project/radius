@@ -152,13 +152,16 @@ func getArm() (*armauth.ArmConfig, error) {
 		return nil, nil
 	}
 
-	fmt.Println("Using the provided ARM credentials")
 	arm, err := armauth.GetArmConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build ARM config: %w", err)
 	}
 
-	return &arm, nil
+	if arm != nil {
+		fmt.Println("Initializing RP with the provided ARM credentials")
+	}
+
+	return arm, nil
 }
 
 func getKubernetes() (*rest.Config, error) {
