@@ -29,18 +29,8 @@ func TestK8sModule(t *testing.T) {
 			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.K8sObject{
-							Labels: map[string]string{
-								"radius.dev/application": application,
-								"radius.dev/resource":    "container",
-							},
-						},
-						validation.K8sObject{
-							Labels: map[string]string{
-								"radius.dev/application": application,
-								"radius.dev/resource":    "busybox",
-							},
-						},
+						validation.NewK8sPodForResource(application, "container"),
+						validation.NewK8sPodForResource(application, "busybox"),
 					},
 				},
 			},
