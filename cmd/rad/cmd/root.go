@@ -12,7 +12,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/gofrs/flock"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -101,6 +103,43 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	return holder.Config
 }
 
+func SaveConfig(config *viper.Viper, environmentName string, environmentMap map[string]interface{}) error {
+
+	// Acquire exclusive lock on the config file.
+	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
+	configFilePath := cli.GetConfigFilePath(config)
+	fileLock := flock.New(configFilePath)
+	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	locked, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
+	}
+
+	env, err := cli.ReadEnvironmentSection(config)
+	if err != nil {
+		return err
+	}
+
+	for key, element := range environmentMap {
+		env.Items[environmentName][key] = element
+	}
+
+	cli.UpdateEnvironmentSectionOnCreation(config, env, environmentName)
+	err = cli.SaveConfig(config)
+	if err != nil {
+		return err
+	}
+
+	//Release lock on the config file
+	if locked {
+		if err := fileLock.Unlock(); err != nil {
+			return fmt.Errorf("failed to release lock on '%s': %w", configFilePath, err)
+		}
+	}
+	return nil
+
+}
 func initConfig() {
 	v, err := cli.LoadConfig(configHolder.ConfigFilePath)
 	if err != nil {

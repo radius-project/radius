@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
-	"github.com/project-radius/radius/pkg/cli"
 	radazure "github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -699,22 +698,15 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	step := output.BeginStep("Updating Config...")
 
 	config := ConfigFromContext(ctx)
-	env, err := cli.ReadEnvironmentSection(config)
-	if err != nil {
-		return err
-	}
-
-	env.Items[name] = map[string]interface{}{
+	environmentMap := map[string]interface{}{
 		"kind":                      "azure",
 		"subscriptionId":            subscriptionID,
 		"resourceGroup":             resourceGroup,
 		"controlPlaneResourceGroup": controlPlaneResourceGroup,
 		"clusterName":               clusterName,
 	}
-	
-	cli.UpdateEnvironmentSectionOnCreation(config, env, name)
 
-	err = cli.SaveConfig(config)
+	err := SaveConfig(config, name, environmentMap)
 	if err != nil {
 		return err
 	}
