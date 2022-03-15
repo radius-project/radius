@@ -74,3 +74,12 @@ func DownloadDE() error {
 	}
 	return tools.DownloadToFolder(filepath, resp)
 }
+
+func GetDEPath() (string, error) {
+	filepath, err := tools.GetLocalFilepath(radDEEnvVar, binaryName)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath, nil
+}

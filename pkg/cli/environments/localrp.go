@@ -7,6 +7,8 @@ package environments
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -17,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/localrp"
 	k8s "k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -33,7 +36,7 @@ type LocalRPEnvironment struct {
 
 	// URL for the Deployment Engine, TODO run this as part of the start of a deployment
 	// if no URL is provided.
-	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl" validate:"required"`
+	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl"`
 
 	// URL for the local RP
 	URL string `mapstructure:"url,omitempty" validate:"required"`
@@ -69,7 +72,28 @@ func (e *LocalRPEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url := kubernetes.GetBaseUrlForDeploymentEngine(e.APIDeploymentEngineBaseURL)
+	var deUrl string
+	var bindUrl string
+
+	if e.APIDeploymentEngineBaseURL == "" {
+		// Bind to a random port on localhost
+		// There is a slight delay between getting a port and then
+		// the deployment engine binding to it, so hopefully this
+		// is reliable enough.
+		listener, err := net.Listen("tcp", ":0")
+		if err != nil {
+			return nil, err
+		}
+		port := listener.Addr().(*net.TCPAddr).Port
+		err = listener.Close()
+		if err != nil {
+			return nil, err
+		}
+		bindUrl = fmt.Sprintf("http://localhost:%d", port)
+		deUrl = kubernetes.GetBaseUrlForDeploymentEngine(bindUrl)
+	} else {
+		deUrl = kubernetes.GetBaseUrlForDeploymentEngine(e.APIDeploymentEngineBaseURL)
+	}
 
 	auth, err := armauth.GetArmAuthorizer()
 	if err != nil {
@@ -88,22 +112,26 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 	}
 	tags["azureLocation"] = resp.Location
 
-	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.SubscriptionID)
+	dc := azclients.NewDeploymentsClientWithBaseURI(deUrl, e.SubscriptionID)
 
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
 	dc.Authorizer = auth
 
-	op := azclients.NewOperationsClientWithBaseUri(url, e.SubscriptionID)
+	op := azclients.NewOperationsClientWithBaseUri(deUrl, e.SubscriptionID)
 	op.PollingDelay = 5 * time.Second
 	op.Authorizer = auth
 
-	client := &azure.ARMDeploymentClient{
-		Client:           dc,
-		OperationsClient: op,
-		SubscriptionID:   e.SubscriptionID,
-		ResourceGroup:    e.ResourceGroup,
-		Tags:             tags,
+	client := &localrp.LocalRPDeploymentClient{
+		InnerClient: azure.ARMDeploymentClient{
+			Client:           dc,
+			OperationsClient: op,
+			SubscriptionID:   e.SubscriptionID,
+			ResourceGroup:    e.ResourceGroup,
+			Tags:             tags,
+		},
+		BindUrl:    bindUrl,
+		BackendUrl: e.URL,
 	}
 
 	return client, nil
