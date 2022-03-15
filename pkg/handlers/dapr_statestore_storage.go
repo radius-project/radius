@@ -25,7 +25,7 @@ const (
 	StorageAccountIDKey   = "storageaccountid"
 )
 
-func NewDaprStateStoreAzureStorageHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
+func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprStateStoreAzureStorageHandler{
 		kubernetesHandler: kubernetesHandler{k8s: k8s},
 		arm:               arm,
@@ -35,7 +35,7 @@ func NewDaprStateStoreAzureStorageHandler(arm armauth.ArmConfig, k8s client.Clie
 
 type daprStateStoreAzureStorageHandler struct {
 	kubernetesHandler
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 	k8s client.Client
 }
 
@@ -50,7 +50,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 
 	var account *storage.Account
 
-	account, err = getStorageAccountByID(ctx, handler.arm, properties[StorageAccountIDKey])
+	account, err = getStorageAccountByID(ctx, *handler.arm, properties[StorageAccountIDKey])
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (handler *daprStateStoreAzureStorageHandler) DeleteDaprStateStore(ctx conte
 	return nil
 }
 
-func NewDaprStateStoreAzureStorageHealthHandler(arm armauth.ArmConfig, k8s client.Client) HealthHandler {
+func NewDaprStateStoreAzureStorageHealthHandler(arm *armauth.ArmConfig, k8s client.Client) HealthHandler {
 	return &daprStateStoreAzureStorageHealthHandler{
 		kubernetesHandler: kubernetesHandler{k8s: k8s},
 		arm:               arm,
@@ -180,7 +180,7 @@ func NewDaprStateStoreAzureStorageHealthHandler(arm armauth.ArmConfig, k8s clien
 
 type daprStateStoreAzureStorageHealthHandler struct {
 	kubernetesHandler
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 	k8s client.Client
 }
 

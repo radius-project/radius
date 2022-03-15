@@ -25,7 +25,8 @@ Enum values are compared *case-insensitively*.
 | SKIP_AUTH                      | no (false)                 | boolean | Optionally skip authentication checks for inbound HTTP requests to the RP.                                                                   |
 | MONGODB_CONNECTION_STRING      | **yes**                    | string  | Configures the connection string of the MongoDB database used to store resources.                                                            |
 | MONGODB_DATABASE               | **yes**                    | string  | Configures the name of the MongoDB database used to store resources.                                                                         |
-| SKIP_K8S                       | no (false)                 | boolean | Optionally skip connecting to Kubernetes. This means that Kubernetes resources will not be supported.                                        |
+| SKIP_K8S                       | no (false)                 | boolean | Optionally skip connecting to Kubernetes. This means that Kubernetes resources will not be supported.   
+| RP_ID                          | no                         | string | Optionally specify a unique identifier for the RP instance which will be used for logging.
 | SKIP_ARM                       | no (false)                 | boolean | Optionally skip connecting to ARM. This means that Azure resources will not be supported.                                                    |
 | RADIUS_MODEL                   | no (`azure`)               | enum    | Configures the application model to use. This defines the set of support components and output resources. Supported values: `azure`, `k8s`.  |
 | ARM_SUBSCRIPTION_ID            | *when ARM is enabled*      | string  | Configures the subscription id used for ARM operations.                                                                                      |

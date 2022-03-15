@@ -20,12 +20,12 @@ import (
 )
 
 // NewARMHandler creates a ResourceHandler for 'generic' ARM resources.
-func NewARMHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewARMHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &armHandler{arm: arm}
 }
 
 type armHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -79,12 +79,12 @@ func getByID(ctx context.Context, subscriptionID string, auth autorest.Authorize
 	return &resource, nil
 }
 
-func NewARMHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewARMHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &armHealthHandler{arm: arm}
 }
 
 type armHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *armHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {

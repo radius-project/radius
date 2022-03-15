@@ -526,6 +526,10 @@
                                         {
                                             "name": "K8S_SUBSCRIPTION_ID",
                                             "value": "[subscription().subscriptionId]"
+                                        },
+                                        {
+                                            "name": "RP_ID",
+                                            "value": "[concat('radius-rp-', uniqueString(subscription().id, parameters('resourceGroup')))]"
                                         }
                                     ]
                                 }

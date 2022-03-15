@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/health/db"
 	"github.com/project-radius/radius/pkg/health/handlers"
 	"github.com/project-radius/radius/pkg/health/model"
@@ -80,9 +79,9 @@ func (h Monitor) Run(ctx context.Context) error {
 //
 // The return value here is for testing purposes.
 func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage, stopCh chan struct{}) *handlers.HealthRegistration {
+	logger := radlogger.GetLogger(ctx)
 	wg := h.model.GetWaitGroup()
 	ctx = radlogger.WrapLogContext(ctx, registerMsg.Resource.Identity.AsLogValues()...)
-	logger := radlogger.GetLogger(ctx)
 
 	logger.Info("Registering resource with health service")
 
@@ -290,7 +289,7 @@ func (h Monitor) SendHealthStateChangeNotification(ctx context.Context, message 
 }
 
 // NewMonitor returns a health probe monitor
-func NewMonitor(options MonitorOptions, arm armauth.ArmConfig) Monitor {
+func NewMonitor(options MonitorOptions) Monitor {
 	m := Monitor{
 		db:                            options.DB,
 		resourceRegistrationChannel:   options.ResourceRegistrationChannel,

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/health/db"
 	"github.com/project-radius/radius/pkg/health/handlers"
 	"github.com/project-radius/radius/pkg/health/model/azure"
@@ -44,7 +45,12 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 	db := db.NewRadHealthDB(dbclient)
 
-	healthmodel := azure.NewAzureHealthModel(*s.Options.Arm, k8s, &sync.WaitGroup{})
+	var arm *armauth.ArmConfig
+	if s.Options.Arm != nil {
+		// Azure credentials have been provided
+		arm = s.Options.Arm
+	}
+	healthmodel := azure.NewAzureHealthModel(arm, k8s, &sync.WaitGroup{})
 
 	monitorOptions := MonitorOptions{
 		Logger:                      radlogger.GetLogger(ctx),
@@ -55,6 +61,6 @@ func (s *Service) Run(ctx context.Context) error {
 		HealthModel:                 healthmodel,
 	}
 
-	healthMonitor := NewMonitor(monitorOptions, *s.Options.Arm)
+	healthMonitor := NewMonitor(monitorOptions)
 	return healthMonitor.Run(ctx)
 }
