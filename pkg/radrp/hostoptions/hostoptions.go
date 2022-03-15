@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/radrp/k8sauth"
@@ -69,18 +68,21 @@ func NewHostOptionsFromEnvironment() (HostOptions, error) {
 		DBClientFactory: dbClientFactory,
 		HealthChannels:  healthcontract.NewHealthChannels(),
 		K8sConfig:       k8s,
-		RPIdentifier:    getRPIdentifier(),
+		RPIdentifier:    getRPIdentifier(k8s),
 	}, nil
 }
 
-func getRPIdentifier() string {
-	// The user can set this env variable to specify a unique name for the RP.
+func getRPIdentifier(k8s *rest.Config) string {
+	// Env variable to specify a unique name for the RP.
 	// This value will be used for logging can be used to correlate logs while troubleshooting
 	rpID, ok := os.LookupEnv("RP_ID")
 	if !ok {
-		// No unique ID for the RP has been provided
-		// Generate a random name
-		rpID = "radius-rp-" + uuid.NewString()
+		// No unique ID for the RP has been provided in the environment
+		// Will set this to the kubernetes host name
+		host := k8s.Host
+		host = strings.Replace(host, "https://", "", -1)
+		host = strings.Split(host, ".")[0]
+		rpID = "radius-rp-" + host
 		fmt.Printf("No RP Identifier specified. Setting the value to %s\n", rpID)
 	}
 	return rpID
