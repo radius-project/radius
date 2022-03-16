@@ -33,7 +33,7 @@ func Test_Gateway_Explicit(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "backend"),
@@ -66,7 +66,7 @@ func Test_Gateway_Implicit(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "backend"),

@@ -42,7 +42,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "a"),
@@ -72,7 +72,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "a"),
@@ -104,7 +104,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "a"),
@@ -126,7 +126,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "a"),
@@ -170,7 +170,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "a"),
@@ -200,7 +200,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "a"),
