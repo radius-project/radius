@@ -43,7 +43,7 @@ func Test_Render_Generic_Kubernetes_Success(t *testing.T) {
 	resource := renderers.RendererResource{
 		ApplicationName: "test-app",
 		ResourceName:    "test-resource",
-		ResourceType:    ResourceType,
+		ResourceType:    resourcekinds.DaprPubSubGeneric,
 		Definition: map[string]interface{}{
 			"kind": resourcekinds.DaprPubSubTopicGeneric,
 			"type": "pubsub.kafka",
@@ -62,7 +62,7 @@ func Test_Render_Generic_Kubernetes_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprPubSubGeneric, output.LocalID)
-	require.Equal(t, resourcekinds.Kubernetes, output.ResourceKind)
+	require.Equal(t, resourcekinds.DaprPubSubGeneric, output.ResourceType.Type)
 
 	expected := unstructured.Unstructured{
 		Object: map[string]interface{}{

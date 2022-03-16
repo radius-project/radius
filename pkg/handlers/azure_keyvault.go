@@ -55,7 +55,7 @@ func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOption
 		return properties, nil
 	}
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(properties[KeyVaultIDKey], clients.GetAPIVersionFromUserAgent(keyvault.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[KeyVaultIDKey], clients.GetAPIVersionFromUserAgent(keyvault.UserAgent()))
 	return properties, nil
 }
 

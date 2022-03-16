@@ -12,9 +12,11 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -48,8 +50,11 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 
 	// TODO : Need to create an output resource for service bus namespace
 	output = outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureServiceBusQueue,
-		ResourceKind: resourcekinds.AzureServiceBusQueue,
+		LocalID: outputresource.LocalIDAzureServiceBusQueue,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureServiceBusQueue,
+			Provider: providers.ProviderAzure,
+		},
 		Resource: map[string]string{
 
 			// Truncate the queue part of the ID to make an ID for the namespace

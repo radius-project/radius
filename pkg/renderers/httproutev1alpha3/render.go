@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/gateway"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
@@ -143,7 +144,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
+	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
 func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route radclient.HTTPRouteProperties, gatewayName string) outputresource.OutputResource {
@@ -229,5 +230,5 @@ func (r *Renderer) makeHttpRoute(resource renderers.RendererResource, route radc
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
+	return outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 }

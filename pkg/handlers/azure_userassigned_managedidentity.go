@@ -58,7 +58,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	properties[UserAssignedIdentityPrincipalIDKey] = identity.PrincipalID.String()
 	properties[UserAssignedIdentityClientIDKey] = identity.ClientID.String()
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(*identity.ID, clients.GetAPIVersionFromUserAgent(msi.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *identity.ID, clients.GetAPIVersionFromUserAgent(msi.UserAgent()))
 
 	logger.WithValues(
 		radlogger.LogFieldResourceID, *identity.ID,

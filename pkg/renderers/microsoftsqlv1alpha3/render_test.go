@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -55,12 +56,25 @@ func Test_Render_Success(t *testing.T) {
 	databaseResource := output.Resources[1]
 
 	require.Equal(t, outputresource.LocalIDAzureSqlServer, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureSqlServer, accountResource.ResourceKind)
-	require.Equal(t, resourcemodel.NewARMIdentity("/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server", clients.GetAPIVersionFromUserAgent(sql.UserAgent())), accountResource.Identity)
+	require.Equal(t, resourcekinds.AzureSqlServer, accountResource.ResourceType.Type)
+	require.Equal(t, resourcemodel.NewARMIdentity(
+		&resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureSqlServer,
+			Provider: providers.ProviderAzure,
+		},
+		"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server",
+		clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+		accountResource.Identity)
 
 	require.Equal(t, outputresource.LocalIDAzureSqlServerDatabase, databaseResource.LocalID)
-	require.Equal(t, resourcekinds.AzureSqlServerDatabase, databaseResource.ResourceKind)
-	require.Equal(t, resourcemodel.NewARMIdentity("/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database", clients.GetAPIVersionFromUserAgent(sql.UserAgent())), databaseResource.Identity)
+	require.Equal(t, resourcekinds.AzureSqlServerDatabase, databaseResource.ResourceType.Type)
+	require.Equal(t, resourcemodel.NewARMIdentity(
+		&resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureSqlServerDatabase,
+			Provider: providers.ProviderAzure,
+		}, "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database",
+		clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+		databaseResource.Identity)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		"database": {

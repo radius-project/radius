@@ -65,7 +65,7 @@ func Test_Render_Azure_Generic_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprSecretStoreGeneric, output.LocalID)
-	require.Equal(t, resourcekinds.DaprSecretStoreGeneric, output.ResourceKind)
+	require.Equal(t, resourcekinds.DaprSecretStoreGeneric, output.ResourceType.Type)
 
 	metadata := map[string]interface{}{
 		"vaultName": "testVault",
@@ -199,7 +199,7 @@ func Test_Render_Kubernetes_Generic_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprSecretStoreGeneric, output.LocalID)
-	require.Equal(t, resourcekinds.Kubernetes, output.ResourceKind)
+	require.Equal(t, resourcekinds.DaprSecretStoreGeneric, output.ResourceType.Type)
 
 	expected := unstructured.Unstructured{
 		Object: map[string]interface{}{

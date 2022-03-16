@@ -33,11 +33,10 @@ type RadiusResource struct {
 }
 
 type ExpectedOutputResource struct {
-	LocalID            string
-	OutputResourceType string
-	ResourceKind       string
-	Status             rest.OutputResourceStatus
-	VerifyStatus       bool
+	LocalID      string
+	ResourceType rest.ResourceType
+	Status       rest.OutputResourceStatus
+	VerifyStatus bool
 
 	// SkipLocalIDWhenMatching instructs the test system to ignore the Local ID when matching
 	// the expected output resource against the actual output resources.
@@ -46,13 +45,12 @@ type ExpectedOutputResource struct {
 	SkipLocalIDWhenMatching bool
 }
 
-func NewOutputResource(localID, outputResourceType, resourceKind string, verifyStatus bool, status rest.OutputResourceStatus) ExpectedOutputResource {
+func NewOutputResource(localID string, resourceType rest.ResourceType, verifyStatus bool, status rest.OutputResourceStatus) ExpectedOutputResource {
 	return ExpectedOutputResource{
-		LocalID:            localID,
-		OutputResourceType: outputResourceType,
-		ResourceKind:       resourceKind,
-		Status:             status,
-		VerifyStatus:       verifyStatus,
+		LocalID:      localID,
+		ResourceType: resourceType,
+		Status:       status,
+		VerifyStatus: verifyStatus,
 	}
 }
 
@@ -194,8 +192,8 @@ func convertFromGenericToRestOutputResource(obj resources.GenericResource) ([]re
 }
 
 func (e ExpectedOutputResource) IsMatch(a rest.OutputResource) bool {
-	match := e.OutputResourceType == a.OutputResourceType &&
-		e.ResourceKind == a.ResourceKind
+	match := e.ResourceType.Type == a.ResourceType.Type &&
+		e.ResourceType.Provider == a.ResourceType.Provider
 
 	if !e.SkipLocalIDWhenMatching {
 		match = match && e.LocalID == a.LocalID

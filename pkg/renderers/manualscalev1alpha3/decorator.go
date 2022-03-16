@@ -11,8 +11,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -47,7 +47,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		switch trait := t.(type) {
 		case *radclient.ManualScalingTrait:
 			for _, resource := range output.Resources {
-				if resource.ResourceKind != resourcekinds.Kubernetes {
+				if resource.ResourceType.Provider != providers.ProviderKubernetes {
 					// Not a Kubernetes resource
 					continue
 				}

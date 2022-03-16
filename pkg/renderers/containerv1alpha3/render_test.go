@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -227,7 +228,7 @@ func Test_Render_Basic(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
 		require.NotNil(t, deployment)
 
-		expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
+		expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		// Only real thing to verify here is the image and the labels
@@ -425,7 +426,7 @@ func Test_Render_Connections(t *testing.T) {
 		secret, outputResource := kubernetes.FindSecret(output.Resources)
 		require.NotNil(t, secret)
 
-		expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, secret, secret.ObjectMeta)
+		expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Secret, outputresource.LocalIDSecret, secret, secret.ObjectMeta)
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		require.Equal(t, resourceName, secret.Name)
@@ -464,7 +465,13 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 			OutputResources: map[string]resourcemodel.ResourceIdentity{
 				// This is the resource that the role assignments target!
-				"TargetLocalID": resourcemodel.NewARMIdentity(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "2020-01-01"),
+				"TargetLocalID": resourcemodel.NewARMIdentity(
+					&resourcemodel.ResourceType{
+						Type:     "dummy",
+						Provider: providers.ProviderAzure,
+					},
+					makeResourceID(t, "TargetResourceType", "TargetResource").ID,
+					"2020-01-01"),
 			},
 		},
 	}
@@ -486,16 +493,22 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	resourceMap := outputResourcesToKindMap(output.Resources)
 
 	// We're just verifying the role assignments and related things, we'll ignore kubernetes types.
-	matches := resourceMap[resourcekinds.Kubernetes]
-	require.Len(t, matches, 2)
+	matches := resourceMap[resourcekinds.Deployment]
+	require.Equal(t, 1, len(matches))
+
+	matches = resourceMap[resourcekinds.Secret]
+	require.Equal(t, 1, len(matches))
 
 	matches = resourceMap[resourcekinds.AzureRoleAssignment]
-	require.Len(t, matches, 2)
+	require.Equal(t, 2, len(matches))
 	expected := []outputresource.OutputResource{
 		{
-			ResourceKind: resourcekinds.AzureRoleAssignment,
-			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole1"),
-			Deployed:     false,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole1"),
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole1",
 				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
@@ -507,9 +520,12 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 		},
 		{
-			ResourceKind: resourcekinds.AzureRoleAssignment,
-			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole2"),
-			Deployed:     false,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole2"),
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole2",
 				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
@@ -524,13 +540,16 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	require.ElementsMatch(t, expected, matches)
 
 	matches = resourceMap[resourcekinds.AzureUserAssignedManagedIdentity]
-	require.Len(t, matches, 1)
+	require.Equal(t, 1, len(matches))
 
 	expected = []outputresource.OutputResource{
 		{
-			ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
-			LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
-			Deployed:     false,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Provider: providers.ProviderAzure,
+			},
+			LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.UserAssignedIdentityNameKey: resource.ApplicationName + "-" + resource.ResourceName + "-msi",
 			},
@@ -539,16 +558,19 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	require.ElementsMatch(t, expected, matches)
 
 	matches = resourceMap[resourcekinds.AzurePodIdentity]
-	require.Len(t, matches, 1)
+	require.Equal(t, 1, len(matches))
 
 	expected = []outputresource.OutputResource{
 		{
-			LocalID:      outputresource.LocalIDAADPodIdentity,
-			ResourceKind: resourcekinds.AzurePodIdentity,
-			Deployed:     false,
+			LocalID:  outputresource.LocalIDAADPodIdentity,
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.PodIdentityNameKey: fmt.Sprintf("podid-%s-%s", strings.ToLower(resource.ApplicationName), strings.ToLower(resource.ResourceName)),
 				handlers.PodNamespaceKey:    resource.ApplicationName,
+			},
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzurePodIdentity,
+				Provider: providers.ProviderAzureKubernetesService,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -597,7 +619,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 
 	kindResourceMap := outputResourcesToKindMap(output.Resources)
 
-	_, ok := kindResourceMap[resourcekinds.Kubernetes]
+	_, ok := kindResourceMap[resourcekinds.Deployment]
 	require.Equal(t, true, ok)
 
 	roleOutputResource, ok := kindResourceMap[resourcekinds.AzureRoleAssignment]
@@ -605,9 +627,12 @@ func Test_Render_AzureConnection(t *testing.T) {
 	require.Len(t, roleOutputResource, 1)
 	expected := []outputresource.OutputResource{
 		{
-			ResourceKind: resourcekinds.AzureRoleAssignment,
-			LocalID:      outputresource.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
-			Deployed:     false,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         expectedRole,
 				handlers.RoleAssignmentScope: testARMID,
@@ -809,7 +834,10 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 			},
 			OutputResources: map[string]resourcemodel.ResourceIdentity{
 				outputresource.LocalIDSecretProviderClass: resourcemodel.ResourceIdentity{
-					Kind: resourcemodel.IdentityKindKubernetes,
+					ResourceType: &resourcemodel.ResourceType{
+						Type:     resourcekinds.SecretProviderClass,
+						Provider: providers.ProviderKubernetes,
+					},
 					Data: resourcemodel.KubernetesIdentity{
 						Kind:       "SecretProviderClass",
 						APIVersion: "secrets-store.csi.x-k8s.io/v1alpha1",
@@ -858,9 +886,9 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 func outputResourcesToKindMap(resources []outputresource.OutputResource) map[string][]outputresource.OutputResource {
 	results := map[string][]outputresource.OutputResource{}
 	for _, resource := range resources {
-		matches := results[resource.ResourceKind]
+		matches := results[resource.ResourceType.Type]
 		matches = append(matches, resource)
-		results[resource.ResourceKind] = matches
+		results[resource.ResourceType.Type] = matches
 	}
 
 	return results

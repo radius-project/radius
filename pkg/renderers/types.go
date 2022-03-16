@@ -119,7 +119,7 @@ type SecretValueReference struct {
 	//
 	// NOTE: the transformer is a string key because it has to round-trip from
 	// the database. We don't store the secret value, so we have to be able to process it later.
-	Transformer string
+	Transformer resourcemodel.ResourceType
 
 	// Value is the secret value itself
 	Value string

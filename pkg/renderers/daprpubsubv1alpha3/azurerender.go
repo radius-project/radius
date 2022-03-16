@@ -15,10 +15,12 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -62,8 +64,11 @@ func GetDaprPubSubAzureServiceBus(resource renderers.RendererResource) (renderer
 	}
 
 	output = outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureServiceBusTopic,
-		ResourceKind: resourcekinds.DaprPubSubTopicAzureServiceBus,
+		LocalID: outputresource.LocalIDAzureServiceBusTopic,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
+			Provider: providers.ProviderAzure,
+		},
 		Resource: map[string]string{
 			handlers.ResourceName:            resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
@@ -126,8 +131,11 @@ func GetDaprPubSubAzureGeneric(resource renderers.RendererResource) (renderers.R
 	}
 
 	output := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDDaprPubSubGeneric,
-		ResourceKind: resourcekinds.DaprPubSubTopicGeneric,
+		LocalID: outputresource.LocalIDDaprPubSubGeneric,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprPubSubTopicGeneric,
+			Provider: providers.ProviderKubernetes,
+		},
 		Resource: map[string]string{
 			handlers.ResourceName:            resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,

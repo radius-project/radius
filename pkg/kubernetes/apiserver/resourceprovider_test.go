@@ -849,8 +849,7 @@ func Test_GetOperation(t *testing.T) {
 				HealthState:       "Healthy",
 				OutputResources: []rest.OutputResource{
 					{
-						LocalID:            "LocalID",
-						OutputResourceType: "kubernetes",
+						LocalID: "LocalID",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: "Provisioned",
 							HealthState:       "Healthy",
