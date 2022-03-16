@@ -15,12 +15,18 @@ spec:
     metadata:
       labels:
         app: radius-rp
+{{ if .Values.global.rp.provider.azure.podidentity }}
+        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
+{{ end }}
     spec:
       serviceAccountName: radius-rp
       automountServiceAccountToken: true
       containers:
       - name: radius-rp
         image: {{ .Values.global.rp.container }}:{{ .Values.global.rp.tag }}
+        envFrom:
+        - secretRef: 
+            name: radius-rp
         env:
         - name: PORT
           value: '5000'
@@ -35,8 +41,6 @@ spec:
           value: rpdb
         - name: K8S_CLUSTER
           value: 'true'
-        - name: SKIP_ARM
-          value: 'true' # Assume no ARM connection for now
         - name: RADIUS_MODEL
           value: k8s
         resources:
@@ -93,7 +97,34 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: radius-rp
-stringData: {}
+stringData:
+# Configuration for 'Azure' provider functionality
+{{ if .Values.global.rp.provider.azure.podidentity }}
+  # Enable ARM but without explicit credentials, pod identity will handle it
+  SKIP_ARM: 'false'
+  ARM_AUTH_METHOD: 'ManagedIdentity'
+  ARM_SUBSCRIPTION_ID: {{ .Values.global.rp.provider.azure.subscriptionId }}
+  ARM_RESOURCE_GROUP: {{ .Values.global.rp.provider.azure.resourceGroup }}
+{{ else if .Values.global.rp.provider.azure.servicePrincipal }}
+  # Enable ARM with explicit credentials
+  SKIP_ARM: 'false' 
+  ARM_AUTH_METHOD: 'ServicePrincipal'
+  AZURE_CLIENT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.clientId }}
+  AZURE_CLIENT_SECRET: {{ .Values.global.rp.provider.azure.servicePrincipal.clientSecret }}
+  AZURE_TENANT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.tenantId }}
+  ARM_SUBSCRIPTION_ID: {{ .Values.global.rp.provider.azure.subscriptionId }}
+  ARM_RESOURCE_GROUP: {{ .Values.global.rp.provider.azure.resourceGroup }}
+{{ else }}
+  # Skip ARM by default. Overwriting this secret will let you set this to false as well as configure credentials
+  SKIP_ARM: 'true' 
+{{ end }}
+# Configuration for AKS integration. We only need this to be able to manipulate pod-identities via ARM.
+# This will move to the environment resource eventually.
+{{ if .Values.global.rp.aks }}
+  K8S_SUBSCRIPTION_ID: {{ .Values.global.rp.aks.subscriptionId }}
+  K8S_RESOURCE_GROUP: {{ .Values.global.rp.aks.resourceGroup }}
+  K8S_CLUSTER_NAME: {{ .Values.global.rp.aks.clusterName }}
+{{ end }}
 ---
 apiVersion: v1
 kind: Service
