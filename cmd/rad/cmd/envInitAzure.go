@@ -124,10 +124,14 @@ func init() {
 	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
 	envInitAzureCmd.Flags().String("container-registry", "", "Specify the name of an existing Azure Container Registry to grant the environment access to pull containers from the registry")
 	envInitAzureCmd.Flags().String("loganalytics-workspace-id", "", "Specify the ARM resource ID of the log analytics workspace where the logs should be redirected to")
+<<<<<<< HEAD
 	envInitAzureCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
 	envInitAzureCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
 	envInitAzureCmd.Flags().String("image", "", "Specify the radius controller image to use")
 	envInitAzureCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
+=======
+	envInitAzureCmd.Flags().StringP("name", "n", "", "The name to use for the environment")
+>>>>>>> a5a2fe00 (-n for rad env init sets environment name)
 
 	// development support
 	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
@@ -164,7 +168,7 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
-	name, err := cmd.Flags().GetString("environment")
+	name, err := cmd.Flags().GetString("name")
 	if err != nil {
 		return arguments{}, err
 	}
