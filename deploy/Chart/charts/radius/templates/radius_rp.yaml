@@ -1,0 +1,108 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radius-rp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: radius-rp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: radius-rp
+  template:
+    metadata:
+      labels:
+        app: radius-rp
+    spec:
+      serviceAccountName: radius-rp
+      automountServiceAccountToken: true
+      containers:
+      - name: radius-rp
+        image: {{ .Values.global.rp.container }}:{{ .Values.global.rp.tag }}
+        env:
+        - name: PORT
+          value: '5000'
+        - name: SKIP_AUTH
+          value: 'true' # Requests are authorized by Kubernetes here.
+        - name: MONGODB_CONNECTION_STRING
+          valueFrom: 
+            secretKeyRef: 
+              name: radius-db # YES this is reading the connection string from the DB's secret
+              key: connectionString
+        - name: MONGODB_DATABASE
+          value: rpdb
+        - name: K8S_CLUSTER
+          value: 'true'
+        - name: SKIP_ARM
+          value: 'true' # Assume no ARM connection for now
+        - name: RADIUS_MODEL
+          value: k8s
+        resources:
+          requests:
+            cpu: 0.2
+            memory: 100Mi
+          limits:
+            cpu: 1.0
+            memory: 500Mi
+        ports:
+        - containerPort: 5000
+        securityContext:
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: radius-rp
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: radius-rp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: radius-rp
+subjects:
+- kind: ServiceAccount
+  name: radius-rp
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: radius-rp
+rules:
+- apiGroups:
+  - ""
+  - "apps"
+  - "dapr.io"
+  - "networking.k8s.io"
+  - "networking.x-k8s.io"
+  resources:
+  - "*"
+  verbs:
+  - "*"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radius-rp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: radius-rp
+stringData: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radius-rp
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+  - port: 80
+    targetPort: 5000
+  selector:
+    app: radius-rp

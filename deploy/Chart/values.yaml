@@ -8,3 +8,6 @@ global:
   radius:
     container: radius.azurecr.io/radius-controller
     tag: latest # Tag for radius-controller image.
+  rp:
+    container: radius.azurecr.io/radius-rp
+    tag: latest # Tag for radius-rp image.
