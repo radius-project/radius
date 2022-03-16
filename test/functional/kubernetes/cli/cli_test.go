@@ -51,7 +51,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "a"),
@@ -96,7 +96,7 @@ func Test_CLI(t *testing.T) {
 					},
 				},
 			},
-			Objects: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(application, "a"),
