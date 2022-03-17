@@ -115,8 +115,17 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 
 // GetAuthMethod returns the authentication method used by the RP
 func GetAuthMethod() string {
-	settings, err := auth.GetSettingsFromEnvironment()
+	// Allow explicit configuration of the auth method, and fall back
+	// to auto-detection if unspecified
+	authMethod := os.Getenv("ARM_AUTH_METHOD")
+	switch authMethod {
+	case CliAuth:
+	case ManagedIdentityAuth:
+	case ServicePrincipalAuth:
+		return authMethod
+	}
 
+	settings, err := auth.GetSettingsFromEnvironment()
 	if err == nil && settings.Values[auth.ClientID] != "" && settings.Values[auth.ClientSecret] != "" {
 		return ServicePrincipalAuth
 	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
