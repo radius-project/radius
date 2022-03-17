@@ -81,7 +81,7 @@ jobs:
         run: |
           go run cmd/rad/main.go \
             env init azure \
-            -e ${{ steps.generate-resource-group-name.outputs.result }} \
+            -n ${{ steps.generate-resource-group-name.outputs.result }} \
             --subscription-id ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --resource-group ${{ steps.generate-resource-group-name.outputs.result }} \
             --location "${{ steps.select-location.outputs.result }}" \
