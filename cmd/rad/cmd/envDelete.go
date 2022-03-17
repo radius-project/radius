@@ -129,7 +129,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	output.LogInfo("Environment deleted")
 
 	// Delete env from the config, update default env if needed
-	if err = deleteEnvFromConfig(config, env.GetName()); err != nil {
+	if err = deleteEnvFromConfig(cmd.Context(), config, env.GetName()); err != nil {
 		return err
 	}
 
@@ -219,7 +219,7 @@ func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, re
 	return nil
 }
 
-func deleteEnvFromConfig(config *viper.Viper, envName string) error {
+func deleteEnvFromConfig(ctx context.Context, config *viper.Viper, envName string) error {
 	output.LogInfo("Updating config")
 	env, err := cli.ReadEnvironmentSection(config)
 	if err != nil {
@@ -236,7 +236,7 @@ func deleteEnvFromConfig(config *viper.Viper, envName string) error {
 		}
 	}
 
-	if err = SaveConfig(config, env, UpdateEnvironmentSection()); err != nil {
+	if err = SaveConfig(ctx, config, env, UpdateEnvironmentSection()); err != nil {
 		return err
 	}
 

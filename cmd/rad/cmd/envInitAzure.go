@@ -712,7 +712,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		"clusterName":               clusterName,
 	}
 
-	err = SaveConfig(config, env, UpdateEnvironmentSectionOnCreation(name))
+	err = SaveConfig(ctx, config, env, UpdateEnvironmentSectionOnCreation(name))
 	if err != nil {
 		return err
 	}

@@ -126,7 +126,7 @@ func UpdateEnvironmentSection() func(*viper.Viper, cli.EnvironmentSection) error
 	}
 }
 
-func SaveConfig(config *viper.Viper, env cli.EnvironmentSection, updateConfig func(*viper.Viper, cli.EnvironmentSection) error) error {
+func SaveConfig(ctx context.Context, config *viper.Viper, env cli.EnvironmentSection, updateConfig func(*viper.Viper, cli.EnvironmentSection) error) error {
 
 	latestConfig, err := cli.LoadConfig(configHolder.ConfigFilePath)
 	if err != nil {
