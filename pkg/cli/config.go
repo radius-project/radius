@@ -19,7 +19,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/cli/environments"
-	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 )
@@ -72,13 +71,6 @@ func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 	return section, nil
 }
 
-func UpdateEnvironmentSectionOnCreation(v *viper.Viper, env EnvironmentSection, environmentName string) {
-	//assign default env to latest env if not empty otherwise assign resourceGroup
-	env.Default = environmentName
-	output.LogInfo("Using environment: %v", environmentName)
-	UpdateEnvironmentSection(v, env)
-}
-
 // UpdateEnvironmentSection updates the EnvironmentSection in radius config.
 func UpdateEnvironmentSection(v *viper.Viper, env EnvironmentSection) {
 	v.Set(EnvironmentKey, env)
@@ -126,9 +118,6 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 		return nil, err
 	}
 
-	// Dynamically load config file changes
-	config.WatchConfig()
-
 	return config, nil
 }
 
@@ -145,6 +134,19 @@ func GetConfigFilePath(v *viper.Viper) string {
 		configFilePath = path.Join(home, ".rad", "config.yaml")
 	}
 	return configFilePath
+}
+
+func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) {
+	for k, v := range currentEnvironment.Items {
+		if _, ok := latestEnvironment.Items[k]; ok {
+			for k1, v1 := range v {
+				latestEnvironment.Items[k][k1] = v1
+			}
+		} else {
+			latestEnvironment.Items[k] = v
+		}
+
+	}
 }
 
 func SaveConfig(v *viper.Viper) error {

@@ -235,8 +235,8 @@ func deleteEnvFromConfig(config *viper.Viper, envName string) error {
 			break
 		}
 	}
-	cli.UpdateEnvironmentSection(config, env)
-	if err = cli.SaveConfig(config); err != nil {
+
+	if err = SaveConfig(config, UpdateEnvironmentSection(env)); err != nil {
 		return err
 	}
 

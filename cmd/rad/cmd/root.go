@@ -103,22 +103,37 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	return holder.Config
 }
 
-func UpdateEnvironmentSection(environmentName string, environmentMap map[string]interface{}) func(*viper.Viper) error {
+func mergeWithLatestConfig(env cli.EnvironmentSection) (cli.EnvironmentSection, error) {
+	latestConfig, err := cli.LoadConfig("")
+	updatedEnv, err := cli.ReadEnvironmentSection(latestConfig)
+	if err != nil {
+		return cli.EnvironmentSection{}, err
+	}
+	cli.MergeConfigs(env, updatedEnv)
+	return updatedEnv, err
+}
 
+func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.EnvironmentSection) func(*viper.Viper) error {
 	return func(config *viper.Viper) error {
-		env, err := cli.ReadEnvironmentSection(config)
+		env.Default = environmentName
+		output.LogInfo("Using environment: %v", environmentName)
+		err := UpdateEnvironmentSection(env)(config)
 		if err != nil {
 			return err
 		}
-
-		for key, element := range environmentMap {
-			env.Items[environmentName][key] = element
-		}
-
-		cli.UpdateEnvironmentSectionOnCreation(config, env, environmentName)
 		return nil
 	}
+}
 
+func UpdateEnvironmentSection(env cli.EnvironmentSection) func(*viper.Viper) error {
+	return func(config *viper.Viper) error {
+		udpatedEnv, err := mergeWithLatestConfig(env)
+		if err != nil {
+			return fmt.Errorf("failed to update the config file : %w", err)
+		}
+		cli.UpdateEnvironmentSection(config, udpatedEnv)
+		return nil
+	}
 }
 
 func SaveConfig(config *viper.Viper, updateConfig func(*viper.Viper) error) error {
@@ -129,7 +144,6 @@ func SaveConfig(config *viper.Viper, updateConfig func(*viper.Viper) error) erro
 	fileLock := flock.New(configFilePath)
 	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
@@ -148,6 +162,7 @@ func SaveConfig(config *viper.Viper, updateConfig func(*viper.Viper) error) erro
 	return nil
 
 }
+
 func initConfig() {
 	v, err := cli.LoadConfig(configHolder.ConfigFilePath)
 	if err != nil {
