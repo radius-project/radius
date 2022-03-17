@@ -63,13 +63,11 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: radius-db-storage-claim
-      annotations:
-        volume.beta.kubernetes.io/storage-class: "standard"
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 1Gi
+          storage: 200Mi
 ---
 apiVersion: v1
 kind: ServiceAccount
