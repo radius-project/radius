@@ -31,6 +31,10 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:  true,
 }
 
+const (
+	UnlockErrorMessage string = "failed to unlock the config file"
+)
+
 func prettyPrintRPError(err error) string {
 	raw := err.Error()
 	if new := clients.TryUnfoldErrorResponse(err); new != nil {
@@ -103,21 +107,11 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	return holder.Config
 }
 
-func mergeWithLatestConfig(env cli.EnvironmentSection) (cli.EnvironmentSection, error) {
-	latestConfig, err := cli.LoadConfig("")
-	updatedEnv, err := cli.ReadEnvironmentSection(latestConfig)
-	if err != nil {
-		return cli.EnvironmentSection{}, err
-	}
-	cli.MergeConfigs(env, updatedEnv)
-	return updatedEnv, err
-}
-
-func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.EnvironmentSection) func(*viper.Viper) error {
-	return func(config *viper.Viper) error {
+func UpdateEnvironmentSectionOnCreation(environmentName string) func(*viper.Viper, cli.EnvironmentSection) error {
+	return func(config *viper.Viper, env cli.EnvironmentSection) error {
 		env.Default = environmentName
 		output.LogInfo("Using environment: %v", environmentName)
-		err := UpdateEnvironmentSection(env)(config)
+		err := UpdateEnvironmentSection()(config, env)
 		if err != nil {
 			return err
 		}
@@ -125,39 +119,57 @@ func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.Environm
 	}
 }
 
-func UpdateEnvironmentSection(env cli.EnvironmentSection) func(*viper.Viper) error {
-	return func(config *viper.Viper) error {
-		udpatedEnv, err := mergeWithLatestConfig(env)
-		if err != nil {
-			return fmt.Errorf("failed to update the config file : %w", err)
-		}
-		cli.UpdateEnvironmentSection(config, udpatedEnv)
+func UpdateEnvironmentSection() func(*viper.Viper, cli.EnvironmentSection) error {
+	return func(config *viper.Viper, env cli.EnvironmentSection) error {
+		cli.UpdateEnvironmentSection(config, env)
 		return nil
 	}
 }
 
-func SaveConfig(config *viper.Viper, updateConfig func(*viper.Viper) error) error {
+func SaveConfig(config *viper.Viper, env cli.EnvironmentSection, updateConfig func(*viper.Viper, cli.EnvironmentSection) error) error {
 
+	latestConfig, err := cli.LoadConfig(configHolder.ConfigFilePath)
+	if err != nil {
+		return err
+	}
 	// Acquire exclusive lock on the config file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
 	configFilePath := cli.GetConfigFilePath(config)
 	fileLock := flock.New(configFilePath)
 	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
+	_, err = fileLock.TryLockContext(lockCtx, 1*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
 	}
-	defer fileLock.Unlock()
 
-	err = updateConfig(config)
+	updatedEnv, err := cli.ReadEnvironmentSection(latestConfig)
 	if err != nil {
+		if err := fileLock.Unlock(); err != nil {
+			output.LogInfo(cli.UnlockErrorMessage)
+		}
+		return err
+	}
+	cli.MergeConfigs(env, updatedEnv)
+
+	err = updateConfig(config, updatedEnv)
+	if err != nil {
+		if err := fileLock.Unlock(); err != nil {
+			output.LogInfo(cli.UnlockErrorMessage)
+		}
 		return err
 	}
 
 	err = cli.SaveConfig(config)
 	if err != nil {
+		if err := fileLock.Unlock(); err != nil {
+			output.LogInfo(cli.UnlockErrorMessage)
+		}
 		return err
+	}
+
+	if err := fileLock.Unlock(); err != nil {
+		return fmt.Errorf("'%s': %w", cli.UnlockErrorMessage, err)
 	}
 	return nil
 

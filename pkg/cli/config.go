@@ -6,27 +6,32 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
+	"github.com/gofrs/flock"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 )
 
 // EnvironmentKey is the key used for the environment section
 const (
-	EnvironmentKey string = "environment"
-	ApplicationKey string = "application"
+	EnvironmentKey     string = "environment"
+	ApplicationKey     string = "application"
+	UnlockErrorMessage string = "failed to unlock the config file"
 )
 
 // EnvironmentSection is the representation of the environment section of radius config.
@@ -107,7 +112,18 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 		config.SetConfigFile(configFilePath)
 	}
 
-	err := config.ReadInConfig()
+	// Acquire shared lock on the config file.
+	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
+	configFile := GetConfigFilePath(config)
+	fileLock := flock.New(configFile)
+	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := fileLock.TryRLockContext(lockCtx, 1*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
+	}
+
+	err = config.ReadInConfig()
 	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 		// It's ok the config file is not found, this could be the first time the CLI
 		// is running. Commands that require configuration will check for the data they need.
@@ -115,7 +131,17 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 		// It's ok the config file is not found, this could be the first time the CLI
 		// is running. Commands that require configuration will check for the data they need.
 	} else if err != nil {
+		if err := fileLock.Unlock(); err != nil {
+			output.LogInfo(UnlockErrorMessage)
+		}
 		return nil, err
+	}
+
+	// Dynamically load config file changes
+	config.WatchConfig()
+
+	if err := fileLock.Unlock(); err != nil {
+		return nil, fmt.Errorf("'%s': %w", UnlockErrorMessage, err)
 	}
 
 	return config, nil
