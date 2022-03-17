@@ -173,11 +173,17 @@ do
     --namespace radius-system \
     --version $CHART_VERSION \
     --set tag=$IMAGE_TAG \
-    --wait
+    --wait \
+    --timeout 15m0s
+
   if [[ "$?" -eq 0 ]]
   then
     break
   fi
+
+  # The install probably timed out if we get here. Do a describe so we can
+  # see the state of the pods.
+  ./kubectl describe pod --namespace radius-system
 done
 
 # Use retries when invoking kubectl - we've seen a crashes due to unexplained SIGBUS issues 
