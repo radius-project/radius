@@ -58,6 +58,27 @@ func GetArmConfig() (*ArmConfig, error) {
 	}, nil
 }
 
+// GetArmAuthorizerFromValues returns an ARM authorizer and the client ID for the current process from the provided service principal values
+func GetArmAuthorizerFromValues(clientID string, clientSecret string, tenantID string) (autorest.Authorizer, error) {
+	clientcfg := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID)
+	auth, err := clientcfg.Authorizer()
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := clientcfg.ServicePrincipalToken()
+	if err != nil {
+		return nil, err
+	}
+
+	err = token.EnsureFresh()
+	if err != nil {
+		return nil, err
+	}
+
+	return auth, nil
+}
+
 // GetArmAuthorizer returns an ARM authorizer and the client ID for the current process
 func GetArmAuthorizer() (autorest.Authorizer, error) {
 	authMethod := GetAuthMethod()
