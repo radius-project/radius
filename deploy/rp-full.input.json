@@ -12,7 +12,7 @@
             "type": "string",
             "defaultValue": "edge",
             "metadata": {
-                "description": "channel to use for RP image and deployment script"
+                "description": "channel to use for RP image"
             }
         },
         "resourceGroup": {
@@ -25,13 +25,6 @@
             "type": "string",
             "metadata": {
                 "description": "resource group where Radius control-plane will be deployed"
-            }
-        },
-        "_scriptUri": {
-            "type": "string",
-            "defaultValue": "[format('https://radiuspublic.blob.core.windows.net/environment/{0}/initialize-cluster.sh', parameters('channel'))]",
-            "metadata": {
-                "description": "URI of the script to execute. Used for testing."
             }
         },
         "image": {
@@ -83,13 +76,6 @@
                 "description": "The database name."
             }
         },
-        "chartVersion": {
-            "type": "string",
-            "defaultValue": "[if(equals(parameters('channel'), 'edge'), '0.42.42-dev', format('~{0}.0', parameters('channel')))]",
-            "metadata": {
-                "description": "The helm chart version."
-            }
-        },
         "clusterName": {
             "type": "string",
             "defaultValue": "[concat('radius-aks-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
@@ -109,13 +95,6 @@
             "defaultValue": "",
             "metadata": {
                 "description": "The name of the ACR container registry"
-            }
-        },
-        "deploymentScriptIdentityName": {
-            "type": "string",
-            "defaultValue": "[concat('radius-deployment-id-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
-            "metadata": {
-                "description": "The identity name to use for the deployment script."
             }
         },
         "resourceTags": {
@@ -161,26 +140,17 @@
                     "scope": "Inner"
                 },
                 "parameters": {
-                    "_scriptUri": {
-                        "value": "[parameters('_scriptUri')]"
-                    },
                     "accountName": {
                         "value": "[parameters('accountName')]"
                     },
                     "clusterName": {
                         "value": "[parameters('clusterName')]"
                     },
-                    "chartVersion": {
-                        "value": "[parameters('chartVersion')]"
-                    },
                     "controlPlaneResourceGroup": {
                         "value": "[parameters('controlPlaneResourceGroup')]"
                     },
                     "databaseName": {
                         "value": "[parameters('databaseName')]"
-                    },
-                    "deploymentScriptIdentityName": {
-                        "value": "[parameters('deploymentScriptIdentityName')]"
                     },
                     "image": {
                         "value": "[parameters('image')]"
@@ -214,13 +184,7 @@
                     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
                     "contentVersion": "1.0.0.0",
                     "parameters": {
-                        "_scriptUri": {
-                            "type": "string"
-                        },
                         "accountName": {
-                            "type": "string"
-                        },
-                        "chartVersion": {
                             "type": "string"
                         },
                         "clusterName": {
@@ -230,9 +194,6 @@
                             "type": "string"
                         },
                         "databaseName": {
-                            "type": "string"
-                        },
-                        "deploymentScriptIdentityName": {
                             "type": "string"
                         },
                         "image": {
@@ -269,39 +230,15 @@
                         "registrypullroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
                         "registrypullroledefinitionname": "[guid(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), subscription().subscriptionId)]",
                         "registrypullroledefinitionfullname": "[concat(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), '/Microsoft.Authorization/', variables('registrypullroledefinitionname'))]",
-                        "contributorRole": "b24988ac-6180-42a0-ab88-20f7382dd24c",
                         "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
                         "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
                         "acrPullRole": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
-                        "deploymentRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('contributorRole'))]",
-                        "deploymentRoleDefinitionName": "[guid(parameters('deploymentScriptIdentityName'), subscription().subscriptionId)]",
                         "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
                         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
                         "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), parameters('controlPlaneResourceGroup'), subscription().subscriptionId)]",
                         "loganalyticsworkspacename": "[concat(parameters('siteName'), '/Microsoft.Insights/', if(equals(parameters('logAnalyticsWorkspaceID'), ''), 'fake', parameters('logAnalyticsWorkspaceName')))]"
                     },
                     "resources": [
-                        {
-                            "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-                            "name": "[parameters('deploymentScriptIdentityName')]",
-                            "apiVersion": "2018-11-30",
-                            "location": "[resourceGroup().location]",
-                            "tags": "[parameters('resourceTags')]"
-                        },
-                        {
-                            "type": "Microsoft.Authorization/roleAssignments",
-                            "apiVersion": "2018-09-01-preview",
-                            "name": "[variables('deploymentRoleDefinitionName')]",
-                            "tags": "[parameters('resourceTags')]",
-                            "dependsOn": [
-                                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('deploymentScriptIdentityName'))]"
-                            ],
-                            "properties": {
-                                "roleDefinitionId": "[variables('deploymentRoleDefinitionId')]",
-                                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('deploymentScriptIdentityName'))).principalId]",
-                                "principalType": "ServicePrincipal"
-                            }
-                        },
                         {
                             "type": "Microsoft.DocumentDB/databaseAccounts",
                             "name": "[parameters('accountName')]",
@@ -432,34 +369,6 @@
                             }
                         },
                         {
-                            "type": "Microsoft.Resources/deploymentScripts",
-                            "apiVersion": "2020-10-01",
-                            "name": "deploy-radius-runtime",
-                            "location": "[resourceGroup().location]",
-                            "tags": "[parameters('resourceTags')]",
-                            "dependsOn": [
-                                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
-                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('deploymentRoleDefinitionName'))]"
-                            ],
-                            "kind": "AzureCLI",
-                            "identity": {
-                                "type": "userAssigned",
-                                "userAssignedIdentities": {
-                                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentScriptIdentityName'))]": {}
-                                }
-                            },
-                            "properties": {
-                                "forceUpdateTag": 1,
-                                "azCliVersion": "2.0.80",
-                                "arguments": "[concat('\"', resourceGroup().name, '\" \"', parameters('clusterName'), '\" \"', parameters('chartVersion'),'\" \"', parameters('imageTag'), '\"')]",
-                                "primaryScriptUri": "[parameters('_scriptUri')]",
-                                "supportingScriptUris": [],
-                                "timeout": "PT30M",
-                                "cleanupPreference": "OnSuccess",
-                                "retentionInterval": "P1D"
-                            }
-                        },
-                        {
                             "type": "Microsoft.Web/serverfarms",
                             "apiVersion": "2018-02-01",
                             "name": "[variables('hostingPlanName')]",
@@ -487,8 +396,7 @@
                             "dependsOn": [
                                 "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
                                 "[resourceId('Microsoft.DocumentDB/databaseAccounts/mongodbDatabases', parameters('accountName'), parameters('databaseName'))]",
-                                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
-                                "[resourceId('Microsoft.Resources/deploymentScripts', 'deploy-radius-runtime')]"
+                                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]"
                             ],
                             "kind": "app,linux,container",
                             "properties": {

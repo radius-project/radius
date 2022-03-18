@@ -25,11 +25,13 @@ const (
 )
 
 type HAProxyOptions struct {
+	ChartVersion      string
+	GatewayCRDVersion string
 	// See: https://github.com/haproxy-ingress/charts/blob/2009202f2bfe045a8fcdb99e7880cdd54f2ad5bc/haproxy-ingress/values.yaml#L137
 	UseHostNetwork bool
 }
 
-func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
+func ApplyHAProxyHelmChart(options HAProxyOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -38,7 +40,7 @@ func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	helmChart, err := helmChartFromContainerRegistry(version, helmConf, haproxyHelmRepo, haproxyReleaseName)
+	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, haproxyHelmRepo, haproxyReleaseName)
 	if err != nil {
 		return fmt.Errorf("failed to get haproxy chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
