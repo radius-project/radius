@@ -48,7 +48,7 @@ var updateRPCmd = &cobra.Command{
 			return err
 		}
 
-		v, err := cli.LoadConfig(configpath)
+		v, err := cli.LoadConfig(configpath, true)
 		if err != nil {
 			return err
 		}

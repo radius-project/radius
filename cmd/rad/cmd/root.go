@@ -107,11 +107,11 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	return holder.Config
 }
 
-func UpdateEnvironmentSectionOnCreation(environmentName string) func(*viper.Viper, cli.EnvironmentSection) error {
-	return func(config *viper.Viper, env cli.EnvironmentSection) error {
+func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.EnvironmentSection) func(*viper.Viper) error {
+	return func(config *viper.Viper) error {
 		env.Default = environmentName
 		output.LogInfo("Using environment: %v", environmentName)
-		err := UpdateEnvironmentSection()(config, env)
+		err := UpdateEnvironmentSection(env)(config)
 		if err != nil {
 			return err
 		}
@@ -119,64 +119,59 @@ func UpdateEnvironmentSectionOnCreation(environmentName string) func(*viper.Vipe
 	}
 }
 
-func UpdateEnvironmentSection() func(*viper.Viper, cli.EnvironmentSection) error {
-	return func(config *viper.Viper, env cli.EnvironmentSection) error {
-		cli.UpdateEnvironmentSection(config, env)
+func UpdateEnvironmentSection(env cli.EnvironmentSection) func(*viper.Viper) error {
+	return func(config *viper.Viper) error {
+
+		latestConfig, err := cli.LoadConfig(configHolder.ConfigFilePath, false)
+		if err != nil {
+			return err
+		}
+		updatedEnv, err := cli.ReadEnvironmentSection(latestConfig)
+		if err != nil {
+			return err
+		}
+		cli.MergeConfigs(env, updatedEnv)
+
+		cli.UpdateEnvironmentSection(config, updatedEnv)
 		return nil
 	}
 }
 
-func SaveConfig(ctx context.Context, config *viper.Viper, env cli.EnvironmentSection, updateConfig func(*viper.Viper, cli.EnvironmentSection) error) error {
+func SaveConfig(ctx context.Context, config *viper.Viper, updateConfig func(*viper.Viper) error) error {
 
-	latestConfig, err := cli.LoadConfig(configHolder.ConfigFilePath)
-	if err != nil {
-		return err
-	}
 	// Acquire exclusive lock on the config file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
 	configFilePath := cli.GetConfigFilePath(config)
 	fileLock := flock.New(configFilePath)
-	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	lockCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err = fileLock.TryLockContext(lockCtx, 1*time.Second)
+	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
 	}
-
-	updatedEnv, err := cli.ReadEnvironmentSection(latestConfig)
-	if err != nil {
-		if err := fileLock.Unlock(); err != nil {
-			output.LogInfo(cli.UnlockErrorMessage)
+	defer func() {
+		err = fileLock.Unlock()
+		if err != nil {
+			output.LogInfo("failed to release lock on the config file")
 		}
-		return err
-	}
-	cli.MergeConfigs(env, updatedEnv)
+	}()
 
-	err = updateConfig(config, updatedEnv)
+	err = updateConfig(config)
 	if err != nil {
-		if err := fileLock.Unlock(); err != nil {
-			output.LogInfo(cli.UnlockErrorMessage)
-		}
 		return err
 	}
 
 	err = cli.SaveConfig(config)
 	if err != nil {
-		if err := fileLock.Unlock(); err != nil {
-			output.LogInfo(cli.UnlockErrorMessage)
-		}
 		return err
 	}
 
-	if err := fileLock.Unlock(); err != nil {
-		return fmt.Errorf("'%s': %w", cli.UnlockErrorMessage, err)
-	}
 	return nil
 
 }
 
 func initConfig() {
-	v, err := cli.LoadConfig(configHolder.ConfigFilePath)
+	v, err := cli.LoadConfig(configHolder.ConfigFilePath, true)
 	if err != nil {
 		fmt.Printf("Error: failed to load config: %v\n", err)
 		os.Exit(1)

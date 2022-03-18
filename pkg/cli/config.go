@@ -29,9 +29,8 @@ import (
 
 // EnvironmentKey is the key used for the environment section
 const (
-	EnvironmentKey     string = "environment"
-	ApplicationKey     string = "application"
-	UnlockErrorMessage string = "failed to unlock the config file"
+	EnvironmentKey string = "environment"
+	ApplicationKey string = "application"
 )
 
 // EnvironmentSection is the representation of the environment section of radius config.
@@ -94,7 +93,7 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 	return env.decodeEnvironmentSection(name)
 }
 
-func LoadConfig(configFilePath string) (*viper.Viper, error) {
+func LoadConfig(configFilePath string, withSharedLock bool) (*viper.Viper, error) {
 	config := viper.New()
 
 	if configFilePath == "" {
@@ -112,18 +111,27 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 		config.SetConfigFile(configFilePath)
 	}
 
-	// Acquire shared lock on the config file.
-	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
-	configFile := GetConfigFilePath(config)
-	fileLock := flock.New(configFile)
-	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := fileLock.TryRLockContext(lockCtx, 1*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
+	if withSharedLock {
+		// Acquire shared lock on the config file.
+		// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
+		configFile := GetConfigFilePath(config)
+		fileLock := flock.New(configFile)
+		lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, err := fileLock.TryRLockContext(lockCtx, 1*time.Second)
+		if err != nil {
+			return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
+		}
+
+		defer func() {
+			err = fileLock.Unlock()
+			if err != nil {
+				output.LogInfo("failed to release lock on the config file")
+			}
+		}()
 	}
 
-	err = config.ReadInConfig()
+	err := config.ReadInConfig()
 	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 		// It's ok the config file is not found, this could be the first time the CLI
 		// is running. Commands that require configuration will check for the data they need.
@@ -131,17 +139,7 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 		// It's ok the config file is not found, this could be the first time the CLI
 		// is running. Commands that require configuration will check for the data they need.
 	} else if err != nil {
-		if err := fileLock.Unlock(); err != nil {
-			output.LogInfo(UnlockErrorMessage)
-		}
 		return nil, err
-	}
-
-	// Dynamically load config file changes
-	config.WatchConfig()
-
-	if err := fileLock.Unlock(); err != nil {
-		return nil, fmt.Errorf("'%s': %w", UnlockErrorMessage, err)
 	}
 
 	return config, nil

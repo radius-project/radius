@@ -236,7 +236,7 @@ func deleteEnvFromConfig(ctx context.Context, config *viper.Viper, envName strin
 		}
 	}
 
-	if err = SaveConfig(ctx, config, env, UpdateEnvironmentSection()); err != nil {
+	if err = SaveConfig(ctx, config, UpdateEnvironmentSection(env)); err != nil {
 		return err
 	}
 

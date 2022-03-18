@@ -21,7 +21,7 @@ import (
 )
 
 func NewTestOptions(t *testing.T) TestOptions {
-	config, err := cli.LoadConfig("")
+	config, err := cli.LoadConfig("", true)
 	require.NoError(t, err, "failed to read radius config")
 
 	auth, err := armauth.GetArmAuthorizer()
