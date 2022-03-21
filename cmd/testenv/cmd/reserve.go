@@ -65,7 +65,7 @@ var reserveCmd = &cobra.Command{
 			return err
 		}
 
-		v, err := cli.LoadConfig(configpath, true)
+		v, err := cli.LoadConfig(configpath)
 		if err != nil {
 			return err
 		}

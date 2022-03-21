@@ -122,7 +122,7 @@ func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.Environm
 func UpdateEnvironmentSection(env cli.EnvironmentSection) func(*viper.Viper) error {
 	return func(config *viper.Viper) error {
 
-		latestConfig, err := cli.LoadConfig(configHolder.ConfigFilePath, false)
+		latestConfig, err := cli.LoadConfigNoLock(configHolder.ConfigFilePath)
 		if err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ func SaveConfig(ctx context.Context, config *viper.Viper, updateConfig func(*vip
 }
 
 func initConfig() {
-	v, err := cli.LoadConfig(configHolder.ConfigFilePath, true)
+	v, err := cli.LoadConfig(configHolder.ConfigFilePath)
 	if err != nil {
 		fmt.Printf("Error: failed to load config: %v\n", err)
 		os.Exit(1)

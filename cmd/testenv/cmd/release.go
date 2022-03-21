@@ -99,7 +99,7 @@ func init() {
 }
 
 func readEnvironmentFromConfigfile(configpath string, name string) (*environments.AzureCloudEnvironment, error) {
-	v, err := cli.LoadConfig(configpath, true)
+	v, err := cli.LoadConfig(configpath)
 	if err != nil {
 		return nil, err
 	}

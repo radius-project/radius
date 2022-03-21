@@ -72,7 +72,7 @@ type TestOptions struct {
 }
 
 func NewTestOptions(t *testing.T) TestOptions {
-	config, err := cli.LoadConfig("", true)
+	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
 	k8sconfig, err := kubernetes.ReadKubeConfig()

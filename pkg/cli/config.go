@@ -93,7 +93,7 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 	return env.decodeEnvironmentSection(name)
 }
 
-func LoadConfig(configFilePath string, withSharedLock bool) (*viper.Viper, error) {
+func getConfig(configFilePath string) *viper.Viper {
 	config := viper.New()
 
 	if configFilePath == "" {
@@ -110,28 +110,47 @@ func LoadConfig(configFilePath string, withSharedLock bool) (*viper.Viper, error
 	} else {
 		config.SetConfigFile(configFilePath)
 	}
+	return config
+}
 
-	if withSharedLock {
-		// Acquire shared lock on the config file.
-		// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
-		configFile := GetConfigFilePath(config)
-		fileLock := flock.New(configFile)
-		lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, err := fileLock.TryRLockContext(lockCtx, 1*time.Second)
-		if err != nil {
-			return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
-		}
-
-		defer func() {
-			err = fileLock.Unlock()
-			if err != nil {
-				output.LogInfo("failed to release lock on the config file")
-			}
-		}()
+func LoadConfigNoLock(configFilePath string) (*viper.Viper, error) {
+	config := getConfig(configFilePath)
+	err := config.ReadInConfig()
+	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		// It's ok the config file is not found, this could be the first time the CLI
+		// is running. Commands that require configuration will check for the data they need.
+	} else if os.IsNotExist(err) {
+		// It's ok the config file is not found, this could be the first time the CLI
+		// is running. Commands that require configuration will check for the data they need.
+	} else if err != nil {
+		return nil, err
 	}
 
-	err := config.ReadInConfig()
+	return config, nil
+}
+
+func LoadConfig(configFilePath string) (*viper.Viper, error) {
+	config := getConfig(configFilePath)
+
+	// Acquire shared lock on the config file.
+	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
+	configFile := GetConfigFilePath(config)
+	fileLock := flock.New(configFile)
+	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := fileLock.TryRLockContext(lockCtx, 1*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
+	}
+
+	defer func() {
+		err = fileLock.Unlock()
+		if err != nil {
+			output.LogInfo("failed to release lock on the config file")
+		}
+	}()
+
+	err = config.ReadInConfig()
 	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 		// It's ok the config file is not found, this could be the first time the CLI
 		// is running. Commands that require configuration will check for the data they need.
