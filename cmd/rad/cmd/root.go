@@ -107,11 +107,41 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	return holder.Config
 }
 
-func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.EnvironmentSection) func(*viper.Viper) error {
+// func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.EnvironmentSection) func(*viper.Viper) error {
+// 	return func(config *viper.Viper) error {
+// 		env.Default = environmentName
+// 		output.LogInfo("Using environment: %v", environmentName)
+// 		err := UpdateEnvironmentSection(env)(config)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	}
+// }
+
+// func UpdateEnvironmentSection(env cli.EnvironmentSection) func(*viper.Viper) error {
+// 	return func(config *viper.Viper) error {
+
+// 		latestConfig, err := cli.LoadConfigNoLock(configHolder.ConfigFilePath)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		updatedEnv, err := cli.ReadEnvironmentSection(latestConfig)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		cli.MergeConfigs(env, updatedEnv)
+
+// 		cli.UpdateEnvironmentSection(config, updatedEnv)
+// 		return nil
+// 	}
+// }
+
+func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.EnvironmentSection, cmdType string) func(*viper.Viper) error {
 	return func(config *viper.Viper) error {
 		env.Default = environmentName
 		output.LogInfo("Using environment: %v", environmentName)
-		err := UpdateEnvironmentSection(env)(config)
+		err := UpdateEnvironmentSection(env, cmdType, environmentName)(config)
 		if err != nil {
 			return err
 		}
@@ -119,7 +149,7 @@ func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.Environm
 	}
 }
 
-func UpdateEnvironmentSection(env cli.EnvironmentSection) func(*viper.Viper) error {
+func UpdateEnvironmentSection(env cli.EnvironmentSection, cmdType string, envName string) func(*viper.Viper) error {
 	return func(config *viper.Viper) error {
 
 		latestConfig, err := cli.LoadConfigNoLock(configHolder.ConfigFilePath)
@@ -130,7 +160,7 @@ func UpdateEnvironmentSection(env cli.EnvironmentSection) func(*viper.Viper) err
 		if err != nil {
 			return err
 		}
-		cli.MergeConfigs(env, updatedEnv)
+		cli.MergeConfigs(env, updatedEnv, cmdType, envName)
 
 		cli.UpdateEnvironmentSection(config, updatedEnv)
 		return nil

@@ -33,6 +33,13 @@ const (
 	ApplicationKey string = "application"
 )
 
+// command type
+const (
+	Init   string = "env_init"
+	Delete string = "env_delete"
+	Switch string = "env_switch"
+)
+
 // EnvironmentSection is the representation of the environment section of radius config.
 type EnvironmentSection struct {
 	Default string                            `mapstructure:"default" yaml:"default"`
@@ -179,17 +186,25 @@ func GetConfigFilePath(v *viper.Viper) string {
 	return configFilePath
 }
 
-func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) {
-	for k, v := range currentEnvironment.Items {
-		if _, ok := latestEnvironment.Items[k]; ok {
-			for k1, v1 := range v {
-				latestEnvironment.Items[k][k1] = v1
+func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection, cmdType string, envName string) {
+	if cmdType == Init {
+		latestEnvironment.Default = currentEnvironment.Default
+		latestEnvironment.Items[envName] = currentEnvironment.Items[envName]
+	} else if cmdType == Delete {
+		delete(latestEnvironment.Items, envName)
+		latestEnvironment.Default = currentEnvironment.Default
+	} else if cmdType == Switch {
+		latestEnvironment.Default = currentEnvironment.Default
+	} else {
+		for k, v := range currentEnvironment.Items {
+			if _, ok := latestEnvironment.Items[k]; ok {
+				for k1, v1 := range v {
+					latestEnvironment.Items[k][k1] = v1
+				}
 			}
-		} else {
-			latestEnvironment.Items[k] = v
 		}
-
 	}
+
 }
 
 func SaveConfig(v *viper.Viper) error {
