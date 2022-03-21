@@ -147,7 +147,7 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	defer cancel()
 	_, err := fileLock.TryRLockContext(lockCtx, 1*time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
+		return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFile, err)
 	}
 
 	defer func() {
@@ -186,7 +186,7 @@ func GetConfigFilePath(v *viper.Viper) string {
 	return configFilePath
 }
 
-func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection, cmdType string, envName string) {
+func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection, cmdType string, envName string) EnvironmentSection {
 	if cmdType == Init {
 		latestEnvironment.Default = currentEnvironment.Default
 		latestEnvironment.Items[envName] = currentEnvironment.Items[envName]
@@ -204,6 +204,7 @@ func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment Envir
 			}
 		}
 	}
+	return latestEnvironment
 
 }
 
