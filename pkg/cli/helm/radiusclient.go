@@ -24,7 +24,14 @@ const (
 	RadiusSystemNamespace = "radius-system"
 )
 
-func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage string, containerTag string) error {
+type RadiusOptions struct {
+	ChartPath    string
+	ChartVersion string
+	Image        string
+	Tag          string
+}
+
+func ApplyRadiusHelmChart(options RadiusOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -34,17 +41,17 @@ func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage 
 	}
 
 	var helmChart *chart.Chart
-	if chartPath == "" {
-		helmChart, err = helmChartFromContainerRegistry(chartVersion, helmConf, radiusHelmRepo, radiusReleaseName)
+	if options.ChartPath == "" {
+		helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, radiusHelmRepo, radiusReleaseName)
 	} else {
-		helmChart, err = loader.Load(chartPath)
+		helmChart, err = loader.Load(options.ChartPath)
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	err = addRadiusValues(helmChart, containerImage, containerTag)
+	err = addRadiusValues(helmChart, options.Image, options.Tag)
 
 	if err != nil {
 		return fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())

@@ -22,6 +22,10 @@ const (
 	daprHelmRepo    = "https://dapr.github.io/helm-charts/"
 )
 
+type DaprOptions struct {
+	Version string
+}
+
 func ApplyDaprHelmChart(version string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
