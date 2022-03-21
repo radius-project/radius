@@ -4,7 +4,6 @@
     "ExtenderResource": {
       "description": "Extender Resource",
       "type": "object",
-      "x-ms-azure-resource": true,
       "allOf": [
         {
           "$ref": "../common-types.json#/definitions/ProxyResource"

@@ -1126,8 +1126,7 @@
       "required": [
         "properties"
       ],
-      "type": "object",
-      "x-ms-azure-resource": true
+      "type": "object"
     },
     "GatewayList": {
       "description": "List of Gateway resources.",
