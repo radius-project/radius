@@ -27,6 +27,12 @@ func SkipBicepBuild(ctx context.Context, deployFile string) (string, error) {
 	return "", nil
 }
 
+func MockBicepBuild(ctx context.Context, deployFile string) (string, error) {
+	// Mock deployment template:
+	// param param1 string
+	return "{\n  \"$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#\",\n  \"contentVersion\": \"1.0.0.0\",\n  \"metadata\": {\n    \"_generator\": {\n      \"name\": \"bicep\",\n      \"version\": \"0.4.1139.13877\",\n      \"templateHash\": \"17292135099679187216\"\n    }\n  },\n  \"parameters\": {\n    \"param1\": {\n      \"type\": \"string\"\n    }\n  },\n  \"resources\": []\n}", nil
+}
+
 func Test_EmptyRadYaml_DoesNotCrash(t *testing.T) {
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
@@ -545,6 +551,174 @@ func Test_CanOverrideStage(t *testing.T) {
 			},
 			Input:  map[string]map[string]interface{}{},
 			Output: map[string]map[string]interface{}{},
+		},
+	}
+	require.Equal(t, expected, results)
+}
+
+func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	manifest := radyaml.Manifest{
+		Name: "test",
+		Stages: []radyaml.Stage{
+			{
+				Name: "first",
+				Bicep: &radyaml.BicepStage{
+					Template: to.StringPtr("iac/first.bicep"),
+				},
+			},
+		},
+	}
+
+	tempDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	options := Options{
+		Environment: &MockEnvironment{
+			DeploymentClient: &MockDeploymentClient{
+				Results: []clients.DeploymentResult{
+					{
+						Outputs: map[string]clients.DeploymentOutput{},
+					},
+				},
+			},
+		},
+		BaseDirectory: tempDir,
+		Manifest:      manifest,
+		FinalStage:    "first",
+		Parameters: map[string]map[string]interface{}{
+			"param1": {
+				"value": "value1",
+			},
+			"param2": {
+				"value": "value2",
+			},
+		},
+		// Use the mock build function
+		BicepBuildFunc: MockBicepBuild,
+	}
+
+	results, err := Run(ctx, options)
+	require.NoError(t, err)
+
+	// Per stage parameters do not appear in inputs or outputs
+	expected := []StageResult{
+		{
+			Stage: &manifest.Stages[0],
+			Input: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"param2": {
+					"value": "value2",
+				},
+			},
+			Output: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"param2": {
+					"value": "value2",
+				},
+			},
+		},
+	}
+	require.Equal(t, expected, results)
+}
+
+func Test_CanUseParameterFileParameters(t *testing.T) {
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	manifest := radyaml.Manifest{
+		Name: "test",
+		Stages: []radyaml.Stage{
+			{
+				Name: "first",
+				Bicep: &radyaml.BicepStage{
+					Template:      to.StringPtr("iac/first.bicep"),
+					ParameterFile: to.StringPtr("parameters.json"),
+				},
+			},
+		},
+	}
+
+	tempDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "parameters.json"), []byte(`
+	{
+		"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+		"contentVersion": "1.0.0.0",
+		"parameters": {
+		  	"param1": {
+				"value": "value1"
+		  	},
+		  	"param2": {
+				"value": "value2"
+			}
+		}
+	}	  
+	`), 0644)
+	require.NoError(t, err)
+
+	options := Options{
+		Environment: &MockEnvironment{
+			DeploymentClient: &MockDeploymentClient{
+				Results: []clients.DeploymentResult{
+					{
+						Outputs: map[string]clients.DeploymentOutput{},
+					},
+				},
+			},
+		},
+		BaseDirectory: tempDir,
+		Manifest:      manifest,
+		FinalStage:    "first",
+		Parameters: map[string]map[string]interface{}{
+			"param1": {
+				"value": "value1",
+			},
+			"param2": {
+				"value": "value2",
+			},
+		},
+		BicepBuildFunc: SkipBicepBuild,
+	}
+
+	results, err := Run(ctx, options)
+	require.NoError(t, err)
+
+	// Per stage parameters do not appear in inputs or outputs
+	expected := []StageResult{
+		{
+			Stage: &manifest.Stages[0],
+			Input: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"param2": {
+					"value": "value2",
+				},
+			},
+			Output: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"param2": {
+					"value": "value2",
+				},
+			},
 		},
 	}
 	require.Equal(t, expected, results)

@@ -7,7 +7,6 @@ package stages
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"path"
 	"sync"
@@ -97,40 +96,37 @@ func (p *processor) ProcessDeploy(ctx context.Context, stage radyaml.BicepStage)
 		return err
 	}
 
-	stageParameters := make(map[string]map[string]interface{})
-
-	// If stage parameters are set, e.g. in rad.yaml or in tests,
-	// populate stageParameters with these values
-	if len(stage.Parameters) > 0 {
-		// Convert stage definition parameters to expected type for stageParameters
-		parametersFromStage, err := json.Marshal(stage.Parameters)
-		if err != nil {
-			return err
-		}
-
-		var stageTemplateParameters map[string]interface{}
-		if err = json.Unmarshal([]byte(parametersFromStage), &stageTemplateParameters); err != nil {
-			return err
-		}
-
-		stageParameters[p.CurrentStage.Name] = stageTemplateParameters
-	}
-
-	// Get parameters from parsed stage template
-	// This will overwrite defined stage parameters from above
-	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
-	if template != "" {
-		stageParameters, err = parser.ParseFileContents([]byte(template))
-		if err != nil {
-			return err
-		}
-	}
-
 	// We might have additional parameters that are specific to this stage, so make a copy
 	// that way the parameters don't leak outside the stage.
 	parameters := clients.ShallowCopy(p.Parameters)
+
+	// Map to keep track of parameters defined in this stage
+	stageParameters := make(map[string]bool)
+
+	// If stage parameters are set, e.g. in rad.yaml or in tests,
+	// add to stageParameters map
+	for key, value := range stage.Parameters {
+		parameters[key] = bicep.NewParameter(value)
+		stageParameters[key] = true
+	}
+
+	// Get parameters from parsed stage template
+	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
+	if template != "" {
+		parsedFileContents, err := parser.ParseFileContents([]byte(template))
+		if err != nil {
+			return err
+		}
+
+		// Add parameters from parsed stage template
+		// to stageParameters map
+		for key := range parsedFileContents {
+			stageParameters[key] = true
+		}
+	}
+
 	if stage.ParameterFile != nil {
-		filePath := path.Join(p.BaseDirectory, *stage.ParameterFile)
+		filePath := path.Join("@", p.BaseDirectory, *stage.ParameterFile)
 
 		parsedFile, err := parser.Parse(filePath)
 		if err != nil {
@@ -138,12 +134,13 @@ func (p *processor) ProcessDeploy(ctx context.Context, stage radyaml.BicepStage)
 		}
 
 		for key, value := range parsedFile {
-			stageParameters[key] = value
+			parameters[key] = value
+			stageParameters[key] = true
 		}
 	}
 
 	// Only send parameters from this stage by removing values not
-	// present in stageParameters from global list of parameters
+	// present in stageParameters from processor-wide parameters
 	for key := range p.Parameters {
 		if _, ok := stageParameters[key]; !ok {
 			delete(parameters, key)

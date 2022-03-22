@@ -82,10 +82,10 @@ func Test_ParseParameters_File(t *testing.T) {
 		"contentVersion": "1.0.0.0",
 		"parameters": {
 		  "param1": {
-			"value": "foo"
+			"value": "value1"
 		  },
 		  "param2": {
-			"value": "bar"
+			"value": "value2"
 		  }
 		}
 	  }
@@ -100,10 +100,10 @@ func Test_ParseParameters_File(t *testing.T) {
 
 	expected := clients.DeploymentParameters{
 		"param1": map[string]interface{}{
-			"value": "foo",
+			"value": "value1",
 		},
 		"param2": map[string]interface{}{
-			"value": "bar",
+			"value": "value2",
 		},
 	}
 
