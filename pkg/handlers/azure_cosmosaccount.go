@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func NewAzureCosmosAccountHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureCosmosAccountHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureCosmosAccountHandler{
 		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
 			arm: arm,
@@ -51,7 +51,7 @@ func (handler *azureCosmosAccountHandler) Delete(ctx context.Context, options De
 	return nil
 }
 
-func NewAzureCosmosAccountMongoHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureCosmosAccountMongoHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureCosmosAccountMongoHealthHandler{
 		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
 			arm: arm,

@@ -27,7 +27,7 @@ const (
 var storageAccountDependency outputresource.Dependency
 
 // RendererType defines the type for the renderer function
-type RendererType func(ctx context.Context, arm armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
+type RendererType func(ctx context.Context, arm *armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error)
 type volumeFuncs struct {
 	renderer RendererType
 	secrets  func(name string) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference)
@@ -72,7 +72,7 @@ func GetSupportedKinds() []string {
 }
 
 type AzureRenderer struct {
-	Arm             armauth.ArmConfig
+	Arm             *armauth.ArmConfig
 	VolumeRenderers map[string]RendererType
 }
 

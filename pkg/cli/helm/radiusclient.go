@@ -7,6 +7,7 @@ package helm
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -23,7 +24,14 @@ const (
 	RadiusSystemNamespace = "radius-system"
 )
 
-func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage string, containerTag string) error {
+type RadiusOptions struct {
+	ChartPath    string
+	ChartVersion string
+	Image        string
+	Tag          string
+}
+
+func ApplyRadiusHelmChart(options RadiusOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -33,17 +41,17 @@ func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage 
 	}
 
 	var helmChart *chart.Chart
-	if chartPath == "" {
-		helmChart, err = helmChartFromRepo(chartVersion, helmConf, radiusHelmRepo, radiusReleaseName)
+	if options.ChartPath == "" {
+		helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, radiusHelmRepo, radiusReleaseName)
 	} else {
-		helmChart, err = loader.Load(chartPath)
+		helmChart, err = loader.Load(options.ChartPath)
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	err = addRadiusValues(helmChart, containerImage, containerTag)
+	err = addRadiusValues(helmChart, options.Image, options.Tag)
 
 	if err != nil {
 		return fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
@@ -62,7 +70,7 @@ func ApplyRadiusHelmChart(chartPath string, chartVersion string, containerImage 
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
-	if err == driver.ErrReleaseNotFound {
+	if errors.Is(err, driver.ErrReleaseNotFound) {
 		output.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", RadiusSystemNamespace)
 
 		err = runRadiusHelmInstall(helmConf, helmChart)
@@ -87,21 +95,39 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag string) error {
 	values := helmChart.Values
 
+	_, ok := values["global"]
+	if !ok {
+		values["global"] = make(map[string]interface{})
+	}
+	global := values["global"].(map[string]interface{})
+
+	_, ok = global["radius"]
+	if !ok {
+		global["radius"] = make(map[string]interface{})
+	}
+
+	radius := global["radius"].(map[string]interface{})
+
 	if containerImage != "" {
-		values["container"] = containerImage
+		radius["container"] = containerImage
 	}
 
 	if containerTag != "" {
-		values["tag"] = containerTag
+		radius["tag"] = containerTag
 	}
 
 	return nil
 }
+
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Radius from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(radiusReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("Radius not found")
+		return nil
+	}
 	return err
 }

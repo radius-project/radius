@@ -1096,17 +1096,13 @@
       "type": "object"
     },
     "ExtenderProperties": {
+      "additionalProperties": true,
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "properties": {
-        "properties": {
-          "additionalProperties": true,
-          "properties": {},
-          "type": "object"
-        },
         "secrets": {
           "additionalProperties": true,
           "properties": {},

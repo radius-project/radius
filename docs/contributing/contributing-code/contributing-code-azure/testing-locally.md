@@ -63,9 +63,6 @@ environment:
 
 Now you can run `rad env switch local` and use this environment just like you'd use any other.
 
-## Known Limitations
-
-Since we're simulating the role of centralized ARM features like deployment templates there are some inherent limitations.
-
-- Deploying Azure resources with `.bicep` is not supported
-- Using `.bicep` constructs like parameters and variables is not supported
+To run a local RP deployment, a Deployment Engine will run either:
+- Automatically on a random port for the duration of the deployment
+- Specifying a URL that the Deployment Engine will connect to with `apideploymentenginebaseurl` in the localrp environment section.

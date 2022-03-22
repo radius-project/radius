@@ -7,6 +7,7 @@ package helm
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -24,11 +25,13 @@ const (
 )
 
 type HAProxyOptions struct {
+	ChartVersion      string
+	GatewayCRDVersion string
 	// See: https://github.com/haproxy-ingress/charts/blob/2009202f2bfe045a8fcdb99e7880cdd54f2ad5bc/haproxy-ingress/values.yaml#L137
 	UseHostNetwork bool
 }
 
-func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
+func ApplyHAProxyHelmChart(options HAProxyOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -37,7 +40,7 @@ func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	helmChart, err := helmChartFromRepo(version, helmConf, haproxyHelmRepo, haproxyReleaseName)
+	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, haproxyHelmRepo, haproxyReleaseName)
 	if err != nil {
 		return fmt.Errorf("failed to get haproxy chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -60,7 +63,7 @@ func ApplyHAProxyHelmChart(version string, options HAProxyOptions) error {
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(haproxyReleaseName)
-	if err == driver.ErrReleaseNotFound {
+	if errors.Is(err, driver.ErrReleaseNotFound) {
 
 		err = runHAProxyHelmInstall(helmConf, helmChart)
 		if err != nil {
@@ -106,5 +109,9 @@ func RunHAProxyHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(haproxyReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("HAProxy Ingress not found")
+		return nil
+	}
 	return err
 }

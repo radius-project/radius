@@ -1,9 +1,0 @@
-{
-  "Resources": [],
-  "Outputs": {
-    "image": {
-      "type": "string",
-      "value": "radius.azurecr.io/magpie:latest"
-    }
-  }
-}

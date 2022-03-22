@@ -26,12 +26,12 @@ const (
 	KeyVaultIDKey   = "keyvaultid"
 )
 
-func NewAzureKeyVaultHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureKeyVaultHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureKeyVaultHandler{arm: arm}
 }
 
 type azureKeyVaultHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureKeyVaultHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -93,7 +93,7 @@ func (handler *azureKeyVaultHandler) CreateKeyVault(ctx context.Context, vaultNa
 		return nil, fmt.Errorf("failed to convert tenantID to UUID: %w", err)
 	}
 
-	location, err := clients.GetResourceGroupLocation(ctx, handler.arm)
+	location, err := clients.GetResourceGroupLocation(ctx, *handler.arm)
 	if err != nil {
 		return nil, err
 	}
@@ -144,12 +144,12 @@ func (handler *azureKeyVaultHandler) DeleteKeyVault(ctx context.Context, vaultNa
 	return nil
 }
 
-func NewAzureKeyVaultHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureKeyVaultHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureKeyVaultHealthHandler{arm: arm}
 }
 
 type azureKeyVaultHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureKeyVaultHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {

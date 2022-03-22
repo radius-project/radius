@@ -7,6 +7,7 @@ package deployment
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -666,6 +667,10 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 		return nil, fmt.Errorf("cannot find an output resource matching LocalID %q for dependency %q", reference.LocalID, dependency.ID)
 	}
 
+	if dp.secretClient == nil {
+		return nil, errors.New("no Azure credentials provided to fetch secret")
+
+	}
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 

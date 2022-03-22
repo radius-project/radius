@@ -18,8 +18,6 @@ import (
 )
 
 func Test_ExtenderResource(t *testing.T) {
-	// Disabling the Azure test till the ARM fix for enabling symbolic links is rolled out
-	t.SkipNow()
 	application := "azure-resources-extender"
 	template := "testdata/azure-resources-extender.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{

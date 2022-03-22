@@ -124,6 +124,10 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 	}), nil
 }
 
+func GetBaseUrlForDeploymentEngine(overrideURL string) string {
+	return strings.TrimSuffix(overrideURL, "/") + DeploymentEngineBasePath
+}
+
 func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper

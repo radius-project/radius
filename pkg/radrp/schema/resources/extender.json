@@ -26,13 +26,8 @@
         }
       ],
       "type": "object",
+      "additionalProperties": true,
       "properties": {
-        "properties": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-          }
-        },
         "secrets": {
           "type": "object",
           "additionalProperties": true,

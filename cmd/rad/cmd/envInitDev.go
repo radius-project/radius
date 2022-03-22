@@ -69,7 +69,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 
 	_, foundConflict := env.Items[params.Name]
 	if foundConflict {
-		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s to delete or select a different name", params.Name, params.Name)
+		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", params.Name, params.Name)
 	}
 
 	// Create environment
@@ -87,15 +87,13 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	namespace := "default"
-	err = installRadius(cmd.Context(), client, runtimeClient, namespace, chartPath, image, tag)
-	if err != nil {
-		return err
-	}
+	options := helm.NewDefaultClusterOptions()
+	options.Namespace = "default"
+	options.Radius.ChartPath = chartPath
+	options.Radius.Image = image
+	options.Radius.Tag = tag
 
-	// We don't want to use the host network option with HA Proxy on K3d. K3d supports LoadBalancer services,
-	// using the host network would cause a conflict.
-	err = installGateway(cmd.Context(), runtimeClient, helm.HAProxyOptions{UseHostNetwork: false})
+	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
 	if err != nil {
 		return err
 	}

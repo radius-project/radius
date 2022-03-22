@@ -25,9 +25,11 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azcli"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	radazure "github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -99,7 +101,13 @@ func initAzureRadEnvironment(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry, a.LogAnalyticsWorkspaceID)
+	clusterOptions := helm.NewDefaultClusterOptions()
+	clusterOptions.Namespace = a.Namespace
+	clusterOptions.Radius.ChartPath = a.ChartPath
+	clusterOptions.Radius.Image = a.Image
+	clusterOptions.Radius.Tag = a.Tag
+
+	err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry, a.LogAnalyticsWorkspaceID, clusterOptions)
 	if err != nil {
 		return err
 	}
@@ -116,6 +124,10 @@ func init() {
 	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
 	envInitAzureCmd.Flags().String("container-registry", "", "Specify the name of an existing Azure Container Registry to grant the environment access to pull containers from the registry")
 	envInitAzureCmd.Flags().String("loganalytics-workspace-id", "", "Specify the ARM resource ID of the log analytics workspace where the logs should be redirected to")
+	envInitAzureCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
+	envInitAzureCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
+	envInitAzureCmd.Flags().String("image", "", "Specify the radius controller image to use")
+	envInitAzureCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
 
 	// development support
 	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
@@ -130,6 +142,10 @@ type arguments struct {
 	DeploymentTemplate      string
 	ContainerRegistry       string
 	LogAnalyticsWorkspaceID string
+	ChartPath               string
+	Namespace               string
+	Image                   string
+	Tag                     string
 }
 
 func validate(cmd *cobra.Command, args []string) (arguments, error) {
@@ -191,6 +207,26 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return arguments{}, err
+	}
+
+	chartPath, err := cmd.Flags().GetString("chart")
+	if err != nil {
+		return arguments{}, err
+	}
+
+	image, err := cmd.Flags().GetString("image")
+	if err != nil {
+		return arguments{}, err
+	}
+
+	tag, err := cmd.Flags().GetString("tag")
+	if err != nil {
+		return arguments{}, err
+	}
+
 	if location != "" && !isSupportedLocation(location) {
 		return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
 	}
@@ -204,6 +240,10 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		DeploymentTemplate:      deploymentTemplate,
 		ContainerRegistry:       registryName,
 		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
+		Namespace:               namespace,
+		ChartPath:               chartPath,
+		Image:                   image,
+		Tag:                     tag,
 	}, nil
 }
 
@@ -353,7 +393,7 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 	return name, nil
 }
 
-func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string) error {
+func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string, clusterOptions helm.ClusterOptions) error {
 	armauth, err := armauth.GetArmAuthorizer()
 	if err != nil {
 		return err
@@ -434,6 +474,22 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	}
 
 	clusterName, err = findClusterInDeployment(ctx, deployment)
+	if err != nil {
+		return err
+	}
+
+	// Merge credentials for the AKS cluster that just got created so we can install our components on it.
+	err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", subscriptionID, "--resource-group", params.ControlPlaneResourceGroup, "--name", clusterName)
+	if err != nil {
+		return err
+	}
+
+	client, runtimeClient, _, err := createKubernetesClients("")
+	if err != nil {
+		return err
+	}
+
+	err = helm.InstallOnCluster(ctx, clusterOptions, client, runtimeClient)
 	if err != nil {
 		return err
 	}
@@ -711,6 +767,8 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		"controlPlaneResourceGroup": controlPlaneResourceGroup,
 		"clusterName":               clusterName,
 	}
+  
+	cli.UpdateEnvironmentSectionOnCreation(config, env, name)
 
 	err = SaveConfig(ctx, config, UpdateEnvironmentSectionOnCreation(name, env, cli.Init))
 	if err != nil {

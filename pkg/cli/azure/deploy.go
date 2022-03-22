@@ -131,6 +131,7 @@ func (dc *ARMDeploymentClient) waitForCompletion(ctx context.Context, future res
 	}
 
 	deployment, err := future.Result(dc.Client)
+
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}

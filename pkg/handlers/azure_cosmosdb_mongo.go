@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func NewAzureCosmosDBMongoHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureCosmosDBMongoHandler(arm *armauth.ArmConfig) ResourceHandler {
 	handler := &azureCosmosDBMongoHandler{
 		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
 			arm: arm,
@@ -130,7 +130,7 @@ func (handler *azureCosmosDBMongoHandler) DeleteDatabase(ctx context.Context, ac
 	return nil
 }
 
-func NewAzureCosmosDBMongoHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureCosmosDBMongoHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	handler := &azureCosmosDBMongoHealthHandler{
 		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
 			arm: arm,

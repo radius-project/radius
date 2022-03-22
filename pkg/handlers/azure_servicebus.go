@@ -30,7 +30,7 @@ const (
 	RootManageSharedAccessKey              = "RootManageSharedAccessKey"
 )
 
-func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureServiceBusQueueHandler(arm *armauth.ArmConfig) ResourceHandler {
 	handler := &azureServiceBusQueueHandler{
 		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
 	}
@@ -38,7 +38,7 @@ func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) ResourceHandler {
 }
 
 type azureServiceBusBaseHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 type azureServiceBusQueueHandler struct {
@@ -194,7 +194,7 @@ func (handler *azureServiceBusBaseHandler) GetQueueConnectionString(ctx context.
 	return accessKeys.PrimaryConnectionString, nil
 }
 
-func NewAzureServiceBusQueueHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureServiceBusQueueHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	handler := &azureServiceBusQueueHealthHandler{
 		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
 	}

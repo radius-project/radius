@@ -21,6 +21,7 @@ const (
 	LogFieldResourceName       = "resourceName"
 	LogFieldResourceProperties = "resourceProperties"
 	LogFieldResourceType       = "resourceType"
+	LogFieldRPIdentifier       = "rpIdentifier"
 	LogFieldScopeName          = "scopeName"
 	LogFieldSubscriptionID     = "subscriptionID"
 	LogFieldResourceKind       = "resourceKind"

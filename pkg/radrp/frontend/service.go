@@ -12,6 +12,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/model"
 	"github.com/project-radius/radius/pkg/model/azure"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
@@ -58,9 +60,16 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	appmodel := azure.NewAzureModel(*s.Options.Arm, k8s)
+	var appmodel model.ApplicationModel
+	var secretClient renderers.SecretValueClient
 
-	secretClient := renderers.NewSecretValueClient(*s.Options.Arm)
+	var arm *armauth.ArmConfig
+	if s.Options.Arm != nil {
+		// Azure credentials have been provided
+		arm = s.Options.Arm
+		secretClient = renderers.NewSecretValueClient(*s.Options.Arm)
+	}
+	appmodel = azure.NewAzureModel(arm, k8s)
 
 	db := db.NewRadrpDB(dbclient)
 	rp := resourceprovider.NewResourceProvider(db, deployment.NewDeploymentProcessor(appmodel, db, &s.Options.HealthChannels, secretClient, k8s), nil, "http")

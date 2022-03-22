@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewDaprPubSubServiceBusHandler(arm armauth.ArmConfig, k8s client.Client) ResourceHandler {
+func NewDaprPubSubServiceBusHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprPubSubServiceBusHandler{
 		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
 		kubernetesHandler:          kubernetesHandler{k8s: k8s},
@@ -141,7 +141,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 	return nil
 }
 
-func NewDaprPubSubServiceBusHealthHandler(arm armauth.ArmConfig, k8s client.Client) HealthHandler {
+func NewDaprPubSubServiceBusHealthHandler(arm *armauth.ArmConfig, k8s client.Client) HealthHandler {
 	return &daprPubSubServiceBusHealthHandler{
 		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
 		kubernetesHandler:          kubernetesHandler{k8s: k8s},

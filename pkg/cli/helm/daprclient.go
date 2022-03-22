@@ -7,6 +7,7 @@ package helm
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -21,6 +22,10 @@ const (
 	daprHelmRepo    = "https://dapr.github.io/helm-charts/"
 )
 
+type DaprOptions struct {
+	Version string
+}
+
 func ApplyDaprHelmChart(version string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
@@ -30,7 +35,7 @@ func ApplyDaprHelmChart(version string) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	helmChart, err := helmChartFromRepo(version, helmConf, daprHelmRepo, daprReleaseName)
+	helmChart, err := helmChartFromContainerRegistry(version, helmConf, daprHelmRepo, daprReleaseName)
 	if err != nil {
 		return fmt.Errorf("failed to get dapr chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -48,7 +53,7 @@ func ApplyDaprHelmChart(version string) error {
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(daprReleaseName)
-	if err == driver.ErrReleaseNotFound {
+	if errors.Is(err, driver.ErrReleaseNotFound) {
 
 		err = runDaprHelmInstall(helmConf, helmChart)
 		if err != nil {
@@ -74,5 +79,9 @@ func RunDaprHelmUninstall(helmConf *helm.Configuration) error {
 	uninstallClient.Timeout = timeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(daprReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("Dapr not found")
+		return nil
+	}
 	return err
 }

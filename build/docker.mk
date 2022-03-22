@@ -45,13 +45,13 @@ DOCKER_IMAGES := radius-rp radius-controller
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
 
 # magpie comes from our test directory.
-$(eval $(call generateDockerTargets,magpie,./test/magpie/,./test/magpie/Dockerfile))
+$(eval $(call generateDockerTargets,magpiego,./test/magpiego/,./test/magpiego/Dockerfile))
 
 # list of 'outputs' to build all images
-DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-magpie
+DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-magpiego
 
 # list of 'outputs' to push all images
-DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE)) docker-push-magpie
+DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE)) docker-push-magpiego
 
 .PHONY: docker-build
 docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.

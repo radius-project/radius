@@ -28,10 +28,8 @@ func Test_KubernetesRender_Render(t *testing.T) {
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"properties": map[string]interface{}{
-				"host": "hello.com",
-				"port": "1234",
-			},
+			"host": "hello.com",
+			"port": "1234",
 			"secrets": map[string]interface{}{
 				"connectionString": "connection123",
 				"password":         "password123",

@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func GetAzureFileShareVolume(ctx context.Context, arm armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
+func GetAzureFileShareVolume(ctx context.Context, arm *armauth.ArmConfig, resource renderers.RendererResource, dependencies map[string]renderers.RendererDependency) (renderers.RendererOutput, error) {
 	properties := radclient.AzureFileShareVolumeProperties{}
 	err := resource.ConvertDefinition(&properties)
 	if err != nil {

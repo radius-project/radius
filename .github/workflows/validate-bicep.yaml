@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build:
     name: Validate Bicep Code
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - name: Check out repo
       uses: actions/checkout@v2

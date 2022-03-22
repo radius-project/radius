@@ -14,7 +14,7 @@ on:
 jobs:
   publish:
     name: Assets
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -28,15 +28,7 @@ jobs:
           connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
           sync: true
           extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern rp-full.json --overwrite true'
-      - name: Upload deployment script
-        uses: bacongobbler/azure-blob-storage-upload@v1.2.0
-        with:
-          source_dir: 'deploy'
-          container_name: 'environment'
-          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-          sync: true
-          extra_args: '--destination-path ${{ env.REL_CHANNEL }} --pattern initialize-cluster.sh --overwrite true'
-      
+
       # The install scripts are not versioned. They go to tools/rad/install.{sh,ps1}
       - name: Upload install.sh
         uses: bacongobbler/azure-blob-storage-upload@v1.2.0

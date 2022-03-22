@@ -44,44 +44,28 @@ func TestAzureEnvironment(t *testing.T) {
 		_, found = resources[azresources.DocumentDBDatabaseAccounts]
 		require.Truef(t, found, "%s resource not created", azresources.DocumentDBDatabaseAccounts)
 
-		_, found = resources[azresources.ManagedIdentityUserAssignedIdentities]
-		require.Truef(t, found, "%s resource not created", azresources.ManagedIdentityUserAssignedIdentities)
-
 		_, found = resources[azresources.WebServerFarms]
 		require.Truef(t, found, "%s resource not created", azresources.WebServerFarms)
 
 		_, found = resources[azresources.WebSites]
 		require.Truef(t, found, "%s resource not created", azresources.WebSites)
 
-		// Currently, we have a retention policy on the deploymentScript for 1 day.
-		// "retentionInterval": "P1D"
-		// This means the script may or may not be present when checking the number of resources
-		// if the environment was created over a day ago.
-		// Verify that either 5 or 6 resources are present, and only check the deploymentScripts
-		// if there are 6 resources
-		if len(resources) == 6 {
-			_, found = resources[azresources.ResourcesDeploymentScripts]
-			require.Truef(t, found, "%s resource not created", azresources.ResourcesDeploymentScripts)
-		}
-
-		require.GreaterOrEqual(t, len(resources), 5, "Number of resources created by init step is less than expected")
-		require.LessOrEqual(t, len(resources), 6, "Number of resources created by init step is greater than expected")
+		require.Equal(t, len(resources), 4, "Number of resources created by init step is greater than expected")
 
 	})
 
 	t.Run("Validate Kubernetes Runtime", func(t *testing.T) {
 		expectedPods := validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
-				// verify dapr
-				"dapr-system": {
+				"radius-system": {
+					// verify dapr
 					validation.K8sObject{Labels: map[string]string{"app": "dapr-dashboard"}},
 					validation.K8sObject{Labels: map[string]string{"app": "dapr-operator"}},
 					validation.K8sObject{Labels: map[string]string{"app": "dapr-placement-server"}},
 					validation.K8sObject{Labels: map[string]string{"app": "dapr-sentry"}},
 					validation.K8sObject{Labels: map[string]string{"app": "dapr-sidecar-injector"}},
-				},
-				// verify haproxy
-				"radius-system": {
+
+					// verify haproxy
 					validation.K8sObject{Labels: map[string]string{kubernetes.LabelName: "haproxy-ingress"}},
 				},
 			},
