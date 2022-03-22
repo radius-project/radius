@@ -159,17 +159,6 @@ stages:
             --image ${{ variables.DOCKER_REGISTRY }}/radius-rp:${{ variables.REL_VERSION }} \
             --check-version ${{ variables.REL_VERSION }}
       displayName: update RP to match PR
-    # - script: |
-    #     helm upgrade radius \
-    #       ${{ variables.RADIUS_CHART_LOCATION }} \
-    #       --install \
-    #       --create-namespace \
-    #       --namespace radius-system \
-    #       --set container=${{ variables.DOCKER_REGISTRY }}/radius-controller \
-    #       --set tag=${{ variables.REL_VERSION }} \
-    #       --wait \
-    #       --debug
-    #   displayName: update runtime to match PR
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         cd $(Build.SourcesDirectory)
