@@ -12,8 +12,6 @@ variables:
   value: deploy/Chart/
 - name: RADIUS_CONTAINER_LOG_BASE
   value: dist/container_logs
-- name: RADIUS_DEPLOYMENT_TEMPLATE_LOCATION
-  value: deploy/rp-full.json
 - name: DOCKER_REGISTRY
   value: radiusdev.azurecr.io
 - name: K8S_FUNCTIONALTEST_TIMEOUT
@@ -148,8 +146,7 @@ stages:
               --subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
               --resource-group rad-$RANID \
               --location $LOCATION \
-              --loganalytics-workspace-id "${{ variables.INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID }}" \
-              --deployment-template "${{ variables.RADIUS_DEPLOYMENT_TEMPLATE_LOCATION }}"
+              --loganalytics-workspace-id "${{ variables.INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID }}"
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         rad env merge-credentials
