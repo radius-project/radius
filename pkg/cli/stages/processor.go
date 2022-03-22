@@ -97,27 +97,30 @@ func (p *processor) ProcessDeploy(ctx context.Context, stage radyaml.BicepStage)
 		return err
 	}
 
-	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
+	stageParameters := make(map[string]map[string]interface{})
 
-	// Get parameters from stage definition
-	stageParameters, err := json.Marshal(stage.Parameters)
-	if err != nil {
-		return err
+	// If stage parameters are set, e.g. in rad.yaml or in tests,
+	// populate stageParameters with these values
+	if len(stage.Parameters) > 0 {
+		// Convert stage definition parameters to expected type for stageParameters
+		parametersFromStage, err := json.Marshal(stage.Parameters)
+		if err != nil {
+			return err
+		}
+
+		var stageTemplateParameters map[string]interface{}
+		if err = json.Unmarshal([]byte(parametersFromStage), &stageTemplateParameters); err != nil {
+			return err
+		}
+
+		stageParameters[p.CurrentStage.Name] = stageTemplateParameters
 	}
-
-	// Convert stage definition parameters to map[string]interface{}
-	var stageTemplateParameters map[string]interface{}
-	if err = json.Unmarshal([]byte(stageParameters), &stageTemplateParameters); err != nil {
-		return err
-	}
-
-	templateParameters := make(map[string]map[string]interface{})
-	templateParameters[p.CurrentStage.Name] = stageTemplateParameters
 
 	// Get parameters from parsed stage template
 	// This will overwrite defined stage parameters from above
+	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
 	if template != "" {
-		templateParameters, err = parser.ParseFileContents([]byte(template))
+		stageParameters, err = parser.ParseFileContents([]byte(template))
 		if err != nil {
 			return err
 		}
@@ -135,15 +138,14 @@ func (p *processor) ProcessDeploy(ctx context.Context, stage radyaml.BicepStage)
 		}
 
 		for key, value := range parsedFile {
-			if _, ok := templateParameters[key]; !ok {
-				delete(parameters, key)
-				parameters[key] = value
-			}
+			stageParameters[key] = value
 		}
 	}
 
+	// Only send parameters from this stage by removing values not
+	// present in stageParameters from global list of parameters
 	for key := range p.Parameters {
-		if _, ok := templateParameters[key]; !ok {
+		if _, ok := stageParameters[key]; !ok {
 			delete(parameters, key)
 		}
 	}

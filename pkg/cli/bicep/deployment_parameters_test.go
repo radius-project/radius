@@ -74,3 +74,38 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 
 	require.Equal(t, expected, parameters)
 }
+
+func Test_ParseParameters_File(t *testing.T) {
+	input := []byte(`
+	{
+		"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+		"contentVersion": "1.0.0.0",
+		"parameters": {
+		  "param1": {
+			"value": "foo"
+		  },
+		  "param2": {
+			"value": "bar"
+		  }
+		}
+	  }
+	`)
+
+	parser := ParameterParser{
+		FileSystem: fstest.MapFS{},
+	}
+
+	parameters, err := parser.ParseFileContents(input)
+	require.NoError(t, err)
+
+	expected := clients.DeploymentParameters{
+		"param1": map[string]interface{}{
+			"value": "foo",
+		},
+		"param2": map[string]interface{}{
+			"value": "bar",
+		},
+	}
+
+	require.Equal(t, expected, parameters)
+}
