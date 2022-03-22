@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
@@ -52,26 +51,19 @@ func getEnvConfigs(cmd *cobra.Command, args [] string) error {
 		fmt.Println(string(b))
 		fmt.Println()
 	} else {//default format is table
-		fmt.Println("Default: "+env.Default)
+		fmt.Println("default: "+env.Default)
+		var eList []interface{}
 		for key := range env.Items {
 			e,err := env.GetEnvironment(key)
+			eList = append(eList, e)
 			if err != nil {
 				return err
 			}
-			formatter := objectformats.GetGenericEnvironmentTableFormat()
-			if e.GetKind() == environments.KindAzureCloud {
-				formatter = objectformats.GetAzureCloudEnvironmentTableFormat()
-			} else if e.GetKind() == environments.KindDev {
-				formatter = objectformats.GetLocalEnvironmentTableFormat()
-			} else if e.GetKind() == environments.KindKubernetes {
-				formatter = objectformats.GetKubernetesEnvironmentTableFormat()
-			} else if e.GetKind() == environments.KindLocalRP {
-				formatter = objectformats.GetLocalRpTableEnvironmentFormat()
-			}
-			err = output.Write(format, e, cmd.OutOrStdout(), formatter)
-			if err != nil {
-				return err
-			}
+		}
+		formatter := objectformats.GetGenericEnvironmentTableFormat()
+		err = output.Write(format, eList, cmd.OutOrStdout(), formatter)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
