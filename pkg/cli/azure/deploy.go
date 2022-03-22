@@ -104,7 +104,7 @@ func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExte
 
 		id, err := azresources.Parse(*resource.ID)
 		if err != nil {
-			return clients.DeploymentResult{}, nil
+			return clients.DeploymentResult{}, err
 		}
 
 		resources = append(resources, id)
