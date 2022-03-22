@@ -550,6 +550,117 @@ func Test_CanOverrideStage(t *testing.T) {
 	require.Equal(t, expected, results)
 }
 
+func Test_CanUseDifferentParametersPerStage(t *testing.T) {
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	manifest := radyaml.Manifest{
+		Name: "test",
+		Stages: []radyaml.Stage{
+			{
+				Name: "first",
+				Bicep: &radyaml.BicepStage{
+					Template: to.StringPtr("iac/first.bicep"),
+					Parameters: map[string]string{
+						"paramStage1": "value1",
+					},
+				},
+			},
+			{
+				Name: "second",
+				Bicep: &radyaml.BicepStage{
+					Template: to.StringPtr("iac/second.bicep"),
+					Parameters: map[string]string{
+						"paramStage2": "value2",
+					},
+				},
+			},
+		},
+	}
+
+	tempDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	options := Options{
+		Environment: &MockEnvironment{
+			DeploymentClient: &MockDeploymentClient{
+				Results: []clients.DeploymentResult{
+					{
+						Outputs: map[string]clients.DeploymentOutput{},
+					},
+					{
+						Outputs: map[string]clients.DeploymentOutput{},
+					},
+				},
+			},
+		},
+		BaseDirectory: tempDir,
+		Manifest:      manifest,
+		FinalStage:    "second",
+		Parameters: map[string]map[string]interface{}{
+			"paramStage1": {
+				"value": "value1",
+			},
+			"paramStage2": {
+				"value": "value2",
+			},
+		},
+		BicepBuildFunc: SkipBicepBuild,
+	}
+
+	results, err := Run(ctx, options)
+	require.NoError(t, err)
+
+	expected := []StageResult{
+		{
+			Stage: &manifest.Stages[0],
+			Input: map[string]map[string]interface{}{
+				"paramStage1": {
+					"value": "value1",
+				},
+				"paramStage2": {
+					"value": "value2",
+				},
+			},
+			Output: map[string]map[string]interface{}{
+				"paramStage1": {
+					"value": "value1",
+				},
+				"paramStage2": {
+					"value": "value2",
+				},
+			},
+		},
+		{
+			Stage: &manifest.Stages[1],
+			Input: map[string]map[string]interface{}{
+				"paramStage1": {
+					"value": "value1",
+				},
+				"paramStage2": {
+					"value": "value2",
+				},
+			},
+			Output: map[string]map[string]interface{}{
+				"paramStage1": {
+					"value": "value1",
+				},
+				"paramStage2": {
+					"value": "value2",
+				},
+			},
+		},
+	}
+	require.Equal(t, expected, results)
+}
+
 var _ environments.DeploymentEnvironment = (*MockEnvironment)(nil)
 var _ environments.DiagnosticsEnvironment = (*MockEnvironment)(nil)
 

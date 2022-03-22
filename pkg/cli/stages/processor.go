@@ -7,6 +7,7 @@ package stages
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path"
 	"sync"
@@ -96,29 +97,59 @@ func (p *processor) ProcessDeploy(ctx context.Context, stage radyaml.BicepStage)
 		return err
 	}
 
+	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
+
+	// Get parameters from stage definition
+	stageParameters, err := json.Marshal(stage.Parameters)
+	if err != nil {
+		return err
+	}
+
+	// Convert stage definition parameters to map[string]interface{}
+	var stageTemplateParameters map[string]interface{}
+	if err = json.Unmarshal([]byte(stageParameters), &stageTemplateParameters); err != nil {
+		return err
+	}
+
+	templateParameters := make(map[string]map[string]interface{})
+	templateParameters[p.CurrentStage.Name] = stageTemplateParameters
+
+	// Get parameters from parsed stage template
+	// This will overwrite defined stage parameters from above
+	if template != "" {
+		templateParameters, err = parser.ParseFileContents([]byte(template))
+		if err != nil {
+			return err
+		}
+	}
+
 	// We might have additional parameters that are specific to this stage, so make a copy
 	// that way the parameters don't leak outside the stage.
 	parameters := clients.ShallowCopy(p.Parameters)
 	if stage.ParameterFile != nil {
 		filePath := path.Join(p.BaseDirectory, *stage.ParameterFile)
 
-		parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
 		parsedFile, err := parser.Parse(filePath)
 		if err != nil {
 			return err
 		}
 
 		for key, value := range parsedFile {
-			parameters[key] = value
+			if _, ok := templateParameters[key]; !ok {
+				delete(parameters, key)
+				parameters[key] = value
+			}
 		}
 	}
 
-	for key, value := range stage.Parameters {
-		parameters[key] = bicep.NewParameter(value)
+	for key := range p.Parameters {
+		if _, ok := templateParameters[key]; !ok {
+			delete(parameters, key)
+		}
 	}
 
 	progressText := fmt.Sprintf("Deploying %s...", deployFile)
-	completionText := fmt.Sprintf("Deployed stage %s: %d of %d", p.CurrrentStage.Name, p.CurrrentStage.DisplayIndex, p.CurrrentStage.TotalCount)
+	completionText := fmt.Sprintf("Deployed stage %s: %d of %d", p.CurrentStage.Name, p.CurrentStage.DisplayIndex, p.CurrentStage.TotalCount)
 
 	result, err := deploy.DeployWithProgress(ctx, deploy.Options{
 		Environment:    p.Environment,
