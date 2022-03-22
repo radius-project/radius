@@ -2,7 +2,7 @@ var adminUsername = 'cooluser'
 var adminPassword = 'p@ssw0rd'
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'kubernetes-resources-sql'
+  name: 'kubernetes-resource-sql'
 
   resource webapp 'Container' = {
     name: 'todoapp'
@@ -30,7 +30,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
-      server: sqlRoute.properties.url
+      server: sqlRoute.properties.host
       database: sqlContainer.name
     }
   }
