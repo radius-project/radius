@@ -19,8 +19,6 @@ import (
 )
 
 func Test_MongoDB(t *testing.T) {
-	//TODO: https://github.com/project-radius/radius/issues/2039
-	t.SkipNow()
 	application := "azure-resources-mongodb"
 	template := "testdata/azure-resources-mongodb.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -80,8 +78,6 @@ func Test_MongoDB(t *testing.T) {
 }
 
 func Test_MongoDBUserSecrets(t *testing.T) {
-	//TODO: https://github.com/project-radius/radius/issues/2039
-	t.SkipNow()
 	application := "azure-resources-mongodb-user-secrets"
 	template := "testdata/azure-resources-mongodb-user-secrets.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
