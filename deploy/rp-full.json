@@ -49,13 +49,6 @@
             },
             "type": "string"
         },
-        "imageTag": {
-            "defaultValue": "[if(equals(parameters('channel'), 'edge'), 'latest', parameters('channel'))]",
-            "metadata": {
-                "description": "The container image tag to deploy."
-            },
-            "type": "string"
-        },
         "location": {
             "metadata": {
                 "description": "Location for all resources."
@@ -154,9 +147,6 @@
                     "image": {
                         "value": "[parameters('image')]"
                     },
-                    "imageTag": {
-                        "value": "[parameters('imageTag')]"
-                    },
                     "logAnalyticsWorkspaceID": {
                         "value": "[parameters('logAnalyticsWorkspaceID')]"
                     },
@@ -196,9 +186,6 @@
                             "type": "string"
                         },
                         "image": {
-                            "type": "string"
-                        },
-                        "imageTag": {
                             "type": "string"
                         },
                         "logAnalyticsWorkspaceID": {
@@ -311,6 +298,9 @@
                                 "agentPoolProfiles": [
                                     {
                                         "count": 1,
+                                        "enableAutoScaling": true,
+                                        "maxCount": 5,
+                                        "minCount": 1,
                                         "mode": "System",
                                         "name": "agentpool",
                                         "osDiskSizeGB": 0,

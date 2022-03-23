@@ -34,13 +34,6 @@
                 "description": "The container image to deploy."
             }
         },
-        "imageTag": {
-            "type": "string",
-            "defaultValue": "[if(equals(parameters('channel'), 'edge'), 'latest', parameters('channel'))]",
-            "metadata": {
-                "description": "The container image tag to deploy."
-            }
-        },
         "siteName": {
             "type": "string",
             "defaultValue": "[concat('radius-rp-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
@@ -155,9 +148,6 @@
                     "image": {
                         "value": "[parameters('image')]"
                     },
-                    "imageTag": {
-                        "value": "[parameters('imageTag')]"
-                    },
                     "registryId": {
                         "value": "[parameters('registryId')]"
                     },
@@ -197,9 +187,6 @@
                             "type": "string"
                         },
                         "image": {
-                            "type": "string"
-                        },
-                        "imageTag": {
                             "type": "string"
                         },
                         "registryId": {
@@ -315,11 +302,14 @@
                                 "agentPoolProfiles": [
                                     {
                                         "name": "agentpool",
-                                        "count": 1,
                                         "osDiskSizeGB": 0,
                                         "vmSize": "Standard_B2ms",
                                         "storageProfile": "ManagedDisks",
-                                        "mode": "System"
+                                        "mode": "System",
+                                        "enableAutoScaling": true,
+                                        "count": 1,
+                                        "minCount": 1,
+                                        "maxCount": 5
                                     }
                                 ],
                                 "enableRBAC": true,
