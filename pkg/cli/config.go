@@ -34,10 +34,12 @@ const (
 )
 
 // command type
+type CommandType string
+
 const (
-	Init   string = "env_init"
-	Delete string = "env_delete"
-	Switch string = "env_switch"
+	Init   CommandType = "env_init"
+	Delete CommandType = "env_delete"
+	Switch CommandType = "env_switch"
 )
 
 // EnvironmentSection is the representation of the environment section of radius config.
@@ -82,6 +84,35 @@ func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 	return section, nil
 }
 
+func UpdateEnvironmentSectionOnCreation(environmentName string, env EnvironmentSection, cmdType CommandType) func(*viper.Viper) error {
+	return func(config *viper.Viper) error {
+		env.Default = environmentName
+		output.LogInfo("Using environment: %v", environmentName)
+		err := UpdateEnvironmentWithLatestConfig(env, cmdType, environmentName)(config)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func UpdateEnvironmentWithLatestConfig(env EnvironmentSection, cmdType CommandType, envName string) func(*viper.Viper) error {
+	return func(config *viper.Viper) error {
+
+		latestConfig, err := LoadConfigNoLock(GetConfigFilePath(config))
+		if err != nil {
+			return err
+		}
+		updatedEnv, err := ReadEnvironmentSection(latestConfig)
+		if err != nil {
+			return err
+		}
+		updatedEnv = MergeConfigs(env, updatedEnv, cmdType, envName)
+		UpdateEnvironmentSection(config, updatedEnv)
+		return nil
+	}
+}
+
 // UpdateEnvironmentSection updates the EnvironmentSection in radius config.
 func UpdateEnvironmentSection(v *viper.Viper, env EnvironmentSection) {
 	v.Set(EnvironmentKey, env)
@@ -120,9 +151,30 @@ func getConfig(configFilePath string) *viper.Viper {
 	return config
 }
 
+// Create a config if its not present
+func createConfigFile(configFilePath string) error {
+	dir := path.Dir(configFilePath)
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(dir, os.ModeDir|0755)
+		if err != nil {
+			return fmt.Errorf("failed to create directory '%s': %w", dir, err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("failed to find directory '%s': %w", dir, err)
+	}
+	return nil
+}
+
 func LoadConfigNoLock(configFilePath string) (*viper.Viper, error) {
 	config := getConfig(configFilePath)
-	err := config.ReadInConfig()
+	configFile := GetConfigFilePath(config)
+	// On Ubuntu OS,  getConfig() function doesnt create a config file if its not present.
+	err := createConfigFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+	err = config.ReadInConfig()
 	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 		// It's ok the config file is not found, this could be the first time the CLI
 		// is running. Commands that require configuration will check for the data they need.
@@ -141,15 +193,9 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	configFile := GetConfigFilePath(config)
 
 	// On Ubuntu OS,  getConfig() function doesnt create a config file if its not present.
-	dir := path.Dir(configFile)
-	_, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(dir, os.ModeDir|0755)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create directory '%s': %w", dir, err)
-		}
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to find directory '%s': %w", dir, err)
+	err := createConfigFile(configFile)
+	if err != nil {
+		return nil, err
 	}
 	// Acquire shared lock on the config file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
@@ -164,7 +210,7 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	defer func() {
 		err = fileLock.Unlock()
 		if err != nil {
-			output.LogInfo("failed to release lock on the config file")
+			output.LogInfo("failed to release lock on the config file : %s", configFile)
 		}
 	}()
 
@@ -197,7 +243,7 @@ func GetConfigFilePath(v *viper.Viper) string {
 	return configFilePath
 }
 
-func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection, cmdType string, envName string) EnvironmentSection {
+func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection, cmdType CommandType, envName string) EnvironmentSection {
 	if cmdType == Init {
 		latestEnvironment.Default = currentEnvironment.Default
 		latestEnvironment.Items[envName] = currentEnvironment.Items[envName]
@@ -217,6 +263,35 @@ func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment Envir
 	}
 	return latestEnvironment
 
+}
+
+// Save Config with exclusive lock on the config file
+func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig func(*viper.Viper) error) error {
+	// Acquire exclusive lock on the config file.
+	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
+	configFilePath := GetConfigFilePath(config)
+	fileLock := flock.New(configFilePath)
+	lockCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
+	}
+	defer func() {
+		err = fileLock.Unlock()
+		if err != nil {
+			output.LogInfo("failed to release lock on the config file : %s", configFilePath)
+		}
+	}()
+	err = updateConfig(config)
+	if err != nil {
+		return err
+	}
+	err = SaveConfig(config)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func SaveConfig(v *viper.Viper) error {

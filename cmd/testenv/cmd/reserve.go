@@ -87,8 +87,7 @@ var reserveCmd = &cobra.Command{
 			"clusterName":               testenv.ClusterName,
 		}
 
-		cli.UpdateEnvironmentSection(v, env)
-		err = cli.SaveConfig(v)
+		err = cli.SaveConfigOnLock(cmd.Context(), v, cli.UpdateEnvironmentWithLatestConfig(env, cli.Init, testenv.Name))
 		if err != nil {
 			return err
 		}

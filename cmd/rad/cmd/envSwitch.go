@@ -66,7 +66,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 
 	section.Default = envName
 
-	err = SaveConfig(cmd.Context(), config, UpdateEnvironmentSection(section, cli.Switch, envName))
+	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(section, cli.Switch, envName))
 	if err != nil {
 		return err
 	}

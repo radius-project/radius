@@ -12,9 +12,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/gofrs/flock"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -101,68 +99,6 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	}
 
 	return holder.Config
-}
-
-func UpdateEnvironmentSectionOnCreation(environmentName string, env cli.EnvironmentSection, cmdType string) func(*viper.Viper) error {
-	return func(config *viper.Viper) error {
-		env.Default = environmentName
-		output.LogInfo("Using environment: %v", environmentName)
-		err := UpdateEnvironmentSection(env, cmdType, environmentName)(config)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-}
-
-func UpdateEnvironmentSection(env cli.EnvironmentSection, cmdType string, envName string) func(*viper.Viper) error {
-	return func(config *viper.Viper) error {
-
-		latestConfig, err := cli.LoadConfigNoLock(configHolder.ConfigFilePath)
-		if err != nil {
-			return err
-		}
-		updatedEnv, err := cli.ReadEnvironmentSection(latestConfig)
-		if err != nil {
-			return err
-		}
-		updatedEnv = cli.MergeConfigs(env, updatedEnv, cmdType, envName)
-		cli.UpdateEnvironmentSection(config, updatedEnv)
-		return nil
-	}
-}
-
-func SaveConfig(ctx context.Context, config *viper.Viper, updateConfig func(*viper.Viper) error) error {
-
-	// Acquire exclusive lock on the config file.
-	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
-	configFilePath := cli.GetConfigFilePath(config)
-	fileLock := flock.New(configFilePath)
-	lockCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
-	if err != nil {
-		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
-	}
-	defer func() {
-		err = fileLock.Unlock()
-		if err != nil {
-			output.LogInfo("failed to release lock on the config file")
-		}
-	}()
-
-	err = updateConfig(config)
-	if err != nil {
-		return err
-	}
-
-	err = cli.SaveConfig(config)
-	if err != nil {
-		return err
-	}
-
-	return nil
-
 }
 
 func initConfig() {
