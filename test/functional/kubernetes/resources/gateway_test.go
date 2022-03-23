@@ -33,31 +33,13 @@ func Test_Gateway_Explicit(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "backend"),
-					},
-				},
-			},
-			Gateway: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "gateway"),
-					},
-				},
-			},
-			HttpRoute: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "backendhttp"),
-					},
-				},
-			},
-			Services: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "backendhttp"),
+						validation.NewK8sPodForResource(application, "backend"),
+						validation.NewK8sGatewayForResource(application, "gateway"),
+						validation.NewK8sHttpRouteForResource(application, "backendhttp"),
+						validation.NewK8sServiceForResource(application, "backendhttp"),
 					},
 				},
 			},
@@ -84,32 +66,13 @@ func Test_Gateway_Implicit(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "backend"),
-					},
-				},
-			},
-			Gateway: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "backendhttp"),
-					},
-				},
-			},
-			HttpRoute: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "backendhttp"),
-					},
-				},
-			},
-			Services: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "backendhttp"),
-					},
+						validation.NewK8sPodForResource(application, "backend"),
+						validation.NewK8sGatewayForResource(application, "backendhttp"),
+						validation.NewK8sHttpRouteForResource(application, "backendhttp"),
+						validation.NewK8sServiceForResource(application, "backendhttp")},
 				},
 			},
 		},

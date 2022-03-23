@@ -42,11 +42,11 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "frontend"),
-						validation.NewK8sObjectForResource(application, "backend"),
+						validation.NewK8sPodForResource(application, "frontend"),
+						validation.NewK8sPodForResource(application, "backend"),
 					},
 				},
 			},
@@ -85,13 +85,13 @@ func Test_ContainerManualScale(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "frontend"),
+						validation.NewK8sPodForResource(application, "frontend"),
 						// Verify two backend pods are created.
-						validation.NewK8sObjectForResource(application, "backend"),
-						validation.NewK8sObjectForResource(application, "backend"),
+						validation.NewK8sPodForResource(application, "backend"),
+						validation.NewK8sPodForResource(application, "backend"),
 					},
 				},
 			},
