@@ -122,7 +122,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		env.Items[params.Name]["providers"] = providerData
 	}
 
-	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentSectionOnCreation(params.Name, env, cli.Init))
+	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(params.Name)))
 	if err != nil {
 		return err
 	}

@@ -33,15 +33,6 @@ const (
 	ApplicationKey string = "application"
 )
 
-// command type
-type CommandType string
-
-const (
-	Init   CommandType = "env_init"
-	Delete CommandType = "env_delete"
-	Switch CommandType = "env_switch"
-)
-
 // EnvironmentSection is the representation of the environment section of radius config.
 type EnvironmentSection struct {
 	Default string                            `mapstructure:"default" yaml:"default"`
@@ -84,19 +75,8 @@ func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 	return section, nil
 }
 
-func UpdateEnvironmentSectionOnCreation(environmentName string, env EnvironmentSection, cmdType CommandType) func(*viper.Viper) error {
-	return func(config *viper.Viper) error {
-		env.Default = environmentName
-		output.LogInfo("Using environment: %v", environmentName)
-		err := UpdateEnvironmentWithLatestConfig(env, cmdType, environmentName)(config)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-}
-
-func UpdateEnvironmentWithLatestConfig(env EnvironmentSection, cmdType CommandType, envName string) func(*viper.Viper) error {
+// Required to be called while holding the exclusive lock on config file.
+func UpdateEnvironmentWithLatestConfig(env EnvironmentSection, mergeConfigs func(EnvironmentSection, EnvironmentSection) EnvironmentSection) func(*viper.Viper) error {
 	return func(config *viper.Viper) error {
 
 		latestConfig, err := LoadConfigNoLock(GetConfigFilePath(config))
@@ -107,7 +87,7 @@ func UpdateEnvironmentWithLatestConfig(env EnvironmentSection, cmdType CommandTy
 		if err != nil {
 			return err
 		}
-		updatedEnv = MergeConfigs(env, updatedEnv, cmdType, envName)
+		updatedEnv = mergeConfigs(env, updatedEnv)
 		UpdateEnvironmentSection(config, updatedEnv)
 		return nil
 	}
@@ -243,16 +223,31 @@ func GetConfigFilePath(v *viper.Viper) string {
 	return configFilePath
 }
 
-func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection, cmdType CommandType, envName string) EnvironmentSection {
-	if cmdType == Init {
-		latestEnvironment.Default = currentEnvironment.Default
+func MergeInitEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
+	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
+		latestEnvironment.Default = envName
 		latestEnvironment.Items[envName] = currentEnvironment.Items[envName]
-	} else if cmdType == Delete {
+		return latestEnvironment
+	}
+}
+
+func MergeDeleteEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
+	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
 		delete(latestEnvironment.Items, envName)
 		latestEnvironment.Default = currentEnvironment.Default
-	} else if cmdType == Switch {
+		return latestEnvironment
+	}
+}
+
+func MergeSwitchEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
+	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
 		latestEnvironment.Default = currentEnvironment.Default
-	} else {
+		return latestEnvironment
+	}
+}
+
+func MergeWithLatestConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
+	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
 		for k, v := range currentEnvironment.Items {
 			if _, ok := latestEnvironment.Items[k]; ok {
 				for k1, v1 := range v {
@@ -260,9 +255,8 @@ func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment Envir
 				}
 			}
 		}
+		return latestEnvironment
 	}
-	return latestEnvironment
-
 }
 
 // Save Config with exclusive lock on the config file
@@ -277,6 +271,7 @@ func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig fun
 	if err != nil {
 		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
 	}
+
 	defer func() {
 		err = fileLock.Unlock()
 		if err != nil {

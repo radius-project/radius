@@ -101,7 +101,7 @@ func updateApplicationConfig(ctx context.Context, config *viper.Viper, env envir
 
 		envSection.Items[cases.Fold().String(env.GetName())][environments.EnvironmentKeyDefaultApplication] = ""
 
-		err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(envSection, "", env.GetName()))
+		err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(envSection, cli.MergeWithLatestConfig(env.GetName())))
 		if err != nil {
 			return err
 		}

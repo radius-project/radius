@@ -82,6 +82,6 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 
 	env.Items[cases.Fold().String(environmentName)][environments.EnvironmentKeyDefaultApplication] = applicationName
 
-	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, "", environmentName))
+	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeWithLatestConfig(environmentName)))
 	return err
 }
