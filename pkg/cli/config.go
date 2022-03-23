@@ -138,14 +138,25 @@ func LoadConfigNoLock(configFilePath string) (*viper.Viper, error) {
 
 func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	config := getConfig(configFilePath)
+	configFile := GetConfigFilePath(config)
 
+	// On Ubuntu OS,  getConfig() function doesnt create a config file if its not present.
+	dir := path.Dir(configFile)
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(dir, os.ModeDir|0755)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create directory '%s': %w", dir, err)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to find directory '%s': %w", dir, err)
+	}
 	// Acquire shared lock on the config file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
-	configFile := GetConfigFilePath(config)
 	fileLock := flock.New(configFile)
 	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := fileLock.TryRLockContext(lockCtx, 1*time.Second)
+	_, err = fileLock.TryRLockContext(lockCtx, 1*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFile, err)
 	}
@@ -211,17 +222,7 @@ func MergeConfigs(currentEnvironment EnvironmentSection, latestEnvironment Envir
 func SaveConfig(v *viper.Viper) error {
 	configFilePath := GetConfigFilePath(v)
 
-	dir := path.Dir(configFilePath)
-	_, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(dir, os.ModeDir|0755)
-		if err != nil {
-			return fmt.Errorf("failed to create directory '%s': %w", dir, err)
-		}
-	} else if err != nil {
-		return fmt.Errorf("failed to find directory '%s': %w", dir, err)
-	}
-	err = v.WriteConfigAs(configFilePath)
+	err := v.WriteConfigAs(configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to write config to '%s': %w", configFilePath, err)
 	}

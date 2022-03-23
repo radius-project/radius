@@ -31,10 +31,6 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:  true,
 }
 
-const (
-	UnlockErrorMessage string = "failed to unlock the config file"
-)
-
 func prettyPrintRPError(err error) string {
 	raw := err.Error()
 	if new := clients.TryUnfoldErrorResponse(err); new != nil {

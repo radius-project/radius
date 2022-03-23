@@ -144,7 +144,6 @@ stages:
         echo "##vso[task.setvariable variable=RADENVIRONMENT]rad-$RANID"
         go run cmd/rad/main.go \
               env init azure \
-              --configpath ~/.rad/config.yaml \
               -e rad-$RANID \
               --subscription-id ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
               --resource-group rad-$RANID \
