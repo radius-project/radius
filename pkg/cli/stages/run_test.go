@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -25,12 +26,6 @@ func SkipBicepBuild(ctx context.Context, deployFile string) (string, error) {
 	// We don't want to run bicep in unit tests. It's fine because we're not going to
 	// look at the output of this.
 	return "", nil
-}
-
-func MockBicepBuild(ctx context.Context, deployFile string) (string, error) {
-	// Mock deployment template:
-	// param param1 string
-	return "{\n  \"$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#\",\n  \"contentVersion\": \"1.0.0.0\",\n  \"metadata\": {\n    \"_generator\": {\n      \"name\": \"bicep\",\n      \"version\": \"0.4.1139.13877\",\n      \"templateHash\": \"17292135099679187216\"\n    }\n  },\n  \"parameters\": {\n    \"param1\": {\n      \"type\": \"string\"\n    }\n  },\n  \"resources\": []\n}", nil
 }
 
 func Test_EmptyRadYaml_DoesNotCrash(t *testing.T) {
@@ -557,6 +552,10 @@ func Test_CanOverrideStage(t *testing.T) {
 }
 
 func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
+	// Test ensures that processor is able to successfully read
+	// deployment template when provided (in this case, stage.bicep).
+	// There will not be a difference in the output because it only
+	// tracks the processor-level parameters
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
@@ -566,18 +565,11 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 			{
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/first.bicep"),
+					Template: to.StringPtr("testdata/stage.bicep"),
 				},
 			},
 		},
 	}
-
-	tempDir := t.TempDir()
-	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
-	require.NoError(t, err)
-
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
-	require.NoError(t, err)
 
 	options := Options{
 		Environment: &MockEnvironment{
@@ -589,9 +581,8 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 				},
 			},
 		},
-		BaseDirectory: tempDir,
-		Manifest:      manifest,
-		FinalStage:    "first",
+		Manifest:   manifest,
+		FinalStage: "first",
 		Parameters: map[string]map[string]interface{}{
 			"param1": {
 				"value": "value1",
@@ -600,14 +591,11 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 				"value": "value2",
 			},
 		},
-		// Use the mock build function
-		BicepBuildFunc: MockBicepBuild,
 	}
 
 	results, err := Run(ctx, options)
 	require.NoError(t, err)
 
-	// Per stage parameters do not appear in inputs or outputs
 	expected := []StageResult{
 		{
 			Stage: &manifest.Stages[0],
@@ -633,6 +621,10 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 }
 
 func Test_CanUseParameterFileParameters(t *testing.T) {
+	// Test ensures that processor can handle a Bicep.ParameterFile
+	// when provided. Output will not change for different
+	// parameters provided in the file since output is only
+	// tied to processor-level parameters
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
@@ -643,7 +635,7 @@ func Test_CanUseParameterFileParameters(t *testing.T) {
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
 					Template:      to.StringPtr("iac/first.bicep"),
-					ParameterFile: to.StringPtr("parameters.json"),
+					ParameterFile: to.StringPtr("iac/test-parameters.json"),
 				},
 			},
 		},
@@ -656,20 +648,10 @@ func Test_CanUseParameterFileParameters(t *testing.T) {
 	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "parameters.json"), []byte(`
-	{
-		"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-		"contentVersion": "1.0.0.0",
-		"parameters": {
-		  	"param1": {
-				"value": "value1"
-		  	},
-		  	"param2": {
-				"value": "value2"
-			}
-		}
-	}	  
-	`), 0644)
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "test-parameters.json"))
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "test-parameters.json"), data, 0644)
 	require.NoError(t, err)
 
 	options := Options{

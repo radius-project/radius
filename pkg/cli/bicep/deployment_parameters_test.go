@@ -6,6 +6,8 @@
 package bicep
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -76,24 +78,12 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 }
 
 func Test_ParseParameters_File(t *testing.T) {
-	input := []byte(`
-	{
-		"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-		"contentVersion": "1.0.0.0",
-		"parameters": {
-		  "param1": {
-			"value": "value1"
-		  },
-		  "param2": {
-			"value": "value2"
-		  }
-		}
-	  }
-	`)
-
 	parser := ParameterParser{
 		FileSystem: fstest.MapFS{},
 	}
+
+	input, err := ioutil.ReadFile(filepath.Join("testdata", "test-parameters.json"))
+	require.NoError(t, err)
 
 	parameters, err := parser.ParseFileContents(input)
 	require.NoError(t, err)
