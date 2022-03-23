@@ -2,7 +2,7 @@ var adminUsername = 'sa'
 var adminPassword = 'p@ssw0rd'
 
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'kubernetes-resource-sql'
+  name: 'kubernetes-resources-sql'
 
   resource webapp 'Container' = {
     name: 'todoapp'
