@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func NewAzureCosmosDBSQLHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureCosmosDBSQLHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureCosmosDBSQLDBHandler{
 		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
 			arm: arm,
@@ -125,7 +125,7 @@ func (handler *azureCosmosDBSQLDBHandler) DeleteDatabase(ctx context.Context, ac
 	return nil
 }
 
-func NewAzureCosmosDBSQLHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureCosmosDBSQLHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureCosmosDBSQLDBHealthHandler{
 		azureCosmosDBBaseHandler: azureCosmosDBBaseHandler{
 			arm: arm,

@@ -360,7 +360,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	for {
 		select {
 		case <-time.After(IntervalForWatchHeartbeat):
-			t.Logf("at %s watching pod %v for status.. ", time.Now().Format("2006-01-02 15:04:05"), pm.Pod.Name)
+			t.Logf("watching pod %v for status.. current: %v", pm.Pod.Name, pm.Pod.Status)
 
 		case event := <-watch.ResultChan():
 			pod, ok := event.Object.(*corev1.Pod)

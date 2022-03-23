@@ -15,7 +15,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'myapp'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpie:latest'
+        image: 'radius.azurecr.io/magpiego:latest'
         env: {
           TWILIO_NUMBER: twilio.properties.fromNumber
           TWILIO_SID: twilio.secrets('accountSid')

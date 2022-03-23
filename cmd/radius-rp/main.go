@@ -36,6 +36,13 @@ func main() {
 	}
 	defer flush()
 
+	loggerValues := []interface{}{}
+	if options.Arm != nil {
+		loggerValues = []interface{}{
+			radlogger.LogFieldRPIdentifier, options.RPIdentifier,
+		}
+	}
+
 	host := &hosting.Host{
 		Services: []hosting.Service{
 			frontend.NewService(frontend.NewServiceOptions(options)),
@@ -44,10 +51,7 @@ func main() {
 		},
 
 		// Values that will be propagated to all loggers
-		LoggerValues: []interface{}{
-			radlogger.LogFieldResourceGroup, options.Arm.ResourceGroup,
-			radlogger.LogFieldSubscriptionID, options.Arm.SubscriptionID,
-		},
+		LoggerValues: loggerValues,
 	}
 
 	// Create a channel to handle the shutdown

@@ -325,10 +325,6 @@ jobs:
         dist/rad env init dev --name dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
-    - name: Dapr tool installer
-      uses: dapr/setup-dapr@v1
-    - name: Install dapr into cluster
-      run: dapr init -k --wait --timeout 600
     - name: Download Bicep
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH

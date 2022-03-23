@@ -21,12 +21,12 @@ const (
 	AzureFileShareStorageAccountBaseName = "storageaccountbase"
 )
 
-func NewAzureFileShareStorageAccountHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureFileShareStorageAccountHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureFileShareStorageAccountHandler{arm: arm}
 }
 
 type azureFileShareStorageAccountHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -38,7 +38,7 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 		return nil, err
 	}
 
-	_, err = getStorageAccountByID(ctx, handler.arm, properties[FileShareStorageAccountIDKey])
+	_, err = getStorageAccountByID(ctx, *handler.arm, properties[FileShareStorageAccountIDKey])
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +50,12 @@ func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, 
 	return nil
 }
 
-func NewAzureFileShareStorageAccountHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureFileShareStorageAccountHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureFileShareStorageAccountHealthHandler{arm: arm}
 }
 
 type azureFileShareStorageAccountHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureFileShareStorageAccountHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {

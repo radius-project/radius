@@ -28,12 +28,12 @@ const (
 )
 
 // NewAzureRoleAssignmentHandler initializes a new handler for resources of kind RoleAssignment
-func NewAzureRoleAssignmentHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureRoleAssignmentHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureRoleAssignmentHandler{arm: arm}
 }
 
 type azureRoleAssignmentHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -77,12 +77,12 @@ func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, options D
 	return nil
 }
 
-func NewAzureRoleAssignmentHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureRoleAssignmentHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureRoleAssignmentHealthHandler{arm: arm}
 }
 
 type azureRoleAssignmentHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureRoleAssignmentHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {

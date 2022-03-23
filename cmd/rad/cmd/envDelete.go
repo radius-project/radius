@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -121,7 +122,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if err = runEnvUninstallKubernetes(); err != nil {
+		if err = helm.UninstallOnCluster(cmd.Context()); err != nil {
 			return err
 		}
 	}

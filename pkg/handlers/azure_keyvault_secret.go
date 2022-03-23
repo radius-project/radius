@@ -27,12 +27,12 @@ const (
 )
 
 // NewAzureKeyVaultSecretHandler initializes a new handler for resources of kind Azure KeyVault Secret
-func NewAzureKeyVaultSecretHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureKeyVaultSecretHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureKeyVaultSecretHandler{arm: arm}
 }
 
 type azureKeyVaultSecretHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -112,12 +112,12 @@ func (handler *azureKeyVaultSecretHandler) Delete(ctx context.Context, options D
 	return nil
 }
 
-func NewAzureKeyVaultSecretHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureKeyVaultSecretHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureKeyVaultSecretHealthHandler{arm: arm}
 }
 
 type azureKeyVaultSecretHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureKeyVaultSecretHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {

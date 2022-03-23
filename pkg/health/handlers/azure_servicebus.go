@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureServiceBusQueueHandler(arm *armauth.ArmConfig) HealthHandler {
 	handler := &azureServiceBusQueueHandler{
 		azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
 	}
@@ -25,7 +25,7 @@ func NewAzureServiceBusQueueHandler(arm armauth.ArmConfig) HealthHandler {
 }
 
 type azureServiceBusBaseHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 type azureServiceBusQueueHandler struct {

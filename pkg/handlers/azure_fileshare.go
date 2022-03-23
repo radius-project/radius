@@ -17,12 +17,12 @@ const (
 	FileShareIDKey   = "fileshareid"
 )
 
-func NewAzureFileShareHandler(arm armauth.ArmConfig) ResourceHandler {
+func NewAzureFileShareHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureFileShareHandler{arm: arm}
 }
 
 type azureFileShareHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -47,12 +47,12 @@ func (handler *azureFileShareHandler) Delete(ctx context.Context, options Delete
 	return nil
 }
 
-func NewAzureFileShareHealthHandler(arm armauth.ArmConfig) HealthHandler {
+func NewAzureFileShareHealthHandler(arm *armauth.ArmConfig) HealthHandler {
 	return &azureFileShareHealthHandler{arm: arm}
 }
 
 type azureFileShareHealthHandler struct {
-	arm armauth.ArmConfig
+	arm *armauth.ArmConfig
 }
 
 func (handler *azureFileShareHealthHandler) GetHealthOptions(ctx context.Context) healthcontract.HealthCheckOptions {

@@ -31,23 +31,23 @@ type ArmConfig struct {
 }
 
 // GetArmConfig gets the configuration we use for managing ARM resources
-func GetArmConfig() (ArmConfig, error) {
+func GetArmConfig() (*ArmConfig, error) {
 	auth, err := GetArmAuthorizer()
 	if err != nil {
-		return ArmConfig{}, err
+		return &ArmConfig{}, err
 	}
 
 	subscriptionID := os.Getenv("ARM_SUBSCRIPTION_ID")
 	if subscriptionID == "" {
-		return ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID is missing")
+		return &ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID is missing")
 	}
 
 	resourceGroup := os.Getenv("ARM_RESOURCE_GROUP")
 	if resourceGroup == "" {
-		return ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
+		return &ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
 	}
 
-	return ArmConfig{
+	return &ArmConfig{
 		Auth:           auth,
 		SubscriptionID: subscriptionID,
 		ResourceGroup:  resourceGroup,
@@ -115,8 +115,17 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 
 // GetAuthMethod returns the authentication method used by the RP
 func GetAuthMethod() string {
-	settings, err := auth.GetSettingsFromEnvironment()
+	// Allow explicit configuration of the auth method, and fall back
+	// to auto-detection if unspecified
+	authMethod := os.Getenv("ARM_AUTH_METHOD")
+	switch authMethod {
+	case CliAuth:
+	case ManagedIdentityAuth:
+	case ServicePrincipalAuth:
+		return authMethod
+	}
 
+	settings, err := auth.GetSettingsFromEnvironment()
 	if err == nil && settings.Values[auth.ClientID] != "" && settings.Values[auth.ClientSecret] != "" {
 		return ServicePrincipalAuth
 	} else if os.Getenv("MSI_ENDPOINT") != "" || os.Getenv("IDENTITY_ENDPOINT") != "" {
