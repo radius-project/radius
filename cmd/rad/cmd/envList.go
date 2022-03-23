@@ -26,7 +26,7 @@ var envListCmd = &cobra.Command{
 		}
 
 		if len(env.Items) == 0 {
-			fmt.Println("No environments found. Use 'rad env init' to initialize.")
+			fmt.Println("environments found. Use 'rad env init' to initialize.")
 			return nil
 		}
 
