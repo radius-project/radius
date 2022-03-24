@@ -263,7 +263,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
-		t.Logf("validating objects in namespace %v", namespace)
+		log.Printf("validating objects in namespace %v", namespace)
 		namespaceTypes := map[schema.GroupVersionResource][]K8sObject{}
 		for _, obj := range expectedObjects {
 			_, ok := namespaceTypes[obj.GroupVersionResource]
@@ -292,12 +292,7 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 					}
 					assert.NoErrorf(t, err, "could not list deployed resources of type %s in namespace %s", resourceGVR.GroupResource(), namespace)
 
-					newExpected := matchesActualLabels(expectedInNamespace, deployedResources.Items)
-
-					if len(newExpected) > 0 {
-						validated = false
-					}
-					namespaceTypes[resourceGVR] = newExpected
+					validated = matchesActualLabels(expectedInNamespace, deployedResources.Items)
 				}
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
@@ -443,14 +438,15 @@ func logPods(t *testing.T, pods []corev1.Pod) {
 	}
 }
 
-func matchesActualLabels(expectedResources []K8sObject, actualResources []unstructured.Unstructured) []K8sObject {
+func matchesActualLabels(expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
 	remaining := []K8sObject{}
 
 	for _, expectedResource := range expectedResources {
 		resourceExists := false
-		for _, actualResource := range actualResources {
+		for idx, actualResource := range actualResources {
 			if labelsEqual(expectedResource.Labels, actualResource.GetLabels()) {
 				resourceExists = true
+				actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
 				break
 			}
 		}
@@ -458,7 +454,7 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 			remaining = append(remaining, expectedResource)
 		}
 	}
-	return remaining
+	return len(remaining) == 0
 }
 
 // returns the index if its found, otherwise nil
