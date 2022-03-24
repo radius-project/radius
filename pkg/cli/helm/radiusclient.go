@@ -161,14 +161,30 @@ func addAzureProviderValues(helmChart *chart.Chart, azureProvider *azure.Provide
 	azure["subscriptionId"] = azureProvider.SubscriptionID
 	azure["resourceGroup"] = azureProvider.ResourceGroup
 
-	_, ok = azure["servicePrincipal"]
-	if !ok {
-		azure["servicePrincipal"] = make(map[string]interface{})
+	if azureProvider.ServicePrincipal != nil {
+		_, ok = azure["servicePrincipal"]
+		if !ok {
+			azure["servicePrincipal"] = make(map[string]interface{})
+		}
+		azure["servicePrincipal"] = map[string]interface{}{
+			"clientId":     azureProvider.ServicePrincipal.ClientID,
+			"clientSecret": azureProvider.ServicePrincipal.ClientSecret,
+			"tenantId":     azureProvider.ServicePrincipal.TenantID,
+		}
+	} else if azureProvider.PodIdentitySelector != nil {
+		azure["podidentity"] = *azureProvider.PodIdentitySelector
 	}
-	azure["servicePrincipal"] = map[string]interface{}{
-		"clientId":     azureProvider.ServicePrincipal.ClientID,
-		"clientSecret": azureProvider.ServicePrincipal.ClientSecret,
-		"tenantId":     azureProvider.ServicePrincipal.TenantID,
+
+	if azureProvider.AKS != nil {
+		_, ok = rp["aks"]
+		if !ok {
+			rp["aks"] = make(map[string]interface{})
+		}
+
+		aks := rp["aks"].(map[string]interface{})
+		aks["clusterName"] = azureProvider.AKS.ClusterName
+		aks["subscriptionId"] = azureProvider.AKS.SubscriptionID
+		aks["resourceGroup"] = azureProvider.AKS.ResourceGroup
 	}
 
 	return nil

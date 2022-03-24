@@ -106,6 +106,14 @@ func initAzureRadEnvironment(cmd *cobra.Command, args []string) error {
 	clusterOptions.Radius.ChartPath = a.ChartPath
 	clusterOptions.Radius.Image = a.Image
 	clusterOptions.Radius.Tag = a.Tag
+	clusterOptions.Radius.AzureProvider = &radazure.Provider{
+		SubscriptionID:      a.SubscriptionID,
+		ResourceGroup:       a.ResourceGroup,
+		PodIdentitySelector: to.StringPtr("radius"),
+	}
+
+	// NOTE: the AKS configuration of the azure provider requires access to the cluster name, which we only have after deployment
+	// so we configure that later.
 
 	err = connect(cmd.Context(), a.Name, a.SubscriptionID, a.ResourceGroup, a.Location, a.DeploymentTemplate, a.ContainerRegistry, a.LogAnalyticsWorkspaceID, clusterOptions)
 	if err != nil {
@@ -483,6 +491,13 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", subscriptionID, "--resource-group", params.ControlPlaneResourceGroup, "--name", clusterName)
 	if err != nil {
 		return err
+	}
+
+	// Now that we've deployed we know the cluster name.
+	clusterOptions.Radius.AzureProvider.AKS = &radazure.AKSConfig{
+		SubscriptionID: subscriptionID,
+		ResourceGroup:  params.ControlPlaneResourceGroup,
+		ClusterName:    clusterName,
 	}
 
 	client, runtimeClient, _, err := createKubernetesClients("")

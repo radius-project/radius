@@ -7,6 +7,7 @@ package armauth
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/Azure/go-autorest/autorest"
@@ -82,56 +83,77 @@ func GetArmAuthorizerFromValues(clientID string, clientSecret string, tenantID s
 // GetArmAuthorizer returns an ARM authorizer and the client ID for the current process
 func GetArmAuthorizer() (autorest.Authorizer, error) {
 	authMethod := GetAuthMethod()
+
+	var auth autorest.Authorizer
+	var err error
 	if authMethod == ServicePrincipalAuth {
-		clientcfg := auth.NewClientCredentialsConfig(os.Getenv("AZURE_CLIENT_ID"), os.Getenv("AZURE_CLIENT_SECRET"), os.Getenv("AZURE_TENANT_ID"))
-		auth, err := clientcfg.Authorizer()
-		if err != nil {
-			return nil, err
-		}
-
-		token, err := clientcfg.ServicePrincipalToken()
-		if err != nil {
-			return nil, err
-		}
-
-		err = token.EnsureFresh()
-		if err != nil {
-			return nil, err
-		}
-
-		return auth, nil
+		auth, err = authServicePrincipal()
 	} else if authMethod == ManagedIdentityAuth {
-		config := auth.NewMSIConfig()
-		token, err := config.ServicePrincipalToken()
-		if err != nil {
-			return nil, err
-		}
-
-		err = token.EnsureFresh()
-		if err != nil {
-			return nil, err
-		}
-
-		auth, err := config.Authorizer()
-		if err != nil {
-			return nil, err
-		}
-
-		return auth, nil
+		auth, err = authMSI()
 	} else {
-		settings, err := auth.GetSettingsFromEnvironment()
-		if err != nil {
-			return nil, err
-		}
-
-		auth, err := auth.NewAuthorizerFromCLIWithResource(settings.Environment.ResourceManagerEndpoint)
-
-		if err != nil {
-			return nil, err
-		}
-
-		return auth, nil
+		auth, err = authCLI()
 	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to authorize with auth type %q: %w", authMethod, err)
+	}
+
+	return auth, nil
+}
+
+func authServicePrincipal() (autorest.Authorizer, error) {
+	clientcfg := auth.NewClientCredentialsConfig(os.Getenv("AZURE_CLIENT_ID"), os.Getenv("AZURE_CLIENT_SECRET"), os.Getenv("AZURE_TENANT_ID"))
+	auth, err := clientcfg.Authorizer()
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := clientcfg.ServicePrincipalToken()
+	if err != nil {
+		return nil, err
+	}
+
+	err = token.EnsureFresh()
+	if err != nil {
+		return nil, err
+	}
+
+	return auth, nil
+}
+
+func authMSI() (autorest.Authorizer, error) {
+	config := auth.NewMSIConfig()
+	token, err := config.ServicePrincipalToken()
+	if err != nil {
+		return nil, err
+	}
+
+	err = token.EnsureFresh()
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := config.Authorizer()
+	if err != nil {
+		return nil, err
+	}
+
+	return auth, nil
+}
+
+func authCLI() (autorest.Authorizer, error) {
+	settings, err := auth.GetSettingsFromEnvironment()
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := auth.NewAuthorizerFromCLIWithResource(settings.Environment.ResourceManagerEndpoint)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return auth, nil
 }
 
 // GetAuthMethod returns the authentication method used by the RP
@@ -139,10 +161,7 @@ func GetAuthMethod() string {
 	// Allow explicit configuration of the auth method, and fall back
 	// to auto-detection if unspecified
 	authMethod := os.Getenv("ARM_AUTH_METHOD")
-	switch authMethod {
-	case CliAuth:
-	case ManagedIdentityAuth:
-	case ServicePrincipalAuth:
+	if authMethod != "" {
 		return authMethod
 	}
 
