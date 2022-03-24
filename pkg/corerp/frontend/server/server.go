@@ -12,7 +12,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/corerp/middlewares"
+	"github.com/project-radius/radius/pkg/corerp/middleware"
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -30,12 +30,12 @@ func NewServer(ctx context.Context, options ServerOptions) *http.Server {
 		options.Configure(r)
 	}
 
-	r.Use(middlewares.AppendLogValues)
+	r.Use(middleware.AppendLogValues)
 	r.Path("/version").Methods(http.MethodGet).HandlerFunc(reportVersion)
 
 	server := &http.Server{
 		Addr:    options.Address,
-		Handler: middlewares.LowercaseURLPath(r),
+		Handler: middleware.LowercaseURLPath(r),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},

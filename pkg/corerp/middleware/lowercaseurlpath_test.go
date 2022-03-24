@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package middlewares
+package middleware
 
 import (
 	"context"
