@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func TestAzureEnvironment(t *testing.T) {
@@ -57,12 +58,72 @@ func TestAzureEnvironment(t *testing.T) {
 		expectedPods := validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
 				"radius-system": {
-					validation.NewK8sPodForResource("app", "dapr-dashboard"),
-					validation.NewK8sPodForResource("app", "dapr-operator"),
-					validation.NewK8sPodForResource("app", "dapr-placement-server"),
-					validation.NewK8sPodForResource("app", "dapr-sentry"),
-					validation.NewK8sPodForResource("app", "dapr-sidecar-injector"),
-					validation.NewK8sPodForResource("app", "haproxy-ingress"),
+					validation.K8sObject{
+						GroupVersionResource: schema.GroupVersionResource{
+							Group:    "",
+							Version:  "v1",
+							Resource: "pods",
+						},
+						Kind: "Pod",
+						Labels: map[string]string{
+							"app": "dapr-dashboard",
+						},
+					},
+					validation.K8sObject{
+						GroupVersionResource: schema.GroupVersionResource{
+							Group:    "",
+							Version:  "v1",
+							Resource: "pods",
+						},
+						Kind: "Pod",
+						Labels: map[string]string{
+							"app": "dapr-operator",
+						},
+					},
+					validation.K8sObject{
+						GroupVersionResource: schema.GroupVersionResource{
+							Group:    "",
+							Version:  "v1",
+							Resource: "pods",
+						},
+						Kind: "Pod",
+						Labels: map[string]string{
+							"app": "dapr-placement-server",
+						},
+					},
+					validation.K8sObject{
+						GroupVersionResource: schema.GroupVersionResource{
+							Group:    "",
+							Version:  "v1",
+							Resource: "pods",
+						},
+						Kind: "Pod",
+						Labels: map[string]string{
+							"app": "dapr-sentry",
+						},
+					},
+					validation.K8sObject{
+						GroupVersionResource: schema.GroupVersionResource{
+							Group:    "",
+							Version:  "v1",
+							Resource: "pods",
+						},
+						Kind: "Pod",
+						Labels: map[string]string{
+							"app": "dapr-sidecar-injector",
+						},
+					},
+					validation.K8sObject{
+						GroupVersionResource: schema.GroupVersionResource{
+							Group:    "",
+							Version:  "v1",
+							Resource: "pods",
+						},
+						Kind: "Pod",
+						Labels: map[string]string{
+							"app.kubernetes.io/name": "haproxy-ingress",
+						},
+					},
 				},
 			},
 		}
