@@ -35,7 +35,7 @@ var envInitKubernetesCmd = &cobra.Command{
 }
 
 func installKubernetes(cmd *cobra.Command, args []string) error {
-	environmentName, err := cmd.Flags().GetString("name")
+	environmentName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return err
 	}
@@ -157,10 +157,8 @@ func createKubernetesClients(contextName string) (client_go.Interface, runtime_c
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	envInitKubernetesCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose namespace interactively")
-	envInitKubernetesCmd.Flags().StringP("name", "n", "", "The name to use for the environment")
+	envInitKubernetesCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
 	envInitKubernetesCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
 	envInitKubernetesCmd.Flags().String("image", "", "Specify the radius controller image to use")
 	envInitKubernetesCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
-	envInitKubernetesCmd.Flags().String("namespace", "default", "The namespace to use for the environment")
-
 }
