@@ -278,7 +278,6 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 			select {
 			case <-time.After(IntervalForResourceCreation):
 				for resourceGVR, expectedInNamespace := range namespaceTypes {
-					fmt.Printf("%s, %s", resourceGVR, expected)
 					r, err := restMapper.KindFor(resourceGVR)
 					assert.NoErrorf(t, err, "failed to get kind for %s", resourceGVR)
 
@@ -458,17 +457,6 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 		if !resourceExists {
 			remaining = append(remaining, expectedResource)
 		}
-		// if err != nil {
-		// 	t.Logf("failed to find resource with %s", resource)
-		// 	newExpected = append(newExpected, resource)
-		// 	continue
-		// }
-
-		// if r.Kind != resource.Kind {
-		// 	t.Logf("Kind %s does not match resource %s", r.Kind, resource)
-		// 	newExpected = append(newExpected, resource)
-		// 	continue
-		// }
 	}
 	return remaining
 }
