@@ -31,13 +31,14 @@ func AddRoutes(providerCtrl *controllers.ProviderController, rpCtrl *controllers
 	router.NotFoundHandler = http.HandlerFunc(notSupported)
 
 	// Provider system notification.
-	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 	router.Path("/subscriptions/{subscriptionID}").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
 		Methods(http.MethodPut).HandlerFunc(h.CreateOrUpdateSubscription)
 
 	// Tenant level API routes.
 	tenantLevelPath := h.pathPrefix + "/providers/applications.core"
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 	router.Path(tenantLevelPath+"/operations").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
 		Methods(http.MethodGet).HandlerFunc(h.GetOperations)
