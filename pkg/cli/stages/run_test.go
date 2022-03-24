@@ -578,6 +578,13 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 		},
 	}
 
+	tempDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
 	options := Options{
 		Environment: &MockEnvironment{
 			DeploymentClient: &MockDeploymentClient{
@@ -588,8 +595,9 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 				},
 			},
 		},
-		Manifest:   manifest,
-		FinalStage: "first",
+		BaseDirectory: tempDir,
+		Manifest:      manifest,
+		FinalStage:    "first",
 		Parameters: map[string]map[string]interface{}{
 			"param1": {
 				"value": "value1",
