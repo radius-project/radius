@@ -29,7 +29,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
 	"github.com/project-radius/radius/pkg/renderers/redisv1alpha3"
-	"github.com/project-radius/radius/pkg/renderers/servicebusqueuev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -140,10 +139,6 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 				ResourceType: volumev1alpha3.ResourceType,
 				Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.GetSupportedRenderers(), Arm: arm},
 			},
-			{
-				ResourceType: servicebusqueuev1alpha3.ResourceType,
-				Renderer:     &servicebusqueuev1alpha3.Renderer{},
-			},
 		}
 
 		radiusResourceModel = append(radiusResourceModel, azureModel...)
@@ -217,14 +212,14 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 			HealthHandler:   handlers.NewAzureCosmosDBSQLHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureCosmosDBSQLHandler(arm),
 		},
-		{
-			Kind:            resourcekinds.AzureServiceBusQueue,
-			HealthHandler:   handlers.NewAzureServiceBusQueueHealthHandler(arm),
-			ResourceHandler: handlers.NewAzureServiceBusQueueHandler(arm),
-			ShouldSupportHealthMonitorFunc: func(identity resourcemodel.ResourceIdentity) bool {
-				return true
-			},
-		},
+		// {
+		// 	Kind:            resourcekinds.AzureServiceBusQueue,
+		// 	HealthHandler:   handlers.NewAzureServiceBusQueueHealthHandler(arm),
+		// 	ResourceHandler: handlers.NewAzureServiceBusQueueHandler(arm),
+		// 	ShouldSupportHealthMonitorFunc: func(identity resourcemodel.ResourceIdentity) bool {
+		// 		return true
+		// 	},
+		// },
 		{
 			Kind:            resourcekinds.AzureKeyVault,
 			HealthHandler:   handlers.NewAzureKeyVaultHealthHandler(arm),
