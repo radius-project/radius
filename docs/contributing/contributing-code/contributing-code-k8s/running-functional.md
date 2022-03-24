@@ -103,6 +103,7 @@ You can also debug the controller in VSCode by running the cmd/radius-controller
     "env": {
         "SKIP_WEBHOOKS": "true", // Don't enable webhooks when running locally as they require a cert.
         "SKIP_APISERVICE_TLS": "true" // Don't enable TLS when running locally as it requires a cert.
+        "RADIUSBACKENDURL": "https://localhost:7194/apis/api.radius.dev/v1alpha3" // NOTE: Requires /apis/api.radius.dev/v1alpha3 when running against K8s control plane for now unlike local RP
     }
 },
 ```

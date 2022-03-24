@@ -61,11 +61,11 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "frontend"),
-						validation.NewK8sObjectForResource(application, "backend"),
+						validation.NewK8sPodForResource(application, "frontend"),
+						validation.NewK8sPodForResource(application, "backend"),
 					},
 				},
 			},
@@ -109,25 +109,13 @@ func Test_ContainerGateway(t *testing.T) {
 					// Intentionally Empty
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "frontend"),
-						validation.NewK8sObjectForResource(application, "backend"),
-					},
-				},
-			},
-			Gateway: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					application: {
-						validation.NewK8sObjectForResource(application, "gateway"),
-					},
-				},
-			},
-			HttpRoute: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					application: {
-						validation.NewK8sObjectForResource(application, "frontend"),
+						validation.NewK8sPodForResource(application, "frontend"),
+						validation.NewK8sPodForResource(application, "backend"),
+						validation.NewK8sGatewayForResource(application, "gateway"),
+						validation.NewK8sHttpRouteForResource(application, "frontend"),
 					},
 				},
 			},
@@ -194,11 +182,11 @@ func Test_ContainerManualScale(t *testing.T) {
 					// Intentionally Empty
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "frontend"),
-						validation.NewK8sObjectForResource(application, "backend"),
+						validation.NewK8sPodForResource(application, "frontend"),
+						validation.NewK8sPodForResource(application, "backend"),
 					},
 				},
 			},
@@ -248,10 +236,10 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 					// Intentionally Empty
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "backend"),
+						validation.NewK8sPodForResource(application, "backend"),
 					},
 				},
 			},

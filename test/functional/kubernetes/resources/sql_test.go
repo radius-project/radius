@@ -42,17 +42,11 @@ func Test_MicrosoftSQL(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sObjectForResource(application, "todoapp"),
-					},
-				},
-			},
-			Services: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sObjectForResource(application, "sql-route"),
+						validation.NewK8sPodForResource(application, "todoapp"),
+						validation.NewK8sServiceForResource(application, "sql-route"),
 					},
 				},
 			},

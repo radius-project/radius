@@ -34,7 +34,7 @@ jobs:
       run: python ./.github/scripts/get_release_version.py
     - name: Download rad-bicep
       run: |
-        curl https://radiuspublic.blob.core.windows.net/tools/bicep/${{ env.REL_CHANNEL }}/linux-x64/rad-bicep --output rad-bicep
+        ./.github/scripts/curl-with-retries.sh https://radiuspublic.blob.core.windows.net/tools/bicep/${{ env.REL_CHANNEL }}/linux-x64/rad-bicep --output rad-bicep
         chmod +x rad-bicep
         ./rad-bicep --version
     - name: Verify bicep files

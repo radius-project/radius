@@ -32,8 +32,8 @@ const (
 
 // EnvironmentSection is the representation of the environment section of radius config.
 type EnvironmentSection struct {
-	Default string                            `mapstructure:"default" yaml:"default"`
-	Items   map[string]map[string]interface{} `mapstructure:"items" yaml:"items"`
+	Default string                            `json:"default" mapstructure:"default" yaml:"default"`
+	Items   map[string]map[string]interface{} `json:"items" mapstructure:"items" yaml:"items"`
 }
 
 type ApplicationSection struct {

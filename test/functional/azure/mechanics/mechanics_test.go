@@ -43,10 +43,10 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "a"),
+						validation.NewK8sPodForResource(application, "a"),
 					},
 				},
 			},
@@ -78,11 +78,11 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "a"),
-						validation.NewK8sObjectForResource(application, "b"),
+						validation.NewK8sPodForResource(application, "a"),
+						validation.NewK8sPodForResource(application, "b"),
 					},
 				},
 			},
@@ -141,11 +141,11 @@ func Test_CommunicationCycle(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "a"),
-						validation.NewK8sObjectForResource(application, "b"),
+						validation.NewK8sPodForResource(application, "a"),
+						validation.NewK8sPodForResource(application, "b"),
 					},
 				},
 			},

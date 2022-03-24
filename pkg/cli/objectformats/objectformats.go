@@ -63,3 +63,24 @@ func GetResourceTableFormat() output.FormatterOptions {
 		},
 	}
 }
+
+func GetGenericEnvironmentTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
+			},
+			{
+				Heading:  "DEFAULT APPLICATION",
+				JSONPath: "{ .DefaultApplication }",
+			},
+		},
+	}
+}
+
+

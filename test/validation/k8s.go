@@ -13,24 +13,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	kuberneteskeys "github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	watchk8s "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/restmapper"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 const (
@@ -48,13 +42,57 @@ type K8sObjectSet struct {
 }
 
 type K8sObject struct {
-	Labels map[string]string
+	GroupVersionResource schema.GroupVersionResource
+	Labels               map[string]string
+	Kind                 string
 }
 
-func NewK8sObjectForResource(application string, name string) K8sObject {
+func NewK8sPodForResource(application string, name string) K8sObject {
 	return K8sObject{
 		// NOTE: we use the selector labels here because the selector labels are intended
 		// to be determininistic. We might add things to the descriptive labels that are NON deterministic.
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "pods",
+		},
+		Kind:   "Pod",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+func NewK8sGatewayForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "networking.x-k8s.io",
+			Version:  "v1alpha1",
+			Resource: "gateways",
+		},
+		Kind:   "Gateway",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+func NewK8sHttpRouteForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "networking.x-k8s.io",
+			Version:  "v1alpha1",
+			Resource: "httproutes",
+		},
+		Kind:   "HTTPRoute",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+func NewK8sServiceForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "services",
+		},
+		Kind:   "Service",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }
@@ -218,258 +256,39 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 	log.Printf("Saved container logs to %s", filename)
 }
 
-// ValidatePodsRunning validates the namespaces and pods specified in each namespace are running
-func ValidatePodsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
-	for namespace, expectedPods := range expected.Namespaces {
-		t.Logf("validating pods in namespace %v", namespace)
-		var actualPods *corev1.PodList
-		applicationPods := []corev1.Pod{}
-		for {
-			select {
-			case <-time.After(IntervalForResourceCreation):
-				t.Logf("at %s waiting for pods in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
-
-				var err error
-				actualPods, err = k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
-				require.NoErrorf(t, err, "failed to list pods in namespace %v", namespace)
-
-				// log all the data so its there if we need to analyze a failure
-				logPods(t, actualPods.Items)
-
-				// copy the list of expected pods so we can remove from it
-				//
-				// this way we "check off" each pod as it is matched
-				remaining := make([]K8sObject, len(expectedPods))
-				copy(remaining, expectedPods)
-
-				for _, actualPod := range actualPods.Items {
-					// validate that this matches one of our expected pods
-					index := matchesExpectedLabels(remaining, actualPod.Labels)
-					if index == nil {
-						// this is not a match
-						t.Logf("unrecognized pod, could not find a match for Pod with namespace: %v name: %v labels: %v",
-							actualPod.Namespace,
-							actualPod.Name,
-							actualPod.Labels)
-						continue
-					}
-
-					// trim the list of 'remaining' pods
-					remaining = append(remaining[:*index], remaining[*index+1:]...)
-					applicationPods = append(applicationPods, actualPod)
-				}
-
-				if len(remaining) == 0 {
-					goto podcheck
-				}
-				for _, remainingPod := range remaining {
-					t.Logf("failed to match pod in namespace %v with labels %v, retrying", namespace, remainingPod.Labels)
-				}
-
-			case <-ctx.Done():
-				assert.Fail(t, "timed out after waiting for pods to be created")
-				return
-			}
-		}
-
-		// Now check the status of the pods
-	podcheck:
-		for _, applicationPod := range applicationPods {
-			monitor := PodMonitor{
-				K8s: k8s,
-				Pod: applicationPod,
-			}
-			monitor.ValidateRunning(ctx, t)
-		}
-	}
-}
-
-// ValidateGatewaysRunning validates the namespaces and gateways specified in each namespace are running
-func ValidateGatewaysRunning(ctx context.Context, t *testing.T, client client.Client, expected K8sObjectSet) {
-	for namespace, expectedGateways := range expected.Namespaces {
-		t.Logf("validating gateways in namespace %v", namespace)
-		for {
-			select {
-			case <-time.After(IntervalForResourceCreation):
-				t.Logf("at %s waiting for gateways in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
-
-				var err error
-				var actualGateways gatewayv1alpha1.GatewayList
-				err = client.List(ctx, &actualGateways)
-				require.NoErrorf(t, err, "failed to list gateways in namespace %v", namespace)
-
-				remaining := make([]K8sObject, len(expectedGateways))
-				copy(remaining, expectedGateways)
-
-				for _, gateway := range actualGateways.Items {
-					index := matchesExpectedLabels(remaining, gateway.Labels)
-					if index == nil {
-						t.Logf("unrecognized gateway, could not find a match for gateway with namespace: %v name: %v labels: %v",
-							gateway.Namespace,
-							gateway.Name,
-							gateway.Labels)
-						continue
-					}
-
-					remaining = append(remaining[:*index], remaining[*index+1:]...)
-				}
-
-				if len(remaining) == 0 {
-					return
-				}
-				for _, remainingIngress := range remaining {
-					t.Logf("failed to match gateway in namespace %v with labels %v, retrying", namespace, remainingIngress.Labels)
-				}
-
-			case <-ctx.Done():
-				assert.Fail(t, "timed out after waiting for gateways to be created")
-				return
-			}
-		}
-	}
-}
-
-// ValidateHttpRoutesRunning validates the namespaces and gateways specified in each namespace are running
-func ValidateHttpRoutesRunning(ctx context.Context, t *testing.T, client client.Client, expected K8sObjectSet) {
-	for namespace, expectedHttpRoutes := range expected.Namespaces {
-		t.Logf("validating gateways in namespace %v", namespace)
-		for {
-			select {
-			case <-time.After(IntervalForResourceCreation):
-				t.Logf("at %s waiting for gateways in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
-
-				var err error
-				var actualRoutes gatewayv1alpha1.HTTPRouteList
-				err = client.List(ctx, &actualRoutes)
-				require.NoErrorf(t, err, "failed to list httproutes in namespace %v", namespace)
-
-				remaining := make([]K8sObject, len(expectedHttpRoutes))
-				copy(remaining, expectedHttpRoutes)
-
-				for _, httproute := range actualRoutes.Items {
-					index := matchesExpectedLabels(remaining, httproute.Labels)
-					if index == nil {
-						t.Logf("unrecognized httproute, could not find a match for Ingress with namespace: %v name: %v labels: %v",
-							httproute.Namespace,
-							httproute.Name,
-							httproute.Labels)
-						continue
-					}
-
-					remaining = append(remaining[:*index], remaining[*index+1:]...)
-				}
-
-				if len(remaining) == 0 {
-					return
-				}
-				for _, remainingIngress := range remaining {
-					t.Logf("failed to match httproute in namespace %v with labels %v, retrying", namespace, remainingIngress.Labels)
-				}
-
-			case <-ctx.Done():
-				assert.Fail(t, "timed out after waiting for httproutes to be created")
-				return
-			}
-		}
-	}
-}
-
-// ValidateServicesRunning validates the namespaces and services specified in each namespace are running
-func ValidateServicesRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
-	for namespace, expectedServices := range expected.Namespaces {
-		t.Logf("validating services in namespace %v", namespace)
-		for {
-			select {
-			case <-time.After(IntervalForResourceCreation):
-				t.Logf("at %s waiting for services in namespace %s to appear.. ", time.Now().Format("2006-01-02 15:04:05"), namespace)
-
-				var err error
-				actualServices, err := k8s.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
-				require.NoErrorf(t, err, "failed to list services in namespace %v", namespace)
-
-				// copy the list of expected services so we can remove from it
-				//
-				// this way we "check off" each service as it is matched
-				remaining := make([]K8sObject, len(expectedServices))
-				copy(remaining, expectedServices)
-
-				for _, service := range actualServices.Items {
-					// validate that this matches one of our expected services
-					index := matchesExpectedLabels(remaining, service.Labels)
-					if index == nil {
-						// this is not a match
-						t.Logf("unrecognized service, could not find a match for Service with namespace: %v name: %v labels: %v",
-							service.Namespace,
-							service.Name,
-							service.Labels)
-						continue
-					}
-
-					// trim the list of 'remaining' services
-					remaining = append(remaining[:*index], remaining[*index+1:]...)
-				}
-
-				if len(remaining) == 0 {
-					return
-				}
-				for _, remainingService := range remaining {
-					t.Logf("failed to match service in namespace %v with labels %v, retrying", namespace, remainingService.Labels)
-				}
-
-			case <-ctx.Done():
-				assert.Fail(t, "timed out after waiting for services to be created")
-				return
-			}
-		}
-	}
-}
-
-// ValidateResourcesCreated validates that the required Kubernetes resources were created correctly.
-func ValidateResourcesCreated(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected []unstructured.Unstructured) {
+// // ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
+func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
-	for _, r := range expected {
-		resourceId := fmt.Sprintf("%q/%s/%s", r.GroupVersionKind(), r.GetNamespace(), r.GetName())
-		t.Logf("validating resources %s", resourceId)
+	for namespace, expectedObjects := range expected.Namespaces {
+		t.Logf("validating objects in namespace %v", namespace)
+		remaining := make([]K8sObject, len(expectedObjects))
+		copy(remaining, expectedObjects)
 		for {
 			select {
 			case <-time.After(IntervalForResourceCreation):
-				mapping, err := restMapper.RESTMapping(r.GroupVersionKind().GroupKind(), r.GroupVersionKind().Version)
-				if err != nil {
-					t.Errorf("unknown kind %q: %v", r.GroupVersionKind().String(), err)
-				}
-				var output *unstructured.Unstructured
-				if mapping.Scope == meta.RESTScopeNamespace {
-					output, err = dynamic.Resource(mapping.Resource).Namespace(r.GetNamespace()).Get(context.TODO(), r.GetName(), metav1.GetOptions{})
-				} else {
-					output, err = dynamic.Resource(mapping.Resource).Get(context.TODO(), r.GetName(), metav1.GetOptions{})
-				}
-				if err != nil {
-					if errors.IsNotFound(err) {
-						t.Logf("resource %q/%s/%s not yet created", r.GroupVersionKind(), r.GetNamespace(), r.GetName())
+				newRemaining := []K8sObject{}
+				for _, resource := range remaining {
+					r, err := restMapper.KindFor(resource.GroupVersionResource)
+
+					if err != nil {
+						t.Logf("failed to find resource with %s", resource)
+						newRemaining = append(newRemaining, resource)
 						continue
 					}
-					assert.Failf(t, "fail to look for resource %s: %v", resourceId, err)
-				}
-				meta, _ := output.Object["metadata"].(map[string]interface{})
-				// ignore some fields that only known at runtime.
-				delete(meta, "managedFields")
-				delete(meta, "resourceVersion")
-				delete(meta, "creationTimestamp")
-				delete(meta, "uid")
 
-				annotations, _ := meta["annotations"].(map[string]interface{})
-				// ignore deployment template label: these are generated names and won't match.
-				delete(annotations, kuberneteskeys.LabelRadiusDeployment)
-				if len(annotations) == 0 {
-					delete(meta, "annotations")
+					if r.Kind != resource.Kind {
+						t.Logf("Kind %s does not match resource %s", r.Kind, resource)
+						newRemaining = append(newRemaining, resource)
+						continue
+					}
 				}
-				if diff := cmp.Diff(r, *output); diff != "" {
-					assert.Fail(t, "resource "+resourceId+" mismatch (-want,+diff): "+diff)
-				}
-				return
+				remaining = newRemaining
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
 				return
+			}
+			if len(remaining) == 0 {
+				break
 			}
 		}
 	}
@@ -541,7 +360,7 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	for {
 		select {
 		case <-time.After(IntervalForWatchHeartbeat):
-			t.Logf("at %s watching pod %v for status.. ", time.Now().Format("2006-01-02 15:04:05"), pm.Pod.Name)
+			t.Logf("watching pod %v for status.. current: %v", pm.Pod.Name, pm.Pod.Status)
 
 		case event := <-watch.ResultChan():
 			pod, ok := event.Object.(*corev1.Pod)

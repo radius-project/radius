@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/keys"
-	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
@@ -57,21 +56,22 @@ func TestAzureEnvironment(t *testing.T) {
 	t.Run("Validate Kubernetes Runtime", func(t *testing.T) {
 		expectedPods := validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
+				// verify dapr
+				"dapr-system": {
+					validation.NewK8sPodForResource("app", "dapr-dashboard"),
+					validation.NewK8sPodForResource("app", "dapr-operator"),
+					validation.NewK8sPodForResource("app", "dapr-placement-server"),
+					validation.NewK8sPodForResource("app", "dapr-sentry"),
+					validation.NewK8sPodForResource("app", "dapr-sidecar-injector"),
+				},
+				// verify haproxy
 				"radius-system": {
-					// verify dapr
-					validation.K8sObject{Labels: map[string]string{"app": "dapr-dashboard"}},
-					validation.K8sObject{Labels: map[string]string{"app": "dapr-operator"}},
-					validation.K8sObject{Labels: map[string]string{"app": "dapr-placement-server"}},
-					validation.K8sObject{Labels: map[string]string{"app": "dapr-sentry"}},
-					validation.K8sObject{Labels: map[string]string{"app": "dapr-sidecar-injector"}},
-
-					// verify haproxy
-					validation.K8sObject{Labels: map[string]string{kubernetes.LabelName: "haproxy-ingress"}},
+					validation.NewK8sPodForResource("app", "haproxy-ingress"),
 				},
 			},
 		}
 
-		validation.ValidatePodsRunning(ctx, t, options.K8sClient, expectedPods)
+		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, expectedPods)
 	})
 }
 

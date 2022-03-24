@@ -46,10 +46,10 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "myapp"),
+						validation.NewK8sPodForResource(application, "myapp"),
 					},
 				},
 			},

@@ -19,8 +19,6 @@ import (
 )
 
 func Test_MongoDB(t *testing.T) {
-	//TODO: https://github.com/project-radius/radius/issues/2039
-	t.SkipNow()
 	application := "azure-resources-mongodb"
 	template := "testdata/azure-resources-mongodb.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -66,10 +64,10 @@ func Test_MongoDB(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "todoapp"),
+						validation.NewK8sPodForResource(application, "todoapp"),
 					},
 				},
 			},
@@ -80,8 +78,6 @@ func Test_MongoDB(t *testing.T) {
 }
 
 func Test_MongoDBUserSecrets(t *testing.T) {
-	//TODO: https://github.com/project-radius/radius/issues/2039
-	t.SkipNow()
 	application := "azure-resources-mongodb-user-secrets"
 	template := "testdata/azure-resources-mongodb-user-secrets.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -103,10 +99,10 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "todoapp"),
+						validation.NewK8sPodForResource(application, "todoapp"),
 					},
 				},
 			},

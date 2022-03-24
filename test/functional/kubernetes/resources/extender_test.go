@@ -35,12 +35,12 @@ func TestExtender(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						// This will ensure that all the connection-properties
 						// were populated correctly.
-						validation.NewK8sObjectForResource(application, "myapp"),
+						validation.NewK8sPodForResource(application, "myapp"),
 					},
 				},
 			},

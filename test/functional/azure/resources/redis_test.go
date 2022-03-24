@@ -15,8 +15,6 @@ import (
 )
 
 func Test_RedisUserSecrets(t *testing.T) {
-	//TODO: https://github.com/project-radius/radius/issues/2039
-	t.SkipNow()
 	application := "azure-resources-redis-user-secrets"
 	template := "testdata/azure-resources-redis-user-secrets.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
@@ -38,10 +36,10 @@ func Test_RedisUserSecrets(t *testing.T) {
 					},
 				},
 			},
-			Pods: &validation.K8sObjectSet{
+			Objects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						validation.NewK8sObjectForResource(application, "todoapp"),
+						validation.NewK8sPodForResource(application, "todoapp"),
 					},
 				},
 			},
