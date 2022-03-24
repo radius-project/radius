@@ -75,7 +75,8 @@ func (h *handler) CreateOrUpdateSubscription(w http.ResponseWriter, req *http.Re
 func (h *handler) ListEnvironments(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
-	internalServerError(ctx, w, req, errors.New("Not impelmented"))
+	// TODO: Implement environment resource type list operations
+	internalServerError(ctx, w, req, errors.New("Not implemented"))
 }
 
 func (h *handler) resourceID(req *http.Request) azresources.ResourceID {
@@ -112,6 +113,7 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.R
 }
 
 func readJSONBody(req *http.Request) ([]byte, error) {
+	// TODO: Validate if content-type is application/json or not.
 	defer req.Body.Close()
 	data, err := ioutil.ReadAll(req.Body)
 	if err != nil {

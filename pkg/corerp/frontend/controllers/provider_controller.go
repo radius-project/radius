@@ -33,7 +33,6 @@ func NewProviderController(db db.RadrpDB, deploy deployment.DeploymentProcessor,
 
 // CreateOrUpdateSubscription is triggered when the state of the user subscription is changed (setup or tear down).
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#subscription-lifecycle-api-reference
-// PUT	https://<registered-resource-provider-endpoint>/subscriptions/{subscriptionId}?api-version=2.0
 func (ctrl *ProviderController) CreateOrUpdateSubscription(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
 	// TODO: implement!
 	return nil, nil

@@ -35,7 +35,7 @@ func TestLowercaseURLPath(t *testing.T) {
 		r := mux.NewRouter()
 		r.Path("/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}").Methods(http.MethodPost).HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				w.Write([]byte(r.URL.Path)) //nolint:errcheck
+				_, _ = w.Write([]byte(r.URL.Path))
 			})
 
 		handler := LowercaseURLPath(r)

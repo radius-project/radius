@@ -8,7 +8,7 @@
 package hostoptions
 
 import (
-	"errors"
+	"fmt"
 	"io/ioutil"
 
 	"gopkg.in/yaml.v3"
@@ -47,7 +47,7 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 	conf := &ProviderConfig{}
 	err = yaml.Unmarshal(buf, conf)
 	if err != nil {
-		return nil, errors.New("fails to load yaml" + err.Error())
+		return nil, fmt.Errorf("fails to load yaml: %w", err)
 	}
 
 	return conf, nil
