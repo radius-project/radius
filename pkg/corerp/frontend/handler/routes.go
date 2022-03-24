@@ -6,12 +6,10 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
-	"github.com/project-radius/radius/pkg/radrp/rest"
 )
 
 const (
@@ -27,8 +25,6 @@ func AddRoutes(providerCtrl *controllers.ProviderController, rpCtrl *controllers
 		validatorFactory: validatorFactory,
 		pathPrefix:       swaggerDocRoute,
 	}
-
-	router.NotFoundHandler = http.HandlerFunc(notSupported)
 
 	// Provider system notification.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
@@ -50,9 +46,4 @@ func AddRoutes(providerCtrl *controllers.ProviderController, rpCtrl *controllers
 	environmentRTSubrouter := router.Path(resourceGroupLevelPath+"/environments/{environment}").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 	environmentRTSubrouter.Methods(http.MethodGet).HandlerFunc(h.ListEnvironments)
-}
-
-func notSupported(w http.ResponseWriter, req *http.Request) {
-	response := rest.NewBadRequestResponse(fmt.Sprintf("Route not suported: %s", req.URL.Path))
-	_ = response.Apply(req.Context(), w, req)
 }
