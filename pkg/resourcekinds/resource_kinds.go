@@ -27,7 +27,7 @@ const (
 	AzureCosmosAccount               = "azure.cosmosdb.account"
 	AzureCosmosDBMongo               = "azure.cosmosdb.mongo"
 	AzureCosmosDBSQL                 = "azure.cosmosdb.sql"
-	AzureServiceBusQueue             = "azure.servicebus.queue"
+	AzureServiceBusQueue             = "Microsoft.ServiceBus"
 	AzureSqlServer                   = "azure.sql"
 	AzureSqlServerDatabase           = "azure.sql.database"
 	AzureKeyVault                    = "azure.keyvault"
