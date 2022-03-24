@@ -291,6 +291,8 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 					} else {
 						deployedResources, err = dynamic.Resource(mapping.Resource).List(ctx, metav1.ListOptions{})
 					}
+					assert.NoErrorf(t, err, "could not list deployed resources of type %s in namespace %s", resourceGVR.GroupResource(), namespace)
+
 					newExpected := matchesActualLabels(expectedInNamespace, deployedResources.Items)
 
 					if len(newExpected) > 0 {
