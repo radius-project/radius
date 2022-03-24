@@ -292,7 +292,7 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 					}
 					assert.NoErrorf(t, err, "could not list deployed resources of type %s in namespace %s", resourceGVR.GroupResource(), namespace)
 
-					validated = matchesActualLabels(expectedInNamespace, deployedResources.Items)
+					validated = validated && matchesActualLabels(expectedInNamespace, deployedResources.Items)
 				}
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
@@ -453,6 +453,10 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 		if !resourceExists {
 			remaining = append(remaining, expectedResource)
 		}
+	}
+
+	for _, remainingResource := range remaining {
+		log.Printf("Failed to validate resource with of type %s with labels %s", remainingResource.GroupVersionResource.Resource, remainingResource.Labels)
 	}
 	return len(remaining) == 0
 }
