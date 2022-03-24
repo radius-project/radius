@@ -768,9 +768,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		"clusterName":               clusterName,
 	}
 
-	cli.UpdateEnvironmentSectionOnCreation(config, env, name)
-
-	err = cli.SaveConfig(config)
+	err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(name)))
 	if err != nil {
 		return err
 	}

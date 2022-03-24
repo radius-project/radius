@@ -70,7 +70,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = updateApplicationConfig(config, env, applicationName)
+	err = updateApplicationConfig(cmd.Context(), config, env, applicationName)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func appDeleteInner(ctx context.Context, client clients.ManagementClient, applic
 	return nil
 }
 
-func updateApplicationConfig(config *viper.Viper, env environments.Environment, applicationName string) error {
+func updateApplicationConfig(ctx context.Context, config *viper.Viper, env environments.Environment, applicationName string) error {
 	// If the application we are deleting is the default application, remove it
 	if env.GetDefaultApplication() == applicationName {
 		envSection, err := cli.ReadEnvironmentSection(config)
@@ -101,9 +101,7 @@ func updateApplicationConfig(config *viper.Viper, env environments.Environment, 
 
 		envSection.Items[cases.Fold().String(env.GetName())][environments.EnvironmentKeyDefaultApplication] = ""
 
-		cli.UpdateEnvironmentSection(config, envSection)
-
-		err = cli.SaveConfig(config)
+		err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(envSection, cli.MergeWithLatestConfig(env.GetName())))
 		if err != nil {
 			return err
 		}

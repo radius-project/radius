@@ -113,9 +113,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		"namespace": namespace,
 	}
 
-	cli.UpdateEnvironmentSectionOnCreation(config, env, environmentName)
-
-	err = cli.SaveConfig(config)
+	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(environmentName)))
 	if err != nil {
 		return err
 	}
