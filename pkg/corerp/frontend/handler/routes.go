@@ -31,7 +31,7 @@ func AddRoutes(providerCtrl *controllers.ProviderController, rpCtrl *controllers
 	router.NotFoundHandler = http.HandlerFunc(notSupported)
 
 	// Provider system notification.
-	// https://github.com/Azure/azure-resource-manager-rpc/blob/2e1f2c11ce4cfdf309f9cc8ae71575cb8fb83319/v1.0/proxy-api-reference.md#exposing-available-operations
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 	router.Path("/subscriptions/{subscriptionID}").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
 		Methods(http.MethodPut).HandlerFunc(h.CreateOrUpdateSubscription)

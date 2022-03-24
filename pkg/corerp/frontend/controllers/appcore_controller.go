@@ -32,7 +32,7 @@ func NewAppCoreController(db db.RadrpDB, deploy deployment.DeploymentProcessor, 
 }
 
 // GetOperations returns the list of available operations/permission for the resource provider at tenant level.
-// Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/2e1f2c11ce4cfdf309f9cc8ae71575cb8fb83319/v1.0/proxy-api-reference.md#exposing-available-operations
+// Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
 	ops := &armrpc.Operations{
 		Value: []armrpc.Operation{
