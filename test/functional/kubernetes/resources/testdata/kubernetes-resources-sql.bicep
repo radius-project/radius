@@ -30,7 +30,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
-      
       server: sqlRoute.properties.host
       database: 'master'
     }
