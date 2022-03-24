@@ -51,7 +51,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
           ACCEPT_EULA: 'Y'
           MSSQL_PID: 'Developer'
           MSSQL_SA_PASSWORD: adminPassword
-         
         }
         ports: {
           sql: {
