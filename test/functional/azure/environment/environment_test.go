@@ -56,22 +56,18 @@ func TestAzureEnvironment(t *testing.T) {
 	t.Run("Validate Kubernetes Runtime", func(t *testing.T) {
 		expectedPods := validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
-				// verify dapr
-				"dapr-system": {
+				"radius-system": {
 					validation.NewK8sPodForResource("app", "dapr-dashboard"),
 					validation.NewK8sPodForResource("app", "dapr-operator"),
 					validation.NewK8sPodForResource("app", "dapr-placement-server"),
 					validation.NewK8sPodForResource("app", "dapr-sentry"),
 					validation.NewK8sPodForResource("app", "dapr-sidecar-injector"),
-				},
-				// verify haproxy
-				"radius-system": {
 					validation.NewK8sPodForResource("app", "haproxy-ingress"),
 				},
 			},
 		}
 
-		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, expectedPods)
+		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, expectedPods)
 	})
 }
 

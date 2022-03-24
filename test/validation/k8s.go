@@ -17,11 +17,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	watchk8s "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/restmapper"
@@ -257,37 +260,49 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 }
 
 // // ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
-func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
+func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
 		t.Logf("validating objects in namespace %v", namespace)
-		remaining := make([]K8sObject, len(expectedObjects))
-		copy(remaining, expectedObjects)
+		namespaceTypes := map[schema.GroupVersionResource][]K8sObject{}
+		for _, obj := range expectedObjects {
+			_, ok := namespaceTypes[obj.GroupVersionResource]
+			if ok {
+				namespaceTypes[obj.GroupVersionResource] = append(namespaceTypes[obj.GroupVersionResource], obj)
+			} else {
+				namespaceTypes[obj.GroupVersionResource] = []K8sObject{obj}
+			}
+		}
 		for {
+			validated := true
 			select {
 			case <-time.After(IntervalForResourceCreation):
-				newRemaining := []K8sObject{}
-				for _, resource := range remaining {
-					r, err := restMapper.KindFor(resource.GroupVersionResource)
+				for resourceGVR, expectedInNamespace := range namespaceTypes {
+					fmt.Printf("%s, %s", resourceGVR, expected)
+					r, err := restMapper.KindFor(resourceGVR)
+					assert.NoErrorf(t, err, "failed to get kind for %s", resourceGVR)
 
-					if err != nil {
-						t.Logf("failed to find resource with %s", resource)
-						newRemaining = append(newRemaining, resource)
-						continue
-					}
+					mapping, err := restMapper.RESTMapping(r.GroupKind(), r.Version)
+					assert.NoErrorf(t, err, "failed to get rest mapping for %s", r.GroupKind())
 
-					if r.Kind != resource.Kind {
-						t.Logf("Kind %s does not match resource %s", r.Kind, resource)
-						newRemaining = append(newRemaining, resource)
-						continue
+					var deployedResources *unstructured.UnstructuredList
+					if mapping.Scope == meta.RESTScopeNamespace {
+						deployedResources, err = dynamic.Resource(mapping.Resource).Namespace(namespace).List(ctx, metav1.ListOptions{})
+					} else {
+						deployedResources, err = dynamic.Resource(mapping.Resource).List(ctx, metav1.ListOptions{})
 					}
+					newExpected := matchesActualLabels(expectedInNamespace, deployedResources.Items)
+
+					if len(newExpected) > 0 {
+						validated = false
+					}
+					namespaceTypes[resourceGVR] = newExpected
 				}
-				remaining = newRemaining
 			case <-ctx.Done():
 				assert.Fail(t, "timed out after waiting for services to be created")
 				return
 			}
-			if len(remaining) == 0 {
+			if validated {
 				break
 			}
 		}
@@ -427,6 +442,35 @@ func logPods(t *testing.T, pods []corev1.Pod) {
 	}
 }
 
+func matchesActualLabels(expectedResources []K8sObject, actualResources []unstructured.Unstructured) []K8sObject {
+	remaining := []K8sObject{}
+
+	for _, expectedResource := range expectedResources {
+		resourceExists := false
+		for _, actualResource := range actualResources {
+			if labelsEqual(expectedResource.Labels, actualResource.GetLabels()) {
+				resourceExists = true
+				break
+			}
+		}
+		if !resourceExists {
+			remaining = append(remaining, expectedResource)
+		}
+		// if err != nil {
+		// 	t.Logf("failed to find resource with %s", resource)
+		// 	newExpected = append(newExpected, resource)
+		// 	continue
+		// }
+
+		// if r.Kind != resource.Kind {
+		// 	t.Logf("Kind %s does not match resource %s", r.Kind, resource)
+		// 	newExpected = append(newExpected, resource)
+		// 	continue
+		// }
+	}
+	return remaining
+}
+
 // returns the index if its found, otherwise nil
 func matchesExpectedLabels(expectedPods []K8sObject, labels map[string]string) *int {
 	if labels == nil {
@@ -435,16 +479,7 @@ func matchesExpectedLabels(expectedPods []K8sObject, labels map[string]string) *
 	for index, expectedPod := range expectedPods {
 
 		// we don't need to match all of the labels on the expected pod
-		matchesPod := true
-		for key, value := range expectedPod.Labels {
-			// just in case
-
-			if labels[key] != value {
-				// not a match for this pod
-				matchesPod = false
-				break
-			}
-		}
+		matchesPod := labelsEqual(expectedPod.Labels, labels)
 
 		if matchesPod {
 			return &index
@@ -452,4 +487,14 @@ func matchesExpectedLabels(expectedPods []K8sObject, labels map[string]string) *
 	}
 
 	return nil
+}
+
+func labelsEqual(expectedLabels map[string]string, actualLabels map[string]string) bool {
+	for key, value := range expectedLabels {
+
+		if actualLabels[key] != value {
+			return false
+		}
+	}
+	return true
 }

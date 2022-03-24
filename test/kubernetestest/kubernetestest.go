@@ -261,7 +261,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			} else {
 				if step.K8sObjects != nil {
 					t.Logf("validating creation of objects for %s", step.Executor.GetDescription())
-					validation.ValidateObjectsRunning(ctx, t, at.Options.K8sClient, *step.K8sObjects)
+					validation.ValidateObjectsRunning(ctx, t, at.Options.K8sClient, at.Options.DynamicClient, *step.K8sObjects)
 					t.Logf("finished creation of validating objects for %s", step.Executor.GetDescription())
 				}
 			}
