@@ -32,9 +32,9 @@ type Options struct {
 
 type processor struct {
 	Options
-	Parameters    clients.DeploymentParameters
-	Results       []StageResult
-	CurrrentStage stageInfo
+	Parameters   clients.DeploymentParameters
+	Results      []StageResult
+	CurrentStage stageInfo
 }
 
 type stageInfo struct {

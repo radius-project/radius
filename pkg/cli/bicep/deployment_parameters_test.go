@@ -6,6 +6,8 @@
 package bicep
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -69,6 +71,29 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 		},
 		"key3": map[string]interface{}{
 			"value": "value3",
+		},
+	}
+
+	require.Equal(t, expected, parameters)
+}
+
+func Test_ParseParameters_File(t *testing.T) {
+	parser := ParameterParser{
+		FileSystem: fstest.MapFS{},
+	}
+
+	input, err := ioutil.ReadFile(filepath.Join("testdata", "test-parameters.json"))
+	require.NoError(t, err)
+
+	parameters, err := parser.ParseFileContents(input)
+	require.NoError(t, err)
+
+	expected := clients.DeploymentParameters{
+		"param1": map[string]interface{}{
+			"value": "value1",
+		},
+		"param2": map[string]interface{}{
+			"value": "value2",
 		},
 	}
 
