@@ -5,9 +5,9 @@
 
 package armrpc
 
-// Operations is the object that we need to return for calls to list all available operations.
+// OperationList is the object that we need to return for calls to list all available operations.
 // https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-type Operations struct {
+type OperationList struct {
 	Value []Operation `json:"value"`
 }
 
