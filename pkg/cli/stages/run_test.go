@@ -28,6 +28,13 @@ func SkipBicepBuild(ctx context.Context, deployFile string) (string, error) {
 	return "", nil
 }
 
+func MockBicepBuild(ctx context.Context, deployFile string, template string) (string, error) {
+	// Mock the bicep build with the supplied template data
+	// Template data should be the result of building the
+	// stage bicep file.
+	return template, nil
+}
+
 func Test_EmptyRadYaml_DoesNotCrash(t *testing.T) {
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
@@ -552,8 +559,8 @@ func Test_CanOverrideStage(t *testing.T) {
 }
 
 func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
-	// Test ensures that processor is able to successfully read
-	// deployment template when provided (in this case, stage.bicep).
+	// Test ensures that processor is able to successfully use
+	// (mocked) deployment JSON template to get parameters.
 	// There will not be a difference in the output because it only
 	// tracks the processor-level parameters
 	ctx, cancel := testcontext.GetContext(t)
@@ -565,7 +572,7 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 			{
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("testdata/stage.bicep"),
+					Template: to.StringPtr("iac/first.bicep"),
 				},
 			},
 		},
@@ -590,6 +597,12 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 			"param2": {
 				"value": "value2",
 			},
+		},
+		BicepBuildFunc: func(ctx context.Context, deployFile string) (string, error) {
+			content, err := ioutil.ReadFile(filepath.Join("testdata", "test-bicep-output.json"))
+			require.NoError(t, err)
+
+			return MockBicepBuild(ctx, deployFile, string(content))
 		},
 	}
 
