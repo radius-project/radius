@@ -279,6 +279,7 @@ jobs:
     name: Run K3s Local Dev tests
     needs: [ 'build', 'images' ]
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/pull/') # Run on PR only
     env:
       # Timeout used for functional tests
       LOCALDEV_FUNCTIONALTEST_TIMEOUT: 20m
