@@ -39,6 +39,11 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	namespace, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+
 	chartPath, err := cmd.Flags().GetString("chart")
 	if err != nil {
 		return err
@@ -88,7 +93,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	}
 
 	options := helm.NewDefaultClusterOptions()
-	options.Namespace = "default"
+	options.Namespace = namespace
 	options.Radius.ChartPath = chartPath
 	options.Radius.Image = image
 	options.Radius.Tag = tag
@@ -105,7 +110,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		"kind":        "dev",
 		"context":     cluster.ContextName,
 		"clustername": cluster.ClusterName,
-		"namespace":   "default",
+		"namespace":   namespace,
 		"registry": &environments.Registry{
 			PushEndpoint: cluster.RegistryPushEndpoint,
 			PullEndpoint: cluster.RegistryPullEndpoint,
@@ -138,6 +143,7 @@ func envInitDevConfigInteractive(cmd *cobra.Command) (*DevEnvironmentParams, err
 
 	if name == "" {
 		name = "dev"
+		output.LogInfo("No environment name provided, using: dev")
 	}
 
 	params := DevEnvironmentParams{
@@ -177,9 +183,14 @@ func envInitDevConfigInteractive(cmd *cobra.Command) (*DevEnvironmentParams, err
 }
 
 func envInitDevConfigNonInteractive(cmd *cobra.Command) (*DevEnvironmentParams, error) {
-	name, err := cmd.Flags().GetString("name")
+	name, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return nil, err
+	}
+
+	if name == "" {
+		name = "dev"
+		output.LogInfo("No environment name provided, using: dev")
 	}
 
 	subscriptionID, err := cmd.Flags().GetString("provider-azure-subscription")
@@ -205,8 +216,6 @@ func envInitDevConfigNonInteractive(cmd *cobra.Command) (*DevEnvironmentParams, 
 
 func init() {
 	envInitCmd.AddCommand(envInitLocalCmd)
-
-	envInitLocalCmd.Flags().StringP("name", "n", "dev", "environment name")
 	envInitLocalCmd.Flags().BoolP("interactive", "i", false, "interactively prompt for environment information")
 
 	// TODO: right now we only handle Azure as a special case. This needs to be generalized
@@ -217,6 +226,8 @@ func init() {
 	envInitLocalCmd.Flags().String("chart", "", "specify a file path to a helm chart to install Radius from")
 	envInitLocalCmd.Flags().String("image", "", "specify the radius controller image to use")
 	envInitLocalCmd.Flags().String("tag", "", "specify the radius controller tag to use")
+	envInitLocalCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
+
 }
 
 type DevEnvironmentParams struct {

@@ -170,6 +170,7 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	}
 	if name == "" {
 		name = resourceGroup
+		output.LogInfo("No environment name provided, using: %v", name)
 	}
 
 	location, err := cmd.Flags().GetString("location")

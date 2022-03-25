@@ -85,6 +85,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	if environmentName == "" {
 		environmentName = contextName
+		output.LogInfo("No environment name provided, using: %v", environmentName)
 	}
 
 	_, foundConflict := env.Items[environmentName]
