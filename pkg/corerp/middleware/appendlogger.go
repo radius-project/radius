@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package middleware
 
 import (
@@ -19,6 +24,8 @@ func AppendLogValues(h http.Handler) http.Handler {
 
 		values := []interface{}{}
 		values = append(values, radlogger.LogFieldResourceID, id.ID)
+
+		// TODO: populate correlation id and w3c trace parent id -
 
 		// values = append(values, radlogger.LogFieldSubscriptionID, id.SubscriptionID)
 		// values = append(values, radlogger.LogFieldResourceGroup, id.ResourceGroup)
