@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -43,6 +44,9 @@ func NewTestOptions(t *testing.T) TestOptions {
 	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 	require.NoError(t, err, "failed to create kubernetes client")
 
+	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
+	require.NoError(t, err, "failed to create kubernetes dyamic client")
+
 	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
 	require.NoError(t, err, "failed to create runtime client")
 
@@ -53,6 +57,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 		Environment:    az,
 		K8sClient:      k8s,
 		Client:         client,
+		DynamicClient:  dynamicClient,
 	}
 }
 
@@ -63,4 +68,5 @@ type TestOptions struct {
 	Environment    *environments.AzureCloudEnvironment
 	K8sClient      *k8s.Clientset
 	Client         client.Client
+	DynamicClient  dynamic.Interface
 }
