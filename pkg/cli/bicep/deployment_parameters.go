@@ -24,8 +24,23 @@ type ParameterParser struct {
 type OSFileSystem struct {
 }
 
+type ParameterFile struct {
+	Parameters clients.DeploymentParameters `json:"parameters"`
+}
+
 func (OSFileSystem) Open(name string) (fs.File, error) {
 	return os.Open(name)
+}
+
+func (pp ParameterParser) ParseFileContents(input []byte) (clients.DeploymentParameters, error) {
+	output := clients.DeploymentParameters{}
+
+	err := pp.unmarshalParameters(input, output)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, err
 }
 
 func (pp ParameterParser) Parse(inputs ...string) (clients.DeploymentParameters, error) {
@@ -57,18 +72,7 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 			return err
 		}
 
-		type ParameterFile struct {
-			Parameters clients.DeploymentParameters `json:"parameters"`
-		}
-
-		data := ParameterFile{}
-		err = json.Unmarshal(b, &data)
-		if err != nil {
-			return err
-		}
-
-		pp.mergeParameters(output, data.Parameters)
-		return nil
+		return pp.unmarshalParameters(b, output)
 	}
 
 	// If we get here the parameter needs to have a prefix. We'll split the parameter on the first =. This
@@ -101,6 +105,17 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 
 	// input is an inline string
 	pp.mergeSingleParameter(output, parameterName, parameterValue)
+	return nil
+}
+
+func (pp ParameterParser) unmarshalParameters(b []byte, output clients.DeploymentParameters) error {
+	data := ParameterFile{}
+	err := json.Unmarshal(b, &data)
+	if err != nil {
+		return err
+	}
+
+	pp.mergeParameters(output, data.Parameters)
 	return nil
 }
 

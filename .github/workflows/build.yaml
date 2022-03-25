@@ -279,6 +279,7 @@ jobs:
     name: Run K3s Local Dev tests
     needs: [ 'build', 'images' ]
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/pull/') # Run on PR only
     env:
       # Timeout used for functional tests
       LOCALDEV_FUNCTIONALTEST_TIMEOUT: 20m
@@ -322,7 +323,7 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init dev --name dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
+        dist/rad env init dev --environment dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
     - name: Download Bicep

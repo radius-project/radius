@@ -170,6 +170,7 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	}
 	if name == "" {
 		name = resourceGroup
+		output.LogInfo("No environment name provided, using: %v", name)
 	}
 
 	location, err := cmd.Flags().GetString("location")
@@ -768,9 +769,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		"clusterName":               clusterName,
 	}
 
-	cli.UpdateEnvironmentSectionOnCreation(config, env, name)
-
-	err = cli.SaveConfig(config)
+	err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(name)))
 	if err != nil {
 		return err
 	}

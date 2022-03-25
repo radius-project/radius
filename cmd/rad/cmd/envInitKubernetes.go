@@ -85,6 +85,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	if environmentName == "" {
 		environmentName = contextName
+		output.LogInfo("No environment name provided, using: %v", environmentName)
 	}
 
 	_, foundConflict := env.Items[environmentName]
@@ -113,9 +114,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		"namespace": namespace,
 	}
 
-	cli.UpdateEnvironmentSectionOnCreation(config, env, environmentName)
-
-	err = cli.SaveConfig(config)
+	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(environmentName)))
 	if err != nil {
 		return err
 	}

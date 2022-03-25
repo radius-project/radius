@@ -42,7 +42,7 @@ func Test_AppDeploy_ScaffoldedApp(t *testing.T) {
 	t.Logf("done deploying %s with `rad app deploy`", application)
 
 	// Running for the side effect of making sure the pods are started.
-	validation.ValidateObjectsRunning(ctx, t, options.K8sClient, validation.K8sObjectSet{
+	validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 		Namespaces: map[string][]validation.K8sObject{
 			application: {
 				validation.NewK8sPodForResource(application, "demo"),
