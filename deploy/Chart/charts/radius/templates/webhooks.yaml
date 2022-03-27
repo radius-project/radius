@@ -89,17 +89,3 @@ webhooks:
     - extenders
     - dapriosecretstores
   sideEffects: None
----
-apiVersion: apiregistration.k8s.io/v1
-kind: APIService
-metadata:
-  name: v1alpha3.api.radius.dev
-spec:
-  group: api.radius.dev
-  groupPriorityMinimum: 1000
-  versionPriority: 15
-  service:
-    name: radius-api
-    namespace: {{ .Release.Namespace }}
-  version: v1alpha3
-  caBundle: {{ if $existingWebHookConfig }}{{ (index $existingWebHookConfig.webhooks 0).clientConfig.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}

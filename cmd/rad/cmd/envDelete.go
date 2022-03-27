@@ -54,7 +54,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	if ok {
 
 		if !yes {
-			confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Resource groups %s and all radius-created resources in %s will be deleted. Continue deleting? [y/N]?", az.ControlPlaneResourceGroup, az.ResourceGroup), prompt.No)
+			confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("All radius-created resources in resource-group %s will be deleted. Continue deleting? [y/N]?", az.ResourceGroup), prompt.No)
 			if err != nil {
 				return err
 			}
@@ -79,10 +79,6 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		}
 
 		if err = deleteRadiusResourcesInResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
-			return err
-		}
-
-		if err = deleteResourceGroup(cmd.Context(), authorizer, az.ControlPlaneResourceGroup, az.SubscriptionID); err != nil {
 			return err
 		}
 	}
@@ -194,29 +190,6 @@ func deleteRadiusResourcesInResourceGroup(ctx context.Context, authorizer autore
 			}
 		}
 	}
-	return nil
-}
-
-// Deletes resource group and all its resources
-func deleteResourceGroup(ctx context.Context, authorizer autorest.Authorizer, resourceGroup string, subscriptionID string) error {
-	rgc := clients.NewGroupsClient(subscriptionID, authorizer)
-
-	output.LogInfo("Deleting resource group %v", resourceGroup)
-	future, err := rgc.Delete(ctx, resourceGroup)
-	if clients.IsLongRunning404(err, future.FutureAPI) {
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("failed to delete %s: %w", "the resource group", err)
-	}
-
-	output.LogInfo("Waiting for delete to complete...")
-	err = future.WaitForCompletionRef(ctx, rgc.Client)
-	if clients.IsLongRunning404(err, future.FutureAPI) {
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("failed to delete %s: %w", "the resource group", err)
-	}
-
 	return nil
 }
 

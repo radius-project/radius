@@ -16,22 +16,22 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/schema"
 )
 
-func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory, swaggerDocRoute string) {
+func AddRoutes(rp resourceprovider.ResourceProvider, router *mux.Router, validatorFactory ValidatorFactory, baseURL string) {
 	// Nothing for now
 
-	h := Handler{RP: rp, ValidatorFactory: validatorFactory, PathPrefix: swaggerDocRoute}
+	h := Handler{RP: rp, ValidatorFactory: validatorFactory, PathPrefix: baseURL}
 	var subrouter *mux.Router
 
 	// TODO path should adhere to https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#case-insensitivity-for-requests
 	// for case sensitivity
 	var providerPath = fmt.Sprintf(
 		"%s/subscriptions/{%s}/resource{[gG]}roups/{%s}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3",
-		swaggerDocRoute,
+		baseURL,
 		azresources.SubscriptionIDKey,
 		azresources.ResourceGroupKey)
 
-	if swaggerDocRoute != "" {
-		router.Path(swaggerDocRoute).Methods("GET").HandlerFunc(h.GetSwaggerDoc)
+	if baseURL != "" {
+		router.Path(baseURL).Methods("GET").HandlerFunc(h.GetSwaggerDoc)
 	}
 
 	router.Path(fmt.Sprintf("%s/listSecrets", providerPath)).Methods("POST").HandlerFunc(h.ListSecrets)

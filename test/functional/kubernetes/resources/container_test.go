@@ -44,7 +44,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					application: {
 						validation.NewK8sPodForResource(application, "frontend"),
 						validation.NewK8sPodForResource(application, "backend"),
 					},
@@ -87,7 +87,7 @@ func Test_ContainerManualScale(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					application: {
 						validation.NewK8sPodForResource(application, "frontend"),
 						// Verify two backend pods are created.
 						validation.NewK8sPodForResource(application, "backend"),

@@ -1150,7 +1150,7 @@ func createRPTest(t *testing.T) test {
 	db := db.NewMockRadrpDB(ctrl)
 	deploy := deployment.NewMockDeploymentProcessor(ctrl)
 	completions := make(chan struct{})
-	rp := NewResourceProvider(db, deploy, completions, "http")
+	rp := NewResourceProvider(db, deploy, completions, "http", "")
 	return test{rp: rp, db: db, deploy: deploy, completions: completions}
 }
 

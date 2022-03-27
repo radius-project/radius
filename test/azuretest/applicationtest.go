@@ -114,7 +114,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				validation.ValidateOutputResources(t, at.Options.ARMAuthorizer, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.RadiusResources)
+				validation.ValidateOutputResources(t, at.Options.ARMAuthorizer, at.Options.RadiusBaseURL, at.Options.RadiusSender, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.RadiusResources)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 

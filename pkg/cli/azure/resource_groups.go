@@ -7,14 +7,11 @@ package azure
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/Azure/go-autorest/autorest/azure/cli"
 	"gopkg.in/ini.v1"
-	"path/filepath"
 )
-
-func GetControlPlaneResourceGroup(resourceGroup string) string {
-	return "RE-" + resourceGroup
-}
 
 func LoadDefaultResourceGroupFromConfig() (string, error) {
 	profilePath, err := cli.ProfilePath()
