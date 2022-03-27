@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
-	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/health/handlers"
 	"github.com/project-radius/radius/pkg/health/model"
@@ -202,55 +201,6 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	require.NotZero(t, len(stopCh))
 }
 
-func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
-	logger, err := radlogger.NewTestLogger(t)
-	require.NoError(t, err)
-
-	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
-	hrpc := make(chan healthcontract.ResourceHealthDataMessage, 1)
-	wg := sync.WaitGroup{}
-	options := MonitorOptions{
-		Logger:                      logger,
-		ResourceRegistrationChannel: rrc,
-		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(&armauth.ArmConfig{SubscriptionID: uuid.NewString()}, getKubernetesClient(), &wg),
-	}
-	monitor := NewMonitor(options)
-	optionsInterval := time.Microsecond * 5
-	testResourceType := resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureServiceBusQueue,
-		Provider: providers.ProviderAzure,
-	}
-	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
-		Action: healthcontract.ActionRegister,
-		Resource: healthcontract.HealthResource{
-			RadiusResourceID: "abc",
-			Identity: resourcemodel.NewARMIdentity(
-				&testResourceType,
-				"xyz",
-				"2020-01-01"),
-		},
-		Options: healthcontract.HealthCheckOptions{
-			Interval: optionsInterval,
-		},
-	}
-
-	// Wait till the waitgroup is done
-	stopCh := make(chan struct{})
-	t.Cleanup(func() {
-		stopCh <- struct{}{}
-		wg.Wait()
-	})
-
-	ctx := logr.NewContext(context.Background(), logger)
-	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh)
-
-	monitor.activeHealthProbesMutex.RLock()
-	hi := monitor.activeHealthProbes[registration.Token]
-	monitor.activeHealthProbesMutex.RUnlock()
-	require.Equal(t, optionsInterval, hi.Options.Interval)
-}
-
 func Test_HealthServiceSendsNotificationsOnHealthStateChanges(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
 	require.NoError(t, err)
@@ -419,45 +369,4 @@ func Test_HealthServiceSendsNotificationsAfterForcedUpdateInterval(t *testing.T)
 	notification := <-hpc
 	require.Equal(t, "Unknown", notification.HealthState)
 	require.Equal(t, "", notification.HealthStateErrorDetails)
-}
-
-func Test_NoAzureCredentials_RegisterAzureResourceReturnsNoHandler(t *testing.T) {
-	logger, err := radlogger.NewTestLogger(t)
-	require.NoError(t, err)
-
-	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
-	hrpc := make(chan healthcontract.ResourceHealthDataMessage, 1)
-	options := MonitorOptions{
-		Logger:                      logger,
-		ResourceRegistrationChannel: rrc,
-		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(nil, getKubernetesClient(), &sync.WaitGroup{}),
-	}
-	monitor := NewMonitor(options)
-	ctx := logr.NewContext(context.Background(), logger)
-
-	testResourceType := resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureServiceBusQueue,
-		Provider: providers.ProviderAzure,
-	}
-	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
-		Action: healthcontract.ActionRegister,
-		Resource: healthcontract.HealthResource{
-			RadiusResourceID: "abc",
-			Identity: resourcemodel.NewARMIdentity(
-				&testResourceType,
-				"xyz",
-				"2020-01-01"),
-		},
-	}
-
-	registration := monitor.RegisterResource(ctx, registrationMsg, make(chan struct{}))
-	monitor.activeHealthProbesMutex.RLock()
-	defer monitor.activeHealthProbesMutex.RUnlock()
-	require.Equal(t, 0, len(monitor.activeHealthProbes))
-	notification := <-hrpc
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, notification.Resource.Identity.ResourceType.Type)
-	require.Equal(t, providers.ProviderAzure, notification.Resource.Identity.ResourceType.Provider)
-	require.Equal(t, healthcontract.HealthStateNotSupported, notification.HealthState)
-	require.Nil(t, registration)
 }
