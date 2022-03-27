@@ -155,9 +155,9 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 
 func NewDaprPubSubServiceBusHealthHandler(arm *armauth.ArmConfig, k8s client.Client) HealthHandler {
 	return &daprPubSubServiceBusHealthHandler{
-		//azureServiceBusBaseHandler: azureServiceBusBaseHandler{arm: arm},
-		kubernetesHandler: kubernetesHandler{k8s: k8s},
-		k8s:               k8s,
+		daprPubSubServiceBusBaseHandler: daprPubSubServiceBusBaseHandler{arm: arm},
+		kubernetesHandler:               kubernetesHandler{k8s: k8s},
+		k8s:                             k8s,
 	}
 }
 
@@ -174,7 +174,7 @@ func (handler *daprPubSubServiceBusHealthHandler) GetHealthOptions(ctx context.C
 func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
 	parsed, err := azresources.Parse(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse servicebus queue resource id: %w", err)
+		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
 
 	sbc := clients.NewServiceBusNamespacesClient(parsed.SubscriptionID, handler.arm.Auth)
@@ -182,7 +182,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 	// Check if a service bus namespace exists in the resource group for this application
 	namespace, err := sbc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get servicebus namespace: %w", err)
+		return nil, fmt.Errorf("failed to get servicebus namespace: '%s':%w", *namespace.Name, err)
 	}
 
 	return &namespace, nil
