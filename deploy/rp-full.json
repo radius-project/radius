@@ -5,6 +5,10 @@
         "clusterName": {
             "type": "string",
             "value": "[parameters('clusterName')]"
+        },
+        "controlPlaneIdentityName": {
+            "type": "string",
+            "value": "[parameters('controlPlaneIdentityName')]"
         }
     },
     "parameters": {
@@ -22,10 +26,24 @@
             },
             "type": "string"
         },
+        "clusterControlPlaneIdentityName": {
+            "defaultValue": "[concat('aks-', uniquestring(subscription().id, parameters('controlPlaneResourceGroup')))]",
+            "metadata": {
+                "description": "name of the user-managed managed identity use for the AKS control-plane"
+            },
+            "type": "string"
+        },
         "clusterName": {
             "defaultValue": "[concat('radius-aks-', uniqueString(subscription().id, parameters('controlPlaneResourceGroup')))]",
             "metadata": {
                 "description": "The name of the Managed Cluster resource."
+            },
+            "type": "string"
+        },
+        "controlPlaneIdentityName": {
+            "defaultValue": "[concat('radius-cp-', uniquestring(subscription().id, parameters('controlPlaneResourceGroup')))]",
+            "metadata": {
+                "description": "name of the managed identity use for the control-plane"
             },
             "type": "string"
         },
@@ -135,8 +153,14 @@
                     "accountName": {
                         "value": "[parameters('accountName')]"
                     },
+                    "clusterControlPlaneIdentityName": {
+                        "value": "[parameters('clusterControlPlaneIdentityName')]"
+                    },
                     "clusterName": {
                         "value": "[parameters('clusterName')]"
+                    },
+                    "controlPlaneIdentityName": {
+                        "value": "[parameters('controlPlaneIdentityName')]"
                     },
                     "controlPlaneResourceGroup": {
                         "value": "[parameters('controlPlaneResourceGroup')]"
@@ -176,7 +200,13 @@
                         "accountName": {
                             "type": "string"
                         },
+                        "clusterControlPlaneIdentityName": {
+                            "type": "string"
+                        },
                         "clusterName": {
+                            "type": "string"
+                        },
+                        "controlPlaneIdentityName": {
                             "type": "string"
                         },
                         "controlPlaneResourceGroup": {
@@ -280,9 +310,45 @@
                             "type": "Microsoft.DocumentDb/databaseAccounts/mongodbDatabases/collections"
                         },
                         {
+                            "apiVersion": "2018-11-30",
+                            "location": "[resourceGroup().location]",
+                            "name": "[parameters('controlPlaneIdentityName')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "type": "Microsoft.ManagedIdentity/userAssignedIdentities"
+                        },
+                        {
+                            "apiVersion": "2018-11-30",
+                            "location": "[resourceGroup().location]",
+                            "name": "[parameters('clusterControlPlaneIdentityName')]",
+                            "tags": "[parameters('resourceTags')]",
+                            "type": "Microsoft.ManagedIdentity/userAssignedIdentities"
+                        },
+                        {
+                            "apiVersion": "2018-09-01-preview",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('clusterControlPlaneIdentityName'))]"
+                            ],
+                            "name": "[variables('clusterIdentityRoleDefinitionName')]",
+                            "properties": {
+                                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('clusterControlPlaneIdentityName'))).principalId]",
+                                "principalType": "ServicePrincipal",
+                                "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]"
+                            },
+                            "tags": "[parameters('resourceTags')]",
+                            "type": "Microsoft.Authorization/roleAssignments"
+                        },
+                        {
                             "apiVersion": "2020-11-01",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('clusterControlPlaneIdentityName'))]",
+                                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('controlPlaneIdentityName'))]",
+                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('clusterIdentityRoleDefinitionName'))]"
+                            ],
                             "identity": {
-                                "type": "SystemAssigned"
+                                "type": "UserAssigned",
+                                "userAssignedIdentities": {
+                                    "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('clusterControlPlaneIdentityName'))]": {}
+                                }
                             },
                             "location": "[resourceGroup().location]",
                             "name": "[parameters('clusterName')]",
@@ -314,25 +380,22 @@
                                     "networkPlugin": "azure"
                                 },
                                 "podIdentityProfile": {
-                                    "enabled": true
+                                    "enabled": true,
+                                    "userAssignedIdentities": [
+                                        {
+                                            "identity": {
+                                                "clientId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('controlPlaneIdentityName'))).clientId]",
+                                                "objectId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('controlPlaneIdentityName'))).principalId]",
+                                                "resourceId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('controlPlaneIdentityName'))]"
+                                            },
+                                            "name": "radius",
+                                            "namespace": "radius-system"
+                                        }
+                                    ]
                                 }
                             },
                             "tags": "[parameters('resourceTags')]",
                             "type": "Microsoft.ContainerService/managedClusters"
-                        },
-                        {
-                            "apiVersion": "2018-09-01-preview",
-                            "dependsOn": [
-                                "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]"
-                            ],
-                            "name": "[variables('clusterIdentityRoleDefinitionName')]",
-                            "properties": {
-                                "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2020-11-01', 'full').identity.principalId]",
-                                "principalType": "ServicePrincipal",
-                                "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]"
-                            },
-                            "tags": "[parameters('resourceTags')]",
-                            "type": "Microsoft.Authorization/roleAssignments"
                         },
                         {
                             "apiVersion": "2017-05-01",
@@ -451,6 +514,20 @@
                         {
                             "apiVersion": "2018-09-01-preview",
                             "dependsOn": [
+                                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('controlPlaneIdentityName'))]"
+                            ],
+                            "name": "[variables('controlplaneroledefinitionname')]",
+                            "properties": {
+                                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('controlPlaneIdentityName'))).principalId]",
+                                "principalType": "ServicePrincipal",
+                                "roleDefinitionId": "[variables('controlplaneroledefinitionid')]"
+                            },
+                            "tags": "[parameters('resourceTags')]",
+                            "type": "Microsoft.Authorization/roleAssignments"
+                        },
+                        {
+                            "apiVersion": "2018-09-01-preview",
+                            "dependsOn": [
                                 "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
                             ],
                             "name": "[variables('rpControlPlaneRoleDefinitionName')]",
@@ -466,15 +543,17 @@
                     "variables": {
                         "acrPullRole": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
                         "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
-                        "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), resourceGroup().name, subscription().subscriptionId)]",
+                        "clusteridentityroledefinitionname": "[guid('rad-aks-', parameters('clusterName'), resourceGroup().name, subscription().subscriptionId)]",
+                        "controlplaneroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
+                        "controlplaneroledefinitionname": "[guid('rad-cp-', parameters('clusterName'), resourceGroup().name, subscription().subscriptionId)]",
                         "hostingPlanName": "[concat('radius-rp-plan-', resourceGroup().name)]",
                         "loganalyticsworkspacename": "[concat(parameters('siteName'), '/Microsoft.Insights/', if(equals(parameters('logAnalyticsWorkspaceID'), ''), 'fake', parameters('logAnalyticsWorkspaceName')))]",
                         "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
                         "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
                         "registrypullroledefinitionfullname": "[concat(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), '/Microsoft.Authorization/', variables('registrypullroledefinitionname'))]",
                         "registrypullroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRole'))]",
-                        "registrypullroledefinitionname": "[guid(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), subscription().subscriptionId)]",
-                        "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), parameters('controlPlaneResourceGroup'), subscription().subscriptionId)]",
+                        "registrypullroledefinitionname": "[guid(if(equals(parameters('registryName'), ''), 'fake', parameters('registryName')), resourceGroup().name, subscription().subscriptionId)]",
+                        "rpControlPlaneRoleDefinitionName": "[guid(parameters('siteName'), resourceGroup().name, subscription().subscriptionId)]",
                         "rpRoleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]"
                     }
                 }
@@ -496,8 +575,14 @@
                 },
                 "mode": "Incremental",
                 "parameters": {
+                    "clusterControlPlaneIdentityName": {
+                        "value": "[parameters('clusterControlPlaneIdentityName')]"
+                    },
                     "clusterName": {
                         "value": "[parameters('clusterName')]"
+                    },
+                    "controlPlaneIdentityName": {
+                        "value": "[parameters('controlPlaneIdentityName')]"
                     },
                     "controlPlaneResourceGroup": {
                         "value": "[parameters('controlPlaneResourceGroup')]"
@@ -516,7 +601,13 @@
                     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
                     "contentVersion": "1.0.0.0",
                     "parameters": {
+                        "clusterControlPlaneIdentityName": {
+                            "type": "string"
+                        },
                         "clusterName": {
+                            "type": "string"
+                        },
+                        "controlPlaneIdentityName": {
                             "type": "string"
                         },
                         "controlPlaneResourceGroup": {
@@ -535,6 +626,11 @@
                     "resources": [
                         {
                             "apiVersion": "2018-09-01-preview",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('rpGroupRoleDefinitionName'))]",
+                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('clusterIdentityRoleDefinitionName'))]",
+                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('controlplaneroledefinitionname'))]"
+                            ],
                             "location": "[resourceGroup().location]",
                             "name": "radius",
                             "properties": {
@@ -551,6 +647,11 @@
                         },
                         {
                             "apiVersion": "2018-09-01-preview",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('rpGroupRoleDefinitionName'))]",
+                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('clusterIdentityRoleDefinitionName'))]",
+                                "[resourceId('Microsoft.Authorization/roleAssignments', variables('controlplaneroledefinitionname'))]"
+                            ],
                             "location": "[resourceGroup().location]",
                             "name": "radiusv3",
                             "properties": {
@@ -581,9 +682,20 @@
                             "apiVersion": "2018-09-01-preview",
                             "name": "[variables('clusterIdentityRoleDefinitionName')]",
                             "properties": {
-                                "principalId": "[reference(concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('controlPlaneResourceGroup'), '/providers/Microsoft.ContainerService/managedClusters/', parameters('clusterName')), '2020-11-01', 'full').identity.principalId]",
+                                "principalId": "[reference(concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('controlPlaneResourceGroup'), '/providers/Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('clusterControlPlaneIdentityName')), '2018-11-30', 'full').properties.principalId]",
                                 "principalType": "ServicePrincipal",
                                 "roleDefinitionId": "[variables('clusterIdentityRoleDefinitionId')]"
+                            },
+                            "tags": "[parameters('resourceTags')]",
+                            "type": "Microsoft.Authorization/roleAssignments"
+                        },
+                        {
+                            "apiVersion": "2018-09-01-preview",
+                            "name": "[variables('controlplaneroledefinitionname')]",
+                            "properties": {
+                                "principalId": "[reference(concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('controlPlaneResourceGroup'), '/providers/Microsoft.ManagedIdentity/userAssignedIdentities/', parameters('controlPlaneIdentityName')), '2018-11-30', 'full').properties.principalId]",
+                                "principalType": "ServicePrincipal",
+                                "roleDefinitionId": "[variables('controlplaneroledefinitionid')]"
                             },
                             "tags": "[parameters('resourceTags')]",
                             "type": "Microsoft.Authorization/roleAssignments"
@@ -591,7 +703,9 @@
                     ],
                     "variables": {
                         "clusteridentityroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('managedIdentityOperatorRole'))]",
-                        "clusteridentityroledefinitionname": "[guid(parameters('clusterName'), resourceGroup().name, subscription().subscriptionId)]",
+                        "clusteridentityroledefinitionname": "[guid('rad-aks-', parameters('clusterName'), resourceGroup().name, subscription().subscriptionId)]",
+                        "controlplaneroledefinitionid": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ownerRole'))]",
+                        "controlplaneroledefinitionname": "[guid('rad-cp-', parameters('clusterName'), resourceGroup().name, subscription().subscriptionId)]",
                         "managedIdentityOperatorRole": "f1a07417-d97a-45cb-824c-7a7467783830",
                         "ownerRole": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
                         "rpGroupRoleDefinitionName": "[guid(parameters('siteName'), resourceGroup().name, subscription().subscriptionId)]",
