@@ -10,6 +10,11 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -19,7 +24,7 @@ type DaprGeneric struct {
 	Metadata map[string]interface{}
 }
 
-func ValidateDaprGenericObject(daprGeneric DaprGeneric) error {
+func validateDaprGenericObject(daprGeneric DaprGeneric) error {
 	if daprGeneric.Type == nil || *daprGeneric.Type == "" {
 		return errors.New("No type specified for generic Dapr component")
 	}
@@ -65,4 +70,27 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName 
 		},
 	}
 	return item, nil
+}
+
+func GetDaprGeneric(daprGeneric DaprGeneric, resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
+	err := validateDaprGenericObject(daprGeneric)
+	if err != nil {
+		return nil, err
+	}
+
+	statestoreResource, err := ConstructDaprGeneric(daprGeneric, resource.ApplicationName, resource.ResourceName)
+	if err != nil {
+		return nil, err
+	}
+
+	output := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDDaprComponent,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprComponent,
+			Provider: providers.ProviderKubernetes,
+		},
+		Resource: &statestoreResource,
+	}
+
+	return []outputresource.OutputResource{output}, nil
 }

@@ -124,21 +124,21 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprPubSubGeneric,
+				Type:     resourcekinds.DaprComponent,
 				Provider: providers.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8s),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprStateStoreGeneric,
+				Type:     resourcekinds.DaprComponent,
 				Provider: providers.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8s),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprSecretStoreGeneric,
+				Type:     resourcekinds.DaprComponent,
 				Provider: providers.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8s),

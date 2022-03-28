@@ -239,38 +239,11 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprSecretStoreGeneric,
-				Provider: providers.ProviderKubernetes,
-			},
-			HealthHandler:                  handlers.NewDaprSecretStoreGenericHealthHandler(arm, k8s),
-			ResourceHandler:                handlers.NewDaprSecretStoreGenericHandler(arm, k8s),
-			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprStateStoreAzureStorage,
 				Provider: providers.ProviderKubernetes,
 			},
 			HealthHandler:                  handlers.NewDaprStateStoreAzureStorageHealthHandler(arm, k8s),
 			ResourceHandler:                handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprStateStoreGeneric,
-				Provider: providers.ProviderKubernetes,
-			},
-			HealthHandler:                  handlers.NewDaprStateStoreGenericHealthHandler(arm, k8s),
-			ResourceHandler:                handlers.NewDaprStateStoreGenericHandler(arm, k8s),
-			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprPubSubTopicGeneric,
-				Provider: providers.ProviderKubernetes,
-			},
-			HealthHandler:                  handlers.NewDaprPubSubGenericHealthHandler(arm, k8s),
-			ResourceHandler:                handlers.NewDaprPubSubGenericHandler(arm, k8s),
 			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
 		},
 	}

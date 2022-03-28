@@ -14,16 +14,17 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
 type SecretStoreFunc = func(renderers.RendererResource) ([]outputresource.OutputResource, error)
 
 var SupportedAzureSecretStoreKindValues = map[string]SecretStoreFunc{
-	"generic": GetDaprSecretStoreAzureGeneric,
+	resourcekinds.DaprGeneric: GetDaprSecretStoreGeneric,
 }
 
 var SupportedKubernetesSecretStoreKindValues = map[string]SecretStoreFunc{
-	"generic": GetDaprSecretStoreKubernetesGeneric,
+	resourcekinds.DaprGeneric: GetDaprSecretStoreGeneric,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)
