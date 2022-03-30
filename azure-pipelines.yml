@@ -107,6 +107,7 @@ stages:
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
+        export MAGPIE_IMAGE=${{ env.DOCKER_REGISTRY }}/magpiego:${{ env.REL_VERSION }}
         make test-functional-kubernetes
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
@@ -167,6 +168,7 @@ stages:
       displayName: rad bicep download
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        export MAGPIE_IMAGE=${{ env.DOCKER_REGISTRY }}/magpiego:${{ env.REL_VERSION }}
         make test-functional-azure
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
