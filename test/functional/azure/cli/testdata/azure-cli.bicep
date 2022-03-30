@@ -1,3 +1,5 @@
+param  magpieimage string
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-cli'
 
@@ -5,7 +7,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'a'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         readinessProbe:{
           kind:'httpGet'
           containerPort:3000
@@ -26,7 +28,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'b'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         readinessProbe:{
           kind:'httpGet'
           containerPort:3000

@@ -7,6 +7,8 @@ package container_test
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -28,9 +30,11 @@ import (
 func Test_ContainerHttpBinding(t *testing.T) {
 	application := "azure-resources-container-httproute"
 	template := "testdata/azure-resources-container-httproute.bicep"
+	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+	fmt.Println("magpieImage:", magpieImage)
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor:       azuretest.NewDeployStepExecutor(template),
+			Executor:       azuretest.NewDeployStepExecutor(template, magpieImage),
 			AzureResources: &validation.AzureResourceSet{},
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{

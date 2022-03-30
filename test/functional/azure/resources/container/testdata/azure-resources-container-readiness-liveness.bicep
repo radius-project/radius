@@ -1,3 +1,6 @@
+
+param  magpieimage string
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-container-readiness-liveness'
 
@@ -5,7 +8,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'backend'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         ports: {
           web: {
             containerPort: 80

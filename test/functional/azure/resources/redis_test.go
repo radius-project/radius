@@ -4,6 +4,8 @@
 package resources_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -17,9 +19,11 @@ import (
 func Test_RedisUserSecrets(t *testing.T) {
 	application := "azure-resources-redis-user-secrets"
 	template := "testdata/azure-resources-redis-user-secrets.bicep"
+	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+	fmt.Println("magpieImage:", magpieImage)
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: azuretest.NewDeployStepExecutor(template, magpieImage),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{},
 			},

@@ -1,3 +1,5 @@
+param  magpieimage string
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-connection-database-service'
 
@@ -5,7 +7,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'db-service'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
       }
       connections: {
         databaseresource: {

@@ -1,5 +1,7 @@
 import kubernetes from kubernetes
 
+param  magpieimage string
+
 resource mongoService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'mongo-svc'
@@ -21,7 +23,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'todoapp'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
       }
       connections: {
         mongodb: {

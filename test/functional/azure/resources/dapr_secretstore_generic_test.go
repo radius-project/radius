@@ -6,6 +6,8 @@
 package resources_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -20,9 +22,11 @@ import (
 func Test_DaprSecretStoreGeneric(t *testing.T) {
 	application := "azure-resources-dapr-secretstore-generic"
 	template := "testdata/azure-resources-dapr-secretstore-generic.bicep"
+	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+	fmt.Println("magpieImage:", magpieImage)
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor:           azuretest.NewDeployStepExecutor(template),
+			Executor:           azuretest.NewDeployStepExecutor(template, magpieImage),
 			AzureResources:     &validation.AzureResourceSet{},
 			SkipAzureResources: true,
 			RadiusResources: &validation.ResourceSet{

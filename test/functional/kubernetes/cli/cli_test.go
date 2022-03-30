@@ -7,6 +7,7 @@ package cli_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -74,10 +75,11 @@ func Test_CLI(t *testing.T) {
 	// We use nested tests so we can skip them if we've already failed deployment.
 	application := "kubernetes-cli"
 	template := "testdata/kubernetes-cli.bicep"
-
+	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+	fmt.Println("magpieImage:", magpieImage)
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
+			Executor: kubernetestest.NewDeployStepExecutor(template, magpieImage),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

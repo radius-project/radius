@@ -1,6 +1,8 @@
 var adminUsername = 'cooluser'
 var adminPassword = 'p@ssw0rd'
 
+param  magpieimage string
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-microsoft-sql'
 
@@ -14,7 +16,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         env: {
           CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername}@${db.properties.server};Password=${adminPassword};Encrypt=true'
         }

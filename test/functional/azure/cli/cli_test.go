@@ -40,14 +40,15 @@ func Test_CLI(t *testing.T) {
 	// We use nested tests so we can skip them if we've already failed deployment.
 	application := "azure-cli"
 	template := "testdata/azure-cli.bicep"
-
+	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+	fmt.Println("magpieImage:", magpieImage)
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
 	templateFilePath := filepath.Join(cwd, template)
 	t.Logf("deploying %s from file %s", application, template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath)
+	err = cli.Deploy(ctx, templateFilePath, magpieImage)
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)
 

@@ -1,3 +1,5 @@
+param  magpieimage string
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-daprsecretstore-generic'
 
@@ -11,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
       }
     }
   }

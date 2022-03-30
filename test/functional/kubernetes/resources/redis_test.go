@@ -6,6 +6,8 @@
 package resource_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -18,9 +20,11 @@ import (
 func TestRedis(t *testing.T) {
 	template := "testdata/kubernetes-resources-redis/kubernetes-resources-redis.bicep"
 	application := "kubernetes-resources-redis"
+	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+	fmt.Println("magpieImage:", magpieImage)
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
+			Executor: kubernetestest.NewDeployStepExecutor(template, magpieImage),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

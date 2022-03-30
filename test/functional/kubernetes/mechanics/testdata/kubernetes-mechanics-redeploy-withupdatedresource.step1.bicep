@@ -1,3 +1,4 @@
+param  magpieimage string
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-mechanics-redeploy-withupdatedresource'
 
@@ -5,7 +6,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'a'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
       }
     }
   }

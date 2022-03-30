@@ -6,6 +6,8 @@
 package resources_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -22,9 +24,11 @@ func Test_AzureConnections(t *testing.T) {
 	applicationName := "azure-connection-database-service"
 	containerResourceName := "db-service"
 	template := "testdata/azure-connection-database-service.bicep"
+	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+	fmt.Println("magpieImage:", magpieImage)
 	test := azuretest.NewApplicationTest(t, applicationName, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: azuretest.NewDeployStepExecutor(template, magpieImage),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{

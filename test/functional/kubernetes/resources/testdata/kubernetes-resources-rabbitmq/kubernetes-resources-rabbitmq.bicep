@@ -1,5 +1,5 @@
 import kubernetes from kubernetes
-
+param  magpieimage string
 resource rabbitmqService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'rabbitmq-svc'
@@ -21,7 +21,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'todoapp'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
       }
       connections: {
         rabbitmq: {

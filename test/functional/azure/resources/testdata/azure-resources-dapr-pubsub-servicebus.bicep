@@ -1,3 +1,5 @@
+param  magpieimage string
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-dapr-pubsub-servicebus'
 
@@ -11,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         env: {
           BINDING_DAPRPUBSUB_NAME: pubsub.name
           BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic

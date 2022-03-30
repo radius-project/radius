@@ -262,7 +262,7 @@ jobs:
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-        ./.github/scripts/update_magpie_image.sh
+        export MAGPIE_IMAGE=${{ env.DOCKER_REGISTRY }}/magpiego:${{ env.REL_VERSION }}
         make test-functional-kubernetes
     - name: Upload container logs
       if: always()

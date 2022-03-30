@@ -6,6 +6,8 @@
 package resource_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -18,9 +20,11 @@ import (
 func Test_DaprSecretStore_Generic(t *testing.T) {
 	template := "testdata/kubernetes-resources-daprsecretstore-generic.bicep"
 	application := "kubernetes-resources-daprsecretstore-generic"
+	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+	fmt.Println("magpieImage:", magpieImage)
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
+			Executor: kubernetestest.NewDeployStepExecutor(template, magpieImage),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
