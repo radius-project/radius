@@ -10,10 +10,12 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 func GetDaprStateStoreAzureGeneric(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {
@@ -42,8 +44,11 @@ func GetDaprStateStoreAzureGeneric(resource renderers.RendererResource) ([]outpu
 
 	// generate data we can use to connect to a Storage Account
 	output := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDDaprStateStoreGeneric,
-		ResourceKind: resourcekinds.DaprStateStoreGeneric,
+		LocalID: outputresource.LocalIDDaprStateStoreGeneric,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprStateStoreGeneric,
+			Provider: providers.ProviderKubernetes,
+		},
 		Resource: map[string]string{
 			handlers.KubernetesNameKey:       resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
@@ -84,9 +89,12 @@ func GetDaprStateStoreKubernetesGeneric(resource renderers.RendererResource) ([]
 	}
 
 	output := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDDaprStateStoreGeneric,
-		ResourceKind: resourcekinds.Kubernetes,
-		Resource:     &statestoreResource,
+		LocalID: outputresource.LocalIDDaprStateStoreGeneric,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprStateStoreGeneric,
+			Provider: providers.ProviderKubernetes,
+		},
+		Resource: &statestoreResource,
 	}
 
 	return []outputresource.OutputResource{output}, nil

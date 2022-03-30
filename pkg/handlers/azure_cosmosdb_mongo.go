@@ -48,7 +48,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, options *PutO
 		return nil, err
 	}
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(*database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *database.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 
 	return properties, nil
 }

@@ -11,6 +11,8 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,7 +59,10 @@ func (handler *daprSecretStoreGenericHandler) Put(ctx context.Context, options *
 	}
 
 	options.Resource.Identity = resourcemodel.ResourceIdentity{
-		Kind: resourcemodel.IdentityKindKubernetes,
+		ResourceType: &resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprSecretStoreGeneric,
+			Provider: providers.ProviderKubernetes,
+		},
 		Data: resourcemodel.KubernetesIdentity{
 			Name:       item.GetName(),
 			Namespace:  item.GetNamespace(),

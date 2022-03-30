@@ -39,7 +39,7 @@ func Test_Render_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDAzureServiceBusTopic, output.LocalID)
-	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceKind)
+	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
 
 	expected := map[string]string{
 		handlers.ResourceName:               "test-resource",
@@ -100,7 +100,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprPubSubGeneric, output.LocalID)
-	require.Equal(t, resourcekinds.DaprPubSubTopicGeneric, output.ResourceKind)
+	require.Equal(t, resourcekinds.DaprPubSubTopicGeneric, output.ResourceType.Type)
 
 	metadata := map[string]interface{}{
 		"foo": "bar",

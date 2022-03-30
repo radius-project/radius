@@ -21,8 +21,8 @@ const (
 type OutputResource struct {
 	LocalID string `bson:"id"`
 
-	// ResourceKind specifies the 'kind' used to look up the resource handler for processing.
-	ResourceKind string `bson:"resourceKind"`
+	// ResourceType specifies the 'type' and 'provider' used to look up the resource handler for processing.
+	ResourceType resourcemodel.ResourceType `bson:"resourceType"`
 
 	// Identity specifies the identity of the resource in the underlying platform.
 	Identity resourcemodel.ResourceIdentity `bson:"identity"`

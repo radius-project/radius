@@ -18,7 +18,8 @@ type ApplicationModel struct {
 	radiusResources      []RadiusResourceModel
 	radiusResourceLookup map[string]RadiusResourceModel
 	outputResources      []OutputResourceModel
-	outputResourceLookup map[string]OutputResourceModel
+	outputResourceLookup map[resourcemodel.ResourceType]OutputResourceModel
+	supportedProviders   map[string]bool
 }
 
 func (m ApplicationModel) GetRadiusResources() []RadiusResourceModel {
@@ -38,13 +39,17 @@ func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*Radiu
 	return &resource, nil
 }
 
-func (m ApplicationModel) LookupOutputResourceModel(resourceKind string) (*OutputResourceModel, error) {
-	resource, ok := m.outputResourceLookup[resourceKind]
+func (m ApplicationModel) LookupOutputResourceModel(resourceType resourcemodel.ResourceType) (*OutputResourceModel, error) {
+	resource, ok := m.outputResourceLookup[resourceType]
 	if !ok {
-		return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceKind)
+		return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceType)
 	}
 
 	return &resource, nil
+}
+
+func (m ApplicationModel) IsProviderSupported(provider string) bool {
+	return m.supportedProviders[provider]
 }
 
 type RadiusResourceModel struct {
@@ -53,33 +58,33 @@ type RadiusResourceModel struct {
 }
 
 type OutputResourceModel struct {
-	Kind                   string
+	ResourceType           resourcemodel.ResourceType
 	HealthHandler          handlers.HealthHandler
 	ResourceHandler        handlers.ResourceHandler
 	SecretValueTransformer renderers.SecretValueTransformer
 
 	// ShouldSupportHealthMonitorFunc is a function that executes per resource identity to determine whether
 	// the resource should be monitored for health reporting. Health monitoring is OPT-IN.
-	ShouldSupportHealthMonitorFunc func(identity resourcemodel.ResourceIdentity) bool
+	ShouldSupportHealthMonitorFunc func(resourceType resourcemodel.ResourceType) bool
 }
 
-func (or OutputResourceModel) SupportsHealthMonitor(identity resourcemodel.ResourceIdentity) bool {
+func (or OutputResourceModel) SupportsHealthMonitor(resourceType resourcemodel.ResourceType) bool {
 	if or.ShouldSupportHealthMonitorFunc == nil {
 		return false
 	}
 
-	return or.ShouldSupportHealthMonitorFunc(identity)
+	return or.ShouldSupportHealthMonitorFunc(resourceType)
 }
 
-func NewModel(radiusResources []RadiusResourceModel, outputResources []OutputResourceModel) ApplicationModel {
+func NewModel(radiusResources []RadiusResourceModel, outputResources []OutputResourceModel, supportedProviders map[string]bool) ApplicationModel {
 	radiusResourceLookup := map[string]RadiusResourceModel{}
 	for _, radiusResource := range radiusResources {
 		radiusResourceLookup[radiusResource.ResourceType] = radiusResource
 	}
 
-	outputResourceLookup := map[string]OutputResourceModel{}
+	outputResourceLookup := map[resourcemodel.ResourceType]OutputResourceModel{}
 	for _, outputResource := range outputResources {
-		outputResourceLookup[outputResource.Kind] = outputResource
+		outputResourceLookup[outputResource.ResourceType] = outputResource
 	}
 
 	return ApplicationModel{
@@ -87,5 +92,6 @@ func NewModel(radiusResources []RadiusResourceModel, outputResources []OutputRes
 		radiusResourceLookup: radiusResourceLookup,
 		outputResources:      outputResources,
 		outputResourceLookup: outputResourceLookup,
+		supportedProviders:   supportedProviders,
 	}
 }

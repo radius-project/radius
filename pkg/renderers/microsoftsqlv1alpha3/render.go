@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -83,17 +84,25 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		// Truncate the database part of the ID to make an ID for the server
 		serverID := databaseID.Truncate()
 
+		serverResourceType := resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureSqlServer,
+			Provider: providers.ProviderAzure,
+		}
 		serverResource := outputresource.OutputResource{
 			LocalID:      outputresource.LocalIDAzureSqlServer,
-			ResourceKind: resourcekinds.AzureSqlServer,
-			Identity:     resourcemodel.NewARMIdentity(serverID.ID, clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+			ResourceType: serverResourceType,
+			Identity:     resourcemodel.NewARMIdentity(&serverResourceType, serverID.ID, clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
 			Resource:     map[string]string{},
 		}
 
+		databaseResourceType := resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureSqlServerDatabase,
+			Provider: providers.ProviderAzure,
+		}
 		databaseResource := outputresource.OutputResource{
 			LocalID:      outputresource.LocalIDAzureSqlServerDatabase,
-			ResourceKind: resourcekinds.AzureSqlServerDatabase,
-			Identity:     resourcemodel.NewARMIdentity(databaseID.ID, clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
+			ResourceType: databaseResourceType,
+			Identity:     resourcemodel.NewARMIdentity(&databaseResourceType, databaseID.ID, clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
 			Resource:     map[string]string{},
 			Dependencies: []outputresource.Dependency{sqlServerDependency},
 		}

@@ -17,8 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/health/model"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 // ChannelBufferSize defines the buffer size for the Watch channel to receive health state changes from push mode watchers
@@ -90,12 +88,8 @@ func (h Monitor) RegisterResource(ctx context.Context, registerMsg healthcontrac
 		// No health handler was found. Return NotSupported state to distinguish from Unhealthy
 		// TODO: Convert this log to error once health checks are implemented for all resource kinds
 		// https://github.com/project-radius/radius/issues/827
-		kind := registerMsg.Resource.ResourceKind
-		if registerMsg.Resource.ResourceKind == resourcekinds.Kubernetes {
-			kID := registerMsg.Resource.Identity.Data.(resourcemodel.KubernetesIdentity)
-			kind += "-" + kID.Kind
-		}
-		logger.Info(fmt.Sprintf("ResourceKind: %s does not support health checks. Resource not monitored by HealthService", kind))
+		resourceType := registerMsg.Resource.Identity.ResourceType.Provider + "-" + registerMsg.Resource.Identity.ResourceType.Type
+		logger.Info(fmt.Sprintf("Resource type: %s does not support health checks. Resource not monitored by HealthService", resourceType))
 		msg := healthcontract.ResourceHealthDataMessage{
 			Resource:                registerMsg.Resource,
 			HealthState:             healthcontract.HealthStateNotSupported,

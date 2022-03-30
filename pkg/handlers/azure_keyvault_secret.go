@@ -100,7 +100,7 @@ func (handler *azureKeyVaultSecretHandler) Put(ctx context.Context, options *Put
 		ResourceName:   secretFullName,
 	}
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(secretResource.String(), keyVaultAPIVersion)
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, secretResource.String(), keyVaultAPIVersion)
 
 	return properties, nil
 }

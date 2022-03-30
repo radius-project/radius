@@ -13,9 +13,9 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -86,7 +86,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	}
 
 	for i := range output.Resources {
-		if output.Resources[i].ResourceKind != resourcekinds.Kubernetes {
+		if output.Resources[i].ResourceType.Provider != providers.ProviderKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}

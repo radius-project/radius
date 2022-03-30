@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/health/handlers"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 type HealthModel interface {
@@ -26,21 +25,20 @@ type healthModel struct {
 }
 
 func (hm *healthModel) LookupHandler(ctx context.Context, registerMsg healthcontract.ResourceHealthRegistrationMessage) (handlers.HealthHandler, string) {
+	resourceType := registerMsg.Resource.Identity.ResourceType.Type
 	// For Kubernetes, return Push mode
-	if registerMsg.Resource.ResourceKind == resourcekinds.Kubernetes {
-		kID := registerMsg.Resource.Identity.Data.(resourcemodel.KubernetesIdentity)
-		if hm.handlersList[kID.Kind] == nil {
+	if registerMsg.Resource.Identity.ResourceType.Provider == resourcekinds.Kubernetes {
+		if hm.handlersList[resourceType] == nil {
 			return nil, handlers.HealthHandlerModePush
 		}
-		return hm.handlersList[kID.Kind], handlers.HealthHandlerModePush
+		return hm.handlersList[resourceType], handlers.HealthHandlerModePush
 	}
 
 	// For all other resource kinds, the mode is Pull
-	if hm.handlersList[registerMsg.Resource.ResourceKind] == nil {
+	if hm.handlersList[resourceType] == nil {
 		return nil, handlers.HealthHandlerModePull
 	}
-	return hm.handlersList[registerMsg.Resource.ResourceKind], handlers.HealthHandlerModePull
-
+	return hm.handlersList[resourceType], handlers.HealthHandlerModePull
 }
 
 func (hm *healthModel) GetWaitGroup() *sync.WaitGroup {

@@ -12,10 +12,12 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 var _ renderers.Renderer = (*KubernetesRenderer)(nil)
@@ -57,9 +59,12 @@ func GetDaprPubSubAzureGenericKubernetes(resource renderers.RendererResource) (r
 	}
 
 	output := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDDaprPubSubGeneric,
-		ResourceKind: resourcekinds.Kubernetes,
-		Resource:     &pubsubResource,
+		LocalID: outputresource.LocalIDDaprPubSubGeneric,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprPubSubGeneric,
+			Provider: providers.ProviderKubernetes,
+		},
+		Resource: &pubsubResource,
 	}
 
 	return renderers.RendererOutput{
