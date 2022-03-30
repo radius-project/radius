@@ -250,6 +250,27 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 			},
 		},
 	}, {
+		name: "no status",
+		original: &radiusv1alpha3.HttpRoute{
+			Spec: radiusv1alpha3.ResourceSpec{
+				Template: &runtime.RawExtension{
+					Raw: marshalJSONIgnoreErr(map[string]interface{}{
+						"name": "/app/route-42",
+						"id":   "/the/long/and/winding/route",
+						"type": "/very/long/path/radius.dev/HttpRoute",
+					}),
+				},
+			},
+		},
+		expected: resourceprovider.RadiusResource{
+			Name: "route-42",
+			ID:   "/the/long/and/winding/route",
+			Type: "/very/long/path/radius.dev/HttpRoute",
+			Properties: map[string]interface{}{
+				"status": rest.ResourceStatus{},
+			},
+		},
+	}, {
 		name: "no name",
 		original: &radiusv1alpha3.HttpRoute{
 			Spec: radiusv1alpha3.ResourceSpec{
