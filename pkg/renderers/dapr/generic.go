@@ -78,7 +78,7 @@ func GetDaprGeneric(daprGeneric DaprGeneric, resource renderers.RendererResource
 		return nil, err
 	}
 
-	statestoreResource, err := ConstructDaprGeneric(daprGeneric, resource.ApplicationName, resource.ResourceName)
+	daprGenericResource, err := ConstructDaprGeneric(daprGeneric, resource.ApplicationName, resource.ResourceName)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func GetDaprGeneric(daprGeneric DaprGeneric, resource renderers.RendererResource
 			Type:     resourcekinds.DaprComponent,
 			Provider: providers.ProviderKubernetes,
 		},
-		Resource: &statestoreResource,
+		Resource: &daprGenericResource,
 	}
 
 	return []outputresource.OutputResource{output}, nil

@@ -100,9 +100,15 @@ func main() {
 	}
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 
+	kubernetesModel, err := kubernetesmodel.NewKubernetesModel(mgr.GetClient())
+	if err != nil {
+		setupLog.Error(err, "unable to initialize application model")
+		os.Exit(1)
+	}
+
 	options := radcontroller.Options{
 		Manager:       mgr,
-		AppModel:      kubernetesmodel.NewKubernetesModel(mgr.GetClient()),
+		AppModel:      kubernetesModel,
 		Client:        mgr.GetClient(),
 		Dynamic:       unstructuredClient,
 		Scheme:        mgr.GetScheme(),
