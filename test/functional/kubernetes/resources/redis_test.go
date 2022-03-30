@@ -27,17 +27,15 @@ func TestRedis(t *testing.T) {
 						ApplicationName: application,
 						ResourceName:    "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDScrapedSecret: validation.NewOutputResource(
-								outputresource.LocalIDScrapedSecret,
-								outputresource.TypeKubernetes,
-								resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					application: {
 						// This will ensure that all the connection-properties
 						// were populated correctly.
 						validation.NewK8sPodForResource(application, "todoapp"),

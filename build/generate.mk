@@ -6,15 +6,12 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-rp-manifest generate-radclient generate-go generate-k8s-manifests generate-controller ## Generates all targets.
+generate: generate-arm-json generate-radclient generate-go generate-k8s-manifests generate-controller ## Generates all targets.
 
-.PHONY: generate-rp-manifest
-generate-rp-manifest: ## Generates Custom RP manifest that registers our resource types.
-	@echo "$(ARROW) Updating manifest..."
-	go run cmd/rp-manifest-gen/main.go \
-		--input deploy/rp-full.input.json \
-		--output deploy/rp-full.json \
-		--resources pkg/radrp/schema/resource-types.json
+.PHONY: generate-arm-json
+generate-arm-json: ## Generates ARM-JSON from our environment creation Bicep files
+	@echo "$(ARROW) Updating ARM-JSON..."
+	az bicep build --file deploy/rp-full.bicep
 
 .PHONY: generate-node-installed
 generate-node-installed:

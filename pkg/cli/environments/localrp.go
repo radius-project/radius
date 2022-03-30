@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/project-radius/radius/pkg/azure/aks"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
@@ -20,8 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/localrp"
-	k8s "k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // LocalRPEnvironment represents a local test setup for Azure Cloud Radius environment.
@@ -33,6 +30,8 @@ type LocalRPEnvironment struct {
 	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
 	ClusterName               string `mapstructure:"clustername" validate:"required"`
 	DefaultApplication        string `mapstructure:"defaultapplication,omitempty"`
+	Context                   string `mapstructure:"context" validate:"required"`
+	Namespace                 string `mapstructure:"namespace" validate:"required"`
 
 	// URL for the Deployment Engine, TODO run this as part of the start of a deployment
 	// if no URL is provided.
@@ -138,17 +137,12 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 }
 
 func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	config, err := aks.GetAKSMonitoringCredentials(ctx, e.SubscriptionID, e.ControlPlaneResourceGroup, e.ClusterName)
+	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
 	}
 
-	k8sClient, err := k8s.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := client.New(config, client.Options{Scheme: kubernetes.Scheme})
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +150,7 @@ func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clien
 	azcred := &radclient.AnonymousCredential{}
 	con := arm.NewConnection(e.URL, azcred, nil)
 
-	return &azure.AKSDiagnosticsClient{
+	return &azure.ARMDiagnosticsClient{
 		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
 			K8sClient:  k8sClient,
 			Client:     client,

@@ -44,7 +44,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					application: {
 						validation.NewK8sPodForResource(application, "todoapp"),
 						validation.NewK8sServiceForResource(application, "sql-route"),
 					},

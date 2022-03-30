@@ -408,7 +408,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	// Check for an existing RP in the target resource group. This way we
+	// Check for an cluster in the target resource group. This way we
 	// can use a single command to bind to an existing environment
 	exists, clusterName, err := findExistingEnvironment(ctx, armauth, subscriptionID, resourceGroup)
 	if err != nil {
@@ -424,7 +424,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		// We already have a provider in this resource group
 		output.LogInfo("Found existing environment...\n\n"+
 			"Environment '%v' available at:\n%v\n", name, envUrl)
-		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, radazure.GetControlPlaneResourceGroup(resourceGroup), clusterName)
+		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
 		if err != nil {
 			return err
 		}
@@ -443,17 +443,15 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	registryID := ""
 	if registryName != "" {
-		registryID, err = validateRegistry(ctx, armauth, subscriptionID, registryName)
+		_, err = validateRegistry(ctx, armauth, subscriptionID, registryName)
 		if err != nil {
 			return err
 		}
 	}
 
-	logAnalyticsWorkspaceName := ""
 	if logAnalyticsWorkspaceID != "" {
-		logAnalyticsWorkspaceName, err = validateLogAnalyticsWorkspace(ctx, armauth, subscriptionID, logAnalyticsWorkspaceID)
+		_, err = validateLogAnalyticsWorkspace(ctx, armauth, subscriptionID, logAnalyticsWorkspaceID)
 		if err != nil {
 			return err
 		}
@@ -468,14 +466,11 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	}
 
 	params := deploymentParameters{
-		ResourceGroup:             resourceGroup,
-		ControlPlaneResourceGroup: radazure.GetControlPlaneResourceGroup(resourceGroup),
-		Location:                  location,
-		DeploymentTemplate:        deploymentTemplate,
-		RegistryID:                registryID,
-		RegistryName:              registryName,
-		LogAnalyticsWorkspaceName: logAnalyticsWorkspaceName,
-		LogAnalyticsWorkspaceID:   logAnalyticsWorkspaceID,
+		ResourceGroup:           resourceGroup,
+		Location:                location,
+		DeploymentTemplate:      deploymentTemplate,
+		RegistryName:            registryName,
+		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
 	}
 	deployment, err := deployEnvironment(ctx, armauth, name, subscriptionID, params)
 	if err != nil {
@@ -488,7 +483,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	}
 
 	// Merge credentials for the AKS cluster that just got created so we can install our components on it.
-	err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", subscriptionID, "--resource-group", params.ControlPlaneResourceGroup, "--name", clusterName)
+	err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", subscriptionID, "--resource-group", params.ResourceGroup, "--name", clusterName)
 	if err != nil {
 		return err
 	}
@@ -496,7 +491,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	// Now that we've deployed we know the cluster name.
 	clusterOptions.Radius.AzureProvider.AKS = &radazure.AKSConfig{
 		SubscriptionID: subscriptionID,
-		ResourceGroup:  params.ControlPlaneResourceGroup,
+		ResourceGroup:  params.ResourceGroup,
 		ClusterName:    clusterName,
 	}
 
@@ -510,7 +505,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, params.ControlPlaneResourceGroup, clusterName)
+	err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
 	if err != nil {
 		return err
 	}
@@ -519,29 +514,10 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 }
 
 func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer, subscriptionID string, resourceGroup string) (bool, string, error) {
-	cpc := clients.NewCustomResourceProviderClient(subscriptionID, authorizer)
-
-	_, err := cpc.Get(ctx, resourceGroup, "radius")
-	if clients.Is404Error(err) {
-		// not found - will need to be created
-		return false, "", nil
-	} else if err != nil {
-		return false, "", err
-	}
-
-	_, err = cpc.Get(ctx, resourceGroup, "radiusv3")
-	if clients.Is404Error(err) {
-		// not found - will need to be created
-		return false, "", nil
-	} else if err != nil {
-		return false, "", err
-	}
-
-	// Custom Provider already exists, find the cluster...
 	mcc := clients.NewManagedClustersClient(subscriptionID, authorizer)
 
 	var cluster *containerservice.ManagedCluster
-	for list, err := mcc.ListByResourceGroupComplete(ctx, radazure.GetControlPlaneResourceGroup(resourceGroup)); list.NotDone(); err = list.NextWithContext(ctx) {
+	for list, err := mcc.ListByResourceGroupComplete(ctx, resourceGroup); list.NotDone(); err = list.NextWithContext(ctx) {
 		if err != nil {
 			return false, "", fmt.Errorf("cannot read AKS clusters: %w", err)
 		}
@@ -554,7 +530,7 @@ func findExistingEnvironment(ctx context.Context, authorizer autorest.Authorizer
 	}
 
 	if cluster == nil {
-		return false, "", fmt.Errorf("could not find an AKS instance in resource group '%v'", radazure.GetControlPlaneResourceGroup(resourceGroup))
+		return false, "", nil
 	}
 
 	return true, *cluster.Name, nil
@@ -647,6 +623,23 @@ func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Auth
 }
 
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, params deploymentParameters) (resources.DeploymentExtended, error) {
+	// We have to create the resource group in case it doesn't exist.
+	groupc := clients.NewGroupsClient(subscriptionID, authorizer)
+	resp, err := groupc.CheckExistence(ctx, params.ResourceGroup)
+	if err != nil {
+		return resources.DeploymentExtended{}, err
+	}
+
+	if resp.StatusCode == 404 {
+		_, err = groupc.CreateOrUpdate(ctx, params.ResourceGroup, resources.Group{
+			Name:     &params.ResourceGroup,
+			Location: &params.Location,
+		})
+		if err != nil {
+			return resources.DeploymentExtended{}, err
+		}
+	}
+
 	envUrl, err := radazure.GenerateAzureEnvUrl(subscriptionID, params.ResourceGroup)
 	if err != nil {
 		return resources.DeploymentExtended{}, err
@@ -664,26 +657,8 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 	// see https://github.com/Azure-Samples/azure-sdk-for-go-samples/blob/master/resources/testdata/parameters.json
 	// for an example
 	parameters := map[string]interface{}{
-		"channel": map[string]interface{}{
-			"value": version.Channel(),
-		},
-		"resourceGroup": map[string]interface{}{
-			"value": params.ResourceGroup,
-		},
-		"controlPlaneResourceGroup": map[string]interface{}{
-			"value": params.ControlPlaneResourceGroup,
-		},
-		"location": map[string]interface{}{
-			"value": params.Location,
-		},
-		"registryId": map[string]interface{}{
-			"value": params.RegistryID,
-		},
 		"registryName": map[string]interface{}{
 			"value": params.RegistryName,
-		},
-		"logAnalyticsWorkspaceName": map[string]interface{}{
-			"value": params.LogAnalyticsWorkspaceName,
 		},
 		"logAnalyticsWorkspaceID": map[string]interface{}{
 			"value": params.LogAnalyticsWorkspaceID,
@@ -715,8 +690,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 		deploymentProperties.Template = data
 	}
 	deploymentName := fmt.Sprintf("rad-create-environment-%v", uuid.New().String())
-	op, err := dc.CreateOrUpdateAtSubscriptionScope(ctx, deploymentName, resources.Deployment{
-		Location:   &params.Location,
+	op, err := dc.CreateOrUpdate(ctx, params.ResourceGroup, deploymentName, resources.Deployment{
 		Properties: deploymentProperties,
 	})
 	if err != nil {
@@ -767,7 +741,7 @@ func findClusterInDeployment(ctx context.Context, deployment resources.Deploymen
 	return clusterName, nil
 }
 
-func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, controlPlaneResourceGroup string, clusterName string) error {
+func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, clusterName string) error {
 	step := output.BeginStep("Updating Config...")
 
 	config := ConfigFromContext(ctx)
@@ -777,11 +751,12 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 	}
 
 	env.Items[name] = map[string]interface{}{
-		"kind":                      "azure",
-		"subscriptionId":            subscriptionID,
-		"resourceGroup":             resourceGroup,
-		"controlPlaneResourceGroup": controlPlaneResourceGroup,
-		"clusterName":               clusterName,
+		"kind":           "azure",
+		"subscriptionId": subscriptionID,
+		"resourceGroup":  resourceGroup,
+		"clusterName":    clusterName,
+		"context":        clusterName,
+		"namespace":      "default",
 	}
 
 	err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(name)))
@@ -805,12 +780,9 @@ func isSupportedLocation(name string) bool {
 }
 
 type deploymentParameters struct {
-	ResourceGroup             string
-	ControlPlaneResourceGroup string
-	Location                  string
-	DeploymentTemplate        string
-	RegistryID                string
-	RegistryName              string
-	LogAnalyticsWorkspaceName string
-	LogAnalyticsWorkspaceID   string
+	ResourceGroup           string
+	Location                string
+	DeploymentTemplate      string
+	RegistryName            string
+	LogAnalyticsWorkspaceID string
 }

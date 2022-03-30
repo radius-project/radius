@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
@@ -57,8 +56,10 @@ func NewOutputResource(localID, outputResourceType, resourceKind string, verifyS
 	}
 }
 
-func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, armConnection *arm.Connection, subscriptionID string, resourceGroup string, expected ResourceSet) {
+func ValidateOutputResources(t *testing.T, authorizer autorest.Authorizer, baseURL string, sender autorest.Sender, subscriptionID string, resourceGroup string, expected ResourceSet) {
 	genericClient := clients.NewGenericResourceClient(subscriptionID, authorizer)
+	genericClient.BaseURI = baseURL
+	genericClient.Sender = sender
 
 	failed := false
 

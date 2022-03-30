@@ -2,11 +2,11 @@
 {{- $existingApiService := lookup "apiregistration.k8s.io/v1" "APIService" .Release.Namespace "v1alpha3.api.bicep.dev"}}
 {{- $ca := genCA "bicep-deployment-engine-ca" 3650 }}
 {{- $cn := printf "bicep-api" }}
-{{- $altName := printf "bicep-api.%s" .Release.Namespace }}
-{{- $altName1 := printf "bicep-api.%s.svc" .Release.Namespace }}
-{{- $altName2 := printf "bicep-api.%s.svc.cluster" .Release.Namespace }}
-{{- $altName3 := printf "bicep-api.%s.svc.cluster.local" .Release.Namespace }}
-{{- $cert := genSignedCert $cn nil (list $altName1 $altName2 $altName3) 3650 $ca }}
+{{- $altName1 := printf "bicep-api.%s" .Release.Namespace }}
+{{- $altName2 := printf "bicep-api.%s.svc" .Release.Namespace }}
+{{- $altName3 := printf "bicep-api.%s.svc.cluster" .Release.Namespace }}
+{{- $altName4 := printf "bicep-api.%s.svc.cluster.local" .Release.Namespace }}
+{{- $cert := genSignedCert $cn nil (list $altName1 $altName2 $altName3 $altName4) 3650 $ca }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -35,4 +35,4 @@ spec:
     name: bicep-api
     namespace: {{ .Release.Namespace }}
   version: v1alpha3
-  caBundle: {{ if $existingApiService }}{{ $existingApiService.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
+  caBundle: {{ if $existingApiService }}{{ $existingApiService.spec.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}

@@ -323,9 +323,14 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init dev --environment dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }}
+        dist/rad env init dev --environment dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-rp --tag ${{ env.REL_VERSION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
+    - name: Wait for control-plane ready
+      run: |
+        kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
+        sleep 1m
+        kubectl wait --for=condition=ready pod -l app=radius-rp -n radius-system --timeout 5m
     - name: Download Bicep
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
@@ -465,16 +470,6 @@ jobs:
         export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
         export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
         rad env merge-credentials
-    - name: Update test environment RP
-      run: |
-        export AZURE_TENANT_ID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
-        export AZURE_CLIENT_ID=${{ secrets.INTEGRATION_TEST_SP_APP_ID }}
-        export AZURE_CLIENT_SECRET=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}
-        go run cmd/testenv/main.go \
-          update-rp \
-          --configpath ~/.rad/config.yaml \
-          --image ${{ env.DOCKER_REGISTRY }}/radius-rp:${{ env.REL_VERSION }} \
-          --check-version ${{ env.REL_VERSION }}
     - name: Download Bicep
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH

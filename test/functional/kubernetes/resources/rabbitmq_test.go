@@ -16,6 +16,8 @@ import (
 )
 
 func TestRabbitMQ(t *testing.T) {
+	t.Skip("will re-enable as part of #2021")
+
 	template := "testdata/kubernetes-resources-rabbitmq/kubernetes-resources-rabbitmq.bicep"
 	application := "kubernetes-resources-rabbitmq"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
@@ -27,17 +29,15 @@ func TestRabbitMQ(t *testing.T) {
 						ApplicationName: application,
 						ResourceName:    "todoapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDScrapedSecret: validation.NewOutputResource(
-								outputresource.LocalIDScrapedSecret,
-								outputresource.TypeKubernetes,
-								resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					application: {
 						validation.NewK8sPodForResource(application, "todoapp"),
 					},
 				},
