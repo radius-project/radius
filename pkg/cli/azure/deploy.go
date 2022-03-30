@@ -104,7 +104,7 @@ func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExte
 
 		id, err := azresources.Parse(*resource.ID)
 		if err != nil {
-			return clients.DeploymentResult{}, nil
+			return clients.DeploymentResult{}, err
 		}
 
 		resources = append(resources, id)
@@ -113,12 +113,12 @@ func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExte
 	outputs := map[string]clients.DeploymentOutput{}
 	b, err := json.Marshal(&deployment.Properties.Outputs)
 	if err != nil {
-		return clients.DeploymentResult{}, nil
+		return clients.DeploymentResult{}, err
 	}
 
 	err = json.Unmarshal(b, &outputs)
 	if err != nil {
-		return clients.DeploymentResult{}, nil
+		return clients.DeploymentResult{}, err
 	}
 
 	return clients.DeploymentResult{Resources: resources, Outputs: outputs}, nil
