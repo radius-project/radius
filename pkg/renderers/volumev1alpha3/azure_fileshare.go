@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -62,17 +63,24 @@ func RenderResource(name string, properties radclient.AzureFileShareVolumeProper
 	storageAccountID := fileshareID.Truncate().Truncate()
 
 	storageAccountResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureFileShareStorageAccount,
-		ResourceKind: resourcekinds.AzureFileShareStorageAccount,
+		LocalID: outputresource.LocalIDAzureFileShareStorageAccount,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureFileShareStorageAccount,
+			Provider: providers.ProviderAzure,
+		},
 		Resource: map[string]string{
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,
 			handlers.FileShareStorageAccountNameKey: storageAccountID.Types[0].Name,
 		},
 	}
 
+	fileshareResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.AzureFileShare,
+		Provider: providers.ProviderAzure,
+	}
 	fileshareResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureFileShare,
-		ResourceKind: resourcekinds.AzureFileShare,
+		ResourceType: fileshareResourceType,
 		Resource: map[string]string{
 			handlers.FileShareStorageAccountIDKey:   storageAccountID.ID,
 			handlers.FileShareStorageAccountNameKey: storageAccountID.Types[0].Name,
@@ -81,7 +89,7 @@ func RenderResource(name string, properties radclient.AzureFileShareVolumeProper
 		},
 
 		Dependencies: []outputresource.Dependency{storageAccountDependency},
-		Identity:     resourcemodel.NewARMIdentity(fileshareID.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent())),
+		Identity:     resourcemodel.NewARMIdentity(&fileshareResourceType, fileshareID.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent())),
 	}
 	return []outputresource.OutputResource{storageAccountResource, fileshareResource}, nil
 }

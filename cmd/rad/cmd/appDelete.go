@@ -51,7 +51,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 
 	// Prompt user to confirm deletion
 	if !yes {
-		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete '%v' from '%v' [yN]?", applicationName, env.GetName()), prompt.No)
+		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete '%v' from '%v' [y/N]?", applicationName, env.GetName()), prompt.No)
 		if err != nil {
 			return err
 		}

@@ -20,7 +20,7 @@ import (
 
 func TestK8sExtension(t *testing.T) {
 	template := "testdata/k8s-extension/connection-string.bicep"
-	application := "dummy"
+	application := "k8s-extension"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor:           kubernetestest.NewDeployStepExecutor(template),

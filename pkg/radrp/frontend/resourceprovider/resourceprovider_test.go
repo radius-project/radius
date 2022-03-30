@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	radclient "github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
@@ -26,6 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1078,15 +1080,33 @@ func Test_OutputResponseWithHealthStatus(t *testing.T) {
 		Status: db.RadiusResourceStatus{
 			OutputResources: []db.OutputResource{
 				{
-					LocalID:      outputresource.LocalIDDeployment,
-					ResourceKind: resourcekinds.Kubernetes,
+					LocalID: outputresource.LocalIDDeployment,
+					ResourceType: resourcemodel.ResourceType{
+						Type:     resourcekinds.Deployment,
+						Provider: providers.ProviderKubernetes,
+					},
+					Identity: resourcemodel.ResourceIdentity{
+						ResourceType: &resourcemodel.ResourceType{
+							Type:     resourcekinds.Deployment,
+							Provider: providers.ProviderKubernetes,
+						},
+					},
 					Status: db.OutputResourceStatus{
 						HealthState: healthcontract.HealthStateHealthy,
 					},
 				},
 				{
-					LocalID:      outputresource.LocalIDSecret,
-					ResourceKind: resourcekinds.Kubernetes,
+					LocalID: outputresource.LocalIDSecret,
+					ResourceType: resourcemodel.ResourceType{
+						Type:     resourcekinds.Secret,
+						Provider: providers.ProviderKubernetes,
+					},
+					Identity: resourcemodel.ResourceIdentity{
+						ResourceType: &resourcemodel.ResourceType{
+							Type:     resourcekinds.Secret,
+							Provider: providers.ProviderKubernetes,
+						},
+					},
 					Status: db.OutputResourceStatus{
 						HealthState: healthcontract.HealthStateNotApplicable,
 					},
@@ -1118,15 +1138,33 @@ func Test_OutputResponseWithHealthStatus(t *testing.T) {
 				HealthState:       healthcontract.HealthStateHealthy, // Aggregation should show Healthy
 				OutputResources: []rest.OutputResource{
 					{
-						LocalID:      outputresource.LocalIDDeployment,
-						ResourceKind: resourcekinds.Kubernetes,
+						LocalID: outputresource.LocalIDDeployment,
+						ResourceType: rest.ResourceType{
+							Type:     resourcekinds.Deployment,
+							Provider: providers.ProviderKubernetes,
+						},
+						OutputResourceInfo: resourcemodel.ResourceIdentity{
+							ResourceType: &resourcemodel.ResourceType{
+								Type:     resourcekinds.Deployment,
+								Provider: providers.ProviderKubernetes,
+							},
+						},
 						Status: rest.OutputResourceStatus{
 							HealthState: healthcontract.HealthStateHealthy,
 						},
 					},
 					{
-						LocalID:      outputresource.LocalIDSecret,
-						ResourceKind: resourcekinds.Kubernetes,
+						LocalID: outputresource.LocalIDSecret,
+						ResourceType: rest.ResourceType{
+							Type:     resourcekinds.Secret,
+							Provider: providers.ProviderKubernetes,
+						},
+						OutputResourceInfo: resourcemodel.ResourceIdentity{
+							ResourceType: &resourcemodel.ResourceType{
+								Type:     resourcekinds.Secret,
+								Provider: providers.ProviderKubernetes,
+							},
+						},
 						Status: rest.OutputResourceStatus{
 							HealthState: healthcontract.HealthStateHealthy, // NotApplicable should be shown as Healthy
 						},
@@ -1150,7 +1188,7 @@ func createRPTest(t *testing.T) test {
 	db := db.NewMockRadrpDB(ctrl)
 	deploy := deployment.NewMockDeploymentProcessor(ctrl)
 	completions := make(chan struct{})
-	rp := NewResourceProvider(db, deploy, completions, "http")
+	rp := NewResourceProvider(db, deploy, completions, "http", "")
 	return test{rp: rp, db: db, deploy: deploy, completions: completions}
 }
 

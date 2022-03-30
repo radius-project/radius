@@ -11,10 +11,12 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -31,9 +33,12 @@ func (r *noop) Render(ctx context.Context, options renderers.RenderOptions) (ren
 	deployment := appsv1.Deployment{}
 
 	deploymentResource := outputresource.OutputResource{
-		Resource:     &deployment,
-		ResourceKind: resourcekinds.Kubernetes,
-		LocalID:      outputresource.LocalIDDeployment,
+		Resource: &deployment,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.Deployment,
+			Provider: providers.ProviderKubernetes,
+		},
+		LocalID: outputresource.LocalIDDeployment,
 	}
 
 	output := renderers.RendererOutput{

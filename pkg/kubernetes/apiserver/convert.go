@@ -16,7 +16,6 @@ import (
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -137,7 +136,7 @@ func NewRestRadiusResourceFromUnstructured(input unstructured.Unstructured) (res
 	if statusMap, ok := m["status"]; ok {
 		// Check if there any resources
 		if _, ok := statusMap.(map[string]interface{})["resources"]; !ok {
-			properties["status"] = map[string]interface{}{}
+			properties["status"] = rest.ResourceStatus{}
 		} else {
 			outputResources, err := mapDeepGetMap(m, "status", "resources")
 			if err != nil {
@@ -187,8 +186,7 @@ func NewRestOutputResources(objRef string, original map[string]interface{}) ([]r
 		if err != nil {
 			// Skipping status since it is an optional field
 			rr := rest.OutputResource{
-				LocalID:            id,
-				OutputResourceType: string(resourcemodel.IdentityKindKubernetes),
+				LocalID: id,
 				Status: rest.OutputResourceStatus{
 					HealthState:        healthcontract.HealthStateUnknown,
 					HealthErrorDetails: "Status not found",
@@ -210,8 +208,7 @@ func NewRestOutputResources(objRef string, original map[string]interface{}) ([]r
 		provisioningStateErrorDetails, _ := mapDeepGetString(status, "provisioningStateErrorDetails")
 
 		rr := rest.OutputResource{
-			LocalID:            id,
-			OutputResourceType: string(resourcemodel.IdentityKindKubernetes),
+			LocalID: id,
 			Status: rest.OutputResourceStatus{
 				HealthState:              healthState,
 				HealthErrorDetails:       healthStateErrorDetails,

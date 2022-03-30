@@ -13,7 +13,9 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -123,7 +125,10 @@ func Test_GetRenderDependency(t *testing.T) {
 		},
 		OutputResources: map[string]resourcemodel.ResourceIdentity{
 			"SecretLocalID": {
-				Kind: resourcemodel.IdentityKindKubernetes,
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     resourcekinds.Secret,
+					Provider: providers.ProviderKubernetes,
+				},
 				Data: resourcemodel.KubernetesIdentity{
 					Namespace:  Namespace,
 					Name:       "some-secret",

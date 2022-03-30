@@ -44,7 +44,7 @@ func Test_Render_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, outputresource.LocalIDKeyVault, output.Resources[0].LocalID)
-	require.Equal(t, resourcekinds.AzureKeyVault, output.Resources[0].ResourceKind)
+	require.Equal(t, resourcekinds.AzureKeyVault, output.Resources[0].ResourceType.Type)
 
 	expectedProperties := map[string]string{
 		handlers.KeyVaultIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.KeyVault/vaults/test-vault",

@@ -8,6 +8,7 @@ package kubernetes
 import (
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
@@ -23,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/redisv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -86,10 +88,74 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 	}
 	outputResources := []model.OutputResourceModel{
 		{
-			Kind:            resourcekinds.Kubernetes,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Service,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Gateway,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.KubernetesHTTPRoute,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprPubSubGeneric,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreGeneric,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprSecretStoreGeneric,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.SecretProviderClass,
+				Provider: providers.ProviderKubernetes,
+			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8s),
 		},
 	}
 
-	return model.NewModel(radiusResources, outputResources)
+	// Configure the providers supported by the appmodel
+	supportedProviders := map[string]bool{
+		providers.ProviderKubernetes: true,
+	}
+
+	return model.NewModel(radiusResources, outputResources, supportedProviders)
 }

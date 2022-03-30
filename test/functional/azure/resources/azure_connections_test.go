@@ -10,6 +10,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
@@ -47,21 +48,25 @@ func Test_AzureConnections(t *testing.T) {
 						ResourceName:    containerResourceName,
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment:                  validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDAADPodIdentity:              validation.NewOutputResource(outputresource.LocalIDAADPodIdentity, outputresource.TypeAADPodIdentity, resourcekinds.AzurePodIdentity, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDUserAssignedManagedIdentity: validation.NewOutputResource(outputresource.LocalIDUserAssignedManagedIdentity, outputresource.TypeARM, resourcekinds.AzureUserAssignedManagedIdentity, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment:                  validation.NewOutputResource(outputresource.LocalIDDeployment, rest.ResourceType{Type: resourcekinds.Deployment, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDAADPodIdentity:              validation.NewOutputResource(outputresource.LocalIDAADPodIdentity, rest.ResourceType{Type: resourcekinds.AzurePodIdentity, Provider: providers.ProviderAzureKubernetesService}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDUserAssignedManagedIdentity: validation.NewOutputResource(outputresource.LocalIDUserAssignedManagedIdentity, rest.ResourceType{Type: resourcekinds.AzureUserAssignedManagedIdentity, Provider: providers.ProviderAzure}, false, rest.OutputResourceStatus{}),
 							// role assignment for connected azure resource
 							"role-assignment-1": {
 								SkipLocalIDWhenMatching: true,
-								OutputResourceType:      outputresource.TypeARM,
-								ResourceKind:            resourcekinds.AzureRoleAssignment,
-								VerifyStatus:            false,
+								ResourceType: rest.ResourceType{
+									Type:     resourcekinds.AzureRoleAssignment,
+									Provider: providers.ProviderAzure,
+								},
+								VerifyStatus: false,
 							},
 							"role-assignment-2": {
 								SkipLocalIDWhenMatching: true,
-								OutputResourceType:      outputresource.TypeARM,
-								ResourceKind:            resourcekinds.AzureRoleAssignment,
-								VerifyStatus:            false,
+								ResourceType: rest.ResourceType{
+									Type:     resourcekinds.AzureRoleAssignment,
+									Provider: providers.ProviderAzure,
+								},
+								VerifyStatus: false,
 							},
 						},
 					},

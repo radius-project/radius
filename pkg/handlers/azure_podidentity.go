@@ -17,8 +17,10 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/healthcontract"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
@@ -131,7 +133,10 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 	}
 
 	options.Resource.Identity = resourcemodel.ResourceIdentity{
-		Kind: resourcemodel.IdentityKindAADPodIdentity,
+		ResourceType: &resourcemodel.ResourceType{
+			Type:     resourcekinds.AzurePodIdentity,
+			Provider: providers.ProviderAzureKubernetesService,
+		},
 		Data: resourcemodel.AADPodIdentityIdentity{
 			AKSClusterName: handler.arm.K8sClusterName,
 			Name:           podIdentityName,
@@ -143,14 +148,10 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOpt
 }
 
 func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options DeleteOptions) error {
-	if options.ExistingOutputResource.Identity.Kind != resourcemodel.IdentityKindAADPodIdentity {
-		return fmt.Errorf("unexpected identity kind %q, needs to be %q", options.ExistingOutputResource.Identity.Kind, resourcemodel.IdentityKindAADPodIdentity)
+	podidentityCluster, podIdentityName, _, err := options.ExistingOutputResource.Identity.RequireAADPodIdentity()
+	if err != nil {
+		return err
 	}
-
-	identityData := options.ExistingOutputResource.Identity.Data.(resourcemodel.AADPodIdentityIdentity)
-	podIdentityName := identityData.Name
-	podidentityCluster := identityData.AKSClusterName
-
 	// Conceptually this resource is always 'managed'
 
 	mcc := clients.NewManagedClustersClient(handler.arm.SubscriptionID, handler.arm.Auth)

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -25,10 +26,11 @@ const (
 )
 
 type RadiusOptions struct {
-	ChartPath    string
-	ChartVersion string
-	Image        string
-	Tag          string
+	ChartPath     string
+	ChartVersion  string
+	Image         string
+	Tag           string
+	AzureProvider *azure.Provider
 }
 
 func ApplyRadiusHelmChart(options RadiusOptions) error {
@@ -52,9 +54,15 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 	}
 
 	err = addRadiusValues(helmChart, options.Image, options.Tag)
-
 	if err != nil {
 		return fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
+	}
+
+	if options.AzureProvider != nil {
+		err = addAzureProviderValues(helmChart, options.AzureProvider)
+		if err != nil {
+			return fmt.Errorf("failed to add azure values, err: %w, helm output: %s", err, helmOutput.String())
+		}
 	}
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
@@ -92,7 +100,7 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	return err
 }
 
-func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag string) error {
+func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string) error {
 	values := helmChart.Values
 
 	_, ok := values["global"]
@@ -108,12 +116,87 @@ func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag
 
 	radius := global["radius"].(map[string]interface{})
 
-	if containerImage != "" {
-		radius["container"] = containerImage
+	if containerTag != "" {
+		radius["tag"] = containerTag
+	}
+
+	_, ok = global["rp"]
+	if !ok {
+		global["rp"] = make(map[string]interface{})
+	}
+
+	rp := global["rp"].(map[string]interface{})
+
+	if rpImage != "" {
+		rp["container"] = rpImage
 	}
 
 	if containerTag != "" {
+		rp["tag"] = containerTag
 		radius["tag"] = containerTag
+	}
+
+	return nil
+}
+
+func addAzureProviderValues(helmChart *chart.Chart, azureProvider *azure.Provider) error {
+	if azureProvider == nil {
+		return nil
+	}
+	values := helmChart.Values
+
+	_, ok := values["global"]
+	if !ok {
+		values["global"] = make(map[string]interface{})
+	}
+	global := values["global"].(map[string]interface{})
+
+	_, ok = global["rp"]
+	if !ok {
+		global["rp"] = make(map[string]interface{})
+	}
+	rp := global["rp"].(map[string]interface{})
+
+	_, ok = rp["provider"]
+	if !ok {
+		rp["provider"] = make(map[string]interface{})
+	}
+	provider := rp["provider"].(map[string]interface{})
+
+	_, ok = provider["azure"]
+	if !ok {
+		provider["azure"] = make(map[string]interface{})
+	}
+
+	azure := provider["azure"].(map[string]interface{})
+
+	azure["subscriptionId"] = azureProvider.SubscriptionID
+	azure["resourceGroup"] = azureProvider.ResourceGroup
+
+	if azureProvider.ServicePrincipal != nil {
+		_, ok = azure["servicePrincipal"]
+		if !ok {
+			azure["servicePrincipal"] = make(map[string]interface{})
+		}
+		azure["servicePrincipal"] = map[string]interface{}{
+			"clientId":     azureProvider.ServicePrincipal.ClientID,
+			"clientSecret": azureProvider.ServicePrincipal.ClientSecret,
+			"tenantId":     azureProvider.ServicePrincipal.TenantID,
+		}
+	} else if azureProvider.PodIdentitySelector != nil {
+		azure["podidentity"] = *azureProvider.PodIdentitySelector
+	}
+
+	if azureProvider.AKS != nil {
+		_, ok = rp["aks"]
+		if !ok {
+			rp["aks"] = make(map[string]interface{})
+		}
+
+		aks := rp["aks"].(map[string]interface{})
+		aks["clusterName"] = azureProvider.AKS.ClusterName
+		aks["subscriptionId"] = azureProvider.AKS.SubscriptionID
+		aks["resourceGroup"] = azureProvider.AKS.ResourceGroup
 	}
 
 	return nil

@@ -95,8 +95,13 @@ stages:
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
-        dist/rad env install kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-controller --tag ${{ variables.REL_VERSION }}
+        dist/rad env install kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-rp --tag ${{ variables.REL_VERSION }}
       displayName: rad env install kubernetes
+    - script: |
+        kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
+        sleep 1m
+        kubectl wait --for=condition=ready pod -l app=radius-rp -n radius-system --timeout 5m
+      displayName: Wait for control-plane ready
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         cd $(Build.SourcesDirectory)
@@ -149,16 +154,15 @@ stages:
               --resource-group rad-$RANID \
               --location $LOCATION \
               --loganalytics-workspace-id "${{ variables.INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID }}" \
-              --deployment-template "${{ variables.RADIUS_DEPLOYMENT_TEMPLATE_LOCATION }}"
+              --deployment-template "${{ variables.RADIUS_DEPLOYMENT_TEMPLATE_LOCATION }}" \
+              --chart ${{ variables.RADIUS_CHART_LOCATION }}  \
+              --image ${{ variables.DOCKER_REGISTRY }}/radius-rp \
+              --tag ${{ variables.REL_VERSION }}
     - script: |
-        export PATH=$(Build.SourcesDirectory)/dist:$PATH
-        rad env merge-credentials
-        go run cmd/testenv/main.go \
-            update-rp \
-            --configpath ~/.rad/config.yaml \
-            --image ${{ variables.DOCKER_REGISTRY }}/radius-rp:${{ variables.REL_VERSION }} \
-            --check-version ${{ variables.REL_VERSION }}
-      displayName: update RP to match PR
+        kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
+        sleep 1m
+        kubectl wait --for=condition=ready pod -l app=radius-rp -n radius-system --timeout 5m
+      displayName: Wait for control-plane ready
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         cd $(Build.SourcesDirectory)
@@ -177,12 +181,6 @@ stages:
         az group delete \
           --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
           --resource-group $(RADENVIRONMENT) \
-          --yes \
-          --verbose \
-          --no-wait
-        az group delete \
-          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-          --resource-group RE-$(RADENVIRONMENT) \
           --yes \
           --verbose \
           --no-wait

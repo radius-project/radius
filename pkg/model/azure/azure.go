@@ -10,6 +10,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
@@ -59,6 +60,15 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 			// RBAC for non-Radius Azure resources. Supports user specified roles.
 			// More information can be found here: https://github.com/project-radius/radius/issues/1321
 		},
+	}
+
+	// Configure the providers supported by the appmodel
+	supportedProviders := map[string]bool{
+		providers.ProviderKubernetes: true,
+	}
+	if arm != nil {
+		supportedProviders[providers.ProviderAzure] = true
+		supportedProviders[providers.ProviderAzureKubernetesService] = true
 	}
 
 	radiusResourceModel := []model.RadiusResourceModel{
@@ -149,129 +159,244 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 		radiusResourceModel = append(radiusResourceModel, azureModel...)
 	}
 
-	skipHealthCheckKubernetesKinds := map[string]bool{
-		resourcekinds.Service:             true,
-		resourcekinds.Secret:              true,
-		resourcekinds.StatefulSet:         true,
-		resourcekinds.KubernetesHTTPRoute: true,
-		resourcekinds.SecretProviderClass: true,
+	supportedHealthCheckKubernetesKinds := map[string]bool{
+		resourcekinds.Deployment: true,
+	}
+
+	shouldSupportHealthMonitorFunc := func(resourceType resourcemodel.ResourceType) bool {
+		if resourceType.Provider == providers.ProviderKubernetes {
+			return supportedHealthCheckKubernetesKinds[resourceType.Type]
+		}
+
+		return false
 	}
 
 	outputResourceModel := []model.OutputResourceModel{
 		{
-			Kind:            resourcekinds.Kubernetes,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Kubernetes,
+				Provider: providers.ProviderKubernetes,
+			},
 			HealthHandler:   handlers.NewKubernetesHealthHandler(k8s),
 			ResourceHandler: handlers.NewKubernetesHandler(k8s),
 
 			// We can monitor specific kinds of Kubernetes resources for health tracking, but not all of them.
-			ShouldSupportHealthMonitorFunc: func(identity resourcemodel.ResourceIdentity) bool {
-				if identity.Kind == resourcemodel.IdentityKindKubernetes {
-					skip := skipHealthCheckKubernetesKinds[identity.Data.(resourcemodel.KubernetesIdentity).Kind]
-					return !skip
-				}
-
-				return false
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
 			},
+			HealthHandler:                  handlers.NewKubernetesHealthHandler(k8s),
+			ResourceHandler:                handlers.NewKubernetesHandler(k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
 		},
 		{
-			Kind:            resourcekinds.DaprSecretStoreGeneric,
-			HealthHandler:   handlers.NewDaprSecretStoreGenericHealthHandler(arm, k8s),
-			ResourceHandler: handlers.NewDaprSecretStoreGenericHandler(arm, k8s),
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Service,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewKubernetesHealthHandler(k8s),
+			ResourceHandler:                handlers.NewKubernetesHandler(k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
 		},
 		{
-			Kind:            resourcekinds.DaprStateStoreAzureStorage,
-			HealthHandler:   handlers.NewDaprStateStoreAzureStorageHealthHandler(arm, k8s),
-			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewKubernetesHealthHandler(k8s),
+			ResourceHandler:                handlers.NewKubernetesHandler(k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
 		},
 		{
-			Kind:            resourcekinds.DaprStateStoreGeneric,
-			HealthHandler:   handlers.NewDaprStateStoreGenericHealthHandler(arm, k8s),
-			ResourceHandler: handlers.NewDaprStateStoreGenericHandler(arm, k8s),
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Gateway,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewKubernetesHealthHandler(k8s),
+			ResourceHandler:                handlers.NewKubernetesHandler(k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
 		},
 		{
-			Kind:            resourcekinds.DaprPubSubTopicAzureServiceBus,
-			HealthHandler:   handlers.NewDaprPubSubServiceBusHealthHandler(arm, k8s),
-			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.KubernetesHTTPRoute,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewKubernetesHealthHandler(k8s),
+			ResourceHandler:                handlers.NewKubernetesHandler(k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
 		},
 		{
-			Kind:            resourcekinds.DaprPubSubTopicGeneric,
-			HealthHandler:   handlers.NewDaprPubSubGenericHealthHandler(arm, k8s),
-			ResourceHandler: handlers.NewDaprPubSubGenericHandler(arm, k8s),
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.SecretProviderClass,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewKubernetesHealthHandler(k8s),
+			ResourceHandler:                handlers.NewKubernetesHandler(k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprSecretStoreGeneric,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewDaprSecretStoreGenericHealthHandler(arm, k8s),
+			ResourceHandler:                handlers.NewDaprSecretStoreGenericHandler(arm, k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureStorage,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewDaprStateStoreAzureStorageHealthHandler(arm, k8s),
+			ResourceHandler:                handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreGeneric,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewDaprStateStoreGenericHealthHandler(arm, k8s),
+			ResourceHandler:                handlers.NewDaprStateStoreGenericHandler(arm, k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprPubSubTopicGeneric,
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewDaprPubSubGenericHealthHandler(arm, k8s),
+			ResourceHandler:                handlers.NewDaprPubSubGenericHandler(arm, k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
 		},
 	}
 
 	azureOutputResourceModel := []model.OutputResourceModel{
 		{
-			Kind:                   resourcekinds.AzureCosmosDBMongo,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:          handlers.NewAzureCosmosDBMongoHealthHandler(arm),
 			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
 			SecretValueTransformer: &mongodbv1alpha3.AzureTransformer{},
 		},
 		{
-			Kind:            resourcekinds.AzureCosmosAccount,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureCosmosAccountMongoHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureCosmosAccountHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureCosmosDBSQL,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBSQL,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureCosmosDBSQLHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureCosmosDBSQLHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureServiceBusQueue,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureServiceBusQueue,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureServiceBusQueueHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureServiceBusQueueHandler(arm),
-			ShouldSupportHealthMonitorFunc: func(identity resourcemodel.ResourceIdentity) bool {
+			ShouldSupportHealthMonitorFunc: func(resourceType resourcemodel.ResourceType) bool {
 				return true
 			},
 		},
 		{
-			Kind:            resourcekinds.AzureKeyVault,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
+				Provider: providers.ProviderAzure,
+			},
+			HealthHandler:   handlers.NewDaprPubSubServiceBusHealthHandler(arm, k8s),
+			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureKeyVaultHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureKeyVaultHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzurePodIdentity,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzurePodIdentity,
+				Provider: providers.ProviderAzureKubernetesService,
+			},
 			HealthHandler:   handlers.NewAzurePodIdentityHealthHandler(arm),
 			ResourceHandler: handlers.NewAzurePodIdentityHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureSqlServer,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureSqlServer,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewARMHealthHandler(arm),
 			ResourceHandler: handlers.NewARMHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureSqlServerDatabase,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureSqlServerDatabase,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewARMHealthHandler(arm),
 			ResourceHandler: handlers.NewARMHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureUserAssignedManagedIdentity,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureUserAssignedManagedIdentityHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureRoleAssignment,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureRoleAssignmentHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureKeyVaultSecret,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureKeyVaultSecret,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureKeyVaultSecretHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureKeyVaultSecretHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureRedis,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRedis,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureRedisHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureRedisHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureFileShare,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureFileShare,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureFileShareHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureFileShareHandler(arm),
 		},
 		{
-			Kind:            resourcekinds.AzureFileShareStorageAccount,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureFileShareStorageAccount,
+				Provider: providers.ProviderAzure,
+			},
 			HealthHandler:   handlers.NewAzureFileShareStorageAccountHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureFileShareStorageAccountHandler(arm),
 		},
@@ -280,5 +405,5 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 	if arm != nil {
 		outputResourceModel = append(outputResourceModel, azureOutputResourceModel...)
 	}
-	return model.NewModel(radiusResourceModel, outputResourceModel)
+	return model.NewModel(radiusResourceModel, outputResourceModel, supportedProviders)
 }

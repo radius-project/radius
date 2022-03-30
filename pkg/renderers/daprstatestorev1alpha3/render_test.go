@@ -62,7 +62,7 @@ func Test_Render_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, output.LocalID)
-	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, output.ResourceKind)
+	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, output.ResourceType.Type)
 
 	expected := map[string]string{
 		handlers.KubernetesNameKey:       "test-resource",
@@ -159,7 +159,7 @@ func Test_Render_Azure_Generic_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreGeneric, output.LocalID)
-	require.Equal(t, resourcekinds.DaprStateStoreGeneric, output.ResourceKind)
+	require.Equal(t, resourcekinds.DaprStateStoreGeneric, output.ResourceType.Type)
 
 	metadata := map[string]interface{}{
 		"foo": "bar",
@@ -274,7 +274,7 @@ func Test_Render_Kubernetes_Generic_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreGeneric, output.LocalID)
-	require.Equal(t, resourcekinds.Kubernetes, output.ResourceKind)
+	require.Equal(t, resourcekinds.DaprStateStoreGeneric, output.ResourceType.Type)
 
 	expected := unstructured.Unstructured{
 		Object: map[string]interface{}{

@@ -298,8 +298,31 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 				assert.Fail(t, "timed out after waiting for services to be created")
 				return
 			}
+
 			if validated {
 				break
+			}
+		}
+
+		// All of the resources have been created but we want to check conditions as well
+		for resourceGVR, expectedInNamespace := range namespaceTypes {
+			if resourceGVR.Resource != "pods" {
+				continue
+			}
+
+			for _, selector := range expectedInNamespace {
+				t.Logf("Checking pods in %s with %s", namespace, selector.Labels)
+				actualPods, err := k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(selector.Labels).String(),
+				})
+				assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
+
+				for _, pod := range actualPods.Items {
+					t.Logf("Checking pod: %s:%s", pod.Namespace, pod.Name)
+					monitor := PodMonitor{K8s: k8s, Pod: pod}
+					monitor.ValidateRunning(ctx, t)
+					t.Logf("Pod is ready %s:%s", pod.Namespace, pod.Name)
+				}
 			}
 		}
 	}

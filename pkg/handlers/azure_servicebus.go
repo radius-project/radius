@@ -47,7 +47,7 @@ type azureServiceBusQueueHandler struct {
 
 func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Inside Put for Kind: %s", options.Resource.ResourceKind))
+	logger.Info(fmt.Sprintf("Inside Put for Kind: %s", options.Resource.ResourceType.Type))
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	// queue name must be specified by the user
@@ -93,7 +93,7 @@ func (handler *azureServiceBusQueueHandler) Put(ctx context.Context, options *Pu
 	properties[ServiceBusQueueConnectionStringKey] = *queueConnectionString
 
 	// Update the output resource with the info from the deployed Azure resource
-	options.Resource.Identity = resourcemodel.NewARMIdentity(queueID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, queueID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	return properties, nil
 }

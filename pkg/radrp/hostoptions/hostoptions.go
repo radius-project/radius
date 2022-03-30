@@ -30,6 +30,7 @@ type HostOptions struct {
 	Address         string
 	Arm             *armauth.ArmConfig
 	Authenticate    bool
+	BasePath        string
 	DBClientFactory func(ctx context.Context) (*mongo.Database, error)
 
 	// HealthChannels supports loosely-coupled communication between the Resource Provider
@@ -38,10 +39,11 @@ type HostOptions struct {
 	HealthChannels healthcontract.HealthChannels
 	K8sConfig      *rest.Config
 	RPIdentifier   string
+	TLSCertDir     string
 }
 
 func NewHostOptionsFromEnvironment() (HostOptions, error) {
-	port, authenticate, err := getRest()
+	port, authenticate, basePath, tlsCertDir, err := getRest()
 	if err != nil {
 		return HostOptions{}, err
 	}
@@ -65,10 +67,12 @@ func NewHostOptionsFromEnvironment() (HostOptions, error) {
 		Address:         ":" + port,
 		Arm:             arm,
 		Authenticate:    authenticate,
+		BasePath:        basePath,
 		DBClientFactory: dbClientFactory,
 		HealthChannels:  healthcontract.NewHealthChannels(),
 		K8sConfig:       k8s,
 		RPIdentifier:    getRPIdentifier(k8s),
+		TLSCertDir:      tlsCertDir,
 	}, nil
 }
 
@@ -88,11 +92,11 @@ func getRPIdentifier(k8s *rest.Config) string {
 	return rpID
 }
 
-func getRest() (string, bool, error) {
+func getRest() (string, bool, string, string, error) {
 	// App Service uses this env-var to tell us what port to listen on.
 	port, ok := os.LookupEnv("PORT")
 	if !ok {
-		return "", false, errors.New("env: PORT is required")
+		return "", false, "", "", errors.New("env: PORT is required")
 	}
 
 	authenticate := true
@@ -102,7 +106,13 @@ func getRest() (string, bool, error) {
 		authenticate = false
 	}
 
-	return port, authenticate, nil
+	basePath, ok := os.LookupEnv("BASE_PATH")
+	if ok && len(basePath) > 0 && (!strings.HasPrefix(basePath, "/") || strings.HasSuffix(basePath, "/")) {
+		return "", false, "", "", errors.New("env: BASE_PATH must begin with '/' and must not end with '/'")
+	}
+
+	tlsCertDir := os.Getenv("TLS_CERT_DIR")
+	return port, authenticate, basePath, tlsCertDir, nil
 }
 
 func getMongo() (func(context.Context) (*mongo.Database, error), error) {

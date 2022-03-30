@@ -12,6 +12,8 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -39,7 +41,10 @@ func (handler *daprPubSubGenericHandler) Put(ctx context.Context, options *PutOp
 		return nil, err
 	}
 	options.Resource.Identity = resourcemodel.ResourceIdentity{
-		Kind: resourcemodel.IdentityKindKubernetes,
+		ResourceType: &resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprPubSubGeneric,
+			Provider: providers.ProviderKubernetes,
+		},
 		Data: resourcemodel.KubernetesIdentity{
 			Name:       item.GetName(),
 			Namespace:  item.GetNamespace(),
