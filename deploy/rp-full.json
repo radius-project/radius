@@ -647,16 +647,6 @@
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
             },
             {
-                "name": "Application/azure.com.KeyVault",
-                "routingType": "Proxy",
-                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-            },
-            {
-                "name": "Application/azure.com.ServiceBusQueue",
-                "routingType": "Proxy",
-                "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
-            },
-            {
                 "name": "Application/dapr.io.InvokeHttpRoute",
                 "routingType": "Proxy",
                 "endpoint": "[concat('https://', parameters('siteName'), '.azurewebsites.net/{requestPath}')]"
