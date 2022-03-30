@@ -137,7 +137,7 @@ func NewRestRadiusResourceFromUnstructured(input unstructured.Unstructured) (res
 	if statusMap, ok := m["status"]; ok {
 		// Check if there any resources
 		if _, ok := statusMap.(map[string]interface{})["resources"]; !ok {
-			properties["status"] = map[string]interface{}{}
+			properties["status"] = rest.ResourceStatus{}
 		} else {
 			outputResources, err := mapDeepGetMap(m, "status", "resources")
 			if err != nil {
