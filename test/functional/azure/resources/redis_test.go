@@ -4,7 +4,6 @@
 package resources_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -20,7 +19,7 @@ func Test_RedisUserSecrets(t *testing.T) {
 	application := "azure-resources-redis-user-secrets"
 	template := "testdata/azure-resources-redis-user-secrets.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template, magpieImage),

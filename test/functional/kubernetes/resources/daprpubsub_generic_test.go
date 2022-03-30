@@ -6,7 +6,6 @@
 package resource_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -21,7 +20,7 @@ func Test_DaprPubSub_Generic(t *testing.T) {
 	template := "testdata/kubernetes-resources-daprpubsub-generic.bicep"
 	application := "kubernetes-resources-daprpubsub-generic"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template, magpieImage),

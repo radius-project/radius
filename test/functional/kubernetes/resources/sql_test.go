@@ -6,7 +6,6 @@
 package resource_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -23,7 +22,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 	application := "kubernetes-resources-sql"
 	template := "testdata/kubernetes-resources-sql.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template, magpieImage),

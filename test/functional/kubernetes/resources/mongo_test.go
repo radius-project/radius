@@ -6,7 +6,6 @@
 package resource_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -21,7 +20,7 @@ func TestMongo(t *testing.T) {
 	template := "testdata/kubernetes-resources-mongo/kubernetes-resources-mongo.bicep"
 	application := "kubernetes-resources-mongo"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template, magpieImage),

@@ -1,5 +1,7 @@
 import kubernetes from kubernetes
+
 param  magpieimage string
+
 resource rabbitmqService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'rabbitmq-svc'

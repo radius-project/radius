@@ -6,7 +6,6 @@
 package resources_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -23,7 +22,7 @@ func Test_ExtenderResource(t *testing.T) {
 	application := "azure-resources-extender"
 	template := "testdata/azure-resources-extender.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor:       azuretest.NewDeployStepExecutor(template, magpieImage),

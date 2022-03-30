@@ -6,7 +6,6 @@
 package resources_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -24,7 +23,7 @@ func Test_MongoDB(t *testing.T) {
 	application := "azure-resources-mongodb"
 	template := "testdata/azure-resources-mongodb.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template, magpieImage),
@@ -85,7 +84,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 	application := "azure-resources-mongodb-user-secrets"
 	template := "testdata/azure-resources-mongodb-user-secrets.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template, magpieImage),

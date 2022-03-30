@@ -41,7 +41,7 @@ func Test_CLI(t *testing.T) {
 	application := "azure-cli"
 	template := "testdata/azure-cli.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
@@ -180,6 +180,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	application := "azure-cli-parameters"
 	template := "testdata/azure-cli-parameters.bicep"
 	parameterFile := "testdata/azure-cli-parameters.parameters.json"
+	magpietag := "magpietag=" + os.Getenv("MAGPIE_TAG")
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -188,7 +189,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 	t.Logf("deploying %s from file %s", application, template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, "@"+parameterFilePath, "env=COOL_VALUE")
+	err = cli.Deploy(ctx, templateFilePath, "@"+parameterFilePath, "env=COOL_VALUE", magpietag)
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)
 

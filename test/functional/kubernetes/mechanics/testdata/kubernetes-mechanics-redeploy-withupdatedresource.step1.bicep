@@ -1,4 +1,5 @@
 param  magpieimage string
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-mechanics-redeploy-withupdatedresource'
 

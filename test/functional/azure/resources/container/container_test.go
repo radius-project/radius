@@ -7,7 +7,6 @@ package container_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -31,7 +30,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	application := "azure-resources-container-httproute"
 	template := "testdata/azure-resources-container-httproute.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor:       azuretest.NewDeployStepExecutor(template, magpieImage),

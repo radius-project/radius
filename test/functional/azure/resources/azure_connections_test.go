@@ -6,7 +6,6 @@
 package resources_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -25,7 +24,7 @@ func Test_AzureConnections(t *testing.T) {
 	containerResourceName := "db-service"
 	template := "testdata/azure-connection-database-service.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := azuretest.NewApplicationTest(t, applicationName, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template, magpieImage),

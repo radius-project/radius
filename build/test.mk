@@ -11,17 +11,17 @@ RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 
 .PHONY: test
 test: ## Runs unit tests, excluding kubernetes controller tests
-	CGO_ENABLED=1 MAGPIE_IMAGE=${MAGPIE_IMAGE} go test ./pkg/... $(GOTEST_OPTS)
+	CGO_ENABLED=1 MAGPIE_TAG=${REL_VERSION} MAGPIE_IMAGE=${MAGPIE_IMAGE} go test ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-functional-azure
 test-functional-azure: ## Runs Azure functional tests
-	CGO_ENABLED=1 MAGPIE_IMAGE=${MAGPIE_IMAGE} go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20 $(GOTEST_OPTS)
+	CGO_ENABLED=1 MAGPIE_TAG=${REL_VERSION} MAGPIE_IMAGE=${MAGPIE_IMAGE} go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20 $(GOTEST_OPTS)
 
 test-functional-localdev: ## Runs Local Dev functional tests
-	CGO_ENABLED=1 MAGPIE_IMAGE=${MAGPIE_IMAGE} go test ./test/functional/localdev/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 MAGPIE_TAG=${REL_VERSION} MAGPIE_IMAGE=${MAGPIE_IMAGE} go test ./test/functional/localdev/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-kubernetes: ## Runs Kubernetes functional tests
-	CGO_ENABLED=1 MAGPIE_IMAGE=${MAGPIE_IMAGE} go test ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 MAGPIE_TAG=${REL_VERSION} MAGPIE_IMAGE=${MAGPIE_IMAGE} go test ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.19.2
@@ -34,4 +34,4 @@ test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
 
 test-localenv: test-get-envtools ## Runs local development environment tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 MAGPIE_IMAGE=${MAGPIE_IMAGE} go test $(GOTEST_OPTS) -v ./test/integration/localenv/...
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 REL_VERSION=${REL_VERSION} MAGPIE_IMAGE=${MAGPIE_IMAGE} go test $(GOTEST_OPTS) -v ./test/integration/localenv/...

@@ -25,7 +25,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 	application := "azure-mechanics-redeploy-withanotherresource"
 	templateFmt := "testdata/azure-mechanics-redeploy-withanotherresource.step%d.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), magpieImage),
@@ -55,7 +55,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2)),
+			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), magpieImage),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// None
@@ -99,7 +99,7 @@ func Test_CommunicationCycle(t *testing.T) {
 	application := "azure-mechanics-communication-cycle"
 	template := "testdata/azure-mechanics-communication-cycle.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor: azuretest.NewDeployStepExecutor(template, magpieImage),

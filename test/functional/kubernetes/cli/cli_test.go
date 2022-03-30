@@ -7,7 +7,6 @@ package cli_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -30,10 +29,10 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	template := "testdata/kubernetes-cli-parameters.bicep"
 	parameterFile := "testdata/kubernetes-cli-parameters.parameters.json"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
-
+	magpietag := "magpietag=" + os.Getenv("MAGPIE_TAG")
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE"),
+			Executor: kubernetestest.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", magpietag),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -76,7 +75,6 @@ func Test_CLI(t *testing.T) {
 	application := "kubernetes-cli"
 	template := "testdata/kubernetes-cli.bicep"
 	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
-	fmt.Println("magpieImage:", magpieImage)
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
 			Executor: kubernetestest.NewDeployStepExecutor(template, magpieImage),
