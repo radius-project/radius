@@ -118,7 +118,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2)),
+			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), magpieImage),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -186,7 +186,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2)),
+			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), magpieImage),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
