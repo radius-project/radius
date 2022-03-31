@@ -2,7 +2,7 @@
 
 ## Operating system
 
-We support developing on macOS, Linux and Windows. 
+We support developing on macOS, Linux and Windows with [WSL](https://docs.microsoft.com/en-us/windows/wsl/install).
 
 ## Required installs
 
@@ -10,12 +10,8 @@ This is the list of core dependencies to install for the most common tasks. In g
 
 - [Git](https://git-scm.com/downloads)
 
-- Make
+- Make  
   
-  **Windows**: Install make with [Chocolatey](https://chocolatey.org/install)
-  ```cmd
-  choco install make
-  ```
   **Linux**: Install the `build-essential` package:
   ```bash
   sudo apt-get install build-essential
