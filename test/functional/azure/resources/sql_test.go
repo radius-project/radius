@@ -6,7 +6,6 @@
 package resources_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -16,17 +15,17 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/microsoftsqlv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_MicrosoftSQL_WithoutResourceID(t *testing.T) {
 	application := "azure-resources-microsoft-sql"
 	template := "testdata/azure-resources-microsoft-sql.bicep"
-	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
 
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template, magpieImage),
+			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{

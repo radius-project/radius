@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
@@ -40,7 +41,6 @@ func Test_CLI(t *testing.T) {
 	// We use nested tests so we can skip them if we've already failed deployment.
 	application := "azure-cli"
 	template := "testdata/azure-cli.bicep"
-	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -48,7 +48,7 @@ func Test_CLI(t *testing.T) {
 	templateFilePath := filepath.Join(cwd, template)
 	t.Logf("deploying %s from file %s", application, template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, magpieImage)
+	err = cli.Deploy(ctx, templateFilePath, functional.GetMagpieImage())
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)
 
@@ -180,7 +180,6 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	application := "azure-cli-parameters"
 	template := "testdata/azure-cli-parameters.bicep"
 	parameterFile := "testdata/azure-cli-parameters.parameters.json"
-	magpietag := "magpietag=" + os.Getenv("MAGPIE_TAG")
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -189,7 +188,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 	t.Logf("deploying %s from file %s", application, template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, "@"+parameterFilePath, "env=COOL_VALUE", magpietag)
+	err = cli.Deploy(ctx, templateFilePath, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag())
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)
 

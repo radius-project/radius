@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/kubernetestest"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/validation"
@@ -29,10 +30,10 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	template := "testdata/kubernetes-cli-parameters.bicep"
 	parameterFile := "testdata/kubernetes-cli-parameters.parameters.json"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
-	magpietag := "magpietag=" + os.Getenv("MAGPIE_TAG")
+
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", magpietag),
+			Executor: kubernetestest.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -74,10 +75,10 @@ func Test_CLI(t *testing.T) {
 	// We use nested tests so we can skip them if we've already failed deployment.
 	application := "kubernetes-cli"
 	template := "testdata/kubernetes-cli.bicep"
-	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
+
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template, magpieImage),
+			Executor: kubernetestest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

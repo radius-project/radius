@@ -6,7 +6,6 @@
 package resources_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -15,17 +14,17 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/extenderv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_ExtenderResource(t *testing.T) {
 	application := "azure-resources-extender"
 	template := "testdata/azure-resources-extender.bicep"
-	magpieImage := "magpieimage=" + os.Getenv("MAGPIE_IMAGE")
 
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor:       azuretest.NewDeployStepExecutor(template, magpieImage),
+			Executor:       azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{},
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{

@@ -83,7 +83,6 @@ jobs:
       - name: Run make test-localenv (local development tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
-          export MAGPIE_IMAGE=${{ env.DOCKER_REGISTRY }}/magpiego:${{ env.REL_VERSION }}
           make test-localenv
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
@@ -264,7 +263,6 @@ jobs:
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         export TEST_TIMEOUT=${{ env.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-        export MAGPIE_IMAGE=${{ env.DOCKER_REGISTRY }}/magpiego:${{ env.REL_VERSION }}
         make test-functional-kubernetes
     - name: Upload container logs
       if: always()
@@ -340,14 +338,12 @@ jobs:
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-        export MAGPIE_IMAGE=${{ env.DOCKER_REGISTRY }}/magpiego:${{ env.REL_VERSION }}
         make test-functional-localdev
     - name: Run Local Dev Kubernetes tests (PR)
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-        export MAGPIE_IMAGE=${{ env.DOCKER_REGISTRY }}/magpiego:${{ env.REL_VERSION }}
         make test-functional-kubernetes
     - name: Run 'rad env delete'
       run: |
@@ -496,7 +492,6 @@ jobs:
         cd $GITHUB_WORKSPACE
         echo "PATH is $PATH"
         which rad || { echo "cannot find rad"; exit 1; }
-        export MAGPIE_IMAGE=${{ env.DOCKER_REGISTRY }}/magpiego:${{ env.REL_VERSION }}
         make test-functional-azure
 
     # Now we'll delete the test environment we used. This prevents PRs from
