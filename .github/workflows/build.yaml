@@ -8,12 +8,14 @@ on:
   push:
     branches:
       - main
+      - features/*
       - release/*
     tags:
       - v*
   pull_request:
     branches:
       - main
+      - features/*
       - release/*
 
 concurrency:
