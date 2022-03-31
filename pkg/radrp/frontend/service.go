@@ -69,7 +69,10 @@ func (s *Service) Run(ctx context.Context) error {
 		arm = s.Options.Arm
 		secretClient = renderers.NewSecretValueClient(*s.Options.Arm)
 	}
-	appmodel = azure.NewAzureModel(arm, k8s)
+	appmodel, err = azure.NewAzureModel(arm, k8s)
+	if err != nil {
+		return fmt.Errorf("failed to initialize application model: %w", err)
+	}
 
 	urlScheme := "http"
 	if s.Options.TLSCertDir != "" {

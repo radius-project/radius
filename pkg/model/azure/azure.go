@@ -6,6 +6,8 @@
 package azure
 
 import (
+	"fmt"
+
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -35,7 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationModel {
+func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.ApplicationModel, error) {
 	// Configure RBAC support on connections based connection kind.
 	// Role names can be user input or default roles assigned by Radius.
 	// Leave RoleNames field empty if no default roles are supported for a connection kind.
@@ -239,15 +241,6 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprSecretStoreGeneric,
-				Provider: providers.ProviderKubernetes,
-			},
-			HealthHandler:                  handlers.NewDaprSecretStoreGenericHealthHandler(arm, k8s),
-			ResourceHandler:                handlers.NewDaprSecretStoreGenericHandler(arm, k8s),
-			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprStateStoreAzureStorage,
 				Provider: providers.ProviderKubernetes,
 			},
@@ -257,21 +250,11 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprStateStoreGeneric,
+				Type:     resourcekinds.DaprComponent,
 				Provider: providers.ProviderKubernetes,
 			},
-			HealthHandler:                  handlers.NewDaprStateStoreGenericHealthHandler(arm, k8s),
-			ResourceHandler:                handlers.NewDaprStateStoreGenericHandler(arm, k8s),
-			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprPubSubTopicGeneric,
-				Provider: providers.ProviderKubernetes,
-			},
-			HealthHandler:                  handlers.NewDaprPubSubGenericHealthHandler(arm, k8s),
-			ResourceHandler:                handlers.NewDaprPubSubGenericHandler(arm, k8s),
-			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+			HealthHandler:   handlers.NewKubernetesHealthHandler(k8s),
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
 		},
 	}
 
@@ -402,8 +385,33 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) model.ApplicationM
 		},
 	}
 
+	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
+	if err != nil {
+		return model.ApplicationModel{}, err
+	}
+
 	if arm != nil {
 		outputResourceModel = append(outputResourceModel, azureOutputResourceModel...)
 	}
-	return model.NewModel(radiusResourceModel, outputResourceModel, supportedProviders)
+	return model.NewModel(radiusResourceModel, outputResourceModel, supportedProviders), nil
+}
+
+// checkForDuplicateRegistrations checks for duplicate registrations with the same resource type
+func checkForDuplicateRegistrations(radiusResources []model.RadiusResourceModel, outputResources []model.OutputResourceModel) error {
+	rendererRegistration := make(map[string]int)
+	for _, r := range radiusResources {
+		rendererRegistration[r.ResourceType]++
+		if rendererRegistration[r.ResourceType] > 1 {
+			return fmt.Errorf("Multiple resource renderers registered for resource type: %s", r.ResourceType)
+		}
+	}
+
+	outputResourceHandlerRegistration := make(map[resourcemodel.ResourceType]int)
+	for _, o := range outputResources {
+		outputResourceHandlerRegistration[o.ResourceType]++
+		if outputResourceHandlerRegistration[o.ResourceType] > 1 {
+			return fmt.Errorf("Multiple output resource handlers registered for resource type: %s", o.ResourceType)
+		}
+	}
+	return nil
 }

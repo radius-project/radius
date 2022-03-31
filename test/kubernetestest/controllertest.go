@@ -156,9 +156,14 @@ func StartController() (*EnvOptions, error) {
 		return nil, fmt.Errorf("failed to initialize manager: %w", err)
 	}
 
+	kubernetesModel, err := kubernetesmodel.NewKubernetesModel(mgr.GetClient())
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize application model: %w", err)
+	}
+
 	controllerOptions := radcontroller.Options{
 		Manager:       mgr,
-		AppModel:      kubernetesmodel.NewKubernetesModel(mgr.GetClient()),
+		AppModel:      kubernetesModel,
 		Client:        mgr.GetClient(),
 		Dynamic:       dynamicClient,
 		Scheme:        scheme,

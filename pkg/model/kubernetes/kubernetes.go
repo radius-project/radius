@@ -6,6 +6,8 @@
 package kubernetes
 
 import (
+	"fmt"
+
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/model"
 	"github.com/project-radius/radius/pkg/providers"
@@ -28,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
+func NewKubernetesModel(k8s client.Client) (model.ApplicationModel, error) {
 
 	radiusResources := []model.RadiusResourceModel{
 		{
@@ -124,21 +126,7 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprPubSubGeneric,
-				Provider: providers.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprStateStoreGeneric,
-				Provider: providers.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.DaprSecretStoreGeneric,
+				Type:     resourcekinds.DaprComponent,
 				Provider: providers.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8s),
@@ -152,10 +140,35 @@ func NewKubernetesModel(k8s client.Client) model.ApplicationModel {
 		},
 	}
 
+	err := checkForDuplicateRegistrations(radiusResources, outputResources)
+	if err != nil {
+		return model.ApplicationModel{}, err
+	}
+
 	// Configure the providers supported by the appmodel
 	supportedProviders := map[string]bool{
 		providers.ProviderKubernetes: true,
 	}
 
-	return model.NewModel(radiusResources, outputResources, supportedProviders)
+	return model.NewModel(radiusResources, outputResources, supportedProviders), nil
+}
+
+// checkForDuplicateRegistrations checks for duplicate registrations with the same resource type
+func checkForDuplicateRegistrations(radiusResources []model.RadiusResourceModel, outputResources []model.OutputResourceModel) error {
+	rendererRegistration := make(map[string]int)
+	for _, r := range radiusResources {
+		rendererRegistration[r.ResourceType]++
+		if rendererRegistration[r.ResourceType] > 1 {
+			return fmt.Errorf("Multiple resource renderers registered for resource type: %s", r.ResourceType)
+		}
+	}
+
+	outputResourceHandlerRegistration := make(map[resourcemodel.ResourceType]int)
+	for _, o := range outputResources {
+		outputResourceHandlerRegistration[o.ResourceType]++
+		if outputResourceHandlerRegistration[o.ResourceType] > 1 {
+			return fmt.Errorf("Multiple output resource handlers registered for resource type: %s", o.ResourceType)
+		}
+	}
+	return nil
 }
