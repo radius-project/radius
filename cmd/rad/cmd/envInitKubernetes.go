@@ -77,7 +77,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Printf("Using %s as namespace name\n", namespace)
 
-		var defaultEnvironmentName = "kubernetes-env"
+		var defaultEnvironmentName = "kubernetes"
 		promptStr = fmt.Sprintf("Enter an environment name [%s]:", defaultEnvironmentName)
 		environmentName, err = prompt.TextWithDefault(promptStr, &defaultEnvironmentName, prompt.EmptyValidator)
 		if err != nil {
