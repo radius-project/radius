@@ -5,22 +5,10 @@
 
 ##@ Controller
 
-controller-run: generate-k8s-manifests generate-controller ## Run the controller locally
-	SKIP_WEBHOOKS=true go run ./cmd/radius-controller/main.go
+kubernetes-deploy: docker-build-radius-rp docker-push-radius-rp controller-deploy-existing ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 
-controller-crd-install: generate-k8s-manifests  ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	kubectl kustomize "github.com/kubernetes-sigs/gateway-api/config/crd?ref=v0.3.0" | kubectl apply -f -
-	
-	kubectl apply -f deploy/Chart/crds/
-	kubectl wait --for condition="established" -f deploy/Chart/crds/
+kubernetes-deploy-existing: generate-k8s-manifests ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	go run ./cmd/rad/main.go env init kubernetes --chart deploy/Chart/ --image $(DOCKER_REGISTRY)/radius-rp --tag $(DOCKER_TAG_VERSION) 
 
-controller-crd-uninstall: generate-k8s-manifests  ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	kubectl delete -f deploy/Chart/crds/
-
-controller-deploy: docker-build-radius-controller docker-push-radius-controller controller-deploy-existing ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-
-controller-deploy-existing: generate-k8s-manifests ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	go run ./cmd/rad/main.go env init kubernetes --chart deploy/Chart/ --image $(DOCKER_REGISTRY)/radius-controller --tag $(DOCKER_TAG_VERSION) 
-
-controller-undeploy: ## Uninstall controller from the K8s cluster specified in ~/.kube/config.
+kubernetes-undeploy: ## Uninstall controller from the K8s cluster specified in ~/.kube/config.
 	go run ./cmd/rad/main.go env uninstall kubernetes

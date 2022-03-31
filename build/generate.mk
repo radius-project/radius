@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-arm-json generate-radclient generate-go generate-k8s-manifests generate-controller ## Generates all targets.
+generate: generate-arm-json generate-radclient generate-go ## Generates all targets.
 
 .PHONY: generate-arm-json
 generate-arm-json: ## Generates ARM-JSON from our environment creation Bicep files
@@ -63,10 +63,6 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./...
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen$(BINARY_EXT)
-generate-controller-gen-installed:
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
-
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..
 define go-get-tool
@@ -80,14 +76,3 @@ GOBIN=$(PROJECT_DIR)/bin go get -u $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
-
-CRD_OPTIONS ?= "+crd"
-generate-k8s-manifests: generate-controller-gen-installed ## Generate Kubernetes deployment manifests
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) \
-		rbac:roleName=radius-manager-role \
-		paths="./..." \
-		output:crd:artifacts:config=deploy/Chart/crds/ \
-		output:rbac:artifacts:config=deploy/Chart/charts/radius/templates/ \
-
-generate-controller: generate-controller-gen-installed ## Generate controller code
-	$(CONTROLLER_GEN) object:headerFile="boilerplate.go.txt" paths="./..."
