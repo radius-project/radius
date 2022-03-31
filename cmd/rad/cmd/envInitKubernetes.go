@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -65,10 +66,28 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Configure Azure provider for cloud resources if specified
+	var azureProvider *azure.Provider
 	if interactive {
 		namespace, err = prompt.Text("Enter a namespace name:", prompt.EmptyValidator)
 		if err != nil {
 			return err
+		}
+	} else {
+		// Check if Azure provider configuration is provided
+		// Adding Azure provider is supported only in non-interactive mode
+		addAzure, err := cmd.Flags().GetBool("provider-azure")
+		if err != nil {
+			return err
+		}
+		if addAzure {
+			azureProvider, err = readAzureProviderNonInteractive(cmd)
+			if err != nil {
+				return err
+			}
+			if azureProvider == nil {
+				return errors.New("Failed to configure Azure provider")
+			}
 		}
 	}
 
@@ -85,6 +104,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	if environmentName == "" {
 		environmentName = contextName
+		output.LogInfo("No environment name provided, using: %v", environmentName)
 	}
 
 	_, foundConflict := env.Items[environmentName]
@@ -99,6 +119,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	options.Radius.ChartPath = chartPath
 	options.Radius.Image = image
 	options.Radius.Tag = tag
+	options.Radius.AzureProvider = azureProvider
 
 	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
 	if err != nil {
@@ -113,14 +134,69 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		"namespace": namespace,
 	}
 
-	cli.UpdateEnvironmentSectionOnCreation(config, env, environmentName)
-
-	err = cli.SaveConfig(config)
+	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(environmentName)))
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func readAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, error) {
+	subscriptionID, err := cmd.Flags().GetString("provider-azure-subscription")
+	if err != nil {
+		return nil, err
+	}
+
+	if subscriptionID == "" {
+		return nil, fmt.Errorf("--provider-azure-subscription is required to configure Azure provider for cloud resources")
+	}
+
+	resourceGroup, err := cmd.Flags().GetString("provider-azure-resource-group")
+	if err != nil {
+		return nil, err
+	}
+
+	if resourceGroup == "" {
+		return nil, fmt.Errorf("--provider-azure-resource-group is required to configure Azure provider for cloud resources")
+	}
+
+	// Verify that all required properties for the service principal have been specified
+	clientID, err := cmd.Flags().GetString("provider-azure-client-id")
+	if err != nil {
+		return nil, err
+	}
+
+	if clientID == "" {
+		return nil, errors.New("--provider-azure-client-id parameter is required to configure Azure provider for cloud resources")
+	}
+
+	clientSecret, err := cmd.Flags().GetString("provider-azure-client-secret")
+	if err != nil {
+		return nil, err
+	}
+	if clientSecret == "" {
+		return nil, errors.New("--provider-azure-client-secret parameter is required to configure Azure provider for cloud resources")
+	}
+
+	tenantID, err := cmd.Flags().GetString("provider-azure-tenant-id")
+	if err != nil {
+		return nil, err
+	}
+
+	if tenantID == "" {
+		return nil, errors.New("--provider-azure-tenant-id parameter is required to configure Azure provider for cloud resources")
+	}
+
+	return &azure.Provider{
+		SubscriptionID: subscriptionID,
+		ResourceGroup:  resourceGroup,
+		ServicePrincipal: &azure.ServicePrincipal{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			TenantID:     tenantID,
+		},
+	}, nil
 }
 
 func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
@@ -160,4 +236,12 @@ func init() {
 	envInitKubernetesCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
 	envInitKubernetesCmd.Flags().String("image", "", "Specify the radius controller image to use")
 	envInitKubernetesCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
+
+	// Parameters to configure Azure provider for cloud resources
+	envInitKubernetesCmd.Flags().BoolP("provider-azure", "", false, "Add Azure provider for cloud resources")
+	envInitKubernetesCmd.Flags().String("provider-azure-subscription", "", "Azure subscription for cloud resources")
+	envInitKubernetesCmd.Flags().String("provider-azure-resource-group", "", "Azure resource-group for cloud resources")
+	envInitKubernetesCmd.Flags().StringP("provider-azure-client-id", "", "", "The client id for the service principal")
+	envInitKubernetesCmd.Flags().StringP("provider-azure-client-secret", "", "", "The client secret for the service principal")
+	envInitKubernetesCmd.Flags().StringP("provider-azure-tenant-id", "", "", "The tenant id for the service principal")
 }

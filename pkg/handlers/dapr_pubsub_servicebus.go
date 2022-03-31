@@ -71,7 +71,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *Pu
 	}
 
 	// Use the identity of the topic as the thing to monitor.
-	options.Resource.Identity = resourcemodel.NewARMIdentity(*topic.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *topic.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.Name)
 	if err != nil {

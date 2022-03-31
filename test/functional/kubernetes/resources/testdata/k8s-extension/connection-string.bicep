@@ -3,14 +3,14 @@ import kubernetes from kubernetes
 resource redisService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'redis-master'
-    namespace: 'default'
+    namespace: 'k8s-extension'
   }
 }
 
 resource redisSecret 'kubernetes.core/Secret@v1' existing = {
   metadata: {
     name: 'redis'
-    namespace: 'default'
+    namespace: 'k8s-extension'
   }
 }
 
@@ -19,7 +19,7 @@ resource secret 'kubernetes.core/Secret@v1' = {
     name: 'redis-conn'
     namespace: 'default'
     labels: {
-      format: 'custom'
+      format: 'k8s-extension'
     }
   }
 
@@ -33,5 +33,5 @@ resource secret 'kubernetes.core/Secret@v1' = {
 // In the future when we implements the usage of unmanaged K8s resources
 // in an application we will turn this app to something useful.
 resource app 'radius.dev/Application@v1alpha3' = {
-  name: 'dummy'
+  name: 'k8s-extension'
 }

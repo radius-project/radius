@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,10 +59,10 @@ func Test_Render_Success(t *testing.T) {
 	fileshareResource := output.Resources[1]
 
 	require.Equal(t, outputresource.LocalIDAzureFileShareStorageAccount, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureFileShareStorageAccount, accountResource.ResourceKind)
+	require.Equal(t, resourcekinds.AzureFileShareStorageAccount, accountResource.ResourceType.Type)
 
 	require.Equal(t, outputresource.LocalIDAzureFileShare, fileshareResource.LocalID)
-	require.Equal(t, resourcekinds.AzureFileShare, fileshareResource.ResourceKind)
+	require.Equal(t, resourcekinds.AzureFileShare, fileshareResource.ResourceType.Type)
 
 	expectedAccount := map[string]string{
 		handlers.FileShareStorageAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
@@ -90,7 +91,7 @@ func Test_Render_Success(t *testing.T) {
 			LocalID:       storageAccountDependency.LocalID,
 			Action:        "listKeys",
 			ValueSelector: "/keys/0/value",
-			Transformer:   "",
+			Transformer:   resourcemodel.ResourceType{},
 		},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)

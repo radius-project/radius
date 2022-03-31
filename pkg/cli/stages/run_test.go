@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -25,6 +26,13 @@ func SkipBicepBuild(ctx context.Context, deployFile string) (string, error) {
 	// We don't want to run bicep in unit tests. It's fine because we're not going to
 	// look at the output of this.
 	return "", nil
+}
+
+func MockBicepBuild(ctx context.Context, deployFile string, template string) (string, error) {
+	// Mock the bicep build with the supplied template data
+	// Template data should be the result of building the
+	// stage bicep file.
+	return template, nil
 }
 
 func Test_EmptyRadYaml_DoesNotCrash(t *testing.T) {
@@ -545,6 +553,175 @@ func Test_CanOverrideStage(t *testing.T) {
 			},
 			Input:  map[string]map[string]interface{}{},
 			Output: map[string]map[string]interface{}{},
+		},
+	}
+	require.Equal(t, expected, results)
+}
+
+func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
+	// Test ensures that processor is able to successfully use
+	// (mocked) deployment JSON template to get parameters.
+	// There will not be a difference in the output because it only
+	// tracks the processor-level parameters
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	manifest := radyaml.Manifest{
+		Name: "test",
+		Stages: []radyaml.Stage{
+			{
+				Name: "first",
+				Bicep: &radyaml.BicepStage{
+					Template: to.StringPtr("iac/first.bicep"),
+				},
+			},
+		},
+	}
+
+	tempDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	options := Options{
+		Environment: &MockEnvironment{
+			DeploymentClient: &MockDeploymentClient{
+				Results: []clients.DeploymentResult{
+					{
+						Outputs: map[string]clients.DeploymentOutput{},
+					},
+				},
+			},
+		},
+		BaseDirectory: tempDir,
+		Manifest:      manifest,
+		FinalStage:    "first",
+		Parameters: map[string]map[string]interface{}{
+			"param1": {
+				"value": "value1",
+			},
+			"param2": {
+				"value": "value2",
+			},
+		},
+		BicepBuildFunc: func(ctx context.Context, deployFile string) (string, error) {
+			content, err := ioutil.ReadFile(filepath.Join("testdata", "test-bicep-output.json"))
+			require.NoError(t, err)
+
+			return MockBicepBuild(ctx, deployFile, string(content))
+		},
+	}
+
+	results, err := Run(ctx, options)
+	require.NoError(t, err)
+
+	expected := []StageResult{
+		{
+			Stage: &manifest.Stages[0],
+			Input: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"param2": {
+					"value": "value2",
+				},
+			},
+			Output: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"param2": {
+					"value": "value2",
+				},
+			},
+		},
+	}
+	require.Equal(t, expected, results)
+}
+
+func Test_CanUseParameterFileParameters(t *testing.T) {
+	// Test ensures that processor can handle a Bicep.ParameterFile
+	// when provided. Output will not change for different
+	// parameters provided in the file since output is only
+	// tied to processor-level parameters
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	manifest := radyaml.Manifest{
+		Name: "test",
+		Stages: []radyaml.Stage{
+			{
+				Name: "first",
+				Bicep: &radyaml.BicepStage{
+					Template:      to.StringPtr("iac/first.bicep"),
+					ParameterFile: to.StringPtr("iac/test-parameters.json"),
+				},
+			},
+		},
+	}
+
+	tempDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "test-parameters.json"))
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(path.Join(tempDir, "iac", "test-parameters.json"), data, 0644)
+	require.NoError(t, err)
+
+	options := Options{
+		Environment: &MockEnvironment{
+			DeploymentClient: &MockDeploymentClient{
+				Results: []clients.DeploymentResult{
+					{
+						Outputs: map[string]clients.DeploymentOutput{},
+					},
+				},
+			},
+		},
+		BaseDirectory: tempDir,
+		Manifest:      manifest,
+		FinalStage:    "first",
+		Parameters: map[string]map[string]interface{}{
+			"param1": {
+				"value": "value1",
+			},
+			"param2": {
+				"value": "value2",
+			},
+		},
+		BicepBuildFunc: SkipBicepBuild,
+	}
+
+	results, err := Run(ctx, options)
+	require.NoError(t, err)
+
+	// Per stage parameters do not appear in inputs or outputs
+	expected := []StageResult{
+		{
+			Stage: &manifest.Stages[0],
+			Input: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"param2": {
+					"value": "value2",
+				},
+			},
+			Output: map[string]map[string]interface{}{
+				"param1": {
+					"value": "value1",
+				},
+				"param2": {
+					"value": "value2",
+				},
+			},
 		},
 	}
 	require.Equal(t, expected, results)

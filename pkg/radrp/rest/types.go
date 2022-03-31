@@ -36,11 +36,16 @@ type ApplicationStatus struct {
 	HealthErrorDetails       string `json:"healthErrorDetails"`
 }
 
+// ResourceType represents the type and provider for the resource
+type ResourceType struct {
+	Type     string `json:"type"`
+	Provider string `json:"provider"`
+}
+
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
 	LocalID            string                         `json:"localID"`
-	ResourceKind       string                         `json:"resourceKind"`
-	OutputResourceType string                         `json:"outputResourceType"`
+	ResourceType       ResourceType                   `json:"resourceType"`
 	OutputResourceInfo resourcemodel.ResourceIdentity `json:"outputResourceInfo"`
 	Status             OutputResourceStatus           `json:"status"`
 }

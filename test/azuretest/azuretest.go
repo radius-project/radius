@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -29,7 +30,6 @@ func NewTestOptions(t *testing.T) TestOptions {
 
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	require.NoErrorf(t, err, "failed to obtain Azure credentials")
-	con := arm.NewDefaultConnection(azcred, nil)
 
 	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
@@ -43,24 +43,41 @@ func NewTestOptions(t *testing.T) TestOptions {
 	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 	require.NoError(t, err, "failed to create kubernetes client")
 
+	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
+	require.NoError(t, err, "failed to create kubernetes dyamic client")
+
 	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
 	require.NoError(t, err, "failed to create runtime client")
 
+	_, radiusConnection, err := kubernetes.CreateAPIServerConnection(az.Context, az.APIServerBaseURL)
+	require.NoError(t, err, "failed to create API Server connection")
+
+	radiusBaseURL, radiusRoundTripper, err := kubernetes.GetBaseUrlAndRoundTripper(az.APIServerBaseURL, "api.radius.dev", az.Context)
+	require.NoError(t, err, "failed to create API Server round-tripper")
+
 	return TestOptions{
-		ConfigFilePath: config.ConfigFileUsed(),
-		ARMAuthorizer:  auth,
-		ARMConnection:  con,
-		Environment:    az,
-		K8sClient:      k8s,
-		Client:         client,
+		ConfigFilePath:   config.ConfigFileUsed(),
+		ARMAuthorizer:    auth,
+		ARMConnection:    arm.NewDefaultConnection(azcred, nil),
+		RadiusBaseURL:    radiusBaseURL,
+		RadiusConnection: radiusConnection,
+		RadiusSender:     autorest.SenderFunc(radiusRoundTripper.RoundTrip),
+		Environment:      az,
+		K8sClient:        k8s,
+		Client:           client,
+		DynamicClient:    dynamicClient,
 	}
 }
 
 type TestOptions struct {
-	ConfigFilePath string
-	ARMAuthorizer  autorest.Authorizer
-	ARMConnection  *arm.Connection
-	Environment    *environments.AzureCloudEnvironment
-	K8sClient      *k8s.Clientset
-	Client         client.Client
+	ConfigFilePath   string
+	ARMAuthorizer    autorest.Authorizer
+	ARMConnection    *arm.Connection
+	RadiusBaseURL    string
+	RadiusConnection *arm.Connection
+	RadiusSender     autorest.Sender
+	Environment      *environments.AzureCloudEnvironment
+	K8sClient        *k8s.Clientset
+	Client           client.Client
+	DynamicClient    dynamic.Interface
 }

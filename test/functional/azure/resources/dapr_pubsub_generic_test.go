@@ -8,6 +8,7 @@ package resources_test
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
@@ -32,7 +33,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 						ResourceName:    "publisher",
 						ResourceType:    containerv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, outputresource.TypeKubernetes, resourcekinds.Kubernetes, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, rest.ResourceType{Type: resourcekinds.Deployment, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -40,7 +41,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 						ResourceName:    "pubsub",
 						ResourceType:    daprpubsubv1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprPubSubGeneric: validation.NewOutputResource(outputresource.LocalIDDaprPubSubGeneric, outputresource.TypeKubernetes, resourcekinds.DaprPubSubTopicGeneric, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprComponent: validation.NewOutputResource(outputresource.LocalIDDaprComponent, rest.ResourceType{Type: resourcekinds.DaprComponent, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

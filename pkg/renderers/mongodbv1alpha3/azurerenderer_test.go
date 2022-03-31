@@ -57,10 +57,10 @@ func Test_Azure_Render_Success(t *testing.T) {
 	databaseResource := output.Resources[1]
 
 	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosAccount, accountResource.ResourceKind)
+	require.Equal(t, resourcekinds.AzureCosmosAccount, accountResource.ResourceType.Type)
 
 	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.ResourceKind)
+	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.ResourceType.Type)
 
 	expectedAccount := map[string]string{
 		handlers.CosmosDBAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
@@ -115,8 +115,8 @@ func Test_Azure_Render_UserSpecifiedSecrets(t *testing.T) {
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 	expectedSecretValues := map[string]renderers.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
-		renderers.UsernameStringValue: {Value: userName},
-		renderers.PasswordStringHolder: {Value: password},
+		renderers.UsernameStringValue:   {Value: userName},
+		renderers.PasswordStringHolder:  {Value: password},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }

@@ -18,7 +18,6 @@ We do not run these tests for commits to `main` or tags since they might block t
 We use a CLI tool (`test-env`) to manage operations to make this work:
 
 - `test-env reserve ...` to wait for a cluster to be ready and reserve it
-- `test-env update-rp ...` to update the control plane for testing
 - `test-env release ...` to release the lease 
 - `test-env register ...` to register an environment
 - `test-env unregister ...` to delete an environment

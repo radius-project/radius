@@ -15,7 +15,6 @@ import (
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -194,8 +193,7 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 					HealthState:       healthcontract.HealthStateHealthy,
 					OutputResources: []rest.OutputResource{
 						{
-							LocalID:            "Deployment",
-							OutputResourceType: string(resourcemodel.IdentityKindKubernetes),
+							LocalID: "Deployment",
 							Status: rest.OutputResourceStatus{
 								ProvisioningState: "Provisioned",
 								HealthState:       healthcontract.HealthStateHealthy,
@@ -238,8 +236,7 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 					HealthState:       healthcontract.HealthStateHealthy,
 					OutputResources: []rest.OutputResource{
 						{
-							LocalID:            "Deployment",
-							OutputResourceType: string(resourcemodel.IdentityKindKubernetes),
+							LocalID: "Deployment",
 							Status: rest.OutputResourceStatus{
 								ProvisioningState: "Provisioned",
 								HealthState:       healthcontract.HealthStateHealthy,
@@ -247,6 +244,27 @@ func Test_ConvertK8sResourceToARM(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+	}, {
+		name: "no status",
+		original: &radiusv1alpha3.HttpRoute{
+			Spec: radiusv1alpha3.ResourceSpec{
+				Template: &runtime.RawExtension{
+					Raw: marshalJSONIgnoreErr(map[string]interface{}{
+						"name": "/app/route-42",
+						"id":   "/the/long/and/winding/route",
+						"type": "/very/long/path/radius.dev/HttpRoute",
+					}),
+				},
+			},
+		},
+		expected: resourceprovider.RadiusResource{
+			Name: "route-42",
+			ID:   "/the/long/and/winding/route",
+			Type: "/very/long/path/radius.dev/HttpRoute",
+			Properties: map[string]interface{}{
+				"status": rest.ResourceStatus{},
 			},
 		},
 	}, {

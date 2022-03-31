@@ -32,6 +32,10 @@ spec:
           value: '5000'
         - name: SKIP_AUTH
           value: 'true' # Requests are authorized by Kubernetes here.
+        - name: BASE_PATH
+          value: '/apis/api.radius.dev/v1alpha3' # listen for APIService URLs
+        - name: TLS_CERT_DIR
+          value: '/var/tls/cert'
         - name: MONGODB_CONNECTION_STRING
           valueFrom: 
             secretKeyRef: 
@@ -52,8 +56,16 @@ spec:
             memory: 500Mi
         ports:
         - containerPort: 5000
+        volumeMounts:
+        - name: cert
+          mountPath: '/var/tls/cert'
+          readOnly: true
         securityContext:
           allowPrivilegeEscalation: false
+      volumes:
+      - name: cert
+        secret:
+          secretName: radius-rp-cert
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -129,11 +141,52 @@ stringData:
 apiVersion: v1
 kind: Service
 metadata:
-  name: radius-rp
+  name: radius-api
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
-  - port: 80
+  - name: https
+    port: 443
     targetPort: 5000
   selector:
     app: radius-rp
+---
+{{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "radius-rp-cert"}}
+{{- $existingAPIService:= lookup "admissionregistration.k8s.io/v1" "APIService" .Release.Namespace "v1alpha3.api.radius.dev"}}
+{{- $ca := genCA "radius-rp-ca" 3650 }}
+{{- $cn := printf "radius-api" }}
+{{- $altName1 := printf "radius-api.%s" .Release.Namespace }}
+{{- $altName2 := printf "radius-api.%s.svc" .Release.Namespace }}
+{{- $altName3 := printf "radius-api.%s.svc.cluster" .Release.Namespace }}
+{{- $altName4 := printf "radius-api.%s.svc.cluster.local" .Release.Namespace }}
+{{- $cert := genSignedCert $cn nil (list $altName1 $altName2 $altName3 $altName4) 3650 $ca }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radius-rp-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: radius-controller
+data:
+  {{ if $existingSecret }}tls.crt: {{ index $existingSecret.data "tls.crt" }}
+  {{ else }}tls.crt: {{ b64enc $cert.Cert }}
+  {{ end }}
+
+  {{ if $existingSecret }}tls.key: {{ index $existingSecret.data "tls.key" }}
+  {{ else }}tls.key: {{ b64enc $cert.Key }}
+  {{ end }}
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha3.api.radius.dev
+spec:
+  group: api.radius.dev
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: radius-api
+    namespace: {{ .Release.Namespace }}
+  version: v1alpha3
+  caBundle: {{ if $existingAPIService }}{{ $existingAPIService.spec.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
+

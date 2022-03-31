@@ -69,17 +69,24 @@ func (s *Service) Run(ctx context.Context) error {
 		arm = s.Options.Arm
 		secretClient = renderers.NewSecretValueClient(*s.Options.Arm)
 	}
-	appmodel = azure.NewAzureModel(arm, k8s)
+	appmodel, err = azure.NewAzureModel(arm, k8s)
+	if err != nil {
+		return fmt.Errorf("failed to initialize application model: %w", err)
+	}
 
+	urlScheme := "http"
+	if s.Options.TLSCertDir != "" {
+		urlScheme = "https"
+	}
 	db := db.NewRadrpDB(dbclient)
-	rp := resourceprovider.NewResourceProvider(db, deployment.NewDeploymentProcessor(appmodel, db, &s.Options.HealthChannels, secretClient, k8s), nil, "http")
+	rp := resourceprovider.NewResourceProvider(db, deployment.NewDeploymentProcessor(appmodel, db, &s.Options.HealthChannels, secretClient, k8s), nil, urlScheme, s.Options.BasePath)
 
 	ctx = logr.NewContext(ctx, logger)
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address:      s.Options.Address,
 		Authenticate: s.Options.Authenticate,
 		Configure: func(router *mux.Router) {
-			handler.AddRoutes(rp, router, handler.DefaultValidatorFactory, "")
+			handler.AddRoutes(rp, router, handler.DefaultValidatorFactory, s.Options.BasePath)
 		},
 	})
 
@@ -91,7 +98,12 @@ func (s *Service) Run(ctx context.Context) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.Options.Address))
-	err = server.ListenAndServe()
+	if s.Options.TLSCertDir == "" {
+		err = server.ListenAndServe()
+	} else {
+		err = server.ListenAndServeTLS(s.Options.TLSCertDir+"/tls.crt", s.Options.TLSCertDir+"/tls.key")
+	}
+
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

@@ -3,6 +3,7 @@ package rest
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
@@ -12,15 +13,21 @@ func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T)
 
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotApplicable,
 			},
@@ -31,15 +38,21 @@ func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T)
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy, // NotApplicable should be shown as Healthy
 			},
@@ -53,8 +66,11 @@ func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T)
 func Test_AggregateResourceHealth_SingleNotSupportedOutputResource_IsEmpty(t *testing.T) {
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotSupported,
 			},
@@ -65,8 +81,11 @@ func Test_AggregateResourceHealth_SingleNotSupportedOutputResource_IsEmpty(t *te
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: "",
 			},
@@ -80,22 +99,31 @@ func Test_AggregateResourceHealth_SingleNotSupportedOutputResource_IsEmpty(t *te
 func Test_AggregateResourceHealth_HealthyUnhealthyAndNotApplicable_IsUnhealthy(t *testing.T) {
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDService,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDService,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Service,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotApplicable,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateUnhealthy,
 			},
@@ -106,22 +134,31 @@ func Test_AggregateResourceHealth_HealthyUnhealthyAndNotApplicable_IsUnhealthy(t
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDService,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDService,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Service,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy, // NotApplicable should show as Healthy
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateUnhealthy,
 			},

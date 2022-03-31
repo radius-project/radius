@@ -64,9 +64,6 @@ func NewHealthChannels() HealthChannels {
 
 // HealthResource represents the information needed to register and unregister an application with the health tracking system.
 type HealthResource struct {
-	// ResourceKind is the handler kind of the resource.
-	ResourceKind string
-
 	// Identity is the identity of the resource in its underlying platform.
 	Identity resourcemodel.ResourceIdentity
 

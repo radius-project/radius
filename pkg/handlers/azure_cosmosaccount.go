@@ -42,7 +42,7 @@ func (handler *azureCosmosAccountHandler) Put(ctx context.Context, options *PutO
 		return nil, err
 	}
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(*account.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *account.ID, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 
 	return properties, nil
 }

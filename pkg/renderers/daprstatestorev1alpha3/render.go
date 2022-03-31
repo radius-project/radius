@@ -14,17 +14,18 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
 type StateStoreFunc = func(renderers.RendererResource) ([]outputresource.OutputResource, error)
 
 var SupportedAzureStateStoreKindValues = map[string]StateStoreFunc{
 	"state.azure.tablestorage": GetDaprStateStoreAzureStorage,
-	"generic":                  GetDaprStateStoreAzureGeneric,
+	resourcekinds.DaprGeneric:  GetDaprStateStoreGeneric,
 }
 
 var SupportedKubernetesStateStoreKindValues = map[string]StateStoreFunc{
-	"generic": GetDaprStateStoreKubernetesGeneric,
+	resourcekinds.DaprGeneric: GetDaprStateStoreGeneric,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)

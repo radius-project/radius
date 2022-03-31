@@ -13,9 +13,11 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 var _ renderers.Renderer = (*AzureRenderer)(nil)
@@ -72,8 +74,11 @@ func RenderResource(resourceName string, properties radclient.RedisCacheResource
 	}
 
 	redisCacheOutputResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureRedis,
-		ResourceKind: resourcekinds.AzureRedis,
+		LocalID: outputresource.LocalIDAzureRedis,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRedis,
+			Provider: providers.ProviderAzure,
+		},
 		Resource: map[string]string{
 			handlers.RedisResourceIdKey: redisResourceID.ID,
 			handlers.RedisNameKey:       redisResourceID.Name(),
@@ -111,7 +116,7 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 	// TODO(#1767): We need to store these in a secret store.
 	secretValues := map[string]renderers.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
-		renderers.PasswordStringHolder: {Value: *properties.Secrets.Password},
+		renderers.PasswordStringHolder:  {Value: *properties.Secrets.Password},
 		//TODO(#2050): Add support for redis username
 	}
 	return computedValues, secretValues

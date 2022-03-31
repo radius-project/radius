@@ -17,16 +17,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type AKSDiagnosticsClient struct {
+type ARMDiagnosticsClient struct {
 	kubernetes.KubernetesDiagnosticsClient
 	ResourceClient radclient.RadiusResourceClient
 	ResourceGroup  string
 	SubscriptionID string
 }
 
-var _ clients.DiagnosticsClient = (*AKSDiagnosticsClient)(nil)
+var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
-func (dc *AKSDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
+func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
 	// Only HTTP Route is supported
 	if len(options.ResourceID.Types) != 3 || !strings.EqualFold(options.ResourceID.Types[2].Type, resourcekinds.RadiusHttpRoute) {
 		return nil, nil

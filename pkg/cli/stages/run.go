@@ -76,7 +76,7 @@ func Run(ctx context.Context, options Options) ([]StageResult, error) {
 	for i := 0; i < length; i++ {
 		stage := stages[i]
 
-		processor.CurrrentStage = stageInfo{
+		processor.CurrentStage = stageInfo{
 			Name:         stage.Name,
 			DisplayIndex: i + 1,
 			TotalCount:   length,
@@ -88,22 +88,22 @@ func Run(ctx context.Context, options Options) ([]StageResult, error) {
 		}
 
 		output.LogInfo("")
-		step := output.BeginStep("Processing stage %s: %d of %d", processor.CurrrentStage.Name, processor.CurrrentStage.DisplayIndex, processor.CurrrentStage.TotalCount)
+		step := output.BeginStep("Processing stage %s: %d of %d", processor.CurrentStage.Name, processor.CurrentStage.DisplayIndex, processor.CurrentStage.TotalCount)
 
 		if stage.Build != nil {
 			err := processor.ProcessBuild(ctx, stage.Build)
 			if err != nil {
-				return nil, fmt.Errorf("stage %s failed: %w", processor.CurrrentStage.Name, err)
+				return nil, fmt.Errorf("stage %s failed: %w", processor.CurrentStage.Name, err)
 			}
 		}
 
 		if stage.Bicep != nil {
 			err := processor.ProcessDeploy(ctx, *stage.Bicep)
 			if err != nil {
-				return nil, fmt.Errorf("stage %s failed: %w", processor.CurrrentStage.Name, err)
+				return nil, fmt.Errorf("stage %s failed: %w", processor.CurrentStage.Name, err)
 			}
 		} else {
-			output.LogInfo("No deployment step for stage %s...", processor.CurrrentStage.Name)
+			output.LogInfo("No deployment step for stage %s...", processor.CurrentStage.Name)
 		}
 
 		output.CompleteStep(step)

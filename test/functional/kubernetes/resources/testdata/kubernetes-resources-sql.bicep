@@ -1,4 +1,4 @@
-var adminUsername = 'cooluser'
+var adminUsername = 'sa'
 var adminPassword = 'p@ssw0rd'
 
 resource app 'radius.dev/Application@v1alpha3' = {
@@ -16,7 +16,12 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: 'radius.azurecr.io/magpiego:latest'
         env: {
-          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername}@${db.properties.server};Password=${adminPassword};Encrypt=true'
+          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername};Password=${adminPassword};Encrypt=True;TrustServerCertificate=True'
+        }
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
         }
       }
     }
@@ -25,8 +30,8 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource db 'microsoft.com.SQLDatabase' = {
     name: 'db'
     properties: {
-      server: sqlContainer.name
-      database: sqlRoute.properties.url
+      server: sqlRoute.properties.host
+      database: 'master'
     }
   }
 

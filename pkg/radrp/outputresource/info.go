@@ -9,7 +9,7 @@ import (
 	"errors"
 
 	"github.com/project-radius/radius/pkg/algorithm/graph"
-	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,8 +23,9 @@ type OutputResource struct {
 	// Identity uniquely identifies the underlying resource within its platform..
 	Identity resourcemodel.ResourceIdentity
 
-	// ResourceKind specifies the 'kind' used to look up the resource handler for processing.
-	ResourceKind string
+	// Resource type specifies the 'provider' and 'kind' used to look up the resource handler for processing
+	ResourceType resourcemodel.ResourceType
+
 	Deployed     bool
 	Resource     interface{}
 	Dependencies []Dependency // resources that are required to be deployed before this resource can be deployed
@@ -101,12 +102,16 @@ func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, e
 	return orderedOutput, nil
 }
 
-func NewKubernetesOutputResource(localID string, obj runtime.Object, objectMeta metav1.ObjectMeta) OutputResource {
+func NewKubernetesOutputResource(resourceType string, localID string, obj runtime.Object, objectMeta metav1.ObjectMeta) OutputResource {
+	rt := resourcemodel.ResourceType{
+		Type:     resourceType,
+		Provider: providers.ProviderKubernetes,
+	}
 	return OutputResource{
 		LocalID:      localID,
 		Deployed:     false,
-		ResourceKind: resourcekinds.Kubernetes,
-		Identity:     resourcemodel.NewKubernetesIdentity(obj, objectMeta),
+		ResourceType: rt,
+		Identity:     resourcemodel.NewKubernetesIdentity(&rt, obj, objectMeta),
 		Resource:     obj,
 	}
 }

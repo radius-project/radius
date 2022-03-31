@@ -8,6 +8,7 @@ package deployment
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -17,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/db"
@@ -43,12 +45,32 @@ var (
 
 	testDBOutputResources = []db.OutputResource{
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureRoleAssignment,
+					Provider: providers.ProviderAzure,
+				},
+				Data: resourcemodel.ARMIdentity{},
+			},
 		},
 		{
-			LocalID:      outputresource.LocalIDService,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDService,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     resourcekinds.Deployment,
+					Provider: providers.ProviderKubernetes,
+				},
+				Data: resourcemodel.KubernetesIdentity{},
+			},
 		},
 	}
 
@@ -121,11 +143,18 @@ func setup(t *testing.T) SharedMocks {
 
 	// NOTE: right now these tests have some reliance on the Kubernetes-based logic for whether a resource is monitored by
 	// the health system.
-	skipHealthCheckKubernetesKinds := map[string]bool{
-		resourcekinds.Service: true,
-		resourcekinds.Secret:  true,
-		resourcekinds.Gateway: true,
+	supportedHealthCheckKubernetesKinds := map[string]bool{
+		resourcekinds.Deployment: true,
 	}
+
+	shouldSupportHealthMonitorFunc := func(resourceType resourcemodel.ResourceType) bool {
+		if resourceType.Provider == providers.ProviderKubernetes {
+			return supportedHealthCheckKubernetesKinds[resourceType.Type]
+		}
+
+		return false
+	}
+
 	model := model.NewModel(
 		[]model.RadiusResourceModel{
 			{
@@ -135,19 +164,38 @@ func setup(t *testing.T) SharedMocks {
 		},
 		[]model.OutputResourceModel{
 			{
-				Kind:            resourcekinds.Kubernetes,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.Deployment,
+					Provider: providers.ProviderKubernetes,
+				},
 				HealthHandler:   healthHandler,
 				ResourceHandler: resourceHandler,
 				// We can monitor specific kinds of Kubernetes resources for health tracking, but not all of them.
-				ShouldSupportHealthMonitorFunc: func(identity resourcemodel.ResourceIdentity) bool {
-					if identity.Kind == resourcemodel.IdentityKindKubernetes {
-						skip := skipHealthCheckKubernetesKinds[identity.Data.(resourcemodel.KubernetesIdentity).Kind]
-						return !skip
-					}
-
-					return false
-				},
+				ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
 			},
+			{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.Secret,
+					Provider: providers.ProviderKubernetes,
+				},
+				HealthHandler:   healthHandler,
+				ResourceHandler: resourceHandler,
+				// We can monitor specific kinds of Kubernetes resources for health tracking, but not all of them.
+				ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+			},
+			{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureRoleAssignment,
+					Provider: providers.ProviderAzure,
+				},
+				HealthHandler:   healthHandler,
+				ResourceHandler: resourceHandler,
+				// We can monitor specific kinds of Kubernetes resources for health tracking, but not all of them.
+				ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+			},
+		},
+		map[string]bool{
+			providers.ProviderKubernetes: true,
 		})
 
 	return SharedMocks{
@@ -200,12 +248,16 @@ func Test_DeployExistingResource_Success(t *testing.T) {
 		getResourceID(fullyQualifiedAzureID("HttpRoute", "B")),
 	}
 
+	testResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.Deployment,
+		Provider: providers.ProviderKubernetes,
+	}
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDeployment,
-		ResourceKind: resourcekinds.Kubernetes,
+		ResourceType: testResourceType,
 		Deployed:     false,
 		Identity: resourcemodel.ResourceIdentity{
-			Kind: resourcemodel.IdentityKindKubernetes,
+			ResourceType: &testResourceType,
 			Data: resourcemodel.KubernetesIdentity{
 				Name:      resourceName,
 				Namespace: testApplicationName,
@@ -233,7 +285,8 @@ func Test_DeployExistingResource_Success(t *testing.T) {
 	msg1 := <-registrationChannel
 	require.Equal(t, healthcontract.ActionRegister, msg1.Action)
 	require.Equal(t, testRadiusResource.ID, msg1.Resource.RadiusResourceID)
-	require.Equal(t, testOutputResource.ResourceKind, msg1.Resource.ResourceKind)
+	require.Equal(t, testOutputResource.ResourceType.Type, msg1.Resource.Identity.ResourceType.Type)
+	require.Equal(t, testOutputResource.ResourceType.Provider, msg1.Resource.Identity.ResourceType.Provider)
 }
 
 func Test_DeployNewResource_Success(t *testing.T) {
@@ -364,6 +417,53 @@ func Test_Render_InvalidResourceTypeErr(t *testing.T) {
 	require.Equal(t, expectedArmErr, *armerr)
 }
 
+func Test_Render_UnsupportedProvider_ReturnsError(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+
+	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{
+		ResourceRegistrationWithHealthChannel: registrationChannel,
+	}, mocks.secretsValueClient, nil}
+
+	operationID := testResourceID.Append(azresources.ResourceType{Type: azresources.OperationResourceType, Name: uuid.New().String()})
+	expectedDependencyIDs := []azresources.ResourceID{
+		getResourceID(fullyQualifiedAzureID("HttpRoute", "A")),
+		getResourceID(fullyQualifiedAzureID("HttpRoute", "B")),
+	}
+
+	testResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.AzureServiceBusQueue,
+		Provider: "UnsupportedProvider",
+	}
+	testOutputResource := outputresource.OutputResource{
+		LocalID:      outputresource.LocalIDDeployment,
+		ResourceType: testResourceType,
+		Deployed:     false,
+		Identity: resourcemodel.ResourceIdentity{
+			ResourceType: &testResourceType,
+			Data: resourcemodel.KubernetesIdentity{
+				Name:      resourceName,
+				Namespace: testApplicationName,
+			},
+		},
+	}
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{testOutputResource},
+	}
+
+	mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(expectedDependencyIDs, nil, nil)
+	mocks.db.EXPECT().GetV3Resource(gomock.Any(), gomock.Any()).Times(2).Return(db.RadiusResource{}, nil)
+	mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+	mocks.db.EXPECT().GetOperationByID(gomock.Any(), gomock.Any()).Times(1).Return(&db.Operation{}, nil)
+	mocks.db.EXPECT().PatchOperationByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+
+	err := dp.Deploy(ctx, operationID, testRadiusResource)
+	expectedErr := fmt.Errorf("Provider %s is not configured. Cannot support resource type %s", testResourceType.Provider, testResourceType.Type)
+	require.Error(t, err)
+	require.Equal(t, expectedErr, err)
+}
+
 func Test_Render_DatabaseLookupInternalError(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
@@ -411,12 +511,16 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
 	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{ResourceRegistrationWithHealthChannel: registrationChannel}, mocks.secretsValueClient, nil}
 
+	testResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.Deployment,
+		Provider: providers.ProviderKubernetes,
+	}
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDeployment,
-		ResourceKind: resourcekinds.Kubernetes,
+		ResourceType: testResourceType,
 		Deployed:     true,
 		Identity: resourcemodel.ResourceIdentity{
-			Kind: resourcemodel.IdentityKindKubernetes,
+			ResourceType: &testResourceType,
 			Data: resourcemodel.KubernetesIdentity{
 				Kind:      resourcekinds.Kubernetes,
 				Name:      "test-name",
@@ -468,12 +572,19 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
 
-	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+	// dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{}, mocks.secretsValueClient, nil}
+	registrationChannel := make(chan healthcontract.ResourceHealthRegistrationMessage, 2)
+	dp := deploymentProcessor{mocks.model, mocks.db, &healthcontract.HealthChannels{
+		ResourceRegistrationWithHealthChannel: registrationChannel,
+	}, mocks.secretsValueClient, nil}
 
 	testOutputResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDDeployment,
-		ResourceKind: resourcekinds.Kubernetes,
-		Deployed:     false,
+		LocalID: outputresource.LocalIDDeployment,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.Deployment,
+			Provider: providers.ProviderKubernetes,
+		},
+		Deployed: false,
 	}
 	rendererOutput := renderers.RendererOutput{
 		Resources: []outputresource.OutputResource{testOutputResource},
@@ -544,11 +655,15 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	})
 
 	t.Run("verify invalid JSON pointer in computed value", func(t *testing.T) {
+		testResourceType := resourcemodel.ResourceType{
+			Type:     resourcekinds.Deployment,
+			Provider: providers.ProviderKubernetes,
+		}
 		localTestOutputResource := outputresource.OutputResource{
 			LocalID:      "test-local-id",
-			ResourceKind: resourcekinds.Kubernetes,
+			ResourceType: testResourceType,
 			Identity: resourcemodel.ResourceIdentity{
-				Kind: resourcemodel.IdentityKindKubernetes,
+				ResourceType: &testResourceType,
 			},
 			Deployed: true,
 		}
@@ -576,11 +691,15 @@ func Test_DeployRenderedResources_ErrorCodes(t *testing.T) {
 	})
 
 	t.Run("verify JSON pointer in computed value has missing result in output", func(t *testing.T) {
+		testResourceType := resourcemodel.ResourceType{
+			Type:     resourcekinds.Deployment,
+			Provider: providers.ProviderKubernetes,
+		}
 		localTestOutputResource := outputresource.OutputResource{
 			LocalID:      "test-local-id",
-			ResourceKind: resourcekinds.Kubernetes,
+			ResourceType: testResourceType,
 			Identity: resourcemodel.ResourceIdentity{
-				Kind: resourcemodel.IdentityKindKubernetes,
+				ResourceType: &testResourceType,
 			},
 			Deployed: true,
 			Resource: map[string]interface{}{
@@ -809,12 +928,14 @@ func Test_Delete_InvalidResourceKindFailure(t *testing.T) {
 	localTestResource := testRadiusResource
 	localTestResource.Status.OutputResources = []db.OutputResource{
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "foo",
+				Provider: providers.ProviderKubernetes,
+			},
 		},
 		{
-			LocalID:      outputresource.LocalIDService,
-			ResourceKind: "foo",
+			LocalID: outputresource.LocalIDService,
 		},
 	}
 
@@ -867,12 +988,16 @@ func Test_Deploy_WithSkipHealthMonitoring(t *testing.T) {
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}, mocks.secretsValueClient, nil}
 
+	testResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.Secret,
+		Provider: providers.ProviderKubernetes,
+	}
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDSecret,
-		ResourceKind: resourcekinds.Kubernetes,
+		ResourceType: testResourceType,
 		Deployed:     false,
 		Identity: resourcemodel.ResourceIdentity{
-			Kind: resourcemodel.IdentityKindKubernetes,
+			ResourceType: &testResourceType,
 			Data: resourcemodel.KubernetesIdentity{
 				Kind:      resourcekinds.Secret,
 				Name:      resourceName,
@@ -906,12 +1031,16 @@ func Test_Deploy_WithHealthMonitoring(t *testing.T) {
 		ResourceRegistrationWithHealthChannel: registrationChannel,
 	}, mocks.secretsValueClient, nil}
 
+	testResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.Deployment,
+		Provider: providers.ProviderKubernetes,
+	}
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDDeployment,
-		ResourceKind: resourcekinds.Kubernetes,
+		ResourceType: testResourceType,
 		Deployed:     false,
 		Identity: resourcemodel.ResourceIdentity{
-			Kind: resourcemodel.IdentityKindKubernetes,
+			ResourceType: &testResourceType,
 			Data: resourcemodel.KubernetesIdentity{
 				Name:      resourceName,
 				Namespace: testApplicationName,

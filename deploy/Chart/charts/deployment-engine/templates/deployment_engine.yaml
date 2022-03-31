@@ -14,6 +14,9 @@ spec:
     metadata:
       labels:
         control-plane: deployment-engine
+{{ if .Values.global.rp.provider.azure.podidentity }}
+        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
+{{ end }}
     spec:
       serviceAccountName: deployment-engine-manager
       containers:

@@ -19,6 +19,7 @@ import (
 	radiusv1alpha3 "github.com/project-radius/radius/pkg/kubernetes/api/radius/v1alpha3"
 	"github.com/project-radius/radius/pkg/kubernetes/converters"
 	"github.com/project-radius/radius/pkg/model"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -601,7 +602,10 @@ func (r *ResourceReconciler) GetRenderDependency(ctx context.Context, namespace 
 	outputResources := map[string]resourcemodel.ResourceIdentity{}
 	for localID, outputResource := range k8sResource.Status.Resources {
 		outputResources[localID] = resourcemodel.ResourceIdentity{
-			Kind: resourcemodel.IdentityKindKubernetes,
+			ResourceType: &resourcemodel.ResourceType{
+				Type:     outputResource.Resource.Kind,
+				Provider: providers.ProviderKubernetes,
+			},
 			Data: resourcemodel.KubernetesIdentity{
 				Kind:       outputResource.Resource.Kind,
 				APIVersion: outputResource.Resource.APIVersion,

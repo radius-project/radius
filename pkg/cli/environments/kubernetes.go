@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -98,11 +99,20 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	return &kubernetes.KubernetesDiagnosticsClient{
-		K8sClient:  k8sClient,
-		Client:     client,
-		RestConfig: config,
-		Namespace:  e.Namespace,
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &azure.ARMDiagnosticsClient{
+		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
+			K8sClient:  k8sClient,
+			RestConfig: config,
+			Client:     client,
+		},
+		ResourceClient: *radclient.NewRadiusResourceClient(con, e.Namespace),
+		ResourceGroup:  e.Namespace,
+		SubscriptionID: e.Namespace,
 	}, nil
 }
 

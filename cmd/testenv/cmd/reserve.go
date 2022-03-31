@@ -12,7 +12,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/spf13/cobra"
 )
 
@@ -80,15 +79,13 @@ var reserveCmd = &cobra.Command{
 		// we're using it for tracking.
 		env.Default = testenv.Name
 		env.Items[testenv.Name] = map[string]interface{}{
-			"kind":                      "azure",
-			"subscriptionId":            testenv.SubscriptionID,
-			"resourceGroup":             testenv.ResourceGroup,
-			"controlPlaneResourceGroup": azure.GetControlPlaneResourceGroup(testenv.ResourceGroup),
-			"clusterName":               testenv.ClusterName,
+			"kind":           "azure",
+			"subscriptionId": testenv.SubscriptionID,
+			"resourceGroup":  testenv.ResourceGroup,
+			"clusterName":    testenv.ClusterName,
 		}
 
-		cli.UpdateEnvironmentSection(v, env)
-		err = cli.SaveConfig(v)
+		err = cli.SaveConfigOnLock(cmd.Context(), v, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(testenv.Name)))
 		if err != nil {
 			return err
 		}

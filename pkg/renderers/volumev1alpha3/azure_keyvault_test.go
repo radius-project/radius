@@ -12,7 +12,9 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -94,7 +96,10 @@ func Test_MakeSecretProviderClass(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, or.LocalID, outputresource.LocalIDSecretProviderClass)
 	require.Equal(t, or.Identity, resourcemodel.ResourceIdentity{
-		Kind: resourcemodel.IdentityKindKubernetes,
+		ResourceType: &resourcemodel.ResourceType{
+			Type:     resourcekinds.SecretProviderClass,
+			Provider: providers.ProviderKubernetes,
+		},
 		Data: resourcemodel.KubernetesIdentity{
 			Kind:       "SecretProviderClass",
 			Name:       "test-secretprovider",
@@ -102,7 +107,7 @@ func Test_MakeSecretProviderClass(t *testing.T) {
 			APIVersion: "secrets-store.csi.x-k8s.io/v1alpha1",
 		},
 	})
-	require.Equal(t, outputresource.TypeKubernetes, or.ResourceKind)
+	require.Equal(t, resourcekinds.SecretProviderClass, or.ResourceType.Type)
 
 	expectedSecretObjects := []provider.KeyVaultObject{
 		{

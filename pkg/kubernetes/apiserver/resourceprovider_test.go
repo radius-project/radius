@@ -316,7 +316,7 @@ func Test_ListResources(t *testing.T) {
 				Name: resource1Name,
 				Properties: map[string]interface{}{
 					"definition-property": "definition-value",
-					"status":              map[string]interface{}{},
+					"status":              rest.ResourceStatus{},
 				},
 			},
 			{
@@ -325,7 +325,7 @@ func Test_ListResources(t *testing.T) {
 				Name: resource2Name,
 				Properties: map[string]interface{}{
 					"definition-property": "definition-value",
-					"status":              map[string]interface{}{},
+					"status":              rest.ResourceStatus{},
 				},
 			},
 		},
@@ -417,7 +417,7 @@ func Test_ListAllV3ResourcesByApplication(t *testing.T) {
 				Name: resource1Name,
 				Properties: map[string]interface{}{
 					"definition-property": "definition-value",
-					"status":              map[string]interface{}{},
+					"status":              rest.ResourceStatus{},
 				},
 			},
 		},
@@ -542,7 +542,7 @@ func Test_GetResource(t *testing.T) {
 		Name: resource2Name,
 		Properties: map[string]interface{}{
 			"definition-property": "definition-value",
-			"status":              map[string]interface{}{},
+			"status":              rest.ResourceStatus{},
 		},
 	}
 	require.Equal(t, rest.NewOKResponse(expected), response)
@@ -849,8 +849,7 @@ func Test_GetOperation(t *testing.T) {
 				HealthState:       "Healthy",
 				OutputResources: []rest.OutputResource{
 					{
-						LocalID:            "LocalID",
-						OutputResourceType: "kubernetes",
+						LocalID: "LocalID",
 						Status: rest.OutputResourceStatus{
 							ProvisioningState: "Provisioned",
 							HealthState:       "Healthy",

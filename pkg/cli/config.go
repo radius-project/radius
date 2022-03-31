@@ -6,22 +6,25 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
+	"github.com/gofrs/flock"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
-	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // EnvironmentKey is the key used for the environment section
@@ -72,11 +75,22 @@ func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 	return section, nil
 }
 
-func UpdateEnvironmentSectionOnCreation(v *viper.Viper, env EnvironmentSection, environmentName string) {
-	//assign default env to latest env if not empty otherwise assign resourceGroup
-	env.Default = environmentName
-	output.LogInfo("Using environment: %v", environmentName)
-	UpdateEnvironmentSection(v, env);
+// Required to be called while holding the exclusive lock on config file.
+func UpdateEnvironmentWithLatestConfig(env EnvironmentSection, mergeConfigs func(EnvironmentSection, EnvironmentSection) EnvironmentSection) func(*viper.Viper) error {
+	return func(config *viper.Viper) error {
+
+		latestConfig, err := LoadConfigNoLock(GetConfigFilePath(config))
+		if err != nil {
+			return err
+		}
+		updatedEnv, err := ReadEnvironmentSection(latestConfig)
+		if err != nil {
+			return err
+		}
+		updatedEnv = mergeConfigs(env, updatedEnv)
+		UpdateEnvironmentSection(config, updatedEnv)
+		return nil
+	}
 }
 
 // UpdateEnvironmentSection updates the EnvironmentSection in radius config.
@@ -97,7 +111,7 @@ func (env EnvironmentSection) GetEnvironment(name string) (environments.Environm
 	return env.decodeEnvironmentSection(name)
 }
 
-func LoadConfig(configFilePath string) (*viper.Viper, error) {
+func getConfig(configFilePath string) *viper.Viper {
 	config := viper.New()
 
 	if configFilePath == "" {
@@ -114,8 +128,33 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	} else {
 		config.SetConfigFile(configFilePath)
 	}
+	return config
+}
 
-	err := config.ReadInConfig()
+// Create a config if its not present
+func createConfigFile(configFilePath string) error {
+	dir := path.Dir(configFilePath)
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(dir, os.ModeDir|0755)
+		if err != nil {
+			return fmt.Errorf("failed to create directory '%s': %w", dir, err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("failed to find directory '%s': %w", dir, err)
+	}
+	return nil
+}
+
+func LoadConfigNoLock(configFilePath string) (*viper.Viper, error) {
+	config := getConfig(configFilePath)
+	configFile := GetConfigFilePath(config)
+	// On Ubuntu OS,  getConfig() function doesnt create a config file if its not present.
+	err := createConfigFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+	err = config.ReadInConfig()
 	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 		// It's ok the config file is not found, this could be the first time the CLI
 		// is running. Commands that require configuration will check for the data they need.
@@ -129,7 +168,47 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	return config, nil
 }
 
-func SaveConfig(v *viper.Viper) error {
+func LoadConfig(configFilePath string) (*viper.Viper, error) {
+	config := getConfig(configFilePath)
+	configFile := GetConfigFilePath(config)
+
+	// On Ubuntu OS,  getConfig() function doesnt create a config file if its not present.
+	err := createConfigFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+	// Acquire shared lock on the config file.
+	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
+	fileLock := flock.New(configFile)
+	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err = fileLock.TryRLockContext(lockCtx, 1*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire lock on '%s': %w", configFile, err)
+	}
+
+	defer func() {
+		err = fileLock.Unlock()
+		if err != nil {
+			output.LogInfo("failed to release lock on the config file : %s", configFile)
+		}
+	}()
+
+	err = config.ReadInConfig()
+	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		// It's ok the config file is not found, this could be the first time the CLI
+		// is running. Commands that require configuration will check for the data they need.
+	} else if os.IsNotExist(err) {
+		// It's ok the config file is not found, this could be the first time the CLI
+		// is running. Commands that require configuration will check for the data they need.
+	} else if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func GetConfigFilePath(v *viper.Viper) string {
 	configFilePath := v.ConfigFileUsed()
 	if configFilePath == "" {
 		// Set config file using the HOME directory.
@@ -141,24 +220,85 @@ func SaveConfig(v *viper.Viper) error {
 
 		configFilePath = path.Join(home, ".rad", "config.yaml")
 	}
+	return configFilePath
+}
 
-	dir := path.Dir(configFilePath)
-	_, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(dir, os.ModeDir|0755)
-		if err != nil {
-			return fmt.Errorf("failed to create directory '%s': %w", dir, err)
+func MergeInitEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
+	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
+		latestEnvironment.Default = envName
+		latestEnvironment.Items[envName] = currentEnvironment.Items[envName]
+		return latestEnvironment
+	}
+}
+
+func MergeDeleteEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
+	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
+		delete(latestEnvironment.Items, envName)
+		latestEnvironment.Default = currentEnvironment.Default
+		return latestEnvironment
+	}
+}
+
+func MergeSwitchEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
+	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
+		latestEnvironment.Default = currentEnvironment.Default
+		return latestEnvironment
+	}
+}
+
+func MergeWithLatestConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
+	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
+		for k, v := range currentEnvironment.Items {
+			if _, ok := latestEnvironment.Items[k]; ok {
+				for k1, v1 := range v {
+					latestEnvironment.Items[k][k1] = v1
+				}
+			}
 		}
-	} else if err != nil {
-		return fmt.Errorf("failed to find directory '%s': %w", dir, err)
+		return latestEnvironment
+	}
+}
+
+// Save Config with exclusive lock on the config file
+func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig func(*viper.Viper) error) error {
+	// Acquire exclusive lock on the config file.
+	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
+	configFilePath := GetConfigFilePath(config)
+	fileLock := flock.New(configFilePath)
+	lockCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to acquire lock on '%s': %w", configFilePath, err)
 	}
 
-	err = v.WriteConfigAs(configFilePath)
+	defer func() {
+		err = fileLock.Unlock()
+		if err != nil {
+			output.LogInfo("failed to release lock on the config file : %s", configFilePath)
+		}
+	}()
+	err = updateConfig(config)
+	if err != nil {
+		return err
+	}
+	err = SaveConfig(config)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SaveConfig(v *viper.Viper) error {
+	configFilePath := GetConfigFilePath(v)
+
+	err := v.WriteConfigAs(configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to write config to '%s': %w", configFilePath, err)
 	}
 
 	fmt.Printf("Successfully wrote configuration to %v\n", configFilePath)
+
 	return nil
 }
 

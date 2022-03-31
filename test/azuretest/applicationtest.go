@@ -114,7 +114,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
-				validation.ValidateOutputResources(t, at.Options.ARMAuthorizer, at.Options.ARMConnection, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.RadiusResources)
+				validation.ValidateOutputResources(t, at.Options.ARMAuthorizer, at.Options.RadiusBaseURL, at.Options.RadiusSender, at.Options.Environment.SubscriptionID, at.Options.Environment.ResourceGroup, *step.RadiusResources)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 
@@ -126,7 +126,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 				// ValidateObjectsRunning triggers its own assertions, no need to handle errors
 				if step.Objects != nil {
 					t.Logf("validating creation of objects for %s", step.Executor.GetDescription())
-					validation.ValidateObjectsRunning(ctx, t, at.Options.K8sClient, *step.Objects)
+					validation.ValidateObjectsRunning(ctx, t, at.Options.K8sClient, at.Options.DynamicClient, *step.Objects)
 					t.Logf("finished creation of validating objects for %s", step.Executor.GetDescription())
 				}
 			}
