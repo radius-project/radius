@@ -2,9 +2,6 @@
 
 Our release process for Project Radius is based on git tags. Pushing a new tag with the format: `v.<major>.<minor>.<patch>` will trigger a release build.
 
-> 🚌🚌🚌 Busfactor Warning 🚌🚌🚌 <br>
-Currently performing a release involves our custom Bicep compiler - which is in a private fork. We'll update these instructions in the future when this moves to a shared repository.
-
 ## Pre-requisites
 
 - Find the storage account on Azure under 'Radius Dev' subscription. It is called `radiuspublic`
@@ -13,7 +10,7 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 
 ## Performing a release
 
-1. In the Bicep fork:
+1. In the Bicep fork: `radius-compiler` branch at the time of writing
 
    ```bash
    # replace v0.1.0 with the release version
@@ -32,6 +29,9 @@ Currently performing a release involves our custom Bicep compiler - which is in 
 
 2. In the azure/radius repo:
 
+   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.10`.
+
+
    ```bash
    # replace v0.1.0 with the release version
    git tag v0.1.0
@@ -47,13 +47,8 @@ Currently performing a release involves our custom Bicep compiler - which is in 
    ```
 3. Updating Helm chart
 
-   Each release, we need to update the verison of the helm chart to the next version. 
-   
-   In the Chart.yaml file, based on whether we are releasing a major, minor, or patch version, increase the version number accordingly. When branching for a major or minor release, we need to increment the version in the 'main' branch, while for patch changes, we updating it in the release/X branch. 
-   
-   For example, if we are releasing 0.4, we change the main branch Chart.yaml version to 0.5.0. If we are releasing a patch on 0.4, we update the Chart.yaml version in the release/0.4 to 0.4.1 (or one higher than the current patch version).
+   Helm charts upload is automatic after v0.10.0. If the tools command mentioned in step 1 & 2 return the current version then skip the manual steps below:
 
-   If this process fails for whatever reason, a manual upload works well as a backup. Run the following:
    ```bash
    cd deploy/Chart
    # Replace version: 0.X.0 with this release version in Chart.yaml
@@ -97,3 +92,29 @@ Each release belongs to a *channel* named like `<major>.<minor>`. Releases will 
 At this time we do not guarantee compatibility across releases or provide a migration path. For example, the behavior of a `0.1` `rad` CLI talking to a `0.2` control plane is unspecifed. We expect the project to change too frequently to provide compatibility guarantees at this time.
 
 Conceptually we scope channels to a major+minor pair because this allows us to freely patch assets as needed without needing to change the intermediate pieces. For example pushing a `v0.1.1` tag will update the assets in the `v0.1` channel. This works as long as it is a *true* patch release and maintains compatibility.
+
+## Patching
+
+Let's say we have a bug in a release which needs to be patched for an already created release.
+
+1. Make sure the commit that we want to add to a patch is merged and validate in `main` first if it affects `main`.
+2. Create a new branch based off the release branch we want to patch. Ex:
+   ```bash
+   git checkout release/0.<VERSION>
+   git checkout -b <USERNAME>/<BRANCHNAME>
+   ```
+3. Cherry-pick the commit that is on `main` onto the branch.
+   ```bash
+   git cherry-pick <COMMIT HASH>
+   ```
+4. Push the commit to the remote and create a pull request targeting the release branch.
+   ```bash
+   git push origin <USERNAME>/<BRANCHNAME>
+   ```
+5. After pull request is approved, merge into the release branch and tag!
+   ```bash
+   # replace v0.10.X with the version we want to patch (if we release 0.10.1 already, we would then release 0.10.2, etc.)
+   git tag v0.10.1 
+   git push --tags
+   ``` 
+
