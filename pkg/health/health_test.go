@@ -20,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
 	k8s "github.com/project-radius/radius/pkg/kubernetes"
@@ -61,7 +60,7 @@ var deployment = appsv1.Deployment{
 
 var (
 	testResourceType = resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureServiceBusQueue,
+		Type:     "fake",
 		Provider: providers.ProviderAzure,
 	}
 
@@ -119,7 +118,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	require.Equal(t, *registration, healthInfo.Registration)
 	require.Equal(t, "abc", healthInfo.Registration.RadiusResourceID)
 	require.Equal(t, resourcemodel.NewARMIdentity(&testResourceType, testResourceID, testApiVersion), healthInfo.Registration.Identity)
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, healthInfo.Registration.Identity.ResourceType.Type)
+	require.Equal(t, "fake", healthInfo.Registration.Identity.ResourceType.Type)
 	require.Equal(t, providers.ProviderAzure, healthInfo.Registration.Identity.ResourceType.Provider)
 	require.NotNil(t, healthInfo.ticker)
 }
