@@ -114,12 +114,12 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 }
 
 func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
+	k8sTypedClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+	k8sRuntimeclient, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -130,12 +130,12 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	}
 
 	return &azure.ARMDiagnosticsClient{
-		K8sClient:      k8sClient,
-		RestConfig:     config,
-		Client:         client,
-		ResourceClient: *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
-		ResourceGroup:  e.ResourceGroup,
-		SubscriptionID: e.SubscriptionID,
+		K8sTypedClient:   k8sTypedClient,
+		RestConfig:       config,
+		K8sRuntimeClient: k8sRuntimeclient,
+		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
+		ResourceGroup:    e.ResourceGroup,
+		SubscriptionID:   e.SubscriptionID,
 	}, nil
 }
 

@@ -33,9 +33,9 @@ import (
 )
 
 type ARMDiagnosticsClient struct {
-	K8sClient  *k8s.Clientset
-	RestConfig *rest.Config
-	Client     client.Client
+	K8sTypedClient   *k8s.Clientset
+	RestConfig       *rest.Config
+	K8sRuntimeClient client.Client
 
 	// If set, the value of this field will be used to find replicas. Otherwise the application name will be used.
 	Namespace      string
@@ -79,7 +79,7 @@ func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 			continue
 		}
 
-		service, err := dc.K8sClient.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
+		service, err := dc.K8sTypedClient.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -102,9 +102,9 @@ func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.Expo
 	var replica *corev1.Pod
 
 	if options.Replica != "" {
-		replica, err = getSpecificReplica(ctx, dc.K8sClient, namespace, options.Resource, options.Replica)
+		replica, err = getSpecificReplica(ctx, dc.K8sTypedClient, namespace, options.Resource, options.Replica)
 	} else {
-		replica, err = getRunningReplica(ctx, dc.K8sClient, namespace, options.Application, options.Resource)
+		replica, err = getRunningReplica(ctx, dc.K8sTypedClient, namespace, options.Application, options.Resource)
 	}
 
 	if err != nil {
@@ -120,7 +120,7 @@ func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.Expo
 	ready := make(chan struct{})
 	stop = make(chan struct{}, 1)
 	go func() {
-		err := runPortforward(dc.RestConfig, dc.K8sClient, replica, ready, stop, options.Port, options.RemotePort)
+		err := runPortforward(dc.RestConfig, dc.K8sTypedClient, replica, ready, stop, options.Port, options.RemotePort)
 		failed <- err
 	}()
 
@@ -137,13 +137,13 @@ func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOp
 	var err error
 
 	if options.Replica != "" {
-		replica, err := getSpecificReplica(ctx, dc.K8sClient, namespace, options.Resource, options.Replica)
+		replica, err := getSpecificReplica(ctx, dc.K8sTypedClient, namespace, options.Resource, options.Replica)
 		if err != nil {
 			return nil, err
 		}
 		replicas = append(replicas, *replica)
 	} else {
-		replicas, err = getRunningReplicas(ctx, dc.K8sClient, namespace, options.Application, options.Resource)
+		replicas, err = getRunningReplicas(ctx, dc.K8sTypedClient, namespace, options.Application, options.Resource)
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +178,7 @@ func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *ARMD
 			}
 		}
 
-		stream, err := streamLogs(ctx, dc.RestConfig, dc.K8sClient, &replica, container, follow)
+		stream, err := streamLogs(ctx, dc.RestConfig, dc.K8sTypedClient, &replica, container, follow)
 		if err != nil {
 			return streams, fmt.Errorf("failed to open log stream to %s: %w", options.Resource, err)
 		}

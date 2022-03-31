@@ -105,12 +105,12 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	}
 
 	return &azure.ARMDiagnosticsClient{
-		K8sClient:      k8sClient,
-		RestConfig:     config,
-		Client:         client,
-		ResourceClient: *radclient.NewRadiusResourceClient(con, e.Namespace),
-		ResourceGroup:  e.Namespace,
-		SubscriptionID: e.Namespace,
+		K8sTypedClient:   k8sClient,
+		RestConfig:       config,
+		K8sRuntimeClient: client,
+		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.Namespace),
+		ResourceGroup:    e.Namespace,
+		SubscriptionID:   e.Namespace,
 	}, nil
 }
 
