@@ -35,7 +35,7 @@ func Test_DaprSecretStore_Generic(t *testing.T) {
 						ApplicationName: application,
 						ResourceName:    "secretstore",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprSecretStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprSecretStoreGeneric, rest.ResourceType{Type: resourcekinds.DaprSecretStoreGeneric, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprComponent: validation.NewOutputResource(outputresource.LocalIDDaprComponent, rest.ResourceType{Type: resourcekinds.DaprComponent, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

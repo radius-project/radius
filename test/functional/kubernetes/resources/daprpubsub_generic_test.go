@@ -35,7 +35,7 @@ func Test_DaprPubSub_Generic(t *testing.T) {
 						ApplicationName: application,
 						ResourceName:    "pubsub",
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDaprPubSubGeneric, rest.ResourceType{Type: resourcekinds.DaprPubSubGeneric, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprComponent: validation.NewOutputResource(outputresource.LocalIDDaprComponent, rest.ResourceType{Type: resourcekinds.DaprComponent, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},

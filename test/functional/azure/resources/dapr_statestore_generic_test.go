@@ -42,7 +42,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 						ResourceName:    "statestore-generic",
 						ResourceType:    daprstatestorev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprStateStoreGeneric: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreGeneric, rest.ResourceType{Type: resourcekinds.DaprStateStoreGeneric, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprComponent: validation.NewOutputResource(outputresource.LocalIDDaprComponent, rest.ResourceType{Type: resourcekinds.DaprComponent, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
