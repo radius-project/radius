@@ -32,7 +32,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor:       azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor:       azuretest.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{},
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
@@ -232,7 +232,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/azure-resources-container-readiness-liveness.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// Intentionally Empty
