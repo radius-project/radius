@@ -69,15 +69,22 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	// Configure Azure provider for cloud resources if specified
 	var azureProvider *azure.Provider
 	if interactive {
-		namespace, err = prompt.Text("Enter a namespace name:", prompt.EmptyValidator)
+		var defaultNamespace = "default"
+		promptStr := fmt.Sprintf("Enter a namespace name [%s]:", defaultNamespace)
+		namespace, err = prompt.TextWithDefault(promptStr, &defaultNamespace, prompt.EmptyValidator)
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Using %s as namespace name\n", namespace)
 
-		environmentName, err = prompt.Text("Enter an environment name:", prompt.EmptyValidator)
+		var defaultEnvironmentName = "kubernetes-env"
+		promptStr = fmt.Sprintf("Enter an environment name [%s]:", defaultEnvironmentName)
+		environmentName, err = prompt.TextWithDefault(promptStr, &defaultEnvironmentName, prompt.EmptyValidator)
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Using %s as environment name\n", environmentName)
+
 	} else {
 		// Check if Azure provider configuration is provided
 		// Adding Azure provider is supported only in non-interactive mode
