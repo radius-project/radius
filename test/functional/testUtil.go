@@ -23,7 +23,7 @@ func GetMagpieTag() string {
 
 func setDefault() {
 	defaultDockerReg = os.Getenv("DOCKER_REGISTRY")
-	imageTag = os.Getenv("REL_VERsion")
+	imageTag = os.Getenv("REL_VERSION")
 	if defaultDockerReg == "" {
 		defaultDockerReg = "radiusdev.azurecr.io"
 	}
