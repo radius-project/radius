@@ -73,6 +73,11 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
+		environmentName, err = prompt.Text("Enter an environment name:", prompt.EmptyValidator)
+		if err != nil {
+			return err
+		}
 	} else {
 		// Check if Azure provider configuration is provided
 		// Adding Azure provider is supported only in non-interactive mode
