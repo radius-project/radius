@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -110,15 +109,4 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.R
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
 	}
-}
-
-func readJSONBody(req *http.Request) ([]byte, error) {
-	// TODO: Validate if content-type is application/json or not.
-	defer req.Body.Close()
-	data, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading request body: %w", err)
-	}
-
-	return data, nil
 }
