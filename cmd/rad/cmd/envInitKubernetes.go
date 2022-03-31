@@ -70,7 +70,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	var azureProvider *azure.Provider
 	if interactive {
 		var defaultNamespace = "default"
-		promptStr := fmt.Sprintf("Enter a namespace name [%s]:", defaultNamespace)
+		promptStr := fmt.Sprintf("Enter a namespace name to deploy apps into [%s]:", defaultNamespace)
 		namespace, err = prompt.TextWithDefault(promptStr, &defaultNamespace, prompt.EmptyValidator)
 		if err != nil {
 			return err
