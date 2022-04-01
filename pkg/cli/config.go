@@ -179,7 +179,7 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	}
 	// Acquire shared lock on the config file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
-	fileLock := flock.New(configFile)
+	fileLock := flock.New(configFile + ".lock")
 	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_, err = fileLock.TryRLockContext(lockCtx, 1*time.Second)
@@ -264,7 +264,7 @@ func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig fun
 	// Acquire exclusive lock on the config file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
 	configFilePath := GetConfigFilePath(config)
-	fileLock := flock.New(configFilePath)
+	fileLock := flock.New(configFilePath + ".lock")
 	lockCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)
