@@ -66,6 +66,11 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	client, runtimeClient, contextName, err := createKubernetesClients("")
+	if err != nil {
+		return err
+	}
+
 	// Configure Azure provider for cloud resources if specified
 	var azureProvider *azure.Provider
 	if interactive {
@@ -77,7 +82,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Printf("Using %s as namespace name\n", namespace)
 
-		var defaultEnvironmentName = "kubernetes"
+		var defaultEnvironmentName = contextName
 		promptStr = fmt.Sprintf("Enter an environment name [%s]:", defaultEnvironmentName)
 		environmentName, err = prompt.TextWithDefault(promptStr, &defaultEnvironmentName, prompt.EmptyValidator)
 		if err != nil {
@@ -105,11 +110,6 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.ReadEnvironmentSection(config)
-	if err != nil {
-		return err
-	}
-
-	client, runtimeClient, contextName, err := createKubernetesClients("")
 	if err != nil {
 		return err
 	}
