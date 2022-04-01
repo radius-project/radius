@@ -1,6 +1,6 @@
 package common
 
-// SystemDataProperties is the readonly systemdata object property in the top-level envelope.
+// SystemDataProperties is the readonly metadata pertaining to creation and last modification of the resource.
 // https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-contracts.md#system-metadata-for-all-azure-resources
 type SystemDataProperties struct {
 	// CreatedBy is a string identifier for the identity that created the resource.

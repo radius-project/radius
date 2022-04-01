@@ -14,13 +14,19 @@ const (
 
 // Environment represents Application environment resource.
 type Environment struct {
-	ID         string                      `json:"id"`
-	Name       string                      `json:"name"`
-	Type       string                      `json:"type"`
-	Location   string                      `json:"location"`
+	// ID is the fully qualified resource ID for the resource.
+	ID string `json:"id"`
+	// Name is the resource name.
+	Name string `json:"name"`
+	// Type is the resource type.
+	Type string `json:"type"`
+	// Location is the geo-location where resource is located.
+	Location string `json:"location"`
+	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData common.SystemDataProperties `json:"systemData,omitempty"`
-	Tags       common.ResourceTags         `json:"tags,omitempty"`
-
+	// Tags is the resource tags.
+	Tags common.ResourceTags `json:"tags,omitempty"`
+	// Properties is the properties of the resource.
 	Properties EnvironmentProperties `json:"properties"`
 }
 
