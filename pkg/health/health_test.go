@@ -13,14 +13,12 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/health/handlers"
 	"github.com/project-radius/radius/pkg/health/model"
 	"github.com/project-radius/radius/pkg/health/model/azure"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
 	k8s "github.com/project-radius/radius/pkg/kubernetes"
@@ -61,7 +59,7 @@ var deployment = appsv1.Deployment{
 
 var (
 	testResourceType = resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureServiceBusQueue,
+		Type:     "fake",
 		Provider: providers.ProviderAzure,
 	}
 
@@ -71,57 +69,6 @@ var (
 
 func getKubernetesClient() kubernetes.Interface {
 	return fake.NewSimpleClientset()
-}
-
-func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
-	logger, err := radlogger.NewTestLogger(t)
-	require.NoError(t, err)
-
-	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
-	hrpc := make(chan healthcontract.ResourceHealthDataMessage, 1)
-	wg := sync.WaitGroup{}
-	options := MonitorOptions{
-		Logger:                      logger,
-		ResourceRegistrationChannel: rrc,
-		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(&armauth.ArmConfig{}, getKubernetesClient(), &wg),
-	}
-	monitor := NewMonitor(options)
-	ctx := logr.NewContext(context.Background(), logger)
-
-	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
-		Action: healthcontract.ActionRegister,
-		Resource: healthcontract.HealthResource{
-			RadiusResourceID: "abc",
-			Identity:         resourcemodel.NewARMIdentity(&testResourceType, testResourceID, testApiVersion),
-		},
-	}
-
-	// Wait till the waitgroup is done
-	stopCh := make(chan struct{})
-	t.Cleanup(func() {
-		stopCh <- struct{}{}
-		wg.Wait()
-	})
-
-	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh)
-
-	monitor.activeHealthProbesMutex.RLock()
-	probesLen := len(monitor.activeHealthProbes)
-	require.Equal(t, 1, probesLen)
-	healthInfo, found := monitor.activeHealthProbes[registration.Token]
-	monitor.activeHealthProbesMutex.RUnlock()
-	require.Equal(t, true, found)
-
-	handler, mode := monitor.model.LookupHandler(ctx, registrationMsg)
-	require.Equal(t, handler, healthInfo.handler)
-	require.Equal(t, handlers.HealthHandlerModePull, mode)
-	require.Equal(t, *registration, healthInfo.Registration)
-	require.Equal(t, "abc", healthInfo.Registration.RadiusResourceID)
-	require.Equal(t, resourcemodel.NewARMIdentity(&testResourceType, testResourceID, testApiVersion), healthInfo.Registration.Identity)
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, healthInfo.Registration.Identity.ResourceType.Type)
-	require.Equal(t, providers.ProviderAzure, healthInfo.Registration.Identity.ResourceType.Provider)
-	require.NotNil(t, healthInfo.ticker)
 }
 
 // When a resource kind is not implemented in the health service, it should still be handled with no errors
