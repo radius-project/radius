@@ -1,7 +1,7 @@
 var adminUsername = 'cooluser'
 var adminPassword = 'p@ssw0rd'
 
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' string = 'radiusdev.azurecr.io/magpiego:latest' string
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
 
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-microsoft-sql'

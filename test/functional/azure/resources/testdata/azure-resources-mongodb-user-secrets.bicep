@@ -5,7 +5,7 @@ param username string = 'admin'
 @secure()
 param password string = newGuid()
 
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' string = 'radiusdev.azurecr.io/magpiego:latest' string
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
 
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-mongodb-user-secrets'
