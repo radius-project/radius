@@ -80,9 +80,6 @@ jobs:
           GOTEST_OPTS: '-race'
         run: |
           make test
-      - name: Run make test-localenv (local development tests)
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        run: make test-localenv
       - name: Upload CLI binary
         uses: actions/upload-artifact@master
         with:

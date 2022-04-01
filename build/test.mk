@@ -27,11 +27,5 @@ ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.19.2
 ENV_SETUP=$(GOBIN)/setup-envtest
 
-test-get-envtools:
-	go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
-
-test-localenv: test-get-envtools ## Runs local development environment tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test $(GOTEST_OPTS) -v ./test/integration/localenv/...
