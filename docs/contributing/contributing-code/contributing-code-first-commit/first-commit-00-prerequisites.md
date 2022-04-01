@@ -2,7 +2,7 @@
 
 ## Operating system
 
-We support developing on macOS, Linux and Windows with [WSL](https://docs.microsoft.com/en-us/windows/wsl/install).
+We support developing on macOS, Linux and Windows with [WSL](https://docs.microsoft.com/windows/wsl/install).
 
 ## Required installs
 
