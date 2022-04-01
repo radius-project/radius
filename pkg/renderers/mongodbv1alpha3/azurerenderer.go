@@ -12,9 +12,11 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 var cosmosAccountDependency outputresource.Dependency = outputresource.Dependency{
@@ -77,8 +79,11 @@ func RenderResource(name string, properties radclient.MongoDBResourceProperties)
 	cosmosAccountID := databaseID.Truncate()
 
 	cosmosAccountResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosAccount,
-		ResourceKind: resourcekinds.AzureCosmosAccount,
+		LocalID: outputresource.LocalIDAzureCosmosAccount,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureCosmosAccount,
+			Provider: providers.ProviderAzure,
+		},
 		Resource: map[string]string{
 			handlers.CosmosDBAccountIDKey:   cosmosAccountID.ID,
 			handlers.CosmosDBAccountNameKey: databaseID.Types[0].Name,
@@ -87,8 +92,11 @@ func RenderResource(name string, properties radclient.MongoDBResourceProperties)
 	}
 
 	databaseResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
-		ResourceKind: resourcekinds.AzureCosmosDBMongo,
+		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureCosmosDBMongo,
+			Provider: providers.ProviderAzure,
+		},
 		Resource: map[string]string{
 			handlers.CosmosDBAccountIDKey:    cosmosAccountID.ID,
 			handlers.CosmosDBDatabaseIDKey:   databaseID.ID,
@@ -113,7 +121,10 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
 				Action:        "listConnectionStrings",
 				ValueSelector: "/connectionStrings/0/connectionString",
-				Transformer:   resourcekinds.AzureCosmosDBMongo,
+				Transformer: resourcemodel.ResourceType{
+					Provider: providers.ProviderAzure,
+					Type:     resourcekinds.AzureCosmosDBMongo,
+				},
 			},
 		}
 		return computedValues, secretValues
@@ -125,8 +136,8 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 	// TODO(#1767): We need to store these in a secret store.
 	secretValues := map[string]renderers.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
-		renderers.UsernameStringValue: {Value: *properties.Secrets.Username},
-		renderers.PasswordStringHolder: {Value: *properties.Secrets.Password},
+		renderers.UsernameStringValue:   {Value: *properties.Secrets.Username},
+		renderers.PasswordStringHolder:  {Value: *properties.Secrets.Password},
 	}
 
 	return computedValues, secretValues

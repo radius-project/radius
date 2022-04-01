@@ -5,14 +5,14 @@ param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
 resource rabbitmqService 'kubernetes.core/Service@v1' existing = {
   metadata: {
     name: 'rabbitmq-svc'
-    namespace: 'default'
+    namespace: 'kubernetes-resources-rabbitmq'
   }
 }
 
 resource rabbitmqSecret 'kubernetes.core/Secret@v1' existing = {
   metadata: {
     name: 'rabbitmq-pw'
-    namespace: 'default'
+    namespace: 'kubernetes-resources-rabbitmq'
   }
 }
 

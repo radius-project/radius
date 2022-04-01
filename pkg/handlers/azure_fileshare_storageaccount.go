@@ -42,7 +42,7 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 	if err != nil {
 		return nil, err
 	}
-	options.Resource.Identity = resourcemodel.NewARMIdentity(properties[FileShareStorageAccountIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[FileShareStorageAccountIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 	return properties, nil
 }
 

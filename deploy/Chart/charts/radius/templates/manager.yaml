@@ -81,17 +81,3 @@ spec:
       targetPort: 9443
   selector:
     control-plane: controller-manager
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: radius-api
-  namespace: {{ .Release.Namespace }}
-spec:
-  ports:
-    - port: 443
-      name: https
-      protocol: TCP
-      targetPort: 7443
-  selector:
-    control-plane: controller-manager

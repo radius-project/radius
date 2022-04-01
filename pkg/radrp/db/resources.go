@@ -5,6 +5,8 @@
 
 package db
 
+import "github.com/project-radius/radius/pkg/resourcemodel"
+
 // RadiusResource represents one of the child resources of Application as stored in the database.
 type RadiusResource struct {
 	ID              string `bson:"_id"`
@@ -51,9 +53,9 @@ type AzureResource struct {
 
 // see renderers.SecretValueReference for description
 type SecretValueReference struct {
-	LocalID       string `bson:"localId"`
-	Action        string `bson:"action,omitempty"`
-	ValueSelector string `bson:"valueSelector"`
-	Transformer   string `bson:"transformer,omitempty"`
-	Value         *string `bson:"value,omitempty"`
+	LocalID       string                     `bson:"localId"`
+	Action        string                     `bson:"action,omitempty"`
+	ValueSelector string                     `bson:"valueSelector"`
+	Transformer   resourcemodel.ResourceType `bson:"transformer,omitempty"`
+	Value         *string                    `bson:"value,omitempty"`
 }

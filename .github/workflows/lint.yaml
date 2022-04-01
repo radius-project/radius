@@ -38,6 +38,8 @@ jobs:
         run: npm install -g autorest
       - name: Install mockgen
         run: go install github.com/golang/mock/mockgen@v1.5.0
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Run linter
         uses: golangci/golangci-lint-action@v2
         with:

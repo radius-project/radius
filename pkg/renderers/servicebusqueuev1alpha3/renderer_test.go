@@ -48,7 +48,7 @@ func Test_Render_Success(t *testing.T) {
 	output := result.Resources[0]
 
 	require.Equal(t, outputresource.LocalIDAzureServiceBusQueue, output.LocalID)
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, output.ResourceKind)
+	require.Equal(t, resourcekinds.AzureServiceBusQueue, output.ResourceType.Type)
 
 	expected := map[string]string{
 		handlers.ServiceBusNamespaceIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",

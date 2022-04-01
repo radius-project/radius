@@ -125,7 +125,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 	deployedOutputResources := resource.Status.OutputResources
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
 		outputResource := deployedOutputResources[i]
-		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceKind)
+		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 		if err != nil {
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
@@ -136,7 +136,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource kind: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceKind))
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %q\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType))
 		err = outputResourceModel.ResourceHandler.Delete(ctx, handlers.DeleteOptions{
 			Application:            resource.ApplicationName,
 			ResourceName:           resource.ResourceName,
@@ -154,7 +154,6 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, operationID azresourc
 
 		if outputResource.Status.HealthState != healthcontract.HealthStateNotApplicable {
 			healthResource := healthcontract.HealthResource{
-				ResourceKind:     outputResource.ResourceKind,
 				Identity:         outputResource.Identity,
 				RadiusResourceID: resource.ID,
 			}
@@ -297,6 +296,28 @@ func (dp *deploymentProcessor) renderResource(ctx context.Context, resourceID az
 		return renderers.RendererOutput{}, nil, armerr, err
 	}
 
+	// Check if the output resources have the corresponding provider supported in Radius
+	for _, or := range rendererOutput.Resources {
+		if or.ResourceType.Provider == "" {
+			err = fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			return renderers.RendererOutput{}, nil, armerr, err
+		}
+		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
+			err := fmt.Errorf("Provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
+			armerr := &armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: err.Error(),
+				Target:  resourceID.ID,
+			}
+			return renderers.RendererOutput{}, nil, armerr, err
+		}
+	}
+
 	return rendererOutput, azureDependencyIDs, nil, nil
 }
 
@@ -351,7 +372,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 	// Example - CosmosDBAccountName consumed by CosmosDBMongo/SQL handler
 	deployedOutputResourceProperties := map[string]map[string]string{}
 	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource: %v, LocalID: %s, resource kind: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceKind))
+		logger.Info(fmt.Sprintf("Deploying output resource: %v, LocalID: %s, resource type: %q\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType))
 
 		var existingOutputResourceState db.OutputResource
 		for _, dbOutputResource := range existingDBOutputResources {
@@ -361,7 +382,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 			}
 		}
 
-		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceKind)
+		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 		if err != nil {
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
@@ -388,7 +409,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		}
 		deployedOutputResourceProperties[outputResource.LocalID] = properties
 
-		if outputResource.Identity.Kind == "" {
+		if outputResource.Identity.ResourceType == nil {
 			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
 			armerr := &armerrors.ErrorDetails{
 				Code:    armerrors.Internal,
@@ -436,14 +457,13 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		// Register health checks for the output resource
 		healthResource := healthcontract.HealthResource{
 			Identity:         outputResource.Identity,
-			ResourceKind:     outputResource.ResourceKind,
 			RadiusResourceID: resource.ID,
 		}
 
 		supportsHealthMonitor := true
-		if !outputResourceModel.SupportsHealthMonitor(outputResource.Identity) {
+		if !outputResourceModel.SupportsHealthMonitor(outputResource.ResourceType) {
 			// Health state is not applicable to this resource and can be skipped from registering with health service
-			logger.Info(fmt.Sprintf("Health state is not applicable for resource kind: %s. Skipping registration with health service", outputResource.Identity.Kind))
+			logger.Info(fmt.Sprintf("Health state is not applicable for resource type: %q. Skipping registration with health service", outputResource.Identity.ResourceType))
 			// Return skipped = true
 			supportsHealthMonitor = false
 		}
@@ -455,7 +475,7 @@ func (dp *deploymentProcessor) deployRenderedResources(ctx context.Context, reso
 		// Build database resource - copy updated properties to Resource field
 		dbOutputResource := db.OutputResource{
 			LocalID:             outputResource.LocalID,
-			ResourceKind:        outputResource.ResourceKind,
+			ResourceType:        outputResource.ResourceType,
 			Identity:            outputResource.Identity,
 			PersistedProperties: properties,
 			Status: db.OutputResourceStatus{
@@ -628,7 +648,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id azresources.
 			return nil, fmt.Errorf("failed to fetch secret %q of dependency resource %q: %w", k, id.ID, err)
 		}
 
-		if secretReference.Transformer != "" {
+		if (secretReference.Transformer != resourcemodel.ResourceType{}) {
 			outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(secretReference.Transformer)
 			if err != nil {
 				return nil, err

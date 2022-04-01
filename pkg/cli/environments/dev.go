@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/k3d"
@@ -94,17 +95,15 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 
 	var auth autorest.Authorizer = nil
 
-	subscriptionId := e.Namespace
-	resourceGroup := e.Namespace
+	subscriptionId, resourceGroup := e.GetAzureProviderDetails()
 
 	tags := map[string]*string{}
 
 	// To support Azure provider today, we need to inform the deployment engine about the Azure subscription.
 	// Using tags for now, would love to find a better way to do this if possible.
 	if e.HasAzureProvider() {
-		azSubscriptionId, azResourceGroup := e.GetAzureProviderDetails()
-		tags["azureSubscriptionID"] = &azSubscriptionId
-		tags["azureResourceGroup"] = &azResourceGroup
+		tags["azureSubscriptionID"] = &subscriptionId
+		tags["azureResourceGroup"] = &resourceGroup
 
 		// Get the location of the resource group for the deployment engine.
 		auth, err = armauth.GetArmAuthorizer()
@@ -112,8 +111,8 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 			return nil, err
 		}
 
-		rgClient := azclients.NewGroupsClient(azSubscriptionId, auth)
-		resp, err := rgClient.Get(ctx, azResourceGroup)
+		rgClient := azclients.NewGroupsClient(subscriptionId, auth)
+		resp, err := rgClient.Get(ctx, resourceGroup)
 		if err != nil {
 			return nil, err
 		}
@@ -149,16 +148,25 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 	if err != nil {
 		return nil, err
 	}
+
 	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
 
-	return &kubernetes.KubernetesDiagnosticsClient{
-		K8sClient:  k8sClient,
-		Client:     client,
-		RestConfig: config,
-		Namespace:  e.Namespace,
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
+	return &azure.ARMDiagnosticsClient{
+		K8sTypedClient:   k8sClient,
+		RestConfig:       config,
+		K8sRuntimeClient: client,
+		ResourceClient:   *radclient.NewRadiusResourceClient(con, subscriptionID),
+		ResourceGroup:    resourceGroup,
+		SubscriptionID:   subscriptionID,
 	}, nil
 }
 

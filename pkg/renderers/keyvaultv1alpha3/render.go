@@ -12,9 +12,11 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -46,9 +48,12 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 	}
 
 	resource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDKeyVault,
-		ResourceKind: resourcekinds.AzureKeyVault,
-		Deployed:     true,
+		LocalID: outputresource.LocalIDKeyVault,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureKeyVault,
+			Provider: providers.ProviderAzure,
+		},
+		Deployed: true,
 		Resource: map[string]string{
 			handlers.KeyVaultIDKey:   vaultID.ID,
 			handlers.KeyVaultNameKey: vaultID.Types[0].Name,

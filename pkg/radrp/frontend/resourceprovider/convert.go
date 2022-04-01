@@ -131,10 +131,12 @@ func NewRestOutputResourceStatus(original []db.OutputResource) []rest.OutputReso
 	rrs := []rest.OutputResource{}
 	for _, r := range original {
 		rr := rest.OutputResource{
-			LocalID:            r.LocalID,
-			ResourceKind:       r.ResourceKind,
+			LocalID: r.LocalID,
+			ResourceType: rest.ResourceType{
+				Type:     r.ResourceType.Type,
+				Provider: r.ResourceType.Provider,
+			},
 			OutputResourceInfo: r.Identity,
-			OutputResourceType: string(r.Identity.Kind),
 			Status: rest.OutputResourceStatus{
 				HealthState:              r.Status.HealthState,
 				HealthErrorDetails:       r.Status.HealthStateErrorDetails,

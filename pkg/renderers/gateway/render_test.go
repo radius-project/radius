@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -51,7 +52,7 @@ func Test_Render_Defaults(t *testing.T) {
 
 	gateway, outputResource := kubernetes.FindGateway(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), gateway.Name)
@@ -89,7 +90,7 @@ func Test_Render_WithListener(t *testing.T) {
 
 	gateway, outputResource := kubernetes.FindGateway(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), gateway.Name)

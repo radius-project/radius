@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -30,7 +31,7 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource renderers.Renderer
 func (r *noop) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the manualscale trait can modify it
 	deployment := appsv1.Deployment{}
-	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
+	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
 	return renderers.RendererOutput{Resources: resources}, nil
 }
 

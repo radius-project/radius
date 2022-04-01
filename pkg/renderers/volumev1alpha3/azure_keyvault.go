@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
@@ -267,7 +268,7 @@ func makeSecretProviderClass(appName string, volumeName string, tenantID string,
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecretProviderClass, &secretProvider, secretProvider.ObjectMeta), nil
+	return outputresource.NewKubernetesOutputResource(resourcekinds.SecretProviderClass, outputresource.LocalIDSecretProviderClass, &secretProvider, secretProvider.ObjectMeta), nil
 }
 
 func getKeyVaultObjectsSpec(keyVaultObjects []provider.KeyVaultObject) (string, error) {

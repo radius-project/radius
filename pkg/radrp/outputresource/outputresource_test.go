@@ -8,7 +8,9 @@ package outputresource
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,12 +25,18 @@ func TestGetDependencies(t *testing.T) {
 
 func TestGetDependencies_MissingLocalID(t *testing.T) {
 	testResource1 := OutputResource{
-		ResourceKind: resourcekinds.AzureRoleAssignment,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRoleAssignment,
+			Provider: providers.ProviderAzure,
+		},
 	}
 
 	testResource2 := OutputResource{
-		LocalID:      LocalIDRoleAssignmentKVKeys,
-		ResourceKind: resourcekinds.AzureRoleAssignment,
+		LocalID: LocalIDRoleAssignmentKVKeys,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRoleAssignment,
+			Provider: providers.ProviderAzure,
+		},
 		Dependencies: []Dependency{{LocalID: testResource1.LocalID}},
 	}
 
@@ -39,8 +47,11 @@ func TestGetDependencies_MissingLocalID(t *testing.T) {
 
 func TestGetDependencies_Empty(t *testing.T) {
 	testOutputResource := OutputResource{
-		LocalID:      LocalIDUserAssignedManagedIdentity,
-		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+		LocalID: LocalIDUserAssignedManagedIdentity,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+			Provider: providers.ProviderAzure,
+		},
 	}
 
 	dependencies, err := testOutputResource.GetDependencies()
@@ -65,19 +76,28 @@ func TestOrderOutputResources(t *testing.T) {
 // Returns output resource with multiple dependencies and a map of localID/unordered list of output resources
 func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputResource) {
 	managedIdentity := OutputResource{
-		LocalID:      LocalIDUserAssignedManagedIdentity,
-		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+		LocalID: LocalIDUserAssignedManagedIdentity,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+			Provider: providers.ProviderAzure,
+		},
 	}
 
 	roleAssignmentKeys := OutputResource{
-		LocalID:      LocalIDRoleAssignmentKVKeys,
-		ResourceKind: resourcekinds.AzureRoleAssignment,
+		LocalID: LocalIDRoleAssignmentKVKeys,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRoleAssignment,
+			Provider: providers.ProviderAzure,
+		},
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
 	aadPodIdentity := OutputResource{
-		LocalID:      LocalIDAADPodIdentity,
-		ResourceKind: resourcekinds.AzurePodIdentity,
+		LocalID: LocalIDAADPodIdentity,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzurePodIdentity,
+			Provider: providers.ProviderAzureKubernetesService,
+		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
 			{LocalID: roleAssignmentKeys.LocalID},

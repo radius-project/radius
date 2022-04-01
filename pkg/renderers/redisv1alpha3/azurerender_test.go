@@ -30,8 +30,8 @@ func Test_Azure_Render_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Cache/Redis/test-redis",
-			"host": "localhost",
-			"port": 42,
+			"host":     "localhost",
+			"port":     42,
 		},
 	}
 
@@ -41,7 +41,7 @@ func Test_Azure_Render_Success(t *testing.T) {
 	require.Len(t, output.Resources, 1)
 
 	require.Equal(t, outputresource.LocalIDAzureRedis, output.Resources[0].LocalID)
-	require.Equal(t, resourcekinds.AzureRedis, output.Resources[0].ResourceKind)
+	require.Equal(t, resourcekinds.AzureRedis, output.Resources[0].ResourceType.Type)
 
 	expectedProperties := map[string]string{
 		handlers.RedisResourceIdKey: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Cache/Redis/test-redis",
@@ -57,7 +57,7 @@ func Test_Azure_Render_Success(t *testing.T) {
 			Value: "42",
 		},
 		"username": {
-			LocalID: "AzureRedis",
+			LocalID:           "AzureRedis",
 			PropertyReference: "redisusername",
 		},
 	}
@@ -78,7 +78,7 @@ func Test_Azure_Render_User_Secrets(t *testing.T) {
 			"host": "localhost",
 			"port": 42,
 			"secrets": map[string]string{
-				renderers.PasswordStringHolder:         "deadbeef",
+				renderers.PasswordStringHolder:  "deadbeef",
 				renderers.ConnectionStringValue: "admin:deadbeef@localhost:42",
 			},
 		},
@@ -136,7 +136,7 @@ func expectedComputedAndSecretValues() (map[string]renderers.ComputedValueRefere
 			Value: "42",
 		},
 		renderers.UsernameStringValue: {
-			LocalID: outputresource.LocalIDAzureRedis,
+			LocalID:           outputresource.LocalIDAzureRedis,
 			PropertyReference: handlers.RedisUsernameKey,
 		},
 	}

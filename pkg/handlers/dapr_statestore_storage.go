@@ -56,7 +56,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 	}
 
 	// Use the identity of the table storage as the thing to monitor
-	options.Resource.Identity = resourcemodel.NewARMIdentity(*account.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *account.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 
 	key, err := handler.FindStorageKey(ctx, *account.Name)
 	if err != nil {

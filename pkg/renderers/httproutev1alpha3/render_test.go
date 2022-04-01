@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -72,7 +73,7 @@ func Test_Render_Defaults(t *testing.T) {
 
 	service, outputResource := kubernetes.FindService(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), service.Name)
@@ -133,7 +134,7 @@ func Test_Render_NonDefaults(t *testing.T) {
 
 	service, outputResource := kubernetes.FindService(output.Resources)
 
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDService, service, service.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), service.Name)
@@ -203,7 +204,7 @@ func Test_Render_GatewayWithWildcardHostname(t *testing.T) {
 	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
 
 	require.Empty(t, httpRoute.Spec.Hostnames)
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
@@ -267,7 +268,7 @@ func Test_Render_WithHostname_NoRule_DefaultToSlash(t *testing.T) {
 	require.Len(t, output.Resources, 2)
 
 	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
@@ -341,7 +342,7 @@ func Test_Render_Rule(t *testing.T) {
 	require.Len(t, output.Resources, 2)
 
 	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
@@ -412,7 +413,7 @@ func Test_Render_Rule_NoSource(t *testing.T) {
 	require.Len(t, output.Resources, 3)
 
 	httpRoute, outputResource := kubernetes.FindHttpRoute(output.Resources)
-	expectedOutputResource := outputresource.NewKubernetesOutputResource(outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
+	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, outputresource.LocalIDHttpRoute, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), httpRoute.Name)
@@ -441,7 +442,7 @@ func Test_Render_Rule_NoSource(t *testing.T) {
 	require.Equal(t, gatewayv1alpha1.PortNumber(81), *backend.Port)
 
 	gateway, expectedGatewayOutputResource := kubernetes.FindGateway(output.Resources)
-	expectedGateway := outputresource.NewKubernetesOutputResource(outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
+	expectedGateway := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
 	require.Equal(t, expectedGateway, expectedGatewayOutputResource)
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, id.Name()), gateway.Name)

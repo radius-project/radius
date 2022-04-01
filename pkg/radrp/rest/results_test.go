@@ -3,6 +3,7 @@ package rest
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
@@ -12,15 +13,21 @@ func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T)
 
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotApplicable,
 			},
@@ -31,15 +38,21 @@ func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T)
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy, // NotApplicable should be shown as Healthy
 			},
@@ -53,8 +66,11 @@ func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T)
 func Test_AggregateResourceHealth_SingleNotSupportedOutputResource_IsEmpty(t *testing.T) {
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotSupported,
 			},
@@ -65,8 +81,11 @@ func Test_AggregateResourceHealth_SingleNotSupportedOutputResource_IsEmpty(t *te
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: "",
 			},
@@ -80,15 +99,21 @@ func Test_AggregateResourceHealth_SingleNotSupportedOutputResource_IsEmpty(t *te
 func Test_AggregateResourceHealth_NotSupportedAndNotApplicableIsEmpty(t *testing.T) {
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
+			LocalID: outputresource.LocalIDKeyVault,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotSupported,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
-			ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+			LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotApplicable,
 			},
@@ -99,15 +124,21 @@ func Test_AggregateResourceHealth_NotSupportedAndNotApplicableIsEmpty(t *testing
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
+			LocalID: outputresource.LocalIDKeyVault,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				HealthState: "",
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
-			ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
+			LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
@@ -122,15 +153,21 @@ func Test_AggregateResourceHealth_NotSupportedAndNotApplicableIsEmpty(t *testing
 func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
+			LocalID: outputresource.LocalIDKeyVault,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDKeyVaultSecret,
-			ResourceKind: resourcekinds.AzureKeyVaultSecret,
+			LocalID: outputresource.LocalIDKeyVaultSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVaultSecret,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotSupported,
 			},
@@ -141,15 +178,21 @@ func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
+			LocalID: outputresource.LocalIDKeyVault,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDKeyVaultSecret,
-			ResourceKind: resourcekinds.AzureKeyVaultSecret,
+			LocalID: outputresource.LocalIDKeyVaultSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVaultSecret,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				HealthState: "", // NotSupported should show as ""
 			},
@@ -164,22 +207,31 @@ func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
 func Test_AggregateResourceHealth_HealthyUnhealthyAndNotApplicable_IsUnhealthy(t *testing.T) {
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDService,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDService,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Service,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateNotApplicable,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateUnhealthy,
 			},
@@ -190,22 +242,31 @@ func Test_AggregateResourceHealth_HealthyUnhealthyAndNotApplicable_IsUnhealthy(t
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDService,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDService,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Service,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDSecret,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Secret,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateHealthy, // NotApplicable should show as Healthy
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDDeployment,
-			ResourceKind: resourcekinds.Kubernetes,
+			LocalID: outputresource.LocalIDDeployment,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.Deployment,
+				Provider: providers.ProviderKubernetes,
+			},
 			Status: OutputResourceStatus{
 				HealthState: HealthStateUnhealthy,
 			},
@@ -219,15 +280,21 @@ func Test_AggregateResourceHealth_HealthyUnhealthyAndNotApplicable_IsUnhealthy(t
 func Test_AggregateResourceHealth_FailedAndProvisioningIsFailed(t *testing.T) {
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
+			LocalID: outputresource.LocalIDKeyVault,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				ProvisioningState: ProvisioningStateProvisioning,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDKeyVaultSecret,
-			ResourceKind: resourcekinds.AzureKeyVaultSecret,
+			LocalID: outputresource.LocalIDKeyVaultSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVaultSecret,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				ProvisioningState: ProvisioningStateFailed,
 			},
@@ -238,15 +305,21 @@ func Test_AggregateResourceHealth_FailedAndProvisioningIsFailed(t *testing.T) {
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
+			LocalID: outputresource.LocalIDKeyVault,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				ProvisioningState: ProvisioningStateProvisioning,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDKeyVaultSecret,
-			ResourceKind: resourcekinds.AzureKeyVaultSecret,
+			LocalID: outputresource.LocalIDKeyVaultSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVaultSecret,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				ProvisioningState: ProvisioningStateFailed,
 			},
@@ -260,15 +333,21 @@ func Test_AggregateResourceHealth_FailedAndProvisioningIsFailed(t *testing.T) {
 func Test_AggregateResourceHealth_ProvisionedAndProvisioning_IsProvisioning(t *testing.T) {
 	outputResources := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
+			LocalID: outputresource.LocalIDKeyVault,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				ProvisioningState: ProvisioningStateProvisioning,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDKeyVaultSecret,
-			ResourceKind: resourcekinds.AzureKeyVaultSecret,
+			LocalID: outputresource.LocalIDKeyVaultSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVaultSecret,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				ProvisioningState: ProvisioningStateProvisioned,
 			},
@@ -279,15 +358,21 @@ func Test_AggregateResourceHealth_ProvisionedAndProvisioning_IsProvisioning(t *t
 
 	expected := []OutputResource{
 		{
-			LocalID:      outputresource.LocalIDKeyVault,
-			ResourceKind: resourcekinds.AzureKeyVault,
+			LocalID: outputresource.LocalIDKeyVault,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVault,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				ProvisioningState: ProvisioningStateProvisioning,
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDKeyVaultSecret,
-			ResourceKind: resourcekinds.AzureKeyVaultSecret,
+			LocalID: outputresource.LocalIDKeyVaultSecret,
+			ResourceType: ResourceType{
+				Type:     resourcekinds.AzureKeyVaultSecret,
+				Provider: providers.ProviderAzure,
+			},
 			Status: OutputResourceStatus{
 				ProvisioningState: ProvisioningStateProvisioned,
 			},

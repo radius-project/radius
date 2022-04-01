@@ -23,6 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
@@ -397,7 +398,7 @@ func (r Renderer) makeDeployment(ctx context.Context, options renderers.RenderOp
 		},
 	}
 
-	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
+	output := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
 	outputResources = append(outputResources, output)
 	return outputResources, secretData, nil
 }
@@ -559,7 +560,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource renderers.RendererRes
 	}
 
 	// Skip registration of the secret resource with the HealthService since health as a concept is not quite applicable to it
-	output := outputresource.NewKubernetesOutputResource(outputresource.LocalIDSecret, &secret, secret.ObjectMeta)
+	output := outputresource.NewKubernetesOutputResource(resourcekinds.Secret, outputresource.LocalIDSecret, &secret, secret.ObjectMeta)
 	return output
 }
 
@@ -576,9 +577,12 @@ func (r Renderer) isIdentitySupported(connection radclient.Connection) bool {
 func (r Renderer) makeManagedIdentity(ctx context.Context, resource renderers.RendererResource) outputresource.OutputResource {
 	managedIdentityName := resource.ApplicationName + "-" + resource.ResourceName + "-msi"
 	identityOutputResource := outputresource.OutputResource{
-		ResourceKind: resourcekinds.AzureUserAssignedManagedIdentity,
-		LocalID:      outputresource.LocalIDUserAssignedManagedIdentity,
-		Deployed:     false,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+			Provider: providers.ProviderAzure,
+		},
+		LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
+		Deployed: false,
 		Resource: map[string]string{
 			handlers.UserAssignedIdentityNameKey: managedIdentityName,
 		},
@@ -605,9 +609,12 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource renderers.Render
 	}
 
 	outputResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAADPodIdentity,
-		ResourceKind: resourcekinds.AzurePodIdentity,
-		Deployed:     false,
+		LocalID: outputresource.LocalIDAADPodIdentity,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzurePodIdentity,
+			Provider: providers.ProviderAzureKubernetesService,
+		},
+		Deployed: false,
 		Resource: map[string]string{
 			handlers.PodIdentityNameKey: podIdentityName,
 			handlers.PodNamespaceKey:    resource.ApplicationName,
@@ -665,9 +672,12 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 	for _, roleName := range roleNames {
 		localID := outputresource.GenerateLocalIDForRoleAssignment(armResourceIdentifier, roleName)
 		roleAssignment := outputresource.OutputResource{
-			ResourceKind: resourcekinds.AzureRoleAssignment,
-			LocalID:      localID,
-			Deployed:     false,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			LocalID:  localID,
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         roleName,
 				handlers.RoleAssignmentScope: armResourceIdentifier,
@@ -696,9 +706,12 @@ func (r Renderer) makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx context.Conte
 	for _, roleName := range roleAssignmentData.RoleNames {
 		localID := outputresource.GenerateLocalIDForRoleAssignment(keyVaultID, roleName)
 		roleAssignment := outputresource.OutputResource{
-			ResourceKind: resourcekinds.AzureRoleAssignment,
-			LocalID:      localID,
-			Deployed:     false,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			LocalID:  localID,
+			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         roleName,
 				handlers.RoleAssignmentScope: keyVaultID,

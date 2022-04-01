@@ -152,7 +152,12 @@ func NewApplicationTest(t *testing.T, application string, steps []Step, initialR
 	}
 }
 
-func (at ApplicationTest) CreateInitialResources() error {
+func (at ApplicationTest) CreateInitialResources(ctx context.Context) error {
+	err := kubernetes.EnsureNamespace(ctx, at.Options.K8sClient, at.Application)
+	if err != nil {
+		return fmt.Errorf("failed to create namespace %s: %w", at.Application, err)
+	}
+
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(at.Options.K8sClient.Discovery()))
 	for _, r := range at.InitialResources {
 		mapping, err := restMapper.RESTMapping(r.GroupVersionKind().GroupKind(), r.GroupVersionKind().Version)
@@ -161,11 +166,11 @@ func (at ApplicationTest) CreateInitialResources() error {
 		}
 		if mapping.Scope == meta.RESTScopeNamespace {
 			_, err = at.Options.DynamicClient.Resource(mapping.Resource).
-				Namespace(r.GetNamespace()).
-				Create(context.TODO(), &r, v1.CreateOptions{})
+				Namespace(at.Application).
+				Create(ctx, &r, v1.CreateOptions{})
 		} else {
 			_, err = at.Options.DynamicClient.Resource(mapping.Resource).
-				Create(context.TODO(), &r, v1.CreateOptions{})
+				Create(ctx, &r, v1.CreateOptions{})
 		}
 		if err != nil {
 			return fmt.Errorf("failed to create %q resource %#v:  %w", mapping.Resource.String(), r, err)
@@ -213,7 +218,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 		}
 	})
 
-	err := validation.SaveLogsForApplication(ctx, at.Options.K8sClient, "default", logPrefix+"/"+at.Application, at.Application)
+	err := validation.SaveLogsForApplication(ctx, at.Options.K8sClient, at.Application, logPrefix+"/"+at.Application, at.Application)
 	if err != nil {
 		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
@@ -225,7 +230,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	require.GreaterOrEqual(t, len(at.Steps), 1, "at least one step is required")
 	defer at.CleanUpExtensionResources(at.InitialResources)
-	err = at.CreateInitialResources()
+	err = at.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 	success := true
 	for i, step := range at.Steps {

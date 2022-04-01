@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
@@ -23,7 +22,7 @@ import (
 // FindDeployment finds deployment in a list of output resources
 func FindDeployment(resources []outputresource.OutputResource) (*appsv1.Deployment, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceKind != resourcekinds.Kubernetes {
+		if r.ResourceType.Type != resourcekinds.Deployment {
 			continue
 		}
 
@@ -41,7 +40,7 @@ func FindDeployment(resources []outputresource.OutputResource) (*appsv1.Deployme
 // FindService finds service in a list of output resources
 func FindService(resources []outputresource.OutputResource) (*corev1.Service, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceKind != resourcekinds.Kubernetes {
+		if r.ResourceType.Type != resourcekinds.Service {
 			continue
 		}
 
@@ -59,7 +58,7 @@ func FindService(resources []outputresource.OutputResource) (*corev1.Service, ou
 // FindSecret finds secret in a list of output resources
 func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceKind != resourcekinds.Kubernetes {
+		if r.ResourceType.Type != resourcekinds.Secret {
 			continue
 		}
 
@@ -74,28 +73,10 @@ func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outp
 	return nil, outputresource.OutputResource{}
 }
 
-// FindIngress finds an Ingress in a list of output resources
-func FindIngress(resources []outputresource.OutputResource) (*networkingv1.Ingress, outputresource.OutputResource) {
-	for _, r := range resources {
-		if r.ResourceKind != resourcekinds.Kubernetes {
-			continue
-		}
-
-		ingress, ok := r.Resource.(*networkingv1.Ingress)
-		if !ok {
-			continue
-		}
-
-		return ingress, r
-	}
-
-	return nil, outputresource.OutputResource{}
-}
-
 // FindHttpRoute finds an HttpRoute in a list of output resources
 func FindHttpRoute(resources []outputresource.OutputResource) (*gatewayv1alpha1.HTTPRoute, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceKind != resourcekinds.Kubernetes {
+		if r.ResourceType.Type != resourcekinds.KubernetesHTTPRoute {
 			continue
 		}
 
@@ -113,7 +94,7 @@ func FindHttpRoute(resources []outputresource.OutputResource) (*gatewayv1alpha1.
 // FindHttpRoute finds an HttpRoute in a list of output resources
 func FindGateway(resources []outputresource.OutputResource) (*gatewayv1alpha1.Gateway, outputresource.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceKind != resourcekinds.Kubernetes {
+		if r.ResourceType.Type != resourcekinds.Gateway {
 			continue
 		}
 

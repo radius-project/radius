@@ -100,7 +100,7 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	return err
 }
 
-func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag string) error {
+func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string) error {
 	values := helmChart.Values
 
 	_, ok := values["global"]
@@ -116,11 +116,23 @@ func addRadiusValues(helmChart *chart.Chart, containerImage string, containerTag
 
 	radius := global["radius"].(map[string]interface{})
 
-	if containerImage != "" {
-		radius["container"] = containerImage
+	if containerTag != "" {
+		radius["tag"] = containerTag
+	}
+
+	_, ok = global["rp"]
+	if !ok {
+		global["rp"] = make(map[string]interface{})
+	}
+
+	rp := global["rp"].(map[string]interface{})
+
+	if rpImage != "" {
+		rp["container"] = rpImage
 	}
 
 	if containerTag != "" {
+		rp["tag"] = containerTag
 		radius["tag"] = containerTag
 	}
 

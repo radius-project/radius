@@ -12,8 +12,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -59,7 +59,10 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	}
 
 	options.Resource.Identity = resourcemodel.ResourceIdentity{
-		Kind: resourcemodel.IdentityKindKubernetes,
+		ResourceType: &resourcemodel.ResourceType{
+			Type:     options.Resource.ResourceType.Type,
+			Provider: providers.ProviderKubernetes,
+		},
 		Data: resourcemodel.KubernetesIdentity{
 			Name:       item.GetName(),
 			Namespace:  item.GetNamespace(),
@@ -112,7 +115,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options DeleteOpti
 }
 
 func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
-	if resource.ResourceKind != resourcekinds.Kubernetes {
+	if resource.ResourceType.Provider != providers.ProviderKubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}
 

@@ -10,17 +10,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/project-radius/radius/pkg/azure/aks"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	k8s "k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
@@ -34,13 +29,16 @@ func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
 
 // AzureCloudEnvironment represents an Azure Cloud Radius environment.
 type AzureCloudEnvironment struct {
-	Name                      string `mapstructure:"name" validate:"required"`
-	Kind                      string `mapstructure:"kind" validate:"required"`
-	SubscriptionID            string `mapstructure:"subscriptionid" validate:"required"`
-	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required"`
-	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
-	ClusterName               string `mapstructure:"clustername" validate:"required"`
-	DefaultApplication        string `mapstructure:"defaultapplication" yaml:",omitempty"`
+	Name                       string `mapstructure:"name" validate:"required"`
+	Kind                       string `mapstructure:"kind" validate:"required"`
+	SubscriptionID             string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup              string `mapstructure:"resourcegroup" validate:"required"`
+	ClusterName                string `mapstructure:"clustername" validate:"required"`
+	DefaultApplication         string `mapstructure:"defaultapplication" yaml:",omitempty"`
+	Context                    string `mapstructure:"context" validate:"required"`
+	Namespace                  string `mapstructure:"namespace" validate:"required"`
+	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
+	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain" yaml:",omitempty"`
@@ -73,69 +71,84 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 }
 
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	armauth, err := armauth.GetArmAuthorizer()
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context)
 	if err != nil {
 		return nil, err
 	}
 
-	dc := azclients.NewDeploymentsClient(e.SubscriptionID, armauth)
+	auth, err := armauth.GetArmAuthorizer()
+	if err != nil {
+		return nil, err
+	}
+
+	tags := map[string]*string{}
+
+	tags["azureSubscriptionID"] = &e.SubscriptionID
+	tags["azureResourceGroup"] = &e.ResourceGroup
+
+	rgClient := azclients.NewGroupsClient(e.SubscriptionID, auth)
+	resp, err := rgClient.Get(ctx, e.ResourceGroup)
+	if err != nil {
+		return nil, err
+	}
+	tags["azureLocation"] = resp.Location
+
+	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.SubscriptionID)
+
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
 
+	dc.Sender = &sender{RoundTripper: roundTripper}
+
+	op := azclients.NewOperationsClientWithBaseUri(url, e.SubscriptionID)
+	op.PollingDelay = 5 * time.Second
+	op.Sender = &sender{RoundTripper: roundTripper}
+
 	return &azure.ARMDeploymentClient{
 		Client:           dc,
-		OperationsClient: azclients.NewOperationsClient(e.SubscriptionID, armauth),
+		OperationsClient: op,
 		SubscriptionID:   e.SubscriptionID,
 		ResourceGroup:    e.ResourceGroup,
+		Tags:             tags,
 	}, nil
 }
 
 func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	config, err := aks.GetAKSMonitoringCredentials(ctx, e.SubscriptionID, e.ControlPlaneResourceGroup, e.ClusterName)
+	k8sTypedClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
 	}
 
-	k8sClient, err := k8s.NewForConfig(config)
+	k8sRuntimeclient, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := client.New(config, client.Options{Scheme: kubernetes.Scheme})
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
 	if err != nil {
 		return nil, err
 	}
 
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
-	}
-
-	con := arm.NewDefaultConnection(azcred, nil)
-
-	return &azure.AKSDiagnosticsClient{
-		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
-			K8sClient:  k8sClient,
-			RestConfig: config,
-			Client:     client,
-		},
-		ResourceClient: *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
-		ResourceGroup:  e.ResourceGroup,
-		SubscriptionID: e.SubscriptionID,
+	return &azure.ARMDiagnosticsClient{
+		K8sTypedClient:   k8sTypedClient,
+		RestConfig:       config,
+		K8sRuntimeClient: k8sRuntimeclient,
+		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
+		ResourceGroup:    e.ResourceGroup,
+		SubscriptionID:   e.SubscriptionID,
 	}, nil
 }
 
 func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to obtain a Azure credentials: %w", err)
+		return nil, err
 	}
 
-	con := arm.NewDefaultConnection(azcred, nil)
-
 	return &azure.ARMManagementClient{
-		Connection:      con,
+		EnvironmentName: e.Name,
+		Connection:      connection,
 		ResourceGroup:   e.ResourceGroup,
 		SubscriptionID:  e.SubscriptionID,
-		EnvironmentName: e.Name}, nil
+	}, nil
 }
