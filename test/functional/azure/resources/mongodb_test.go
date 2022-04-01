@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -24,9 +25,10 @@ func Test_MongoDB(t *testing.T) {
 
 	application := "azure-resources-mongodb"
 	template := "testdata/azure-resources-mongodb.bicep"
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{
@@ -83,9 +85,10 @@ func Test_MongoDB(t *testing.T) {
 func Test_MongoDBUserSecrets(t *testing.T) {
 	application := "azure-resources-mongodb-user-secrets"
 	template := "testdata/azure-resources-mongodb-user-secrets.bicep"
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{},
 			},

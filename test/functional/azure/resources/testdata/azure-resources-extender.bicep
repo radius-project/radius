@@ -1,3 +1,5 @@
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-extender'
   resource twilio 'Extender@v1alpha3' = {
@@ -15,7 +17,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'myapp'
     properties: {
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         env: {
           TWILIO_NUMBER: twilio.properties.fromNumber
           TWILIO_SID: twilio.secrets('accountSid')

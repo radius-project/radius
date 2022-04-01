@@ -1,3 +1,5 @@
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-module'
 
@@ -5,7 +7,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 		name: 'busybox'
 		properties: {
 			container: {
-				image: 'radius.azurecr.io/magpiego:latest'
+				image: magpieimage
 				env: {
 					TEST: '${container.outputs.test.id}'
 				}

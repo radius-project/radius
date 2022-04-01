@@ -1,6 +1,8 @@
 var adminUsername = 'sa'
 var adminPassword = 'p@ssw0rd'
 
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-sql'
 
@@ -14,7 +16,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         env: {
           CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername};Password=${adminPassword};Encrypt=True;TrustServerCertificate=True'
         }

@@ -1,3 +1,5 @@
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-mechanics-communication-cycle'
 
@@ -15,7 +17,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         ports: {
           web: {
             containerPort: 3000
@@ -40,7 +42,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
         ports: {
           web: {
             containerPort: 3000
