@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/corerp/armrpc"
+	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -34,11 +34,11 @@ func NewAppCoreController(db db.RadrpDB, deploy deployment.DeploymentProcessor, 
 // GetOperations returns the list of available operations/permission for the resource provider at tenant level.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
-	ops := &armrpc.OperationList{
-		Value: []armrpc.Operation{
+	ops := &armrpcv1.OperationList{
+		Value: []armrpcv1.Operation{
 			{
 				Name: "Applications.Core/operations/read",
-				Display: &armrpc.OperationDisplayProperties{
+				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
 					Resource:    "operations",
 					Operation:   "Get operations",
@@ -48,7 +48,7 @@ func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources
 			},
 			{
 				Name: "Applications.Core/environments/read",
-				Display: &armrpc.OperationDisplayProperties{
+				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
 					Resource:    "environments",
 					Operation:   "List environments",
@@ -58,7 +58,7 @@ func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources
 			},
 			{
 				Name: "Applications.Core/environments/write",
-				Display: &armrpc.OperationDisplayProperties{
+				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
 					Resource:    "environments",
 					Operation:   "Create/Update environment",
@@ -68,7 +68,7 @@ func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources
 			},
 			{
 				Name: "Applications.Core/environments/delete",
-				Display: &armrpc.OperationDisplayProperties{
+				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
 					Resource:    "environments",
 					Operation:   "Delete environment",
@@ -78,7 +78,7 @@ func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources
 			},
 			{
 				Name: "Applications.Core/environments/join/action",
-				Display: &armrpc.OperationDisplayProperties{
+				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
 					Resource:    "environments",
 					Operation:   "Join environment",
@@ -88,7 +88,7 @@ func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources
 			},
 			{
 				Name: "Applications.Core/register/action",
-				Display: &armrpc.OperationDisplayProperties{
+				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
 					Resource:    "Applications.Core",
 					Operation:   "Register Applications.Core",
@@ -98,7 +98,7 @@ func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources
 			},
 			{
 				Name: "Applications.Core/unregister/action",
-				Display: &armrpc.OperationDisplayProperties{
+				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
 					Resource:    "Applications.Core",
 					Operation:   "Unregister Applications.Core",

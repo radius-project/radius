@@ -1,0 +1,440 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Applications.Core Environment Management API",
+    "description": "REST API for Radius Application Environment",
+    "version": "2022-03-15-privatepreview"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "flow": "implicit",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "paths": {
+    "/subscriptions/{subscriptionId}/providers/Applications.Core/environments": {
+      "get": {
+        "description": "List all environments in a subscription.",
+        "operationId": "Environments_ListBySubscription",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusEnvironmentsListBySubscription": {
+            "$ref": "./examples/EnvironmentsListBySubscription.json"
+          }
+        },
+        "tags": [
+          "Environments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Environment details.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false,
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments": {
+      "get": {
+        "description": "List of Environments.",
+        "operationId": "Environments_List",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusEnvironmentsList": {
+            "$ref": "./examples/EnvironmentsList.json"
+          }
+        },
+        "tags": [
+          "Environments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Environment details.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false,
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments/{environmentName}": {
+      "get": {
+        "description": "Gets the properties of an Environment.",
+        "operationId": "Environments_Get",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusEnvironmentsGet": {
+            "$ref": "./examples/EnvironmentsGetEnv0.json"
+          }
+        },
+        "tags": [
+          "Environments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/EnvironmentNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Environment details.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "Create or update an Environment.",
+        "operationId": "Environments_CreateOrUpdate",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusEnvironmentsPut": {
+            "$ref": "./examples/EnvironmentsPutEnv0.json"
+          }
+        },
+        "tags": [
+          "Environments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/EnvironmentNameParameter"
+          },
+          {
+            "name": "EnvironmentResource",
+            "description": "environment details",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resource was updated successfully.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "201": {
+            "description": "The resource will be updated asynchronously.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Update the properties of an existing Environment.",
+        "operationId": "Environments_Update",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusEnvironmentsPatch": {
+            "$ref": "./examples/EnvironmentsPatchEnv0.json"
+          }
+        },
+        "tags": [
+          "Environments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/EnvironmentNameParameter"
+          },
+          {
+            "name": "EnvironmentResource",
+            "description": "environment details",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resource was updated successfully.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "201": {
+            "description": "The resource will be updated asynchronously.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete an Environment.",
+        "operationId": "Environments_Delete",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusEnvironmentsDelete": {
+            "$ref": "./examples/EnvironmentsDeleteEnv0.json"
+          }
+        },
+        "tags": [
+          "Environments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/EnvironmentNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The environment was successfully deleted."
+          },
+          "202": {
+            "description": "The environment will be deleted asynchronously."
+          },
+          "204": {
+            "description": "The environment does not exist."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "EnvironmentResourceList": {
+      "description": "The list of environments.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "The list of environments.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EnvironmentResource"
+          }
+        },
+        "nextLink": {
+          "description": "The link used to get the next page of environments list.",
+          "type": "string"
+        }
+      }
+    },
+    "EnvironmentCompute": {
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Type of compute resource.",
+          "enum": [
+            "Kubernetes"
+          ],
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true
+          }
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        }
+      },
+      "required": [
+        "kind",
+        "resourceId"
+      ],
+      "description": "Compute resource used by application environment resource."
+    },
+    "EnvironmentResource": {
+      "description": "Application environment.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "systemData": {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/EnvironmentProperties"
+        }
+      }
+    },
+    "EnvironmentProperties": {
+      "description": "Application environment properties",
+      "type": "object",
+      "required": [
+        "compute"
+      ],
+      "properties": {
+        "provisioningState": {
+          "readOnly": true,
+          "type": "string",
+          "description": "Gets the status of the environment at the time the operation was called.",
+          "enum": [
+            "Succeeded",
+            "Failed",
+            "Canceled",
+            "Accepted",
+            "Provisioning",
+            "Deleting"
+          ],
+          "x-ms-enum": {
+            "name": "ProvisioningState",
+            "modelAsString": true
+          }
+        },
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource used by application environment."
+        }
+      }
+    }
+  },
+  "parameters": {
+    "EnvironmentNameParameter": {
+      "name": "environmentName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the environment",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+      "maxLength": 128,
+      "x-ms-parameter-location": "method"
+    }
+  }
+}
