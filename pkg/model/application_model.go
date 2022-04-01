@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azure
+package model
 
 import (
 	"fmt"
@@ -11,7 +11,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
-	"github.com/project-radius/radius/pkg/model"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
@@ -35,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.ApplicationModel, error) {
+func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (ApplicationModel, error) {
 	// Configure RBAC support on connections based connection kind.
 	// Role names can be user input or default roles assigned by Radius.
 	// Leave RoleNames field empty if no default roles are supported for a connection kind.
@@ -71,7 +70,7 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.Application
 		supportedProviders[providers.ProviderAzureKubernetesService] = true
 	}
 
-	radiusResourceModel := []model.RadiusResourceModel{
+	radiusResourceModel := []RadiusResourceModel{
 		// Built-in types
 		{
 			ResourceType: containerv1alpha3.ResourceType,
@@ -140,7 +139,7 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.Application
 	}
 
 	if arm != nil {
-		azureModel := []model.RadiusResourceModel{
+		azureModel := []RadiusResourceModel{
 			// Azure
 			{
 				ResourceType: volumev1alpha3.ResourceType,
@@ -163,7 +162,7 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.Application
 		return false
 	}
 
-	outputResourceModel := []model.OutputResourceModel{
+	outputResourceModel := []OutputResourceModel{
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Kubernetes,
@@ -248,7 +247,7 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.Application
 		},
 	}
 
-	azureOutputResourceModel := []model.OutputResourceModel{
+	azureOutputResourceModel := []OutputResourceModel{
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
@@ -350,17 +349,17 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.Application
 
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
 	if err != nil {
-		return model.ApplicationModel{}, err
+		return ApplicationModel{}, err
 	}
 
 	if arm != nil {
 		outputResourceModel = append(outputResourceModel, azureOutputResourceModel...)
 	}
-	return model.NewModel(radiusResourceModel, outputResourceModel, supportedProviders), nil
+	return NewModel(radiusResourceModel, outputResourceModel, supportedProviders), nil
 }
 
 // checkForDuplicateRegistrations checks for duplicate registrations with the same resource type
-func checkForDuplicateRegistrations(radiusResources []model.RadiusResourceModel, outputResources []model.OutputResourceModel) error {
+func checkForDuplicateRegistrations(radiusResources []RadiusResourceModel, outputResources []OutputResourceModel) error {
 	rendererRegistration := make(map[string]int)
 	for _, r := range radiusResources {
 		rendererRegistration[r.ResourceType]++
