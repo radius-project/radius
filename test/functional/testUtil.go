@@ -1,33 +1,36 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package functional
 
 import (
-	"fmt"
 	"os"
 )
 
-var defaultDockerReg, imageTag string
-
 func GetMagpieImage() string {
 	setDefault()
+	defaultDockerReg, imageTag := setDefault()
 	magpieImage := "magpieimage=" + defaultDockerReg + "/magpiego:" + imageTag
-	fmt.Println("magpieImage:", magpieImage)
 	return magpieImage
 }
 
 func GetMagpieTag() string {
 	setDefault()
+	_, imageTag := setDefault()
 	magpietag := "magpietag=" + imageTag
-	fmt.Println("magpietag:", magpietag)
 	return magpietag
 }
 
-func setDefault() {
-	defaultDockerReg = os.Getenv("DOCKER_REGISTRY")
-	imageTag = os.Getenv("REL_VERSION")
+func setDefault() (string, string) {
+	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
+	imageTag := os.Getenv("REL_VERSION")
 	if defaultDockerReg == "" {
 		defaultDockerReg = "radiusdev.azurecr.io"
 	}
 	if imageTag == "" {
 		imageTag = "latest"
 	}
+	return defaultDockerReg, imageTag
 }

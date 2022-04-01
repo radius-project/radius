@@ -1,4 +1,4 @@
-param  magpieimage string
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' string = 'radiusdev.azurecr.io/magpiego:latest' string
 
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-cli'

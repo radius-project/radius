@@ -1,6 +1,6 @@
 import kubernetes from kubernetes
 
-param  magpieimage string
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' string = 'radiusdev.azurecr.io/magpiego:latest' string
 
 resource redisService 'kubernetes.core/Service@v1' existing = {
   metadata: {
