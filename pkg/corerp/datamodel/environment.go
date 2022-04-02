@@ -1,4 +1,9 @@
-package v20220315
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package datamodel
 
 import (
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"

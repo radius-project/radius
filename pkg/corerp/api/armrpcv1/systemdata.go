@@ -1,4 +1,9 @@
-package common
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package armrpcv1
 
 // SystemDataProperties is the readonly metadata pertaining to creation and last modification of the resource.
 // https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-contracts.md#system-metadata-for-all-azure-resources
