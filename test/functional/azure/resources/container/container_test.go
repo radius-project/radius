@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ import (
 func Test_ContainerHttpBinding(t *testing.T) {
 	application := "azure-resources-container-httproute"
 	template := "testdata/azure-resources-container-httproute.bicep"
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
 			Executor:       azuretest.NewDeployStepExecutor(template),
@@ -231,7 +233,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/azure-resources-container-readiness-liveness.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// Intentionally Empty

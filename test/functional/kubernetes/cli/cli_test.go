@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/kubernetestest"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/validation"
@@ -33,7 +34,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE"),
+			Executor: kubernetestest.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -78,7 +79,7 @@ func Test_CLI(t *testing.T) {
 
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
+			Executor: kubernetestest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/kubernetestest"
 	"github.com/project-radius/radius/test/validation"
 )
@@ -21,9 +22,10 @@ import (
 func Test_MicrosoftSQL(t *testing.T) {
 	application := "kubernetes-resources-sql"
 	template := "testdata/kubernetes-resources-sql.bicep"
+
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
+			Executor: kubernetestest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

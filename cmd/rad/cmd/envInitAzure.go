@@ -327,7 +327,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 }
 
 func selectEnvironmentName(ctx context.Context, defaultName string) (string, error) {
-	promptStr := fmt.Sprintf("Enter a Environment name [%s]:", defaultName)
+	promptStr := fmt.Sprintf("Enter an Environment name [%s]:", defaultName)
 	return prompt.TextWithDefault(promptStr, &defaultName, prompt.EmptyValidator)
 }
 

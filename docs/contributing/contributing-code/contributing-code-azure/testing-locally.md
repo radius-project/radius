@@ -48,6 +48,8 @@ environment:
   items:
     local:
       clustername: radius-aks-j5oqzddqmf36s
+      context: radius-aks-j5oqzddqmf36s
+      namespace: default
       kind: localrp # remember to set the kind
       url: http://localhost:5000 # use whatever port you prefer when running the RP locally
       resourcegroup: my-cool-env
@@ -55,9 +57,10 @@ environment:
       subscriptionid: 66d1209e-1382-45d3-99bb-650e6bf63fc0
     my-cool-env:
       clustername: radius-aks-j5oqzddqmf36s
+      context: radius-aks-j5oqzddqmf36s
+      namespace: default
       kind: azure
       resourcegroup: my-cool-env
-      controlplaneresourcegroup: RE-my-cool-env
       subscriptionid: 66d1209e-1382-45d3-99bb-650e6bf63fc0
 ```
 

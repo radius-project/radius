@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -24,9 +25,10 @@ import (
 func Test_RedeployWithAnotherResource(t *testing.T) {
 	application := "azure-mechanics-redeploy-withanotherresource"
 	templateFmt := "testdata/azure-mechanics-redeploy-withanotherresource.step%d.bicep"
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1)),
+			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// None
@@ -53,7 +55,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2)),
+			Executor: azuretest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// None
@@ -96,9 +98,10 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 func Test_CommunicationCycle(t *testing.T) {
 	application := "azure-mechanics-communication-cycle"
 	template := "testdata/azure-mechanics-communication-cycle.bicep"
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// None

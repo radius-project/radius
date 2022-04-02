@@ -1,3 +1,5 @@
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-daprstatestore-generic'
 
@@ -11,7 +13,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image:magpieimage
       }
     }
   }
