@@ -8,6 +8,7 @@ package resource_test
 import (
 	"testing"
 
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/kubernetestest"
 	"github.com/project-radius/radius/test/validation"
 )
@@ -15,9 +16,10 @@ import (
 func TestK8sModule(t *testing.T) {
 	template := "testdata/kubernetes-module/main.bicep"
 	application := "kubernetes-module"
+
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
+			Executor: kubernetestest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

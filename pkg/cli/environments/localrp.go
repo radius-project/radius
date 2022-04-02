@@ -151,14 +151,12 @@ func (e *LocalRPEnvironment) CreateDiagnosticsClient(ctx context.Context) (clien
 	con := arm.NewConnection(e.URL, azcred, nil)
 
 	return &azure.ARMDiagnosticsClient{
-		KubernetesDiagnosticsClient: kubernetes.KubernetesDiagnosticsClient{
-			K8sClient:  k8sClient,
-			Client:     client,
-			RestConfig: config,
-		},
-		ResourceClient: *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
-		ResourceGroup:  e.ResourceGroup,
-		SubscriptionID: e.SubscriptionID,
+		K8sTypedClient:   k8sClient,
+		RestConfig:       config,
+		K8sRuntimeClient: client,
+		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
+		ResourceGroup:    e.ResourceGroup,
+		SubscriptionID:   e.SubscriptionID,
 	}, nil
 }
 

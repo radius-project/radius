@@ -1,3 +1,4 @@
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-dapr-statestore-generic'
 
@@ -11,7 +12,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         }
       }
       container: {
-        image: 'radius.azurecr.io/magpiego:latest'
+        image: magpieimage
      }
     }
   }

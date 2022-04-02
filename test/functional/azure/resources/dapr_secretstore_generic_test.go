@@ -15,15 +15,17 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/daprsecretstorev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_DaprSecretStoreGeneric(t *testing.T) {
 	application := "azure-resources-dapr-secretstore-generic"
 	template := "testdata/azure-resources-dapr-secretstore-generic.bicep"
+
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor:           azuretest.NewDeployStepExecutor(template),
+			Executor:           azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources:     &validation.AzureResourceSet{},
 			SkipAzureResources: true,
 			RadiusResources: &validation.ResourceSet{

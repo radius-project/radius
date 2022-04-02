@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
@@ -47,7 +48,7 @@ func Test_CLI(t *testing.T) {
 	templateFilePath := filepath.Join(cwd, template)
 	t.Logf("deploying %s from file %s", application, template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath)
+	err = cli.Deploy(ctx, templateFilePath, functional.GetMagpieImage())
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)
 
@@ -187,7 +188,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 	t.Logf("deploying %s from file %s", application, template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, "@"+parameterFilePath, "env=COOL_VALUE")
+	err = cli.Deploy(ctx, templateFilePath, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag())
 	require.NoErrorf(t, err, "failed to deploy %s", application)
 	t.Logf("finished deploying %s from file %s", application, template)
 

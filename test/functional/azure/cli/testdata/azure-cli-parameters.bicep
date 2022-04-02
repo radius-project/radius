@@ -1,5 +1,6 @@
 param registry string
 param env string
+param magpietag string = 'latest'
 
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-cli-parameters'
@@ -8,7 +9,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'a'
     properties: {
       container: {
-        image: '${registry}/magpiego:latest'
+        image: '${registry}/magpiego:${magpietag}'
         env: {
           COOL_SETTING: env
         }
@@ -25,7 +26,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'b'
     properties: {
       container: {
-        image: '${registry}/magpiego:latest'
+        image: '${registry}/magpiego:${magpietag}'
         readinessProbe:{
           kind:'httpGet'
           containerPort:3000

@@ -66,13 +66,30 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	client, runtimeClient, contextName, err := createKubernetesClients("")
+	if err != nil {
+		return err
+	}
+
 	// Configure Azure provider for cloud resources if specified
 	var azureProvider *azure.Provider
 	if interactive {
-		namespace, err = prompt.Text("Enter a namespace name:", prompt.EmptyValidator)
+		var defaultNamespace = "default"
+		promptStr := fmt.Sprintf("Enter a namespace name to deploy apps into [%s]:", defaultNamespace)
+		namespace, err = prompt.TextWithDefault(promptStr, &defaultNamespace, prompt.EmptyValidator)
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Using %s as namespace name\n", namespace)
+
+		var defaultEnvironmentName = contextName
+		promptStr = fmt.Sprintf("Enter an environment name [%s]:", defaultEnvironmentName)
+		environmentName, err = prompt.TextWithDefault(promptStr, &defaultEnvironmentName, prompt.EmptyValidator)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Using %s as environment name\n", environmentName)
+
 	} else {
 		// Check if Azure provider configuration is provided
 		// Adding Azure provider is supported only in non-interactive mode
@@ -93,11 +110,6 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.ReadEnvironmentSection(config)
-	if err != nil {
-		return err
-	}
-
-	client, runtimeClient, contextName, err := createKubernetesClients("")
 	if err != nil {
 		return err
 	}

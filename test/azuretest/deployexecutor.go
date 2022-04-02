@@ -24,10 +24,11 @@ type DeployStepExecutor struct {
 	Parameters  []string
 }
 
-func NewDeployStepExecutor(template string) *DeployStepExecutor {
+func NewDeployStepExecutor(template string, parameters ...string) *DeployStepExecutor {
 	return &DeployStepExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
 		Template:    template,
+		Parameters:  parameters,
 	}
 }
 
