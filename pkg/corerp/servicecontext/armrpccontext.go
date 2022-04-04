@@ -28,7 +28,9 @@ const (
 	// HostHeader is the standard http header Host used to indicate the target host name.
 	HostHeader = "Host"
 
-	// RefererHeader is the full URI that the client connected to (which will be different than the RP URI, since it will have the public hostname instead of the RP hostname). This value can be used in generating FQDN for Location headers or other requests since RPs should not reference their endpoint name.
+	// RefererHeader is the full URI that the client connected to (which will be different than the RP URI, since it will have the public
+	// hostname instead of the RP hostname). This value can be used in generating FQDN for Location headers or other requests since RPs
+	// should not reference their endpoint name.
 	RefererHeader = "Referer"
 
 	// ContentTypeHeader is the standard http header Content-Type.
@@ -46,7 +48,7 @@ const (
 	// ClientApplicationIDHeader is the app Id of the client JWT making the request.
 	ClientApplicationIDHeader = "X-Ms-Client-App-Id"
 
-	// ClientObjectIDHeader is the object Id of the client JWT making the request. Not all users have object Id. For CSP (reseller) scenarios for example, object Id is not available.
+	// ClientObjectIDHeader is the object Id of the client JWT making the request. Not all users have object Id.
 	ClientObjectIDHeader = "X-Ms-Client-Object-Id"
 
 	// ClientPrincipalNameHeader is the principal name / UPN of the client JWT making the request.
@@ -102,7 +104,7 @@ type ARMRPCContext struct {
 	ClientReferer string
 	// UserAgent represents the user agent name of the arm request.
 	UserAgent string
-	// RawSystemMetadata is the raw system metadata from arm request. SystemData returns unmarshalled system metadata
+	// RawSystemMetadata is the raw system metadata from arm request. SystemData() returns unmarshalled system metadata
 	RawSystemMetadata string
 }
 
@@ -115,7 +117,7 @@ func FromRequest(r *http.Request, prefix string) (*ARMRPCContext, error) {
 		ResourceID:      azID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
-		OperationID:     uuid.NewString(),
+		OperationID:     uuid.NewString(), // TODO: implement the better async operation id generation.
 		Traceparent:     r.Header.Get(TraceparentHeader),
 
 		HomeTenantID:        r.Header.Get(HomeTenantIDHeader),
@@ -135,7 +137,7 @@ func FromRequest(r *http.Request, prefix string) (*ARMRPCContext, error) {
 	return rpcCtx, nil
 }
 
-// SystemData returns unmarshalled SystemMetaData.
+// SystemData returns unmarshalled RawSystemMetaData.
 func (rc ARMRPCContext) SystemData() *armrpcv1.SystemData {
 	if rc.RawSystemMetadata == "" {
 		return nil
