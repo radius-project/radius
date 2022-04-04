@@ -10,7 +10,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
@@ -20,11 +19,10 @@ type AppCoreController struct {
 	BaseController
 }
 
-func NewAppCoreController(db db.RadrpDB, deploy deployment.DeploymentProcessor, completions chan<- struct{}, scheme string) *AppCoreController {
+func NewAppCoreController(db db.RadrpDB, completions chan<- struct{}, scheme string) *AppCoreController {
 	return &AppCoreController{
 		BaseController: BaseController{
 			db:          db,
-			deploy:      deploy,
 			completions: completions,
 			scheme:      scheme,
 		},
