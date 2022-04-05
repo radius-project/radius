@@ -16,18 +16,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestARMRPCCtxInject(t *testing.T) {
+func TestARMRequestCtx(t *testing.T) {
 	const testPrefix = "/prefix"
 	w := httptest.NewRecorder()
 	r := mux.NewRouter()
 	r.Path(testPrefix + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}").Methods(http.MethodPut).HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			rpcCtx := servicecontext.ARMRPCContextFromContext(r.Context())
+			rpcCtx := servicecontext.ARMRequestContextFromContext(r.Context())
 
 			_, _ = w.Write([]byte(rpcCtx.ResourceID.SubscriptionID))
 		})
 
-	handler := ARMRPCCtxInject(testPrefix)(r)
+	handler := ARMRequestCtx(testPrefix)(r)
 
 	testUrl := testPrefix + "/subscriptions/00001b53-0000-0000-0000-00006235a42c/resourcegroups/radius-test-rg/providers/Applications.Core/environments/env0"
 

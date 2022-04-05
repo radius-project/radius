@@ -32,7 +32,7 @@ func NewServer(ctx context.Context, options ServerOptions) *http.Server {
 
 	r.Use(middleware.AppendLogValues)
 	// TODO: Set prefix
-	r.Use(middleware.ARMRPCCtxInject(""))
+	r.Use(middleware.ARMRequestCtx(""))
 	r.Path("/version").Methods(http.MethodGet).HandlerFunc(reportVersion)
 
 	server := &http.Server{

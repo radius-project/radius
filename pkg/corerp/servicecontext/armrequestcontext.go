@@ -71,8 +71,8 @@ const (
 	TraceparentHeader = "Traceparent"
 )
 
-// ARMRPCContext is the context which includes ARM RPC.
-type ARMRPCContext struct {
+// ARMRequestContext represents the service context including proxy request header values.
+type ARMRequestContext struct {
 	// ResourceID represents arm resource ID extracted from resource id.
 	ResourceID azresources.ResourceID
 
@@ -108,12 +108,12 @@ type ARMRPCContext struct {
 	RawSystemMetadata string
 }
 
-// FromARMRPCRequest extracts ARM RPC request info.
-func FromARMRPCRequest(r *http.Request, prefix string) (*ARMRPCContext, error) {
+// FromARMRequest extracts ARM RPC request info.
+func FromARMRequest(r *http.Request, prefix string) (*ARMRequestContext, error) {
 	path := strings.TrimPrefix(r.URL.Path, prefix)
 	azID, _ := azresources.Parse(path)
 
-	rpcCtx := &ARMRPCContext{
+	rpcCtx := &ARMRequestContext{
 		ResourceID:      azID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
@@ -138,7 +138,7 @@ func FromARMRPCRequest(r *http.Request, prefix string) (*ARMRPCContext, error) {
 }
 
 // SystemData returns unmarshalled RawSystemMetaData.
-func (rc ARMRPCContext) SystemData() *armrpcv1.SystemData {
+func (rc ARMRequestContext) SystemData() *armrpcv1.SystemData {
 	if rc.RawSystemMetadata == "" {
 		return nil
 	}
@@ -151,12 +151,12 @@ func (rc ARMRPCContext) SystemData() *armrpcv1.SystemData {
 	return systemDataProp
 }
 
-// ARMRPCContextFromContext extracts ARMRPContext from http context.
-func ARMRPCContextFromContext(ctx context.Context) *ARMRPCContext {
-	return ctx.Value(armContextKey).(*ARMRPCContext)
+// ARMRequestContextFromContext extracts ARMRPContext from http context.
+func ARMRequestContextFromContext(ctx context.Context) *ARMRequestContext {
+	return ctx.Value(armContextKey).(*ARMRequestContext)
 }
 
-// WithARMRPCContext injects ARMRPCContext into the given http context.
-func WithARMRPCContext(ctx context.Context, armctx *ARMRPCContext) context.Context {
+// WithARMRequestContext injects ARMRequestContext into the given http context.
+func WithARMRequestContext(ctx context.Context, armctx *ARMRequestContext) context.Context {
 	return context.WithValue(ctx, armContextKey, armctx)
 }

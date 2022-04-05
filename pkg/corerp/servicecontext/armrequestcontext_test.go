@@ -15,11 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFromRequest(t *testing.T) {
+func TestFromARMRequest(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
 
-	serviceCtx, err := FromRequest(req, "")
+	serviceCtx, err := FromARMRequest(req, "")
 	require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
 	require.Equal(t, "1000f604-0000-0000-0000-4bc7d1666424", serviceCtx.HomeTenantID)
 	require.Equal(t, "1000f604-0000-0000-0000-4bc7d1666425", serviceCtx.ClientTenantID)
@@ -34,7 +34,7 @@ func TestFromRequest(t *testing.T) {
 func TestSystemData(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
-	serviceCtx, err := FromARMRPCRequest(req, "")
+	serviceCtx, err := FromARMRequest(req, "")
 
 	sysData := serviceCtx.SystemData()
 	require.NotNil(t, sysData)
@@ -49,12 +49,12 @@ func TestSystemData(t *testing.T) {
 func TestFromContext(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
-	serviceCtx, err := FromARMRPCRequest(req, "")
+	serviceCtx, err := FromARMRequest(req, "")
 	require.NoError(t, err)
 	ctx := context.Background()
-	newCtx := WithARMRPCContext(ctx, serviceCtx)
+	newCtx := WithARMRequestContext(ctx, serviceCtx)
 
-	sCtx := ARMRPCContextFromContext(newCtx)
+	sCtx := ARMRequestContextFromContext(newCtx)
 	require.NotNil(t, sCtx)
 	require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
 }
