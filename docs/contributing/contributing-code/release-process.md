@@ -8,6 +8,26 @@ Our release process for Project Radius is based on git tags. Pushing a new tag w
 - Determine the release version. This is in the form `v.<major>.<minor>.<patch>`
 - Determine the release channel This is in the form `<major>.<minor>`
 
+### Test tutorials and samples
+
+> This step is manual, however it could be automated in the future.
+
+Before a release can be started, all [tutorials](https://edge.radapp.dev/user-guides/tutorials/) and [samples](https://edge.radapp.dev/user-guides/samples/) must be validated across local (Windows and macOS), Kubernetes, and Azure.
+
+1. Install the latest edge rad CLI release
+1. Run through each tutorial, step by step, confirming each step works as expected on a local environment (make sure to be on the edge site)
+1. Run through each sample, step by step, confirming each step works as expected on a local environment (make sure to be on the edge site)
+1. Repeat on Windows local, Kubernetes, and Azure
+
+Do not start the release until the following scenarios are validated:
+
+| OS | WebApp Tutorial | Dapr Tutorial | eShop Sample | Container Apps Sample |
+|:--:|:---------------:|:-------------:|:------------:|:---------------------:|
+| Windows local | ✅ | ✅ | ✅ | ✅ |
+| macOS local   | ✅ | ✅ | ✅ | ✅ |
+| Kubernetes    | ✅ | ✅ | ✅ | ✅ |
+| Azure         | ✅ | ✅ | ✅ | ✅ |
+
 ## Performing a release
 
 1. In the Bicep fork: `radius-compiler` branch at the time of writing
