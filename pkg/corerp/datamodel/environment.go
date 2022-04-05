@@ -29,7 +29,7 @@ type Environment struct {
 	// Location is the geo-location where resource is located.
 	Location string `json:"location"`
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData armrpcv1.SystemDataProperties `json:"systemData,omitempty"`
+	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
 	// Tags is the resource tags.
 	Tags armrpcv1.ResourceTags `json:"tags,omitempty"`
 	// Properties is the properties of the resource.
