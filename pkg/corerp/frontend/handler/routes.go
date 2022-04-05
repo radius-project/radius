@@ -10,6 +10,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
 )
 
 const (
@@ -18,10 +20,13 @@ const (
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
 // TODO: Enable api spec validator.
-func AddRoutes(providerCtrl *controllers.ProviderController, rpCtrl *controllers.AppCoreController, router *mux.Router, validatorFactory ValidatorFactory, swaggerDocRoute string) {
+func AddRoutes(db db.RadrpDB, deploy deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, swaggerDocRoute string) {
+	providerCtrl := controllers.NewProviderController(db, deploy, nil, "http")
+	appCoreCtrl := controllers.NewAppCoreController(db, deploy, nil, "http")
+
 	h := handler{
 		providerCtrl:     providerCtrl,
-		appCoreCtrl:      rpCtrl,
+		appCoreCtrl:      appCoreCtrl,
 		validatorFactory: validatorFactory,
 		pathPrefix:       swaggerDocRoute,
 	}
@@ -40,7 +45,7 @@ func AddRoutes(providerCtrl *controllers.ProviderController, rpCtrl *controllers
 		Methods(http.MethodGet).HandlerFunc(h.GetOperations)
 
 	// Resource Group level API routes.
-	resourceGroupLevelPath := h.pathPrefix + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core/"
+	resourceGroupLevelPath := h.pathPrefix + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
 
 	// Adds environment resource type routes
 	environmentRTSubrouter := router.Path(resourceGroupLevelPath+"/environments/{environment}").

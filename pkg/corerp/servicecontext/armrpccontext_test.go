@@ -34,7 +34,7 @@ func TestFromRequest(t *testing.T) {
 func TestSystemData(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
-	serviceCtx, err := FromRequest(req, "")
+	serviceCtx, err := FromARMRPCRequest(req, "")
 
 	sysData := serviceCtx.SystemData()
 	require.NotNil(t, sysData)
@@ -49,12 +49,12 @@ func TestSystemData(t *testing.T) {
 func TestFromContext(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
-	serviceCtx, err := FromRequest(req, "")
+	serviceCtx, err := FromARMRPCRequest(req, "")
 	require.NoError(t, err)
 	ctx := context.Background()
 	newCtx := WithARMRPCContext(ctx, serviceCtx)
 
-	sCtx := FromContext(newCtx)
+	sCtx := ARMRPCContextFromContext(newCtx)
 	require.NotNil(t, sCtx)
 	require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
 }

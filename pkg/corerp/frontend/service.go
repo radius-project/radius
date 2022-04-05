@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
 	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
 	"github.com/project-radius/radius/pkg/corerp/frontend/server"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
@@ -37,16 +36,13 @@ func (s *Service) Run(ctx context.Context) error {
 
 	// TODO: Add DB Provider and DeploymentProcessor.
 
-	providerCtrl := controllers.NewProviderController(nil, nil, nil, "http")
-	appCoreCtrl := controllers.NewAppCoreController(nil, nil, nil, "http")
-
 	ctx = logr.NewContext(ctx, logger)
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address: address,
 		// TODO: implement ARM client certificate auth.
 		Configure: func(router *mux.Router) {
-			handler.AddRoutes(providerCtrl, appCoreCtrl, router, handler.DefaultValidatorFactory, "")
+			handler.AddRoutes(nil, nil, router, handler.DefaultValidatorFactory, "")
 		},
 	})
 

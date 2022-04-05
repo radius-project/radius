@@ -108,8 +108,8 @@ type ARMRPCContext struct {
 	RawSystemMetadata string
 }
 
-// FromRequest extracts ARM RPC
-func FromRequest(r *http.Request, prefix string) (*ARMRPCContext, error) {
+// FromARMRPCRequest extracts ARM RPC request info.
+func FromARMRPCRequest(r *http.Request, prefix string) (*ARMRPCContext, error) {
 	path := strings.TrimPrefix(r.URL.Path, prefix)
 	azID, _ := azresources.Parse(path)
 
@@ -151,8 +151,8 @@ func (rc ARMRPCContext) SystemData() *armrpcv1.SystemData {
 	return systemDataProp
 }
 
-// FromContext extracts ARMRPContext from http context.
-func FromContext(ctx context.Context) *ARMRPCContext {
+// ARMRPCContextFromContext extracts ARMRPContext from http context.
+func ARMRPCContextFromContext(ctx context.Context) *ARMRPCContext {
 	return ctx.Value(armContextKey).(*ARMRPCContext)
 }
 
