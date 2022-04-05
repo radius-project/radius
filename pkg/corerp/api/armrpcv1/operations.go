@@ -5,8 +5,18 @@
 
 package armrpcv1
 
+<<<<<<< HEAD
 // Operation represents the struct which contains properties of an operation.
 // https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
+=======
+// OperationList is the object that we need to return for calls to list all available operations.
+// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
+type OperationList struct {
+	Value []Operation `json:"value"`
+}
+
+// Operation represents the struct which contains properties of an operation.
+>>>>>>> a19451cc (Initial commit of ARM proxy request header context helper (#2165))
 type Operation struct {
 	Name         string                      `json:"name"`
 	Display      *OperationDisplayProperties `json:"display"`

@@ -87,11 +87,7 @@ endef
 # defines a target for each binary
 GOOSES := darwin linux windows
 GOARCHES := amd64 arm arm64
-<<<<<<< HEAD
-BINARIES := docgen rad radius-rp testenv appcore-rp
-=======
 BINARIES := docgen rad radius-controller radius-rp testenv radiusd appcore-rp
->>>>>>> 213ee5e6 (Modify makefile to build appcore-rp (#2138))
 $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
 $(foreach ARCH,$(GOARCHES),$(foreach OS,$(GOOSES),$(foreach ITEM,$(BINARIES),$(eval $(call generatePlatformBuildTarget,$(OS),$(ARCH),$(ITEM),./cmd/$(ITEM))))))
 
