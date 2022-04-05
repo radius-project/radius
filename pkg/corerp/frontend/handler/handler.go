@@ -10,10 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -38,12 +37,12 @@ type handler struct {
 	appCoreCtrl  *controllers.AppCoreController
 
 	validatorFactory ValidatorFactory
-	pathPrefix       string
+	pathBase         string
 }
 
 func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.appCoreCtrl.GetOperations(ctx, h.resourceID(req))
+	response, err := h.appCoreCtrl.GetOperations(ctx)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -58,7 +57,7 @@ func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) CreateOrUpdateSubscription(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.providerCtrl.CreateOrUpdateSubscription(ctx, h.resourceID(req))
+	response, err := h.providerCtrl.CreateOrUpdateSubscription(ctx)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -72,22 +71,13 @@ func (h *handler) CreateOrUpdateSubscription(w http.ResponseWriter, req *http.Re
 }
 
 func (h *handler) ListEnvironments(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-
 	// TODO: Implement environment resource type list operations
-	internalServerError(ctx, w, req, errors.New("Not implemented"))
-}
+	ctx := req.Context()
+	log := radlogger.GetLogger(ctx)
+	rpcCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	log.Info(fmt.Sprintf("api-version: %s", rpcCtx.APIVersion))
 
-func (h *handler) resourceID(req *http.Request) azresources.ResourceID {
-	logger := radlogger.GetLogger(req.Context())
-	path := req.URL.Path
-	pathFixed := strings.TrimPrefix(path, h.pathPrefix)
-	id, err := azresources.Parse(pathFixed)
-	if err != nil {
-		logger.Info("URL was not a valid resource id: %v", req.URL.Path)
-		// just log the error - it will be handled in the RP layer.
-	}
-	return id
+	internalServerError(ctx, w, req, errors.New("Not implemented"))
 }
 
 // Responds with an HTTP 500
