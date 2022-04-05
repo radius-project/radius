@@ -433,7 +433,7 @@ func Test_Render_UnsupportedProvider_ReturnsError(t *testing.T) {
 	}
 
 	testResourceType := resourcemodel.ResourceType{
-		Type:     "fake",
+		Type:     resourcekinds.AzureFileShare,
 		Provider: "UnsupportedProvider",
 	}
 	testOutputResource := outputresource.OutputResource{
