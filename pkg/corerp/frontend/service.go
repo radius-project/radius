@@ -39,7 +39,8 @@ func (s *Service) Run(ctx context.Context) error {
 	ctx = logr.NewContext(ctx, logger)
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	server := server.NewServer(ctx, server.ServerOptions{
-		Address: address,
+		Address:  address,
+		PathBase: s.Options.Config.Server.PathBase,
 		// TODO: implement ARM client certificate auth.
 		Configure: func(router *mux.Router) {
 			handler.AddRoutes(nil, nil, router, handler.DefaultValidatorFactory, "")

@@ -37,7 +37,7 @@ type handler struct {
 	appCoreCtrl  *controllers.AppCoreController
 
 	validatorFactory ValidatorFactory
-	pathPrefix       string
+	pathBase         string
 }
 
 func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {

@@ -17,7 +17,8 @@ import (
 )
 
 type ServerOptions struct {
-	Address string
+	Address  string
+	PathBase string
 	// TODO: implement client cert based authentication for arm
 	EnableAuth bool
 	Configure  func(*mux.Router)
@@ -31,8 +32,7 @@ func NewServer(ctx context.Context, options ServerOptions) *http.Server {
 	}
 
 	r.Use(middleware.AppendLogValues)
-	// TODO: Set prefix
-	r.Use(middleware.ARMRequestCtx(""))
+	r.Use(middleware.ARMRequestCtx(options.PathBase))
 	r.Path("/version").Methods(http.MethodGet).HandlerFunc(reportVersion)
 
 	server := &http.Server{

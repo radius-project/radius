@@ -52,6 +52,7 @@ type IdentityOptions struct {
 type ServerOptions struct {
 	Host     string               `yaml:"host"`
 	Port     int                  `yaml:"port"`
+	PathBase string               `yaml:"pathBase,omitempty"`
 	AuthType AuthentificationType `yaml:"authType,omitempty"`
 	// ArmMetadataEndpoints provides the client certification to authenticate between ARM and RP.
 	// https://armwiki.azurewebsites.net/authorization/AuthenticateBetweenARMandRP.html

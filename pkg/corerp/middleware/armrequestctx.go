@@ -12,10 +12,10 @@ import (
 )
 
 // ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.
-func ARMRequestCtx(prefix string) func(h http.Handler) http.Handler {
+func ARMRequestCtx(pathBase string) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			rpcContext, err := servicecontext.FromARMRequest(r, prefix)
+			rpcContext, err := servicecontext.FromARMRequest(r, pathBase)
 			if err != nil {
 				h.ServeHTTP(w, r)
 			}
