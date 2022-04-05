@@ -23,7 +23,6 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/extenderv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/gateway"
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
-	"github.com/project-radius/radius/pkg/renderers/keyvaultv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/manualscalev1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/microsoftsqlv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/mongodbv1alpha3"
@@ -32,7 +31,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
 	"github.com/project-radius/radius/pkg/renderers/redisv1alpha3"
-	"github.com/project-radius/radius/pkg/renderers/servicebusqueuev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -145,16 +143,8 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.Application
 		azureModel := []model.RadiusResourceModel{
 			// Azure
 			{
-				ResourceType: keyvaultv1alpha3.ResourceType,
-				Renderer:     &keyvaultv1alpha3.Renderer{},
-			},
-			{
 				ResourceType: volumev1alpha3.ResourceType,
 				Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.GetSupportedRenderers(), Arm: arm},
-			},
-			{
-				ResourceType: servicebusqueuev1alpha3.ResourceType,
-				Renderer:     &servicebusqueuev1alpha3.Renderer{},
 			},
 		}
 
@@ -286,30 +276,11 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.Application
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureServiceBusQueue,
-				Provider: providers.ProviderAzure,
-			},
-			HealthHandler:   handlers.NewAzureServiceBusQueueHealthHandler(arm),
-			ResourceHandler: handlers.NewAzureServiceBusQueueHandler(arm),
-			ShouldSupportHealthMonitorFunc: func(resourceType resourcemodel.ResourceType) bool {
-				return true
-			},
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 				Provider: providers.ProviderAzure,
 			},
 			HealthHandler:   handlers.NewDaprPubSubServiceBusHealthHandler(arm, k8s),
 			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
-				Provider: providers.ProviderAzure,
-			},
-			HealthHandler:   handlers.NewAzureKeyVaultHealthHandler(arm),
-			ResourceHandler: handlers.NewAzureKeyVaultHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
@@ -350,14 +321,6 @@ func NewAzureModel(arm *armauth.ArmConfig, k8s client.Client) (model.Application
 			},
 			HealthHandler:   handlers.NewAzureRoleAssignmentHealthHandler(arm),
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureKeyVaultSecret,
-				Provider: providers.ProviderAzure,
-			},
-			HealthHandler:   handlers.NewAzureKeyVaultSecretHealthHandler(arm),
-			ResourceHandler: handlers.NewAzureKeyVaultSecretHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
