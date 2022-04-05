@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 // The below contants are the headers in request from ARM.
@@ -108,16 +109,21 @@ type ARMRequestContext struct {
 	RawSystemMetadata string
 }
 
-// FromARMRequest extracts ARM RPC request info.
-func FromARMRequest(r *http.Request, prefix string) (*ARMRequestContext, error) {
-	path := strings.TrimPrefix(r.URL.Path, prefix)
-	azID, _ := azresources.Parse(path)
+// FromARMRequest extracts proxy request headers from http.Request.
+func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
+	log := radlogger.GetLogger(r.Context())
+	path := strings.TrimPrefix(r.URL.Path, pathBase)
+	azID, err := azresources.Parse(path)
+	if err != nil {
+		log.V(radlogger.Debug).Info("URL was not a valid resource id: %v", r.URL.Path)
+		// do not stop extracting headers. handler needs to care invalid resource id.
+	}
 
 	rpcCtx := &ARMRequestContext{
 		ResourceID:      azID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
-		OperationID:     uuid.NewString(), // TODO: implement the better async operation id generation.
+		OperationID:     uuid.NewString(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
 		Traceparent:     r.Header.Get(TraceparentHeader),
 
 		HomeTenantID:        r.Header.Get(HomeTenantIDHeader),

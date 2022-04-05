@@ -74,7 +74,7 @@ func (h *handler) ListEnvironments(w http.ResponseWriter, req *http.Request) {
 	// TODO: Implement environment resource type list operations
 	ctx := req.Context()
 	log := radlogger.GetLogger(ctx)
-	rpcCtx := servicecontext.ARMRPCContextFromContext(ctx)
+	rpcCtx := servicecontext.ARMRequestContextFromContext(ctx)
 	log.Info(fmt.Sprintf("api-version: %s", rpcCtx.APIVersion))
 
 	internalServerError(ctx, w, req, errors.New("Not implemented"))
