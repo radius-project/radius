@@ -8,18 +8,12 @@
 package hostoptions
 
 import (
-<<<<<<< HEAD
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-=======
-	"fmt"
-	"io/ioutil"
-
->>>>>>> a7c68ec0 (Initial commit of Applications.Core resource provider (#2113))
 	"gopkg.in/yaml.v3"
 )
 
@@ -59,7 +53,6 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 		return nil, fmt.Errorf("fails to load yaml: %w", err)
 	}
 
-<<<<<<< HEAD
 	// TODO: improve the way to override the configration via env var.
 	cosmosdbUrl := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_URL")
 	if cosmosdbUrl != "" {
@@ -83,7 +76,3 @@ func FromContext(ctx context.Context) *ProviderConfig {
 func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 	return context.WithValue(ctx, servicecontext.HostingConfigContextKey, cfg)
 }
-=======
-	return conf, nil
-}
->>>>>>> a7c68ec0 (Initial commit of Applications.Core resource provider (#2113))

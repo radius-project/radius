@@ -5,7 +5,6 @@
 
 package hostoptions
 
-<<<<<<< HEAD
 import (
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics"
@@ -13,31 +12,11 @@ import (
 
 // ProviderConfig includes the resource provider configuration.
 type ProviderConfig struct {
-	CloudEnv        CloudEnvironmentOptions                      `yaml:"cloudEnvironment"`
-	Identity        IdentityOptions                              `yaml:"identity"`
-	StorageProvider dataprovider.StorageProviderOptions          `yaml:"storageProvider"`
-	Server          ServerOptions                                `yaml:"server"`
-	MetricsProvider metrics.MetricsOptions `yaml:"metricsProvider"`
-=======
-<<<<<<< HEAD
-import "github.com/project-radius/radius/pkg/corerp/dataprovider"
-
-// ProviderConfig includes the resource provider configuration.
-type ProviderConfig struct {
 	CloudEnv        CloudEnvironmentOptions             `yaml:"cloudEnvironment"`
 	Identity        IdentityOptions                     `yaml:"identity"`
 	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
 	Server          ServerOptions                       `yaml:"server"`
-	Metrics         MetricOptions                       `yaml:"metric"`
-=======
-// ProviderConfig includes the resource provider configuration.
-type ProviderConfig struct {
-	CloudEnv CloudEnvironmentOptions `yaml:"cloudEnvironment"`
-	Identity IdentityOptions         `yaml:"identity"`
-	Server   ServerOptions           `yaml:"server"`
-	Metrics  MetricOptions           `yaml:"metric"`
->>>>>>> a7c68ec0 (Initial commit of Applications.Core resource provider (#2113))
->>>>>>> 2637c773 (Initial commit of Applications.Core resource provider (#2113))
+	MetricsProvider metrics.MetricsOptions              `yaml:"metricsProvider"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
@@ -80,10 +59,7 @@ type IdentityOptions struct {
 type ServerOptions struct {
 	Host     string               `yaml:"host"`
 	Port     int                  `yaml:"port"`
-<<<<<<< HEAD
 	PathBase string               `yaml:"pathBase,omitempty"`
-=======
->>>>>>> a7c68ec0 (Initial commit of Applications.Core resource provider (#2113))
 	AuthType AuthentificationType `yaml:"authType,omitempty"`
 	// ArmMetadataEndpoints provides the client certification to authenticate between ARM and RP.
 	// https://armwiki.azurewebsites.net/authorization/AuthenticateBetweenARMandRP.html
