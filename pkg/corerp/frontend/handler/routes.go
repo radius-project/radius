@@ -10,6 +10,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
 )
 
 const (
@@ -18,29 +20,32 @@ const (
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
 // TODO: Enable api spec validator.
-func AddRoutes(providerCtrl *controllers.ProviderController, rpCtrl *controllers.AppCoreController, router *mux.Router, validatorFactory ValidatorFactory, swaggerDocRoute string) {
+func AddRoutes(db db.RadrpDB, deploy deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) {
+	providerCtrl := controllers.NewProviderController(db, deploy, nil, "http")
+	appCoreCtrl := controllers.NewAppCoreController(db, deploy, nil, "http")
+
 	h := handler{
 		providerCtrl:     providerCtrl,
-		appCoreCtrl:      rpCtrl,
+		appCoreCtrl:      appCoreCtrl,
 		validatorFactory: validatorFactory,
-		pathPrefix:       swaggerDocRoute,
+		pathBase:         pathBase,
 	}
 
 	// Provider system notification.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
-	router.Path("/subscriptions/{subscriptionID}").
+	router.Path(h.pathBase+"/subscriptions/{subscriptionID}").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
 		Methods(http.MethodPut).HandlerFunc(h.CreateOrUpdateSubscription)
 
 	// Tenant level API routes.
-	tenantLevelPath := h.pathPrefix + "/providers/applications.core"
+	tenantLevelPath := h.pathBase + "/providers/applications.core"
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 	router.Path(tenantLevelPath+"/operations").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
 		Methods(http.MethodGet).HandlerFunc(h.GetOperations)
 
 	// Resource Group level API routes.
-	resourceGroupLevelPath := h.pathPrefix + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core/"
+	resourceGroupLevelPath := h.pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
 
 	// Adds environment resource type routes
 	environmentRTSubrouter := router.Path(resourceGroupLevelPath+"/environments/{environment}").

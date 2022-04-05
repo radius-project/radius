@@ -8,7 +8,6 @@ package controllers
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
@@ -33,7 +32,7 @@ func NewAppCoreController(db db.RadrpDB, deploy deployment.DeploymentProcessor, 
 
 // GetOperations returns the list of available operations/permission for the resource provider at tenant level.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-func (ctrl *AppCoreController) GetOperations(ctx context.Context, id azresources.ResourceID) (rest.Response, error) {
+func (ctrl *AppCoreController) GetOperations(ctx context.Context) (rest.Response, error) {
 	ops := &armrpcv1.OperationList{
 		Value: []armrpcv1.Operation{
 			{

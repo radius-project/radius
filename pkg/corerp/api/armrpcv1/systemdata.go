@@ -5,9 +5,9 @@
 
 package armrpcv1
 
-// SystemDataProperties is the readonly metadata pertaining to creation and last modification of the resource.
+// SystemData is the readonly metadata pertaining to creation and last modification of the resource.
 // https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-contracts.md#system-metadata-for-all-azure-resources
-type SystemDataProperties struct {
+type SystemData struct {
 	// CreatedBy is a string identifier for the identity that created the resource.
 	CreatedBy string `json:"createdBy,omitempty"`
 	// CreatedByType is the type of identity that created the resource: user, application, managedIdentity.
