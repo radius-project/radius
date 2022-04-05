@@ -71,12 +71,12 @@ func (h *handler) CreateOrUpdateSubscription(w http.ResponseWriter, req *http.Re
 }
 
 func (h *handler) ListEnvironments(w http.ResponseWriter, req *http.Request) {
+	// TODO: Implement environment resource type list operations
 	ctx := req.Context()
 	log := radlogger.GetLogger(ctx)
 	rpcCtx := servicecontext.ARMRPCContextFromContext(ctx)
 	log.Info(fmt.Sprintf("api-version: %s", rpcCtx.APIVersion))
 
-	// TODO: Implement environment resource type list operations
 	internalServerError(ctx, w, req, errors.New("Not implemented"))
 }
 
