@@ -33,7 +33,6 @@ func (hm *healthModel) LookupHandler(ctx context.Context, registerMsg healthcont
 		}
 		return hm.handlersList[resourceType], handlers.HealthHandlerModePush
 	}
-
 	// For all other resource kinds, the mode is Pull
 	if hm.handlersList[resourceType] == nil {
 		return nil, handlers.HealthHandlerModePull
