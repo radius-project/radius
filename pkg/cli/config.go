@@ -75,7 +75,7 @@ func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
 	return section, nil
 }
 
-// Required to be called while holding the exclusive lock on config file.
+// Required to be called while holding the exclusive lock on config.yaml.lock file.
 func UpdateEnvironmentWithLatestConfig(env EnvironmentSection, mergeConfigs func(EnvironmentSection, EnvironmentSection) EnvironmentSection) func(*viper.Viper) error {
 	return func(config *viper.Viper) error {
 
@@ -177,9 +177,10 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Acquire shared lock on the config file.
+	// Acquire shared lock on the config.yaml.lock file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
-	fileLock := flock.New(configFile)
+	// created a new file config.yaml.lock as windows os doesnt let us acuire lock on a file i.e config.yaml and write to it.
+	fileLock := flock.New(configFile + ".lock")
 	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_, err = fileLock.TryRLockContext(lockCtx, 1*time.Second)
@@ -261,10 +262,10 @@ func MergeWithLatestConfig(envName string) func(EnvironmentSection, EnvironmentS
 
 // Save Config with exclusive lock on the config file
 func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig func(*viper.Viper) error) error {
-	// Acquire exclusive lock on the config file.
+	// Acquire exclusive lock on the config.yaml.lock file.
 	// Retry it every second for 5 times if other goroutine is holding the lock i.e other cmd is writing to the config file.
 	configFilePath := GetConfigFilePath(config)
-	fileLock := flock.New(configFilePath)
+	fileLock := flock.New(configFilePath + ".lock")
 	lockCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err := fileLock.TryLockContext(lockCtx, 1*time.Second)

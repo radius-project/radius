@@ -7,21 +7,19 @@ package health
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
-	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/health/handlers"
 	"github.com/project-radius/radius/pkg/health/model"
 	"github.com/project-radius/radius/pkg/health/model/azure"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
 	k8s "github.com/project-radius/radius/pkg/kubernetes"
@@ -62,7 +60,7 @@ var deployment = appsv1.Deployment{
 
 var (
 	testResourceType = resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureServiceBusQueue,
+		Type:     "fakeType",
 		Provider: providers.ProviderAzure,
 	}
 
@@ -74,6 +72,13 @@ func getKubernetesClient() kubernetes.Interface {
 	return fake.NewSimpleClientset()
 }
 
+type fakeHandler struct {
+}
+
+func (h fakeHandler) GetHealthState(ctx context.Context, registration handlers.HealthRegistration, options handlers.Options) handlers.HealthState {
+	return handlers.HealthState{}
+}
+
 func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	logger, err := radlogger.NewTestLogger(t)
 	require.NoError(t, err)
@@ -81,11 +86,12 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	hrpc := make(chan healthcontract.ResourceHealthDataMessage, 1)
 	wg := sync.WaitGroup{}
+	testFakeHandler := fakeHandler{}
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(&armauth.ArmConfig{}, getKubernetesClient(), &wg),
+		HealthModel:                 model.NewHealthModel(map[string]handlers.HealthHandler{"fakeType": testFakeHandler}, &wg),
 	}
 	monitor := NewMonitor(options)
 	ctx := logr.NewContext(context.Background(), logger)
@@ -109,6 +115,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 
 	monitor.activeHealthProbesMutex.RLock()
 	probesLen := len(monitor.activeHealthProbes)
+	fmt.Println(probesLen)
 	require.Equal(t, 1, probesLen)
 	healthInfo, found := monitor.activeHealthProbes[registration.Token]
 	monitor.activeHealthProbesMutex.RUnlock()
@@ -120,7 +127,7 @@ func Test_RegisterResourceCausesResourceToBeMonitored(t *testing.T) {
 	require.Equal(t, *registration, healthInfo.Registration)
 	require.Equal(t, "abc", healthInfo.Registration.RadiusResourceID)
 	require.Equal(t, resourcemodel.NewARMIdentity(&testResourceType, testResourceID, testApiVersion), healthInfo.Registration.Identity)
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, healthInfo.Registration.Identity.ResourceType.Type)
+	require.Equal(t, "fakeType", healthInfo.Registration.Identity.ResourceType.Type)
 	require.Equal(t, providers.ProviderAzure, healthInfo.Registration.Identity.ResourceType.Provider)
 	require.NotNil(t, healthInfo.ticker)
 }
@@ -209,16 +216,17 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 	rrc := make(chan healthcontract.ResourceHealthRegistrationMessage)
 	hrpc := make(chan healthcontract.ResourceHealthDataMessage, 1)
 	wg := sync.WaitGroup{}
+	testFakeHandler := fakeHandler{}
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(&armauth.ArmConfig{SubscriptionID: uuid.NewString()}, getKubernetesClient(), &wg),
+		HealthModel:                 model.NewHealthModel(map[string]handlers.HealthHandler{"fakeType": testFakeHandler}, &wg),
 	}
 	monitor := NewMonitor(options)
 	optionsInterval := time.Microsecond * 5
 	testResourceType := resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureServiceBusQueue,
+		Type:     "fakeType",
 		Provider: providers.ProviderAzure,
 	}
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
@@ -234,7 +242,6 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 			Interval: optionsInterval,
 		},
 	}
-
 	// Wait till the waitgroup is done
 	stopCh := make(chan struct{})
 	t.Cleanup(func() {
@@ -244,7 +251,6 @@ func Test_HealthServiceConfiguresSpecifiedHealthOptions(t *testing.T) {
 
 	ctx := logr.NewContext(context.Background(), logger)
 	registration := monitor.RegisterResource(ctx, registrationMsg, stopCh)
-
 	monitor.activeHealthProbesMutex.RLock()
 	hi := monitor.activeHealthProbes[registration.Token]
 	monitor.activeHealthProbesMutex.RUnlock()
@@ -437,7 +443,7 @@ func Test_NoAzureCredentials_RegisterAzureResourceReturnsNoHandler(t *testing.T)
 	ctx := logr.NewContext(context.Background(), logger)
 
 	testResourceType := resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureServiceBusQueue,
+		Type:     "fakeType",
 		Provider: providers.ProviderAzure,
 	}
 	registrationMsg := healthcontract.ResourceHealthRegistrationMessage{
@@ -456,7 +462,7 @@ func Test_NoAzureCredentials_RegisterAzureResourceReturnsNoHandler(t *testing.T)
 	defer monitor.activeHealthProbesMutex.RUnlock()
 	require.Equal(t, 0, len(monitor.activeHealthProbes))
 	notification := <-hrpc
-	require.Equal(t, resourcekinds.AzureServiceBusQueue, notification.Resource.Identity.ResourceType.Type)
+	require.Equal(t, "fakeType", notification.Resource.Identity.ResourceType.Type)
 	require.Equal(t, providers.ProviderAzure, notification.Resource.Identity.ResourceType.Provider)
 	require.Equal(t, healthcontract.HealthStateNotSupported, notification.HealthState)
 	require.Nil(t, registration)

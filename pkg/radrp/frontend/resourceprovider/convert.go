@@ -84,11 +84,6 @@ func NewRestRadiusResource(resource db.RadiusResource) RadiusResource {
 	}
 	properties["provisioningState"] = resource.ProvisioningState
 
-	if resource.Type != "azure.com.KeyVault" {
-		// Scrape out the secrets properties. These are user-specified secrets for
-		// all resources except for azure.com.KeyVault.
-		delete(properties, "secrets")
-	}
 	return RadiusResource{
 		ID:         resource.ID,
 		Type:       resource.Type,

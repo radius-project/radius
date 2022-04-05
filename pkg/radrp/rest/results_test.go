@@ -101,7 +101,7 @@ func Test_AggregateResourceHealth_NotSupportedAndNotApplicableIsEmpty(t *testing
 		{
 			LocalID: outputresource.LocalIDKeyVault,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -126,7 +126,7 @@ func Test_AggregateResourceHealth_NotSupportedAndNotApplicableIsEmpty(t *testing
 		{
 			LocalID: outputresource.LocalIDKeyVault,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -155,7 +155,7 @@ func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
 		{
 			LocalID: outputresource.LocalIDKeyVault,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -165,7 +165,7 @@ func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
 		{
 			LocalID: outputresource.LocalIDKeyVaultSecret,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVaultSecret,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -180,7 +180,7 @@ func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
 		{
 			LocalID: outputresource.LocalIDKeyVault,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -190,7 +190,7 @@ func Test_AggregateResourceHealth_NotSupportedAndHealthyIsError(t *testing.T) {
 		{
 			LocalID: outputresource.LocalIDKeyVaultSecret,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVaultSecret,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -282,7 +282,7 @@ func Test_AggregateResourceHealth_FailedAndProvisioningIsFailed(t *testing.T) {
 		{
 			LocalID: outputresource.LocalIDKeyVault,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -292,7 +292,7 @@ func Test_AggregateResourceHealth_FailedAndProvisioningIsFailed(t *testing.T) {
 		{
 			LocalID: outputresource.LocalIDKeyVaultSecret,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVaultSecret,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -307,7 +307,7 @@ func Test_AggregateResourceHealth_FailedAndProvisioningIsFailed(t *testing.T) {
 		{
 			LocalID: outputresource.LocalIDKeyVault,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -317,7 +317,7 @@ func Test_AggregateResourceHealth_FailedAndProvisioningIsFailed(t *testing.T) {
 		{
 			LocalID: outputresource.LocalIDKeyVaultSecret,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVaultSecret,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -335,7 +335,7 @@ func Test_AggregateResourceHealth_ProvisionedAndProvisioning_IsProvisioning(t *t
 		{
 			LocalID: outputresource.LocalIDKeyVault,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -345,7 +345,7 @@ func Test_AggregateResourceHealth_ProvisionedAndProvisioning_IsProvisioning(t *t
 		{
 			LocalID: outputresource.LocalIDKeyVaultSecret,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVaultSecret,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -360,7 +360,7 @@ func Test_AggregateResourceHealth_ProvisionedAndProvisioning_IsProvisioning(t *t
 		{
 			LocalID: outputresource.LocalIDKeyVault,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVault,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
@@ -370,7 +370,7 @@ func Test_AggregateResourceHealth_ProvisionedAndProvisioning_IsProvisioning(t *t
 		{
 			LocalID: outputresource.LocalIDKeyVaultSecret,
 			ResourceType: ResourceType{
-				Type:     resourcekinds.AzureKeyVaultSecret,
+				Type:     resourcekinds.AzureFileShare,
 				Provider: providers.ProviderAzure,
 			},
 			Status: OutputResourceStatus{
