@@ -34,6 +34,7 @@ func NewServer(ctx context.Context, options ServerOptions) *http.Server {
 	r.Use(middleware.AppendLogValues)
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
 	r.Path("/version").Methods(http.MethodGet).HandlerFunc(reportVersion)
+	r.Path("/healthz").Methods(http.MethodGet).HandlerFunc(reportVersion)
 
 	server := &http.Server{
 		Addr:    options.Address,
