@@ -95,19 +95,19 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		{
 			ResourceType: daprpubsubv1alpha3.ResourceType,
 			Renderer: &daprpubsubv1alpha3.Renderer{
-				PubSubs: daprpubsubv1alpha3.SupportedAzurePubSubKindValues,
+				PubSubs: daprpubsubv1alpha3.SupportedPubSubKindValues,
 			},
 		},
 		{
 			ResourceType: daprstatestorev1alpha3.ResourceType,
 			Renderer: &daprstatestorev1alpha3.Renderer{
-				StateStores: daprstatestorev1alpha3.SupportedAzureStateStoreKindValues,
+				StateStores: daprstatestorev1alpha3.SupportedStateStoreKindValues,
 			},
 		},
 		{
 			ResourceType: daprsecretstorev1alpha3.ResourceType,
 			Renderer: &daprsecretstorev1alpha3.Renderer{
-				SecretStores: daprsecretstorev1alpha3.SupportedAzureSecretStoreKindValues,
+				SecretStores: daprsecretstorev1alpha3.SupportedSecretStoreKindValues,
 			},
 		},
 
@@ -134,7 +134,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 		{
 			ResourceType: extenderv1alpha3.ResourceType,
-			Renderer:     &extenderv1alpha3.AzureRenderer{},
+			Renderer:     &extenderv1alpha3.Renderer{},
 		},
 	}
 

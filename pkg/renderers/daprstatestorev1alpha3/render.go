@@ -19,13 +19,9 @@ import (
 
 type StateStoreFunc = func(renderers.RendererResource) ([]outputresource.OutputResource, error)
 
-var SupportedAzureStateStoreKindValues = map[string]StateStoreFunc{
+var SupportedStateStoreKindValues = map[string]StateStoreFunc{
 	"state.azure.tablestorage": GetDaprStateStoreAzureStorage,
 	resourcekinds.DaprGeneric:  GetDaprStateStoreGeneric,
-}
-
-var SupportedKubernetesStateStoreKindValues = map[string]StateStoreFunc{
-	resourcekinds.DaprGeneric: GetDaprStateStoreGeneric,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)
