@@ -20,6 +20,9 @@ const (
 
 	// Used for Conflict error.
 	Conflict = "Conflict"
+
+	// Used for InvalidResourceType.
+	InvalidResourceType = "InvalidResourceType"
 )
 
 // see : https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#error-response-content

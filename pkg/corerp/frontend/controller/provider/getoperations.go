@@ -10,7 +10,9 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	v20220315 "github.com/project-radius/radius/pkg/corerp/api/v20220315"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -36,7 +38,18 @@ func NewGetOperations(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (
 // Run returns the list of available operations/permission for the resource provider at tenant level.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 func (a *GetOperations) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	ops := &armrpcv1.OperationList{
+	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+
+	switch sCtx.APIVersion {
+	case v20220315.Version:
+		return rest.NewOKResponse(a.availableOperationsV1()), nil
+	}
+
+	return rest.NewNotFoundAPIVersionResponse("operations", "Applications.Core", sCtx.APIVersion), nil
+}
+
+func (a *GetOperations) availableOperationsV1() *armrpcv1.OperationList {
+	return &armrpcv1.OperationList{
 		Value: []armrpcv1.Operation{
 			{
 				Name: "Applications.Core/operations/read",
@@ -110,5 +123,4 @@ func (a *GetOperations) Run(ctx context.Context, req *http.Request) (rest.Respon
 			},
 		},
 	}
-	return rest.NewOKResponse(ops), nil
 }

@@ -318,6 +318,17 @@ func NewNotFoundResponse(id azresources.ResourceID) Response {
 	}
 }
 
+func NewNotFoundAPIVersionResponse(resourceType string, namespace string, apiVersion string) Response {
+	return &NotFoundResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.InvalidResourceType,
+				Message: fmt.Sprintf("The resource type '%s' could not be found in the namespace '%s' for api version '%s'.", resourceType, namespace, apiVersion),
+			},
+		},
+	}
+}
+
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), radlogger.LogHTTPStatusCode, http.StatusNotFound)
