@@ -318,11 +318,12 @@ func NewNotFoundResponse(id azresources.ResourceID) Response {
 	}
 }
 
+// NewNotFoundAPIVersionResponse creates Response for unsupported api version. (message is consistent with ARM).
 func NewNotFoundAPIVersionResponse(resourceType string, namespace string, apiVersion string) Response {
 	return &NotFoundResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
-				Code:    armerrors.InvalidResourceType,
+				Code:    armerrors.InvalidResourceType, // ARM uses "InvalidResourceType" code with 404 http code.
 				Message: fmt.Sprintf("The resource type '%s' could not be found in the namespace '%s' for api version '%s'.", resourceType, namespace, apiVersion),
 			},
 		},

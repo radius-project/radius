@@ -7,7 +7,18 @@ package v20220315
 
 import (
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/api/common"
+)
+
+// ProvisioningStates is the state of resource.
+type ProvisioningStates string
+
+const (
+	ProvisioningStateUpdating  ProvisioningStates = "Updating"
+	ProvisioningStateDeleting  ProvisioningStates = "Deleting"
+	ProvisioningStateAccepted  ProvisioningStates = "Accepted"
+	ProvisioningStateSucceeded ProvisioningStates = "Succeeded"
+	ProvisioningStateFailed    ProvisioningStates = "Failed"
+	ProvisioningStateCanceled  ProvisioningStates = "Canceled"
 )
 
 // EnvironmentComputeKind is the type of compute resource.
@@ -38,8 +49,8 @@ type Environment struct {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	ProvisioningState common.ProvisioningStates `json:"provisioningState,omitempty"`
-	Compute           EnvironmentCompute        `json:"compute,omitempty"`
+	ProvisioningState ProvisioningStates `json:"provisioningState,omitempty"`
+	Compute           EnvironmentCompute `json:"compute,omitempty"`
 }
 
 // EnvironmentCompute represents the compute resource of Environment.

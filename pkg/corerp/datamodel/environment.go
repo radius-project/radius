@@ -7,7 +7,6 @@ package datamodel
 
 import (
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/api/common"
 )
 
 // EnvironmentComputeKind is the type of compute resource.
@@ -36,10 +35,14 @@ type Environment struct {
 	Properties EnvironmentProperties `json:"properties"`
 }
 
+func (e Environment) ResourceTypeName() string {
+	return "Applications.Core/environments"
+}
+
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	ProvisioningState common.ProvisioningStates `json:"provisioningState,omitempty"`
-	Compute           EnvironmentCompute        `json:"compute,omitempty"`
+	ProvisioningState ProvisioningStates `json:"provisioningState,omitempty"`
+	Compute           EnvironmentCompute `json:"compute,omitempty"`
 }
 
 // EnvironmentCompute represents the compute resource of Environment.
