@@ -30,14 +30,14 @@ func AddRoutes(db db.RadrpDB, jobEngine deployment.DeploymentProcessor, router *
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 	router.Path(h.pathBase+"/subscriptions/{subscriptionID}").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
-		Methods(http.MethodPut).HandlerFunc(h.CreateOrUpdateSubscription)
+		Methods(http.MethodPut).HandlerFunc(h.createOrUpdateSubscription)
 
 	// Tenant level API routes.
 	tenantLevelPath := h.pathBase + "/providers/applications.core"
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 	router.Path(tenantLevelPath+"/operations").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
-		Methods(http.MethodGet).HandlerFunc(h.GetOperations)
+		Methods(http.MethodGet).HandlerFunc(h.getOperations)
 
 	// Resource Group level API routes.
 	resourceGroupLevelPath := h.pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
@@ -45,5 +45,5 @@ func AddRoutes(db db.RadrpDB, jobEngine deployment.DeploymentProcessor, router *
 	// Adds environment resource type routes
 	environmentRTSubrouter := router.Path(resourceGroupLevelPath+"/environments/{environment}").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-	environmentRTSubrouter.Methods(http.MethodGet).HandlerFunc(h.ListEnvironments)
+	environmentRTSubrouter.Methods(http.MethodGet).HandlerFunc(h.createOrUpdateEnvironments)
 }

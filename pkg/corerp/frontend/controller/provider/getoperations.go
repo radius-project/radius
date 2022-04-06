@@ -11,14 +11,26 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
 
-var _ ctrl.ControllerInterface = &GetOperations{}
+var _ ctrl.ControllerInterface = (*GetOperations)(nil)
 
 // GetOperations implements the resource types and APIs of Applications.Core resource provider.
 type GetOperations struct {
 	ctrl.BaseController
+}
+
+// NewGetOperations creates a new GetOperations.
+func NewGetOperations(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (*GetOperations, error) {
+	return &GetOperations{
+		BaseController: ctrl.BaseController{
+			DBProvider: db,
+			JobEngine:  jobEngine,
+		},
+	}, nil
 }
 
 // Run returns the list of available operations/permission for the resource provider at tenant level.

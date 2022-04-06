@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 
-	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -42,17 +41,16 @@ type handler struct {
 	pathBase string
 }
 
-func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {
+func (h *handler) getOperations(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 
-	action := &provider_ctrl.GetOperations{
-		BaseController: ctrl.BaseController{
-			DBProvider: h.db,
-			JobEngine:  h.jobEngine,
-		},
+	op, err := provider_ctrl.NewGetOperations(h.db, h.jobEngine)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
 	}
 
-	response, err := action.Run(ctx, req)
+	response, err := op.Run(ctx, req)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -65,16 +63,15 @@ func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) CreateOrUpdateSubscription(w http.ResponseWriter, req *http.Request) {
+func (h *handler) createOrUpdateSubscription(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	action := &provider_ctrl.CreateOrUpdateSubscription{
-		BaseController: ctrl.BaseController{
-			DBProvider: h.db,
-			JobEngine:  h.jobEngine,
-		},
+	op, err := provider_ctrl.NewCreateOrUpdateSubscription(h.db, h.jobEngine)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
 	}
 
-	response, err := action.Run(ctx, req)
+	response, err := op.Run(ctx, req)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -87,7 +84,7 @@ func (h *handler) CreateOrUpdateSubscription(w http.ResponseWriter, req *http.Re
 	}
 }
 
-func (h *handler) ListEnvironments(w http.ResponseWriter, req *http.Request) {
+func (h *handler) createOrUpdateEnvironments(w http.ResponseWriter, req *http.Request) {
 	// TODO: Implement environment resource type list operations
 	ctx := req.Context()
 	log := radlogger.GetLogger(ctx)
