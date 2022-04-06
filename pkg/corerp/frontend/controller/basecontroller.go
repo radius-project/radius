@@ -23,6 +23,6 @@ type BaseController struct {
 
 // ControllerInterface is the interface of each operation controller.
 type ControllerInterface interface {
-	// Run executes operation controller implementation.
+	// Run executes the operation.
 	Run(ctx context.Context, req *http.Request) (rest.Response, error)
 }

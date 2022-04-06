@@ -43,7 +43,12 @@ func AddRoutes(db db.RadrpDB, jobEngine deployment.DeploymentProcessor, router *
 	resourceGroupLevelPath := h.pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
 
 	// Adds environment resource type routes
-	environmentRTSubrouter := router.Path(resourceGroupLevelPath+"/environments/{environment}").
+	envRTSubrouter := router.PathPrefix(resourceGroupLevelPath+"/environments").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-	environmentRTSubrouter.Methods(http.MethodGet).HandlerFunc(h.createOrUpdateEnvironments)
+	envRTSubrouter.Path("/").Methods(http.MethodGet).HandlerFunc(h.listEnvironments)
+	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
+	envResourceRouter.Methods(http.MethodGet).HandlerFunc(h.getEnvironment)
+	envResourceRouter.Methods(http.MethodPut).HandlerFunc(h.createOrUpdateEnvironment)
+	envResourceRouter.Methods(http.MethodPatch).HandlerFunc(h.createOrUpdateEnvironment)
+	envResourceRouter.Methods(http.MethodDelete).HandlerFunc(h.deleteEnvironment)
 }

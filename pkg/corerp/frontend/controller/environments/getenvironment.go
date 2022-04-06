@@ -15,16 +15,16 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
 
-var _ ctrl.ControllerInterface = (*CreateOrUpdateEnvironments)(nil)
+var _ ctrl.ControllerInterface = (*GetEnvironment)(nil)
 
-// CreateOrUpdateEnvironments implements the resource types and APIs of Applications.Core resource provider.
-type CreateOrUpdateEnvironments struct {
+// GetEnvironment implements the resource types and APIs of Applications.Core resource provider.
+type GetEnvironment struct {
 	ctrl.BaseController
 }
 
-// NewCreateOrUpdateEnvironments creates a new CreateOrUpdateEnvironments.
-func NewCreateOrUpdateEnvironments(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (*CreateOrUpdateEnvironments, error) {
-	return &CreateOrUpdateEnvironments{
+// NewGetEnvironment creates a new GetEnvironment.
+func NewGetEnvironment(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (*GetEnvironment, error) {
+	return &GetEnvironment{
 		BaseController: ctrl.BaseController{
 			DBProvider: db,
 			JobEngine:  jobEngine,
@@ -32,13 +32,13 @@ func NewCreateOrUpdateEnvironments(db db.RadrpDB, jobEngine deployment.Deploymen
 	}, nil
 }
 
-func (e *CreateOrUpdateEnvironments) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *GetEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	e.Validate(ctx, req)
 
 	// TODO: WIP
 	return rest.NewOKResponse("ok"), nil
 }
 
-func (e *CreateOrUpdateEnvironments) Validate(ctx context.Context, req *http.Request) error {
+func (e *GetEnvironment) Validate(ctx context.Context, req *http.Request) error {
 	return nil
 }

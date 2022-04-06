@@ -7,12 +7,10 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
 	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
@@ -40,6 +38,8 @@ type handler struct {
 
 	pathBase string
 }
+
+// This includes ARM RPC provider specific handlers.
 
 func (h *handler) getOperations(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
@@ -76,22 +76,11 @@ func (h *handler) createOrUpdateSubscription(w http.ResponseWriter, req *http.Re
 		internalServerError(ctx, w, req, err)
 		return
 	}
-
 	err = response.Apply(ctx, w, req)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
 	}
-}
-
-func (h *handler) createOrUpdateEnvironments(w http.ResponseWriter, req *http.Request) {
-	// TODO: Implement environment resource type list operations
-	ctx := req.Context()
-	log := radlogger.GetLogger(ctx)
-	rpcCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	log.Info(fmt.Sprintf("api-version: %s", rpcCtx.APIVersion))
-
-	internalServerError(ctx, w, req, errors.New("Not implemented"))
 }
 
 // Responds with an HTTP 500
