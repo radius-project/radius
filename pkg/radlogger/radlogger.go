@@ -49,7 +49,7 @@ const (
 const (
 	LoggerProfileProd    = "production"
 	LoggerProfileDev     = "development"
-	DefaultLoggerProfile = LoggerProfileDev
+	DefaultLoggerProfile = LoggerProfileProd
 )
 
 func InitRadLoggerConfig() (*zap.Logger, error) {
@@ -58,7 +58,7 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
 	profile := os.Getenv(RadLogProfile)
 	if profile == "" {
-		profile = DefaultLoggerProfile
+		profile = RadLogProfile
 	}
 	if strings.EqualFold(profile, LoggerProfileDev) {
 		cfg = zap.NewDevelopmentConfig()
