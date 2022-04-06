@@ -49,7 +49,7 @@ const (
 const (
 	LoggerProfileProd    = "production"
 	LoggerProfileDev     = "development"
-	DefaultLoggerProfile = LoggerProfileProd
+	DefaultLoggerProfile = LoggerProfileDev
 )
 
 func InitRadLoggerConfig() (*zap.Logger, error) {
