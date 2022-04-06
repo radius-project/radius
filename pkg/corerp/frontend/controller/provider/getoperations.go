@@ -3,36 +3,27 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package controllers
+package provider
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
+	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
 
-// AppCoreController implements the resource types and APIs of Applications.Core resource provider.
-type AppCoreController struct {
-	BaseController
+var _ ctrl.ControllerInterface = &GetOperations{}
+
+// GetOperations implements the resource types and APIs of Applications.Core resource provider.
+type GetOperations struct {
+	ctrl.BaseController
 }
 
-func NewAppCoreController(db db.RadrpDB, deploy deployment.DeploymentProcessor, completions chan<- struct{}, scheme string) *AppCoreController {
-	return &AppCoreController{
-		BaseController: BaseController{
-			db:          db,
-			deploy:      deploy,
-			completions: completions,
-			scheme:      scheme,
-		},
-	}
-}
-
-// GetOperations returns the list of available operations/permission for the resource provider at tenant level.
+// Run returns the list of available operations/permission for the resource provider at tenant level.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-func (ctrl *AppCoreController) GetOperations(ctx context.Context) (rest.Response, error) {
+func (a *GetOperations) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	ops := &armrpcv1.OperationList{
 		Value: []armrpcv1.Operation{
 			{

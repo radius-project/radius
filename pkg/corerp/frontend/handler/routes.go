@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
 )
@@ -20,15 +19,11 @@ const (
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
 // TODO: Enable api spec validator.
-func AddRoutes(db db.RadrpDB, deploy deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) {
-	providerCtrl := controllers.NewProviderController(db, deploy, nil, "http")
-	appCoreCtrl := controllers.NewAppCoreController(db, deploy, nil, "http")
-
+func AddRoutes(db db.RadrpDB, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) {
 	h := handler{
-		providerCtrl:     providerCtrl,
-		appCoreCtrl:      appCoreCtrl,
-		validatorFactory: validatorFactory,
-		pathBase:         pathBase,
+		db:        db,
+		jobEngine: jobEngine,
+		pathBase:  pathBase,
 	}
 
 	// Provider system notification.

@@ -3,22 +3,24 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package controllers
+package controller
 
 import (
+	"context"
+	"net/http"
+
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
+	"github.com/project-radius/radius/pkg/radrp/rest"
 )
 
 // BaseController is the base controller for api controller.
 type BaseController struct {
-	db     db.RadrpDB
-	deploy deployment.DeploymentProcessor
+	DBProvider db.RadrpDB
+	JobEngine  deployment.DeploymentProcessor
+}
 
-	// completions is used to signal the completion of asynchronous processing. This is use for tests
-	// So we can avoid panics happening when the test is finished.
-	//
-	// DO NOT use this to implement product functionality, this is a hook for testing.
-	completions chan<- struct{}
-	scheme      string
+// ControllerInterface is the interface of each operation controller.
+type ControllerInterface interface {
+	Run(ctx context.Context, req *http.Request) (rest.Response, error)
 }

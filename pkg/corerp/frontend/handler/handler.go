@@ -11,10 +11,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
+	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
 
@@ -33,16 +36,23 @@ import (
 // within the RP or a bug.
 
 type handler struct {
-	providerCtrl *controllers.ProviderController
-	appCoreCtrl  *controllers.AppCoreController
+	db        db.RadrpDB
+	jobEngine deployment.DeploymentProcessor
 
-	validatorFactory ValidatorFactory
-	pathBase         string
+	pathBase string
 }
 
 func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.appCoreCtrl.GetOperations(ctx)
+
+	action := &provider_ctrl.GetOperations{
+		BaseController: ctrl.BaseController{
+			DBProvider: h.db,
+			JobEngine:  h.jobEngine,
+		},
+	}
+
+	response, err := action.Run(ctx, req)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -57,7 +67,14 @@ func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) CreateOrUpdateSubscription(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.providerCtrl.CreateOrUpdateSubscription(ctx)
+	action := &provider_ctrl.CreateOrUpdateSubscription{
+		BaseController: ctrl.BaseController{
+			DBProvider: h.db,
+			JobEngine:  h.jobEngine,
+		},
+	}
+
+	response, err := action.Run(ctx, req)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
