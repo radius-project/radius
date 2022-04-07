@@ -36,7 +36,7 @@ type ErrorResponse struct {
 type ErrorDetails struct {
 	Code           string                `json:"code"`
 	Message        string                `json:"message"`
-	Target         string                `json:"target"`
+	Target         string                `json:"target,omitempty"`
 	AdditionalInfo []ErrorAdditionalInfo `json:"additionalInfo,omitempty"`
 	Details        []ErrorDetails        `json:"details,omitempty"`
 }
