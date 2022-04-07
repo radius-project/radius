@@ -98,11 +98,6 @@ stages:
         dist/rad env install kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-rp --tag ${{ variables.REL_VERSION }}
       displayName: rad env install kubernetes
     - script: |
-        kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
-        sleep 1m
-        kubectl wait --for=condition=ready pod -l app=radius-rp -n radius-system --timeout 5m
-      displayName: Wait for control-plane ready
-    - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         cd $(Build.SourcesDirectory)
         which rad || { echo "cannot find rad"; exit 1; }
@@ -158,11 +153,6 @@ stages:
               --chart ${{ variables.RADIUS_CHART_LOCATION }}  \
               --image ${{ variables.DOCKER_REGISTRY }}/radius-rp \
               --tag ${{ variables.REL_VERSION }}
-    - script: |
-        kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
-        sleep 1m
-        kubectl wait --for=condition=ready pod -l app=radius-rp -n radius-system --timeout 5m
-      displayName: Wait for control-plane ready
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         cd $(Build.SourcesDirectory)

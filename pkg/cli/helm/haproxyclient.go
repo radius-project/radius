@@ -21,7 +21,8 @@ import (
 const (
 	haproxyReleaseName = "haproxy-ingress"
 	haproxyHelmRepo    = "https://haproxy-ingress.github.io/charts"
-	timeout            = time.Duration(300) * time.Second
+	installTimeout     = time.Duration(600) * time.Second
+	uninstallTimeout   = time.Duration(300) * time.Second
 )
 
 type HAProxyOptions struct {
@@ -98,7 +99,7 @@ func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = haproxyReleaseName
 	installClient.Namespace = RadiusSystemNamespace
-	installClient.Timeout = timeout
+	installClient.Timeout = installTimeout
 	installClient.Wait = true
 	_, err := installClient.Run(helmChart, helmChart.Values)
 	return err
@@ -107,7 +108,7 @@ func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 func RunHAProxyHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling HAProxy Ingress from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
-	uninstallClient.Timeout = timeout
+	uninstallClient.Timeout = uninstallTimeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(haproxyReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {

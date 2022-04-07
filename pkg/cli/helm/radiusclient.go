@@ -97,7 +97,7 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	installClient.ReleaseName = radiusReleaseName
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.Wait = true
-	installClient.Timeout = timeout
+	installClient.Timeout = installTimeout
 	_, err := installClient.Run(helmChart, helmChart.Values)
 	return err
 }
@@ -207,7 +207,7 @@ func addAzureProviderValues(helmChart *chart.Chart, azureProvider *azure.Provide
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Radius from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
-	uninstallClient.Timeout = timeout
+	uninstallClient.Timeout = uninstallTimeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(radiusReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
