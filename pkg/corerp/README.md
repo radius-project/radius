@@ -7,10 +7,10 @@
 1. **/pkg/corerp/api**: API version specific models
 2. **/pkg/corerp/datamodel**: API version agnostic models which is used for implmenting operation controller and storing resource metadata.
 3. **/pkg/corerp/frontend/controller**: Per-operation controller implementations.
-4. **/pkg/corerp/frontend/handler**: HTTP handler and routers.
-5. **/pkg/corerp/frontend/middleware**: HTTP middleware.
-6. **/pkg/corerp/frontend/hostingoptions**: The hosting options for service.
-7. **/pkg/corerp/frontend/servicecontext**: The service context extracted from ARM proxy request header 
+4. **/pkg/corerp/frontend/handler**: HTTP server handler and routers.
+5. **/pkg/corerp/frontend/middleware**: HTTP server middleware.
+6. **/pkg/corerp/frontend/hostingoptions**: Hosting options for resource provider service.
+7. **/pkg/corerp/frontend/servicecontext**: Service context extracted from ARM proxy request header.
 
 ## Add new resource type and its controller
 
