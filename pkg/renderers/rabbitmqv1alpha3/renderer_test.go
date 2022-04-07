@@ -30,7 +30,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Azure_Render_User_Secrets(t *testing.T) {
+func Test_Render_User_Secrets(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 

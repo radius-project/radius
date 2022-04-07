@@ -122,7 +122,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 		{
 			ResourceType: redisv1alpha3.ResourceType,
-			Renderer:     &redisv1alpha3.AzureRenderer{},
+			Renderer:     &redisv1alpha3.Renderer{},
 		},
 		{
 			ResourceType: rabbitmqv1alpha3.ResourceType,
