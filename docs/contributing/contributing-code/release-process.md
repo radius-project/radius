@@ -23,8 +23,8 @@ Do not start the release until the following scenarios are validated:
 
 | OS | WebApp Tutorial | Dapr Tutorial | eShop Sample | Container Apps Sample |
 |:--:|:---------------:|:-------------:|:------------:|:---------------------:|
-| Windows local | ✅ | ✅ | ✅ | ✅ |
 | macOS local   | ✅ | ✅ | ✅ | ✅ |
+| Windows local | ✅ | ✅ | - | ✅ |
 | Kubernetes    | ✅ | ✅ | ✅ | ✅ |
 | Azure         | ✅ | ✅ | ✅ | ✅ |
 
