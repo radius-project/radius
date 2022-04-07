@@ -98,6 +98,11 @@ stages:
         dist/rad env install kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-rp --tag ${{ variables.REL_VERSION }}
       displayName: rad env install kubernetes
     - script: |
+        kubectl get pods -n radius-system
+        kubectl describe pods -n radius-system
+      condition: always()
+      continueOnError: 'true'
+    - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         cd $(Build.SourcesDirectory)
         which rad || { echo "cannot find rad"; exit 1; }
