@@ -6,10 +6,18 @@
 package daprpubsubv1alpha3
 
 import (
-	"github.com/project-radius/radius/pkg/azure/radclient"
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/renderers"
-	"github.com/project-radius/radius/pkg/renderers/dapr"
+	"github.com/project-radius/radius/pkg/resourcekinds"
 )
+
+var _ renderers.Renderer = (*Renderer)(nil)
+
+type PubSubFunc = func(renderers.RendererResource) (renderers.RendererOutput, error)
 
 const (
 	appName           = "test-app"
@@ -20,28 +28,42 @@ const (
 	k8sKind           = "Component"
 )
 
-func GetDaprPubSubGeneric(resource renderers.RendererResource) (renderers.RendererOutput, error) {
-	properties := radclient.DaprPubSubTopicGenericResourceProperties{}
-	err := resource.ConvertDefinition(&properties)
-	if err != nil {
-		return renderers.RendererOutput{}, err
+// SupportedAzurePubSubKindValues is a map of supported resource kinds for Azure and the associated renderer
+var SupportedPubSubKindValues = map[string]PubSubFunc{
+	resourcekinds.DaprPubSubTopicAzureServiceBus: GetDaprPubSubAzureServiceBus,
+	resourcekinds.DaprGeneric:                    GetDaprPubSubGeneric,
+}
+
+type Renderer struct {
+	PubSubs map[string]PubSubFunc
+}
+
+type Properties struct {
+	Kind     string `json:"kind"`
+	Resource string `json:"resource"`
+}
+
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	return nil, nil, nil
+}
+
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	resource := options.Resource
+
+	if _, ok := resource.Definition["kind"]; !ok {
+		return renderers.RendererOutput{}, errors.New("Resource kind not specified for Dapr Pub/Sub component")
 	}
 
-	daprGeneric := dapr.DaprGeneric{
-		Type:     properties.Type,
-		Version:  properties.Version,
-		Metadata: properties.Metadata,
+	kind := resource.Definition["kind"].(string)
+
+	if r.PubSubs == nil {
+		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
 
-	outputResources, err := dapr.GetDaprGeneric(daprGeneric, resource)
-	if err != nil {
-		return renderers.RendererOutput{}, err
+	pubSubFunc, ok := r.PubSubs[kind]
+	if !ok {
+		return renderers.RendererOutput{}, fmt.Errorf("Renderer not found for kind: %s", kind)
 	}
 
-	return renderers.RendererOutput{
-		Resources:      outputResources,
-		ComputedValues: nil,
-		SecretValues:   nil,
-	}, nil
-
+	return pubSubFunc(resource)
 }

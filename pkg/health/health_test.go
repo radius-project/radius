@@ -16,7 +16,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/health/handlers"
 	"github.com/project-radius/radius/pkg/health/model"
-	"github.com/project-radius/radius/pkg/health/model/azure"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -143,7 +142,7 @@ func Test_RegisterResourceWithResourceKindNotImplemented(t *testing.T) {
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(nil, getKubernetesClient(), &sync.WaitGroup{}),
+		HealthModel:                 model.NewApplicationHealthModel(nil, getKubernetesClient(), &sync.WaitGroup{}),
 	}
 	monitor := NewMonitor(options)
 	ctx := logr.NewContext(context.Background(), logger)
@@ -176,7 +175,7 @@ func Test_UnregisterResourceStopsResourceHealthMonitoring(t *testing.T) {
 	options := MonitorOptions{
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
-		HealthModel:                 azure.NewAzureHealthModel(nil, getKubernetesClient(), &sync.WaitGroup{}),
+		HealthModel:                 model.NewApplicationHealthModel(nil, getKubernetesClient(), &sync.WaitGroup{}),
 	}
 	monitor := NewMonitor(options)
 	stopCh := make(chan struct{}, 1)
@@ -437,7 +436,7 @@ func Test_NoAzureCredentials_RegisterAzureResourceReturnsNoHandler(t *testing.T)
 		Logger:                      logger,
 		ResourceRegistrationChannel: rrc,
 		HealthProbeChannel:          hrpc,
-		HealthModel:                 azure.NewAzureHealthModel(nil, getKubernetesClient(), &sync.WaitGroup{}),
+		HealthModel:                 model.NewApplicationHealthModel(nil, getKubernetesClient(), &sync.WaitGroup{}),
 	}
 	monitor := NewMonitor(options)
 	ctx := logr.NewContext(context.Background(), logger)

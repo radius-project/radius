@@ -23,16 +23,16 @@ var cosmosAccountDependency outputresource.Dependency = outputresource.Dependenc
 	LocalID: outputresource.LocalIDAzureCosmosAccount,
 }
 
-var _ renderers.Renderer = (*AzureRenderer)(nil)
+var _ renderers.Renderer = (*Renderer)(nil)
 
-type AzureRenderer struct {
+type Renderer struct {
 }
 
-func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	return nil, nil, nil
 }
 
-func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := radclient.MongoDBResourceProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
@@ -42,15 +42,18 @@ func (r AzureRenderer) Render(ctx context.Context, options renderers.RenderOptio
 
 	resources := []outputresource.OutputResource{}
 
-	results, err := RenderResource(resource.ResourceName, properties)
-	if err != nil {
-		return renderers.RendererOutput{}, err
+	if properties.Resource == nil || *properties.Resource == "" {
+		// No resource specified
+		resources = []outputresource.OutputResource{}
+	} else {
+		results, err := RenderResource(resource.ResourceName, properties)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+
+		resources = append(resources, results...)
 	}
-
-	resources = append(resources, results...)
-
 	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
-
 	return renderers.RendererOutput{
 		Resources:      resources,
 		ComputedValues: computedValues,
@@ -67,7 +70,8 @@ func RenderResource(name string, properties radclient.MongoDBResourceProperties)
 		return nil, nil
 	}
 	if properties.Resource == nil || *properties.Resource == "" {
-		return nil, renderers.ErrResourceMissingForResource
+		// No resource specified
+		return []outputresource.OutputResource{}, nil
 	}
 
 	databaseID, err := renderers.ValidateResourceID(*properties.Resource, CosmosMongoResourceType, "CosmosDB Mongo Database")
