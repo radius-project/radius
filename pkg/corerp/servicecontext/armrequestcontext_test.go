@@ -19,7 +19,7 @@ func TestFromARMRequest(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
 
-	serviceCtx, err := FromARMRequest(req, "")
+	serviceCtx, _ := FromARMRequest(req, "")
 	require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
 	require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
 	require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
@@ -34,7 +34,7 @@ func TestFromARMRequest(t *testing.T) {
 func TestSystemData(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
-	serviceCtx, err := FromARMRequest(req, "")
+	serviceCtx, _ := FromARMRequest(req, "")
 
 	sysData := serviceCtx.SystemData()
 	require.NotNil(t, sysData)
