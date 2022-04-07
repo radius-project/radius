@@ -17,7 +17,7 @@ import (
 
 var _ ctrl.ControllerInterface = (*GetEnvironment)(nil)
 
-// GetEnvironment implements the resource types and APIs of Applications.Core resource provider.
+// GetEnvironment is the controller implementation to get the environments resource.
 type GetEnvironment struct {
 	ctrl.BaseController
 }

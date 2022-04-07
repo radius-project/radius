@@ -17,7 +17,7 @@ import (
 
 var _ ctrl.ControllerInterface = (*CreateOrUpdateSubscription)(nil)
 
-// CreateOrUpdateSubscription implements the system level apis.
+// CreateOrUpdateSubscription is the controller implementation to manage arm subscription lifecycle.
 type CreateOrUpdateSubscription struct {
 	ctrl.BaseController
 }

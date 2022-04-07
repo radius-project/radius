@@ -17,7 +17,7 @@ import (
 
 var _ ctrl.ControllerInterface = (*DeleteEnvironment)(nil)
 
-// DeleteEnvironment implements the resource types and APIs of Applications.Core resource provider.
+// DeleteEnvironment is the controller implementation to delete environment resource.
 type DeleteEnvironment struct {
 	ctrl.BaseController
 }

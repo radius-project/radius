@@ -20,7 +20,7 @@ import (
 
 var _ ctrl.ControllerInterface = (*GetOperations)(nil)
 
-// GetOperations implements the resource types and APIs of Applications.Core resource provider.
+// GetOperations is the controller implementation to get arm rpc available operations.
 type GetOperations struct {
 	ctrl.BaseController
 }

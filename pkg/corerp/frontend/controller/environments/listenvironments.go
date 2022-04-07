@@ -18,7 +18,7 @@ import (
 
 var _ ctrl.ControllerInterface = (*ListEnvironments)(nil)
 
-// ListEnvironments implements the resource types and APIs of Applications.Core resource provider.
+// ListEnvironments is the controller implementation to get the list of environments resources in resource group.
 type ListEnvironments struct {
 	ctrl.BaseController
 }
