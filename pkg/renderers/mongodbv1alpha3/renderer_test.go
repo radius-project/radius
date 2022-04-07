@@ -7,7 +7,6 @@ package mongodbv1alpha3
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
@@ -136,7 +135,6 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 	rendererOutput, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.NoError(t, err)
 	require.Equal(t, 0, len(rendererOutput.Resources))
-	fmt.Println(rendererOutput)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {

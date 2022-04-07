@@ -42,8 +42,6 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 
 	resources := []outputresource.OutputResource{}
 
-	secretValues := map[string]renderers.SecretValueReference{}
-	computedValues := map[string]renderers.ComputedValueReference{}
 	if properties.Resource == nil || *properties.Resource == "" {
 		// No resource specified
 		resources = []outputresource.OutputResource{}
@@ -55,7 +53,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 
 		resources = append(resources, results...)
 	}
-	computedValues, secretValues = MakeSecretsAndValues(resource.ResourceName, properties)
+	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
 	return renderers.RendererOutput{
 		Resources:      resources,
 		ComputedValues: computedValues,

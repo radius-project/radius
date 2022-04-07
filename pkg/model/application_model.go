@@ -143,7 +143,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			// Azure
 			{
 				ResourceType: volumev1alpha3.ResourceType,
-				Renderer:     &volumev1alpha3.AzureRenderer{VolumeRenderers: volumev1alpha3.GetSupportedRenderers(), Arm: arm},
+				Renderer:     &volumev1alpha3.Renderer{VolumeRenderers: volumev1alpha3.GetSupportedRenderers(), Arm: arm},
 			},
 		}
 
