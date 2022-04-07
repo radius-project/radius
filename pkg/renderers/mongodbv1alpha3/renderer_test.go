@@ -7,6 +7,7 @@ package mongodbv1alpha3
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
@@ -36,9 +37,9 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Azure_Render_Success(t *testing.T) {
+func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -87,9 +88,9 @@ func Test_Azure_Render_Success(t *testing.T) {
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
 }
 
-func Test_Azure_Render_UserSpecifiedSecrets(t *testing.T) {
+func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -121,9 +122,9 @@ func Test_Azure_Render_UserSpecifiedSecrets(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_Azure_Render_MissingResource(t *testing.T) {
+func Test_Render_NoResourceSpecified(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -132,14 +133,15 @@ func Test_Azure_Render_MissingResource(t *testing.T) {
 		Definition:      map[string]interface{}{},
 	}
 
-	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
-	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
+	rendererOutput, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	require.NoError(t, err)
+	require.Equal(t, 0, len(rendererOutput.Resources))
+	fmt.Println(rendererOutput)
 }
 
-func Test_Azure_Render_InvalidResourceType(t *testing.T) {
+func Test_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,

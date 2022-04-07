@@ -118,7 +118,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 		{
 			ResourceType: mongodbv1alpha3.ResourceType,
-			Renderer:     &mongodbv1alpha3.AzureRenderer{},
+			Renderer:     &mongodbv1alpha3.Renderer{},
 		},
 		{
 			ResourceType: redisv1alpha3.ResourceType,
