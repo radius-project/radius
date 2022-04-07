@@ -126,7 +126,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 		{
 			ResourceType: rabbitmqv1alpha3.ResourceType,
-			Renderer:     &rabbitmqv1alpha3.AzureRenderer{},
+			Renderer:     &rabbitmqv1alpha3.Renderer{},
 		},
 		{
 			ResourceType: gateway.ResourceType,

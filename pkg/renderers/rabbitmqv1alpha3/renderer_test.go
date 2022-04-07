@@ -6,9 +6,12 @@
 package rabbitmqv1alpha3
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/stretchr/testify/require"
 )
@@ -18,9 +21,18 @@ const (
 	resourceName    = "test-rabbitmq"
 )
 
+func createContext(t *testing.T) context.Context {
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
+}
+
 func Test_Azure_Render_User_Secrets(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
