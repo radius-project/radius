@@ -6,6 +6,7 @@
 package converter
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/project-radius/radius/pkg/corerp/api"
@@ -29,10 +30,14 @@ func EnvironmentDataModelToVersioned(model *datamodel.Environment, version strin
 }
 
 // EnvironmentDataModelToVersioned converts versioned environment model to datamodel.
-func EnvironmentDataModelFromVersioned(model api.VersionedModelInterface, version string) (*datamodel.Environment, error) {
+func EnvironmentDataModelFromVersioned(content []byte, version string) (*datamodel.Environment, error) {
 	switch version {
 	case v20220315.Version:
-		dm, err := model.(*v20220315.Environment).ConvertTo()
+		am := &v20220315.Environment{}
+		if err := json.Unmarshal(content, am); err != nil {
+			return nil, err
+		}
+		dm, err := am.ConvertTo()
 		return dm.(*datamodel.Environment), err
 
 	default:

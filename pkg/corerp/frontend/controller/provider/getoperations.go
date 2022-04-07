@@ -48,10 +48,10 @@ func (a *GetOperations) Run(ctx context.Context, req *http.Request) (rest.Respon
 	return rest.NewNotFoundAPIVersionResponse("operations", "Applications.Core", sCtx.APIVersion), nil
 }
 
-func (a *GetOperations) availableOperationsV1() *armrpcv1.OperationList {
-	return &armrpcv1.OperationList{
-		Value: []armrpcv1.Operation{
-			{
+func (a *GetOperations) availableOperationsV1() *armrpcv1.PaginatedList {
+	return &armrpcv1.PaginatedList{
+		Value: []interface{}{
+			&armrpcv1.Operation{
 				Name: "Applications.Core/operations/read",
 				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
@@ -61,7 +61,7 @@ func (a *GetOperations) availableOperationsV1() *armrpcv1.OperationList {
 				},
 				IsDataAction: false,
 			},
-			{
+			&armrpcv1.Operation{
 				Name: "Applications.Core/environments/read",
 				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
@@ -71,7 +71,7 @@ func (a *GetOperations) availableOperationsV1() *armrpcv1.OperationList {
 				},
 				IsDataAction: false,
 			},
-			{
+			&armrpcv1.Operation{
 				Name: "Applications.Core/environments/write",
 				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
@@ -81,7 +81,7 @@ func (a *GetOperations) availableOperationsV1() *armrpcv1.OperationList {
 				},
 				IsDataAction: false,
 			},
-			{
+			&armrpcv1.Operation{
 				Name: "Applications.Core/environments/delete",
 				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
@@ -91,7 +91,7 @@ func (a *GetOperations) availableOperationsV1() *armrpcv1.OperationList {
 				},
 				IsDataAction: false,
 			},
-			{
+			&armrpcv1.Operation{
 				Name: "Applications.Core/environments/join/action",
 				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
@@ -101,7 +101,7 @@ func (a *GetOperations) availableOperationsV1() *armrpcv1.OperationList {
 				},
 				IsDataAction: false,
 			},
-			{
+			&armrpcv1.Operation{
 				Name: "Applications.Core/register/action",
 				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
@@ -111,7 +111,7 @@ func (a *GetOperations) availableOperationsV1() *armrpcv1.OperationList {
 				},
 				IsDataAction: false,
 			},
-			{
+			&armrpcv1.Operation{
 				Name: "Applications.Core/unregister/action",
 				Display: &armrpcv1.OperationDisplayProperties{
 					Provider:    "Applications.Core",
