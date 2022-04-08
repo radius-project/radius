@@ -58,14 +58,14 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
 	profile := os.Getenv(RadLogProfile)
 	if profile == "" {
-		profile = DefaultLoggerProfile
+		profile = LoggerProfileProd
 	}
 	if strings.EqualFold(profile, LoggerProfileDev) {
 		cfg = zap.NewDevelopmentConfig()
 	} else if strings.EqualFold(profile, LoggerProfileProd) {
 		cfg = zap.NewProductionConfig()
 	} else {
-		return nil, fmt.Errorf("Invalid Radius Logger Profile set. Valid options are: %s, %s", LoggerProfileDev, LoggerProfileProd)
+		return nil, fmt.Errorf("invalid Radius Logger Profile set. Valid options are: %s, %s", LoggerProfileDev, LoggerProfileProd)
 	}
 
 	// Modify the default log level intialized by the profile preset if a custom value
@@ -84,7 +84,7 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	// Build the logger config based on profile and custom presets
 	logger, err := cfg.Build()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to initialize zap logger: %v", err)
+		return nil, fmt.Errorf("unable to initialize zap logger: %v", err)
 	}
 
 	return logger, nil
