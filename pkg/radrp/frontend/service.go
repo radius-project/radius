@@ -14,7 +14,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/model"
-	"github.com/project-radius/radius/pkg/model/azure"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/frontend/handler"
@@ -69,7 +68,7 @@ func (s *Service) Run(ctx context.Context) error {
 		arm = s.Options.Arm
 		secretClient = renderers.NewSecretValueClient(*s.Options.Arm)
 	}
-	appmodel, err = azure.NewAzureModel(arm, k8s)
+	appmodel, err = model.NewApplicationModel(arm, k8s)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}

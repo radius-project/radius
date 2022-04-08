@@ -71,16 +71,16 @@ func GetSupportedKinds() []string {
 	return keys
 }
 
-type AzureRenderer struct {
+type Renderer struct {
 	Arm             *armauth.ArmConfig
 	VolumeRenderers map[string]RendererType
 }
 
-func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	return nil, nil, nil
 }
 
-func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := radclient.VolumeProperties{}
 	err := options.Resource.ConvertDefinition(&properties)
 	if err != nil {

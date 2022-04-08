@@ -20,16 +20,16 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-var _ renderers.Renderer = (*AzureRenderer)(nil)
+var _ renderers.Renderer = (*Renderer)(nil)
 
-type AzureRenderer struct {
+type Renderer struct {
 }
 
-func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	return nil, nil, nil
 }
 
-func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := radclient.RedisCacheResourceProperties{}
 	resource := options.Resource
 	err := resource.ConvertDefinition(&properties)
@@ -39,12 +39,14 @@ func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOpti
 
 	outputResources := []outputresource.OutputResource{}
 
-	redisCacheOutputResource, err := RenderResource(resource.ResourceName, properties)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-	if redisCacheOutputResource != nil {
-		outputResources = append(outputResources, *redisCacheOutputResource)
+	if properties.Resource != nil && *properties.Resource != "" {
+		redisCacheOutputResource, err := RenderResource(resource.ResourceName, properties)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		if redisCacheOutputResource != nil {
+			outputResources = append(outputResources, *redisCacheOutputResource)
+		}
 	}
 
 	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)

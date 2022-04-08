@@ -40,7 +40,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 
-	renderer := AzureRenderer{}
+	renderer := Renderer{}
 	result, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.NoError(t, err)
 
