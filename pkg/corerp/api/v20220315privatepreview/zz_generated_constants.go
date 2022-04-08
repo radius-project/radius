@@ -42,7 +42,7 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 type EnvironmentComputeKind string
 
 const (
-	EnvironmentComputeKindKubernetes EnvironmentComputeKind = "Kubernetes"
+	EnvironmentComputeKindKubernetes EnvironmentComputeKind = "kubernetes"
 )
 
 // PossibleEnvironmentComputeKindValues returns the possible values for the EnvironmentComputeKind const type.
