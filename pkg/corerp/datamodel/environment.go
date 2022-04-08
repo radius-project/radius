@@ -21,18 +21,10 @@ const (
 
 // Environment represents Application environment resource.
 type Environment struct {
-	// ID is the fully qualified resource ID for the resource.
-	ID string `json:"id"`
-	// Name is the resource name.
-	Name string `json:"name"`
-	// Type is the resource type.
-	Type string `json:"type"`
-	// Location is the geo-location where resource is located.
-	Location string `json:"location"`
+	TrackedResource
+
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
-	// Tags is the resource tags.
-	Tags armrpcv1.ResourceTags `json:"tags,omitempty"`
 	// Properties is the properties of the resource.
 	Properties EnvironmentProperties `json:"properties"`
 }

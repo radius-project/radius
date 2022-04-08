@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package v20220315
+package v20220315privatepreview
 
 import (
 	"time"
@@ -19,10 +19,13 @@ import (
 func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	converted := &datamodel.Environment{
-		ID:       to.String(src.ID),
-		Name:     to.String(src.Name),
-		Type:     to.String(src.Type),
-		Location: to.String(src.Location),
+		TrackedResource: datamodel.TrackedResource{
+			ID:       to.String(src.ID),
+			Name:     to.String(src.Name),
+			Type:     to.String(src.Type),
+			Location: to.String(src.Location),
+			Tags:     to.StringMap(src.Tags),
+		},
 		Properties: datamodel.EnvironmentProperties{
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Compute: datamodel.EnvironmentCompute{
@@ -42,6 +45,7 @@ func (dst *EnvironmentResource) ConvertFrom(src api.DataModelInterface) error {
 	dst.Type = to.StringPtr(env.Type)
 	dst.SystemData = fromSystemDataModel(env.SystemData)
 	dst.Location = to.StringPtr(env.Location)
+	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.Properties.ProvisioningState),
 		Compute: &EnvironmentCompute{

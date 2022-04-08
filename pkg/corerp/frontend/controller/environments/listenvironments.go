@@ -44,10 +44,12 @@ func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Res
 	// TODO: Get the environment resource from datastorage. now return fake data.
 
 	m := &datamodel.Environment{
-		ID:         rID.ID,
-		Name:       rID.Name(),
-		Type:       rID.Type(),
-		Location:   "West US",
+		TrackedResource: datamodel.TrackedResource{
+			ID:       rID.ID,
+			Name:     rID.Name(),
+			Type:     rID.Type(),
+			Location: "West US",
+		},
 		SystemData: *serviceCtx.SystemData(),
 		Properties: datamodel.EnvironmentProperties{
 			Compute: datamodel.EnvironmentCompute{

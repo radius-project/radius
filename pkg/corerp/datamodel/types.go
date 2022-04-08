@@ -17,3 +17,17 @@ const (
 	ProvisioningStateFailed    ProvisioningStates = "Failed"
 	ProvisioningStateCanceled  ProvisioningStates = "Canceled"
 )
+
+// TrackedResource represents the common tracked resource.
+type TrackedResource struct {
+	// ID is the fully qualified resource ID for the resource.
+	ID string `json:"id"`
+	// Name is the resource name.
+	Name string `json:"name"`
+	// Type is the resource type.
+	Type string `json:"type"`
+	// Location is the geo-location where resource is located.
+	Location string `json:"location"`
+	// Tags is the resource tags.
+	Tags map[string]string `json:"tags,omitempty"`
+}

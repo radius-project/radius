@@ -37,14 +37,16 @@ func NewGetEnvironment(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) 
 
 func (e *GetEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	e.Validate(ctx, req)
 	rID := serviceCtx.ResourceID
+
 	// TODO: Get the environment resource from datastorage. now return fake data.
 	m := &datamodel.Environment{
-		ID:         rID.ID,
-		Name:       rID.Name(),
-		Type:       rID.Type(),
-		Location:   "West US",
+		TrackedResource: datamodel.TrackedResource{
+			ID:       rID.ID,
+			Name:     rID.Name(),
+			Type:     rID.Type(),
+			Location: "West US",
+		},
 		SystemData: *serviceCtx.SystemData(),
 		Properties: datamodel.EnvironmentProperties{
 			Compute: datamodel.EnvironmentCompute{
@@ -56,8 +58,4 @@ func (e *GetEnvironment) Run(ctx context.Context, req *http.Request) (rest.Respo
 
 	versioned, _ := converter.EnvironmentDataModelToVersioned(m, serviceCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
-}
-
-func (e *GetEnvironment) Validate(ctx context.Context, req *http.Request) error {
-	return nil
 }

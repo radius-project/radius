@@ -14,11 +14,11 @@ The following are the settings for this using this API with AutoRest.
 
 ### Input OpenAPI specificiations
 
-#### Tag: v20220315
+#### Tag: 2022-03-15-privatepreview
 
-These settings apply only when `--tag=v20220315` is specified on the command line.
+These settings apply only when `--tag=2022-03-15-privatepreview` is specified on the command line.
 
-```yaml $(tag) == 'v20220315'
+```yaml $(tag) == '2022-03-15-privatepreview'
 input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environments.json
 ```
@@ -35,10 +35,10 @@ license-header: MICROSOFT_MIT_NO_VERSION
 
 ### Output
 
-#### Tag: v20220315
+#### Tag: 2022-03-15-privatepreview
 
-These settings apply only when `--tag=v20220315` is specified on the command line.
+These settings apply only when `--tag=2022-03-15-privatepreview` is specified on the command line.
 
-```yaml $(tag) == 'v20220315'
-output-folder: ./v20220315
+```yaml $(tag) == '2022-03-15-privatepreview'
+output-folder: ./v20220315privatepreview
 ```
