@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -99,15 +98,7 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
-	var err error
-	for i := 0; i < retries; i++ {
-		_, err = installClient.Run(helmChart, helmChart.Values)
-		if err == nil {
-			return nil
-		}
-		time.Sleep(retryTimeout)
-	}
-	return err
+	return runInstall(installClient, helmChart)
 }
 
 func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string) error {
