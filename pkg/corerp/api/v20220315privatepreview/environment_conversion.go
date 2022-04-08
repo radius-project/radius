@@ -58,9 +58,9 @@ func (dst *EnvironmentResource) ConvertFrom(src api.DataModelInterface) error {
 }
 
 func unmarshalTimeString(ts string) *time.Time {
-	var tt *timeRFC3339
+	var tt timeRFC3339
 	_ = tt.UnmarshalText([]byte(ts))
-	return (*time.Time)(tt)
+	return (*time.Time)(&tt)
 }
 
 func fromSystemDataModel(s armrpcv1.SystemData) *SystemData {
@@ -94,6 +94,10 @@ func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *Environm
 }
 
 func toProvisioningStateDataModel(state *ProvisioningState) datamodel.ProvisioningStates {
+	if state == nil {
+		return datamodel.ProvisioningStateAccepted
+	}
+
 	switch *state {
 	case ProvisioningStateUpdating:
 		return datamodel.ProvisioningStateUpdating
@@ -108,7 +112,7 @@ func toProvisioningStateDataModel(state *ProvisioningState) datamodel.Provisioni
 	case ProvisioningStateCanceled:
 		return datamodel.ProvisioningStateCanceled
 	default:
-		return datamodel.ProvisioningStateNone
+		return datamodel.ProvisioningStateAccepted
 	}
 }
 
@@ -128,7 +132,7 @@ func fromProvisioningStateDataModel(state datamodel.ProvisioningStates) *Provisi
 	case datamodel.ProvisioningStateCanceled:
 		converted = ProvisioningStateCanceled
 	default:
-		converted = ProvisioningStateFailed // should we return error ?
+		converted = ProvisioningStateAccepted // should we return error ?
 	}
 
 	return &converted
