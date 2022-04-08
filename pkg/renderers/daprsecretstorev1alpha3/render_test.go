@@ -39,7 +39,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_UnsupportedKind(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedAzureSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -53,12 +53,12 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedAzureSecretStoreKindValues)), err.Error())
+	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreKindValues)), err.Error())
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -110,7 +110,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -132,7 +132,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 
 func Test_Render_Generic_MissingType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -155,7 +155,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{

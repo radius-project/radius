@@ -19,11 +19,7 @@ import (
 
 type SecretStoreFunc = func(renderers.RendererResource) ([]outputresource.OutputResource, error)
 
-var SupportedAzureSecretStoreKindValues = map[string]SecretStoreFunc{
-	resourcekinds.DaprGeneric: GetDaprSecretStoreGeneric,
-}
-
-var SupportedKubernetesSecretStoreKindValues = map[string]SecretStoreFunc{
+var SupportedSecretStoreKindValues = map[string]SecretStoreFunc{
 	resourcekinds.DaprGeneric: GetDaprSecretStoreGeneric,
 }
 

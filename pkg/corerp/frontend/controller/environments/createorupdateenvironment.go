@@ -21,7 +21,7 @@ import (
 
 var _ ctrl.ControllerInterface = (*CreateOrUpdateEnvironment)(nil)
 
-// CreateOrUpdateEnvironments implements the resource types and APIs of Applications.Core resource provider.
+// CreateOrUpdateEnvironments is the controller implementation to create or update environment resource.
 type CreateOrUpdateEnvironment struct {
 	ctrl.BaseController
 }

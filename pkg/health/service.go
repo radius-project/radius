@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/health/db"
 	"github.com/project-radius/radius/pkg/health/handlers"
-	"github.com/project-radius/radius/pkg/health/model/azure"
+	"github.com/project-radius/radius/pkg/health/model"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/radlogger"
 	client_go "k8s.io/client-go/kubernetes"
@@ -50,7 +50,7 @@ func (s *Service) Run(ctx context.Context) error {
 		// Azure credentials have been provided
 		arm = s.Options.Arm
 	}
-	healthmodel := azure.NewAzureHealthModel(arm, k8s, &sync.WaitGroup{})
+	healthmodel := model.NewApplicationHealthModel(arm, k8s, &sync.WaitGroup{})
 
 	monitorOptions := MonitorOptions{
 		Logger:                      radlogger.GetLogger(ctx),
