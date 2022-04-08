@@ -350,6 +350,8 @@
       }
     },
     "EnvironmentCompute": {
+      "description": "Compute resource used by application environment resource.",
+      "type": "object",
       "properties": {
         "kind": {
           "type": "string",
@@ -358,7 +360,7 @@
             "Kubernetes"
           ],
           "x-ms-enum": {
-            "name": "ProvisioningState",
+            "name": "EnvironmentComputeKind",
             "modelAsString": true
           }
         },
@@ -370,8 +372,7 @@
       "required": [
         "kind",
         "resourceId"
-      ],
-      "description": "Compute resource used by application environment resource."
+      ]
     },
     "EnvironmentResource": {
       "description": "Application environment.",
