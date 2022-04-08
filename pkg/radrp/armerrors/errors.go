@@ -20,6 +20,9 @@ const (
 
 	// Used for Conflict error.
 	Conflict = "Conflict"
+
+	// Used for InvalidResourceType.
+	InvalidResourceType = "InvalidResourceType"
 )
 
 // see : https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#error-response-content
@@ -33,7 +36,7 @@ type ErrorResponse struct {
 type ErrorDetails struct {
 	Code           string                `json:"code"`
 	Message        string                `json:"message"`
-	Target         string                `json:"target"`
+	Target         string                `json:"target,omitempty"`
 	AdditionalInfo []ErrorAdditionalInfo `json:"additionalInfo,omitempty"`
 	Details        []ErrorDetails        `json:"details,omitempty"`
 }

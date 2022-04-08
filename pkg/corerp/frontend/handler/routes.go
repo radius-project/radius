@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
 )
@@ -20,35 +19,36 @@ const (
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
 // TODO: Enable api spec validator.
-func AddRoutes(db db.RadrpDB, deploy deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) {
-	providerCtrl := controllers.NewProviderController(db, deploy, nil, "http")
-	appCoreCtrl := controllers.NewAppCoreController(db, deploy, nil, "http")
-
+func AddRoutes(db db.RadrpDB, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) {
 	h := handler{
-		providerCtrl:     providerCtrl,
-		appCoreCtrl:      appCoreCtrl,
-		validatorFactory: validatorFactory,
-		pathBase:         pathBase,
+		db:        db,
+		jobEngine: jobEngine,
+		pathBase:  pathBase,
 	}
 
 	// Provider system notification.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 	router.Path(h.pathBase+"/subscriptions/{subscriptionID}").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
-		Methods(http.MethodPut).HandlerFunc(h.CreateOrUpdateSubscription)
+		Methods(http.MethodPut).HandlerFunc(h.createOrUpdateSubscription)
 
 	// Tenant level API routes.
 	tenantLevelPath := h.pathBase + "/providers/applications.core"
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 	router.Path(tenantLevelPath+"/operations").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").
-		Methods(http.MethodGet).HandlerFunc(h.GetOperations)
+		Methods(http.MethodGet).HandlerFunc(h.getOperations)
 
 	// Resource Group level API routes.
 	resourceGroupLevelPath := h.pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
 
 	// Adds environment resource type routes
-	environmentRTSubrouter := router.Path(resourceGroupLevelPath+"/environments/{environment}").
+	envRTSubrouter := router.PathPrefix(resourceGroupLevelPath+"/environments").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-	environmentRTSubrouter.Methods(http.MethodGet).HandlerFunc(h.ListEnvironments)
+	envRTSubrouter.Path("/").Methods(http.MethodGet).HandlerFunc(h.listEnvironments)
+	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
+	envResourceRouter.Methods(http.MethodGet).HandlerFunc(h.getEnvironment)
+	envResourceRouter.Methods(http.MethodPut).HandlerFunc(h.createOrUpdateEnvironment)
+	envResourceRouter.Methods(http.MethodPatch).HandlerFunc(h.createOrUpdateEnvironment)
+	envResourceRouter.Methods(http.MethodDelete).HandlerFunc(h.deleteEnvironment)
 }
