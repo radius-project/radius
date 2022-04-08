@@ -41,7 +41,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedAzureStateStoreKindValues}
+	renderer := Renderer{SupportedStateStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -76,7 +76,7 @@ func Test_Render_Success(t *testing.T) {
 
 func Test_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedAzureStateStoreKindValues}
+	renderer := Renderer{SupportedStateStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -96,7 +96,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedAzureStateStoreKindValues}
+	renderer := Renderer{SupportedStateStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -115,7 +115,7 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 
 func Test_Render_UnsupportedKind(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedAzureStateStoreKindValues}
+	renderer := Renderer{SupportedStateStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -129,12 +129,12 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedAzureStateStoreKindValues)), err.Error())
+	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.Error())
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+	renderer := Renderer{SupportedStateStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -186,7 +186,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+	renderer := Renderer{SupportedStateStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -208,7 +208,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 
 func Test_Render_Generic_MissingType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+	renderer := Renderer{SupportedStateStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{
@@ -231,7 +231,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedKubernetesStateStoreKindValues}
+	renderer := Renderer{SupportedStateStoreKindValues}
 
 	dependencies := map[string]renderers.RendererDependency{}
 	resource := renderers.RendererResource{

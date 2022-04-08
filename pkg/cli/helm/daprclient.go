@@ -68,7 +68,8 @@ func runDaprHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) er
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = daprReleaseName
 	installClient.Namespace = RadiusSystemNamespace
-
+	installClient.Timeout = installTimeout
+	installClient.Wait = true
 	_, err := installClient.Run(helmChart, helmChart.Values)
 	return err
 }
@@ -76,7 +77,7 @@ func runDaprHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) er
 func RunDaprHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Dapr from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
-	uninstallClient.Timeout = timeout
+	uninstallClient.Timeout = uninstallTimeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(daprReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {

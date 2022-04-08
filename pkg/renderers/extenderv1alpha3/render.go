@@ -19,17 +19,17 @@ const (
 	ResourceType = "Extender"
 )
 
-var _ renderers.Renderer = (*AzureRenderer)(nil)
+var _ renderers.Renderer = (*Renderer)(nil)
 
-type AzureRenderer struct {
+type Renderer struct {
 	Arm armauth.ArmConfig
 }
 
-func (r *AzureRenderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
 	return nil, nil, nil
 }
 
-func (r *AzureRenderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := radclient.ExtenderProperties{}
 	err := options.Resource.ConvertDefinition(&properties)
 	if err != nil {

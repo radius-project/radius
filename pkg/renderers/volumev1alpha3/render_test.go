@@ -35,7 +35,7 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{
+	renderer := Renderer{
 		VolumeRenderers: map[string]RendererType{
 			PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
 		},
@@ -99,7 +99,7 @@ func Test_Render_Success(t *testing.T) {
 
 func Test_Render_MissingResource(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{
+	renderer := Renderer{
 		VolumeRenderers: map[string]RendererType{
 			PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
 		},
@@ -121,7 +121,7 @@ func Test_Render_MissingResource(t *testing.T) {
 
 func Test_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := AzureRenderer{
+	renderer := Renderer{
 		VolumeRenderers: map[string]RendererType{
 			PersistentVolumeKindAzureFileShare: GetAzureFileShareVolume,
 		},
