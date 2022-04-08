@@ -357,7 +357,7 @@
           "type": "string",
           "description": "Type of compute resource.",
           "enum": [
-            "Kubernetes"
+            "kubernetes"
           ],
           "x-ms-enum": {
             "name": "EnvironmentComputeKind",
