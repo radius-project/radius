@@ -1,9 +1,19 @@
 # API models
 
-## Generate models
-
+## Generate new models
+### Prerequisites
+1. Install [nodejs]()
+2. Install [autorest](http://aka.ms/autorest)
 ```
-autorest README.md --tag=v<api-version>
+npm install autorestßßß
+```
+
+### Add new api-version
+
+1. Add api version tags and openapi file below in this README.md
+2. Run autorest.
+```bash
+autorest README.md --tag=2022-03-15-privatepreview
 ```
 
 ---

@@ -14,7 +14,8 @@
 
 ## Add new resource type and its controller
 
-1. Define api version specific resource type models in [/pkg/corerp/api](api/) - create api-version directory if you need by referring the existing models.
+1. Ensure that you update openapi spec in [/swagger](../../swagger)
+1. Generate resource type models in [/pkg/corerp/api](api/) by following the instruction.
 2. Define api version agnostic datamodel in  [/pkg/corerp/datamodel](datamodel/) and its converters beteen datamodel and api models.
 3. Define routes for new resource type and its operation APIs in [routes.go](frontend/handler/routes.go).
 4. Create resource type directory under `/pkg/frontend/controller/` and related go files by referring to [environments controller](frontend/controller/environments/).
