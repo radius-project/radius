@@ -17,12 +17,12 @@ import (
 
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
+	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	converted := &datamodel.Environment{
-		ID:         to.String(src.ID),
-		Name:       to.String(src.Name),
-		Type:       to.String(src.Type),
-		Location:   to.String(src.Location),
-		SystemData: toSystemDataModel(src.SystemData),
+		ID:       to.String(src.ID),
+		Name:     to.String(src.Name),
+		Type:     to.String(src.Type),
+		Location: to.String(src.Location),
 		Properties: datamodel.EnvironmentProperties{
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Compute: datamodel.EnvironmentCompute{
@@ -53,32 +53,10 @@ func (dst *EnvironmentResource) ConvertFrom(src api.DataModelInterface) error {
 	return nil
 }
 
-func marshalTime(tt *time.Time) string {
-	if tt == nil {
-		return ""
-	}
-	if tstr, err := tt.MarshalText(); err == nil {
-		return string(tstr)
-	} else {
-		return ""
-	}
-}
-
 func unmarshalTimeString(ts string) *time.Time {
 	var tt *timeRFC3339
 	_ = tt.UnmarshalText([]byte(ts))
 	return (*time.Time)(tt)
-}
-
-func toSystemDataModel(s *SystemData) armrpcv1.SystemData {
-	return armrpcv1.SystemData{
-		CreatedBy:          to.String(s.CreatedBy),
-		CreatedByType:      to.String((*string)(s.CreatedByType)),
-		CreatedAt:          marshalTime(s.CreatedAt),
-		LastModifiedBy:     to.String(s.LastModifiedBy),
-		LastModifiedByType: to.String((*string)(s.LastModifiedByType)),
-		LastModifiedAt:     marshalTime(s.LastModifiedAt),
-	}
 }
 
 func fromSystemDataModel(s armrpcv1.SystemData) *SystemData {
