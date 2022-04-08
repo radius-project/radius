@@ -146,12 +146,12 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 // SystemData returns unmarshalled RawSystemMetaData.
 func (rc ARMRequestContext) SystemData() *armrpcv1.SystemData {
 	if rc.RawSystemMetadata == "" {
-		return nil
+		return &armrpcv1.SystemData{}
 	}
 
 	systemDataProp := &armrpcv1.SystemData{}
 	if err := json.Unmarshal([]byte(rc.RawSystemMetadata), systemDataProp); err != nil {
-		return nil
+		return &armrpcv1.SystemData{}
 	}
 
 	return systemDataProp
