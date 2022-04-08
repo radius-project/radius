@@ -70,7 +70,14 @@ func runDaprHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) er
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.Timeout = installTimeout
 	installClient.Wait = true
-	_, err := installClient.Run(helmChart, helmChart.Values)
+
+	var err error
+	for i := 0; i < retries; i++ {
+		_, err = installClient.Run(helmChart, helmChart.Values)
+		if err == nil {
+			return nil
+		}
+	}
 	return err
 }
 

@@ -98,7 +98,13 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
-	_, err := installClient.Run(helmChart, helmChart.Values)
+	var err error
+	for i := 0; i < retries; i++ {
+		_, err = installClient.Run(helmChart, helmChart.Values)
+		if err == nil {
+			return nil
+		}
+	}
 	return err
 }
 

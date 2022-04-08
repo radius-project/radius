@@ -23,6 +23,8 @@ const (
 	haproxyHelmRepo    = "https://haproxy-ingress.github.io/charts"
 	installTimeout     = time.Duration(600) * time.Second
 	uninstallTimeout   = time.Duration(300) * time.Second
+	retryTimeout       = time.Duration(10) * time.Second
+	retries            = 5
 )
 
 type HAProxyOptions struct {
@@ -99,8 +101,13 @@ func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = haproxyReleaseName
 	installClient.Namespace = RadiusSystemNamespace
-
-	_, err := installClient.Run(helmChart, helmChart.Values)
+	var err error
+	for i := 0; i < retries; i++ {
+		_, err = installClient.Run(helmChart, helmChart.Values)
+		if err == nil {
+			return nil
+		}
+	}
 	return err
 }
 
