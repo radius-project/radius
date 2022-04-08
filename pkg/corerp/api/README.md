@@ -1,11 +1,13 @@
 # API models
 
+This directory includes API version specific models from open api specs. The models in this directory is used for serializing/deserializing request and response. [datamodels](../datamodel/) has the converters to convert between version specific models and datamodels. datamodels will be used for internal controller and datastorage.
+
 ## Generate new models
 ### Prerequisites
-1. Install [nodejs]()
+1. Install [nodejs](https://nodejs.org/)
 2. Install [autorest](http://aka.ms/autorest)
 ```
-npm install autorestßßß
+npm install -g autorest
 ```
 
 ### Add new api-version
@@ -15,6 +17,8 @@ npm install autorestßßß
 ```bash
 autorest README.md --tag=2022-03-15-privatepreview
 ```
+3. Create or modify the corresponding datamodels in [datamodel](../datamodel/)
+4. Add the converter between versioned model and datamodel in [converter](../datamodel/converter/)
 
 ---
 
