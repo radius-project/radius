@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
@@ -77,6 +78,7 @@ func runDaprHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) er
 		if err == nil {
 			return nil
 		}
+		time.Sleep(retryTimeout)
 	}
 	return err
 }

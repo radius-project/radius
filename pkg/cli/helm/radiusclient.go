@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -104,6 +105,7 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 		if err == nil {
 			return nil
 		}
+		time.Sleep(retryTimeout)
 	}
 	return err
 }

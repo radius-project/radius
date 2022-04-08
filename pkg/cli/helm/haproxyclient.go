@@ -107,6 +107,7 @@ func runHAProxyHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 		if err == nil {
 			return nil
 		}
+		time.Sleep(retryTimeout)
 	}
 	return err
 }
