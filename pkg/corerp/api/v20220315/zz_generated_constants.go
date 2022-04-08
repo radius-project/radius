@@ -9,7 +9,7 @@
 package v20220315
 
 const (
-	module = "v20220315"
+	module  = "v20220315"
 	version = "v0.0.1"
 )
 
@@ -17,15 +17,15 @@ const (
 type CreatedByType string
 
 const (
-	CreatedByTypeApplication CreatedByType = "Application"
-	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeApplication     CreatedByType = "Application"
+	CreatedByTypeKey             CreatedByType = "Key"
 	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
-	CreatedByTypeUser CreatedByType = "User"
+	CreatedByTypeUser            CreatedByType = "User"
 )
 
 // PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
 func PossibleCreatedByTypeValues() []CreatedByType {
-	return []CreatedByType{	
+	return []CreatedByType{
 		CreatedByTypeApplication,
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
@@ -47,7 +47,7 @@ const (
 
 // PossibleEnvironmentComputeKindValues returns the possible values for the EnvironmentComputeKind const type.
 func PossibleEnvironmentComputeKindValues() []EnvironmentComputeKind {
-	return []EnvironmentComputeKind{	
+	return []EnvironmentComputeKind{
 		EnvironmentComputeKindKubernetes,
 	}
 }
@@ -61,23 +61,23 @@ func (c EnvironmentComputeKind) ToPtr() *EnvironmentComputeKind {
 type ProvisioningState string
 
 const (
-	ProvisioningStateAccepted ProvisioningState = "Accepted"
-	ProvisioningStateCanceled ProvisioningState = "Canceled"
-	ProvisioningStateDeleting ProvisioningState = "Deleting"
-	ProvisioningStateFailed ProvisioningState = "Failed"
-	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	ProvisioningStateAccepted  ProvisioningState = "Accepted"
+	ProvisioningStateCanceled  ProvisioningState = "Canceled"
+	ProvisioningStateDeleting  ProvisioningState = "Deleting"
+	ProvisioningStateFailed    ProvisioningState = "Failed"
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
+	ProvisioningStateUpdating  ProvisioningState = "Updating"
 )
 
 // PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
 func PossibleProvisioningStateValues() []ProvisioningState {
-	return []ProvisioningState{	
+	return []ProvisioningState{
 		ProvisioningStateAccepted,
 		ProvisioningStateCanceled,
 		ProvisioningStateDeleting,
 		ProvisioningStateFailed,
-		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
+		ProvisioningStateUpdating,
 	}
 }
 
@@ -85,4 +85,3 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 func (c ProvisioningState) ToPtr() *ProvisioningState {
 	return &c
 }
-

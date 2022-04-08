@@ -411,7 +411,7 @@
             "Failed",
             "Canceled",
             "Accepted",
-            "Provisioning",
+            "Updating",
             "Deleting"
           ],
           "x-ms-enum": {

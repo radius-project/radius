@@ -1,6 +1,6 @@
 # API models
 
-## Generate Models
+## Generate models
 
 ```
 autorest README.md --tag=v<api-version>
@@ -12,11 +12,11 @@ autorest README.md --tag=v<api-version>
 
 The following are the settings for this using this API with AutoRest.
 
-### OpenAPI Spec
+### Input OpenAPI specificiations
 
-### Input specificiations
+#### Tag: v20220315
 
-#### Tag: v20220315 specification
+These settings apply only when `--tag=v20220315` is specified on the command line.
 
 ```yaml $(tag) == 'v20220315'
 input-file:
@@ -25,7 +25,7 @@ input-file:
 
 ### Common
 
-```yaml
+```yaml $(tag) != ''
 version: 3.*.*
 use: "@autorest/go@4.0.0-preview.29"
 module-version: 0.0.1
@@ -35,7 +35,7 @@ license-header: MICROSOFT_MIT_NO_VERSION
 
 ### Output
 
-#### Tag: v20220315 models
+#### Tag: v20220315
 
 These settings apply only when `--tag=v20220315` is specified on the command line.
 
