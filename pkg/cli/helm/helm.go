@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -97,4 +98,16 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 		return nil, err
 	}
 	return loader.Load(chartPath)
+}
+
+func runInstall(installClient *helm.Install, helmChart *chart.Chart) error {
+	var err error
+	for i := 0; i < retries; i++ {
+		_, err = installClient.Run(helmChart, helmChart.Values)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(retryTimeout)
+	}
+	return err
 }
