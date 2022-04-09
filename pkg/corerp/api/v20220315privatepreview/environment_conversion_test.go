@@ -14,9 +14,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func loadTestData(testfile string) []byte {
+	d, err := ioutil.ReadFile("./testdata/" + testfile)
+	if err != nil {
+		return nil
+	}
+	return d
+}
+
 func TestConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := getResourcePayload("environmentresource.json")
+	rawPayload := loadTestData("environmentresource.json")
 	r := &EnvironmentResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -36,7 +44,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 
 func TestConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := getResourcePayload("environmentresourcedatamodel.json")
+	rawPayload := loadTestData("environmentresourcedatamodel.json")
 	r := &datamodel.Environment{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -53,10 +61,32 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.ResourceID)
 }
 
-func getResourcePayload(testfile string) []byte {
-	jsonData, err := ioutil.ReadFile("./testdata/" + testfile)
-	if err != nil {
-		return nil
+func TestToEnvironmentComputeKindDataModel(t *testing.T) {
+	kindTests := []struct {
+		versioned EnvironmentComputeKind
+		datamodel datamodel.EnvironmentComputeKind
+	}{
+		{EnvironmentComputeKindKubernetes, datamodel.KubernetesComputeKind},
+		{"", datamodel.UnknownComputeKind},
 	}
-	return jsonData
+
+	for _, tt := range kindTests {
+		sc := toEnvironmentComputeKindDataModel(&tt.versioned)
+		require.Equal(t, tt.datamodel, sc)
+	}
+}
+
+func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
+	kindTests := []struct {
+		datamodel datamodel.EnvironmentComputeKind
+		versioned EnvironmentComputeKind
+	}{
+		{datamodel.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
+		{datamodel.UnknownComputeKind, EnvironmentComputeKindKubernetes},
+	}
+
+	for _, tt := range kindTests {
+		sc := fromEnvironmentComputeKind(tt.datamodel)
+		require.Equal(t, tt.versioned, *sc)
+	}
 }

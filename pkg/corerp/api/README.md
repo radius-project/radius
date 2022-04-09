@@ -4,8 +4,8 @@ This directory includes API version specific models from open api specs. The mod
 
 ## Generate new models
 ### Prerequisites
-1. Install [nodejs](https://nodejs.org/)
-2. Install [autorest](http://aka.ms/autorest)
+1. Install [NodeJS](https://nodejs.org/)
+2. Install [AutoRest](http://aka.ms/autorest)
 ```
 npm install -g autorest
 ```
@@ -38,6 +38,8 @@ input-file:
 ```
 
 ### Common
+
+The following configuration generates track2 go models and client.
 
 ```yaml $(tag) != ''
 version: 3.*.*

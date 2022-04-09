@@ -6,10 +6,7 @@
 package v20220315privatepreview
 
 import (
-	"time"
-
 	"github.com/project-radius/radius/pkg/corerp/api"
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -18,6 +15,7 @@ import (
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
+	// TODO: Improve the validation.
 	converted := &datamodel.Environment{
 		TrackedResource: datamodel.TrackedResource{
 			ID:       to.String(src.ID),
@@ -39,6 +37,10 @@ func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment resource.
 func (dst *EnvironmentResource) ConvertFrom(src api.DataModelInterface) error {
+	// TODO: Improve the validation.
+	if src == nil {
+		return api.ErrInvalidModelConversion
+	}
 	env := src.(*datamodel.Environment)
 	dst.ID = to.StringPtr(env.ID)
 	dst.Name = to.StringPtr(env.Name)
@@ -57,23 +59,6 @@ func (dst *EnvironmentResource) ConvertFrom(src api.DataModelInterface) error {
 	return nil
 }
 
-func unmarshalTimeString(ts string) *time.Time {
-	var tt timeRFC3339
-	_ = tt.UnmarshalText([]byte(ts))
-	return (*time.Time)(&tt)
-}
-
-func fromSystemDataModel(s armrpcv1.SystemData) *SystemData {
-	return &SystemData{
-		CreatedBy:          to.StringPtr(s.CreatedBy),
-		CreatedByType:      (*CreatedByType)(&s.CreatedByType),
-		CreatedAt:          unmarshalTimeString(s.CreatedAt),
-		LastModifiedBy:     to.StringPtr(s.LastModifiedBy),
-		LastModifiedByType: (*CreatedByType)(&s.LastModifiedByType),
-		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
-	}
-}
-
 func toEnvironmentComputeKindDataModel(kind *EnvironmentComputeKind) datamodel.EnvironmentComputeKind {
 	switch *kind {
 	case EnvironmentComputeKindKubernetes:
@@ -88,52 +73,9 @@ func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *Environm
 	switch kind {
 	case datamodel.KubernetesComputeKind:
 		k = EnvironmentComputeKindKubernetes
+	default:
+		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatprevie supports only kubernetes.
 	}
 
 	return &k
-}
-
-func toProvisioningStateDataModel(state *ProvisioningState) datamodel.ProvisioningStates {
-	if state == nil {
-		return datamodel.ProvisioningStateAccepted
-	}
-
-	switch *state {
-	case ProvisioningStateUpdating:
-		return datamodel.ProvisioningStateUpdating
-	case ProvisioningStateDeleting:
-		return datamodel.ProvisioningStateDeleting
-	case ProvisioningStateAccepted:
-		return datamodel.ProvisioningStateAccepted
-	case ProvisioningStateSucceeded:
-		return datamodel.ProvisioningStateSucceeded
-	case ProvisioningStateFailed:
-		return datamodel.ProvisioningStateFailed
-	case ProvisioningStateCanceled:
-		return datamodel.ProvisioningStateCanceled
-	default:
-		return datamodel.ProvisioningStateAccepted
-	}
-}
-
-func fromProvisioningStateDataModel(state datamodel.ProvisioningStates) *ProvisioningState {
-	var converted ProvisioningState
-	switch state {
-	case datamodel.ProvisioningStateUpdating:
-		converted = ProvisioningStateUpdating
-	case datamodel.ProvisioningStateDeleting:
-		converted = ProvisioningStateDeleting
-	case datamodel.ProvisioningStateAccepted:
-		converted = ProvisioningStateAccepted
-	case datamodel.ProvisioningStateSucceeded:
-		converted = ProvisioningStateSucceeded
-	case datamodel.ProvisioningStateFailed:
-		converted = ProvisioningStateFailed
-	case datamodel.ProvisioningStateCanceled:
-		converted = ProvisioningStateCanceled
-	default:
-		converted = ProvisioningStateAccepted // should we return error ?
-	}
-
-	return &converted
 }

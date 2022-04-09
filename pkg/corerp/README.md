@@ -5,7 +5,7 @@
 ## Layout
 
 1. **/pkg/corerp/api**: API version specific models
-1. **/pkg/corerp/datamodel**: API version agnostic models which is used for implmenting operation controller and storing resource metadata.
+1. **/pkg/corerp/datamodel**: API version agnostic models to implement operation controller and store resource metadata.
 1. **/pkg/corerp/frontend/controller**: Per-operation controller implementations.
 1. **/pkg/corerp/frontend/handler**: HTTP server handler and routers.
 1. **/pkg/corerp/frontend/middleware**: HTTP server middleware.
