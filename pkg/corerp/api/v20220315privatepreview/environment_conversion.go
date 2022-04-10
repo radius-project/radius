@@ -31,6 +31,9 @@ func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 				ResourceID: to.String(src.Properties.Compute.ResourceID),
 			},
 		},
+		InternalMetadata: datamodel.InternalMetadata{
+			APIVersion: Version,
+		},
 	}
 	return converted, nil
 }

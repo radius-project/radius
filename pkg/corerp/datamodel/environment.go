@@ -27,6 +27,9 @@ type Environment struct {
 	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties EnvironmentProperties `json:"properties"`
+
+	// InternalMetadata is the internal metadata which is used for conversion.
+	InternalMetadata InternalMetadata `json:"internalMetadata"`
 }
 
 func (e Environment) ResourceTypeName() string {

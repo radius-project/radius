@@ -39,6 +39,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "Applications.Core/environments", ct.Type)
 	require.Equal(t, "kubernetes", string(ct.Properties.Compute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", ct.Properties.Compute.ResourceID)
+	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.APIVersion)
 
 }
 

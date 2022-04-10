@@ -31,3 +31,11 @@ type TrackedResource struct {
 	// Tags is the resource tags.
 	Tags map[string]string `json:"tags,omitempty"`
 }
+
+// InternalMetadata represents internal DataModel specific metadata.
+type InternalMetadata struct {
+	// APIVersion is an api-version used when converting to datamodel.
+	APIVersion string `json:"apiVersion"`
+
+	// TODO: will add more properties.
+}
