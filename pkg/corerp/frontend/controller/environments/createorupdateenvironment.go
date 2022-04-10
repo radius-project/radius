@@ -40,6 +40,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 	newResource, err := e.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
+		return nil, err
 	}
 
 	// TODO: Save the resource and queue the async task.
