@@ -1,0 +1,33 @@
+{
+  "parameters": {
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroupName": "testGroup",
+    "environmentName": "env0",
+    "api-version": "2022-03-15-privatepreview",
+    "EnvironmentResource": {
+      "location": "West US",
+      "properties": {
+        "compute": {
+          "kind": "Kubernetes",
+          "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "name": "env0",
+        "type": "Applications.Core/environments",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "compute": {
+            "kind": "kubernetes",
+            "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster"
+          }
+        }
+      }
+    }
+  }
+}

@@ -7,14 +7,14 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/frontend/controllers"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
+	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
 
@@ -33,16 +33,24 @@ import (
 // within the RP or a bug.
 
 type handler struct {
-	providerCtrl *controllers.ProviderController
-	appCoreCtrl  *controllers.AppCoreController
+	db        db.RadrpDB
+	jobEngine deployment.DeploymentProcessor
 
-	validatorFactory ValidatorFactory
-	pathBase         string
+	pathBase string
 }
 
-func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {
+// This includes ARM RPC provider specific handlers.
+
+func (h *handler) getOperations(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.appCoreCtrl.GetOperations(ctx)
+
+	op, err := provider_ctrl.NewGetOperations(h.db, h.jobEngine)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+
+	response, err := op.Run(ctx, req)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
@@ -55,29 +63,24 @@ func (h *handler) GetOperations(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) CreateOrUpdateSubscription(w http.ResponseWriter, req *http.Request) {
+func (h *handler) createOrUpdateSubscription(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	response, err := h.providerCtrl.CreateOrUpdateSubscription(ctx)
+	op, err := provider_ctrl.NewCreateOrUpdateSubscription(h.db, h.jobEngine)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
 	}
 
+	response, err := op.Run(ctx, req)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
 	err = response.Apply(ctx, w, req)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
 	}
-}
-
-func (h *handler) ListEnvironments(w http.ResponseWriter, req *http.Request) {
-	// TODO: Implement environment resource type list operations
-	ctx := req.Context()
-	log := radlogger.GetLogger(ctx)
-	rpcCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	log.Info(fmt.Sprintf("api-version: %s", rpcCtx.APIVersion))
-
-	internalServerError(ctx, w, req, errors.New("Not implemented"))
 }
 
 // Responds with an HTTP 500

@@ -6,6 +6,8 @@
 package clients
 
 import (
+	"time"
+
 	"github.com/Azure/azure-sdk-for-go/profiles/2017-03-09/resources/mgmt/features"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerregistry/mgmt/containerregistry"
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerservice/mgmt/containerservice"
@@ -127,6 +129,7 @@ func NewDeploymentsClientWithBaseURI(uri string, subscriptionID string) resource
 	dc := resources.NewDeploymentsClientWithBaseURI(uri, subscriptionID)
 	// Don't set a timeout, the user can cancel the command if they want a timeout.
 	dc.PollingDuration = 0
+	dc.RetryDuration = 3 * time.Second
 
 	return dc
 }

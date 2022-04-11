@@ -31,7 +31,7 @@ const (
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "Initializes a kubernetes environment",
-	Long:  `Initializes a kubernetes environment`,
+	Long:  `Initializes a kubernetes environment.`,
 	RunE:  installKubernetes,
 }
 
