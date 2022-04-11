@@ -1427,7 +1427,7 @@
               "type": "string"
             },
             "username": {
-              "description": "The password for this MongoDB instance",
+              "description": "The username for this MongoDB instance",
               "type": "string"
             }
           },
@@ -1854,6 +1854,10 @@
             },
             "password": {
               "description": "The password for this Redis instance",
+              "type": "string"
+            },
+            "username": {
+              "description": "The username for this Redis instance",
               "type": "string"
             }
           },

@@ -2281,7 +2281,7 @@ type MongoDBResourcePropertiesSecrets struct {
 	// The password for this MongoDB instance
 	Password *string `json:"password,omitempty"`
 
-	// The password for this MongoDB instance
+	// The username for this MongoDB instance
 	Username *string `json:"username,omitempty"`
 }
 
@@ -2864,6 +2864,9 @@ type RedisCacheResourcePropertiesSecrets struct {
 
 	// The password for this Redis instance
 	Password *string `json:"password,omitempty"`
+
+	// The username for this Redis instance
+	Username *string `json:"username,omitempty"`
 }
 
 // RedislabsComRedisCacheBeginCreateOrUpdateOptions contains the optional parameters for the RedislabsComRedisCache.BeginCreateOrUpdate method.

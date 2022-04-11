@@ -91,6 +91,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 			"port": 42,
 			"secrets": map[string]string{
 				renderers.PasswordStringHolder:  "deadbeef",
+				renderers.UsernameStringValue:   "admin",
 				renderers.ConnectionStringValue: "admin:deadbeef@localhost:42",
 			},
 		},
@@ -154,11 +155,14 @@ func expectedComputedAndSecretValues() (map[string]renderers.ComputedValueRefere
 	}
 
 	expectedSecretValues := map[string]renderers.SecretValueReference{
-		renderers.PasswordStringHolder: {
-			Value: "deadbeef",
-		},
 		renderers.ConnectionStringValue: {
 			Value: "admin:deadbeef@localhost:42",
+		},
+		renderers.UsernameStringValue: {
+			Value: "admin",
+		},
+		renderers.PasswordStringHolder: {
+			Value: "deadbeef",
 		},
 	}
 

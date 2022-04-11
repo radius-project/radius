@@ -63,7 +63,7 @@ func RenderResource(resourceName string, properties radclient.RedisCacheResource
 		// When the user-specified secret is present, this is the usecase where the user is running
 		// their own custom Redis instance (using a container, or hosted elsewhere).
 		//
-		// In that case we don't have an OutputResaource, only Computed and Secret values.
+		// In that case we don't have an OutputResource, only Computed and Secret values.
 		return nil, nil
 	}
 	if properties.Resource == nil || *properties.Resource == "" {
@@ -118,8 +118,8 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 	// TODO(#1767): We need to store these in a secret store.
 	secretValues := map[string]renderers.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
+		renderers.UsernameStringValue:   {Value: *properties.Secrets.Username},
 		renderers.PasswordStringHolder:  {Value: *properties.Secrets.Password},
-		//TODO(#2050): Add support for redis username
 	}
 	return computedValues, secretValues
 }

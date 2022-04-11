@@ -49,7 +49,7 @@
           "additionalProperties": false,
           "properties": {
             "username": {
-              "description": "The password for this MongoDB instance",
+              "description": "The username for this MongoDB instance",
               "type": "string"
             },
             "password": {

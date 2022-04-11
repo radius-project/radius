@@ -63,6 +63,10 @@
                 "redis.default.svc.cluster.local:6379"
               ]
             },
+            "username": {
+              "description": "The username for this Redis instance",
+              "type": "string"
+            },
             "password": {
               "description": "The password for this Redis instance",
               "type": "string"
