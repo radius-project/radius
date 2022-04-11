@@ -87,11 +87,7 @@ endef
 # defines a target for each binary
 GOOSES := darwin linux windows
 GOARCHES := amd64 arm arm64
-<<<<<<< HEAD
-BINARIES := docgen rad radius-controller radius-rp testenv radiusd appcore-rp
-=======
 BINARIES := docgen rad radius-rp testenv appcore-rp
->>>>>>> d98faa2d (Initial commit of ARM proxy request header context helper (#2165))
 $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
 $(foreach ARCH,$(GOARCHES),$(foreach OS,$(GOOSES),$(foreach ITEM,$(BINARIES),$(eval $(call generatePlatformBuildTarget,$(OS),$(ARCH),$(ITEM),./cmd/$(ITEM))))))
 
