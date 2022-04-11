@@ -195,4 +195,3 @@ type MongoDatabasesListResponse struct {
 type MongoDatabasesListResult struct {
 	MongoDatabaseList
 }
-

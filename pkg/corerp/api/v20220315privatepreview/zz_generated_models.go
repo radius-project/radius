@@ -10,9 +10,10 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"reflect"
 	"time"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 )
 
 // ApplicationProperties - Application properties
@@ -389,27 +390,27 @@ func (s *SystemData) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "createdAt":
-				var aux timeRFC3339
-				err = unpopulate(val, &aux)
-				s.CreatedAt = (*time.Time)(&aux)
-				delete(rawMsg, key)
+			var aux timeRFC3339
+			err = unpopulate(val, &aux)
+			s.CreatedAt = (*time.Time)(&aux)
+			delete(rawMsg, key)
 		case "createdBy":
-				err = unpopulate(val, &s.CreatedBy)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.CreatedBy)
+			delete(rawMsg, key)
 		case "createdByType":
-				err = unpopulate(val, &s.CreatedByType)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.CreatedByType)
+			delete(rawMsg, key)
 		case "lastModifiedAt":
-				var aux timeRFC3339
-				err = unpopulate(val, &aux)
-				s.LastModifiedAt = (*time.Time)(&aux)
-				delete(rawMsg, key)
+			var aux timeRFC3339
+			err = unpopulate(val, &aux)
+			s.LastModifiedAt = (*time.Time)(&aux)
+			delete(rawMsg, key)
 		case "lastModifiedBy":
-				err = unpopulate(val, &s.LastModifiedBy)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.LastModifiedBy)
+			delete(rawMsg, key)
 		case "lastModifiedByType":
-				err = unpopulate(val, &s.LastModifiedByType)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.LastModifiedByType)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -457,4 +458,3 @@ func unpopulate(data json.RawMessage, v interface{}) error {
 	}
 	return json.Unmarshal(data, v)
 }
-
