@@ -97,6 +97,9 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	options.Radius.ChartPath = chartPath
 	options.Radius.Image = image
 	options.Radius.Tag = tag
+	// We don't want to use the host network option with HA Proxy on K3d. K3d supports LoadBalancer services,
+	// using the host network would cause a conflict.
+	options.HAProxy.UseHostNetwork = false
 
 	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
 	if err != nil {
