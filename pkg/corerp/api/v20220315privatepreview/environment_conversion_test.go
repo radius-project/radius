@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/corerp/api"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -31,9 +32,10 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 
 	// act
 	dm, err := r.ConvertTo()
-	ct := dm.(*datamodel.Environment)
 
 	// assert
+	require.NoError(t, err)
+	ct := dm.(*datamodel.Environment)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", ct.ID)
 	require.Equal(t, "env0", ct.Name)
 	require.Equal(t, "Applications.Core/environments", ct.Type)
@@ -55,11 +57,34 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 	err = versioned.ConvertFrom(r)
 
 	// assert
+	require.NoError(t, err)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", r.ID)
 	require.Equal(t, "env0", r.Name)
 	require.Equal(t, "Applications.Core/environments", r.Type)
 	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.ResourceID)
+}
+
+type fakeResource struct{}
+
+func (f *fakeResource) ResourceTypeName() string {
+	return "FakeResource"
+}
+
+func TestConvertFromValidation(t *testing.T) {
+	validationTests := []struct {
+		src api.DataModelInterface
+		err error
+	}{
+		{&fakeResource{}, api.ErrInvalidModelConversion},
+		{nil, api.ErrInvalidModelConversion},
+	}
+
+	for _, tc := range validationTests {
+		versioned := &EnvironmentResource{}
+		err := versioned.ConvertFrom(tc.src)
+		require.ErrorAs(t, tc.err, &err)
+	}
 }
 
 func TestToEnvironmentComputeKindDataModel(t *testing.T) {
