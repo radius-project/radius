@@ -1041,28 +1041,32 @@
       ],
       "type": "object"
     },
-    "GatewayListener": {
-      "additionalProperties": false,
-      "properties": {
-        "port": {
-          "description": "The port to listen on.",
-          "type": "number"
-        },
-        "protocol": {
-          "description": "The protocol to use for this listener.",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
     "GatewayProperties": {
       "additionalProperties": false,
       "properties": {
-        "listeners": {
-          "additionalProperties": {
-            "$ref": "#/definitions/GatewayListener"
+        "hostname": {
+          "additionalProperties": false,
+          "properties": {
+            "fullyQualifiedHostname": {
+              "description": "Specify a fully-qualified domain name.",
+              "type": "string"
+            },
+            "prefix": {
+              "description": "Specify a prefix for the hostname.",
+              "type": "string"
+            }
           },
           "type": "object"
+        },
+        "internal": {
+          "type": "boolean"
+        },
+        "routes": {
+          "description": "Routes attached to this Gateway",
+          "items": {
+            "$ref": "#/definitions/GatewayRoute"
+          },
+          "type": "array"
         }
       },
       "type": "object"
@@ -1081,6 +1085,24 @@
       },
       "type": "object",
       "x-ms-azure-resource": true
+    },
+    "GatewayRoute": {
+      "additionalProperties": false,
+      "properties": {
+        "destination": {
+          "description": "The HttpRoute source.",
+          "type": "string"
+        },
+        "path": {
+          "description": "The path to the service.",
+          "type": "string"
+        },
+        "replacePrefix": {
+          "description": "Optionally update the prefix when sending the request to the service.",
+          "type": "string"
+        }
+      },
+      "type": "object"
     },
     "HealthProbeProperties": {
       "description": "Properties for readiness/liveness probe",
@@ -1141,59 +1163,6 @@
       "type": "object",
       "x-ms-discriminator-value": "httpGet"
     },
-    "HttpRouteGateway": {
-      "additionalProperties": false,
-      "description": "Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet.",
-      "properties": {
-        "hostname": {
-          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
-          "type": "string"
-        },
-        "rules": {
-          "additionalProperties": {
-            "$ref": "#/definitions/HttpRouteGatewayRule"
-          },
-          "type": "object"
-        },
-        "source": {
-          "description": "The gateway which this route is part of.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "hostname"
-      ],
-      "type": "object"
-    },
-    "HttpRouteGatewayPath": {
-      "additionalProperties": false,
-      "description": "Specifies path matching options to match requests on.",
-      "properties": {
-        "type": {
-          "description": "Specifies the path to match the incoming request.",
-          "type": "string"
-        },
-        "value": {
-          "description": "Specifies the type of matching to match the path on. Supported values: 'prefix', 'exact'.",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "HttpRouteGatewayRule": {
-      "additionalProperties": false,
-      "description": "Specifies the rule to match requests on.",
-      "properties": {
-        "method": {
-          "description": "Specifies the method to match on the incoming request.",
-          "type": "string"
-        },
-        "path": {
-          "$ref": "#/definitions/HttpRouteGatewayPath"
-        }
-      },
-      "type": "object"
-    },
     "HttpRouteList": {
       "description": "List of HttpRoute resources.",
       "properties": {
@@ -1218,9 +1187,6 @@
         }
       ],
       "properties": {
-        "gateway": {
-          "$ref": "#/definitions/HttpRouteGateway"
-        },
         "hostname": {
           "description": "The internal hostname accepting traffic for the route. Readonly.",
           "type": "number"

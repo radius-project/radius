@@ -20,24 +20,46 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "listeners": {
+        "internal": {
+          "type": "boolean"
+        },
+        "hostname": {
           "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/GatewayListener"
+          "properties": {
+            "prefix": {
+              "description": "Specify a prefix for the hostname.",
+              "type": "string"
+            },
+            "fullyQualifiedHostname": {
+              "description": "Specify a fully-qualified domain name.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "routes": {
+          "type": "array",
+          "description": "Routes attached to this Gateway",
+          "items": {
+            "$ref": "#/definitions/GatewayRoute"
           }
         }
       }
     },
-    "GatewayListener": {
+    "GatewayRoute": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "port": {
-          "description": "The port to listen on.",
-          "type": "number"
+        "path": {
+          "description": "The path to the service.",
+          "type": "string"
         },
-        "protocol": {
-          "description": "The protocol to use for this listener.",
+        "destination": {
+          "description": "The HttpRoute source.",
+          "type": "string"
+        },
+        "replacePrefix": {
+          "description": "Optionally update the prefix when sending the request to the service.",
           "type": "string"
         }
       }

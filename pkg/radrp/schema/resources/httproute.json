@@ -25,9 +25,6 @@
         }
       ],
       "properties": {
-        "gateway": {
-          "$ref": "#/definitions/HttpRouteGateway"
-        },
         "hostname": {
           "description": "The internal hostname accepting traffic for the route. Readonly.",
           "type": "number"
@@ -43,59 +40,6 @@
         "url": {
           "description": "A stable URL that that can be used to route traffic to a resource. Readonly.",
           "type": "number"
-        }
-      }
-    },
-    "HttpRouteGateway": {
-      "description": "Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "hostname"
-      ],
-      "properties": {
-        "source": {
-          "description": "The gateway which this route is part of.",
-          "type": "string"
-        },
-        "hostname": {
-          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
-          "type": "string"
-        },
-        "rules": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/HttpRouteGatewayRule"
-          }
-        }
-      }
-    },
-    "HttpRouteGatewayRule": {
-      "description": "Specifies the rule to match requests on.",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "path": {
-          "$ref": "#/definitions/HttpRouteGatewayPath"
-        },
-        "method": {
-          "description": "Specifies the method to match on the incoming request.",
-          "type": "string"
-        }
-      }
-    },
-    "HttpRouteGatewayPath": {
-      "description": "Specifies path matching options to match requests on.",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "type": {
-          "description": "Specifies the path to match the incoming request.",
-          "type": "string"
-        },
-        "value": {
-          "description": "Specifies the type of matching to match the path on. Supported values: 'prefix', 'exact'.",
-          "type": "string"
         }
       }
     }

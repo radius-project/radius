@@ -8,10 +8,14 @@ package gateway
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -27,11 +31,13 @@ const (
 )
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
+	// TODO: willsmith: may need to create routes first
+	// maybe just get ID and use it to create resourcename, reference
 	return nil, nil, nil
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	gateway := Gateway{}
+	gateway := radclient.GatewayProperties{}
 	err := options.Resource.ConvertDefinition(&gateway)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -44,7 +50,17 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	computedValues := map[string]renderers.ComputedValueReference{}
 
 	outputs := []outputresource.OutputResource{}
-	outputs = append(outputs, MakeGateway(ctx, options.Resource, gateway, gatewayClassName))
+
+	gatewayName := kubernetes.MakeResourceName(options.Resource.ApplicationName, options.Resource.ResourceName)
+	gatewayObject, err := MakeGateway(ctx, options.Resource, gateway, gatewayClassName, gatewayName)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	outputs = append(outputs, gatewayObject)
+
+	httpRouteObjects := MakeHttpRoutes(options.Resource, gateway, gatewayName)
+	outputs = append(outputs, httpRouteObjects...)
 
 	return renderers.RendererOutput{
 		Resources:      outputs,
@@ -52,25 +68,23 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}, nil
 }
 
-func MakeGateway(ctx context.Context, resource renderers.RendererResource, gateway Gateway, gatewayClassName string) outputresource.OutputResource {
-	var listeners []gatewayv1alpha1.Listener
-	for _, listener := range gateway.Listeners {
-		listeners = append(listeners, gatewayv1alpha1.Listener{
-			Port:     gatewayv1alpha1.PortNumber(*listener.Port),
-			Protocol: gatewayv1alpha1.ProtocolType(listener.Protocol),
-			Routes: gatewayv1alpha1.RouteBindingSelector{
-				Kind: "HTTPRoute",
-			},
-		})
+func MakeGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayClassName string, gatewayName string) (outputresource.OutputResource, error) {
+	httpGateway, err := makeHttpGateway(ctx, resource, gateway, gatewayName)
+	if err != nil {
+		return outputresource.OutputResource{}, err
 	}
 
-	gate := &gatewayv1alpha1.Gateway{
+	listeners := []gatewayv1alpha1.Listener{
+		*httpGateway,
+	}
+
+	gatewayObject := &gatewayv1alpha1.Gateway{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Gateway",
 			APIVersion: gatewayv1alpha1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
+			Name:      gatewayName,
 			Namespace: resource.ApplicationName,
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
@@ -80,5 +94,115 @@ func MakeGateway(ctx context.Context, resource renderers.RendererResource, gatew
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gate, gate.ObjectMeta)
+	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gatewayObject, gatewayObject.ObjectMeta), nil
+}
+
+func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string) []outputresource.OutputResource {
+	var outputs []outputresource.OutputResource
+
+	for _, route := range gateway.Routes {
+		pathMatch := gatewayv1alpha1.PathMatchPrefix
+		rules := []gatewayv1alpha1.HTTPRouteRule{
+			{
+				Matches: []gatewayv1alpha1.HTTPRouteMatch{
+					{
+						Path: &gatewayv1alpha1.HTTPPathMatch{
+							Type:  &pathMatch,
+							Value: route.Path,
+						},
+					},
+				},
+				ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
+					{
+						ServiceName: route.Destination,
+					},
+				},
+			},
+		}
+
+		httpRouteObject := &gatewayv1alpha1.HTTPRoute{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "HTTPRoute",
+				APIVersion: gatewayv1alpha1.SchemeGroupVersion.String(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				// TODO: willsmith: resource name isn't right here
+				Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
+				Namespace: resource.ApplicationName,
+				Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+			},
+			Spec: gatewayv1alpha1.HTTPRouteSpec{
+				Gateways: &gatewayv1alpha1.RouteGateways{
+					GatewayRefs: []gatewayv1alpha1.GatewayReference{
+						{
+							Name:      gatewayName,
+							Namespace: "default",
+						},
+					},
+				},
+				Rules: rules,
+			},
+		}
+
+		outputs = append(outputs, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, outputresource.LocalIDHttpRoute, httpRouteObject, httpRouteObject.ObjectMeta))
+	}
+
+	return outputs
+}
+
+func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string) (*gatewayv1alpha1.Listener, error) {
+	port := 80
+
+	var hostname gatewayv1alpha1.Hostname
+	if gateway.Hostname != nil {
+		if gateway.Hostname.FullyQualifiedHostname != nil {
+			// Use FQDN
+			hostname = gatewayv1alpha1.Hostname(*gateway.Hostname.FullyQualifiedHostname)
+		} else if gateway.Hostname.Prefix != nil {
+			// Auto-assign hostname: prefix.appname.ip.nip.io
+			endpoint, err := getPublicEndpoint(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", *gateway.Hostname.Prefix, resource.ApplicationName, *endpoint)
+			hostname = gatewayv1alpha1.Hostname(prefixedHostname)
+		} else {
+			return nil, errors.New("must provide either prefix or fullyQualifiedHostname if hostname is specified")
+		}
+	} else {
+		// Auto-assign hostname: gatewayname.appname.ip.nip.io
+		endpoint, err := getPublicEndpoint(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gatewayName, resource.ApplicationName, *endpoint)
+		hostname = gatewayv1alpha1.Hostname(prefixedHostname)
+	}
+
+	return &gatewayv1alpha1.Listener{
+		Hostname: &hostname,
+		Port:     gatewayv1alpha1.PortNumber(port),
+		Protocol: gatewayv1alpha1.HTTPProtocolType,
+		Routes: gatewayv1alpha1.RouteBindingSelector{
+			Kind: "HTTPRoute",
+		},
+	}, nil
+}
+
+func getPublicEndpoint(ctx context.Context) (*string, error) {
+	// Get public endpoint of HAProxy service
+	diagnosticsClient, err := environments.CreateDiagnosticsClient(ctx, &environments.KubernetesEnvironment{})
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint, err := diagnosticsClient.GetPublicEndpoint(ctx, clients.EndpointOptions{})
+	fmt.Printf("test: %s\n", *endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	return endpoint, nil
 }
