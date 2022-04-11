@@ -32,7 +32,7 @@ func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 			},
 		},
 		InternalMetadata: datamodel.InternalMetadata{
-			APIVersion: Version,
+			UpdatedAPIVersion: Version,
 		},
 	}
 	return converted, nil
@@ -41,10 +41,11 @@ func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment resource.
 func (dst *EnvironmentResource) ConvertFrom(src api.DataModelInterface) error {
 	// TODO: Improve the validation.
-	if src == nil {
+	env, ok := src.(*datamodel.Environment)
+	if !ok {
 		return api.ErrInvalidModelConversion
 	}
-	env := src.(*datamodel.Environment)
+
 	dst.ID = to.StringPtr(env.ID)
 	dst.Name = to.StringPtr(env.Name)
 	dst.Type = to.StringPtr(env.Type)

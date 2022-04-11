@@ -3,9 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package store
+package cosmosdb
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -29,6 +30,12 @@ var escapedStorageKeys = []string{
 
 const (
 	keyDelimiter = "-"
+
+	// The subscription identifier storage key limit.
+	SubscriptionIdStorageKeyLimit = 32
+
+	// The storage key trim padding
+	StorageKeyTrimPadding = 17
 )
 
 // NormalizeLetterOrDigitToUpper normalizes the value to only letter or digit to upper invariant.
@@ -47,8 +54,8 @@ func NormalizeLetterOrDigitToUpper(s string) string {
 	return strings.ToUpper(sb.String())
 }
 
-// NomalizeSubscriptionID normalizes subscription id.
-func NomalizeSubscriptionID(subscriptionID string) string {
+// NormalizeSubscriptionID normalizes subscription id.
+func NormalizeSubscriptionID(subscriptionID string) string {
 	return NormalizeLetterOrDigitToUpper(subscriptionID)
 }
 
@@ -76,6 +83,24 @@ func EscapedStorageKey(key string) string {
 	return sb.String()
 }
 
+func TrimStorageKey(storageKey string, limit int) (string, error) {
+	if limit < StorageKeyTrimPadding {
+		return "", errors.New("storage key is too short")
+	}
+
+	if strings.Contains(storageKey, "|") {
+		return "", errors.New("storgekey includes invalid character")
+	}
+
+	if len(storageKey) > limit {
+		hash64 := sha256.New()
+
+		return fmt.Sprintf("%s|%x", storageKey[0:(limit-StorageKeyTrimPadding)], hash64.Sum([]byte(storageKey))), nil
+	}
+
+	return storageKey, nil
+}
+
 func CombineStorageKeys(keys ...string) (string, error) {
 	for _, key := range keys {
 		if strings.Contains(key, keyDelimiter) {
@@ -84,4 +109,13 @@ func CombineStorageKeys(keys ...string) (string, error) {
 	}
 
 	return strings.Join(keys, keyDelimiter), nil
+}
+
+func GenerateResourceID(subsID, resourceGroup, fullyQualifiedType, fullyQualifiedName string) string {
+	key, _ := CombineStorageKeys(
+		NormalizeSubscriptionID(subsID),
+		EscapedStorageKey(resourceGroup),
+		EscapedStorageKey(fullyQualifiedType),
+		EscapedStorageKey(fullyQualifiedName))
+	return key
 }

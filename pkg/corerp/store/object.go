@@ -16,5 +16,5 @@ type Metadata struct {
 
 type Object struct {
 	Metadata
-	Data []byte
+	Data interface{} // Data []byte
 }
