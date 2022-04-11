@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	v20220315 "github.com/project-radius/radius/pkg/corerp/api/v20220315"
+	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
@@ -41,7 +41,7 @@ func (a *GetOperations) Run(ctx context.Context, req *http.Request) (rest.Respon
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	switch sCtx.APIVersion {
-	case v20220315.Version:
+	case v20220315privatepreview.Version:
 		return rest.NewOKResponse(a.availableOperationsV1()), nil
 	}
 

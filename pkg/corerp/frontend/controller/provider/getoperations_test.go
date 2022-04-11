@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	v20220315 "github.com/project-radius/radius/pkg/corerp/api/v20220315"
+	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -21,7 +21,7 @@ func TestRunWith20220315PrivatePreview(t *testing.T) {
 	// arrange
 	op, _ := NewGetOperations(nil, nil)
 	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
-		APIVersion: v20220315.Version,
+		APIVersion: v20220315privatepreview.Version,
 	})
 
 	// act

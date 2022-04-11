@@ -9,7 +9,10 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -33,6 +36,26 @@ func NewGetEnvironment(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) 
 }
 
 func (e *GetEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	// TODO: implement create or update environment operation.
-	return rest.NewOKResponse("not implemented"), nil
+	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	rID := serviceCtx.ResourceID
+
+	// TODO: Get the environment resource from datastorage. now return fake data.
+	m := &datamodel.Environment{
+		TrackedResource: datamodel.TrackedResource{
+			ID:       rID.ID,
+			Name:     rID.Name(),
+			Type:     rID.Type(),
+			Location: "West US",
+		},
+		SystemData: *serviceCtx.SystemData(),
+		Properties: datamodel.EnvironmentProperties{
+			Compute: datamodel.EnvironmentCompute{
+				Kind:       datamodel.KubernetesComputeKind,
+				ResourceID: "fakeID",
+			},
+		},
+	}
+
+	versioned, _ := converter.EnvironmentDataModelToVersioned(m, serviceCtx.APIVersion)
+	return rest.NewOKResponse(versioned), nil
 }

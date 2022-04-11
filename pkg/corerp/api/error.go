@@ -3,7 +3,11 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package armrpcv1
+package api
 
-// ResourceTags is the type of ARM tags.
-type ResourceTags map[string]string
+import "errors"
+
+var (
+	// ErrInvalidModelConversion is the error when converting model is invalid.
+	ErrInvalidModelConversion = errors.New("invalid model conversion")
+)
