@@ -15,6 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
+)
+var radiusControllerLogSync sync.Once
+
 type Step struct {
 	Executor               StepExecutor
 	AzureResources         *validation.AzureResourceSet
@@ -76,6 +81,19 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	t.Parallel()
+
+	logPrefix := os.Getenv(ContainerLogPathEnvVar)
+	if logPrefix == "" {
+		logPrefix = "./logs"
+	}
+
+	// Only start capturing controller logs once.
+	radiusControllerLogSync.Do(func() {
+		err := validation.SaveLogsForController(ctx, at.Options.K8sClient, "radius-system", logPrefix)
+		if err != nil {
+			t.Errorf("failed to capture logs from radius controller: %v", err)
+		}
+	})
 
 	cli := radcli.NewCLI(t, at.Options.ConfigFilePath)
 

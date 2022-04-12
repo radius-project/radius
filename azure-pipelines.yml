@@ -172,6 +172,9 @@ stages:
         INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
         TEST_TIMEOUT: ${{ variables.AZURE_FUNCTIONALTEST_TIMEOUT }}
+    - publish: $(Build.SourcesDirectory)/dist/container_logs
+      displayName: Publish container logs
+      condition: always()
     - script: |
         az group delete \
           --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
