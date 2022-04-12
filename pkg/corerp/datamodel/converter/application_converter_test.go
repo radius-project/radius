@@ -7,7 +7,6 @@ package converter
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"testing"
 
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -15,18 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func loadTestData(testfile string) []byte {
-	d, err := ioutil.ReadFile(testfile)
-	if err != nil {
-		return nil
-	}
-	return d
-}
-
-// NOTENOTE: this test is to validate the type conversion between versioned model and data model.
+// NOTE: this test is to validate the type conversion between versioned model and data model.
 // Converted content must be tested in ConvertFrom and ConvertTo tests in api models under /pkg/api/[api-version].
 
-func TestEnvironmentDataModelToVersioned(t *testing.T) {
+func TestApplicationDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string
 		apiVersion    string
@@ -34,9 +25,9 @@ func TestEnvironmentDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/environmentresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/applicationresourcedatamodel.json",
 			"2022-03-15-privatepreview",
-			&v20220315privatepreview.EnvironmentResource{},
+			&v20220315privatepreview.ApplicationResource{},
 			nil,
 		},
 		// TODO: add new conversion tests.
@@ -51,9 +42,9 @@ func TestEnvironmentDataModelToVersioned(t *testing.T) {
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
-			dm := &datamodel.Environment{}
+			dm := &datamodel.Application{}
 			_ = json.Unmarshal(c, dm)
-			am, err := EnvironmentDataModelToVersioned(dm, tc.apiVersion)
+			am, err := ApplicationDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
@@ -64,14 +55,14 @@ func TestEnvironmentDataModelToVersioned(t *testing.T) {
 	}
 }
 
-func TestEnvironmentDataModelFromVersioned(t *testing.T) {
+func TestApplicationDataModelFromVersioned(t *testing.T) {
 	testset := []struct {
 		versionedModelFile string
 		apiVersion         string
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/environmentresource.json",
+			"../../api/v20220315privatepreview/testdata/applicationresource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
@@ -86,7 +77,7 @@ func TestEnvironmentDataModelFromVersioned(t *testing.T) {
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
 			c := loadTestData(tc.versionedModelFile)
-			dm, err := EnvironmentDataModelFromVersioned(c, tc.apiVersion)
+			dm, err := ApplicationDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
