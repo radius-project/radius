@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Core Application Management API",
+    "title": "Applications.Core Management API",
     "description": "REST API for Applications.Core Application Resource",
     "version": "2022-03-15-privatepreview"
   },
