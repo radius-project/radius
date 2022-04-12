@@ -9,13 +9,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -102,11 +101,15 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 
 	for _, route := range gateway.Routes {
 		pathMatch := gatewayv1alpha1.PathMatchPrefix
+		routeName := kubernetes.MakeResourceName(resource.ApplicationName, getRouteNameFromID(*route.Destination))
+		port := gatewayv1alpha1.PortNumber(80)
+
 		rules := []gatewayv1alpha1.HTTPRouteRule{
 			{
 				Matches: []gatewayv1alpha1.HTTPRouteMatch{
 					{
 						Path: &gatewayv1alpha1.HTTPPathMatch{
+							// Only support prefix-based path matching
 							Type:  &pathMatch,
 							Value: route.Path,
 						},
@@ -114,7 +117,8 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 				},
 				ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
 					{
-						ServiceName: route.Destination,
+						Port:        &port,
+						ServiceName: &routeName,
 					},
 				},
 			},
@@ -177,7 +181,7 @@ func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, g
 			return nil, err
 		}
 
-		prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gatewayName, resource.ApplicationName, *endpoint)
+		prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.ResourceName, resource.ApplicationName, *endpoint)
 		hostname = gatewayv1alpha1.Hostname(prefixedHostname)
 	}
 
@@ -192,17 +196,19 @@ func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, g
 }
 
 func getPublicEndpoint(ctx context.Context) (*string, error) {
-	// Get public endpoint of HAProxy service
-	diagnosticsClient, err := environments.CreateDiagnosticsClient(ctx, &environments.KubernetesEnvironment{})
+	client, err := kubernetes.NewKubernetesClient()
 	if err != nil {
 		return nil, err
 	}
 
-	endpoint, err := diagnosticsClient.GetPublicEndpoint(ctx, clients.EndpointOptions{})
-	fmt.Printf("test: %s\n", *endpoint)
-	if err != nil {
-		return nil, err
+	return client.GetPublicIP(ctx)
+}
+
+func getRouteNameFromID(routeID string) string {
+	splitString := strings.Split(routeID, "/")
+	if len(splitString) == 0 {
+		return ""
 	}
 
-	return endpoint, nil
+	return splitString[len(splitString)-1]
 }
