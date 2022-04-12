@@ -1,39 +1,34 @@
 {
     "state": "Unregistered",
-    "registrationDate": "Tue, 15 Nov 1994 08:12:31 GMT",
+    "registrationDate": "Sat, 19 Mar 2022 04:39:55 GMT",
     "properties": {
-        "tenantId": "ac430efe-1866-4124-9ed9-ee67f9cb75db",
-        "locationPlacementId": "Internal_2014-09-01",
-        "quotaId": "Default_2014-09-01",
-        "registeredFeatures": [
-            {
-                "name": "testFeatureName",
-                "state": "Registered"
-            }
-        ],
-        "availabilityZones": {
-            "location": "testlocationName",
-            "zoneMappings": [
-                {
-                    "logicalZone": "1",
-                    "physicalZone": "2"
-                },
-                {
-                    "logicalZone": "2",
-                    "physicalZone": "1"
-                }
-            ]
+        "tenantId": "00000000-0000-0000-0000-000000000000",
+        "locationPlacementId": "Public_2014-09-01",
+        "quotaId": "PayAsYouGo_2014-09-01",
+        "accountOwner": {
+            "puid": "",
+            "email": ""
         },
-        "subscriptionSpendingLimit": "True",
-        "subscriptionAccountOwner": "account@company.com",
-        "managedByTenants": [
-            {
-                "tenantId": "managedByTenantId"
-            }
-        ],
+        "registeredFeatures": [],
+        "managedByTenants": [],
         "additionalProperties": {
             "resourceProviderProperties": "{\"resourceProviderNamespace\":\"Applications.Core\"}",
-            "promotions": "{\"category\": \"freetier\",\"endDateTime\": \"2023-02-11T21:07:45.676671Z\"}"
+            "billingProperties": {
+                "channelType": "CustomerLed",
+                "paymentType": "Paid",
+                "workloadType": "Production",
+                "billingType": "Modern",
+                "tier": "Standard",
+                "billingAccount": {
+                    "id": "/providers/Microsoft.Billing/billingAccounts/00000000-0000-0000-0000-000000000000:00000000-0000-0000-0000-000000000000_2019-05-31"
+                }
+            },
+            "promotions": [
+                {
+                    "category": "freetier",
+                    "endDateTime": "2023-02-11T21:07:45.676671Z"
+                }
+            ]
         }
     }
 }

@@ -41,16 +41,17 @@ func NewCreateOrUpdateSubscription(db db.RadrpDB, jobEngine deployment.Deploymen
 func (a *CreateOrUpdateSubscription) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	// TODO: implement data store check for subscriptions
 	log := radlogger.GetLogger(ctx)
-	log.Info("Within Create or Update Subscription handler")
+	log.Info("Within Create or Update Subscription")
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 	switch sCtx.APIVersion {
-	case armrpcv1.ArmApiVersion:
-		return rest.NewOKResponse(a.modifySubsciprtionV1(req)), nil
+	case armrpcv1.SubscriptionAPIVersion:
+		return rest.NewOKResponse(a.Validate(req)), nil
 	}
+	log.Info("Exiting Create or Update Subscription")
 	return rest.NewNotFoundAPIVersionResponse("Subscriptions", "Applications.Core", sCtx.APIVersion), nil
 }
 
-func (a *CreateOrUpdateSubscription) modifySubsciprtionV1(req *http.Request) *armrpcv1.Subscription {
+func (a *CreateOrUpdateSubscription) Validate(req *http.Request) *armrpcv1.Subscription {
 	content, _ := ctrl.ReadJSONBody(req)
 	am := armrpcv1.Subscription{}
 	err := json.Unmarshal(content, &am)

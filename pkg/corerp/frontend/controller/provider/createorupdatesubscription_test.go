@@ -42,7 +42,7 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 		// arrange
 		op, _ := NewCreateOrUpdateSubscription(nil, nil)
 		ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
-			APIVersion: armrpcv1.ArmApiVersion,
+			APIVersion: armrpcv1.SubscriptionAPIVersion,
 		})
 
 		// act
