@@ -1,0 +1,65 @@
+{
+    "Resources": {
+        "Microsoft.CustomProviders/resourceProviders/Application@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 15
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/AzureConnection@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 19
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/Container@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 79
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/Extender@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 85
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/Gateway@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 92
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 103
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/Volume@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 133
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.InvokeHttpRoute@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 138
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.PubSubTopic@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 147
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.SecretStore@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 153
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.StateStore@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 164
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/microsoft.com.SQLDatabase@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 169
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/mongo.com.MongoDatabase@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 175
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/rabbitmq.com.MessageQueue@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 181
+        },
+        "Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisCache@2018-09-01-preview": {
+            "RelativePath": "radius/microsoft.customproviders/2018-09-01-preview/types.json",
+            "Index": 187
+        }
+    },
+    "Functions": {}
+}

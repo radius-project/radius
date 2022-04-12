@@ -1,0 +1,2389 @@
+[
+    {
+        "1": {
+            "Kind": 1
+        }
+    },
+    {
+        "1": {
+            "Kind": 2
+        }
+    },
+    {
+        "1": {
+            "Kind": 3
+        }
+    },
+    {
+        "1": {
+            "Kind": 4
+        }
+    },
+    {
+        "1": {
+            "Kind": 5
+        }
+    },
+    {
+        "1": {
+            "Kind": 6
+        }
+    },
+    {
+        "1": {
+            "Kind": 7
+        }
+    },
+    {
+        "1": {
+            "Kind": 8
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 8,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 9,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 11,
+                    "Flags": 0,
+                    "Description": "Properties of an application."
+                },
+                "location": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The geo-location where the resource lives"
+                },
+                "tags": {
+                    "Type": 13,
+                    "Flags": 0,
+                    "Description": "Resource tags."
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "ApplicationProperties",
+            "Properties": {
+                "status": {
+                    "Type": 12,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "ApplicationStatus",
+            "Properties": {
+                "healthErrorDetails": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Health errors for the application"
+                },
+                "healthState": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Health state of the application"
+                },
+                "provisioningErrorDetails": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Provisioning errors for the application"
+                },
+                "provisioningState": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Provisioning state of the application"
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "TrackedResourceTags",
+            "Properties": {},
+            "AdditionalProperties": 4
+        }
+    },
+    {
+        "2": {
+            "Name": "ResourceStatus",
+            "Properties": {
+                "healthErrorDetails": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Health errors for the application"
+                },
+                "healthState": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Health state of the application"
+                },
+                "provisioningErrorDetails": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Provisioning errors for the application"
+                },
+                "provisioningState": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Provisioning state of the application"
+                }
+            }
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 10
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/AzureConnection"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/AzureConnection",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 16,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 17,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 0,
+                    "Flags": 1,
+                    "Description": "Any object"
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/AzureConnection@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 18
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/Container"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/Container",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 20,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 21,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 23,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "ContainerProperties",
+            "Properties": {
+                "connections": {
+                    "Type": 40,
+                    "Flags": 0,
+                    "Description": "Dictionary of <Connection>"
+                },
+                "container": {
+                    "Type": 41,
+                    "Flags": 0,
+                    "Description": "Definition of a container."
+                },
+                "traits": {
+                    "Type": 76,
+                    "Flags": 0,
+                    "Description": "Traits spec of the resource"
+                },
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "Connection",
+            "Properties": {
+                "kind": {
+                    "Type": 38,
+                    "Flags": 1,
+                    "Description": "The kind of connection"
+                },
+                "roles": {
+                    "Type": 39,
+                    "Flags": 0,
+                    "Description": "RBAC permissions to be assigned on the source resource"
+                },
+                "source": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The source of the connection"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "azure"
+        }
+    },
+    {
+        "6": {
+            "Value": "azure.com/KeyVault"
+        }
+    },
+    {
+        "6": {
+            "Value": "azure.com/ServiceBusQueue"
+        }
+    },
+    {
+        "6": {
+            "Value": "dapr.io/InvokeHttp"
+        }
+    },
+    {
+        "6": {
+            "Value": "dapr.io/PubSubTopic"
+        }
+    },
+    {
+        "6": {
+            "Value": "dapr.io/StateStore"
+        }
+    },
+    {
+        "6": {
+            "Value": "dapr.io/SecretStore"
+        }
+    },
+    {
+        "6": {
+            "Value": "Grpc"
+        }
+    },
+    {
+        "6": {
+            "Value": "Http"
+        }
+    },
+    {
+        "6": {
+            "Value": "microsoft.com/SQL"
+        }
+    },
+    {
+        "6": {
+            "Value": "mongo.com/MongoDB"
+        }
+    },
+    {
+        "6": {
+            "Value": "rabbitmq.com/MessageQueue"
+        }
+    },
+    {
+        "6": {
+            "Value": "redislabs.com/Redis"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37
+            ]
+        }
+    },
+    {
+        "3": {
+            "ItemType": 4
+        }
+    },
+    {
+        "2": {
+            "Name": "ContainerPropertiesConnections",
+            "Properties": {},
+            "AdditionalProperties": 24
+        }
+    },
+    {
+        "2": {
+            "Name": "Container",
+            "Properties": {
+                "env": {
+                    "Type": 42,
+                    "Flags": 0,
+                    "Description": "Dictionary of <string>"
+                },
+                "image": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The registry and image to download and run in your container"
+                },
+                "livenessProbe": {
+                    "Type": 43,
+                    "Flags": 0,
+                    "Description": "Properties for readiness/liveness probe"
+                },
+                "ports": {
+                    "Type": 55,
+                    "Flags": 0,
+                    "Description": "Dictionary of <ContainerPort>"
+                },
+                "readinessProbe": {
+                    "Type": 43,
+                    "Flags": 0,
+                    "Description": "Properties for readiness/liveness probe"
+                },
+                "volumes": {
+                    "Type": 67,
+                    "Flags": 0,
+                    "Description": "Dictionary of <Volume>"
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "ContainerEnv",
+            "Properties": {},
+            "AdditionalProperties": 4
+        }
+    },
+    {
+        "7": {
+            "Name": "HealthProbeProperties",
+            "Discriminator": "kind",
+            "BaseProperties": {},
+            "Elements": {
+                "exec": 44,
+                "httpGet": 46,
+                "tcp": 49
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "ExecHealthProbeProperties",
+            "Properties": {
+                "command": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "Command to execute to probe readiness/liveness"
+                },
+                "failureThreshold": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Threshold number of times the probe fails after which a failure would be reported"
+                },
+                "initialDelaySeconds": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Initial delay in seconds before probing for readiness/liveness"
+                },
+                "periodSeconds": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Interval for the readiness/liveness probe in seconds"
+                },
+                "kind": {
+                    "Type": 45,
+                    "Flags": 1,
+                    "Description": "The HealthProbeProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "exec"
+        }
+    },
+    {
+        "2": {
+            "Name": "HttpGetHealthProbeProperties",
+            "Properties": {
+                "containerPort": {
+                    "Type": 3,
+                    "Flags": 1,
+                    "Description": "The listening port number"
+                },
+                "failureThreshold": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Threshold number of times the probe fails after which a failure would be reported"
+                },
+                "headers": {
+                    "Type": 47,
+                    "Flags": 0,
+                    "Description": "Custom HTTP headers to add to the get request"
+                },
+                "initialDelaySeconds": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Initial delay in seconds before probing for readiness/liveness"
+                },
+                "path": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The route to make the HTTP request on"
+                },
+                "periodSeconds": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Interval for the readiness/liveness probe in seconds"
+                },
+                "kind": {
+                    "Type": 48,
+                    "Flags": 1,
+                    "Description": "The HealthProbeProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "HttpGetHealthProbePropertiesHeaders",
+            "Properties": {},
+            "AdditionalProperties": 4
+        }
+    },
+    {
+        "6": {
+            "Value": "httpGet"
+        }
+    },
+    {
+        "2": {
+            "Name": "TcpHealthProbeProperties",
+            "Properties": {
+                "containerPort": {
+                    "Type": 3,
+                    "Flags": 1,
+                    "Description": "The listening port number"
+                },
+                "failureThreshold": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Threshold number of times the probe fails after which a failure would be reported"
+                },
+                "initialDelaySeconds": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Initial delay in seconds before probing for readiness/liveness"
+                },
+                "periodSeconds": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Interval for the readiness/liveness probe in seconds"
+                },
+                "kind": {
+                    "Type": 50,
+                    "Flags": 1,
+                    "Description": "The HealthProbeProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "tcp"
+        }
+    },
+    {
+        "2": {
+            "Name": "ContainerPort",
+            "Properties": {
+                "containerPort": {
+                    "Type": 3,
+                    "Flags": 1,
+                    "Description": "The listening port number"
+                },
+                "protocol": {
+                    "Type": 54,
+                    "Flags": 0,
+                    "Description": "Protocol in use by the port"
+                },
+                "provides": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Specifies a route provided by this port"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "TCP"
+        }
+    },
+    {
+        "6": {
+            "Value": "UDP"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                52,
+                53
+            ]
+        }
+    },
+    {
+        "2": {
+            "Name": "ContainerPorts",
+            "Properties": {},
+            "AdditionalProperties": 51
+        }
+    },
+    {
+        "7": {
+            "Name": "Volume",
+            "Discriminator": "kind",
+            "BaseProperties": {},
+            "Elements": {
+                "ephemeral": 57,
+                "persistent": 62
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "EphemeralVolume",
+            "Properties": {
+                "managedStore": {
+                    "Type": 60,
+                    "Flags": 1,
+                    "Description": "Backing store for the ephemeral volume"
+                },
+                "mountPath": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The path where the volume is mounted"
+                },
+                "kind": {
+                    "Type": 61,
+                    "Flags": 1,
+                    "Description": "The Volume kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "memory"
+        }
+    },
+    {
+        "6": {
+            "Value": "disk"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                58,
+                59
+            ]
+        }
+    },
+    {
+        "6": {
+            "Value": "ephemeral"
+        }
+    },
+    {
+        "2": {
+            "Name": "PersistentVolume",
+            "Properties": {
+                "mountPath": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The path where the volume is mounted"
+                },
+                "rbac": {
+                    "Type": 65,
+                    "Flags": 0,
+                    "Description": "Container read/write access to the volume"
+                },
+                "source": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The source of the volume"
+                },
+                "kind": {
+                    "Type": 66,
+                    "Flags": 1,
+                    "Description": "The Volume kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "read"
+        }
+    },
+    {
+        "6": {
+            "Value": "write"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                63,
+                64
+            ]
+        }
+    },
+    {
+        "6": {
+            "Value": "persistent"
+        }
+    },
+    {
+        "2": {
+            "Name": "ContainerVolumes",
+            "Properties": {},
+            "AdditionalProperties": 56
+        }
+    },
+    {
+        "7": {
+            "Name": "ResourceTrait",
+            "Discriminator": "kind",
+            "BaseProperties": {},
+            "Elements": {
+                "dapr.io/Sidecar@v1alpha1": 69,
+                "radius.dev/ManualScaling@v1alpha1": 74
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "DaprSidecarTrait",
+            "Properties": {
+                "appId": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation."
+                },
+                "appPort": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar."
+                },
+                "config": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Specifies the Dapr configuration to use for the resource."
+                },
+                "protocol": {
+                    "Type": 72,
+                    "Flags": 0,
+                    "Description": "Specifies the Dapr app-protocol to use for the resource."
+                },
+                "provides": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource."
+                },
+                "kind": {
+                    "Type": 73,
+                    "Flags": 1,
+                    "Description": "The ResourceTrait kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "http"
+        }
+    },
+    {
+        "6": {
+            "Value": "grpc"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                70,
+                71
+            ]
+        }
+    },
+    {
+        "6": {
+            "Value": "dapr.io/Sidecar@v1alpha1"
+        }
+    },
+    {
+        "2": {
+            "Name": "ManualScalingTrait",
+            "Properties": {
+                "replicas": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "Replica count."
+                },
+                "kind": {
+                    "Type": 75,
+                    "Flags": 1,
+                    "Description": "The ResourceTrait kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "radius.dev/ManualScaling@v1alpha1"
+        }
+    },
+    {
+        "3": {
+            "ItemType": 68
+        }
+    },
+    {
+        "2": {
+            "Name": "ResourceStatusAutoGenerated",
+            "Properties": {
+                "healthErrorDetails": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Health errors for the resource"
+                },
+                "healthState": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Health state of the resource"
+                },
+                "outputResources": {
+                    "Type": 78,
+                    "Flags": 0,
+                    "Description": "Array of AnyObject"
+                },
+                "provisioningErrorDetails": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Provisioning errors for the resource"
+                },
+                "provisioningState": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Provisioning state of the resource"
+                }
+            }
+        }
+    },
+    {
+        "3": {
+            "ItemType": 0
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/Container@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 22
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/Extender"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/Extender",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 80,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 81,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 83,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "ExtenderProperties",
+            "Properties": {
+                "secrets": {
+                    "Type": 84,
+                    "Flags": 0,
+                    "Description": "Dictionary of <any>"
+                },
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            },
+            "AdditionalProperties": 0
+        }
+    },
+    {
+        "2": {
+            "Name": "ExtenderPropertiesSecrets",
+            "Properties": {},
+            "AdditionalProperties": 0
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/Extender@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 82
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/Gateway"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/Gateway",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 86,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 87,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 89,
+                    "Flags": 0
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "GatewayProperties",
+            "Properties": {
+                "listeners": {
+                    "Type": 91,
+                    "Flags": 0,
+                    "Description": "Dictionary of <GatewayListener>"
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "GatewayListener",
+            "Properties": {
+                "port": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "The port to listen on."
+                },
+                "protocol": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The protocol to use for this listener."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "GatewayPropertiesListeners",
+            "Properties": {},
+            "AdditionalProperties": 90
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/Gateway@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 88
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 93,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 94,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 96,
+                    "Flags": 0
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "HttpRouteProperties",
+            "Properties": {
+                "gateway": {
+                    "Type": 97,
+                    "Flags": 0,
+                    "Description": "Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet."
+                },
+                "hostname": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "The internal hostname accepting traffic for the route. Readonly."
+                },
+                "port": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "The port number for the route. Defaults to 80."
+                },
+                "scheme": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "The scheme used for traffic. Readonly."
+                },
+                "url": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "A stable URL that that can be used to route traffic to a resource. Readonly."
+                },
+                "status": {
+                    "Type": 101,
+                    "Flags": 0,
+                    "Description": "Status of a route."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "HttpRouteGateway",
+            "Properties": {
+                "hostname": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames."
+                },
+                "rules": {
+                    "Type": 100,
+                    "Flags": 0,
+                    "Description": "Dictionary of <HttpRouteGatewayRule>"
+                },
+                "source": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The gateway which this route is part of."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "HttpRouteGatewayRule",
+            "Properties": {
+                "method": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Specifies the method to match on the incoming request."
+                },
+                "path": {
+                    "Type": 99,
+                    "Flags": 0,
+                    "Description": "Specifies path matching options to match requests on."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "HttpRouteGatewayPath",
+            "Properties": {
+                "type": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Specifies the path to match the incoming request."
+                },
+                "value": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Specifies the type of matching to match the path on. Supported values: 'prefix', 'exact'."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "HttpRouteGatewayRules",
+            "Properties": {},
+            "AdditionalProperties": 98
+        }
+    },
+    {
+        "2": {
+            "Name": "RouteStatus",
+            "Properties": {
+                "healthState": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Health state of the route"
+                },
+                "outputResources": {
+                    "Type": 102,
+                    "Flags": 0,
+                    "Description": "Array of AnyObject"
+                },
+                "provisioningState": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Provisioning state of the route"
+                }
+            }
+        }
+    },
+    {
+        "3": {
+            "ItemType": 0
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/HttpRoute@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 95
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/Volume"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/Volume",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 104,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 105,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 107,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "7": {
+            "Name": "VolumeProperties",
+            "Discriminator": "kind",
+            "BaseProperties": {
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            },
+            "Elements": {
+                "azure.com.fileshare": 108,
+                "azure.com.keyvault": 110
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "AzureFileShareVolumeProperties",
+            "Properties": {
+                "resource": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The ID of the volume to use for this resource"
+                },
+                "kind": {
+                    "Type": 109,
+                    "Flags": 1,
+                    "Description": "The VolumeProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "azure.com.fileshare"
+        }
+    },
+    {
+        "2": {
+            "Name": "AzureKeyVaultVolumeProperties",
+            "Properties": {
+                "certificates": {
+                    "Type": 123,
+                    "Flags": 0,
+                    "Description": "The KeyVault certificates that this volume exposes"
+                },
+                "keys": {
+                    "Type": 125,
+                    "Flags": 0,
+                    "Description": "The KeyVault keys that this volume exposes"
+                },
+                "resource": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The ID of the keyvault to use for this volume resource"
+                },
+                "secrets": {
+                    "Type": 131,
+                    "Flags": 0,
+                    "Description": "The KeyVault secrets that this volume exposes"
+                },
+                "kind": {
+                    "Type": 132,
+                    "Flags": 1,
+                    "Description": "The VolumeProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "CertificateObjectProperties",
+            "Properties": {
+                "alias": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "File name when written to disk."
+                },
+                "encoding": {
+                    "Type": 115,
+                    "Flags": 0,
+                    "Description": "Encoding format. Default utf-8"
+                },
+                "format": {
+                    "Type": 118,
+                    "Flags": 0,
+                    "Description": "Certificate format. Default pem"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The name of the certificate"
+                },
+                "value": {
+                    "Type": 122,
+                    "Flags": 1,
+                    "Description": "Certificate object to be downloaded - the certificate itself, private key or public key of the certificate"
+                },
+                "version": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Certificate version"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "utf-8"
+        }
+    },
+    {
+        "6": {
+            "Value": "hex"
+        }
+    },
+    {
+        "6": {
+            "Value": "base64"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                112,
+                113,
+                114
+            ]
+        }
+    },
+    {
+        "6": {
+            "Value": "pem"
+        }
+    },
+    {
+        "6": {
+            "Value": "pfx"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                116,
+                117
+            ]
+        }
+    },
+    {
+        "6": {
+            "Value": "certificate"
+        }
+    },
+    {
+        "6": {
+            "Value": "publickey"
+        }
+    },
+    {
+        "6": {
+            "Value": "privatekey"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                119,
+                120,
+                121
+            ]
+        }
+    },
+    {
+        "2": {
+            "Name": "AzureKeyVaultVolumePropertiesCertificates",
+            "Properties": {},
+            "AdditionalProperties": 111
+        }
+    },
+    {
+        "2": {
+            "Name": "KeyObjectProperties",
+            "Properties": {
+                "alias": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "File name when written to disk."
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The name of the key"
+                },
+                "version": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Key version"
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "AzureKeyVaultVolumePropertiesKeys",
+            "Properties": {},
+            "AdditionalProperties": 124
+        }
+    },
+    {
+        "2": {
+            "Name": "SecretObjectProperties",
+            "Properties": {
+                "alias": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "File name when written to disk."
+                },
+                "encoding": {
+                    "Type": 130,
+                    "Flags": 0,
+                    "Description": "Encoding format. Default utf-8"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The name of the secret"
+                },
+                "version": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "Secret version"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "utf-8"
+        }
+    },
+    {
+        "6": {
+            "Value": "hex"
+        }
+    },
+    {
+        "6": {
+            "Value": "base64"
+        }
+    },
+    {
+        "5": {
+            "Elements": [
+                127,
+                128,
+                129
+            ]
+        }
+    },
+    {
+        "2": {
+            "Name": "AzureKeyVaultVolumePropertiesSecrets",
+            "Properties": {},
+            "AdditionalProperties": 126
+        }
+    },
+    {
+        "6": {
+            "Value": "azure.com.keyvault"
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/Volume@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 106
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.InvokeHttpRoute"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.InvokeHttpRoute",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 134,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 135,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 137,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "DaprHttpRouteProperties",
+            "Properties": {
+                "appId": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The Dapr appId used for the route"
+                },
+                "status": {
+                    "Type": 101,
+                    "Flags": 0,
+                    "Description": "Status of a route."
+                }
+            }
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.InvokeHttpRoute@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 136
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.PubSubTopic"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.PubSubTopic",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 139,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 140,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 142,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "7": {
+            "Name": "DaprPubSubTopicProperties",
+            "Discriminator": "kind",
+            "BaseProperties": {
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            },
+            "Elements": {
+                "generic": 143,
+                "pubsub.azure.servicebus": 145
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "DaprPubSubTopicGenericResourceProperties",
+            "Properties": {
+                "metadata": {
+                    "Type": 0,
+                    "Flags": 1,
+                    "Description": "Any object"
+                },
+                "type": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format."
+                },
+                "version": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "Dapr component version"
+                },
+                "kind": {
+                    "Type": 144,
+                    "Flags": 1,
+                    "Description": "The DaprPubSubTopicProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "generic"
+        }
+    },
+    {
+        "2": {
+            "Name": "DaprPubSubTopicAzureServiceBusResourceProperties",
+            "Properties": {
+                "resource": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "PubSub resource"
+                },
+                "kind": {
+                    "Type": 146,
+                    "Flags": 1,
+                    "Description": "The DaprPubSubTopicProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "pubsub.azure.servicebus"
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.PubSubTopic@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 141
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.SecretStore"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.SecretStore",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 148,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 149,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 151,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "DaprSecretStoreProperties",
+            "Properties": {
+                "kind": {
+                    "Type": 152,
+                    "Flags": 1,
+                    "Description": "Radius kind for Dapr Secret Store"
+                },
+                "metadata": {
+                    "Type": 0,
+                    "Flags": 1,
+                    "Description": "Any object"
+                },
+                "type": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
+                },
+                "version": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "Dapr component version"
+                },
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "generic"
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.SecretStore@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 150
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.StateStore"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.StateStore",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 154,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 155,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 157,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "7": {
+            "Name": "DaprStateStoreResourceProperties",
+            "Discriminator": "kind",
+            "BaseProperties": {
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            },
+            "Elements": {
+                "generic": 158,
+                "state.azure.tablestorage": 160,
+                "state.sqlserver": 162
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "DaprStateStoreGenericResourceProperties",
+            "Properties": {
+                "metadata": {
+                    "Type": 0,
+                    "Flags": 1,
+                    "Description": "Any object"
+                },
+                "type": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
+                },
+                "version": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "Dapr component version"
+                },
+                "kind": {
+                    "Type": 159,
+                    "Flags": 1,
+                    "Description": "The DaprStateStoreResourceProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "generic"
+        }
+    },
+    {
+        "2": {
+            "Name": "DaprStateStoreAzureTableStorageResourceProperties",
+            "Properties": {
+                "resource": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "PubSub resource"
+                },
+                "kind": {
+                    "Type": 161,
+                    "Flags": 1,
+                    "Description": "The DaprStateStoreResourceProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "state.azure.tablestorage"
+        }
+    },
+    {
+        "2": {
+            "Name": "DaprStateStoreSqlServerResourceProperties",
+            "Properties": {
+                "resource": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "PubSub resource"
+                },
+                "kind": {
+                    "Type": 163,
+                    "Flags": 1,
+                    "Description": "The DaprStateStoreResourceProperties kind"
+                }
+            }
+        }
+    },
+    {
+        "6": {
+            "Value": "state.sqlserver"
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/dapr.io.StateStore@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 156
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/microsoft.com.SQLDatabase"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/microsoft.com.SQLDatabase",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 165,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 166,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 168,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "MicrosoftSQLDatabaseProperties",
+            "Properties": {
+                "database": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The name of the SQL database."
+                },
+                "resource": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The ID of the SQL database to use for this resource."
+                },
+                "server": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The fully qualified domain name of the SQL database."
+                },
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            }
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/microsoft.com.SQLDatabase@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 167
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/mongo.com.MongoDatabase"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/mongo.com.MongoDatabase",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 170,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 171,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 173,
+                    "Flags": 0
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "MongoDBResourceProperties",
+            "Properties": {
+                "host": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The host name of the MongoDB to which you are connecting"
+                },
+                "port": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "The port value of the MongoDB to which you are connecting"
+                },
+                "resource": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The ID of the DB with Mongo API to use for this resource."
+                },
+                "secrets": {
+                    "Type": 174,
+                    "Flags": 0,
+                    "Description": "Secrets provided by resources,"
+                },
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "MongoDBResourcePropertiesSecrets",
+            "Properties": {
+                "connectionString": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The connection string used to connect to this DB"
+                },
+                "password": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The password for this MongoDB instance"
+                },
+                "username": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The password for this MongoDB instance"
+                }
+            }
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/mongo.com.MongoDatabase@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 172
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/rabbitmq.com.MessageQueue"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/rabbitmq.com.MessageQueue",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 176,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 177,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 179,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "RabbitMQMessageQueueResourceProperties",
+            "Properties": {
+                "queue": {
+                    "Type": 4,
+                    "Flags": 1,
+                    "Description": "The name of the queue"
+                },
+                "secrets": {
+                    "Type": 180,
+                    "Flags": 0,
+                    "Description": "Secrets provided by resources,"
+                },
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "RabbitMQMessageQueueResourcePropertiesSecrets",
+            "Properties": {
+                "connectionString": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The connection string used to connect to this RabbitMQ instance"
+                }
+            }
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/rabbitmq.com.MessageQueue@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 178
+        }
+    },
+    {
+        "6": {
+            "Value": "Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisCache"
+        }
+    },
+    {
+        "6": {
+            "Value": "2018-09-01-preview"
+        }
+    },
+    {
+        "2": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisCache",
+            "Properties": {
+                "id": {
+                    "Type": 4,
+                    "Flags": 10,
+                    "Description": "The resource id"
+                },
+                "name": {
+                    "Type": 4,
+                    "Flags": 9,
+                    "Description": "The resource name"
+                },
+                "type": {
+                    "Type": 182,
+                    "Flags": 10,
+                    "Description": "The resource type"
+                },
+                "apiVersion": {
+                    "Type": 183,
+                    "Flags": 10,
+                    "Description": "The resource api version"
+                },
+                "properties": {
+                    "Type": 185,
+                    "Flags": 1
+                },
+                "status": {
+                    "Type": 14,
+                    "Flags": 0,
+                    "Description": "Status of an application."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "RedisCacheResourceProperties",
+            "Properties": {
+                "host": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The host name of the redis cache to which you are connecting"
+                },
+                "port": {
+                    "Type": 3,
+                    "Flags": 0,
+                    "Description": "The port value of the redis cache to which you are connecting"
+                },
+                "resource": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The ID of the Redis cache to use for this resource"
+                },
+                "secrets": {
+                    "Type": 186,
+                    "Flags": 0
+                },
+                "status": {
+                    "Type": 77,
+                    "Flags": 0,
+                    "Description": "Status of a resource."
+                }
+            }
+        }
+    },
+    {
+        "2": {
+            "Name": "RedisCacheResourcePropertiesSecrets",
+            "Properties": {
+                "connectionString": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The Redis connection string used to connect to the redis cache"
+                },
+                "password": {
+                    "Type": 4,
+                    "Flags": 0,
+                    "Description": "The password for this Redis instance"
+                }
+            }
+        }
+    },
+    {
+        "4": {
+            "Name": "Microsoft.CustomProviders/resourceProviders/Application/redislabs.com.RedisCache@2018-09-01-preview",
+            "ScopeType": 8,
+            "Body": 184
+        }
+    }
+]

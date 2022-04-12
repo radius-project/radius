@@ -1,0 +1,10 @@
+dist
+package-lock.json
+node_modules
+test.json
+test/**/dist
+test/**/esm
+test/**/node_modules
+test-browser
+.tmp
+coverage

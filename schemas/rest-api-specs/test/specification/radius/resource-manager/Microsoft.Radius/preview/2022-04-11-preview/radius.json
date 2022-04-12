@@ -1,0 +1,5464 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "definitions": {
+    "ApplicationList": {
+      "description": "List of Application resources.",
+      "properties": {
+        "value": {
+          "description": "List of Application resources.",
+          "items": {
+            "$ref": "#/definitions/ApplicationResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "ApplicationProperties": {
+      "additionalProperties": false,
+      "description": "Properties of an application.",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/ApplicationStatus",
+          "description": "Status of the application"
+        }
+      },
+      "type": "object"
+    },
+    "ApplicationResource": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/TrackedResource"
+        }
+      ],
+      "description": "Application resource.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ApplicationProperties",
+          "description": "Properties of the application."
+        }
+      },
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "ApplicationStatus": {
+      "additionalProperties": false,
+      "description": "Status of an application.",
+      "properties": {
+        "healthErrorDetails": {
+          "description": "Health errors for the application",
+          "type": "string"
+        },
+        "healthState": {
+          "description": "Health state of the application",
+          "type": "string"
+        },
+        "provisioningErrorDetails": {
+          "description": "Provisioning errors for the application",
+          "type": "string"
+        },
+        "provisioningState": {
+          "description": "Provisioning state of the application",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "AzureConnectionList": {
+      "description": "List of AzureConnection resources.",
+      "properties": {
+        "value": {
+          "description": "List of AzureConnection resources.",
+          "items": {
+            "$ref": "#/definitions/AzureConnectionResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "AzureConnectionResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Interface for generic resource -- useful for listing resources without specifying a type",
+      "properties": {
+        "properties": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "AzureEntityResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        }
+      ],
+      "description": "The resource model definition for an Azure Resource Manager resource with an etag.",
+      "properties": {
+        "etag": {
+          "description": "Resource Etag.",
+          "readOnly": true,
+          "type": "string"
+        }
+      },
+      "title": "Entity Resource",
+      "x-ms-client-name": "AzureEntityResource"
+    },
+    "AzureFileShareVolumeProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/VolumeProperties"
+        }
+      ],
+      "properties": {
+        "resource": {
+          "description": "The ID of the volume to use for this resource",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "azure.com.fileshare"
+    },
+    "AzureKeyVaultVolumeProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/VolumeProperties"
+        }
+      ],
+      "properties": {
+        "certificates": {
+          "additionalProperties": {
+            "$ref": "#/definitions/CertificateObjectProperties"
+          },
+          "description": "The KeyVault certificates that this volume exposes",
+          "type": "object"
+        },
+        "keys": {
+          "additionalProperties": {
+            "$ref": "#/definitions/KeyObjectProperties"
+          },
+          "description": "The KeyVault keys that this volume exposes",
+          "type": "object"
+        },
+        "resource": {
+          "description": "The ID of the keyvault to use for this volume resource",
+          "type": "string"
+        },
+        "secrets": {
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretObjectProperties"
+          },
+          "description": "The KeyVault secrets that this volume exposes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "azure.com.keyvault"
+    },
+    "BasicResourceProperties": {
+      "description": "Basic properties of a Radius resource.",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of the resource"
+        }
+      },
+      "type": "object"
+    },
+    "BasicRouteProperties": {
+      "description": "Basic properties of a route.",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/RouteStatus",
+          "description": "Status of the resource"
+        }
+      },
+      "type": "object"
+    },
+    "CertificateObjectProperties": {
+      "properties": {
+        "alias": {
+          "description": "File name when written to disk.",
+          "type": "string"
+        },
+        "encoding": {
+          "default": "utf-8",
+          "description": "Encoding format. Default utf-8",
+          "enum": [
+            "utf-8",
+            "hex",
+            "base64"
+          ],
+          "type": "string"
+        },
+        "format": {
+          "default": "pem",
+          "description": "Certificate format. Default pem",
+          "enum": [
+            "pem",
+            "pfx"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the certificate",
+          "type": "string"
+        },
+        "value": {
+          "description": "Certificate object to be downloaded - the certificate itself, private key or public key of the certificate",
+          "enum": [
+            "certificate",
+            "publickey",
+            "privatekey"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Certificate version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "CheckNameAvailabilityRequest": {
+      "description": "The check availability request body.",
+      "properties": {
+        "name": {
+          "description": "The name of the resource for which availability needs to be checked.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The resource type.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "CheckNameAvailabilityResponse": {
+      "description": "The check availability result.",
+      "properties": {
+        "message": {
+          "description": "Detailed reason why the given name is available.",
+          "type": "string"
+        },
+        "nameAvailable": {
+          "description": "Indicates if the resource name is available.",
+          "type": "boolean"
+        },
+        "reason": {
+          "description": "The reason why the given name is not available.",
+          "enum": [
+            "Invalid",
+            "AlreadyExists"
+          ],
+          "type": "string",
+          "x-ms-enum": {
+            "modelAsString": true,
+            "name": "CheckNameAvailabilityReason"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "Connection": {
+      "additionalProperties": false,
+      "description": "Specifies a connection to another resource",
+      "properties": {
+        "kind": {
+          "description": "The kind of connection",
+          "enum": [
+            "azure",
+            "azure.com/KeyVault",
+            "azure.com/ServiceBusQueue",
+            "dapr.io/InvokeHttp",
+            "dapr.io/PubSubTopic",
+            "dapr.io/StateStore",
+            "dapr.io/SecretStore",
+            "Grpc",
+            "Http",
+            "microsoft.com/SQL",
+            "mongo.com/MongoDB",
+            "rabbitmq.com/MessageQueue",
+            "redislabs.com/Redis"
+          ],
+          "type": "string"
+        },
+        "roles": {
+          "description": "RBAC permissions to be assigned on the source resource",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "source": {
+          "description": "The source of the connection",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "source"
+      ],
+      "type": "object"
+    },
+    "Container": {
+      "additionalProperties": false,
+      "description": "Definition of a container.",
+      "properties": {
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "image": {
+          "description": "The registry and image to download and run in your container",
+          "type": "string"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties"
+        },
+        "ports": {
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerPort"
+          },
+          "type": "object"
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties"
+        },
+        "volumes": {
+          "additionalProperties": {
+            "$ref": "#/definitions/Volume"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "image"
+      ],
+      "type": "object"
+    },
+    "ContainerList": {
+      "description": "List of Container resources.",
+      "properties": {
+        "value": {
+          "description": "List of Container resources.",
+          "items": {
+            "$ref": "#/definitions/ContainerResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "ContainerPort": {
+      "additionalProperties": false,
+      "description": "Specifies a listening port for the container",
+      "properties": {
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "integer"
+        },
+        "protocol": {
+          "description": "Protocol in use by the port",
+          "enum": [
+            "TCP",
+            "UDP"
+          ],
+          "type": "string"
+        },
+        "provides": {
+          "description": "Specifies a route provided by this port",
+          "type": "string"
+        }
+      },
+      "required": [
+        "containerPort"
+      ],
+      "type": "object"
+    },
+    "ContainerProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "connections": {
+          "additionalProperties": {
+            "$ref": "#/definitions/Connection"
+          },
+          "type": "object"
+        },
+        "container": {
+          "$ref": "#/definitions/Container"
+        },
+        "traits": {
+          "description": "Traits spec of the resource",
+          "items": {
+            "$ref": "#/definitions/ResourceTrait"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "ContainerResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The radius.dev/Container resource provides an abstraction for a container workload that can be run on any Radius platform",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ContainerProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "DaprHttpRouteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicRouteProperties"
+        }
+      ],
+      "properties": {
+        "appId": {
+          "description": "The Dapr appId used for the route",
+          "type": "string"
+        }
+      },
+      "required": [
+        "appId"
+      ],
+      "type": "object"
+    },
+    "DaprInvokeHttpRouteList": {
+      "description": "List of dapr.io.InvokeHttpRoute resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.InvokeHttpRoute resources.",
+          "items": {
+            "$ref": "#/definitions/DaprInvokeHttpRouteResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "DaprInvokeHttpRouteResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource that specifies an Dapr HTTP Service Invocation Route. A Dapr HTTP Service Invocation Route describes a pattern of communication between resources.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprHttpRouteProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "DaprPubSubTopicAzureServiceBusResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprPubSubTopicProperties"
+        }
+      ],
+      "properties": {
+        "resource": {
+          "description": "PubSub resource",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "resource"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "pubsub.azure.servicebus"
+    },
+    "DaprPubSubTopicGenericResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprPubSubTopicProperties"
+        }
+      ],
+      "properties": {
+        "metadata": {
+          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "type",
+        "version",
+        "metadata"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "generic"
+    },
+    "DaprPubSubTopicList": {
+      "description": "List of dapr.io.PubSubTopic resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.PubSubTopic resources.",
+          "items": {
+            "$ref": "#/definitions/DaprPubSubTopicResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "DaprPubSubTopicProperties": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The DaprPubSubTopicProperties kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "DaprPubSubTopicResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource for Dapr Pub/Sub",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubTopicProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "DaprSecretStoreList": {
+      "description": "List of dapr.io.SecretStore resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.SecretStore resources.",
+          "items": {
+            "$ref": "#/definitions/DaprSecretStoreResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "DaprSecretStoreProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "kind": {
+          "description": "Radius kind for Dapr Secret Store",
+          "enum": [
+            "generic"
+          ],
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/",
+          "example": [
+            "secretstores.hashicorp.vault"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "type",
+        "version",
+        "metadata"
+      ],
+      "type": "object"
+    },
+    "DaprSecretStoreResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource for Dapr Secret Store.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprSecretStoreProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "DaprSidecarTrait": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/ResourceTrait"
+        }
+      ],
+      "description": "The specifies that the resource should have a Dapr sidecar injected",
+      "properties": {
+        "appId": {
+          "description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation.",
+          "type": "string"
+        },
+        "appPort": {
+          "description": "The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. ",
+          "type": "integer"
+        },
+        "config": {
+          "description": "Specifies the Dapr configuration to use for the resource.",
+          "type": "string"
+        },
+        "protocol": {
+          "description": "Specifies the Dapr app-protocol to use for the resource.",
+          "enum": [
+            "http",
+            "grpc"
+          ],
+          "type": "string"
+        },
+        "provides": {
+          "description": "Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "appId",
+        "kind"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
+    },
+    "DaprStateStoreAzureTableStorageResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      ],
+      "properties": {
+        "resource": {
+          "description": "PubSub resource",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "resource"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "state.azure.tablestorage"
+    },
+    "DaprStateStoreGenericResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      ],
+      "properties": {
+        "metadata": {
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "example": [
+            "state.zookeeper"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "type",
+        "metadata",
+        "version"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "generic"
+    },
+    "DaprStateStoreList": {
+      "description": "List of dapr.io.StateStore resources.",
+      "properties": {
+        "value": {
+          "description": "List of dapr.io.StateStore resources.",
+          "items": {
+            "$ref": "#/definitions/DaprStateStoreResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "DaprStateStoreResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource for Dapr state store",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "DaprStateStoreResourceProperties": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The DaprStateStoreResourceProperties kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "DaprStateStoreSqlServerResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreResourceProperties"
+        }
+      ],
+      "properties": {
+        "resource": {
+          "description": "PubSub resource",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "resource"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "state.sqlserver"
+    },
+    "EphemeralVolume": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/Volume"
+        }
+      ],
+      "description": "Specifies an ephemeral volume for a container",
+      "properties": {
+        "managedStore": {
+          "description": "Backing store for the ephemeral volume",
+          "enum": [
+            "memory",
+            "disk"
+          ],
+          "type": "string"
+        },
+        "mountPath": {
+          "description": "The path where the volume is mounted",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mountPath",
+        "kind",
+        "managedStore"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "ephemeral"
+    },
+    "ErrorAdditionalInfo": {
+      "description": "The resource management error additional info.",
+      "properties": {
+        "info": {
+          "description": "The additional info.",
+          "readOnly": true,
+          "type": "object"
+        },
+        "type": {
+          "description": "The additional info type.",
+          "readOnly": true,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ErrorDetail": {
+      "description": "The error detail.",
+      "properties": {
+        "additionalInfo": {
+          "description": "The error additional info.",
+          "items": {
+            "$ref": "#/definitions/ErrorAdditionalInfo"
+          },
+          "readOnly": true,
+          "type": "array"
+        },
+        "code": {
+          "description": "The error code.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "details": {
+          "description": "The error details.",
+          "items": {
+            "$ref": "#/definitions/ErrorDetail"
+          },
+          "readOnly": true,
+          "type": "array"
+        },
+        "message": {
+          "description": "The error message.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "target": {
+          "description": "The error target.",
+          "readOnly": true,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ErrorResponse": {
+      "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations. (This also follows the OData error response format.).",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/ErrorDetail",
+          "description": "The error object."
+        }
+      },
+      "title": "Error response",
+      "type": "object"
+    },
+    "ExecHealthProbeProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "description": "Specifies the properties for readiness/liveness probe using an executable",
+      "properties": {
+        "command": {
+          "description": "Command to execute to probe readiness/liveness",
+          "type": "string"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "command"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "exec"
+    },
+    "ExtenderList": {
+      "description": "List of Extender resources.",
+      "properties": {
+        "value": {
+          "description": "List of Extender resources.",
+          "items": {
+            "$ref": "#/definitions/ExtenderResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "ExtenderProperties": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "secrets": {
+          "additionalProperties": true,
+          "properties": {},
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "ExtenderResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Extender Resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ExtenderProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "GatewayList": {
+      "description": "List of Gateway resources.",
+      "properties": {
+        "value": {
+          "description": "List of Gateway resources.",
+          "items": {
+            "$ref": "#/definitions/GatewayResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "GatewayListener": {
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "description": "The port to listen on.",
+          "type": "number"
+        },
+        "protocol": {
+          "description": "The protocol to use for this listener.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "GatewayProperties": {
+      "additionalProperties": false,
+      "properties": {
+        "listeners": {
+          "additionalProperties": {
+            "$ref": "#/definitions/GatewayListener"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "GatewayResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource that specifies how traffic is exposed to the application.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/GatewayProperties"
+        }
+      },
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "HealthProbeProperties": {
+      "description": "Properties for readiness/liveness probe",
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The HealthProbeProperties kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "HttpGetHealthProbeProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
+      "properties": {
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "integer"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Custom HTTP headers to add to the get request",
+          "type": "object"
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "path": {
+          "description": "The route to make the HTTP request on",
+          "type": "string"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "containerPort",
+        "path"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "httpGet"
+    },
+    "HttpRouteGateway": {
+      "additionalProperties": false,
+      "description": "Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet.",
+      "properties": {
+        "hostname": {
+          "description": "Specifies the public hostname for the route. Use '*' to listen on all hostnames.",
+          "type": "string"
+        },
+        "rules": {
+          "additionalProperties": {
+            "$ref": "#/definitions/HttpRouteGatewayRule"
+          },
+          "type": "object"
+        },
+        "source": {
+          "description": "The gateway which this route is part of.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "hostname"
+      ],
+      "type": "object"
+    },
+    "HttpRouteGatewayPath": {
+      "additionalProperties": false,
+      "description": "Specifies path matching options to match requests on.",
+      "properties": {
+        "type": {
+          "description": "Specifies the path to match the incoming request.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Specifies the type of matching to match the path on. Supported values: 'prefix', 'exact'.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "HttpRouteGatewayRule": {
+      "additionalProperties": false,
+      "description": "Specifies the rule to match requests on.",
+      "properties": {
+        "method": {
+          "description": "Specifies the method to match on the incoming request.",
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/definitions/HttpRouteGatewayPath"
+        }
+      },
+      "type": "object"
+    },
+    "HttpRouteList": {
+      "description": "List of HttpRoute resources.",
+      "properties": {
+        "value": {
+          "description": "List of HttpRoute resources.",
+          "items": {
+            "$ref": "#/definitions/HttpRouteResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "HttpRouteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicRouteProperties"
+        }
+      ],
+      "properties": {
+        "gateway": {
+          "$ref": "#/definitions/HttpRouteGateway"
+        },
+        "hostname": {
+          "description": "The internal hostname accepting traffic for the route. Readonly.",
+          "type": "number"
+        },
+        "port": {
+          "description": "The port number for the route. Defaults to 80.",
+          "type": "number"
+        },
+        "scheme": {
+          "description": "The scheme used for traffic. Readonly.",
+          "type": "number"
+        },
+        "url": {
+          "description": "A stable URL that that can be used to route traffic to a resource. Readonly.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "HttpRouteResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal traffic to a resource.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/HttpRouteProperties"
+        }
+      },
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "Identity": {
+      "description": "Identity for the resource.",
+      "properties": {
+        "principalId": {
+          "description": "The principal ID of resource identity.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "tenantId": {
+          "description": "The tenant ID of resource.",
+          "readOnly": true,
+          "type": "string"
+        },
+        "type": {
+          "description": "The identity type.",
+          "enum": [
+            "SystemAssigned"
+          ],
+          "type": "string",
+          "x-ms-enum": {
+            "modelAsString": false,
+            "name": "ResourceIdentityType"
+          }
+        }
+      }
+    },
+    "KeyObjectProperties": {
+      "properties": {
+        "alias": {
+          "description": "File name when written to disk.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the key",
+          "type": "string"
+        },
+        "version": {
+          "description": "Key version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "KeyVaultProperties": {
+      "properties": {
+        "identity": {
+          "description": "The client ID of the identity which will be used to access key vault.",
+          "type": "string"
+        },
+        "keyIdentifier": {
+          "description": "Key vault uri to access the encryption key.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ManualScalingTrait": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/ResourceTrait"
+        }
+      ],
+      "description": "ManualScaling Trait",
+      "properties": {
+        "replicas": {
+          "description": "Replica count.",
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "x-ms-discriminator-value": "radius.dev/ManualScaling@v1alpha1"
+    },
+    "MicrosoftSQLDatabaseList": {
+      "description": "List of microsoft.com.SQLDatabase resources.",
+      "properties": {
+        "value": {
+          "description": "List of microsoft.com.SQLDatabase resources.",
+          "items": {
+            "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "MicrosoftSQLDatabaseProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "database": {
+          "description": "The name of the SQL database.",
+          "type": "string"
+        },
+        "resource": {
+          "description": "The ID of the SQL database to use for this resource.",
+          "type": "string"
+        },
+        "server": {
+          "description": "The fully qualified domain name of the SQL database.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "MicrosoftSQLDatabaseResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Microsoft SQL compatible database.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/MicrosoftSQLDatabaseProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "MongoDBResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "host": {
+          "description": "The host name of the MongoDB to which you are connecting",
+          "type": "string"
+        },
+        "port": {
+          "description": "The port value of the MongoDB to which you are connecting",
+          "example": [
+            27017
+          ],
+          "type": "integer"
+        },
+        "resource": {
+          "description": "The ID of the DB with Mongo API to use for this resource.",
+          "example": [
+            "account::mongodb.id"
+          ],
+          "type": "string"
+        },
+        "secrets": {
+          "additionalProperties": false,
+          "description": "Secrets provided by resources,",
+          "properties": {
+            "connectionString": {
+              "description": "The connection string used to connect to this DB",
+              "type": "string"
+            },
+            "password": {
+              "description": "The password for this MongoDB instance",
+              "type": "string"
+            },
+            "username": {
+              "description": "The password for this MongoDB instance",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "MongoDatabaseList": {
+      "description": "List of mongo.com.MongoDatabase resources.",
+      "properties": {
+        "value": {
+          "description": "List of mongo.com.MongoDatabase resources.",
+          "items": {
+            "$ref": "#/definitions/MongoDatabaseResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "MongoDatabaseResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The mongo database resource is a portable resource which can be deployed to any Radius platform.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/MongoDBResourceProperties"
+        }
+      },
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "Operation": {
+      "description": "Details of a REST API operation, returned from the Resource Provider Operations API",
+      "properties": {
+        "actionType": {
+          "description": "Enum. Indicates the action type. \"Internal\" refers to actions that are for internal only APIs.",
+          "enum": [
+            "Internal"
+          ],
+          "readOnly": true,
+          "type": "string",
+          "x-ms-enum": {
+            "modelAsString": true,
+            "name": "ActionType"
+          }
+        },
+        "display": {
+          "description": "Localized display information for this particular operation.",
+          "properties": {
+            "description": {
+              "description": "The short, localized friendly description of the operation; suitable for tool tips and detailed views.",
+              "readOnly": true,
+              "type": "string"
+            },
+            "operation": {
+              "description": "The concise, localized friendly name for the operation; suitable for dropdowns. E.g. \"Create or Update Virtual Machine\", \"Restart Virtual Machine\".",
+              "readOnly": true,
+              "type": "string"
+            },
+            "provider": {
+              "description": "The localized friendly form of the resource provider name, e.g. \"Microsoft Monitoring Insights\" or \"Microsoft Compute\".",
+              "readOnly": true,
+              "type": "string"
+            },
+            "resource": {
+              "description": "The localized friendly name of the resource type related to this operation. E.g. \"Virtual Machines\" or \"Job Schedule Collections\".",
+              "readOnly": true,
+              "type": "string"
+            }
+          }
+        },
+        "isDataAction": {
+          "description": "Whether the operation applies to data-plane. This is \"true\" for data-plane operations and \"false\" for ARM/control-plane operations.",
+          "readOnly": true,
+          "type": "boolean"
+        },
+        "name": {
+          "description": "The name of the operation, as per Resource-Based Access Control (RBAC). Examples: \"Microsoft.Compute/virtualMachines/write\", \"Microsoft.Compute/virtualMachines/capture/action\"",
+          "readOnly": true,
+          "type": "string"
+        },
+        "origin": {
+          "description": "The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default value is \"user,system\"",
+          "enum": [
+            "user",
+            "system",
+            "user,system"
+          ],
+          "readOnly": true,
+          "type": "string",
+          "x-ms-enum": {
+            "modelAsString": true,
+            "name": "Origin"
+          }
+        }
+      },
+      "title": "REST API Operation",
+      "type": "object"
+    },
+    "OperationListResult": {
+      "description": "A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.",
+      "properties": {
+        "nextLink": {
+          "description": "URL to get the next set of operation list results (if there are any).",
+          "readOnly": true,
+          "type": "string"
+        },
+        "value": {
+          "description": "List of operations supported by the resource provider",
+          "items": {
+            "$ref": "#/definitions/Operation"
+          },
+          "readOnly": true,
+          "type": "array"
+        }
+      }
+    },
+    "OperationStatusResult": {
+      "description": "The current status of an async operation.",
+      "properties": {
+        "endTime": {
+          "description": "The end time of the operation.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/ErrorDetail",
+          "description": "If present, details of the operation error."
+        },
+        "id": {
+          "description": "Fully qualified ID for the async operation.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the async operation.",
+          "type": "string"
+        },
+        "operations": {
+          "description": "The operations list.",
+          "items": {
+            "$ref": "#/definitions/OperationStatusResult"
+          },
+          "type": "array"
+        },
+        "percentComplete": {
+          "description": "Percent of the operation that is complete.",
+          "maximum": 100,
+          "minimum": 0,
+          "type": "number"
+        },
+        "startTime": {
+          "description": "The start time of the operation.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "description": "Operation status.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "OutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object"
+    },
+    "PersistentVolume": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/Volume"
+        }
+      ],
+      "description": "Specifies a persistent volume for a container",
+      "properties": {
+        "mountPath": {
+          "description": "The path where the volume is mounted",
+          "type": "string"
+        },
+        "rbac": {
+          "description": "Container read/write access to the volume",
+          "enum": [
+            "read",
+            "write"
+          ],
+          "type": "string"
+        },
+        "source": {
+          "description": "The source of the volume",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mountPath",
+        "kind",
+        "source"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "persistent"
+    },
+    "Plan": {
+      "description": "Plan for the resource.",
+      "properties": {
+        "name": {
+          "description": "A user defined name of the 3rd Party Artifact that is being procured.",
+          "type": "string"
+        },
+        "product": {
+          "description": "The 3rd Party artifact that is being procured. E.g. NewRelic. Product maps to the OfferID specified for the artifact at the time of Data Market onboarding. ",
+          "type": "string"
+        },
+        "promotionCode": {
+          "description": "A publisher provided promotion code as provisioned in Data Market for the said product/artifact.",
+          "type": "string"
+        },
+        "publisher": {
+          "description": "The publisher of the 3rd Party Artifact that is being bought. E.g. NewRelic",
+          "type": "string"
+        },
+        "version": {
+          "description": "The version of the desired product/artifact.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "publisher",
+        "product"
+      ]
+    },
+    "ProxyResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        }
+      ],
+      "description": "The resource model definition for a Azure Resource Manager proxy resource. It will not have tags and a location",
+      "title": "Proxy Resource",
+      "type": "object"
+    },
+    "RabbitMQMessageQueueList": {
+      "description": "List of rabbitmq.com.MessageQueue resources.",
+      "properties": {
+        "value": {
+          "description": "List of rabbitmq.com.MessageQueue resources.",
+          "items": {
+            "$ref": "#/definitions/RabbitMQMessageQueueResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "RabbitMQMessageQueueResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The RabbitMQMessageQueue resource is a Kubernetes specific resource for message brokering.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RabbitMQMessageQueueResourceProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "RabbitMQMessageQueueResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
+        },
+        "secrets": {
+          "additionalProperties": false,
+          "description": "Secrets provided by resources,",
+          "properties": {
+            "connectionString": {
+              "description": "The connection string used to connect to this RabbitMQ instance",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "queue"
+      ],
+      "type": "object"
+    },
+    "RadiusResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "Interface for generic resource -- useful for listing resources without specifying a type",
+      "properties": {
+        "properties": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "RadiusResourceList": {
+      "description": "List of RadiusResource resources.",
+      "properties": {
+        "value": {
+          "description": "List of RadiusResource resources.",
+          "items": {
+            "$ref": "#/definitions/RadiusResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "RedisCacheList": {
+      "description": "List of redislabs.com.RedisCache resources.",
+      "properties": {
+        "value": {
+          "description": "List of redislabs.com.RedisCache resources.",
+          "items": {
+            "$ref": "#/definitions/RedisCacheResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "RedisCacheResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The RedisCache resource is a portable resource which can be deployed to any Radius platform.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RedisCacheResourceProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "RedisCacheResourceProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "host": {
+          "description": "The host name of the redis cache to which you are connecting",
+          "example": [
+            "myrediscache.redis.cache.windows.net",
+            "redis.default.svc.cluster.local"
+          ],
+          "type": "string"
+        },
+        "port": {
+          "description": "The port value of the redis cache to which you are connecting",
+          "example": [
+            6380,
+            6379
+          ],
+          "type": "integer"
+        },
+        "resource": {
+          "description": "The ID of the Redis cache to use for this resource",
+          "example": [
+            "account::redis.id"
+          ],
+          "type": "string"
+        },
+        "secrets": {
+          "additionalProperties": false,
+          "properties": {
+            "connectionString": {
+              "description": "The Redis connection string used to connect to the redis cache",
+              "example": [
+                "myrediscache.redis.cache.windows.net:6380",
+                "redis.default.svc.cluster.local:6379"
+              ],
+              "type": "string"
+            },
+            "password": {
+              "description": "The password for this Redis instance",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "Resource": {
+      "description": "Common fields that are returned in the response for all Azure Resource Manager resources",
+      "properties": {
+        "id": {
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "readOnly": true,
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the resource",
+          "readOnly": true,
+          "type": "string"
+        },
+        "status": {
+          "additionalProperties": false,
+          "description": "Status of an application.",
+          "properties": {
+            "healthErrorDetails": {
+              "description": "Health errors for the application",
+              "type": "string"
+            },
+            "healthState": {
+              "description": "Health state of the application",
+              "type": "string"
+            },
+            "provisioningErrorDetails": {
+              "description": "Provisioning errors for the application",
+              "type": "string"
+            },
+            "provisioningState": {
+              "description": "Provisioning state of the application",
+              "type": "string"
+            }
+          }
+        },
+        "type": {
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+          "readOnly": true,
+          "type": "string"
+        }
+      },
+      "title": "Resource",
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "ResourceModelWithAllowedPropertySet": {
+      "description": "The resource model definition containing the full set of allowed properties for a resource. Except properties bag, there cannot be a top level property outside of this set.",
+      "properties": {
+        "etag": {
+          "description": "The etag field is *not* required. If it is provided in the response body, it must also be provided as a header per the normal etag convention.  Entity tags are used for comparing two or more entities from the same requested resource. HTTP/1.1 uses entity tags in the etag (section 14.19), If-Match (section 14.24), If-None-Match (section 14.26), and If-Range (section 14.27) header fields. ",
+          "readOnly": true,
+          "type": "string"
+        },
+        "id": {
+          "description": "Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}",
+          "readOnly": true,
+          "type": "string",
+          "x-ms-mutability": [
+            "read"
+          ]
+        },
+        "identity": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/Identity"
+            }
+          ]
+        },
+        "kind": {
+          "description": "Metadata used by portal/tooling/etc to render different UX experiences for resources of the same type; e.g. ApiApps are a kind of Microsoft.Web/sites type.  If supported, the resource provider must validate and persist this value.",
+          "pattern": "^[-\\w\\._,\\(\\)]+$",
+          "type": "string",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "location": {
+          "description": "The geo-location where the resource lives",
+          "type": "string",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "managedBy": {
+          "description": "The fully qualified resource ID of the resource that manages this resource. Indicates if this resource is managed by another Azure resource. If this is present, complete mode deployment will not delete the resource if it is removed from the template since it is managed by another resource.",
+          "type": "string",
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ]
+        },
+        "name": {
+          "description": "The name of the resource",
+          "readOnly": true,
+          "type": "string"
+        },
+        "plan": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/Plan"
+            }
+          ]
+        },
+        "sku": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/Sku"
+            }
+          ]
+        },
+        "tags": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags.",
+          "type": "object",
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ]
+        },
+        "type": {
+          "description": "The type of the resource. E.g. \"Microsoft.Compute/virtualMachines\" or \"Microsoft.Storage/storageAccounts\"",
+          "readOnly": true,
+          "type": "string",
+          "x-ms-mutability": [
+            "read"
+          ]
+        }
+      },
+      "x-ms-azure-resource": true
+    },
+    "ResourceStatus": {
+      "description": "Status of a resource.",
+      "properties": {
+        "healthErrorDetails": {
+          "description": "Health errors for the resource",
+          "type": "string"
+        },
+        "healthState": {
+          "description": "Health state of the resource",
+          "type": "string"
+        },
+        "outputResources": {
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "type": "array"
+        },
+        "provisioningErrorDetails": {
+          "description": "Provisioning errors for the resource",
+          "type": "string"
+        },
+        "provisioningState": {
+          "description": "Provisioning state of the resource",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ResourceTrait": {
+      "description": "Trait of a resource.",
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The ResourceTrait kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "RouteOutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object"
+    },
+    "RouteStatus": {
+      "description": "Status of a route.",
+      "properties": {
+        "healthState": {
+          "description": "Health state of the route",
+          "type": "string"
+        },
+        "outputResources": {
+          "items": {
+            "$ref": "#/definitions/RouteOutputResource"
+          },
+          "type": "array"
+        },
+        "provisioningState": {
+          "description": "Provisioning state of the route",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "SecretObjectProperties": {
+      "properties": {
+        "alias": {
+          "description": "File name when written to disk.",
+          "type": "string"
+        },
+        "encoding": {
+          "default": "utf-8",
+          "description": "Encoding format. Default utf-8",
+          "enum": [
+            "utf-8",
+            "hex",
+            "base64"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the secret",
+          "type": "string"
+        },
+        "version": {
+          "description": "Secret version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "Sku": {
+      "description": "The resource model definition representing SKU",
+      "properties": {
+        "capacity": {
+          "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted.",
+          "format": "int32",
+          "type": "integer"
+        },
+        "family": {
+          "description": "If the service has different generations of hardware, for the same SKU, then that can be captured here.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the SKU. Ex - P3. It is typically a letter+number code",
+          "type": "string"
+        },
+        "size": {
+          "description": "The SKU size. When the name field is the combination of tier and some other value, this would be the standalone code. ",
+          "type": "string"
+        },
+        "tier": {
+          "description": "This field is required to be implemented by the Resource Provider if the service has more than one tier, but is not required on a PUT.",
+          "enum": [
+            "Free",
+            "Basic",
+            "Standard",
+            "Premium"
+          ],
+          "type": "string",
+          "x-ms-enum": {
+            "modelAsString": false,
+            "name": "SkuTier"
+          }
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "TcpHealthProbeProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "description": "Specifies the properties for readiness/liveness probe using TCP",
+      "properties": {
+        "containerPort": {
+          "description": "The listening port number",
+          "type": "integer"
+        },
+        "failureThreshold": {
+          "description": "Threshold number of times the probe fails after which a failure would be reported",
+          "type": "number"
+        },
+        "initialDelaySeconds": {
+          "description": "Initial delay in seconds before probing for readiness/liveness",
+          "type": "number"
+        },
+        "periodSeconds": {
+          "description": "Interval for the readiness/liveness probe in seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "containerPort"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "tcp"
+    },
+    "TrackedResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        }
+      ],
+      "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
+      "properties": {
+        "location": {
+          "description": "The geo-location where the resource lives",
+          "type": "string",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "tags": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags.",
+          "type": "object",
+          "x-ms-mutability": [
+            "read",
+            "create",
+            "update"
+          ]
+        }
+      },
+      "title": "Tracked Resource",
+      "type": "object"
+    },
+    "Volume": {
+      "description": "Specifies a volume for a container",
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The Volume kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "VolumeList": {
+      "description": "List of Volume resources.",
+      "properties": {
+        "value": {
+          "description": "List of Volume resources.",
+          "items": {
+            "$ref": "#/definitions/VolumeResource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "VolumeProperties": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
+      ],
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "The VolumeProperties kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "VolumeResource": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProxyResource"
+        }
+      ],
+      "description": "The Volume provides an abstraction for a volume that can be mounted to a container",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/VolumeProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "type": "object",
+      "x-ms-azure-resource": true
+    },
+    "encryptionProperties": {
+      "description": "Configuration of key for data encryption",
+      "properties": {
+        "keyVaultProperties": {
+          "$ref": "#/definitions/KeyVaultProperties",
+          "description": "Key vault properties."
+        },
+        "status": {
+          "description": "Indicates whether or not the encryption is enabled for container registry.",
+          "enum": [
+            "enabled",
+            "disabled"
+          ],
+          "type": "string",
+          "x-ms-enum": {
+            "modelAsString": true,
+            "name": "EncryptionStatus"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "locationData": {
+      "description": "Metadata pertaining to the geographic location of the resource.",
+      "properties": {
+        "city": {
+          "description": "The city or locality where the resource is located.",
+          "type": "string"
+        },
+        "countryOrRegion": {
+          "description": "The country or region where the resource is located",
+          "type": "string"
+        },
+        "district": {
+          "description": "The district, state, or province where the resource is located.",
+          "type": "string"
+        },
+        "name": {
+          "description": "A canonical name for the geographic or physical location.",
+          "maxLength": 256,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "systemData": {
+      "description": "Metadata pertaining to creation and last modification of the resource.",
+      "properties": {
+        "createdAt": {
+          "description": "The timestamp of resource creation (UTC).",
+          "format": "date-time",
+          "type": "string"
+        },
+        "createdBy": {
+          "description": "The identity that created the resource.",
+          "type": "string"
+        },
+        "createdByType": {
+          "description": "The type of identity that created the resource.",
+          "enum": [
+            "User",
+            "Application",
+            "ManagedIdentity",
+            "Key"
+          ],
+          "type": "string",
+          "x-ms-enum": {
+            "modelAsString": true,
+            "name": "createdByType"
+          }
+        },
+        "lastModifiedAt": {
+          "description": "The timestamp of resource last modification (UTC)",
+          "format": "date-time",
+          "type": "string"
+        },
+        "lastModifiedBy": {
+          "description": "The identity that last modified the resource.",
+          "type": "string"
+        },
+        "lastModifiedByType": {
+          "description": "The type of identity that last modified the resource.",
+          "enum": [
+            "User",
+            "Application",
+            "ManagedIdentity",
+            "Key"
+          ],
+          "type": "string",
+          "x-ms-enum": {
+            "modelAsString": true,
+            "name": "createdByType"
+          }
+        }
+      },
+      "readOnly": true,
+      "type": "object"
+    }
+  },
+  "host": "management.azure.com",
+  "info": {
+    "description": "APIs for deploying and managing applications with Radius.",
+    "title": "RadiusClient",
+    "version": "2018-09-01-preview",
+    "x-ms-code-generation-settings": {
+      "name": "radiusClient"
+    }
+  },
+  "parameters": {
+    "ApiVersionParameter": {
+      "description": "The API version to use for this operation.",
+      "in": "query",
+      "minLength": 1,
+      "name": "api-version",
+      "required": true,
+      "type": "string"
+    },
+    "ApplicationNameParameter": {
+      "description": "The name of the Application resource.",
+      "in": "path",
+      "name": "applicationName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "AzureConnectionNameParameter": {
+      "description": "The name of the AzureConnection resource.",
+      "in": "path",
+      "name": "azureConnectionName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "ContainerNameParameter": {
+      "description": "The name of the Container resource.",
+      "in": "path",
+      "name": "containerName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "DaprInvokeHttpRouteNameParameter": {
+      "description": "The name of the dapr.io.InvokeHttpRoute resource.",
+      "in": "path",
+      "name": "daprInvokeHttpRouteName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "DaprPubSubTopicNameParameter": {
+      "description": "The name of the dapr.io.PubSubTopic resource.",
+      "in": "path",
+      "name": "daprPubSubTopicName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "DaprSecretStoreNameParameter": {
+      "description": "The name of the dapr.io.SecretStore resource.",
+      "in": "path",
+      "name": "daprSecretStoreName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "DaprStateStoreNameParameter": {
+      "description": "The name of the dapr.io.StateStore resource.",
+      "in": "path",
+      "name": "daprStateStoreName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "ExtenderNameParameter": {
+      "description": "The name of the Extender resource.",
+      "in": "path",
+      "name": "extenderName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "GatewayNameParameter": {
+      "description": "The name of the Gateway resource.",
+      "in": "path",
+      "name": "gatewayName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "HttpRouteNameParameter": {
+      "description": "The name of the HttpRoute resource.",
+      "in": "path",
+      "name": "httpRouteName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "LocationParameter": {
+      "description": "The name of Azure region.",
+      "in": "path",
+      "minLength": 1,
+      "name": "location",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "MicrosoftSQLDatabaseNameParameter": {
+      "description": "The name of the microsoft.com.SQLDatabase resource.",
+      "in": "path",
+      "name": "microsoftSQLDatabaseName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "MongoDatabaseNameParameter": {
+      "description": "The name of the mongo.com.MongoDatabase resource.",
+      "in": "path",
+      "name": "mongoDatabaseName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "OperationIdParameter": {
+      "description": "The ID of an ongoing async operation.",
+      "in": "path",
+      "minLength": 1,
+      "name": "operationId",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "RabbitMQMessageQueueNameParameter": {
+      "description": "The name of the rabbitmq.com.MessageQueue resource.",
+      "in": "path",
+      "name": "rabbitMQMessageQueueName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "RadiusResourceNameParameter": {
+      "description": "The name of the RadiusResource resource.",
+      "in": "path",
+      "name": "radiusResourceName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "RadiusResourceTypeParameter": {
+      "description": "The type of the RadiusResource.",
+      "in": "path",
+      "name": "radiusResourceType",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "RedisCacheNameParameter": {
+      "description": "The name of the redislabs.com.RedisCache resource.",
+      "in": "path",
+      "name": "redisCacheName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "ResourceGroupNameParameter": {
+      "description": "The name of the resource group. The name is case insensitive.",
+      "in": "path",
+      "maxLength": 90,
+      "minLength": 1,
+      "name": "resourceGroupName",
+      "pattern": "^[-\\w\\._\\(\\)]+$",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "ResourceGroupParameter": {
+      "description": "Resource group of the Azure resource that Radius application connects to",
+      "in": "query",
+      "name": "ResourceGroup",
+      "required": false,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "ResourceSubscriptionIDParameter": {
+      "description": "Subscription ID of the Azure resource that Radius application connects to",
+      "in": "query",
+      "name": "ResourceSubscriptionID",
+      "required": false,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "ResourceTypeParameter": {
+      "description": "Resource type of the Azure resource that Radius application connects to",
+      "in": "query",
+      "name": "ResourceType",
+      "required": false,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "SubscriptionIdParameter": {
+      "description": "The ID of the target subscription.",
+      "in": "path",
+      "minLength": 1,
+      "name": "subscriptionId",
+      "required": true,
+      "type": "string"
+    },
+    "VolumeNameParameter": {
+      "description": "The name of the Volume resource.",
+      "in": "path",
+      "name": "volumeName",
+      "required": true,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    }
+  },
+  "paths": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application": {
+      "get": {
+        "description": "List the Application resources deployed in the application.",
+        "operationId": "Application_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Application resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Application"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}": {
+      "delete": {
+        "description": "Deletes a Application resource.",
+        "operationId": "Application_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Application will complete asynchronously."
+          },
+          "204": {
+            "description": "The Application resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Application"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Application resource by name.",
+        "operationId": "Application_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Application resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Application"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Application resource.",
+        "operationId": "Application_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Application resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Application resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "201": {
+            "description": "The new Application resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "202": {
+            "description": "The existing Application resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Application"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection": {
+      "get": {
+        "description": "List the AzureConnection resources deployed in the application.",
+        "operationId": "AzureConnection_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of AzureConnection resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "AzureConnection"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}": {
+      "delete": {
+        "description": "Deletes a AzureConnection resource.",
+        "operationId": "AzureConnection_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/AzureConnectionNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the AzureConnection will complete asynchronously."
+          },
+          "204": {
+            "description": "The AzureConnection resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "AzureConnection"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a AzureConnection resource by name.",
+        "operationId": "AzureConnection_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/AzureConnectionNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The AzureConnection resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "AzureConnection"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a AzureConnection resource.",
+        "operationId": "AzureConnection_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/AzureConnectionNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a AzureConnection resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing AzureConnection resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          "201": {
+            "description": "The new AzureConnection resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          "202": {
+            "description": "The existing AzureConnection resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/AzureConnectionResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "AzureConnection"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container": {
+      "get": {
+        "description": "List the Container resources deployed in the application.",
+        "operationId": "Container_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Container resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ContainerList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Container"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}": {
+      "delete": {
+        "description": "Deletes a Container resource.",
+        "operationId": "Container_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ContainerNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Container will complete asynchronously."
+          },
+          "204": {
+            "description": "The Container resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Container"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Container resource by name.",
+        "operationId": "Container_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ContainerNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Container resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Container"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Container resource.",
+        "operationId": "Container_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ContainerNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Container resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Container resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          },
+          "201": {
+            "description": "The new Container resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          },
+          "202": {
+            "description": "The existing Container resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Container"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender": {
+      "get": {
+        "description": "List the Extender resources deployed in the application.",
+        "operationId": "Extender_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Extender resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Extender"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}": {
+      "delete": {
+        "description": "Deletes a Extender resource.",
+        "operationId": "Extender_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Extender will complete asynchronously."
+          },
+          "204": {
+            "description": "The Extender resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Extender"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Extender resource by name.",
+        "operationId": "Extender_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Extender resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Extender"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Extender resource.",
+        "operationId": "Extender_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Extender resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Extender resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "201": {
+            "description": "The new Extender resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "202": {
+            "description": "The existing Extender resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Extender"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Gateway": {
+      "get": {
+        "description": "List the Gateway resources deployed in the application.",
+        "operationId": "Gateway_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Gateway resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Gateway/{gatewayName}": {
+      "delete": {
+        "description": "Deletes a Gateway resource.",
+        "operationId": "Gateway_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Gateway will complete asynchronously."
+          },
+          "204": {
+            "description": "The Gateway resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Gateway resource by name.",
+        "operationId": "Gateway_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Gateway resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Gateway resource.",
+        "operationId": "Gateway_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/GatewayNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Gateway resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Gateway resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "201": {
+            "description": "The new Gateway resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "202": {
+            "description": "The existing Gateway resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute": {
+      "get": {
+        "description": "List the HttpRoute resources deployed in the application.",
+        "operationId": "HttpRoute_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of HttpRoute resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}": {
+      "delete": {
+        "description": "Deletes a HttpRoute resource.",
+        "operationId": "HttpRoute_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the HttpRoute will complete asynchronously."
+          },
+          "204": {
+            "description": "The HttpRoute resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a HttpRoute resource by name.",
+        "operationId": "HttpRoute_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The HttpRoute resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a HttpRoute resource.",
+        "operationId": "HttpRoute_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/HttpRouteNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a HttpRoute resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing HttpRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "201": {
+            "description": "The new HttpRoute resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "202": {
+            "description": "The existing HttpRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "HttpRoute"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource": {
+      "get": {
+        "description": "List the RadiusResource resources deployed in the application.",
+        "operationId": "RadiusResource_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of RadiusResource resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume": {
+      "get": {
+        "description": "List the Volume resources deployed in the application.",
+        "operationId": "Volume_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Volume resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/VolumeList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Volume"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}": {
+      "delete": {
+        "description": "Deletes a Volume resource.",
+        "operationId": "Volume_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/VolumeNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the Volume will complete asynchronously."
+          },
+          "204": {
+            "description": "The Volume resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Volume"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a Volume resource by name.",
+        "operationId": "Volume_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/VolumeNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Volume resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Volume"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a Volume resource.",
+        "operationId": "Volume_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/VolumeNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a Volume resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing Volume resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "201": {
+            "description": "The new Volume resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "202": {
+            "description": "The existing Volume resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "Volume"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute": {
+      "get": {
+        "description": "List the dapr.io.InvokeHttpRoute resources deployed in the application.",
+        "operationId": "dapr.io.InvokeHttpRoute_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of dapr.io.InvokeHttpRoute resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeHttpRouteList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.InvokeHttpRoute"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}": {
+      "delete": {
+        "description": "Deletes a dapr.io.InvokeHttpRoute resource.",
+        "operationId": "dapr.io.InvokeHttpRoute_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the dapr.io.InvokeHttpRoute will complete asynchronously."
+          },
+          "204": {
+            "description": "The dapr.io.InvokeHttpRoute resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.InvokeHttpRoute"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a dapr.io.InvokeHttpRoute resource by name.",
+        "operationId": "dapr.io.InvokeHttpRoute_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The dapr.io.InvokeHttpRoute resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.InvokeHttpRoute"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a dapr.io.InvokeHttpRoute resource.",
+        "operationId": "dapr.io.InvokeHttpRoute_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.InvokeHttpRoute resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing dapr.io.InvokeHttpRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
+            }
+          },
+          "201": {
+            "description": "The new dapr.io.InvokeHttpRoute resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
+            }
+          },
+          "202": {
+            "description": "The existing dapr.io.InvokeHttpRoute resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.InvokeHttpRoute"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic": {
+      "get": {
+        "description": "List the dapr.io.PubSubTopic resources deployed in the application.",
+        "operationId": "dapr.io.PubSubTopic_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of dapr.io.PubSubTopic resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.PubSubTopic"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}": {
+      "delete": {
+        "description": "Deletes a dapr.io.PubSubTopic resource.",
+        "operationId": "dapr.io.PubSubTopic_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprPubSubTopicNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the dapr.io.PubSubTopic will complete asynchronously."
+          },
+          "204": {
+            "description": "The dapr.io.PubSubTopic resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.PubSubTopic"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a dapr.io.PubSubTopic resource by name.",
+        "operationId": "dapr.io.PubSubTopic_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprPubSubTopicNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The dapr.io.PubSubTopic resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.PubSubTopic"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a dapr.io.PubSubTopic resource.",
+        "operationId": "dapr.io.PubSubTopic_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprPubSubTopicNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.PubSubTopic resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing dapr.io.PubSubTopic resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicResource"
+            }
+          },
+          "201": {
+            "description": "The new dapr.io.PubSubTopic resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicResource"
+            }
+          },
+          "202": {
+            "description": "The existing dapr.io.PubSubTopic resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubTopicResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.PubSubTopic"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.SecretStore": {
+      "get": {
+        "description": "List the dapr.io.SecretStore resources deployed in the application.",
+        "operationId": "dapr.io.SecretStore_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of dapr.io.SecretStore resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.SecretStore"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.SecretStore/{daprSecretStoreName}": {
+      "delete": {
+        "description": "Deletes a dapr.io.SecretStore resource.",
+        "operationId": "dapr.io.SecretStore_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprSecretStoreNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the dapr.io.SecretStore will complete asynchronously."
+          },
+          "204": {
+            "description": "The dapr.io.SecretStore resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.SecretStore"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a dapr.io.SecretStore resource by name.",
+        "operationId": "dapr.io.SecretStore_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprSecretStoreNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The dapr.io.SecretStore resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.SecretStore"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a dapr.io.SecretStore resource.",
+        "operationId": "dapr.io.SecretStore_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprSecretStoreNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.SecretStore resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing dapr.io.SecretStore resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "201": {
+            "description": "The new dapr.io.SecretStore resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "202": {
+            "description": "The existing dapr.io.SecretStore resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.SecretStore"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore": {
+      "get": {
+        "description": "List the dapr.io.StateStore resources deployed in the application.",
+        "operationId": "dapr.io.StateStore_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of dapr.io.StateStore resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.StateStore"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}": {
+      "delete": {
+        "description": "Deletes a dapr.io.StateStore resource.",
+        "operationId": "dapr.io.StateStore_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprStateStoreNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the dapr.io.StateStore will complete asynchronously."
+          },
+          "204": {
+            "description": "The dapr.io.StateStore resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.StateStore"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a dapr.io.StateStore resource by name.",
+        "operationId": "dapr.io.StateStore_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprStateStoreNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The dapr.io.StateStore resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.StateStore"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a dapr.io.StateStore resource.",
+        "operationId": "dapr.io.StateStore_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/DaprStateStoreNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a dapr.io.StateStore resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing dapr.io.StateStore resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "201": {
+            "description": "The new dapr.io.StateStore resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "202": {
+            "description": "The existing dapr.io.StateStore resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "dapr.io.StateStore"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase": {
+      "get": {
+        "description": "List the microsoft.com.SQLDatabase resources deployed in the application.",
+        "operationId": "microsoft.com.SQLDatabase_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of microsoft.com.SQLDatabase resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/MicrosoftSQLDatabaseList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "microsoft.com.SQLDatabase"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}": {
+      "delete": {
+        "description": "Deletes a microsoft.com.SQLDatabase resource.",
+        "operationId": "microsoft.com.SQLDatabase_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/MicrosoftSQLDatabaseNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the microsoft.com.SQLDatabase will complete asynchronously."
+          },
+          "204": {
+            "description": "The microsoft.com.SQLDatabase resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "microsoft.com.SQLDatabase"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a microsoft.com.SQLDatabase resource by name.",
+        "operationId": "microsoft.com.SQLDatabase_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/MicrosoftSQLDatabaseNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The microsoft.com.SQLDatabase resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "microsoft.com.SQLDatabase"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a microsoft.com.SQLDatabase resource.",
+        "operationId": "microsoft.com.SQLDatabase_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/MicrosoftSQLDatabaseNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a microsoft.com.SQLDatabase resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing microsoft.com.SQLDatabase resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
+            }
+          },
+          "201": {
+            "description": "The new microsoft.com.SQLDatabase resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
+            }
+          },
+          "202": {
+            "description": "The existing microsoft.com.SQLDatabase resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/MicrosoftSQLDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "microsoft.com.SQLDatabase"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase": {
+      "get": {
+        "description": "List the mongo.com.MongoDatabase resources deployed in the application.",
+        "operationId": "mongo.com.MongoDatabase_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of mongo.com.MongoDatabase resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "mongo.com.MongoDatabase"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}": {
+      "delete": {
+        "description": "Deletes a mongo.com.MongoDatabase resource.",
+        "operationId": "mongo.com.MongoDatabase_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/MongoDatabaseNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the mongo.com.MongoDatabase will complete asynchronously."
+          },
+          "204": {
+            "description": "The mongo.com.MongoDatabase resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "mongo.com.MongoDatabase"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a mongo.com.MongoDatabase resource by name.",
+        "operationId": "mongo.com.MongoDatabase_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/MongoDatabaseNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The mongo.com.MongoDatabase resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "mongo.com.MongoDatabase"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a mongo.com.MongoDatabase resource.",
+        "operationId": "mongo.com.MongoDatabase_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/MongoDatabaseNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a mongo.com.MongoDatabase resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing mongo.com.MongoDatabase resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "201": {
+            "description": "The new mongo.com.MongoDatabase resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "202": {
+            "description": "The existing mongo.com.MongoDatabase resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "mongo.com.MongoDatabase"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue": {
+      "get": {
+        "description": "List the rabbitmq.com.MessageQueue resources deployed in the application.",
+        "operationId": "rabbitmq.com.MessageQueue_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of rabbitmq.com.MessageQueue resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "rabbitmq.com.MessageQueue"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}": {
+      "delete": {
+        "description": "Deletes a rabbitmq.com.MessageQueue resource.",
+        "operationId": "rabbitmq.com.MessageQueue_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the rabbitmq.com.MessageQueue will complete asynchronously."
+          },
+          "204": {
+            "description": "The rabbitmq.com.MessageQueue resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "rabbitmq.com.MessageQueue"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a rabbitmq.com.MessageQueue resource by name.",
+        "operationId": "rabbitmq.com.MessageQueue_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rabbitmq.com.MessageQueue resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "rabbitmq.com.MessageQueue"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a rabbitmq.com.MessageQueue resource.",
+        "operationId": "rabbitmq.com.MessageQueue_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a rabbitmq.com.MessageQueue resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing rabbitmq.com.MessageQueue resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "201": {
+            "description": "The new rabbitmq.com.MessageQueue resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "202": {
+            "description": "The existing rabbitmq.com.MessageQueue resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "rabbitmq.com.MessageQueue"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache": {
+      "get": {
+        "description": "List the redislabs.com.RedisCache resources deployed in the application.",
+        "operationId": "redislabs.com.RedisCache_List",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of redislabs.com.RedisCache resources was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "redislabs.com.RedisCache"
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}": {
+      "delete": {
+        "description": "Deletes a redislabs.com.RedisCache resource.",
+        "operationId": "redislabs.com.RedisCache_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RedisCacheNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the redislabs.com.RedisCache will complete asynchronously."
+          },
+          "204": {
+            "description": "The redislabs.com.RedisCache resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "redislabs.com.RedisCache"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a redislabs.com.RedisCache resource by name.",
+        "operationId": "redislabs.com.RedisCache_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RedisCacheNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The redislabs.com.RedisCache resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "redislabs.com.RedisCache"
+        ]
+      },
+      "put": {
+        "description": "Creates or updates a redislabs.com.RedisCache resource.",
+        "operationId": "redislabs.com.RedisCache_CreateOrUpdate",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RedisCacheNameParameter"
+          },
+          {
+            "description": "Parameters supplied to the CreateOrUpdate operation of a redislabs.com.RedisCache resource.",
+            "in": "body",
+            "name": "parameters",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The existing redislabs.com.RedisCache resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "201": {
+            "description": "The new redislabs.com.RedisCache resource was successfully created.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "202": {
+            "description": "The existing redislabs.com.RedisCache resource was successfully updated.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "redislabs.com.RedisCache"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}": {
+      "delete": {
+        "description": "Deletes a RadiusResource resource.",
+        "operationId": "RadiusResource_Delete",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The request to delete the RadiusResource will complete asynchronously."
+          },
+          "204": {
+            "description": "The RadiusResource resource was successfully deleted."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
+        ],
+        "x-ms-long-running-operation": true,
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        }
+      },
+      "get": {
+        "description": "Gets a RadiusResource resource by name.",
+        "operationId": "RadiusResource_Get",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApplicationNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceSubscriptionIDParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceGroupParameter"
+          },
+          {
+            "$ref": "#/parameters/ResourceTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/RadiusResourceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The RadiusResource resource was retrieved successfully.",
+            "schema": {
+              "$ref": "#/definitions/RadiusResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "tags": [
+          "RadiusResource"
+        ]
+      }
+    }
+  },
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "https"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "description": "Azure Active Directory OAuth2 Flow",
+      "flow": "implicit",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      },
+      "type": "oauth2"
+    }
+  },
+  "swagger": "2.0"
+}
