@@ -92,6 +92,7 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 	return err
 }
 
+
 func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = radiusReleaseName
