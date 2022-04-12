@@ -54,7 +54,10 @@ func (a *CreateOrUpdateSubscription) Run(ctx context.Context, req *http.Request)
 func (a *CreateOrUpdateSubscription) modifySubsciprtionV1(req *http.Request) *armrpcv1.PaginatedList {
 	content, _ := ctrl.ReadJSONBody(req)
 	am := armrpcv1.Subscription{}
-	json.Unmarshal(content, &am) 
+	err := json.Unmarshal(content, &am)
+	if err != nil {
+		return nil
+	}
 	
 	return &armrpcv1.PaginatedList{
 		Value: []interface{}{
