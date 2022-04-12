@@ -7,11 +7,10 @@ package provider
 
 import (
 	"context"
-	"net/http"
 	"encoding/json"
+	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -45,23 +44,19 @@ func (a *CreateOrUpdateSubscription) Run(ctx context.Context, req *http.Request)
 	log.Info("Within Create or Update Subscription handler")
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 	switch sCtx.APIVersion {
-	case v20220315privatepreview.Version:
+	case armrpcv1.ArmApiVersion:
 		return rest.NewOKResponse(a.modifySubsciprtionV1(req)), nil
 	}
 	return rest.NewNotFoundAPIVersionResponse("Subscriptions", "Applications.Core", sCtx.APIVersion), nil
 }
 
-func (a *CreateOrUpdateSubscription) modifySubsciprtionV1(req *http.Request) *armrpcv1.PaginatedList {
+func (a *CreateOrUpdateSubscription) modifySubsciprtionV1(req *http.Request) *armrpcv1.Subscription {
 	content, _ := ctrl.ReadJSONBody(req)
 	am := armrpcv1.Subscription{}
 	err := json.Unmarshal(content, &am)
 	if err != nil {
 		return nil
 	}
-	
-	return &armrpcv1.PaginatedList{
-		Value: []interface{}{
-			am,
-		},
-	}
+
+	return &am
 }

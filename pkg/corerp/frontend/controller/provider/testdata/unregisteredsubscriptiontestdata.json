@@ -1,0 +1,39 @@
+{
+    "state": "Unregistered",
+    "registrationDate": "Tue, 15 Nov 1994 08:12:31 GMT",
+    "properties": {
+        "tenantId": "ac430efe-1866-4124-9ed9-ee67f9cb75db",
+        "locationPlacementId": "Internal_2014-09-01",
+        "quotaId": "Default_2014-09-01",
+        "registeredFeatures": [
+            {
+                "name": "testFeatureName",
+                "state": "Registered"
+            }
+        ],
+        "availabilityZones": {
+            "location": "testlocationName",
+            "zoneMappings": [
+                {
+                    "logicalZone": "1",
+                    "physicalZone": "2"
+                },
+                {
+                    "logicalZone": "2",
+                    "physicalZone": "1"
+                }
+            ]
+        },
+        "subscriptionSpendingLimit": "True",
+        "subscriptionAccountOwner": "account@company.com",
+        "managedByTenants": [
+            {
+                "tenantId": "managedByTenantId"
+            }
+        ],
+        "additionalProperties": {
+            "resourceProviderProperties": "{\"resourceProviderNamespace\":\"Applications.Core\"}",
+            "promotions": "{\"category\": \"freetier\",\"endDateTime\": \"2023-02-11T21:07:45.676671Z\"}"
+        }
+    }
+}
