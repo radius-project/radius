@@ -8,6 +8,8 @@ package azuretest
 import (
 	"context"
 	"testing"
+	"os"
+	"sync"
 
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/testcontext"
