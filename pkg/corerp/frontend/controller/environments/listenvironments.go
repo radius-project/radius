@@ -38,7 +38,7 @@ func NewListEnvironments(db db.RadrpDB, jobEngine deployment.DeploymentProcessor
 
 func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	e.Validate(ctx, req)
+	_ = e.Validate(ctx, req)
 	rID := serviceCtx.ResourceID
 
 	// TODO: Get the environment resource from datastorage. now return fake data.

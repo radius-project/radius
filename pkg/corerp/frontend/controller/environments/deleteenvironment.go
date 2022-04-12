@@ -33,7 +33,7 @@ func NewDeleteEnvironment(db db.RadrpDB, jobEngine deployment.DeploymentProcesso
 }
 
 func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	e.Validate(ctx, req)
+	_ = e.Validate(ctx, req)
 	// TODO: Delete environment from datastore.
 	return rest.NewOKResponse("deleted successfully"), nil
 }
