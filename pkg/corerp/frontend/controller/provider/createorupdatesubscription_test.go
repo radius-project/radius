@@ -55,7 +55,7 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 			require.True(t, ok)
 
 			expected := armrpcv1.Subscription{}
-			json.Unmarshal(testData, &expected)
+			_ = json.Unmarshal(testData, &expected)
 			require.True(t, reflect.DeepEqual(*subscription, expected))
 		default:
 			require.Truef(t, false, "should not return error")
