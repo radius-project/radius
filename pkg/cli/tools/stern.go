@@ -31,7 +31,7 @@ func SternStart(ctx context.Context, context string, namespace string, applicati
 
 	args := []string{
 		"--context", context,
-		"--namespace", namespace,
+		"--namespace", application,
 		"--selector", fmt.Sprintf("radius.dev/application=%s", application),
 
 		// Dapr sidecars are especially noisy, and usually not relevant.
