@@ -16,7 +16,7 @@ import (
 const (
 	SternToolName        = "stern"
 	SternNotFoundMessage = "The tool %s was not found on the system PATH. %s can stream logs for your application. See %s for installation instructions."
-	SternInstallerURL    = "https://github.com/wercker/stern#installation"
+	SternInstallerURL    = "https://github.com/stern/stern#installation"
 )
 
 func SternStart(ctx context.Context, context string, namespace string, application string) error {
