@@ -6,6 +6,7 @@
     "port": 6380,
     "secrets": {
       "connectionString": "connection-string",
+      "username": "username",
       "password": "password"
     }
   }
