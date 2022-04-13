@@ -29,11 +29,11 @@ description: Radius
 openapi-type: arm
 ```
 
-### Tag: radius-2022-04-11-preview
+### Tag: radius-2018-09-01-preview
 
-These settings apply only when `--tag=radius-2022-04-11-preview` is specified on the command line.
+These settings apply only when `--tag=radius-2018-09-01-preview` is specified on the command line.
 
-```yaml $(tag) == 'radius-2021-01-01-preview'
+```yaml $(tag) == 'radius-2018-09-01-preview'
 input-file:
-  - Microsoft.Radius/preview/2022-04-11-preview/radius.json
+  - Microsoft.CustomProviders/preview/2018-09-01-preview/radius.json
 ```

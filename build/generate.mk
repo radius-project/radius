@@ -5,6 +5,11 @@
 
 ##@ Generate (Code and Schema Generation)
 
+provider_name := Microsoft.CustomProviders
+package_ver := 2018-09-01-preview
+package_name := package-$(package_ver)
+output_dir := schemas/rest-api-specs/specification/radius/resource-manager/$(provider_name)/preview/$(package_ver)
+
 .PHONY: generate
 generate: generate-arm-json generate-radclient generate-go ## Generates all targets.
 
@@ -30,7 +35,7 @@ generate-openapi-specs:
 	@echo "$(ARROW) Generating OpenAPI schema manifest..."
 
 	go run cmd/autorest-schema-gen/main.go \
-		--output schemas/rest-api-specs/radius.json \
+		--output $(output_dir)/radius.json \
 		`# We can't just do pkg/radrp/schema/*.json because we want to exclude resource-types.json` \
 		pkg/radrp/schema/common-types.json \
 		pkg/radrp/schema/application.json \
@@ -41,8 +46,8 @@ generate-openapi-specs:
 generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).
 	autorest --use=@autorest/go@4.0.0-preview.29 \
         --module-version=$(AUTOREST_MODULE_VERSION) \
-		--input-file=schemas/rest-api-specs/radius.json \
-		--tag=package-2018-09-01-preview \
+		--input-file=$(output_dir)/radius.json \
+		--tag=$(package_name) \
 		--go  \
 		--gomod-root=. \
 		--output-folder=./pkg/azure/radclient \

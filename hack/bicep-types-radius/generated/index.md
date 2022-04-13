@@ -13,7 +13,7 @@
 * [2018-09-01-preview](radius/microsoft.customproviders/2018-09-01-preview/types.md#resource-microsoftcustomprovidersresourceprovidersapplicationdaprioinvokehttproute2018-09-01-preview)
 
 ### microsoft.customproviders/resourceproviders/application/dapr.io.pubsubtopic
-* [2018-09-01-preview](radius/microsoft.customproviders/2018-09-01-preview/types.md#resource-microsoftcustomprovidersresourceprovidersapplicationdapriopubsubtopic2018-09-01-preview)◊
+* [2018-09-01-preview](radius/microsoft.customproviders/2018-09-01-preview/types.md#resource-microsoftcustomprovidersresourceprovidersapplicationdapriopubsubtopic2018-09-01-preview)
 
 ### microsoft.customproviders/resourceproviders/application/dapr.io.secretstore
 * [2018-09-01-preview](radius/microsoft.customproviders/2018-09-01-preview/types.md#resource-microsoftcustomprovidersresourceprovidersapplicationdapriosecretstore2018-09-01-preview)
