@@ -46,17 +46,27 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	if gatewayClassName == "" {
 		return renderers.RendererOutput{}, errors.New("gateway class not found")
 	}
-	computedValues := map[string]renderers.ComputedValueReference{}
 
 	outputs := []outputresource.OutputResource{}
 
 	gatewayName := kubernetes.MakeResourceName(options.Resource.ApplicationName, options.Resource.ResourceName)
-	gatewayObject, err := MakeGateway(ctx, options.Resource, gateway, gatewayClassName, gatewayName)
+	hostname, err := getHostname(ctx, options.Resource, gateway)
+	if err != nil {
+		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error %s", err)
+	}
+
+	gatewayObject, err := MakeGateway(ctx, options.Resource, gateway, gatewayClassName, gatewayName, hostname)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	outputs = append(outputs, gatewayObject)
+
+	computedValues := map[string]renderers.ComputedValueReference{
+		"hostname": {
+			Value: *hostname,
+		},
+	}
 
 	httpRouteObjects := MakeHttpRoutes(options.Resource, gateway, gatewayName)
 	outputs = append(outputs, httpRouteObjects...)
@@ -67,8 +77,8 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}, nil
 }
 
-func MakeGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayClassName string, gatewayName string) (outputresource.OutputResource, error) {
-	httpGateway, err := makeHttpGateway(ctx, resource, gateway, gatewayName)
+func MakeGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayClassName string, gatewayName string, hostname *gatewayv1alpha1.Hostname) (outputresource.OutputResource, error) {
+	httpGateway, err := makeHttpGateway(ctx, resource, gateway, gatewayName, hostname)
 	if err != nil {
 		return outputresource.OutputResource{}, err
 	}
@@ -154,9 +164,38 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 	return outputs
 }
 
-func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string) (*gatewayv1alpha1.Listener, error) {
+func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string, hostname *gatewayv1alpha1.Hostname) (*gatewayv1alpha1.Listener, error) {
 	port := 80
 
+	return &gatewayv1alpha1.Listener{
+		Hostname: hostname,
+		Port:     gatewayv1alpha1.PortNumber(port),
+		Protocol: gatewayv1alpha1.HTTPProtocolType,
+		Routes: gatewayv1alpha1.RouteBindingSelector{
+			Kind: "HTTPRoute",
+		},
+	}, nil
+}
+
+func getPublicEndpoint(ctx context.Context) (*string, error) {
+	client, err := kubernetes.NewKubernetesClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return client.GetPublicIP(ctx)
+}
+
+func getRouteNameFromID(routeID string) string {
+	splitString := strings.Split(routeID, "/")
+	if len(splitString) == 0 {
+		return ""
+	}
+
+	return splitString[len(splitString)-1]
+}
+
+func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties) (*gatewayv1alpha1.Hostname, error) {
 	var hostname gatewayv1alpha1.Hostname
 	if gateway.Hostname != nil {
 		if gateway.Hostname.FullyQualifiedHostname != nil {
@@ -185,30 +224,5 @@ func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, g
 		hostname = gatewayv1alpha1.Hostname(prefixedHostname)
 	}
 
-	return &gatewayv1alpha1.Listener{
-		Hostname: &hostname,
-		Port:     gatewayv1alpha1.PortNumber(port),
-		Protocol: gatewayv1alpha1.HTTPProtocolType,
-		Routes: gatewayv1alpha1.RouteBindingSelector{
-			Kind: "HTTPRoute",
-		},
-	}, nil
-}
-
-func getPublicEndpoint(ctx context.Context) (*string, error) {
-	client, err := kubernetes.NewKubernetesClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return client.GetPublicIP(ctx)
-}
-
-func getRouteNameFromID(routeID string) string {
-	splitString := strings.Split(routeID, "/")
-	if len(splitString) == 0 {
-		return ""
-	}
-
-	return splitString[len(splitString)-1]
+	return &hostname, nil
 }
