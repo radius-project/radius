@@ -69,10 +69,10 @@ jobs:
           branch-suffix: short-commit-hash
           delete-branch: true
           title: |
-            Update Bicep extensibility types [${{ steps.get_radius_commit_hash.outputs.commit_hash_short }}](${{ steps.get_radius_commit_hash.outputs.gh_uri }})
+            Update Bicep extensibility types
           body: |
             Update Report
-            - Updates Bicep extensibility type definitions generated from [${{ steps.get_radius_commit_hash.outputs.commit_hash_short }}](${{ steps.get_radius_commit_hash.outputs.gh_uri }})
+            - Updates Bicep extensibility type definitions generated from [project-radius/radius](${{ steps.get_radius_commit_hash.outputs.gh_uri }})
             Summary
             ${{ steps.generate.outputs.summary }}
           commit-message: |
