@@ -55,16 +55,16 @@ jobs:
           mkdir -p workflow-temp/bicep/src/Bicep.Types.Radius/generated
           cp -R hack/bicep-types-radius/generated/* workflow-temp/bicep/src/Bicep.Types.Radius/generated
 
-      - name: Commit generated files to bicep repo
-        run: |
-          git commit -am "update bicep extensibility types ${{ steps.get_radius_commit_hash.outputs.gh_uri }}"
+      # - name: Commit generated files to bicep repo
+      #   run: |
+      #     git commit -am "update bicep extensibility types ${{ steps.get_radius_commit_hash.outputs.gh_uri }}"
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:
           path: workflow-temp/bicep
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          add-paths: workflow-temp/bicep/src/Bicep.Types.Radius/generated
+          add-paths: workflow-temp/bicep/src/Bicep.Types.Radius/generated/**
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           signoff: false
