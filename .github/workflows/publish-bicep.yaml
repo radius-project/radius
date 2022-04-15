@@ -1,0 +1,79 @@
+--- # ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+name: Publish Bicep Extensibility Provider
+on:
+  push:
+    branches: [main]
+    paths:
+      - "schemas/rest-api-specs/specification/radius"
+
+jobs:
+  update-types:
+    name: Publish Bicep Ext. Types
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build autorest.bicep
+        working-directory: hack/bicep-types-radius/src/autorest.bicep
+        run: npm ci && npm run build
+
+      - name: Install generator npm packages
+        working-directory: hack/bicep-types-radius/src/generator
+        run: npm ci
+
+      - id: generate
+        name: Run generator
+        working-directory: hack/bicep-types-radius/src/generator
+        run: |
+          npm run generate -- --specs-dir ../../../../schemas/rest-api-specs
+          summary="$(<../../generated/summary.log)"
+          summary="${summary//'%'/'%25'}"
+          summary="${summary//$'\n'/'%0A'}"
+          summary="${summary//$'\r'/'%0D'}"
+          echo "::set-output name=summary::$summary"
+
+      - id: get_radius_commit_hash
+        name: Get commit hash (project-radius/radius)
+        run: |
+          git_sha=`git rev-parse HEAD`
+          echo "::set-output name=gh_uri::https://github.com/project-radius/radius/tree/$git_sha"
+
+      - name: Clone https://github.com/project-radius/bicep
+        uses: actions/checkout@v3
+        with:
+          repository: project-radius/bicep
+          path: workflow-temp/bicep
+          ref: bicep-extensibility
+      
+      - name: Move generated files to bicep repo
+        run: |
+          mkdir -p workflow-temp/bicep/
+          cp -R hack/bicep-types-radius/generated/* workflow-temp/bicep/src/Bicep.Types.Radius/generated
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          path: workflow-temp/bicep
+          add-paths: workflow-temp/bicep/src/Bicep.Types.Radius/generated
+          committer: GitHub <noreply@github.com>
+          author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+          signoff: false
+          branch: autogenerate
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          title: |
+            update bicep extensibility types ${{ steps.get_radius_commit_hash.outputs.gh_uri }}
+          body: |
+            Update Report
+            - bicep extensibility type definitions from ${{ steps.get_radius_commit_hash.outputs.gh_uri }}
+            Summary
+            ${{ steps.generate.outputs.summary }}
+          commit-message: |
+            auto generated types from ${{ steps.get_radius_commit_hash.outputs.gh_uri }}
+          labels: autogenerate
+          draft: false
