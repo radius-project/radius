@@ -64,7 +64,7 @@ jobs:
         with:
           path: workflow-temp/bicep
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          add-paths: workflow-temp/bicep/src/Bicep.Types.Radius/generated/**
+          add-paths: src/Bicep.Types.Radius/generated/**
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           signoff: false
