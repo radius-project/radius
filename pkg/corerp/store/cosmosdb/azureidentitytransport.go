@@ -27,10 +27,9 @@ func NewAzureIdentityTransport(clientID string) (*AzureIdentityTransport, error)
 	// TODO: support service principal.
 	if clientID != "" {
 		ops := &azidentity.ManagedIdentityCredentialOptions{}
-		ops.ID = azidentity.ClientID(clientID)
+		ops.ID = azidentity.ClientID
 		var err error
-		transport.tokenCreds, err = azidentity.NewManagedIdentityCredential(ops)
-		if err != nil {
+		if transport.tokenCreds, err = azidentity.NewManagedIdentityCredential(clientID, ops); err != nil {
 			return nil, err
 		}
 	}
@@ -48,9 +47,6 @@ func (t *AzureIdentityTransport) RoundTrip(req *http.Request) (*http.Response, e
 		auth := url.QueryEscape("type=aad&ver=1.0&sig=" + token.Token)
 		req.Header.Set(AuthorizationHeader, auth)
 	}
-
-	c := req.Header.Get(AuthorizationHeader)
-	req.Header.Set(AuthorizationHeader, c)
 
 	return t.base().RoundTrip(req)
 }
