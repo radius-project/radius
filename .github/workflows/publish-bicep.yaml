@@ -52,7 +52,7 @@ jobs:
       
       - name: Move generated files to bicep repo
         run: |
-          mkdir -p workflow-temp/bicep
+          mkdir -p workflow-temp/bicep/src/Bicep.Types.Radius/generated
           cp -R hack/bicep-types-radius/generated/* workflow-temp/bicep/src/Bicep.Types.Radius/generated
 
       - name: Create Pull Request
