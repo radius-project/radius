@@ -91,7 +91,7 @@ func TestEnvironmentDataModelFromVersioned(t *testing.T) {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
 				require.NoError(t, err)
-				require.IsType(t, tc.apiVersion, dm.InternalMetadata.APIVersion)
+				require.IsType(t, tc.apiVersion, dm.InternalMetadata.UpdatedAPIVersion)
 			}
 		})
 	}
