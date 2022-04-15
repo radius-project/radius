@@ -5,7 +5,7 @@
 # Licensed under the MIT License.
 name: Publish Bicep Extensibility Provider
 on:
-  push:
+  pull_request:
     paths:
       - "schemas/rest-api-specs/specification/**"
 
