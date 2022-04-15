@@ -6,9 +6,8 @@
 name: Publish Bicep Extensibility Provider
 on:
   push:
-    branches: [main]
     paths:
-      - "schemas/rest-api-specs/specification/radius"
+      - "schemas/rest-api-specs/specification/**"
 
 jobs:
   update-types:
