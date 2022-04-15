@@ -55,6 +55,10 @@ jobs:
           mkdir -p workflow-temp/bicep/src/Bicep.Types.Radius/generated
           cp -R hack/bicep-types-radius/generated/* workflow-temp/bicep/src/Bicep.Types.Radius/generated
 
+      - name: Commit generated files to bicep repo
+        run: |
+          git commit -am "update bicep extensibility types ${{ steps.get_radius_commit_hash.outputs.gh_uri }}"
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:
@@ -66,7 +70,7 @@ jobs:
           signoff: false
           branch: autogenerate
           branch-suffix: short-commit-hash
-          delete-branch: true
+          # delete-branch: true
           title: |
             update bicep extensibility types ${{ steps.get_radius_commit_hash.outputs.gh_uri }}
           body: |
