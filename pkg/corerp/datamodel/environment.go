@@ -28,8 +28,7 @@ type Environment struct {
 	// Properties is the properties of the resource.
 	Properties EnvironmentProperties `json:"properties"`
 
-	// InternalMetadata is the internal metadata which is used for conversion.
-	InternalMetadata InternalMetadata `json:"internalMetadata"`
+	InternalMetadata
 }
 
 func (e Environment) ResourceTypeName() string {

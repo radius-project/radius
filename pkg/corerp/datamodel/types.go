@@ -34,8 +34,16 @@ type TrackedResource struct {
 
 // InternalMetadata represents internal DataModel specific metadata.
 type InternalMetadata struct {
-	// APIVersion is an api-version used when converting to datamodel.
-	APIVersion string `json:"apiVersion"`
+	// TenantID is the tenant id of the resource.
+	TenantID string `json:"tenantID"`
+	// SubscriptionID is the subscription id of the resource.
+	SubscriptionID string `json:"subscriptionID"`
+	// ResourceGroup is the resource group of the resource.
+	ResourceGroup string `json:"resourceGroup"`
+	// CreatedAPIVersion is an api-version used when creating this model.
+	CreatedAPIVersion string `json:"createdApiVersion"`
+	// UpdatedAPIVersion is an api-version used when updating this model.
+	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
 
 	// TODO: will add more properties.
 }
