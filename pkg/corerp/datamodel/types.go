@@ -9,13 +9,14 @@ package datamodel
 type ProvisioningStates string
 
 const (
-	ProvisioningStateNone      ProvisioningStates = "None"
-	ProvisioningStateUpdating  ProvisioningStates = "Updating"
-	ProvisioningStateDeleting  ProvisioningStates = "Deleting"
-	ProvisioningStateAccepted  ProvisioningStates = "Accepted"
-	ProvisioningStateSucceeded ProvisioningStates = "Succeeded"
-	ProvisioningStateFailed    ProvisioningStates = "Failed"
-	ProvisioningStateCanceled  ProvisioningStates = "Canceled"
+	ProvisioningStateNone         ProvisioningStates = "None"
+	ProvisioningStateUpdating     ProvisioningStates = "Updating"
+	ProvisioningStateDeleting     ProvisioningStates = "Deleting"
+	ProvisioningStateAccepted     ProvisioningStates = "Accepted"
+	ProvisioningStateSucceeded    ProvisioningStates = "Succeeded"
+	ProvisioningStateProvisioning ProvisioningStates = "Provisioning"
+	ProvisioningStateFailed       ProvisioningStates = "Failed"
+	ProvisioningStateCanceled     ProvisioningStates = "Canceled"
 )
 
 // TrackedResource represents the common tracked resource.

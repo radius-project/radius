@@ -10,6 +10,6 @@ csharp:
   payload-flattening-threshold: 1
   clear-output-folder: true
   client-side-validation: false
-  namespace: Applications.Core
-  output-folder: $(csharp-sdks-folder)/applications/management/Applications.Core/GeneratedProtocol
+  namespace: Applications
+  output-folder: $(csharp-sdks-folder)/applications/management/Applications/GeneratedProtocol
 ```
