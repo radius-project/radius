@@ -89,7 +89,7 @@ Do not start the release until the following scenarios are validated:
    
    You can find this file in the storage account under `version/stable.txt`.
 
-5. Update the docs
+5. Update the project-radius/docs repository
    
    1. Within GitHub delete the branch for the prior Radius release, *e.g. `release/0.1`*.
    1. Create a new branch named `release/X.Y` from `main`, using the release version number.
