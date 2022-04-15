@@ -10,6 +10,72 @@ package v20220315privatepreview
 
 import "net/http"
 
+// ApplicationsCreateOrUpdateResponse contains the response from method Applications.CreateOrUpdate.
+type ApplicationsCreateOrUpdateResponse struct {
+	ApplicationsCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationsCreateOrUpdateResult contains the result from method Applications.CreateOrUpdate.
+type ApplicationsCreateOrUpdateResult struct {
+	ApplicationResource
+}
+
+// ApplicationsDeleteResponse contains the response from method Applications.Delete.
+type ApplicationsDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationsGetResponse contains the response from method Applications.Get.
+type ApplicationsGetResponse struct {
+	ApplicationsGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationsGetResult contains the result from method Applications.Get.
+type ApplicationsGetResult struct {
+	ApplicationResource
+}
+
+// ApplicationsListBySubscriptionResponse contains the response from method Applications.ListBySubscription.
+type ApplicationsListBySubscriptionResponse struct {
+	ApplicationsListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationsListBySubscriptionResult contains the result from method Applications.ListBySubscription.
+type ApplicationsListBySubscriptionResult struct {
+	ApplicationResourceList
+}
+
+// ApplicationsListResponse contains the response from method Applications.List.
+type ApplicationsListResponse struct {
+	ApplicationsListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationsListResult contains the result from method Applications.List.
+type ApplicationsListResult struct {
+	ApplicationResourceList
+}
+
+// ApplicationsUpdateResponse contains the response from method Applications.Update.
+type ApplicationsUpdateResponse struct {
+	ApplicationsUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ApplicationsUpdateResult contains the result from method Applications.Update.
+type ApplicationsUpdateResult struct {
+	ApplicationResource
+}
+
 // EnvironmentsCreateOrUpdateResponse contains the response from method Environments.CreateOrUpdate.
 type EnvironmentsCreateOrUpdateResponse struct {
 	EnvironmentsCreateOrUpdateResult

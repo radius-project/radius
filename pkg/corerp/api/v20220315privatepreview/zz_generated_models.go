@@ -15,6 +15,81 @@ import (
 	"time"
 )
 
+// ApplicationProperties - Application properties
+type ApplicationProperties struct {
+	// REQUIRED; The resource id of the environment linked to application.
+	Environment *string `json:"environment,omitempty"`
+
+	// READ-ONLY; Gets the status of the application at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// ApplicationResource - Radius Application.
+type ApplicationResource struct {
+	TrackedResource
+	// REQUIRED; Application properties
+	Properties *ApplicationProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ApplicationResource.
+func (a ApplicationResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	a.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", a.Properties)
+	populate(objectMap, "systemData", a.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// ApplicationResourceList - The list of applications.
+type ApplicationResourceList struct {
+	// The link used to get the next page of applications list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// The list of applications.
+	Value []*ApplicationResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ApplicationResourceList.
+func (a ApplicationResourceList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", a.NextLink)
+	populate(objectMap, "value", a.Value)
+	return json.Marshal(objectMap)
+}
+
+// ApplicationsCreateOrUpdateOptions contains the optional parameters for the Applications.CreateOrUpdate method.
+type ApplicationsCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsDeleteOptions contains the optional parameters for the Applications.Delete method.
+type ApplicationsDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsGetOptions contains the optional parameters for the Applications.Get method.
+type ApplicationsGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsListBySubscriptionOptions contains the optional parameters for the Applications.ListBySubscription method.
+type ApplicationsListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsListOptions contains the optional parameters for the Applications.List method.
+type ApplicationsListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsUpdateOptions contains the optional parameters for the Applications.Update method.
+type ApplicationsUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // EnvironmentCompute - Compute resource used by application environment resource.
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
