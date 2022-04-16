@@ -10,7 +10,6 @@ import (
 	"net/url"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 )
@@ -30,17 +29,10 @@ type ClientTransport struct {
 func NewClientTransport(authOptions *AzureADAuthOptions) (*ClientTransport, error) {
 	transport := &ClientTransport{}
 
-	clientOps := azcore.ClientOptions{
-		Cloud: cloud.Configuration{
-			LoginEndpoint: authOptions.Endpoint,
-			Services:      map[cloud.ServiceName]cloud.ServiceConfiguration{},
-		},
-	}
-
 	if authOptions != nil && authOptions.ClientID != "" {
 		if authOptions.ClientSecret != "" {
 			// Use ClientSecret authentication for dev/test purpose.
-			ops := &azidentity.ClientSecretCredentialOptions{ClientOptions: clientOps}
+			ops := &azidentity.ClientSecretCredentialOptions{AuthorityHost: authOptions.Endpoint}
 			var err error
 			transport.tokenCreds, err = azidentity.NewClientSecretCredential(
 				authOptions.TenantID,
@@ -52,10 +44,9 @@ func NewClientTransport(authOptions *AzureADAuthOptions) (*ClientTransport, erro
 			}
 		} else {
 			// Use managed identity authentication.
-			ops := &azidentity.ManagedIdentityCredentialOptions{ClientOptions: clientOps}
-			ops.ID = azidentity.ClientID(authOptions.ClientID)
+			ops := &azidentity.ManagedIdentityCredentialOptions{ID: azidentity.ClientID}
 			var err error
-			transport.tokenCreds, err = azidentity.NewManagedIdentityCredential(ops)
+			transport.tokenCreds, err = azidentity.NewManagedIdentityCredential(authOptions.ClientID, ops)
 			if err != nil {
 				return nil, err
 			}
