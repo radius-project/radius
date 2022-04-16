@@ -336,6 +336,11 @@ func TestQuery(t *testing.T) {
 		require.Equal(t, 1, len(results))
 	})
 
+	// tear down
+	for _, id := range testIDs {
+		err := client.Delete(ctx, id)
+		require.NoError(t, err)
+	}
 }
 
 func TestContinuationToken(t *testing.T) {
