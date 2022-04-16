@@ -37,6 +37,7 @@ These settings apply only when `--tag=package-2022-03-15-privatepreview` is spec
 input-file:
   - Applications.Core/preview/2022-03-15-privatepreview/global.json
   - Applications.Core/preview/2022-03-15-privatepreview/environments.json
+  - Applications.Core/preview/2022-03-15-privatepreview/applications.json
 ```
 
 ---

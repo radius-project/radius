@@ -75,6 +75,46 @@
               "operation": "Unregister the Applications.Core",
               "description": "Unregister the subscription for Applications.Core"
             }
+          },
+          {
+            "name": "Applications.Core/applications/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "applications",
+              "operation": "Get/List application",
+              "description": "Get or list of applications."
+            }
+          },
+          {
+            "name": "Applications.Core/applications/write",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "applications",
+              "operation": "Create/Update application",
+              "description": "Create or update an application."
+            }
+          },
+          {
+            "name": "Applications.Core/applications/delete",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "applications",
+              "operation": "Delete application",
+              "description": "Deletes an application."
+            }
+          },
+          {
+            "name": "Applications.Core/applications/join/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "applications",
+              "operation": "Join application",
+              "description": "Join to application."
+            }
           }
         ]
       }

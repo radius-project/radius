@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Applications.Core Management API",
-    "description": "REST API for Radius Application Environment",
+    "description": "REST API for Applications.Core Application Resource",
     "version": "2022-03-15-privatepreview"
   },
   "host": "management.azure.com",
@@ -34,20 +34,20 @@
     }
   },
   "paths": {
-    "/subscriptions/{subscriptionId}/providers/Applications.Core/environments": {
+    "/subscriptions/{subscriptionId}/providers/Applications.Core/applications": {
       "get": {
-        "description": "List all environments in a subscription.",
-        "operationId": "Environments_ListBySubscription",
+        "description": "List all applications in the given subscription.",
+        "operationId": "Applications_ListBySubscription",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RadiusEnvironmentsListBySubscription": {
-            "$ref": "./examples/EnvironmentsListBySubscription.json"
+          "RadiusApplicationsListBySubscription": {
+            "$ref": "./examples/ApplicationsListBySubscription.json"
           }
         },
         "tags": [
-          "Environments"
+          "Applications"
         ],
         "parameters": [
           {
@@ -59,9 +59,9 @@
         ],
         "responses": {
           "200": {
-            "description": "Environment details.",
+            "description": "Application details.",
             "schema": {
-              "$ref": "#/definitions/EnvironmentResourceList"
+              "$ref": "#/definitions/ApplicationResourceList"
             }
           },
           "default": {
@@ -77,20 +77,20 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/applications": {
       "get": {
-        "description": "List of Environments.",
-        "operationId": "Environments_List",
+        "description": "List of Applications.",
+        "operationId": "Applications_List",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RadiusEnvironmentsList": {
-            "$ref": "./examples/EnvironmentsList.json"
+          "RadiusApplicationsList": {
+            "$ref": "./examples/ApplicationsList.json"
           }
         },
         "tags": [
-          "Environments"
+          "Applications"
         ],
         "parameters": [
           {
@@ -105,9 +105,9 @@
         ],
         "responses": {
           "200": {
-            "description": "Environment details.",
+            "description": "Application details.",
             "schema": {
-              "$ref": "#/definitions/EnvironmentResourceList"
+              "$ref": "#/definitions/ApplicationResourceList"
             }
           },
           "default": {
@@ -123,20 +123,20 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments/{environmentName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/applications/{applicationName}": {
       "get": {
-        "description": "Gets the properties of an Environment.",
-        "operationId": "Environments_Get",
+        "description": "Gets the properties of an Application.",
+        "operationId": "Applications_Get",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RadiusEnvironmentsGet": {
-            "$ref": "./examples/EnvironmentsGetEnv0.json"
+          "RadiusApplicationsGet": {
+            "$ref": "./examples/ApplicationsGet.json"
           }
         },
         "tags": [
-          "Environments"
+          "Applications"
         ],
         "parameters": [
           {
@@ -149,14 +149,14 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
           },
           {
-            "$ref": "#/parameters/EnvironmentNameParameter"
+            "$ref": "#/parameters/ApplicationNameParameter"
           }
         ],
         "responses": {
           "200": {
-            "description": "Environment details.",
+            "description": "Application details.",
             "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
+              "$ref": "#/definitions/ApplicationResource"
             }
           },
           "default": {
@@ -168,18 +168,18 @@
         }
       },
       "put": {
-        "description": "Create or update an Environment.",
-        "operationId": "Environments_CreateOrUpdate",
+        "description": "Create or update an Application.",
+        "operationId": "Applications_CreateOrUpdate",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RadiusEnvironmentsPut": {
-            "$ref": "./examples/EnvironmentsPutEnv0.json"
+          "RadiusApplicationsPut": {
+            "$ref": "./examples/ApplicationsPut.json"
           }
         },
         "tags": [
-          "Environments"
+          "Applications"
         ],
         "parameters": [
           {
@@ -192,15 +192,15 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
           },
           {
-            "$ref": "#/parameters/EnvironmentNameParameter"
+            "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "name": "EnvironmentResource",
-            "description": "environment details",
+            "name": "ApplicationResource",
+            "description": "application details",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
+              "$ref": "#/definitions/ApplicationResource"
             }
           }
         ],
@@ -208,13 +208,13 @@
           "200": {
             "description": "The resource was updated successfully.",
             "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
+              "$ref": "#/definitions/ApplicationResource"
             }
           },
           "201": {
             "description": "The resource will be updated asynchronously.",
             "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
+              "$ref": "#/definitions/ApplicationResource"
             }
           },
           "default": {
@@ -226,18 +226,18 @@
         }
       },
       "patch": {
-        "description": "Update the properties of an existing Environment.",
-        "operationId": "Environments_Update",
+        "description": "Update the properties of an existing Application.",
+        "operationId": "Applications_Update",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RadiusEnvironmentsPatch": {
-            "$ref": "./examples/EnvironmentsPatchEnv0.json"
+          "RadiusApplicationsPatch": {
+            "$ref": "./examples/ApplicationsPatch.json"
           }
         },
         "tags": [
-          "Environments"
+          "Applications"
         ],
         "parameters": [
           {
@@ -250,15 +250,15 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
           },
           {
-            "$ref": "#/parameters/EnvironmentNameParameter"
+            "$ref": "#/parameters/ApplicationNameParameter"
           },
           {
-            "name": "EnvironmentResource",
-            "description": "environment details",
+            "name": "ApplicationResource",
+            "description": "application details",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
+              "$ref": "#/definitions/ApplicationResource"
             }
           }
         ],
@@ -266,13 +266,13 @@
           "200": {
             "description": "The resource was updated successfully.",
             "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
+              "$ref": "#/definitions/ApplicationResource"
             }
           },
           "201": {
             "description": "The resource will be updated asynchronously.",
             "schema": {
-              "$ref": "#/definitions/EnvironmentResource"
+              "$ref": "#/definitions/ApplicationResource"
             }
           },
           "default": {
@@ -284,18 +284,18 @@
         }
       },
       "delete": {
-        "description": "Delete an Environment.",
-        "operationId": "Environments_Delete",
+        "description": "Delete an Application.",
+        "operationId": "Applications_Delete",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RadiusEnvironmentsDelete": {
-            "$ref": "./examples/EnvironmentsDeleteEnv0.json"
+          "RadiusApplicationsDelete": {
+            "$ref": "./examples/ApplicationsDelete.json"
           }
         },
         "tags": [
-          "Environments"
+          "Applications"
         ],
         "parameters": [
           {
@@ -308,18 +308,18 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
           },
           {
-            "$ref": "#/parameters/EnvironmentNameParameter"
+            "$ref": "#/parameters/ApplicationNameParameter"
           }
         ],
         "responses": {
           "200": {
-            "description": "The environment was successfully deleted."
+            "description": "The application was successfully deleted."
           },
           "202": {
-            "description": "The environment will be deleted asynchronously."
+            "description": "The application will be deleted asynchronously."
           },
           "204": {
-            "description": "The environment does not exist."
+            "description": "The application does not exist."
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -332,50 +332,25 @@
     }
   },
   "definitions": {
-    "EnvironmentResourceList": {
-      "description": "The list of environments.",
+    "ApplicationResourceList": {
+      "description": "The list of applications.",
       "type": "object",
       "properties": {
         "value": {
-          "description": "The list of environments.",
+          "description": "The list of applications.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/EnvironmentResource"
+            "$ref": "#/definitions/ApplicationResource"
           }
         },
         "nextLink": {
-          "description": "The link used to get the next page of environments list.",
+          "description": "The link used to get the next page of applications list.",
           "type": "string"
         }
       }
     },
-    "EnvironmentCompute": {
-      "description": "Compute resource used by application environment resource.",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Type of compute resource.",
-          "enum": [
-            "kubernetes"
-          ],
-          "x-ms-enum": {
-            "name": "EnvironmentComputeKind",
-            "modelAsString": true
-          }
-        },
-        "resourceId": {
-          "type": "string",
-          "description": "The resource id of the compute resource for application environment."
-        }
-      },
-      "required": [
-        "kind",
-        "resourceId"
-      ]
-    },
-    "EnvironmentResource": {
-      "description": "Application environment.",
+    "ApplicationResource": {
+      "description": "Radius Application.",
       "type": "object",
       "allOf": [
         {
@@ -391,21 +366,21 @@
         },
         "properties": {
           "x-ms-client-flatten": true,
-          "$ref": "#/definitions/EnvironmentProperties"
+          "$ref": "#/definitions/ApplicationProperties"
         }
       }
     },
-    "EnvironmentProperties": {
-      "description": "Application environment properties",
+    "ApplicationProperties": {
+      "description": "Application properties",
       "type": "object",
       "required": [
-        "compute"
+        "environment"
       ],
       "properties": {
         "provisioningState": {
           "readOnly": true,
           "type": "string",
-          "description": "Gets the status of the environment at the time the operation was called.",
+          "description": "Gets the status of the application at the time the operation was called.",
           "enum": [
             "Succeeded",
             "Failed",
@@ -419,20 +394,20 @@
             "modelAsString": true
           }
         },
-        "compute": {
-          "$ref": "#/definitions/EnvironmentCompute",
-          "description": "The compute resource used by application environment."
+        "environment": {
+          "description": "The resource id of the environment linked to application.",
+          "type": "string"
         }
       }
     }
   },
   "parameters": {
-    "EnvironmentNameParameter": {
-      "name": "environmentName",
+    "ApplicationNameParameter": {
+      "name": "applicationName",
       "in": "path",
       "required": true,
       "type": "string",
-      "description": "The name of the environment",
+      "description": "The name of the application.",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
       "maxLength": 128,
       "x-ms-parameter-location": "method"

@@ -13,11 +13,11 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// EnvironmentDataModelToVersioned converts version agnostic environment datamodel to versioned model.
-func EnvironmentDataModelToVersioned(model *datamodel.Environment, version string) (api.VersionedModelInterface, error) {
+// ApplicationDataModelToVersioned converts version agnostic application datamodel to versioned model.
+func ApplicationDataModelToVersioned(model *datamodel.Application, version string) (api.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.EnvironmentResource{}
+		versioned := &v20220315privatepreview.ApplicationResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -26,16 +26,16 @@ func EnvironmentDataModelToVersioned(model *datamodel.Environment, version strin
 	}
 }
 
-// EnvironmentDataModelFromVersioned converts versioned environment model to datamodel.
-func EnvironmentDataModelFromVersioned(content []byte, version string) (*datamodel.Environment, error) {
+// ApplicationDataModelFromVersioned converts versioned application model to datamodel.
+func ApplicationDataModelFromVersioned(content []byte, version string) (*datamodel.Application, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.EnvironmentResource{}
+		am := &v20220315privatepreview.ApplicationResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
-		return dm.(*datamodel.Environment), err
+		return dm.(*datamodel.Application), err
 
 	default:
 		return nil, datamodel.ErrUnsupportedAPIVersion
