@@ -3,18 +3,18 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package store
+package cosmosdb
 
-type ETag = string
+import "testing"
 
-type Metadata struct {
-	ID          string
-	ETag        ETag
-	APIVersion  string
-	ContentType string
+func TestNormalizeLetterOrDigitToUpper(t *testing.T) {
+
 }
 
-type Object struct {
-	Metadata
-	Data interface{} // Data []byte
+func TestEscapedStorageKey(t *testing.T) {
+
+}
+
+func TestGenerateResourceID(t *testing.T) {
+
 }

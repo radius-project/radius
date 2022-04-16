@@ -13,7 +13,12 @@ type StorageClient interface {
 	Query(ctx context.Context, query Query, options ...QueryOptions) ([]Object, error)
 	Get(ctx context.Context, id string, options ...GetOptions) (*Object, error)
 	Delete(ctx context.Context, id string, options ...DeleteOptions) error
-	Save(ctx context.Context, obj *Object, options ...SaveOptions) error
+	Save(ctx context.Context, obj *Object, options ...SaveOptions) (*Object, error)
+}
+
+type QueryParamValue struct {
+	PropertyPath string
+	Value        string
 }
 
 // Query specifies the structure of a query. RootScope is required and other fields are optional.
@@ -48,6 +53,14 @@ type Query struct {
 	// Example:
 	//	/Applications.Core/applications/my-app/
 	RoutingScopePrefix string
+
+	// TODO: Moved the below to query options.
+
+	// ContinuationToken is the optional property for the paginated resource list.
+	ContinuationToken string
+
+	// QueryParams is the parameters to define the query.
+	QueryParams []QueryParamValue
 }
 
 type QueryOptions interface {

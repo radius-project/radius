@@ -6,11 +6,12 @@
 package cosmosdb
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
 	"unicode"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -59,9 +60,14 @@ func NormalizeSubscriptionID(subscriptionID string) string {
 	return NormalizeLetterOrDigitToUpper(subscriptionID)
 }
 
+// NormalizeResourceGroup normalizes resource group.
+func NormalizeResourceGroup(resourceGroup string) string {
+	return NormalizeLetterOrDigitToUpper(resourceGroup)
+}
+
 // NormalizeLocation normalizes location. e.g. "West US" -> "WESTUS"
 func NormalizeLocation(location string) string {
-	return NormalizeLocation(location)
+	return NormalizeLetterOrDigitToUpper(location)
 }
 
 func EscapedStorageKey(key string) string {
@@ -83,24 +89,6 @@ func EscapedStorageKey(key string) string {
 	return sb.String()
 }
 
-func TrimStorageKey(storageKey string, limit int) (string, error) {
-	if limit < StorageKeyTrimPadding {
-		return "", errors.New("storage key is too short")
-	}
-
-	if strings.Contains(storageKey, "|") {
-		return "", errors.New("storgekey includes invalid character")
-	}
-
-	if len(storageKey) > limit {
-		hash64 := sha256.New()
-
-		return fmt.Sprintf("%s|%x", storageKey[0:(limit-StorageKeyTrimPadding)], hash64.Sum([]byte(storageKey))), nil
-	}
-
-	return storageKey, nil
-}
-
 func CombineStorageKeys(keys ...string) (string, error) {
 	for _, key := range keys {
 		if strings.Contains(key, keyDelimiter) {
@@ -118,4 +106,35 @@ func GenerateResourceID(subsID, resourceGroup, fullyQualifiedType, fullyQualifie
 		EscapedStorageKey(fullyQualifiedType),
 		EscapedStorageKey(fullyQualifiedName))
 	return key
+}
+
+type ResourceScope struct {
+	SubscriptionID string
+	ResourceGroup  string
+}
+
+func NewResourceScope(rootScope string) (*ResourceScope, error) {
+	rScope := &ResourceScope{}
+	scope := strings.TrimPrefix(rootScope, "/")
+	scope = strings.TrimSuffix(scope, "/")
+	s := strings.Split(scope, "/")
+	if len(s) >= 2 && strings.EqualFold(s[0], "subscriptions") {
+		if _, err := uuid.Parse(s[1]); err != nil {
+			return nil, err
+		}
+		rScope.SubscriptionID = s[1]
+	}
+	if len(s) >= 4 && strings.EqualFold(s[2], "resourceGroups") {
+		rScope.ResourceGroup = s[3]
+	}
+	return rScope, nil
+}
+
+func (r ResourceScope) ToString() string {
+	if r.SubscriptionID != "" && r.ResourceGroup != "" {
+		return "/subscriptions/" + r.SubscriptionID + "/resourceGroup/" + r.ResourceGroup
+	} else if r.SubscriptionID != "" {
+		return "/subscriptions/" + r.SubscriptionID
+	}
+	return ""
 }
