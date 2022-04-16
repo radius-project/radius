@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -55,8 +56,8 @@ func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Envi
 	}
 
 	azID, _ := azresources.Parse(env.ID)
-	env.InternalMetadata.SubscriptionID = NormalizeSubscriptionID(azID.SubscriptionID)
-	env.InternalMetadata.ResourceGroup = NormalizeResourceGroup(azID.ResourceGroup)
+	env.InternalMetadata.SubscriptionID = strings.ToLower(azID.SubscriptionID)
+	env.InternalMetadata.ResourceGroup = strings.ToLower(azID.ResourceGroup)
 	env.InternalMetadata.CreatedAPIVersion = "2022-03-15-privatepreview"
 	env.InternalMetadata.UpdatedAPIVersion = "2022-03-15-privatepreview"
 
@@ -69,7 +70,7 @@ func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
 		DatabaseName:   dbName,
 		CollectionName: collName,
 		KeyAuth: &CosmosDBKeyAuthOptions{
-			MasterKey: "<Put your test cosmosdb key>",
+			MasterKey: "pulSdF9Zi87pwDz6NGbHSGuTg0kCdp7gerB8Ih7ZVP2l9WU7Ube2CA6Qg65puGfq3Wyo6bkbsMekWWxsqd9GrA==",
 		},
 	})
 
@@ -104,7 +105,7 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@subId",
-				Value: "00000000000000001000000000000001",
+				Value: "00000000-0000-0000-1000-000000000001",
 			}},
 			err: nil,
 		},
@@ -113,25 +114,25 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@subId",
-				Value: "00000000000000001000000000000001",
+				Value: "00000000-0000-0000-1000-000000000001",
 			}, {
 				Name:  "@rgName",
-				Value: "TESTGROUP",
+				Value: "testgroup",
 			}},
 			err: nil,
 		},
 		{
 			storeQuery: store.Query{
-				RootScope:    "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup",
+				RootScope:    "/subscriptions/00000000-A000-0000-1000-000000000001/resourceGroups/testGroup",
 				ResourceType: "applications.core/environments",
 			},
 			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true)",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@subId",
-				Value: "00000000000000001000000000000001",
+				Value: "00000000-a000-0000-1000-000000000001",
 			}, {
 				Name:  "@rgName",
-				Value: "TESTGROUP",
+				Value: "testgroup",
 			}, {
 				Name:  "@rtype",
 				Value: "applications.core/environments",
@@ -156,10 +157,10 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true) and STRINGEQUALS(c.entity.properties.environment, @filter0, true) and STRINGEQUALS(c.entity.properties.application, @filter1, true)",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@subId",
-				Value: "00000000000000001000000000000001",
+				Value: "00000000-0000-0000-1000-000000000001",
 			}, {
 				Name:  "@rgName",
-				Value: "TESTGROUP",
+				Value: "testgroup",
 			}, {
 				Name:  "@rtype",
 				Value: "applications.core/environments",
@@ -210,7 +211,7 @@ func TestSave(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("succeeded to upsert new resource with same etag", func(t *testing.T) {
+	t.Run("succeeded to upsert new resource with valid Etag", func(t *testing.T) {
 		_ = client.Delete(ctx, env.ID)
 		r := &store.Object{
 			Metadata: store.Metadata{
@@ -226,7 +227,7 @@ func TestSave(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("failed to upsert new resource with different etag", func(t *testing.T) {
+	t.Run("failed to upsert new resource with invalid Etag", func(t *testing.T) {
 		_ = client.Delete(ctx, env.ID)
 		r := &store.Object{
 			Metadata: store.Metadata{
@@ -238,7 +239,7 @@ func TestSave(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, obj.ETag)
 
-		r.ETag = "different_tag"
+		r.ETag = "invalid_etag"
 		_, err = client.Save(ctx, r)
 		require.Error(t, err)
 		require.Equal(t, "The operation specified an eTag that is different from the version available at the server", err.Error())
@@ -335,11 +336,6 @@ func TestQuery(t *testing.T) {
 		require.Equal(t, 1, len(results))
 	})
 
-	// tear down
-	for _, id := range testIDs {
-		err := client.Delete(ctx, id)
-		require.NoError(t, err)
-	}
 }
 
 func TestContinuationToken(t *testing.T) {

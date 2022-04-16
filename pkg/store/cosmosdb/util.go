@@ -12,6 +12,19 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/store"
+	"github.com/spaolacci/murmur3"
+)
+
+const (
+	keyDelimiter = "-"
+
+	// StorageKeyTrimPaddingLen is the length of the padding when key is trimed.
+	StorageKeyTrimPaddingLen = 17
+	// The resource group name storage key length.
+	ResourceGroupNameMaxStorageKeyLen = 64
+	// The resource identifier storage key limit.
+	ResourceIdMaxStorageKeyLen = 157
 )
 
 var (
@@ -28,16 +41,6 @@ var escapedStorageKeys = []string{
 	":60", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o",
 	"p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", ":7B", ":7C", ":7D", ":7E", ":7F",
 }
-
-const (
-	keyDelimiter = "-"
-
-	// The subscription identifier storage key limit.
-	SubscriptionIdStorageKeyLimit = 32
-
-	// The storage key trim padding
-	StorageKeyTrimPadding = 17
-)
 
 // NormalizeLetterOrDigitToUpper normalizes the value to only letter or digit to upper invariant.
 func NormalizeLetterOrDigitToUpper(s string) string {
@@ -60,16 +63,7 @@ func NormalizeSubscriptionID(subscriptionID string) string {
 	return NormalizeLetterOrDigitToUpper(subscriptionID)
 }
 
-// NormalizeResourceGroup normalizes resource group.
-func NormalizeResourceGroup(resourceGroup string) string {
-	return NormalizeLetterOrDigitToUpper(resourceGroup)
-}
-
-// NormalizeLocation normalizes location. e.g. "West US" -> "WESTUS"
-func NormalizeLocation(location string) string {
-	return NormalizeLetterOrDigitToUpper(location)
-}
-
+// EscapedStorageKey escapes the storage key.
 func EscapedStorageKey(key string) string {
 	sb := strings.Builder{}
 	for _, ch := range key {
@@ -89,6 +83,7 @@ func EscapedStorageKey(key string) string {
 	return sb.String()
 }
 
+// CombineStroageKeys combines the storage keys.
 func CombineStorageKeys(keys ...string) (string, error) {
 	for _, key := range keys {
 		if strings.Contains(key, keyDelimiter) {
@@ -99,13 +94,38 @@ func CombineStorageKeys(keys ...string) (string, error) {
 	return strings.Join(keys, keyDelimiter), nil
 }
 
-func GenerateResourceID(subsID, resourceGroup, fullyQualifiedType, fullyQualifiedName string) string {
-	key, _ := CombineStorageKeys(
-		NormalizeSubscriptionID(subsID),
-		EscapedStorageKey(resourceGroup),
-		EscapedStorageKey(fullyQualifiedType),
-		EscapedStorageKey(fullyQualifiedName))
-	return key
+// TrimStorageKey trims long storage key. If the length of
+func TrimStorageKey(storageKey string, maxLength int) (string, error) {
+	if maxLength < StorageKeyTrimPaddingLen {
+		return "", &store.ErrInvalid{Message: "storage key is too short"}
+	}
+	if strings.Contains(storageKey, "|") {
+		return "", &store.ErrInvalid{Message: "storage key is not properly encoded"}
+	}
+	if len(storageKey) > maxLength {
+		// Use murmur hash to generate unique key if the length of key exceeds maxLenth
+		storageKey = fmt.Sprintf("%s|%16X", storageKey[:(maxLength-StorageKeyTrimPaddingLen)], murmur3.Sum64([]byte(storageKey)))
+	}
+	return storageKey, nil
+}
+
+// NormalizeStorageKey must normalize storagekey.
+func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
+	upper := strings.ToUpper(storageKey)
+	return TrimStorageKey(EscapedStorageKey(upper), maxLength)
+}
+
+// GenerateCosmosDBKey generates the unqiue key the length of which must be less than 255.
+func GenerateCosmosDBKey(subsID, resourceGroup, fullyQualifiedType, fullyQualifiedName string) (string, error) {
+	unqiueResourceGroup, err := NormalizeStorageKey(resourceGroup, ResourceGroupNameMaxStorageKeyLen)
+	if err != nil {
+		return "", err
+	}
+	resourceTypeAndName, err := NormalizeStorageKey(fullyQualifiedType+fullyQualifiedName, ResourceIdMaxStorageKeyLen)
+	if err != nil {
+		return "", err
+	}
+	return CombineStorageKeys(NormalizeSubscriptionID(subsID), unqiueResourceGroup, resourceTypeAndName)
 }
 
 type ResourceScope struct {
@@ -122,19 +142,10 @@ func NewResourceScope(rootScope string) (*ResourceScope, error) {
 		if _, err := uuid.Parse(s[1]); err != nil {
 			return nil, err
 		}
-		rScope.SubscriptionID = s[1]
+		rScope.SubscriptionID = strings.ToLower(s[1])
 	}
 	if len(s) >= 4 && strings.EqualFold(s[2], "resourceGroups") {
-		rScope.ResourceGroup = s[3]
+		rScope.ResourceGroup = strings.ToLower(s[3])
 	}
 	return rScope, nil
-}
-
-func (r ResourceScope) ToString() string {
-	if r.SubscriptionID != "" && r.ResourceGroup != "" {
-		return "/subscriptions/" + r.SubscriptionID + "/resourceGroup/" + r.ResourceGroup
-	} else if r.SubscriptionID != "" {
-		return "/subscriptions/" + r.SubscriptionID
-	}
-	return ""
 }

@@ -192,6 +192,7 @@ require (
 	github.com/rubenv/sql-migrate v1.1.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.starlark.net v0.0.0-20220203230714-bb14e151c28f // indirect
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab // indirect

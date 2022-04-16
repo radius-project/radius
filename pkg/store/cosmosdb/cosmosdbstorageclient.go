@@ -173,11 +173,11 @@ func constructCosmosDBQuery(query store.Query) (*ResourceScope, *cosmosapi.Query
 	}
 
 	// Construct SQL query
-	queryString := "SELECT * FROM c WHERE c.entity.subscriptionID = @subId"
+	queryString := "SELECT * FROM c WHERE c.entity.subscriptionId = @subId"
 	queryParams := []cosmosapi.QueryParam{
 		{
 			Name:  "@subId",
-			Value: NormalizeSubscriptionID(resourceScope.SubscriptionID),
+			Value: resourceScope.SubscriptionID,
 		},
 	}
 
@@ -185,7 +185,7 @@ func constructCosmosDBQuery(query store.Query) (*ResourceScope, *cosmosapi.Query
 		queryString = queryString + " and c.entity.resourceGroup = @rgName"
 		queryParams = append(queryParams, cosmosapi.QueryParam{
 			Name:  "@rgName",
-			Value: NormalizeSubscriptionID(resourceScope.ResourceGroup),
+			Value: resourceScope.ResourceGroup,
 		})
 	}
 
@@ -264,7 +264,10 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, options ...s
 		PartitionKeyValue: NormalizeSubscriptionID(azID.SubscriptionID),
 	}
 
-	docID := GenerateResourceID(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
+	docID, err := GenerateCosmosDBKey(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
+	if err != nil {
+		return nil, err
+	}
 	entity := &ResourceEntity{}
 	_, err = c.client.GetDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops, entity)
 
@@ -289,7 +292,10 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, options .
 	ops := cosmosapi.DeleteDocumentOptions{
 		PartitionKeyValue: NormalizeSubscriptionID(azID.SubscriptionID),
 	}
-	docID := GenerateResourceID(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
+	docID, err := GenerateCosmosDBKey(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
+	if err != nil {
+		return err
+	}
 	_, err = c.client.DeleteDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops)
 
 	return errors.WithStack(err)
@@ -302,8 +308,13 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		return nil, err
 	}
 
+	docID, err := GenerateCosmosDBKey(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
+	if err != nil {
+		return nil, err
+	}
+
 	entity := &ResourceEntity{
-		ID:           GenerateResourceID(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name()),
+		ID:           docID,
 		ResourceID:   azID.ID,
 		PartitionKey: NormalizeSubscriptionID(azID.SubscriptionID),
 		Entity:       obj.Data,

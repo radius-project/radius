@@ -35,9 +35,9 @@ type TrackedResource struct {
 // InternalMetadata represents internal DataModel specific metadata.
 type InternalMetadata struct {
 	// TenantID is the tenant id of the resource.
-	TenantID string `json:"tenantID"`
+	TenantID string `json:"tenantId"`
 	// SubscriptionID is the subscription id of the resource.
-	SubscriptionID string `json:"subscriptionID"`
+	SubscriptionID string `json:"subscriptionId"`
 	// ResourceGroup is the resource group of the resource.
 	ResourceGroup string `json:"resourceGroup"`
 	// CreatedAPIVersion is an api-version used when creating this model.
