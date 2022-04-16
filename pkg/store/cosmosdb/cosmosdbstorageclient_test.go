@@ -1,3 +1,6 @@
+//go:build cosmos_integration
+// +build cosmos_integration
+
 // ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
