@@ -7,6 +7,7 @@ package cosmosdb
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -156,20 +157,19 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists() error {
 	return err
 }
 
-// Query queries the data resource
-func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) ([]store.Object, error) {
+func constructCosmosDBQuery(query store.Query) (*ResourceScope, *cosmosapi.Query, error) {
 	// Validate query request.
 	resourceScope, err := NewResourceScope(query.RootScope)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if resourceScope.SubscriptionID == "" {
-		return nil, &store.ErrInvalid{Message: "invalid RootScope"}
+		return nil, nil, &store.ErrInvalid{Message: "invalid RootScope"}
 	}
 
 	if query.RoutingScopePrefix != "" {
-		return nil, &store.ErrInvalid{Message: "RoutingScopePrefix is not supported"}
+		return nil, nil, &store.ErrInvalid{Message: "RoutingScopePrefix is not supported"}
 	}
 
 	// Construct SQL query
@@ -197,8 +197,26 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 		})
 	}
 
+	for i, filter := range query.Filters {
+		filterParam := fmt.Sprintf("filter%d", i)
+		queryString = queryString + fmt.Sprintf(" and STRINGEQUALS(c.entity.%s, @%s, true)", filter.Field, filterParam)
+		queryParams = append(queryParams, cosmosapi.QueryParam{
+			Name:  "@" + filterParam,
+			Value: filter.Value,
+		})
+	}
+
+	return resourceScope, &cosmosapi.Query{Query: queryString, Params: queryParams}, nil
+}
+
+// Query queries the data resource
+func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) ([]store.Object, error) {
 	// Prepare document query.
-	qry := cosmosapi.Query{Query: queryString, Params: queryParams}
+	resourceScope, qry, err := constructCosmosDBQuery(query)
+	if err != nil {
+		return nil, err
+	}
+
 	entities := []ResourceEntity{}
 
 	qops := cosmosapi.QueryDocumentsOptions{
@@ -214,7 +232,7 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 		qops.Continuation = query.ContinuationToken
 	}
 
-	resp, err := c.client.QueryDocuments(ctx, c.options.DatabaseName, c.options.CollectionName, qry, &entities, qops)
+	resp, err := c.client.QueryDocuments(ctx, c.options.DatabaseName, c.options.CollectionName, *qry, &entities, qops)
 	if err != nil {
 		return nil, err
 	}

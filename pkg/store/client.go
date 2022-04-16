@@ -16,11 +16,6 @@ type StorageClient interface {
 	Save(ctx context.Context, obj *Object, options ...SaveOptions) (*Object, error)
 }
 
-type QueryParamValue struct {
-	PropertyPath string
-	Value        string
-}
-
 // Query specifies the structure of a query. RootScope is required and other fields are optional.
 type Query struct {
 	// Scope sets the root scope of the query. This will be the fully-qualified root scope. This can be a
@@ -56,11 +51,17 @@ type Query struct {
 
 	// TODO: Moved the below to query options.
 
+	// Filters is an query filter to filter the specific property value.
+	Filters []QueryFilter
+
 	// ContinuationToken is the optional property for the paginated resource list.
 	ContinuationToken string
+}
 
-	// QueryParams is the parameters to define the query.
-	QueryParams []QueryParamValue
+// QueryFilter is the filter which filters property in resource entity.
+type QueryFilter struct {
+	Field string
+	Value string
 }
 
 type QueryOptions interface {

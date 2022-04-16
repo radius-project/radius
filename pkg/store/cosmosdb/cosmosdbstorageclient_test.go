@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/stretchr/testify/require"
+	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
 
 var fakeSubs = []string{
@@ -65,7 +66,7 @@ func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
 		DatabaseName:   dbName,
 		CollectionName: collName,
 		KeyAuth: &CosmosDBKeyAuthOptions{
-			MasterKey: "fake==",
+			MasterKey: "pulSdF9Zi87pwDz6NGbHSGuTg0kCdp7gerB8Ih7ZVP2l9WU7Ube2CA6Qg65puGfq3Wyo6bkbsMekWWxsqd9GrA==",
 		},
 	})
 
@@ -78,6 +79,109 @@ func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
 	}
 
 	return client
+}
+
+func TestConstructCosmosDBQuery(t *testing.T) {
+	tests := []struct {
+		storeQuery  store.Query
+		queryString string
+		params      []cosmosapi.QueryParam
+		err         error
+	}{
+		{
+			storeQuery: store.Query{RootScope: "/resourceGroups/testGroup"},
+			err:        &store.ErrInvalid{Message: "invalid RootScope"},
+		},
+		{
+			storeQuery: store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", RoutingScopePrefix: "prefix"},
+			err:        &store.ErrInvalid{Message: "RoutingScopePrefix is not supported"},
+		},
+		{
+			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001"},
+			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId",
+			params: []cosmosapi.QueryParam{{
+				Name:  "@subId",
+				Value: "00000000000000001000000000000001",
+			}},
+			err: nil,
+		},
+		{
+			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup"},
+			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName",
+			params: []cosmosapi.QueryParam{{
+				Name:  "@subId",
+				Value: "00000000000000001000000000000001",
+			}, {
+				Name:  "@rgName",
+				Value: "TESTGROUP",
+			}},
+			err: nil,
+		},
+		{
+			storeQuery: store.Query{
+				RootScope:    "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup",
+				ResourceType: "applications.core/environments",
+			},
+			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true)",
+			params: []cosmosapi.QueryParam{{
+				Name:  "@subId",
+				Value: "00000000000000001000000000000001",
+			}, {
+				Name:  "@rgName",
+				Value: "TESTGROUP",
+			}, {
+				Name:  "@rtype",
+				Value: "applications.core/environments",
+			}},
+			err: nil,
+		},
+		{
+			storeQuery: store.Query{
+				RootScope:    "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup",
+				ResourceType: "applications.core/environments",
+				Filters: []store.QueryFilter{
+					{
+						Field: "properties.environment",
+						Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/env0",
+					},
+					{
+						Field: "properties.application",
+						Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/applications/app0",
+					},
+				},
+			},
+			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true) and STRINGEQUALS(c.entity.properties.environment, @filter0, true) and STRINGEQUALS(c.entity.properties.application, @filter1, true)",
+			params: []cosmosapi.QueryParam{{
+				Name:  "@subId",
+				Value: "00000000000000001000000000000001",
+			}, {
+				Name:  "@rgName",
+				Value: "TESTGROUP",
+			}, {
+				Name:  "@rtype",
+				Value: "applications.core/environments",
+			}, {
+				Name:  "@filter0",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/env0",
+			}, {
+				Name:  "@filter1",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/applications/app0",
+			}},
+			err: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.queryString, func(t *testing.T) {
+			_, qry, err := constructCosmosDBQuery(tc.storeQuery)
+			if tc.err != nil {
+				require.ErrorIs(t, tc.err, err)
+			} else {
+				require.Equal(t, tc.queryString, qry.Query)
+				require.ElementsMatch(t, tc.params, qry.Params)
+			}
+		})
+	}
 }
 
 func TestSave(t *testing.T) {
@@ -201,6 +305,25 @@ func TestQuery(t *testing.T) {
 		query := store.Query{
 			RootScope:    fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", azID.SubscriptionID, azID.ResourceGroup),
 			ResourceType: "applications.core/environments",
+		}
+
+		results, err := client.Query(ctx, query)
+		require.NoError(t, err)
+		require.NotNil(t, results)
+		require.Equal(t, 1, len(results))
+	})
+
+	t.Run("Query all resources at resourcegroup level and at type using RootScope, ResourceType with filter.", func(t *testing.T) {
+		azID, _ := azresources.Parse(testIDs[0])
+		query := store.Query{
+			RootScope:    fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", azID.SubscriptionID, azID.ResourceGroup),
+			ResourceType: "applications.core/environments",
+			Filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: "WEST US",
+				},
+			},
 		}
 
 		results, err := client.Query(ctx, query)
