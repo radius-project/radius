@@ -66,7 +66,7 @@ func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
 		DatabaseName:   dbName,
 		CollectionName: collName,
 		KeyAuth: &CosmosDBKeyAuthOptions{
-			MasterKey: "pulSdF9Zi87pwDz6NGbHSGuTg0kCdp7gerB8Ih7ZVP2l9WU7Ube2CA6Qg65puGfq3Wyo6bkbsMekWWxsqd9GrA==",
+			MasterKey: "<Put your test cosmosdb key>",
 		},
 	})
 
