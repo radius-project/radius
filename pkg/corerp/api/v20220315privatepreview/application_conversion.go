@@ -29,7 +29,7 @@ func (src *ApplicationResource) ConvertTo() (api.DataModelInterface, error) {
 			Environment:       to.String(src.Properties.Environment),
 		},
 		InternalMetadata: datamodel.InternalMetadata{
-			APIVersion: Version,
+			UpdatedAPIVersion: Version,
 		},
 	}
 	return converted, nil
