@@ -27,7 +27,6 @@ type Renderer struct {
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
-	// TODO: willsmith: ay need to create routes first
 	return nil, nil, nil
 }
 
@@ -45,10 +44,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 		},
 		"port": {
-			Value: GetEffectivePort(route),
+			Value: GetDefaultPort(),
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), GetEffectivePort(route)),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), GetDefaultPort()),
 		},
 		"scheme": {
 			Value: "http",
@@ -84,7 +83,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 			Ports: []corev1.ServicePort{
 				{
 					Name:       resource.ResourceName,
-					Port:       int32(GetEffectivePort(route)),
+					Port:       int32(GetDefaultPort()),
 					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + typeParts[len(typeParts)-1] + resource.ResourceName)),
 					Protocol:   corev1.ProtocolTCP,
 				},

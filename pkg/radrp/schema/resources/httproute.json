@@ -30,7 +30,7 @@
           "type": "number"
         },
         "port": {
-          "description": "The port number for the route. Defaults to 80.",
+          "description": "The port number for the route. Defaults to 80. Readonly.",
           "type": "number"
         },
         "scheme": {
