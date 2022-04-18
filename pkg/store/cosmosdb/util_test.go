@@ -111,6 +111,7 @@ func TestNormalizeStorageKey(t *testing.T) {
 	}
 }
 
+// TestGenerateCosmosDBKey creates compliant cosmosdb id using arm id. The length of the generated id must be less than 256.
 func TestGenerateCosmosDBKey(t *testing.T) {
 	trimTests := []struct {
 		subID  string

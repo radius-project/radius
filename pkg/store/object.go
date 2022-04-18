@@ -8,11 +8,11 @@ package store
 type ETag = string
 
 type Metadata struct {
-	ID                string
-	ETag              ETag
-	ContinuationToken string
-	APIVersion        string
-	ContentType       string
+	ID              string
+	ETag            ETag
+	PaginationToken string
+	APIVersion      string
+	ContentType     string
 }
 
 type Object struct {

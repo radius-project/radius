@@ -246,6 +246,13 @@ func TestSave(t *testing.T) {
 	})
 }
 
+// TestQuery tests the following scenarios:
+// 1. Query records by subscription
+// 2. Query records by subscription and resource group
+// 3. Query records by subscription and resource type
+// 4. Query records by subscription, resource group, and resource type
+// 5. Query records by subscription, resource group, and custom filter
+//   - Use case - this will be used when environment queries all linked applications and connectors.
 func TestQuery(t *testing.T) {
 	ctx := context.Background()
 	client := mustGetTestClient("applicationscore", "environments")
@@ -343,7 +350,8 @@ func TestQuery(t *testing.T) {
 	}
 }
 
-func TestContinuationToken(t *testing.T) {
+// TestPaginationContinuationToken tests the pagination scenario using continuation token.
+func TestPaginationContinuationToken(t *testing.T) {
 	ctx := context.Background()
 	client := mustGetTestClient("applicationscore", "environments")
 
@@ -369,17 +377,17 @@ func TestContinuationToken(t *testing.T) {
 	results, err := client.Query(ctx, store.Query{RootScope: rootScope})
 	require.NoError(t, err)
 	require.Equal(t, 20, len(results))
-	require.NotEmpty(t, results[0].ContinuationToken)
+	require.NotEmpty(t, results[0].PaginationToken)
 
-	results, err = client.Query(ctx, store.Query{RootScope: rootScope, ContinuationToken: results[0].ContinuationToken})
+	results, err = client.Query(ctx, store.Query{RootScope: rootScope, PaginationToken: results[0].PaginationToken})
 	require.NoError(t, err)
 	require.Equal(t, 20, len(results))
-	require.NotEmpty(t, results[0].ContinuationToken)
+	require.NotEmpty(t, results[0].PaginationToken)
 
-	results, err = client.Query(ctx, store.Query{RootScope: rootScope, ContinuationToken: results[0].ContinuationToken})
+	results, err = client.Query(ctx, store.Query{RootScope: rootScope, PaginationToken: results[0].PaginationToken})
 	require.NoError(t, err)
 	require.Equal(t, 10, len(results))
-	require.Empty(t, results[0].ContinuationToken)
+	require.Empty(t, results[0].PaginationToken)
 
 	// tear down
 	for _, id := range testIDs {

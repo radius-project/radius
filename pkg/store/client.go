@@ -54,8 +54,8 @@ type Query struct {
 	// Filters is an query filter to filter the specific property value.
 	Filters []QueryFilter
 
-	// ContinuationToken is the optional property for the paginated resource list.
-	ContinuationToken string
+	// PaginationToken is the optional property for the paginated resource list.
+	PaginationToken string
 }
 
 // QueryFilter is the filter which filters property in resource entity.

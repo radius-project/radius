@@ -13,6 +13,8 @@ type ConnectionOptions struct {
 	DatabaseName string
 	// CollectionName represents the collection name in DataBaseName
 	CollectionName string
+	// MaxQueryItemCount represents the maximum number of items for query.
+	MaxQueryItemCount int
 
 	// KeyAuth represents an authentication option using master key.
 	KeyAuth *CosmosDBKeyAuthOptions

@@ -18,7 +18,11 @@ import (
 
 const (
 	// PartitionKeyName is the property used for partitioning.
-	PartitionKeyName = "/partitionKey"
+	PartitionKeyName      = "/partitionKey"
+	collectionThroughPut  = 4000
+	defaultQueryItemCount = 20
+
+	errCosmosDBNotFoundMsg = "Resource that no longer exists"
 )
 
 var _ store.StorageClient = (*CosmosDBStorageClient)(nil)
@@ -50,20 +54,23 @@ type CosmosDBStorageClient struct {
 
 // NewCosmosDBStorageClient creates a new CosmosDBStorageClient.
 func NewCosmosDBStorageClient(options *ConnectionOptions) (*CosmosDBStorageClient, error) {
-	// TODO: Create the custom client transport to support service principal and managed identity.
 	cfg := cosmosapi.Config{MaxRetries: 5}
 
 	if options.KeyAuth != nil {
 		cfg.MasterKey = options.KeyAuth.MasterKey
 	} else if options.AzureADAuth != nil {
-		cfg.MasterKey = "aad" // We set the fake key for Azure AD authentication. Since go-cosmosdb doesn't support Azure AD, CustomTransport takes care of AzureAD JWT acquisition.
+		cfg.MasterKey = "YWFkCg==" // We set the fake key for Azure AD authentication. Since go-cosmosdb doesn't support Azure AD, CustomTransport takes care of AzureAD JWT acquisition.
 	} else {
-		return nil, errors.New("unknown authentication options")
+		return nil, &store.ErrInvalid{Message: "unknown authentication options"}
+	}
+
+	if options.MaxQueryItemCount == 0 {
+		options.MaxQueryItemCount = defaultQueryItemCount
 	}
 
 	httpClient, err := getHTTPClient(options)
 	if err != nil {
-		return nil, errors.New("fails to get HTTPClient")
+		return nil, &store.ErrInvalid{Message: "fails to get HTTPClient"}
 	}
 
 	client := cosmosapi.New(options.Url, cfg, httpClient, nil)
@@ -106,7 +113,7 @@ func (c *CosmosDBStorageClient) createDatabaseIfNotExists() error {
 	if err == nil {
 		return nil
 	}
-	if err != nil && err.Error() != "Resource that no longer exists" {
+	if err != nil && err.Error() != errCosmosDBNotFoundMsg {
 		return errors.WithStack(err)
 	}
 
@@ -119,7 +126,7 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists() error {
 	if err == nil {
 		return nil
 	}
-	if err != nil && err.Error() != "Resource that no longer exists" {
+	if err != nil && err.Error() != errCosmosDBNotFoundMsg {
 		return errors.WithStack(err)
 	}
 	_, err = c.client.CreateCollection(context.Background(), c.options.DatabaseName, cosmosapi.CreateCollectionOptions{
@@ -151,7 +158,7 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists() error {
 			},
 			Kind: "Hash",
 		},
-		OfferThroughput: 4000,
+		OfferThroughput: collectionThroughPut,
 	})
 
 	return err
@@ -223,13 +230,13 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 		PartitionKeyValue:    NormalizeSubscriptionID(resourceScope.SubscriptionID),
 		IsQuery:              true,
 		ContentType:          cosmosapi.QUERY_CONTENT_TYPE,
-		MaxItemCount:         20,    // TODO: move this count to query options.
+		MaxItemCount:         c.options.MaxQueryItemCount,
 		EnableCrossPartition: false, // TODO: enable when we need to query across subscriptions.
 		ConsistencyLevel:     cosmosapi.ConsistencyLevelEventual,
 	}
 
-	if query.ContinuationToken != "" {
-		qops.Continuation = query.ContinuationToken
+	if query.PaginationToken != "" {
+		qops.Continuation = query.PaginationToken
 	}
 
 	resp, err := c.client.QueryDocuments(ctx, c.options.DatabaseName, c.options.CollectionName, *qry, &entities, qops)
@@ -242,9 +249,9 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 	for _, entity := range entities {
 		output = append(output, store.Object{
 			Metadata: store.Metadata{
-				ID:                entity.ResourceID,
-				ETag:              entity.ETag,
-				ContinuationToken: resp.Continuation,
+				ID:              entity.ResourceID,
+				ETag:            entity.ETag,
+				PaginationToken: resp.Continuation,
 			},
 			Data: entity.Entity,
 		})
