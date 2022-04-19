@@ -17,28 +17,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build autorest.bicep
-        working-directory: hack/bicep-types-radius/src/autorest.bicep
-        run: npm ci && npm run build
+      - name: Run make generate-bicep-types
+        run: make generate-bicep-types
 
-      - name: Install generator npm packages
-        working-directory: hack/bicep-types-radius/src/generator
-        run: npm ci
-
-      - id: generate
-        name: Run generator
-        working-directory: hack/bicep-types-radius/src/generator
+      - name: Check if generated code is up to date
+        continue-on-error: true
+        id: gitdiff
         run: |
-          npm run generate -- --specs-dir ../../../../schemas/rest-api-specs
-          cat ../../generated/radius/log.out
+          git diff --exit-code
 
       - id: get_radius_commit_hash
         name: Get commit hash (project-radius/radius)
         run: |
           echo "::set-output name=commit_hash_short::$(git rev-parse HEAD --short)"
           echo "::set-output name=gh_uri::https://github.com/project-radius/radius/tree/$(git rev-parse HEAD)/hack/bicep-types-radius/generated"
-
-      ## TODO: I want to compare the generated artifacts with the artifacts found in the commit and fail if they are not the same.
 
       - name: Clone https://github.com/project-radius/bicep
         uses: actions/checkout@v3
