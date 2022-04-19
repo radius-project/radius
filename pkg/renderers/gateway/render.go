@@ -25,13 +25,7 @@ import (
 type Renderer struct {
 }
 
-const (
-	GatewayClassKey = "GatewayClass"
-)
-
 func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
-	// TODO: willsmith: may need to create routes first
-	// maybe just get ID and use it to create resourcename, reference
 	return nil, nil, nil
 }
 
@@ -47,12 +41,17 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		return renderers.RendererOutput{}, errors.New("gateway class not found")
 	}
 
+	publicIP := options.Runtime.Gateway.PublicIP
+	if publicIP == "" {
+		return renderers.RendererOutput{}, errors.New("public IP not found")
+	}
+
 	outputs := []outputresource.OutputResource{}
 
 	gatewayName := kubernetes.MakeResourceName(options.Resource.ApplicationName, options.Resource.ResourceName)
-	hostname, err := getHostname(ctx, options.Resource, gateway)
+	hostname, err := getHostname(ctx, options.Resource, gateway, publicIP)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error %s", err)
+		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	}
 
 	gatewayObject, err := MakeGateway(ctx, options.Resource, gateway, gatewayClassName, gatewayName, hostname)
@@ -111,7 +110,8 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 
 	for _, route := range gateway.Routes {
 		pathMatch := gatewayv1alpha1.PathMatchPrefix
-		routeName := kubernetes.MakeResourceName(resource.ApplicationName, getRouteNameFromID(*route.Destination))
+		routeName := getRouteNameFromID(*route.Destination)
+		routeResourceName := kubernetes.MakeResourceName(resource.ApplicationName, routeName)
 		port := gatewayv1alpha1.PortNumber(80)
 
 		rules := []gatewayv1alpha1.HTTPRouteRule{
@@ -128,7 +128,7 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 				ForwardTo: []gatewayv1alpha1.HTTPRouteForwardTo{
 					{
 						Port:        &port,
-						ServiceName: &routeName,
+						ServiceName: &routeResourceName,
 					},
 				},
 			},
@@ -140,10 +140,9 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 				APIVersion: gatewayv1alpha1.SchemeGroupVersion.String(),
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				// TODO: willsmith: resource name isn't right here
-				Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
+				Name:      routeResourceName,
 				Namespace: resource.ApplicationName,
-				Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+				Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, routeName),
 			},
 			Spec: gatewayv1alpha1.HTTPRouteSpec{
 				Gateways: &gatewayv1alpha1.RouteGateways{
@@ -158,7 +157,10 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 			},
 		}
 
-		outputs = append(outputs, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, outputresource.LocalIDHttpRoute, httpRouteObject, httpRouteObject.ObjectMeta))
+		// Create unique localID for dependency graph
+		localID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, routeName)
+
+		outputs = append(outputs, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, httpRouteObject, httpRouteObject.ObjectMeta))
 	}
 
 	return outputs
@@ -177,15 +179,6 @@ func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, g
 	}, nil
 }
 
-func getPublicEndpoint(ctx context.Context) (*string, error) {
-	client, err := kubernetes.NewKubernetesClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return client.GetPublicIP(ctx)
-}
-
 func getRouteNameFromID(routeID string) string {
 	splitString := strings.Split(routeID, "/")
 	if len(splitString) == 0 {
@@ -195,7 +188,7 @@ func getRouteNameFromID(routeID string) string {
 	return splitString[len(splitString)-1]
 }
 
-func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties) (*gatewayv1alpha1.Hostname, error) {
+func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, publicIP string) (*gatewayv1alpha1.Hostname, error) {
 	var hostname gatewayv1alpha1.Hostname
 	if gateway.Hostname != nil {
 		if gateway.Hostname.FullyQualifiedHostname != nil {
@@ -203,24 +196,14 @@ func getHostname(ctx context.Context, resource renderers.RendererResource, gatew
 			hostname = gatewayv1alpha1.Hostname(*gateway.Hostname.FullyQualifiedHostname)
 		} else if gateway.Hostname.Prefix != nil {
 			// Auto-assign hostname: prefix.appname.ip.nip.io
-			endpoint, err := getPublicEndpoint(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", *gateway.Hostname.Prefix, resource.ApplicationName, *endpoint)
+			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", *gateway.Hostname.Prefix, resource.ApplicationName, publicIP)
 			hostname = gatewayv1alpha1.Hostname(prefixedHostname)
 		} else {
 			return nil, errors.New("must provide either prefix or fullyQualifiedHostname if hostname is specified")
 		}
 	} else {
 		// Auto-assign hostname: gatewayname.appname.ip.nip.io
-		endpoint, err := getPublicEndpoint(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.ResourceName, resource.ApplicationName, *endpoint)
+		prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.ResourceName, resource.ApplicationName, publicIP)
 		hostname = gatewayv1alpha1.Hostname(prefixedHostname)
 	}
 

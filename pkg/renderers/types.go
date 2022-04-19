@@ -40,6 +40,7 @@ type RuntimeOptions struct {
 
 type GatewayOptions struct {
 	GatewayClass string
+	PublicIP     string
 }
 
 type RendererResource struct {
