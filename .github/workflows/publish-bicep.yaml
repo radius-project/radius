@@ -36,7 +36,9 @@ jobs:
         name: Get commit hash (project-radius/radius)
         run: |
           echo "::set-output name=commit_hash_short::$(git rev-parse HEAD --short)"
-          echo "::set-output name=gh_uri::https://github.com/project-radius/radius/tree/$(git rev-parse HEAD)"
+          echo "::set-output name=gh_uri::https://github.com/project-radius/radius/tree/$(git rev-parse HEAD)/hack/bicep-types-radius/generated"
+
+      ## TODO: I want to compare the generated artifacts with the artifacts found in the commit and fail if they are not the same.
 
       - name: Clone https://github.com/project-radius/bicep
         uses: actions/checkout@v3

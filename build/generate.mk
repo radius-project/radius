@@ -11,7 +11,7 @@ package_name := package-$(package_ver)
 output_dir := schemas/rest-api-specs/specification/radius/resource-manager/$(provider_name)/preview/$(package_ver)
 
 .PHONY: generate
-generate: generate-arm-json generate-radclient generate-go ## Generates all targets.
+generate: generate-arm-json generate-radclient generate-go generate-bicep-types ## Generates all targets.
 
 .PHONY: generate-arm-json
 generate-arm-json: ## Generates ARM-JSON from our environment creation Bicep files
@@ -67,6 +67,16 @@ generate-mockgen-installed:
 generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mocks).
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./...
+
+.PHONY: generate-bicep-types
+generate-bicep-types: generate-openapi-specs ## Generate Bicep extensibility types
+	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
+	@echo "$(ARROW) Build autorest.bicep..."
+	cd hack/bicep-types-radius/src/autorest.bicep; \
+	npm ci && npm run build; \
+	cd ../generator; \
+	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
+	npm ci && npm run generate -- --specs-dir ../../../../schemas/rest-api-specs
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..
