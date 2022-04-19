@@ -1,4 +1,4 @@
-(root).properties.listeners.extra1.port: Invalid type. Expected: number, given: string
-(root).properties.listeners.extra1.protocol: Invalid type. Expected: string, given: integer
-(root).properties.listeners.foo: Invalid type. Expected: object, given: string
-(root).properties: Additional property extra2 is not allowed
+(root).properties.internal: Invalid type. Expected: boolean, given: integer
+(root).properties.hostname.prefix: Invalid type. Expected: string, given: integer
+(root).properties.hostname.fullyQualifiedHostname: Invalid type. Expected: string, given: boolean
+(root).properties: Additional property extra1 is not allowed

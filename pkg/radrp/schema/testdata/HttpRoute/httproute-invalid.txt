@@ -1,4 +1,1 @@
-(root).properties.gateway: Additional property extra1 is not allowed
-(root).properties.gateway: hostname is required
-(root).properties.port: Invalid type. Expected: number, given: string
 (root).properties: Additional property extra2 is not allowed

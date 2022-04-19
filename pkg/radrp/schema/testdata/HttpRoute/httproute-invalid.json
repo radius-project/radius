@@ -2,10 +2,6 @@
   "id": "id", 
   "name": "name",
   "properties": {
-    "port": "good",
-    "gateway": {
-      "extra1": "yep"
-    },
     "extra2": "no way"
   }
 }

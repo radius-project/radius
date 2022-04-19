@@ -2,13 +2,12 @@
   "id": "id", 
   "name": "name",
   "properties": {
-    "listeners": {
-      "extra1": {
-        "port": "bad",
-        "protocol": 80
-      },
-      "foo": "bar"
+    "internal": 42,
+    "hostname": {
+      "prefix": 0,
+      "fullyQualifiedHostname": false
     },
-    "extra2": "no way"
-  }
+    "extra1": "no way"
+  },
+  "routes": []
 }

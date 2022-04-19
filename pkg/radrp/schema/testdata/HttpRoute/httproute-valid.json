@@ -1,9 +1,4 @@
 {
   "id": "id", 
-  "name": "name",
-  "properties": {
-    "gateway": {
-      "hostname": "example.com"
-    }
-  }
+  "name": "name"
 }
