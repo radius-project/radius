@@ -67,7 +67,7 @@ executeSynchronous(async () => {
     // prepare temp dir for output
     await rm(tmpOutputDir, { recursive: true, force: true, });
     await mkdir(tmpOutputDir, { recursive: true });
-    const logger = await getLogger(`${tmpOutputDir}/log.out`);
+    const logger = await getLogger(`${tmpOutputDir}/out.log`);
     const config = getConfig(basePath);
 
     try {

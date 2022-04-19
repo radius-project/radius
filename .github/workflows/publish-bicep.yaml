@@ -39,7 +39,7 @@ jobs:
           repository: project-radius/bicep
           path: workflow-temp/bicep
           ref: bicep-extensibility
-      
+
       - name: Move generated files to bicep repo
         run: |
           mkdir -p workflow-temp/bicep/src/Bicep.Types.Radius/generated
