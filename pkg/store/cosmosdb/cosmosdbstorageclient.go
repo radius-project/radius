@@ -8,7 +8,6 @@ package cosmosdb
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/pkg/errors"
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -21,10 +20,8 @@ import (
 
 const (
 	// PartitionKeyName is the property used for partitioning.
-	PartitionKeyName      = "/partitionKey"
-	collectionThroughPut  = 4000
-	defaultQueryItemCount = 20
-
+	PartitionKeyName       = "/partitionKey"
+	collectionThroughPut   = 4000
 	errCosmosDBNotFoundMsg = "Resource that no longer exists"
 )
 
@@ -57,46 +54,20 @@ type CosmosDBStorageClient struct {
 
 // NewCosmosDBStorageClient creates a new CosmosDBStorageClient.
 func NewCosmosDBStorageClient(options *ConnectionOptions) (*CosmosDBStorageClient, error) {
-	cfg := cosmosapi.Config{MaxRetries: 5}
-
-	if options.KeyAuth != nil {
-		cfg.MasterKey = options.KeyAuth.MasterKey
-	} else if options.AzureADAuth != nil {
-		cfg.MasterKey = "YWFkCg==" // We set the fake key for Azure AD authentication. Since go-cosmosdb doesn't support Azure AD, CustomTransport takes care of AzureAD JWT acquisition.
-	} else {
-		return nil, &store.ErrInvalid{Message: "unknown authentication options"}
+	if err := options.load(); err != nil {
+		return nil, err
 	}
 
-	if options.MaxQueryItemCount == 0 {
-		options.MaxQueryItemCount = defaultQueryItemCount
+	cfg := cosmosapi.Config{
+		MasterKey:  options.MasterKey,
+		MaxRetries: 5,
 	}
 
-	httpClient, err := getHTTPClient(options)
-	if err != nil {
-		return nil, &store.ErrInvalid{Message: "fails to get HTTPClient"}
-	}
-
-	client := cosmosapi.New(options.Url, cfg, httpClient, nil)
+	client := cosmosapi.New(options.Url, cfg, nil, nil)
 
 	return &CosmosDBStorageClient{
 		client:  client,
 		options: options,
-	}, nil
-}
-
-func getHTTPClient(options *ConnectionOptions) (*http.Client, error) {
-	clientTransport := http.DefaultTransport
-
-	if options.AzureADAuth != nil {
-		var err error
-		clientTransport, err = NewClientTransport(options.AzureADAuth)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &http.Client{
-		Transport: clientTransport,
 	}, nil
 }
 

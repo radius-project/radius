@@ -66,17 +66,7 @@ func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
 		Url:            "https://radius-eastus-test.documents.azure.com:443/",
 		DatabaseName:   dbName,
 		CollectionName: collName,
-		AzureADAuth: &AzureADAuthOptions{
-			Endpoint: "https://login.microsoftonline.com/",
-			Audience: "https://management.azure.com/.default",
-			//Audience:     "https://cosmos.azure.com/.default",
-			TenantID:     "72f988bf-86f1-41af-91ab-2d7cd011db47",
-			ClientID:     "e826d98a-3937-4b4c-918d-64bd1627a8bc",
-			ClientSecret: "qpO8Q~uPDbE~hhxTqhIpjl1BzrMP3QlTvvWYlc3o",
-		},
-		//KeyAuth: &CosmosDBKeyAuthOptions{
-		//	MasterKey: "fake",
-		//},
+		MasterKey:      "fake",
 	})
 
 	if err != nil {

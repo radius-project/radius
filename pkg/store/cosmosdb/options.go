@@ -5,6 +5,12 @@
 
 package cosmosdb
 
+import "github.com/project-radius/radius/pkg/store"
+
+const (
+	defaultQueryItemCount = 20
+)
+
 // ConnectionOptions represents connection info to connect CosmosDB
 type ConnectionOptions struct {
 	// Url represents the url of cosmosdb endpoint.
@@ -16,31 +22,18 @@ type ConnectionOptions struct {
 	// MaxQueryItemCount represents the maximum number of items for query.
 	MaxQueryItemCount int
 
-	// KeyAuth represents an authentication option using master key.
-	KeyAuth *CosmosDBKeyAuthOptions
-	// AzureAdAuth reprsents an authentication option using Azure AD.
-	AzureADAuth *AzureADAuthOptions
-}
-
-// CosmosDBKeyAuthOptions represents authentication options using master key.
-type CosmosDBKeyAuthOptions struct {
 	// MasterKey is the key string for CosmosDB connection.
 	MasterKey string
 }
 
-// AzureADAuthOptions represents authentication options using Azure AD.
-type AzureADAuthOptions struct {
-	// Endpoint is Azure AD Login Endpoint.
-	Endpoint string
-	// Audience is an target audience.
-	Audience string
+func (c *ConnectionOptions) load() error {
+	if c.MasterKey == "" {
+		return &store.ErrInvalid{Message: "unset MasterKey"}
+	}
 
-	// UseMSI is the flag to use managed identity.
-	UseMSI bool
-	// TenantID is an tenant id of Azure.
-	TenantID string
-	// ClientID is the client id of AAD identity.
-	ClientID string
-	// ClientSecret is the client secret of AAD identity. (optional)
-	ClientSecret string
+	if c.MaxQueryItemCount == 0 {
+		c.MaxQueryItemCount = defaultQueryItemCount
+	}
+
+	return nil
 }
