@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -25,13 +24,6 @@ const (
 	applicationName = "test-application"
 	resourceName    = "test-route"
 )
-
-var resourceID = azresources.MakeID(
-	"kubernetes",
-	namespace,
-	azresources.ResourceType{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radiusv3"},
-	azresources.ResourceType{Type: "Application", Name: applicationName},
-	azresources.ResourceType{Type: "Container", Name: resourceName})
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
