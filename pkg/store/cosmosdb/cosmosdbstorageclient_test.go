@@ -66,7 +66,7 @@ func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
 		Url:            "https://radius-eastus-test.documents.azure.com:443/",
 		DatabaseName:   dbName,
 		CollectionName: collName,
-		MasterKey:      "fake",
+		MasterKey:      "pulSdF9Zi87pwDz6NGbHSGuTg0kCdp7gerB8Ih7ZVP2l9WU7Ube2CA6Qg65puGfq3Wyo6bkbsMekWWxsqd9GrA==",
 	})
 
 	if err != nil {

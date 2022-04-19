@@ -8,8 +8,8 @@ package cosmosdb
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
@@ -20,19 +20,22 @@ import (
 
 const (
 	// PartitionKeyName is the property used for partitioning.
-	PartitionKeyName       = "/partitionKey"
-	collectionThroughPut   = 4000
-	errCosmosDBNotFoundMsg = "Resource that no longer exists"
+	PartitionKeyName     = "/partitionKey"
+	collectionThroughPut = 4000
+
+	// go-cosmosdb does not return the error response code. Comparing error message is the only way to check the errors.
+	// Once we move to official Go SDK, we can have the better error handling.
+	errResourceNotFoundMsg = "Resource that no longer exists"
+	errIDConflictMsg       = "The ID provided has been taken by an existing resource"
 )
 
 var _ store.StorageClient = (*CosmosDBStorageClient)(nil)
 
 // ResourceEntity represents the default envelope model to store resource metadata.
 type ResourceEntity struct {
+	// CosmosDB system-related properties.
 	// ID represents the primary key.
 	ID string `json:"id"`
-	// ResourceID represents fully qualified resource id
-	ResourceID string `json:"resourceId"`
 	// ETag represents an etag required for optimistic concurrency control.
 	ETag string `json:"_etag"`
 	// Self represents the unique addressable URI for the resource.
@@ -40,6 +43,8 @@ type ResourceEntity struct {
 	// Timestamp represents the last updated timestamp of the resource.
 	UpdatedTime int `json:"_ts"`
 
+	// ResourceID represents fully qualified resource id
+	ResourceID string `json:"resourceId"`
 	// PartitionKey represents the key used for partitioning.
 	PartitionKey string `json:"partitionKey"`
 	// Entity represents the resource metadata.
@@ -87,11 +92,15 @@ func (c *CosmosDBStorageClient) createDatabaseIfNotExists(ctx context.Context) e
 	if err == nil {
 		return nil
 	}
-	if err != nil && err.Error() != errCosmosDBNotFoundMsg {
+	// TODO: Switch to the better error handling once we switch to official cosmosdb sdk.
+	if err != nil && !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return err
 	}
-
 	_, err = c.client.CreateDatabase(ctx, c.options.DatabaseName, nil)
+	// TODO: Switch to the better error handling once we switch to official cosmosdb sdk.
+	if strings.EqualFold(err.Error(), errIDConflictMsg) {
+		return nil
+	}
 	return err
 }
 
@@ -100,7 +109,8 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 	if err == nil {
 		return nil
 	}
-	if err != nil && err.Error() != errCosmosDBNotFoundMsg {
+	// TODO: Switch to the better error handling once we switch to official cosmosdb sdk.
+	if err != nil && !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return err
 	}
 	_, err = c.client.CreateCollection(context.Background(), c.options.DatabaseName, cosmosapi.CreateCollectionOptions{
@@ -134,6 +144,11 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 		},
 		OfferThroughput: collectionThroughPut,
 	})
+
+	// TODO: Switch to the better error handling once we switch to official cosmosdb sdk.
+	if strings.EqualFold(err.Error(), errIDConflictMsg) {
+		return nil
+	}
 
 	return err
 }
@@ -281,7 +296,7 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, options .
 	}
 	_, err = c.client.DeleteDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops)
 
-	return errors.WithStack(err)
+	return err
 }
 
 // Save upserts the resource.
