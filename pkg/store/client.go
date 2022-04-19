@@ -10,7 +10,7 @@ import (
 )
 
 type StorageClient interface {
-	Query(ctx context.Context, query Query, options ...QueryOptions) ([]Object, error)
+	Query(ctx context.Context, query Query, options ...QueryOptions) (*ObjectQueryResult, error)
 	Get(ctx context.Context, id string, options ...GetOptions) (*Object, error)
 	Delete(ctx context.Context, id string, options ...DeleteOptions) error
 	Save(ctx context.Context, obj *Object, options ...SaveOptions) (*Object, error)

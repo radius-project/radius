@@ -16,6 +16,9 @@ import (
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
 
+// TODO: Replace vippsass/go-cosmosdb with https://github.com/Azure/azure-sdk-for-go/tree/sdk/data/azcosmos/v0.2.0/sdk/data/azcosmos/
+// when the official cosmosdb SDK supports query api and azure ad authentication.
+
 const (
 	// PartitionKeyName is the property used for partitioning.
 	PartitionKeyName      = "/partitionKey"
@@ -98,36 +101,36 @@ func getHTTPClient(options *ConnectionOptions) (*http.Client, error) {
 }
 
 // Init initializes the database and collection.
-func (c *CosmosDBStorageClient) Init() error {
-	if err := c.createDatabaseIfNotExists(); err != nil {
+func (c *CosmosDBStorageClient) Init(ctx context.Context) error {
+	if err := c.createDatabaseIfNotExists(ctx); err != nil {
 		return err
 	}
-	if err := c.createCollectionIfNotExists(); err != nil {
+	if err := c.createCollectionIfNotExists(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *CosmosDBStorageClient) createDatabaseIfNotExists() error {
-	_, err := c.client.GetDatabase(context.Background(), c.options.DatabaseName, nil)
+func (c *CosmosDBStorageClient) createDatabaseIfNotExists(ctx context.Context) error {
+	_, err := c.client.GetDatabase(ctx, c.options.DatabaseName, nil)
 	if err == nil {
 		return nil
 	}
 	if err != nil && err.Error() != errCosmosDBNotFoundMsg {
-		return errors.WithStack(err)
+		return err
 	}
 
-	_, err = c.client.CreateDatabase(context.Background(), c.options.DatabaseName, nil)
+	_, err = c.client.CreateDatabase(ctx, c.options.DatabaseName, nil)
 	return err
 }
 
-func (c *CosmosDBStorageClient) createCollectionIfNotExists() error {
-	_, err := c.client.GetCollection(context.Background(), c.options.DatabaseName, c.options.CollectionName)
+func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context) error {
+	_, err := c.client.GetCollection(ctx, c.options.DatabaseName, c.options.CollectionName)
 	if err == nil {
 		return nil
 	}
 	if err != nil && err.Error() != errCosmosDBNotFoundMsg {
-		return errors.WithStack(err)
+		return err
 	}
 	_, err = c.client.CreateCollection(context.Background(), c.options.DatabaseName, cosmosapi.CreateCollectionOptions{
 		Id: c.options.CollectionName,
@@ -217,7 +220,7 @@ func constructCosmosDBQuery(query store.Query) (*ResourceScope, *cosmosapi.Query
 }
 
 // Query queries the data resource
-func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) ([]store.Object, error) {
+func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 	// Prepare document query.
 	resourceScope, qry, err := constructCosmosDBQuery(query)
 	if err != nil {
@@ -249,15 +252,17 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 	for _, entity := range entities {
 		output = append(output, store.Object{
 			Metadata: store.Metadata{
-				ID:              entity.ResourceID,
-				ETag:            entity.ETag,
-				PaginationToken: resp.Continuation,
+				ID:   entity.ResourceID,
+				ETag: entity.ETag,
 			},
 			Data: entity.Entity,
 		})
 	}
 
-	return output, nil
+	return &store.ObjectQueryResult{
+		PaginationToken: resp.Continuation,
+		Items:           output,
+	}, nil
 }
 
 // Get gets the resource data using id.

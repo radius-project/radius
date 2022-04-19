@@ -12,11 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-)
-
-var (
-	// AuthorizationHeaderKey is the header key of Authorization Header.
-	AuthorizationHeaderKey = http.CanonicalHeaderKey("Authorization")
+	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
 
 // ClientTransport is the custom transport to support azure ad authentication and logging.
@@ -30,7 +26,15 @@ func NewClientTransport(authOptions *AzureADAuthOptions) (*ClientTransport, erro
 	transport := &ClientTransport{}
 
 	if authOptions != nil && authOptions.ClientID != "" {
-		if authOptions.ClientSecret != "" {
+		if authOptions.UseMSI {
+			// Use managed identity authentication.
+			ops := &azidentity.ManagedIdentityCredentialOptions{ID: azidentity.ClientID}
+			var err error
+			transport.tokenCreds, err = azidentity.NewManagedIdentityCredential(authOptions.ClientID, ops)
+			if err != nil {
+				return nil, err
+			}
+		} else {
 			// Use ClientSecret authentication for dev/test purpose.
 			ops := &azidentity.ClientSecretCredentialOptions{AuthorityHost: authOptions.Endpoint}
 			var err error
@@ -39,14 +43,6 @@ func NewClientTransport(authOptions *AzureADAuthOptions) (*ClientTransport, erro
 				authOptions.ClientID,
 				authOptions.ClientSecret,
 				ops)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			// Use managed identity authentication.
-			ops := &azidentity.ManagedIdentityCredentialOptions{ID: azidentity.ClientID}
-			var err error
-			transport.tokenCreds, err = azidentity.NewManagedIdentityCredential(authOptions.ClientID, ops)
 			if err != nil {
 				return nil, err
 			}
@@ -70,7 +66,7 @@ func (t *ClientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 		auth := url.QueryEscape("type=aad&ver=1.0&sig=" + token.Token)
-		req.Header.Set(AuthorizationHeaderKey, auth)
+		req.Header.Set(cosmosapi.HEADER_AUTH, auth)
 	}
 
 	return t.base().RoundTrip(req)

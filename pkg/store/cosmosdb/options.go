@@ -35,6 +35,8 @@ type AzureADAuthOptions struct {
 	// Audience is an target audience.
 	Audience string
 
+	// UseMSI is the flag to use managed identity.
+	UseMSI bool
 	// TenantID is an tenant id of Azure.
 	TenantID string
 	// ClientID is the client id of AAD identity.

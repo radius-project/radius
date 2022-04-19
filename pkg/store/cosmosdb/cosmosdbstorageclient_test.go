@@ -1,6 +1,3 @@
-//go:build cosmos_integration
-// +build cosmos_integration
-
 // ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -69,16 +66,24 @@ func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
 		Url:            "https://radius-eastus-test.documents.azure.com:443/",
 		DatabaseName:   dbName,
 		CollectionName: collName,
-		KeyAuth: &CosmosDBKeyAuthOptions{
-			MasterKey: "fake",
+		AzureADAuth: &AzureADAuthOptions{
+			Endpoint: "https://login.microsoftonline.com/",
+			Audience: "https://management.azure.com/.default",
+			//Audience:     "https://cosmos.azure.com/.default",
+			TenantID:     "72f988bf-86f1-41af-91ab-2d7cd011db47",
+			ClientID:     "e826d98a-3937-4b4c-918d-64bd1627a8bc",
+			ClientSecret: "qpO8Q~uPDbE~hhxTqhIpjl1BzrMP3QlTvvWYlc3o",
 		},
+		//KeyAuth: &CosmosDBKeyAuthOptions{
+		//	MasterKey: "fake",
+		//},
 	})
 
 	if err != nil {
 		panic(err)
 	}
 
-	if client.Init() != nil {
+	if client.Init(context.Background()) != nil {
 		panic(err)
 	}
 
@@ -283,7 +288,8 @@ func TestQuery(t *testing.T) {
 			results, err := client.Query(ctx, store.Query{RootScope: rootScope})
 			require.NoError(t, err)
 			require.NotNil(t, results)
-			require.Equal(t, len(fakeResourceGroups), len(results))
+			require.NotNil(t, results.Items)
+			require.Equal(t, len(fakeResourceGroups), len(results.Items))
 		}
 	})
 
@@ -293,8 +299,8 @@ func TestQuery(t *testing.T) {
 			rootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", azID.SubscriptionID, azID.ResourceGroup)
 			results, err := client.Query(ctx, store.Query{RootScope: rootScope})
 			require.NoError(t, err)
-			require.NotNil(t, results)
-			require.Equal(t, 1, len(results))
+			require.NotNil(t, results.Items)
+			require.Equal(t, 1, len(results.Items))
 		}
 	})
 
@@ -308,7 +314,8 @@ func TestQuery(t *testing.T) {
 		results, err := client.Query(ctx, query)
 		require.NoError(t, err)
 		require.NotNil(t, results)
-		require.Equal(t, len(fakeResourceGroups), len(results))
+		require.NotNil(t, results.Items)
+		require.Equal(t, len(fakeResourceGroups), len(results.Items))
 	})
 
 	t.Run("Query all resources at resourcegroup level and at type using RootScope, ResourceType.", func(t *testing.T) {
@@ -321,7 +328,8 @@ func TestQuery(t *testing.T) {
 		results, err := client.Query(ctx, query)
 		require.NoError(t, err)
 		require.NotNil(t, results)
-		require.Equal(t, 1, len(results))
+		require.NotNil(t, results.Items)
+		require.Equal(t, 1, len(results.Items))
 	})
 
 	t.Run("Query all resources at resourcegroup level and at type using RootScope, ResourceType with filter.", func(t *testing.T) {
@@ -340,7 +348,8 @@ func TestQuery(t *testing.T) {
 		results, err := client.Query(ctx, query)
 		require.NoError(t, err)
 		require.NotNil(t, results)
-		require.Equal(t, 1, len(results))
+		require.NotNil(t, results.Items)
+		require.Equal(t, 1, len(results.Items))
 	})
 
 	// tear down
@@ -376,18 +385,18 @@ func TestPaginationContinuationToken(t *testing.T) {
 
 	results, err := client.Query(ctx, store.Query{RootScope: rootScope})
 	require.NoError(t, err)
-	require.Equal(t, 20, len(results))
-	require.NotEmpty(t, results[0].PaginationToken)
+	require.Equal(t, 20, len(results.Items))
+	require.NotEmpty(t, results.PaginationToken)
 
-	results, err = client.Query(ctx, store.Query{RootScope: rootScope, PaginationToken: results[0].PaginationToken})
+	results, err = client.Query(ctx, store.Query{RootScope: rootScope, PaginationToken: results.PaginationToken})
 	require.NoError(t, err)
-	require.Equal(t, 20, len(results))
-	require.NotEmpty(t, results[0].PaginationToken)
+	require.Equal(t, 20, len(results.Items))
+	require.NotEmpty(t, results.PaginationToken)
 
-	results, err = client.Query(ctx, store.Query{RootScope: rootScope, PaginationToken: results[0].PaginationToken})
+	results, err = client.Query(ctx, store.Query{RootScope: rootScope, PaginationToken: results.PaginationToken})
 	require.NoError(t, err)
-	require.Equal(t, 10, len(results))
-	require.Empty(t, results[0].PaginationToken)
+	require.Equal(t, 10, len(results.Items))
+	require.Empty(t, results.PaginationToken)
 
 	// tear down
 	for _, id := range testIDs {
