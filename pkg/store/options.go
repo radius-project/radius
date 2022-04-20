@@ -48,8 +48,8 @@ type StoreConfig struct {
 	// PaginationToken represents pagination token such as continuation token.
 	PaginationToken string
 
-	// QueryCount represents number of documents per query.
-	QueryCount int
+	// MaxQueryItemCount represents max items in query result.
+	MaxQueryItemCount int
 
 	// ETag represents the entity tag for optimistic consistency control.
 	ETag string
@@ -76,11 +76,11 @@ func WithPaginationToken(token string) QueryOptions {
 	}
 }
 
-// WithQueryCount sets the number of query count per page.
-func WithQueryCount(querycnt int) QueryOptions {
+// WithMaxQueryItemCount sets max items in query result.
+func WithMaxQueryItemCount(maxcnt int) QueryOptions {
 	return &queryOptions{
 		fn: func(cfg StoreConfig) StoreConfig {
-			cfg.QueryCount = querycnt
+			cfg.MaxQueryItemCount = maxcnt
 			return cfg
 		},
 	}

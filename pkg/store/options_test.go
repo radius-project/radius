@@ -21,12 +21,12 @@ func TestQueryOptions(t *testing.T) {
 	opts = append(opts, WithPaginationToken("token"))
 	cfg := NewQueryConfig(opts...)
 	require.Equal(t, "token", cfg.PaginationToken)
-	require.Equal(t, 0, cfg.QueryCount)
+	require.Equal(t, 0, cfg.MaxQueryItemCount)
 
-	opts = append(opts, WithQueryCount(20))
+	opts = append(opts, WithMaxQueryItemCount(20))
 	cfg = NewQueryConfig(opts...)
 	require.Equal(t, "token", cfg.PaginationToken)
-	require.Equal(t, 20, cfg.QueryCount)
+	require.Equal(t, 20, cfg.MaxQueryItemCount)
 }
 
 func TestSaveOptions(t *testing.T) {

@@ -432,20 +432,38 @@ func TestPaginationContinuationToken(t *testing.T) {
 	azID, _ := azresources.Parse(testIDs[0])
 	rootScope := fmt.Sprintf("/subscriptions/%s", azID.SubscriptionID)
 
-	results, err := client.Query(ctx, store.Query{RootScope: rootScope})
-	require.NoError(t, err)
-	require.Equal(t, 20, len(results.Items))
-	require.NotEmpty(t, results.PaginationToken)
+	t.Run("pagination with default query item count (20)", func(t *testing.T) {
+		// Query the first 20 documents
+		results, err := client.Query(ctx, store.Query{RootScope: rootScope})
+		require.NoError(t, err)
+		require.Equal(t, 20, len(results.Items))
+		require.NotEmpty(t, results.PaginationToken)
 
-	results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken))
-	require.NoError(t, err)
-	require.Equal(t, 20, len(results.Items))
-	require.NotEmpty(t, results.PaginationToken)
+		// Query the second 20 documents
+		results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken))
+		require.NoError(t, err)
+		require.Equal(t, 20, len(results.Items))
+		require.NotEmpty(t, results.PaginationToken)
 
-	results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken))
-	require.NoError(t, err)
-	require.Equal(t, 10, len(results.Items))
-	require.Empty(t, results.PaginationToken)
+		// Query the remaining 10 documents
+		results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken))
+		require.NoError(t, err)
+		require.Equal(t, 10, len(results.Items))
+		require.Empty(t, results.PaginationToken)
+	})
+
+	t.Run("pagination with WithMaxQueryItemCount option", func(t *testing.T) {
+		// Query the first 10 documents with WithQueryCount Option
+		results, err := client.Query(ctx, store.Query{RootScope: rootScope}, store.WithMaxQueryItemCount(10))
+		require.NoError(t, err)
+		require.Equal(t, 10, len(results.Items))
+		require.NotEmpty(t, results.PaginationToken)
+
+		results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken), store.WithMaxQueryItemCount(10))
+		require.NoError(t, err)
+		require.Equal(t, 10, len(results.Items))
+		require.NotEmpty(t, results.PaginationToken)
+	})
 
 	// tear down
 	for _, id := range testIDs {

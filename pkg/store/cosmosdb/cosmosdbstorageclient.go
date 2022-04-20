@@ -231,14 +231,20 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 
 	entities := []ResourceEntity{}
 
+	maxItemCount := c.options.DefaultQueryItemCount
+	if cfg.MaxQueryItemCount > 0 {
+		maxItemCount = cfg.MaxQueryItemCount
+	}
+
 	qops := cosmosapi.QueryDocumentsOptions{
 		IsQuery:              true,
 		ContentType:          cosmosapi.QUERY_CONTENT_TYPE,
-		MaxItemCount:         c.options.MaxQueryItemCount,
+		MaxItemCount:         maxItemCount,
 		EnableCrossPartition: true,
 		ConsistencyLevel:     cosmosapi.ConsistencyLevelEventual,
 	}
 
+	// if subscriptionid is given, then use partition key.
 	if resourceScope.SubscriptionID != "" {
 		qops.PartitionKeyValue = NormalizeSubscriptionID(resourceScope.SubscriptionID)
 		qops.EnableCrossPartition = false

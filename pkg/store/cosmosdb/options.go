@@ -19,8 +19,8 @@ type ConnectionOptions struct {
 	DatabaseName string
 	// CollectionName represents the collection name in DataBaseName
 	CollectionName string
-	// MaxQueryItemCount represents the maximum number of items for query.
-	MaxQueryItemCount int
+	// DefaultQueryItemCount represents the maximum number of items for query.
+	DefaultQueryItemCount int
 
 	// MasterKey is the key string for CosmosDB connection.
 	MasterKey string
@@ -31,8 +31,8 @@ func (c *ConnectionOptions) load() error {
 		return &store.ErrInvalid{Message: "unset MasterKey"}
 	}
 
-	if c.MaxQueryItemCount == 0 {
-		c.MaxQueryItemCount = defaultQueryItemCount
+	if c.DefaultQueryItemCount == 0 {
+		c.DefaultQueryItemCount = defaultQueryItemCount
 	}
 
 	return nil
