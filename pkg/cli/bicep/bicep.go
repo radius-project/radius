@@ -17,7 +17,7 @@ const radBicepEnvVar = "RAD_BICEP"
 const binaryName = "rad-bicep"
 
 // Placeholders are for: channel, platform, filename
-const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/bicep/%s/%s/%s"
+const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/bicep/pr-275/%s/%s"
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
 func IsBicepInstalled() (bool, error) {
