@@ -133,7 +133,7 @@ const (
 	resourceGroupType = "resourceGroups"
 )
 
-// TODO: replace ResourceScope with UCP resource id when we merge it to ucp repo.
+// TODO: replace ResourceScope with UCP resource id when we merge it to ucp repo - https://github.com/project-radius/radius/issues/2224
 type ResourceScope struct {
 	SubscriptionID string
 	ResourceGroup  string
