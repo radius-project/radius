@@ -32,7 +32,7 @@ func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 			},
 		},
 		InternalMetadata: datamodel.InternalMetadata{
-			APIVersion: Version,
+			UpdatedAPIVersion: Version,
 		},
 	}
 	return converted, nil
