@@ -1751,13 +1751,13 @@ func (g *GatewayResource) UnmarshalJSON(data []byte) error {
 }
 
 type GatewayRoute struct {
-	// The HttpRoute to route to. For example, myserviceroute.id.
+	// The HttpRoute to route to. Ex - myserviceroute.id.
 	Destination *string `json:"destination,omitempty"`
 
-	// The path to match the incoming request path on. For example, /myservice.
+	// The path to match the incoming request path on. Ex - /myservice.
 	Path *string `json:"path,omitempty"`
 
-	// Optionally update the prefix when sending the request to the service. For example, replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute'
+	// Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute'
 // to '/myroute'
 	ReplacePrefix *string `json:"replacePrefix,omitempty"`
 }

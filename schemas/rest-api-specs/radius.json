@@ -1092,15 +1092,15 @@
       "additionalProperties": false,
       "properties": {
         "destination": {
-          "description": "The HttpRoute to route to. For example, myserviceroute.id.",
+          "description": "The HttpRoute to route to. Ex - myserviceroute.id.",
           "type": "string"
         },
         "path": {
-          "description": "The path to match the incoming request path on. For example, /myservice.",
+          "description": "The path to match the incoming request path on. Ex - /myservice.",
           "type": "string"
         },
         "replacePrefix": {
-          "description": "Optionally update the prefix when sending the request to the service. For example, replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'",
+          "description": "Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'",
           "type": "string"
         }
       },
