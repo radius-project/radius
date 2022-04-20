@@ -1,3 +1,7 @@
+//go:build cosmosdb_integration_test
+// +build cosmosdb_integration_test
+
+
 // ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -66,7 +70,7 @@ func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
 		Url:            "https://radius-eastus-test.documents.azure.com:443/",
 		DatabaseName:   dbName,
 		CollectionName: collName,
-		MasterKey:      "pulSdF9Zi87pwDz6NGbHSGuTg0kCdp7gerB8Ih7ZVP2l9WU7Ube2CA6Qg65puGfq3Wyo6bkbsMekWWxsqd9GrA==",
+		MasterKey:      "FakeKey",
 	})
 
 	if err != nil {
@@ -183,11 +187,19 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestGetNotFound(t *testing.T) {
 	ctx := context.Background()
 	client := mustGetTestClient("applicationscore", "environments")
 
 	_, err := client.Get(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
+	require.ErrorIs(t, &store.ErrNotFound{}, err)
+}
+
+func TestDeleteNotFound(t *testing.T) {
+	ctx := context.Background()
+	client := mustGetTestClient("applicationscore", "environments")
+
+	err := client.Delete(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
 	require.ErrorIs(t, &store.ErrNotFound{}, err)
 }
 

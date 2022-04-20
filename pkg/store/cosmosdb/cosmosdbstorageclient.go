@@ -309,7 +309,7 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 }
 
 // Delete deletes the resource using id.
-func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, options ...store.DeleteOptions) error {
+func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...store.DeleteOptions) error {
 	azID, err := azresources.Parse(id)
 	if err != nil {
 		return err
@@ -322,7 +322,11 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, options .
 	if err != nil {
 		return err
 	}
+
 	_, err = c.client.DeleteDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops)
+	if strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
+		return &store.ErrNotFound{}
+	}
 
 	return err
 }
@@ -359,16 +363,20 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		ifMatch = obj.ETag
 	}
 
+	partitionKey := NormalizeSubscriptionID(azID.SubscriptionID)
+
 	var resp *cosmosapi.Resource
-	if obj.ETag == "" {
+	if ifMatch == "" {
+		// Use CreateDocument to create new document or upsert document if etag is not given
 		op := cosmosapi.CreateDocumentOptions{
-			PartitionKeyValue: NormalizeSubscriptionID(azID.SubscriptionID),
+			PartitionKeyValue: partitionKey,
 			IsUpsert:          true,
 		}
 		resp, _, err = c.client.CreateDocument(ctx, c.options.DatabaseName, c.options.CollectionName, entity, op)
 	} else {
+		// Use ReplaceDocument to update doc if etag is given.
 		op := cosmosapi.ReplaceDocumentOptions{
-			PartitionKeyValue: NormalizeSubscriptionID(azID.SubscriptionID),
+			PartitionKeyValue: partitionKey,
 			IfMatch:           ifMatch,
 		}
 		resp, _, err = c.client.ReplaceDocument(ctx, c.options.DatabaseName, c.options.CollectionName, entity.ID, entity, op)
