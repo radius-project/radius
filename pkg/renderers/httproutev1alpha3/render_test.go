@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	namespace       = "test-namespace"
 	applicationName = "test-application"
 	resourceName    = "test-route"
 )

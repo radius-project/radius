@@ -2,16 +2,15 @@
   "id": "id", 
   "name": "name",
   "properties": {
-    "internal": false,
     "hostname": {
       "prefix": "hostname",
       "fullyQualifiedHostname": "fullyQualifiedHostname"
-    }
-  },
-  "routes": [
-    {
-      "path": "/path",
-      "destination": ".../destination"
-    }
-  ]
+    },
+    "routes": [
+      {
+        "path": "/path",
+        "destination": ".../destination"
+      }
+    ]
+  }
 }

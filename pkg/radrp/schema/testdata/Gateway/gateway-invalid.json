@@ -2,12 +2,16 @@
   "id": "id", 
   "name": "name",
   "properties": {
-    "internal": 42,
     "hostname": {
       "prefix": 0,
       "fullyQualifiedHostname": false
     },
+    "routes": [
+      {
+        "path": 2,
+        "destination": false
+      }
+    ],
     "extra1": "no way"
-  },
-  "routes": []
+  }
 }
