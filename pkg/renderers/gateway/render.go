@@ -67,7 +67,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		},
 	}
 
-	httpRouteObjects := MakeHttpRoutes(options.Resource, gateway, gatewayName)
+	httpRouteObjects, err := MakeHttpRoutes(options.Resource, gateway, gatewayName)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	outputs = append(outputs, httpRouteObjects...)
 
 	return renderers.RendererOutput{
@@ -105,12 +108,18 @@ func MakeGateway(ctx context.Context, resource renderers.RendererResource, gatew
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gatewayObject, gatewayObject.ObjectMeta), nil
 }
 
-func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string) []outputresource.OutputResource {
+func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string) ([]outputresource.OutputResource, error) {
 	var outputs []outputresource.OutputResource
 
 	for _, route := range gateway.Routes {
 		pathMatch := gatewayv1alpha1.PathMatchPrefix
-		routeName := getRouteNameFromID(*route.Destination)
+
+		resourceID, err := azresources.Parse(*route.Destination)
+		if err != nil {
+			return []outputresource.OutputResource{}, nil
+		}
+		routeName := resourceID.Name()
+
 		routeResourceName := kubernetes.MakeResourceName(resource.ApplicationName, routeName)
 		port := gatewayv1alpha1.PortNumber(80)
 
@@ -163,7 +172,7 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 		outputs = append(outputs, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, httpRouteObject, httpRouteObject.ObjectMeta))
 	}
 
-	return outputs
+	return outputs, nil
 }
 
 func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string, hostname *gatewayv1alpha1.Hostname) (*gatewayv1alpha1.Listener, error) {
