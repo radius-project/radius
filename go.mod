@@ -32,6 +32,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/novln/docker-parser v1.0.0
+	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.7.0
@@ -129,7 +130,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/pkg/errors v0.9.1
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
@@ -192,7 +193,6 @@ require (
 	github.com/rubenv/sql-migrate v1.1.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
-	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.starlark.net v0.0.0-20220203230714-bb14e151c28f // indirect
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab // indirect
