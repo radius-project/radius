@@ -128,6 +128,11 @@ func GenerateCosmosDBKey(subsID, resourceGroup, fullyQualifiedType, fullyQualifi
 	return CombineStorageKeys(NormalizeSubscriptionID(subsID), unqiueResourceGroup, resourceTypeAndName)
 }
 
+const (
+	subscriptionType  = "subscriptions"
+	resourceGroupType = "resourceGroups"
+)
+
 type ResourceScope struct {
 	SubscriptionID string
 	ResourceGroup  string
@@ -138,14 +143,25 @@ func NewResourceScope(rootScope string) (*ResourceScope, error) {
 	scope := strings.TrimPrefix(rootScope, "/")
 	scope = strings.TrimSuffix(scope, "/")
 	s := strings.Split(scope, "/")
-	if len(s) >= 2 && strings.EqualFold(s[0], "subscriptions") {
+	if len(s) >= 2 && strings.EqualFold(s[0], subscriptionType) {
 		if _, err := uuid.Parse(s[1]); err != nil {
 			return nil, err
 		}
 		rScope.SubscriptionID = strings.ToLower(s[1])
 	}
-	if len(s) >= 4 && strings.EqualFold(s[2], "resourceGroups") {
+	if len(s) >= 4 && strings.EqualFold(s[2], resourceGroupType) {
 		rScope.ResourceGroup = strings.ToLower(s[3])
 	}
 	return rScope, nil
+}
+
+func (r ResourceScope) fullyQualifiedSubscriptionScope() string {
+	sb := strings.Builder{}
+	if r.SubscriptionID != "" {
+		sb.WriteString("/")
+		sb.WriteString(subscriptionType)
+		sb.WriteString("/")
+		sb.WriteString(r.SubscriptionID)
+	}
+	return strings.ToLower(sb.String())
 }

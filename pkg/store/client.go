@@ -49,29 +49,13 @@ type Query struct {
 	//	/Applications.Core/applications/my-app/
 	RoutingScopePrefix string
 
-	// TODO: Moved the below to query options.
-
+	// TODO: Revisit filter design
 	// Filters is an query filter to filter the specific property value.
 	Filters []QueryFilter
-
-	// PaginationToken is the optional property for the paginated resource list.
-	PaginationToken string
 }
 
 // QueryFilter is the filter which filters property in resource entity.
 type QueryFilter struct {
 	Field string
 	Value string
-}
-
-type QueryOptions interface {
-}
-
-type GetOptions interface {
-}
-
-type DeleteOptions interface {
-}
-
-type SaveOptions interface {
 }

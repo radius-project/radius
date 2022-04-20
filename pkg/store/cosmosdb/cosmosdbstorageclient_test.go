@@ -88,8 +88,8 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 		err         error
 	}{
 		{
-			storeQuery: store.Query{RootScope: "/resourceGroups/testGroup"},
-			err:        &store.ErrInvalid{Message: "invalid RootScope"},
+			storeQuery: store.Query{},
+			err:        &store.ErrInvalid{Message: "invalid Query parameters"},
 		},
 		{
 			storeQuery: store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", RoutingScopePrefix: "prefix"},
@@ -97,19 +97,19 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 		},
 		{
 			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001"},
-			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId",
+			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
 			params: []cosmosapi.QueryParam{{
-				Name:  "@subId",
-				Value: "00000000-0000-0000-1000-000000000001",
+				Name:  "@rootScope",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001",
 			}},
 			err: nil,
 		},
 		{
 			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup"},
-			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName",
+			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope and c.resourceGroup = @rgName",
 			params: []cosmosapi.QueryParam{{
-				Name:  "@subId",
-				Value: "00000000-0000-0000-1000-000000000001",
+				Name:  "@rootScope",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001",
 			}, {
 				Name:  "@rgName",
 				Value: "testgroup",
@@ -121,10 +121,10 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 				RootScope:    "/subscriptions/00000000-A000-0000-1000-000000000001/resourceGroups/testGroup",
 				ResourceType: "applications.core/environments",
 			},
-			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true)",
+			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope and c.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true)",
 			params: []cosmosapi.QueryParam{{
-				Name:  "@subId",
-				Value: "00000000-a000-0000-1000-000000000001",
+				Name:  "@rootScope",
+				Value: "/subscriptions/00000000-a000-0000-1000-000000000001",
 			}, {
 				Name:  "@rgName",
 				Value: "testgroup",
@@ -149,10 +149,10 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 					},
 				},
 			},
-			queryString: "SELECT * FROM c WHERE c.entity.subscriptionID = @subId and c.entity.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true) and STRINGEQUALS(c.entity.properties.environment, @filter0, true) and STRINGEQUALS(c.entity.properties.application, @filter1, true)",
+			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope and c.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true) and STRINGEQUALS(c.entity.properties.environment, @filter0, true) and STRINGEQUALS(c.entity.properties.application, @filter1, true)",
 			params: []cosmosapi.QueryParam{{
-				Name:  "@subId",
-				Value: "00000000-0000-0000-1000-000000000001",
+				Name:  "@rootScope",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001",
 			}, {
 				Name:  "@rgName",
 				Value: "testgroup",
@@ -181,6 +181,14 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGet(t *testing.T) {
+	ctx := context.Background()
+	client := mustGetTestClient("applicationscore", "environments")
+
+	_, err := client.Get(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
+	require.ErrorIs(t, &store.ErrNotFound{}, err)
 }
 
 func TestSave(t *testing.T) {
@@ -222,6 +230,25 @@ func TestSave(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("succeeded to upsert new resource by WithEtag", func(t *testing.T) {
+		_ = client.Delete(ctx, env.ID)
+		r := &store.Object{
+			Metadata: store.Metadata{
+				ID: env.ID,
+			},
+			Data: env,
+		}
+		obj, err := client.Save(ctx, r)
+		require.NoError(t, err)
+		require.NotEmpty(t, obj.ETag)
+
+		validEtag := obj.ETag
+		obj.ETag = ""
+
+		_, err = client.Save(ctx, r, store.WithETag(validEtag))
+		require.NoError(t, err)
+	})
+
 	t.Run("failed to upsert new resource with invalid Etag", func(t *testing.T) {
 		_ = client.Delete(ctx, env.ID)
 		r := &store.Object{
@@ -247,6 +274,7 @@ func TestSave(t *testing.T) {
 // 3. Query records by subscription and resource type
 // 4. Query records by subscription, resource group, and resource type
 // 5. Query records by subscription, resource group, and custom filter
+// 6. Query records by resource type and custom filter (across subscription)
 //   - Use case - this will be used when environment queries all linked applications and connectors.
 func TestQuery(t *testing.T) {
 	ctx := context.Background()
@@ -342,6 +370,19 @@ func TestQuery(t *testing.T) {
 		require.Equal(t, 1, len(results.Items))
 	})
 
+	t.Run("Query all resources at resourcegroup level and at type using RootScope, ResourceType with filter.", func(t *testing.T) {
+		query := store.Query{
+			RootScope:    "/",
+			ResourceType: "applications.core/environments",
+		}
+
+		results, err := client.Query(ctx, query)
+		require.NoError(t, err)
+		require.NotNil(t, results)
+		require.NotNil(t, results.Items)
+		require.Equal(t, 9, len(results.Items))
+	})
+
 	// tear down
 	for _, id := range testIDs {
 		err := client.Delete(ctx, id)
@@ -378,12 +419,12 @@ func TestPaginationContinuationToken(t *testing.T) {
 	require.Equal(t, 20, len(results.Items))
 	require.NotEmpty(t, results.PaginationToken)
 
-	results, err = client.Query(ctx, store.Query{RootScope: rootScope, PaginationToken: results.PaginationToken})
+	results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken))
 	require.NoError(t, err)
 	require.Equal(t, 20, len(results.Items))
 	require.NotEmpty(t, results.PaginationToken)
 
-	results, err = client.Query(ctx, store.Query{RootScope: rootScope, PaginationToken: results.PaginationToken})
+	results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken))
 	require.NoError(t, err)
 	require.Equal(t, 10, len(results.Items))
 	require.Empty(t, results.PaginationToken)
