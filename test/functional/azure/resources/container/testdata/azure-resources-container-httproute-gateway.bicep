@@ -4,22 +4,17 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource gateway 'Gateway' = {
     name: 'gateway'
     properties: {
-      listeners: {
-        http: {
-          port: 80
-          protocol: 'HTTP'
+      routes: [
+        {
+          path: '/'
+          destination: frontend_http.id
         }
-      }
+      ]
     }
   }
+
   resource frontend_http 'HttpRoute' = {
     name: 'frontend'
-    properties: {
-      gateway: {
-        hostname: '*'
-        source: gateway.id
-      }
-    }
   }
 
   resource frontend 'Container' = {
