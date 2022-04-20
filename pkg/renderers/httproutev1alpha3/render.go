@@ -33,6 +33,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.Rende
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	route := radclient.HTTPRouteProperties{}
 	resource := options.Resource
+	port := kubernetes.GetDefaultPort()
 
 	err := resource.ConvertDefinition(&route)
 	if err != nil {
@@ -44,10 +45,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 		},
 		"port": {
-			Value: GetDefaultPort(),
+			Value: port,
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), GetDefaultPort()),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), port),
 		},
 		"scheme": {
 			Value: "http",
@@ -67,6 +68,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 
 func (r *Renderer) makeService(resource renderers.RendererResource, route radclient.HTTPRouteProperties) outputresource.OutputResource {
 	typeParts := strings.Split(resource.ResourceType, "/")
+	port := kubernetes.GetDefaultPort()
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -83,7 +85,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 			Ports: []corev1.ServicePort{
 				{
 					Name:       resource.ResourceName,
-					Port:       int32(GetDefaultPort()),
+					Port:       int32(port),
 					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + typeParts[len(typeParts)-1] + resource.ResourceName)),
 					Protocol:   corev1.ProtocolTCP,
 				},

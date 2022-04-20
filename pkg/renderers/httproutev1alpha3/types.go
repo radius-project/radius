@@ -8,7 +8,3 @@ package httproutev1alpha3
 const (
 	ResourceType = "HttpRoute"
 )
-
-func GetDefaultPort() int {
-	return 80
-}

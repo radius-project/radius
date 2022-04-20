@@ -137,6 +137,11 @@ func GetShortenedTargetPortName(name string) string {
 	return "a" + fmt.Sprint(h.Sum32())
 }
 
+// GetDefaultPort() returns the default HTTP port (80)
+func GetDefaultPort() int {
+	return 80
+}
+
 // MakeScrapedSecretName creates a Secret scraped from input values passed through
 // from the deployment template.
 func MakeScrapedSecretName(appName string, resourceKind string, resourceName string) string {

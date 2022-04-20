@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -121,7 +120,7 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 		routeName := resourceID.Name()
 
 		routeResourceName := kubernetes.MakeResourceName(resource.ApplicationName, routeName)
-		port := gatewayv1alpha1.PortNumber(80)
+		port := gatewayv1alpha1.PortNumber(kubernetes.GetDefaultPort())
 
 		rules := []gatewayv1alpha1.HTTPRouteRule{
 			{
@@ -176,7 +175,7 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 }
 
 func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string, hostname *gatewayv1alpha1.Hostname) (*gatewayv1alpha1.Listener, error) {
-	port := 80
+	port := kubernetes.GetDefaultPort()
 
 	return &gatewayv1alpha1.Listener{
 		Hostname: hostname,
@@ -186,15 +185,6 @@ func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, g
 			Kind: "HTTPRoute",
 		},
 	}, nil
-}
-
-func getRouteNameFromID(routeID string) string {
-	splitString := strings.Split(routeID, "/")
-	if len(splitString) == 0 {
-		return ""
-	}
-
-	return splitString[len(splitString)-1]
 }
 
 func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, publicIP string) (*gatewayv1alpha1.Hostname, error) {

@@ -1684,7 +1684,10 @@ type GatewayListOptions struct {
 }
 
 type GatewayProperties struct {
+	// Declare hostname information for the gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
+
+	// Sets gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 	Internal *bool `json:"internal,omitempty"`
 
 	// Routes attached to this Gateway
@@ -1700,11 +1703,13 @@ func (g GatewayProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
+// GatewayPropertiesHostname - Declare hostname information for the gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 type GatewayPropertiesHostname struct {
-	// Specify a fully-qualified domain name.
+	// Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both are defined.
 	FullyQualifiedHostname *string `json:"fullyQualifiedHostname,omitempty"`
 
-	// Specify a prefix for the hostname.
+	// Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname' and will be overridden
+// if both are defined.
 	Prefix *string `json:"prefix,omitempty"`
 }
 
@@ -1746,13 +1751,14 @@ func (g *GatewayResource) UnmarshalJSON(data []byte) error {
 }
 
 type GatewayRoute struct {
-	// The HttpRoute source.
+	// The HttpRoute to route to. For example, myserviceroute.id.
 	Destination *string `json:"destination,omitempty"`
 
-	// The path to the service.
+	// The path to match the incoming request path on. For example, /myservice.
 	Path *string `json:"path,omitempty"`
 
-	// Optionally update the prefix when sending the request to the service.
+	// Optionally update the prefix when sending the request to the service. For example, replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute'
+// to '/myroute'
 	ReplacePrefix *string `json:"replacePrefix,omitempty"`
 }
 

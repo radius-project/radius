@@ -717,10 +717,12 @@ func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers
 			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up PublicIP: %w", err)
 		}
 
+	outer:
 		for _, service := range services.Items {
 			if service.Name == "haproxy-ingress" {
 				for _, in := range service.Status.LoadBalancer.Ingress {
 					publicIP = in.IP
+					break outer
 				}
 			}
 		}
