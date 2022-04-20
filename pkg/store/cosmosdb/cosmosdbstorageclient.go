@@ -15,10 +15,6 @@ import (
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
 
-// TODO: When the official cosmosdb SDK supports query api, https://github.com/Azure/azure-sdk-for-go/tree/sdk/data/azcosmos/v0.2.0/sdk/data/azcosmos/
-// 1. Repalce github.com/vippsas/go-cosmosdb/cosmosapi with the official one
-// 2. Improve error handling using response code instead of string match.
-
 const (
 	// PartitionKeyName is the property used for partitioning.
 	PartitionKeyName     = "/partitionKey"
@@ -26,8 +22,12 @@ const (
 
 	// go-cosmosdb does not return the error response code. Comparing error message is the only way to check the errors.
 	// Once we move to official Go SDK, we can have the better error handling.
-	errResourceNotFoundMsg = "Resource that no longer exists"
-	errIDConflictMsg       = "The ID provided has been taken by an existing resource"
+	// TODO: Switch to the official cosmosdb SDK - https://github.com/project-radius/radius/issues/2225
+	// 1. Repalce github.com/vippsas/go-cosmosdb/cosmosapi with the official sdk when it supports query api.
+	// 2. Improve error handling using response code instead of string match.
+	errResourceNotFoundMsg       = "Resource that no longer exists"
+	errIDConflictMsg             = "The ID provided has been taken by an existing resource"
+	errEtagPreconditionMsgPrefix = "The operation specified an eTag"
 )
 
 var _ store.StorageClient = (*CosmosDBStorageClient)(nil)
@@ -97,12 +97,10 @@ func (c *CosmosDBStorageClient) createDatabaseIfNotExists(ctx context.Context) e
 	if err == nil {
 		return nil
 	}
-	// TODO: Switch to the better error handling once we switch to official cosmosdb sdk.
 	if err != nil && !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return err
 	}
 	_, err = c.client.CreateDatabase(ctx, c.options.DatabaseName, nil)
-	// TODO: Switch to the better error handling once we switch to official cosmosdb sdk.
 	if strings.EqualFold(err.Error(), errIDConflictMsg) {
 		return nil
 	}
@@ -114,7 +112,6 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 	if err == nil {
 		return nil
 	}
-	// TODO: Switch to the better error handling once we switch to official cosmosdb sdk.
 	if err != nil && !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return err
 	}
@@ -150,7 +147,6 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 		OfferThroughput: collectionThroughPut,
 	})
 
-	// TODO: Switch to the better error handling once we switch to official cosmosdb sdk.
 	if strings.EqualFold(err.Error(), errIDConflictMsg) {
 		return nil
 	}
@@ -165,9 +161,9 @@ func constructCosmosDBQuery(query store.Query) (*ResourceScope, *cosmosapi.Query
 		return nil, nil, err
 	}
 
-	// TODO: Support RoutingScopePrefix later when we need.
-	if query.RoutingScopePrefix != "" {
-		return nil, nil, &store.ErrInvalid{Message: "RoutingScopePrefix is not supported"}
+	// TODO: Support ScopeRecursive and RoutingScopePrefix later for UCP - https://github.com/project-radius/radius/issues/2224
+	if query.ScopeRecursive == true || query.RoutingScopePrefix != "" {
+		return nil, nil, &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."}
 	}
 
 	// Construct SQL query
@@ -324,7 +320,7 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 	}
 
 	_, err = c.client.DeleteDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops)
-	if strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
+	if err != nil && strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return &store.ErrNotFound{}
 	}
 
@@ -380,10 +376,14 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 			IfMatch:           ifMatch,
 		}
 		resp, _, err = c.client.ReplaceDocument(ctx, c.options.DatabaseName, c.options.CollectionName, entity.ID, entity, op)
+		// TODO: use the response code when switching to official SDK.
+		if err != nil && strings.HasPrefix(err.Error(), errEtagPreconditionMsgPrefix) {
+			return nil, &store.ErrConflict{Message: "ETag is not matched."}
+		}
 	}
 
 	if err != nil {
-		return nil, &store.ErrInvalid{Message: err.Error()}
+		return nil, err
 	}
 
 	obj.ETag = resp.Etag

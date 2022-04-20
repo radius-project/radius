@@ -40,3 +40,20 @@ func (e *ErrNotFound) Is(target error) bool {
 
 	return (e.Message == t.Message || t.Message == "")
 }
+
+type ErrConflict struct {
+	Message string
+}
+
+func (e *ErrConflict) Error() string {
+	return e.Message
+}
+
+func (e *ErrConflict) Is(target error) bool {
+	t, ok := target.(*ErrConflict)
+	if !ok {
+		return false
+	}
+
+	return (e.Message == t.Message || t.Message == "")
+}

@@ -16,6 +16,7 @@ type (
 		private()
 	}
 
+	// GetOptions applies an option to Get().
 	GetOptions interface {
 		// A private method to prevent users implementing the
 		// interface and so future additions to it will not
@@ -23,6 +24,7 @@ type (
 		private()
 	}
 
+	// DeleteOptions applies an option to Delete().
 	DeleteOptions interface {
 		// A private method to prevent users implementing the
 		// interface and so future additions to it will not
@@ -30,6 +32,7 @@ type (
 		private()
 	}
 
+	// SaveOptions applies an option to Save().
 	SaveOptions interface {
 		ApplySaveOption(StoreConfig) StoreConfig
 
@@ -40,10 +43,16 @@ type (
 	}
 )
 
-// Store Config
+// Store Config represents the configurations of storageclient APIs.
 type StoreConfig struct {
+	// PaginationToken represents pagination token such as continuation token.
 	PaginationToken string
-	ETag            ETag
+
+	// QueryCount represents number of documents per query.
+	QueryCount int
+
+	// ETag represents the entity tag for optimistic consistency control.
+	ETag string
 }
 
 // Query Options
@@ -57,10 +66,21 @@ func (q *queryOptions) ApplyQueryOption(cfg StoreConfig) StoreConfig {
 
 func (q queryOptions) private() {}
 
+// WithPaginationToken sets pagination token for Query().
 func WithPaginationToken(token string) QueryOptions {
 	return &queryOptions{
 		fn: func(cfg StoreConfig) StoreConfig {
 			cfg.PaginationToken = token
+			return cfg
+		},
+	}
+}
+
+// WithQueryCount sets the number of query count per page.
+func WithQueryCount(querycnt int) QueryOptions {
+	return &queryOptions{
+		fn: func(cfg StoreConfig) StoreConfig {
+			cfg.QueryCount = querycnt
 			return cfg
 		},
 	}
@@ -77,7 +97,8 @@ func (s *saveOptions) ApplySaveOption(cfg StoreConfig) StoreConfig {
 
 func (s saveOptions) private() {}
 
-func WithETag(etag ETag) SaveOptions {
+// WithETag sets the etag for Save().
+func WithETag(etag string) SaveOptions {
 	return &saveOptions{
 		fn: func(cfg StoreConfig) StoreConfig {
 			cfg.ETag = etag

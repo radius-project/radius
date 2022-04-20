@@ -1,7 +1,3 @@
-//go:build cosmosdb_integration_test
-// +build cosmosdb_integration_test
-
-
 // ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -13,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 
@@ -33,6 +30,12 @@ var fakeResourceGroups = []string{
 	"blue-group",
 	"radius-lala",
 }
+
+var (
+	// To run this test, you need to specify the below environment variable before running the test.
+	dBUrl     = os.Getenv("TEST_COSMOSDB_URL")
+	masterKey = os.Getenv("TEST_COSMOSDB_MASTERKEY")
+)
 
 func getRandomItem(items []string) string {
 	return items[rand.Intn(len(items))]
@@ -65,12 +68,16 @@ func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Envi
 	return env
 }
 
-func mustGetTestClient(dbName, collName string) *CosmosDBStorageClient {
+func mustGetTestClient(t *testing.T, dbName, collName string) *CosmosDBStorageClient {
+	if dBUrl == "" || masterKey == "" {
+		t.Skip("TEST_COSMOSDB_URL and TEST_COSMOSDB_MASTERKEY are not set.")
+	}
+
 	client, err := NewCosmosDBStorageClient(&ConnectionOptions{
-		Url:            "https://radius-eastus-test.documents.azure.com:443/",
+		Url:            dBUrl,
 		DatabaseName:   dbName,
 		CollectionName: collName,
-		MasterKey:      "FakeKey",
+		MasterKey:      masterKey,
 	})
 
 	if err != nil {
@@ -97,7 +104,7 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 		},
 		{
 			storeQuery: store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", RoutingScopePrefix: "prefix"},
-			err:        &store.ErrInvalid{Message: "RoutingScopePrefix is not supported"},
+			err:        &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."},
 		},
 		{
 			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001"},
@@ -189,7 +196,7 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 
 func TestGetNotFound(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient("applicationscore", "environments")
+	client := mustGetTestClient(t, "applicationscore", "environments")
 
 	_, err := client.Get(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
 	require.ErrorIs(t, &store.ErrNotFound{}, err)
@@ -197,7 +204,7 @@ func TestGetNotFound(t *testing.T) {
 
 func TestDeleteNotFound(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient("applicationscore", "environments")
+	client := mustGetTestClient(t, "applicationscore", "environments")
 
 	err := client.Delete(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
 	require.ErrorIs(t, &store.ErrNotFound{}, err)
@@ -205,11 +212,11 @@ func TestDeleteNotFound(t *testing.T) {
 
 func TestSave(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient("applicationscore", "environments")
+	client := mustGetTestClient(t, "applicationscore", "environments")
 	const testResourceName = "envsavetest"
 	env := getTestEnvironmentModel(fakeSubs[0], fakeResourceGroups[0], testResourceName)
 
-	t.Run("succeeded to upsert new resource without etag", func(t *testing.T) {
+	t.Run("succeeded to upsert new resource without ETag", func(t *testing.T) {
 		_ = client.Delete(ctx, env.ID)
 		r := &store.Object{
 			Metadata: store.Metadata{
@@ -226,7 +233,7 @@ func TestSave(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("succeeded to upsert new resource with valid Etag", func(t *testing.T) {
+	t.Run("succeeded to upsert new resource with valid ETag", func(t *testing.T) {
 		_ = client.Delete(ctx, env.ID)
 		r := &store.Object{
 			Metadata: store.Metadata{
@@ -242,7 +249,7 @@ func TestSave(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("succeeded to upsert new resource by WithEtag", func(t *testing.T) {
+	t.Run("succeeded to upsert new resource by WithETag", func(t *testing.T) {
 		_ = client.Delete(ctx, env.ID)
 		r := &store.Object{
 			Metadata: store.Metadata{
@@ -261,7 +268,7 @@ func TestSave(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("failed to upsert new resource with invalid Etag", func(t *testing.T) {
+	t.Run("failed to upsert new resource with invalid ETag", func(t *testing.T) {
 		_ = client.Delete(ctx, env.ID)
 		r := &store.Object{
 			Metadata: store.Metadata{
@@ -275,8 +282,7 @@ func TestSave(t *testing.T) {
 
 		r.ETag = "invalid_etag"
 		_, err = client.Save(ctx, r)
-		require.Error(t, err)
-		require.Equal(t, "The operation specified an eTag that is different from the version available at the server", err.Error())
+		require.ErrorIs(t, &store.ErrConflict{Message: "ETag is not matched."}, err)
 	})
 }
 
@@ -290,7 +296,7 @@ func TestSave(t *testing.T) {
 //   - Use case - this will be used when environment queries all linked applications and connectors.
 func TestQuery(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient("applicationscore", "environments")
+	client := mustGetTestClient(t, "applicationscore", "environments")
 
 	// set up
 	testIDs := []string{}
@@ -405,7 +411,7 @@ func TestQuery(t *testing.T) {
 // TestPaginationContinuationToken tests the pagination scenario using continuation token.
 func TestPaginationContinuationToken(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient("applicationscore", "environments")
+	client := mustGetTestClient(t, "applicationscore", "environments")
 
 	testIDs := []string{}
 	// set up

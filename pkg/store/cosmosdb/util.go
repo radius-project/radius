@@ -133,6 +133,7 @@ const (
 	resourceGroupType = "resourceGroups"
 )
 
+// TODO: replace ResourceScope with UCP resource id when we merge it to ucp repo.
 type ResourceScope struct {
 	SubscriptionID string
 	ResourceGroup  string
