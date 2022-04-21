@@ -14,7 +14,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
 
   resource frontend_http 'HttpRoute' = {
-    name: 'frontend'
+    name: 'frontend_http'
   }
 
   resource frontend 'Container' = {
@@ -43,7 +43,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   }
 
   resource backend_http 'HttpRoute' = {
-    name: 'backend'
+    name: 'backend_http'
   }
 
   resource backend 'Container' = {

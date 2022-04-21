@@ -118,7 +118,7 @@ func Test_ContainerGateway(t *testing.T) {
 						validation.NewK8sPodForResource(application, "frontend"),
 						validation.NewK8sPodForResource(application, "backend"),
 						validation.NewK8sGatewayForResource(application, "gateway"),
-						validation.NewK8sHttpRouteForResource(application, "frontend"),
+						validation.NewK8sHttpRouteForResource(application, "frontend_http"),
 					},
 				},
 			},
@@ -126,11 +126,10 @@ func Test_ContainerGateway(t *testing.T) {
 				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ResourceName:    "frontend",
+						ResourceName:    "frontend_http",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDService:   validation.NewOutputResource(outputresource.LocalIDService, rest.ResourceType{Type: resourcekinds.Service, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDHttpRoute: validation.NewOutputResource(outputresource.LocalIDHttpRoute, rest.ResourceType{Type: resourcekinds.KubernetesHTTPRoute, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, rest.ResourceType{Type: resourcekinds.Service, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -138,7 +137,8 @@ func Test_ContainerGateway(t *testing.T) {
 						ResourceName:    "gateway",
 						ResourceType:    gateway.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDGateway: validation.NewOutputResource(outputresource.LocalIDGateway, rest.ResourceType{Type: resourcekinds.Gateway, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDGateway:   validation.NewOutputResource(outputresource.LocalIDGateway, rest.ResourceType{Type: resourcekinds.Gateway, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDHttpRoute: validation.NewOutputResource(outputresource.LocalIDHttpRoute, rest.ResourceType{Type: resourcekinds.KubernetesHTTPRoute, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 						},
 					},
 					{
@@ -152,7 +152,7 @@ func Test_ContainerGateway(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ResourceName:    "backend",
+						ResourceName:    "backend_http",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, rest.ResourceType{Type: resourcekinds.Service, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
