@@ -208,7 +208,7 @@ func Test_ContainerManualScale(t *testing.T) {
 					},
 					{
 						ApplicationName: application,
-						ResourceName:    "backend",
+						ResourceName:    "backendhttp",
 						ResourceType:    httproutev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDService: validation.NewOutputResource(outputresource.LocalIDService, rest.ResourceType{Type: resourcekinds.Service, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
