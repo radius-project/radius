@@ -1,0 +1,73 @@
+{
+  "parameters": {
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "name": "Applications.Connector/operations/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Connector",
+              "resource": "Operations",
+              "operation": "Get operations",
+              "description": "Gets the list of Operations"
+            }
+          },
+          {
+            "name": "Applications.Connector/mongoDatabases/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Connector",
+              "resource": "mongoDatabases",
+              "operation": "Get/List mongoDatabases",
+              "description": "Gets/Lists mongo database connector(s)"
+            }
+          },
+          {
+            "name": "Applications.Connector/mongoDatabases/write",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Connector",
+              "resource": "mongoDatabases",
+              "operation": "Create/Update mongoDatabases",
+              "description": "Creates or updates a mongo database connector"
+            }
+          },
+          {
+            "name": "Applications.Connector/mongoDatabases/delete",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Connector",
+              "resource": "mongoDatabases",
+              "operation": "Delete mongoDatabases",
+              "description": "Deletes a mongo database connector"
+            }
+          },
+          {
+            "name": "Applications.Connector/register/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Connector",
+              "resource": "Applications.Connector",
+              "operation": "Register 'Applications.Connector' resource provider",
+              "description": "Registers the 'Applications.Connector' resource provider with a subscription"
+            }
+          },
+          {
+            "name": "Applications.Connector/unregister/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Connector",
+              "resource": "Applications.Connector",
+              "operation": "Unregister 'Applications.Connector' resource provider",
+              "description": "Unregisters the 'Applications.Connector' resource provider with a subscription"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

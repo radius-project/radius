@@ -1,0 +1,42 @@
+{
+  "parameters": {
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroupName": "testGroup",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+            "name": "mongo0",
+            "type": "Applications.Connector/mongoDatabases",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "fromResource": {
+                "source": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
+              }
+            }
+          },
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo1",
+            "name": "mongo1",
+            "type": "Applications.Connector/mongoDatabases",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "fromValues": {
+                "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
+                "username": "testUser",
+                "password": "testPassword"
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

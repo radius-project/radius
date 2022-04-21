@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Core Management API",
+    "title": "Applications Management APIs",
     "description": "REST API for Radius Application Environment",
     "version": "2022-03-15-privatepreview"
   },

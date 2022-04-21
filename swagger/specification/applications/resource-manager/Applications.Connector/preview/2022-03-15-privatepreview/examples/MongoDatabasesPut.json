@@ -1,0 +1,33 @@
+{
+  "parameters": {
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroupName": "testGroup",
+    "mongoDatabaseName": "mongo0",
+    "api-version": "2022-03-15-privatepreview",
+    "MongoDatabaseResource": {
+      "location": "West US",
+      "properties": {
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "fromResource": {
+          "source": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+        "name": "mongo0",
+        "type": "Applications.Connector/mongoDatabases",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "fromResource": {
+            "source": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
+          }
+        }
+      }
+    }
+  }
+}
