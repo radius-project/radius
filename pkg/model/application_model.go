@@ -118,11 +118,11 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 		{
 			ResourceType: mongodbv1alpha3.ResourceType,
-			Renderer:     &mongodbv1alpha3.Renderer{},
+			Renderer:     &mongodbv1alpha3.Renderer{Arm: arm},
 		},
 		{
 			ResourceType: redisv1alpha3.ResourceType,
-			Renderer:     &redisv1alpha3.Renderer{},
+			Renderer:     &redisv1alpha3.Renderer{Arm: arm},
 		},
 		{
 			ResourceType: rabbitmqv1alpha3.ResourceType,

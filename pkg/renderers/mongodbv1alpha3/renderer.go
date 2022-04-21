@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -26,6 +27,7 @@ var cosmosAccountDependency outputresource.Dependency = outputresource.Dependenc
 var _ renderers.Renderer = (*Renderer)(nil)
 
 type Renderer struct {
+	Arm *armauth.ArmConfig
 }
 
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
@@ -40,12 +42,9 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		return renderers.RendererOutput{}, err
 	}
 
-	resources := []outputresource.OutputResource{}
+	var resources []outputresource.OutputResource
 
-	if properties.Resource == nil || *properties.Resource == "" {
-		// No resource specified
-		resources = []outputresource.OutputResource{}
-	} else {
+	if properties.Resource != nil && *properties.Resource != "" {
 		results, err := RenderResource(resource.ResourceName, properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
@@ -53,7 +52,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 
 		resources = append(resources, results...)
 	}
-	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
+	computedValues, secretValues := MakeSecretsAndValues(r.Arm, resource.ResourceName, properties)
 	return renderers.RendererOutput{
 		Resources:      resources,
 		ComputedValues: computedValues,
@@ -112,13 +111,13 @@ func RenderResource(name string, properties radclient.MongoDBResourceProperties)
 	return []outputresource.OutputResource{cosmosAccountResource, databaseResource}, nil
 }
 
-func MakeSecretsAndValues(name string, properties radclient.MongoDBResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+func MakeSecretsAndValues(arm *armauth.ArmConfig, name string, properties radclient.MongoDBResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	computedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseValue: {
 			Value: name,
 		},
 	}
-	if properties.Secrets == nil {
+	if properties.Secrets == nil && arm != nil {
 		secretValues := map[string]renderers.SecretValueReference{
 			renderers.ConnectionStringValue: {
 				LocalID: cosmosAccountDependency.LocalID,
@@ -138,10 +137,17 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
-	secretValues := map[string]renderers.SecretValueReference{
-		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
-		renderers.UsernameStringValue:   {Value: *properties.Secrets.Username},
-		renderers.PasswordStringHolder:  {Value: *properties.Secrets.Password},
+	secretValues := map[string]renderers.SecretValueReference{}
+	if properties.Secrets != nil {
+		if properties.Secrets.ConnectionString != nil {
+			secretValues[renderers.ConnectionStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.ConnectionString}
+		}
+		if properties.Secrets.Username != nil {
+			secretValues[renderers.UsernameStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.Username}
+		}
+		if properties.Secrets.Password != nil {
+			secretValues[renderers.PasswordStringHolder] = renderers.SecretValueReference{Value: *properties.Secrets.Password}
+		}
 	}
 
 	return computedValues, secretValues

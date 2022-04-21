@@ -9,13 +9,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 const (
@@ -32,9 +35,56 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Success(t *testing.T) {
+func Test_Render_Kubernetes_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
+
+	input := renderers.RendererResource{
+		ApplicationName: "test-app",
+		ResourceName:    "test-redis",
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"host": "hello.com",
+			"port": 1234,
+			"secrets": map[string]interface{}{
+				"connectionString": "cs***",
+				"password":         "pwd***",
+			},
+		},
+	}
+	output, err := renderer.Render(ctx, renderers.RenderOptions{
+		Resource:     input,
+		Dependencies: map[string]renderers.RendererDependency{},
+	})
+	require.NoError(t, err)
+
+	expected := renderers.RendererOutput{
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"host": {
+				Value: to.StringPtr("hello.com"),
+			},
+			"port": {
+				Value: to.Int32Ptr(1234),
+			},
+			"username": {
+				Value: "",
+			},
+		},
+		SecretValues: map[string]renderers.SecretValueReference{
+			"password": {
+				Value: "pwd***",
+			},
+			"connectionString": {
+				Value: "cs***",
+			},
+		},
+	}
+	assert.DeepEqual(t, expected, output)
+}
+
+func Test_Render_Azure_Success(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{Arm: &armauth.ArmConfig{}}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -78,9 +128,9 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, "listKeys", output.SecretValues[renderers.PasswordStringHolder].Action)
 }
 
-func Test_Render_User_Secrets(t *testing.T) {
+func Test_Render_Azure_User_Secrets(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{Arm: &armauth.ArmConfig{}}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -106,9 +156,9 @@ func Test_Render_User_Secrets(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_Render_NoResourceSpecified(t *testing.T) {
+func Test_Render_Azure_NoResourceSpecified(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{Arm: &armauth.ArmConfig{}}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -122,7 +172,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 	require.Equal(t, 0, len(rendererOutput.Resources))
 }
 
-func Test_Render_InvalidResourceType(t *testing.T) {
+func Test_Render_Azure_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 

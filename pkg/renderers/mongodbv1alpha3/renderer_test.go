@@ -11,12 +11,14 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 const (
@@ -36,9 +38,41 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Success(t *testing.T) {
+func Test_Kubernetes_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"secrets": map[string]interface{}{
+				renderers.ConnectionStringValue: "***",
+			},
+		},
+	}
+
+	output, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	assert.NilError(t, err)
+	expected := renderers.RendererOutput{
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			renderers.DatabaseValue: {
+				Value: resource.ResourceName,
+			},
+		},
+		SecretValues: map[string]renderers.SecretValueReference{
+			renderers.ConnectionStringValue: {
+				Value: "***",
+			},
+		},
+	}
+	assert.DeepEqual(t, expected, output)
+}
+
+func Test_Render_Azure_Success(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{Arm: &armauth.ArmConfig{}}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -87,9 +121,9 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
 }
 
-func Test_Render_UserSpecifiedSecrets(t *testing.T) {
+func Test_Render_Azure_UserSpecifiedSecrets(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{Arm: &armauth.ArmConfig{}}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -121,9 +155,9 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_Render_NoResourceSpecified(t *testing.T) {
+func Test_Render_Azure_NoResourceSpecified(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{Arm: &armauth.ArmConfig{}}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -137,9 +171,9 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 	require.Equal(t, 0, len(rendererOutput.Resources))
 }
 
-func Test_Render_InvalidResourceType(t *testing.T) {
+func Test_Render_Azure_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{}
+	renderer := Renderer{Arm: &armauth.ArmConfig{}}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
