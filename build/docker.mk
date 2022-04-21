@@ -23,6 +23,7 @@ docker-build-$(1): build-$(1)-linux-amd64
 	@cp -v $(BINS_OUT_DIR_linux_amd64)/$(1) $(DOCKER_OUT_DIR)/$(1)
 
 	cd $(DOCKER_OUT_DIR)/$(1) && docker build $(2) \
+		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
@@ -30,6 +31,7 @@ else
 docker-build-$(1):
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
 	docker build $(2) -f $(3) \
+		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"

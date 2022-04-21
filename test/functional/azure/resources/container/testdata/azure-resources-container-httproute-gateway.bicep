@@ -7,14 +7,18 @@ resource app 'radius.dev/Application@v1alpha3' = {
       routes: [
         {
           path: '/'
-          destination: frontend_http.id
+          destination: frontendhttp.id
+        }
+        {
+          path: '/backend'
+          destination: backendhttp.id
         }
       ]
     }
   }
 
-  resource frontend_http 'HttpRoute' = {
-    name: 'frontend_http'
+  resource frontendhttp 'HttpRoute' = {
+    name: 'frontendhttp'
   }
 
   resource frontend 'Container' = {
@@ -23,27 +27,27 @@ resource app 'radius.dev/Application@v1alpha3' = {
       connections: {
         backend: {
           kind: 'Http'
-          source: backend_http.id
+          source: backendhttp.id
         }
       }
       container: {
         image: 'rynowak/frontend:0.5.0-dev'
         env: {
-          SERVICE__BACKEND__HOST: backend_http.properties.host
-          SERVICE__BACKEND__PORT: string(backend_http.properties.port)
+          SERVICE__BACKEND__HOST: backendhttp.properties.host
+          SERVICE__BACKEND__PORT: string(backendhttp.properties.port)
         }
         ports: {
           web: {
             containerPort: 80
-            provides: frontend_http.id
+            provides: frontendhttp.id
           }
         }
       }
     }
   }
 
-  resource backend_http 'HttpRoute' = {
-    name: 'backend_http'
+  resource backendhttp 'HttpRoute' = {
+    name: 'backendhttp'
   }
 
   resource backend 'Container' = {
@@ -54,7 +58,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
         ports: {
           web: {
             containerPort: 80
-            provides: backend_http.id
+            provides: backendhttp.id
           }
         }
       }
