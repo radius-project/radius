@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -21,6 +22,8 @@ import (
 )
 
 const (
+	subscriptionID  = "default"
+	resourceGroup   = "default"
 	applicationName = "test-application"
 	resourceName    = "test-gateway"
 	gatewayClass    = "gateway-class"
@@ -148,7 +151,7 @@ func Test_Render_Single_Route(t *testing.T) {
 
 	var routes []*radclient.GatewayRoute
 	routeName := "routename"
-	destination := ".../" + routeName
+	destination := makeRouteResourceID(routeName)
 	path := "/"
 	route := radclient.GatewayRoute{
 		Destination: &destination,
@@ -178,14 +181,14 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 
 	var routes []*radclient.GatewayRoute
 	routeAName := "routename"
-	routeADestination := ".../" + routeAName
+	routeADestination := makeRouteResourceID(routeAName)
 	routeAPath := "/"
 	routeA := radclient.GatewayRoute{
 		Destination: &routeADestination,
 		Path:        &routeAPath,
 	}
 	routeBName := "routename"
-	routeBDestination := ".../" + routeBName
+	routeBDestination := makeRouteResourceID(routeBName)
 	routeBPath := "/"
 	routeB := radclient.GatewayRoute{
 		Destination: &routeBDestination,
@@ -275,6 +278,25 @@ func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputReso
 	require.Equal(t, httpRoute.Spec.Rules, expectedRules)
 
 	return httpRoute
+}
+
+func makeRouteResourceID(routeName string) string {
+	return azresources.MakeID(
+		subscriptionID,
+		resourceGroup,
+		azresources.ResourceType{
+			Type: "Microsoft.CustomProviders",
+			Name: "resourceProviders/radiusv3",
+		},
+		azresources.ResourceType{
+			Type: "Application",
+			Name: applicationName,
+		},
+		azresources.ResourceType{
+			Type: "HttpRoute",
+			Name: routeName,
+		},
+	)
 }
 
 func makeResource(t *testing.T, properties radclient.GatewayProperties) renderers.RendererResource {
