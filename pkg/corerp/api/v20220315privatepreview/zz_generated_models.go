@@ -228,7 +228,6 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
-<<<<<<< HEAD
 // FromResource - Target resource that the connector binds to
 type FromResource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource that the connector binds to

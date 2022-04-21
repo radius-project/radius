@@ -142,7 +142,6 @@ type EnvironmentsUpdateResult struct {
 	EnvironmentResource
 }
 
-<<<<<<< HEAD
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
 type MongoDatabasesCreateOrUpdateResponse struct {
 	MongoDatabasesCreateOrUpdateResult
