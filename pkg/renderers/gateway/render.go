@@ -40,15 +40,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		return renderers.RendererOutput{}, errors.New("gateway class not found")
 	}
 
-	publicIP := options.Runtime.Gateway.PublicIP
-	if publicIP == "" {
-		return renderers.RendererOutput{}, errors.New("public IP not found")
-	}
-
 	outputs := []outputresource.OutputResource{}
 
 	gatewayName := kubernetes.MakeResourceName(options.Resource.ApplicationName, options.Resource.ResourceName)
-	hostname, err := getHostname(ctx, options.Resource, gateway, publicIP)
+	hostname, err := getHostname(ctx, options.Resource, gateway, options.Runtime.Gateway.PublicIP)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	}
@@ -189,7 +184,12 @@ func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, g
 
 func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, publicIP string) (*gatewayv1alpha1.Hostname, error) {
 	var hostname gatewayv1alpha1.Hostname
-	if gateway.Hostname != nil {
+
+	if publicIP == "" {
+		// We don't want to throw an error if the publicIP can't be found
+		hostname = gatewayv1alpha1.Hostname("unknown")
+		return &hostname, nil
+	} else if gateway.Hostname != nil {
 		if gateway.Hostname.FullyQualifiedHostname != nil {
 			// Use FQDN
 			hostname = gatewayv1alpha1.Hostname(*gateway.Hostname.FullyQualifiedHostname)

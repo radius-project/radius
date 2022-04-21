@@ -714,7 +714,7 @@ func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers
 		var publicIP string
 		err = dp.k8s.List(ctx, &services, &client.ListOptions{Namespace: "radius-system"})
 		if err != nil {
-			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up PublicIP: %w", err)
+			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up Services: %w", err)
 		}
 
 	outer:
