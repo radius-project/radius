@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 var (
@@ -34,4 +36,15 @@ func ReadJSONBody(r *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("error reading request body: %w", err)
 	}
 	return data, nil
+}
+
+// DecodeMap decodes map[string]interface{} structure to the type of out.
+func DecodeMap(in interface{}, out interface{}) error {
+	cfg := &mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  out,
+		Squash:  true,
+	}
+	decoder, _ := mapstructure.NewDecoder(cfg)
+	return decoder.Decode(in)
 }

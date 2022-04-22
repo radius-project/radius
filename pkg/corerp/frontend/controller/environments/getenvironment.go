@@ -7,6 +7,7 @@ package environments
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -37,25 +38,13 @@ func NewGetEnvironment(storageClient store.StorageClient, jobEngine deployment.D
 
 func (e *GetEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	rID := serviceCtx.ResourceID
 
-	// TODO: Get the environment resource from datastorage. now return fake data.
-	m := &datamodel.Environment{
-		TrackedResource: datamodel.TrackedResource{
-			ID:       rID.ID,
-			Name:     rID.Name(),
-			Type:     rID.Type(),
-			Location: "West US",
-		},
-		SystemData: *serviceCtx.SystemData(),
-		Properties: datamodel.EnvironmentProperties{
-			Compute: datamodel.EnvironmentCompute{
-				Kind:       datamodel.KubernetesComputeKind,
-				ResourceID: "fakeID",
-			},
-		},
+	existingResource := &datamodel.Environment{}
+	_, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	versioned, _ := converter.EnvironmentDataModelToVersioned(m, serviceCtx.APIVersion)
+	versioned, _ := converter.EnvironmentDataModelToVersioned(existingResource, serviceCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }

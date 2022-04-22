@@ -38,6 +38,8 @@ func (s *Service) Run(ctx context.Context) error {
 	storageProvider := dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 
 	ctx = logr.NewContext(ctx, logger)
+	ctx = hostoptions.WithContext(ctx, s.Options.Config)
+
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address:  address,

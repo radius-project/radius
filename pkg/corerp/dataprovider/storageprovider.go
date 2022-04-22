@@ -44,7 +44,7 @@ func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType str
 	if c, ok := p.clients[cn]; ok {
 		return c, nil
 	}
-	if err := p.init(ctx, cn); err != nil {
+	if err := p.init(ctx, resourceType); err != nil {
 		return nil, err
 	}
 

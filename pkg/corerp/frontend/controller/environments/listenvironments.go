@@ -7,6 +7,7 @@ package environments
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
@@ -38,35 +39,36 @@ func NewListEnvironments(storageClient store.StorageClient, jobEngine deployment
 
 func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	_ = e.Validate(ctx, req)
 	rID := serviceCtx.ResourceID
 
-	// TODO: Get the environment resource from datastorage. now return fake data.
-
-	m := &datamodel.Environment{
-		TrackedResource: datamodel.TrackedResource{
-			ID:       rID.ID,
-			Name:     rID.Name(),
-			Type:     rID.Type(),
-			Location: "West US",
-		},
-		SystemData: *serviceCtx.SystemData(),
-		Properties: datamodel.EnvironmentProperties{
-			Compute: datamodel.EnvironmentCompute{
-				Kind:       datamodel.KubernetesComputeKind,
-				ResourceID: "fakeID",
-			},
-		},
+	query := store.Query{
+		RootScope:    fmt.Sprintf("/subscriptions/%s/resourceGroup/%s", rID.SubscriptionID, rID.ResourceGroup),
+		ResourceType: rID.Type(),
 	}
 
-	versioned, _ := converter.EnvironmentDataModelToVersioned(m, serviceCtx.APIVersion)
+	result, err := e.DBClient.Query(ctx, query, store.WithMaxQueryItemCount(20))
+	if err != nil {
+		return nil, err
+	}
+
+	items := []interface{}{}
+	for _, environ := range result.Items {
+		denv := &datamodel.Environment{}
+		if err := ctrl.DecodeMap(environ, denv); err != nil {
+			return nil, err
+		}
+		versioned, err := converter.EnvironmentDataModelToVersioned(denv, serviceCtx.APIVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, versioned)
+	}
 
 	pagination := armrpcv1.PaginatedList{
-		Value: []interface{}{versioned},
+		Value: items,
+		// TODO: set NextLink: if result.PaginationToken is not empty
 	}
-	return rest.NewOKResponse(pagination), nil
-}
 
-func (e *ListEnvironments) Validate(ctx context.Context, req *http.Request) error {
-	return nil
+	return rest.NewOKResponse(pagination), nil
 }

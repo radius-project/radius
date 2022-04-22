@@ -295,7 +295,7 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 	entity := &ResourceEntity{}
 	_, err = c.client.GetDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops, entity)
 
-	if strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
+	if err != nil && strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return nil, &store.ErrNotFound{}
 	}
 

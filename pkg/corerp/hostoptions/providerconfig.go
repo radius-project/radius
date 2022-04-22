@@ -38,7 +38,8 @@ const (
 
 // CloudEnvironmentOptions represents the cloud environment.
 type CloudEnvironmentOptions struct {
-	Name CloudEnvironmentType `yaml:"name"`
+	Name         CloudEnvironmentType `yaml:"name"`
+	RoleLocation string               `yaml:"roleLocation"`
 }
 
 // IdentityOptions includes authentication options to issue JWT from Azure AD.

@@ -8,9 +8,11 @@
 package hostoptions
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"gopkg.in/yaml.v3"
 )
 
@@ -51,4 +53,14 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 	}
 
 	return conf, nil
+}
+
+// FromContext extracts ProviderConfig from http context.
+func FromContext(ctx context.Context) *ProviderConfig {
+	return ctx.Value(servicecontext.HostingConfigContextKey).(*ProviderConfig)
+}
+
+// WithContext injects ProviderConfig into the given http context.
+func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
+	return context.WithValue(ctx, servicecontext.HostingConfigContextKey, cfg)
 }
