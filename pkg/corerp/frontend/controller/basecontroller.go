@@ -58,23 +58,20 @@ func UpdateSystemData(old armrpcv1.SystemData, new armrpcv1.SystemData) armrpcv1
 
 	if old.CreatedAt == "" {
 		newSystemData.CreatedAt = new.CreatedAt
-	}
-	if old.CreatedBy == "" {
 		newSystemData.CreatedBy = new.CreatedBy
-	}
-	if old.CreatedByType == "" {
 		newSystemData.CreatedByType = new.CreatedByType
-	}
-
-	if newSystemData.CreatedAt != "" {
-		newSystemData.CreatedAt = new.LastModifiedAt
-		newSystemData.CreatedBy = new.LastModifiedBy
-		newSystemData.CreatedByType = new.LastModifiedByType
 	}
 
 	newSystemData.LastModifiedAt = new.LastModifiedAt
 	newSystemData.LastModifiedBy = new.LastModifiedBy
 	newSystemData.LastModifiedByType = new.LastModifiedByType
+
+	// fallback
+	if newSystemData.CreatedAt == "" {
+		newSystemData.CreatedAt = new.LastModifiedAt
+		newSystemData.CreatedBy = new.LastModifiedBy
+		newSystemData.CreatedByType = new.LastModifiedByType
+	}
 
 	return newSystemData
 }
