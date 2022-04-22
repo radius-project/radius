@@ -55,8 +55,6 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 
 	newResource.SystemData = ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
 
-	// TODO: Read Systemdata from the existing resource and update it properly.
-
 	err = e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
 	if err != nil {
 		return nil, err

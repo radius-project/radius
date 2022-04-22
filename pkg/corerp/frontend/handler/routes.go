@@ -49,7 +49,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, provider_ctrl.NewCreateOrUpdateSubscription},
 		{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, provider_ctrl.NewGetOperations},
 		// Environments resource handler registration.
-		{envRTSubrouter.Path("/").Subrouter(), env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewListEnvironments},
+		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewListEnvironments},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewGetEnvironment},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, env_ctrl.NewCreateOrUpdateEnvironment},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, env_ctrl.NewCreateOrUpdateEnvironment},
