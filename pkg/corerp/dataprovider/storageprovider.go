@@ -10,7 +10,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/project-radius/radius/pkg/store/cosmosdb"
 )
@@ -20,21 +19,25 @@ var (
 	ErrStorageNotFound            = errors.New("storage provider not found")
 )
 
-type StorageProvider struct {
+var _ DataStorageProvider = (*storageProvider)(nil)
+
+type storageProvider struct {
 	clients map[string]store.StorageClient
-	options hostoptions.StorageProviderOptions
+	options StorageProviderOptions
 	lock    sync.Mutex
 }
 
-func NewStorageProvider(opts hostoptions.StorageProviderOptions) *StorageProvider {
-	return &StorageProvider{
+// NewStorageProvider creates new storageProvider instance.
+func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
+	return &storageProvider{
 		clients: map[string]store.StorageClient{},
 		options: opts,
 		lock:    sync.Mutex{},
 	}
 }
 
-func (p *StorageProvider) GetStorageClient(ctx context.Context, storageName string) (store.StorageClient, error) {
+// GetStorageClient creates or gets storage client.
+func (p *storageProvider) GetStorageClient(ctx context.Context, storageName string) (store.StorageClient, error) {
 	if c, ok := p.clients[storageName]; ok {
 		return c, nil
 	}
@@ -45,11 +48,11 @@ func (p *StorageProvider) GetStorageClient(ctx context.Context, storageName stri
 	return p.clients[storageName], nil
 }
 
-func (p *StorageProvider) init(ctx context.Context, storageName string) error {
+func (p *storageProvider) init(ctx context.Context, storageName string) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	// return immediately if another goroutine acquires provider.
+	// return immediately if someone already init storage client for storageName.
 	if _, ok := p.clients[storageName]; ok {
 		return nil
 	}
@@ -58,8 +61,9 @@ func (p *StorageProvider) init(ctx context.Context, storageName string) error {
 	var err error
 
 	switch p.options.Provider {
-	case hostoptions.CosmosDBProvider:
+	case CosmosDBProvider:
 		dbclient, err = initCosmosDBProvider(ctx, p.options.CosmosDB, storageName)
+	// TODO: Support the other database storage client.
 	default:
 		err = ErrUnsupportedStorageProvider
 	}
@@ -73,7 +77,7 @@ func (p *StorageProvider) init(ctx context.Context, storageName string) error {
 	return nil
 }
 
-func initCosmosDBProvider(ctx context.Context, opt hostoptions.CosmosDBOptions, storageName string) (store.StorageClient, error) {
+func initCosmosDBProvider(ctx context.Context, opt CosmosDBOptions, storageName string) (store.StorageClient, error) {
 	sopt := &cosmosdb.ConnectionOptions{
 		Url:            opt.Url,
 		DatabaseName:   opt.Database,

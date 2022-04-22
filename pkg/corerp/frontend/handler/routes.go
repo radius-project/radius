@@ -29,7 +29,7 @@ const (
 
 type ControllerFunc func(store.StorageClient, deployment.DeploymentProcessor) (controller.ControllerInterface, error)
 
-type handlerParams struct {
+type handlerParam struct {
 	parent       *mux.Router
 	resourcetype string
 	method       string
@@ -38,7 +38,7 @@ type handlerParams struct {
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
 // TODO: Enable api spec validator.
-func AddRoutes(ctx context.Context, sp *dataprovider.StorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
+func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
 	// Provider system notification.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 	providerRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}").
@@ -58,7 +58,7 @@ func AddRoutes(ctx context.Context, sp *dataprovider.StorageProvider, jobEngine 
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
 
-	handlers := []handlerParams{
+	handlers := []handlerParam{
 		// Provider handler registration.
 		{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, provider_ctrl.NewCreateOrUpdateSubscription},
 		{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, provider_ctrl.NewGetOperations},
@@ -79,7 +79,7 @@ func AddRoutes(ctx context.Context, sp *dataprovider.StorageProvider, jobEngine 
 	return nil
 }
 
-func registerHandler(ctx context.Context, sp *dataprovider.StorageProvider, parent *mux.Router, resourcetype string, method string, CreateController ControllerFunc) error {
+func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, parent *mux.Router, resourcetype string, method string, CreateController ControllerFunc) error {
 	sc, err := sp.GetStorageClient(ctx, resourcetype)
 	if err != nil {
 		return err
