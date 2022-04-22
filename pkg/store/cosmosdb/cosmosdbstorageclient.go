@@ -101,7 +101,7 @@ func (c *CosmosDBStorageClient) createDatabaseIfNotExists(ctx context.Context) e
 		return err
 	}
 	_, err = c.client.CreateDatabase(ctx, c.options.DatabaseName, nil)
-	if strings.EqualFold(err.Error(), errIDConflictMsg) {
+	if err != nil && strings.EqualFold(err.Error(), errIDConflictMsg) {
 		return nil
 	}
 	return err
@@ -147,7 +147,7 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 		OfferThroughput: collectionThroughPut,
 	})
 
-	if strings.EqualFold(err.Error(), errIDConflictMsg) {
+	if err != nil && strings.EqualFold(err.Error(), errIDConflictMsg) {
 		return nil
 	}
 
