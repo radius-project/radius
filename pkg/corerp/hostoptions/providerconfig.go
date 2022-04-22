@@ -7,10 +7,11 @@ package hostoptions
 
 // ProviderConfig includes the resource provider configuration.
 type ProviderConfig struct {
-	CloudEnv CloudEnvironmentOptions `yaml:"cloudEnvironment"`
-	Identity IdentityOptions         `yaml:"identity"`
-	Server   ServerOptions           `yaml:"server"`
-	Metrics  MetricOptions           `yaml:"metric"`
+	CloudEnv        CloudEnvironmentOptions `yaml:"cloudEnvironment"`
+	Identity        IdentityOptions         `yaml:"identity"`
+	StorageProvider StorageProviderOptions  `yaml:"storageProvider"`
+	Server          ServerOptions           `yaml:"server"`
+	Metrics         MetricOptions           `yaml:"metric"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
@@ -66,4 +67,21 @@ type MetricOptions struct {
 	Account      string `yaml:"account,omitempty"`
 	Namespace    string `yaml:"namespace,omitempty"`
 	Tenant       string `yaml:"tenant,omitempty"`
+}
+
+type StorageProviderType string
+
+const (
+	CosmosDBProvider = "cosmosdb"
+)
+
+type StorageProviderOptions struct {
+	Provider StorageProviderType `yaml:"provider"`
+	CosmosDB CosmosDBOptions     `yaml:"cosmosdb,omitempty"`
+}
+
+type CosmosDBOptions struct {
+	Url       string `yaml:"url"`
+	Database  string `yaml:"database"`
+	MasterKey string `yaml:"masterKey"`
 }

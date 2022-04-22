@@ -14,8 +14,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/store"
 )
 
 var _ ctrl.ControllerInterface = (*GetEnvironment)(nil)
@@ -26,11 +26,11 @@ type GetEnvironment struct {
 }
 
 // NewGetEnvironment creates a new GetEnvironment.
-func NewGetEnvironment(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (*GetEnvironment, error) {
+func NewGetEnvironment(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
 	return &GetEnvironment{
 		BaseController: ctrl.BaseController{
-			DBProvider: db,
-			JobEngine:  jobEngine,
+			DBClient:  storageClient,
+			JobEngine: jobEngine,
 		},
 	}, nil
 }

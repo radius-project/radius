@@ -8,6 +8,12 @@ identity:
   armEndpoint: "https://management.azure.com:443"
   audience: "https://management.core.windows.net"
   pemCertPath: "/var/certs/rp-aad-app.pem"
+storageProvider:
+  provider: "cosmosdb"
+  cosmosdb:
+    url: https://radius-eastus-test.documents.azure.com:443/
+    database: applicationcore
+    masterKey: testkey
 server:
   host: "0.0.0.0"
   port: 8080

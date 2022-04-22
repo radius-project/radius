@@ -10,8 +10,8 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/store"
 )
 
 // ControllerInterface is an interface of each operation controller.
@@ -23,6 +23,6 @@ type ControllerInterface interface {
 // BaseController is the base operation controller.
 type BaseController struct {
 	// TODO: db.RadrpDB and deployment.DeploymentProcessor will be replaced with new implementation.
-	DBProvider db.RadrpDB
-	JobEngine  deployment.DeploymentProcessor
+	DBClient  store.StorageClient
+	JobEngine deployment.DeploymentProcessor
 }
