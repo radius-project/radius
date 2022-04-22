@@ -8,7 +8,9 @@ package dataprovider
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/project-radius/radius/pkg/store/cosmosdb"
@@ -37,23 +39,26 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 }
 
 // GetStorageClient creates or gets storage client.
-func (p *storageProvider) GetStorageClient(ctx context.Context, storageName string) (store.StorageClient, error) {
-	if c, ok := p.clients[storageName]; ok {
+func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType string) (store.StorageClient, error) {
+	cn := normalizeResourceType(resourceType)
+	if c, ok := p.clients[cn]; ok {
 		return c, nil
 	}
-	if err := p.init(ctx, storageName); err != nil {
+	if err := p.init(ctx, cn); err != nil {
 		return nil, err
 	}
 
-	return p.clients[storageName], nil
+	return p.clients[cn], nil
 }
 
-func (p *storageProvider) init(ctx context.Context, storageName string) error {
+func (p *storageProvider) init(ctx context.Context, resourceType string) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
+	cn := normalizeResourceType(resourceType)
+
 	// return immediately if someone already init storage client for storageName.
-	if _, ok := p.clients[storageName]; ok {
+	if _, ok := p.clients[cn]; ok {
 		return nil
 	}
 
@@ -62,7 +67,7 @@ func (p *storageProvider) init(ctx context.Context, storageName string) error {
 
 	switch p.options.Provider {
 	case CosmosDBProvider:
-		dbclient, err = initCosmosDBProvider(ctx, p.options.CosmosDB, storageName)
+		dbclient, err = initCosmosDBProvider(ctx, p.options.CosmosDB, cn)
 	// TODO: Support the other database storage client.
 	default:
 		err = ErrUnsupportedStorageProvider
@@ -72,16 +77,17 @@ func (p *storageProvider) init(ctx context.Context, storageName string) error {
 		return err
 	}
 
-	p.clients[storageName] = dbclient
+	p.clients[cn] = dbclient
 
 	return nil
 }
 
-func initCosmosDBProvider(ctx context.Context, opt CosmosDBOptions, storageName string) (store.StorageClient, error) {
+func initCosmosDBProvider(ctx context.Context, opt CosmosDBOptions, resourceType string) (store.StorageClient, error) {
+	cn := normalizeResourceType(resourceType)
 	sopt := &cosmosdb.ConnectionOptions{
 		Url:            opt.Url,
 		DatabaseName:   opt.Database,
-		CollectionName: storageName,
+		CollectionName: cn,
 		MasterKey:      opt.MasterKey,
 	}
 	dbclient, err := cosmosdb.NewCosmosDBStorageClient(sopt)
@@ -94,4 +100,22 @@ func initCosmosDBProvider(ctx context.Context, opt CosmosDBOptions, storageName 
 	}
 
 	return dbclient, nil
+}
+
+// normalizeResourceType converts resourcetype to safe string by removing non digit and non letter and replace '/' with '-'
+func normalizeResourceType(s string) string {
+	if s == "" {
+		return s
+	}
+
+	sb := strings.Builder{}
+	for _, ch := range s {
+		if ch == '/' {
+			sb.WriteString("-")
+		} else if unicode.IsDigit(ch) || unicode.IsLetter(ch) {
+			sb.WriteRune(ch)
+		}
+	}
+
+	return strings.ToLower(sb.String())
 }
