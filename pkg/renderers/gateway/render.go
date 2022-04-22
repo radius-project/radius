@@ -110,7 +110,7 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 
 		resourceID, err := azresources.Parse(*route.Destination)
 		if err != nil {
-			return []outputresource.OutputResource{}, nil
+			return []outputresource.OutputResource{}, err
 		}
 		routeName := resourceID.Name()
 
