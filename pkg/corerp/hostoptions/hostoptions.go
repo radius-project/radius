@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"gopkg.in/yaml.v3"
@@ -50,6 +51,12 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 	err = yaml.Unmarshal(buf, conf)
 	if err != nil {
 		return nil, fmt.Errorf("fails to load yaml: %w", err)
+	}
+
+	// TODO: improve the way to override the configration via env var.
+	cosmosDBKey := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY")
+	if cosmosDBKey != "" {
+		conf.StorageProvider.CosmosDB.MasterKey = cosmosDBKey
 	}
 
 	return conf, nil

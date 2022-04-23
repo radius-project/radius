@@ -10,10 +10,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -51,25 +49,7 @@ func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Res
 		return nil, err
 	}
 
-	items := []interface{}{}
-	for _, environ := range result.Items {
-		denv := &datamodel.Environment{}
-		if err := ctrl.DecodeMap(environ, denv); err != nil {
-			return nil, err
-		}
-		versioned, err := converter.EnvironmentDataModelToVersioned(denv, serviceCtx.APIVersion)
-		if err != nil {
-			return nil, err
-		}
+	pagination, err := e.CreatePaginationResponse(ctx, result)
 
-		items = append(items, versioned)
-	}
-
-	// TODO: implement pagination using paginationtoken
-	pagination := armrpcv1.PaginatedList{
-		Value: items,
-		// TODO: set NextLink: if result.PaginationToken is not empty
-	}
-
-	return rest.NewOKResponse(pagination), nil
+	return rest.NewOKResponse(pagination), err
 }

@@ -10,6 +10,9 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
@@ -51,6 +54,30 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in interfa
 		return err
 	}
 	return nil
+}
+
+func (c *BaseController) CreatePaginationResponse(ctx context.Context, result *store.ObjectQueryResult) (*armrpcv1.PaginatedList, error) {
+	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+
+	items := []interface{}{}
+	for _, environ := range result.Items {
+		denv := &datamodel.Environment{}
+		if err := DecodeMap(environ.Data, denv); err != nil {
+			return nil, err
+		}
+		versioned, err := converter.EnvironmentDataModelToVersioned(denv, serviceCtx.APIVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, versioned)
+	}
+
+	// TODO: implement pagination using paginationtoken
+	return &armrpcv1.PaginatedList{
+		Value: items,
+		// TODO: set NextLink: if result.PaginationToken is not empty
+	}, nil
 }
 
 func UpdateSystemData(old armrpcv1.SystemData, new armrpcv1.SystemData) armrpcv1.SystemData {
