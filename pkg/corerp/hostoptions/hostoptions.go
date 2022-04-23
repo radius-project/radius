@@ -54,6 +54,11 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 	}
 
 	// TODO: improve the way to override the configration via env var.
+	cosmosdbUrl := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_URL")
+	if cosmosdbUrl != "" {
+		conf.StorageProvider.CosmosDB.Url = cosmosdbUrl
+	}
+
 	cosmosDBKey := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY")
 	if cosmosDBKey != "" {
 		conf.StorageProvider.CosmosDB.MasterKey = cosmosDBKey

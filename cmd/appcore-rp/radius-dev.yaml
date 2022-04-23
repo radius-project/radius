@@ -2,7 +2,7 @@
 cloudEnvironment:
   name: AzureCloud
   roleLocation: West US
-identity:
+identity: # 1P AAD APP authentication
   clientId: "PLACEHOLDER"
   instance: "https://login.windows.net"
   tenantId: "common"
@@ -12,9 +12,11 @@ identity:
 storageProvider:
   provider: "cosmosdb"
   cosmosdb:
-    url: https://radius-eastus-test.documents.azure.com:443/
+    # Create your own SQL API Cosmos DB account and set url in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_URL environment variable
+    url: https://radius-eastus-test.documents.azure.com:443/  
     database: applicationscore
-    masterKey: testkey
+    # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable 
+    masterKey: masterkey
 server:
   host: "0.0.0.0"
   port: 8080
