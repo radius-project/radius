@@ -82,12 +82,11 @@ func (p *storageProvider) init(ctx context.Context, resourceType string) error {
 	return nil
 }
 
-func initCosmosDBProvider(ctx context.Context, opt CosmosDBOptions, resourceType string) (store.StorageClient, error) {
-	cn := normalizeResourceType(resourceType)
+func initCosmosDBProvider(ctx context.Context, opt CosmosDBOptions, collectionName string) (store.StorageClient, error) {
 	sopt := &cosmosdb.ConnectionOptions{
 		Url:            opt.Url,
 		DatabaseName:   opt.Database,
-		CollectionName: cn,
+		CollectionName: collectionName,
 		MasterKey:      opt.MasterKey,
 	}
 	dbclient, err := cosmosdb.NewCosmosDBStorageClient(sopt)

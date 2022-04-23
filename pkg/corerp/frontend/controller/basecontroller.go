@@ -31,6 +31,7 @@ type BaseController struct {
 	JobEngine deployment.DeploymentProcessor
 }
 
+// GetResource is the helper to get the resource via storage client.
 func (c *BaseController) GetResource(ctx context.Context, id string, out interface{}) (etag string, err error) {
 	etag = ""
 	var res *store.Object
@@ -43,6 +44,7 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out interfa
 	return
 }
 
+// SaveResource is the helper to save the resource via storage client.
 func (c *BaseController) SaveResource(ctx context.Context, id string, in interface{}, etag string) error {
 	newObject := &store.Object{
 		Metadata: store.Metadata{
@@ -56,6 +58,7 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in interfa
 	return nil
 }
 
+// CreatePaginationResponse is the helper to create the paginated response.
 func (c *BaseController) CreatePaginationResponse(ctx context.Context, result *store.ObjectQueryResult) (*armrpcv1.PaginatedList, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
@@ -80,24 +83,27 @@ func (c *BaseController) CreatePaginationResponse(ctx context.Context, result *s
 	}, nil
 }
 
+// UpdateSystemData creates or updates new systemdata from old and new resources.
 func UpdateSystemData(old armrpcv1.SystemData, new armrpcv1.SystemData) armrpcv1.SystemData {
 	newSystemData := old
 
-	if old.CreatedAt == "" {
+	if old.CreatedAt == "" && new.CreatedAt != "" {
 		newSystemData.CreatedAt = new.CreatedAt
 		newSystemData.CreatedBy = new.CreatedBy
 		newSystemData.CreatedByType = new.CreatedByType
 	}
 
-	newSystemData.LastModifiedAt = new.LastModifiedAt
-	newSystemData.LastModifiedBy = new.LastModifiedBy
-	newSystemData.LastModifiedByType = new.LastModifiedByType
+	if new.LastModifiedAt != "" {
+		newSystemData.LastModifiedAt = new.LastModifiedAt
+		newSystemData.LastModifiedBy = new.LastModifiedBy
+		newSystemData.LastModifiedByType = new.LastModifiedByType
 
-	// fallback
-	if newSystemData.CreatedAt == "" {
-		newSystemData.CreatedAt = new.LastModifiedAt
-		newSystemData.CreatedBy = new.LastModifiedBy
-		newSystemData.CreatedByType = new.LastModifiedByType
+		// backfill
+		if newSystemData.CreatedAt == "" {
+			newSystemData.CreatedAt = new.LastModifiedAt
+			newSystemData.CreatedBy = new.LastModifiedBy
+			newSystemData.CreatedByType = new.LastModifiedByType
+		}
 	}
 
 	return newSystemData
