@@ -6,38 +6,38 @@
 package provider
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
-	"reflect"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/stretchr/testify/require"
 )
 
-const testDataFileDir = "./testdata/"
-
-func loadTestData(testfile string) []byte {
-	d, err := ioutil.ReadFile(testfile)
-	if err != nil {
-		return nil
-	}
-	return d
-}
+const (
+	subscriptionHeaderfile = "armsubscriptionheaders.json"
+)
 
 func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
-	files, _ := ioutil.ReadDir(testDataFileDir)
-	for _, file := range files {
-		testData := loadTestData(testDataFileDir + file.Name())
-		req, _ := http.NewRequest("POST", "fakeurl.com", bytes.NewBuffer(testData))
-		req.Header.Set("X-Custom-Header", "myvalue")
-		req.Header.Set("Content-Type", "application/json")
+	subscriptionTests := []struct {
+		infile string
+	}{
+		{"registeredsubscriptiontestdata.json"},
+		{"unregisteredsubscriptiontestdata.json"},
+	}
+
+	for _, tc := range subscriptionTests {
+		rawReq := radiustesting.ReadFixture(tc.infile)
+		expected := &armrpcv1.Subscription{}
+		_ = json.Unmarshal(rawReq, expected)
+
+		req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
 
 		// arrange
 		op, _ := NewCreateOrUpdateSubscription(nil, nil)
@@ -46,20 +46,14 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 		})
 
 		// act
-		resp, _ := op.Run(ctx, req)
+		resp, err := op.Run(ctx, req)
 
 		// assert
-		switch v := resp.(type) {
-		case *rest.OKResponse:
-			subscription, ok := v.Body.(*armrpcv1.Subscription)
-			require.True(t, ok)
+		require.NoError(t, err)
 
-			expected := armrpcv1.Subscription{}
-			_ = json.Unmarshal(testData, &expected)
-			require.True(t, reflect.DeepEqual(*subscription, expected))
-		default:
-			require.Truef(t, false, "should not return error")
-		}
+		w := httptest.NewRecorder()
+		_ = resp.Apply(ctx, w, req)
+		require.Equal(t, 200, w.Result().StatusCode)
 	}
 
 }

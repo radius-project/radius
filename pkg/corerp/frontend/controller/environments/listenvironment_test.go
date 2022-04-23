@@ -13,26 +13,26 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/stretchr/testify/require"
 
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
-func TestListEnvironmentRun_20220315(t *testing.T) {
+func TestListEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
-	const headerfile = "requestheaders20220315privatepreview.json"
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, envDataModel, expectedOutput := GetTestModels20220315privatepreview()
+	_, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 
 	t.Run("list zero resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := GetTestHTTPRequest(ctx, http.MethodGet, headerfile, nil)
-		ctx := GetTestRequestContext(req)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().
@@ -58,8 +58,8 @@ func TestListEnvironmentRun_20220315(t *testing.T) {
 
 	t.Run("list resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := GetTestHTTPRequest(ctx, http.MethodGet, headerfile, nil)
-		ctx := GetTestRequestContext(req)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.
 			EXPECT().

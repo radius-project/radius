@@ -36,10 +36,6 @@ type TrackedResource struct {
 type InternalMetadata struct {
 	// TenantID is the tenant id of the resource.
 	TenantID string `json:"tenantId"`
-	// SubscriptionID is the subscription id of the resource.
-	SubscriptionID string `json:"subscriptionId"`
-	// ResourceGroup is the resource group of the resource.
-	ResourceGroup string `json:"resourceGroup"`
 	// CreatedAPIVersion is an api-version used when creating this model.
 	CreatedAPIVersion string `json:"createdApiVersion"`
 	// UpdatedAPIVersion is an api-version used when updating this model.
