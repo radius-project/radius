@@ -5,9 +5,11 @@
 
 package store
 
+type ETag = string
+
 type Metadata struct {
 	ID          string
-	ETag        string
+	ETag        ETag
 	APIVersion  string
 	ContentType string
 }

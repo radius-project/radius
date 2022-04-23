@@ -52,7 +52,7 @@ type StoreConfig struct {
 	MaxQueryItemCount int
 
 	// ETag represents the entity tag for optimistic consistency control.
-	ETag string
+	ETag ETag
 }
 
 // Query Options
@@ -98,7 +98,7 @@ func (s *saveOptions) ApplySaveOption(cfg StoreConfig) StoreConfig {
 func (s saveOptions) private() {}
 
 // WithETag sets the etag for Save().
-func WithETag(etag string) SaveOptions {
+func WithETag(etag ETag) SaveOptions {
 	return &saveOptions{
 		fn: func(cfg StoreConfig) StoreConfig {
 			cfg.ETag = etag
