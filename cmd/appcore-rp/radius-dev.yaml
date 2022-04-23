@@ -1,6 +1,7 @@
 # This is an example of configuration file.
 cloudEnvironment:
   name: AzureCloud
+  roleLocation: West US
 identity:
   clientId: "PLACEHOLDER"
   instance: "https://login.windows.net"
@@ -12,7 +13,7 @@ storageProvider:
   provider: "cosmosdb"
   cosmosdb:
     url: https://radius-eastus-test.documents.azure.com:443/
-    database: applicationcore
+    database: applicationscore
     masterKey: testkey
 server:
   host: "0.0.0.0"
