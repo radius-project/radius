@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -55,9 +56,16 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 
 	outputs = append(outputs, gatewayObject)
 
+	var computedHostname string
+	if hostname == nil {
+		computedHostname = "unknown"
+	} else {
+		computedHostname = string(*hostname)
+	}
+
 	computedValues := map[string]renderers.ComputedValueReference{
 		"hostname": {
-			Value: *hostname,
+			Value: computedHostname,
 		},
 	}
 
@@ -185,10 +193,9 @@ func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, g
 func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, publicIP string) (*gatewayv1alpha1.Hostname, error) {
 	var hostname gatewayv1alpha1.Hostname
 
-	if publicIP == "" {
-		// We don't want to throw an error if the publicIP can't be found
-		hostname = gatewayv1alpha1.Hostname("unknown")
-		return &hostname, nil
+	// If publicIP is not found or is private (to support local dev scenario)
+	if publicIP == "" || strings.HasPrefix(publicIP, "172") {
+		return nil, nil
 	} else if gateway.Hostname != nil {
 		if gateway.Hostname.FullyQualifiedHostname != nil {
 			// Use FQDN
