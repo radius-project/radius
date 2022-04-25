@@ -43,6 +43,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       port: redisService.spec.ports[0].port
       secrets: {
         connectionString: '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local:${redisService.spec.ports[0].port},password=${base64ToString(redisSecret.data['redis-password'])}'
+        username: redisSecret.data['redis-username']
         password: base64ToString(redisSecret.data['redis-password'])
       }
     }

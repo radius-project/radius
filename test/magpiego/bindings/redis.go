@@ -17,8 +17,9 @@ func RedisBinding(envParams map[string]string) BindingStatus {
 		log.Println("redis HOST and PORT are required")
 		return BindingStatus{false, "Redis HOST and PORT are required"}
 	}
+	redisUsername := envParams["USERNAME"]
 	redisPassword := envParams["PASSWORD"]
-	op := &redis.Options{Addr: redisHost, Password: redisPassword, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12}, WriteTimeout: 5 * time.Second}
+	op := &redis.Options{Addr: redisHost, Username: redisUsername, Password: redisPassword, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12}, WriteTimeout: 5 * time.Second}
 	client := redis.NewClient(op)
 
 	ctx := context.Background()

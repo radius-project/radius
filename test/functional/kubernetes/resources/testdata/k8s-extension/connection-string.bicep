@@ -25,6 +25,8 @@ resource secret 'kubernetes.core/Secret@v1' = {
 
   stringData: {
     connectionString: '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local,password=${base64ToString(redisSecret.data.redisPassword)}'
+    username: redisSecret.data.redisUsername
+    password: redisSecret.data.redisPassword
   }
 }
 
