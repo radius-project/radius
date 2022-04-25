@@ -28,6 +28,7 @@ const (
 	resourceName    = "test-gateway"
 	gatewayClass    = "gateway-class"
 	publicIP        = "86.753.099.99"
+	privateIP       = "172.24.0.2"
 )
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
@@ -53,9 +54,10 @@ func Test_Render_WithNoHostname(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
-	require.Equal(t, output.ComputedValues["hostname"].Value, gatewayv1alpha1.Hostname(expectedHostname))
+	require.Equal(t, output.ComputedValues["hostname"].Value, expectedHostname)
 
-	validateGateway(t, output.Resources, expectedHostname)
+	expectedGatewayHostname := gatewayv1alpha1.Hostname(expectedHostname)
+	validateGateway(t, output.Resources, &expectedGatewayHostname)
 }
 
 func Test_Render_WithPrefix(t *testing.T) {
@@ -77,9 +79,10 @@ func Test_Render_WithPrefix(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", prefix, applicationName, publicIP)
-	require.Equal(t, output.ComputedValues["hostname"].Value, gatewayv1alpha1.Hostname(expectedHostname))
+	require.Equal(t, output.ComputedValues["hostname"].Value, expectedHostname)
 
-	validateGateway(t, output.Resources, expectedHostname)
+	expectedGatewayHostname := gatewayv1alpha1.Hostname(expectedHostname)
+	validateGateway(t, output.Resources, &expectedGatewayHostname)
 }
 
 func Test_Render_WithFQHostname(t *testing.T) {
@@ -99,9 +102,10 @@ func Test_Render_WithFQHostname(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, gatewayv1alpha1.Hostname(hostname))
+	require.Equal(t, output.ComputedValues["hostname"].Value, hostname)
 
-	validateGateway(t, output.Resources, hostname)
+	expectedGatewayHostname := gatewayv1alpha1.Hostname(hostname)
+	validateGateway(t, output.Resources, &expectedGatewayHostname)
 }
 
 func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
@@ -123,9 +127,54 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, gatewayv1alpha1.Hostname(hostname))
+	require.Equal(t, output.ComputedValues["hostname"].Value, hostname)
 
-	validateGateway(t, output.Resources, hostname)
+	expectedGatewayHostname := gatewayv1alpha1.Hostname(hostname)
+	validateGateway(t, output.Resources, &expectedGatewayHostname)
+}
+
+func Test_Render_WithPrivateIP(t *testing.T) {
+	r := &Renderer{}
+
+	properties := radclient.GatewayProperties{}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	additionalProperties := renderers.RuntimeOptions{
+		Gateway: renderers.GatewayOptions{
+			GatewayClass: gatewayClass,
+			PublicIP:     "172.24.0.2",
+		},
+	}
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, output.ComputedValues["hostname"].Value, "unknown")
+
+	validateGateway(t, output.Resources, nil)
+}
+
+func Test_Render_WithMissingPublicIP(t *testing.T) {
+	r := &Renderer{}
+
+	properties := radclient.GatewayProperties{}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	additionalProperties := renderers.RuntimeOptions{
+		Gateway: renderers.GatewayOptions{
+			GatewayClass: gatewayClass,
+			PublicIP:     "",
+		},
+	}
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, output.ComputedValues["hostname"].Value, "unknown")
+
+	validateGateway(t, output.Resources, nil)
 }
 
 func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
@@ -170,9 +219,10 @@ func Test_Render_Single_Route(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, gatewayv1alpha1.Hostname(expectedHostname))
+	require.Equal(t, output.ComputedValues["hostname"].Value, expectedHostname)
 
-	gateway := validateGateway(t, output.Resources, expectedHostname)
+	expectedGatewayHostname := gatewayv1alpha1.Hostname(expectedHostname)
+	gateway := validateGateway(t, output.Resources, &expectedGatewayHostname)
 	validateHttpRoute(t, output.Resources, routeName, gateway.Name, path)
 }
 
@@ -208,14 +258,15 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 3)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, gatewayv1alpha1.Hostname(expectedHostname))
+	require.Equal(t, output.ComputedValues["hostname"].Value, expectedHostname)
 
-	gateway := validateGateway(t, output.Resources, expectedHostname)
+	expectedGatewayHostname := gatewayv1alpha1.Hostname(expectedHostname)
+	gateway := validateGateway(t, output.Resources, &expectedGatewayHostname)
 	validateHttpRoute(t, output.Resources, routeAName, gateway.Name, routeAPath)
 	validateHttpRoute(t, output.Resources, routeBName, gateway.Name, routeBPath)
 }
 
-func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname string) *gatewayv1alpha1.Gateway {
+func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname *gatewayv1alpha1.Hostname) *gatewayv1alpha1.Gateway {
 	gateway, gatewayOutputResource := kubernetes.FindGateway(outputResources)
 
 	expectedGatewayOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
@@ -227,9 +278,8 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 	require.Equal(t, gateway.Spec.GatewayClassName, gatewayClass)
 
 	require.Len(t, gateway.Spec.Listeners, 1)
-	listenerHostname := gatewayv1alpha1.Hostname(expectedHostname)
 	expectedListener := gatewayv1alpha1.Listener{
-		Hostname: &listenerHostname,
+		Hostname: expectedHostname,
 		Port:     gatewayv1alpha1.PortNumber(80),
 		Protocol: gatewayv1alpha1.HTTPProtocolType,
 		Routes: gatewayv1alpha1.RouteBindingSelector{
