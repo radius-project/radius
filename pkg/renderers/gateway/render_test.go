@@ -54,7 +54,7 @@ func Test_Render_WithNoHostname(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
-	require.Equal(t, output.ComputedValues["hostname"].Value, expectedHostname)
+	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
 
 	expectedGatewayHostname := gatewayv1alpha1.Hostname(expectedHostname)
 	validateGateway(t, output.Resources, &expectedGatewayHostname)
@@ -79,7 +79,7 @@ func Test_Render_WithPrefix(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", prefix, applicationName, publicIP)
-	require.Equal(t, output.ComputedValues["hostname"].Value, expectedHostname)
+	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
 
 	expectedGatewayHostname := gatewayv1alpha1.Hostname(expectedHostname)
 	validateGateway(t, output.Resources, &expectedGatewayHostname)
@@ -102,7 +102,7 @@ func Test_Render_WithFQHostname(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, hostname)
+	require.Equal(t, hostname, output.ComputedValues["hostname"].Value)
 
 	expectedGatewayHostname := gatewayv1alpha1.Hostname(hostname)
 	validateGateway(t, output.Resources, &expectedGatewayHostname)
@@ -127,7 +127,7 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, hostname)
+	require.Equal(t, hostname, output.ComputedValues["hostname"].Value)
 
 	expectedGatewayHostname := gatewayv1alpha1.Hostname(hostname)
 	validateGateway(t, output.Resources, &expectedGatewayHostname)
@@ -144,13 +144,14 @@ func Test_Render_WithPrivateIP(t *testing.T) {
 			GatewayClass: gatewayClass,
 			PublicIP:     privateIP,
 		},
+		IsDev: true,
 	}
 
 	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, "unknown")
+	require.Equal(t, "unknown", output.ComputedValues["hostname"].Value)
 
 	validateGateway(t, output.Resources, nil)
 }
@@ -172,7 +173,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, "unknown")
+	require.Equal(t, "unknown", output.ComputedValues["hostname"].Value)
 
 	validateGateway(t, output.Resources, nil)
 }
@@ -219,7 +220,7 @@ func Test_Render_Single_Route(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, expectedHostname)
+	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
 
 	expectedGatewayHostname := gatewayv1alpha1.Hostname(expectedHostname)
 	gateway := validateGateway(t, output.Resources, &expectedGatewayHostname)
@@ -258,7 +259,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 3)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, output.ComputedValues["hostname"].Value, expectedHostname)
+	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
 
 	expectedGatewayHostname := gatewayv1alpha1.Hostname(expectedHostname)
 	gateway := validateGateway(t, output.Resources, &expectedGatewayHostname)
@@ -371,6 +372,7 @@ func GetRuntimeOptions() renderers.RuntimeOptions {
 			GatewayClass: gatewayClass,
 			PublicIP:     publicIP,
 		},
+		IsDev: false,
 	}
 	return additionalProperties
 }
