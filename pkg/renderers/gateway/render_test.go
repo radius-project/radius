@@ -142,7 +142,7 @@ func Test_Render_WithPrivateIP(t *testing.T) {
 	additionalProperties := renderers.RuntimeOptions{
 		Gateway: renderers.GatewayOptions{
 			GatewayClass: gatewayClass,
-			PublicIP:     "172.24.0.2",
+			PublicIP:     privateIP,
 		},
 	}
 
