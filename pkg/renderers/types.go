@@ -35,6 +35,7 @@ type RenderOptions struct {
 }
 
 type RuntimeOptions struct {
+	IsDev   bool
 	Gateway GatewayOptions
 }
 

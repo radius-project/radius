@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -44,7 +43,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	outputs := []outputresource.OutputResource{}
 
 	gatewayName := kubernetes.MakeResourceName(options.Resource.ApplicationName, options.Resource.ResourceName)
-	hostname, err := getHostname(ctx, options.Resource, gateway, options.Runtime.Gateway.PublicIP)
+	hostname, err := getHostname(ctx, options.Resource, gateway, options.Runtime)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	}
@@ -190,11 +189,12 @@ func makeHttpGateway(ctx context.Context, resource renderers.RendererResource, g
 	}, nil
 }
 
-func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, publicIP string) (*gatewayv1alpha1.Hostname, error) {
+func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, options renderers.RuntimeOptions) (*gatewayv1alpha1.Hostname, error) {
 	var hostname gatewayv1alpha1.Hostname
+	publicIP := options.Gateway.PublicIP
+	isDev := options.IsDev
 
-	// If publicIP is not found or is private (to support local dev scenario)
-	if publicIP == "" || strings.HasPrefix(publicIP, "172") {
+	if publicIP == "" || isDev {
 		return nil, nil
 	} else if gateway.Hostname != nil {
 		if gateway.Hostname.FullyQualifiedHostname != nil {

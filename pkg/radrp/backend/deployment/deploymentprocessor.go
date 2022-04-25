@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-openapi/jsonpointer"
@@ -697,7 +698,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 
 func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {
 	options := renderers.RuntimeOptions{}
-
 	if dp.k8s != nil {
 		// We require a gateway class to be present before creating a gateway
 		// Look up the first gateway class in the cluster and use that for now
@@ -731,6 +731,10 @@ func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers
 			GatewayClass: gatewayClass,
 			PublicIP:     publicIP,
 		}
+
+		// Check if is dev environment. In the future,
+		// this should be replaced with something more understandable.
+		options.IsDev = strings.HasPrefix(publicIP, "172")
 	}
 
 	return options, nil
