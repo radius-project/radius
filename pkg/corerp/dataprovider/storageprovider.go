@@ -34,7 +34,6 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 	return &storageProvider{
 		clients: map[string]store.StorageClient{},
 		options: opts,
-		lock:    sync.Mutex{},
 	}
 }
 
