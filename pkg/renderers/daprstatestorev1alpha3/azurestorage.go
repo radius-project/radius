@@ -24,7 +24,7 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outpu
 	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForResource
 	}
-	accountID, err := renderers.ValidateResourceID(*properties.Resource, StorageAccountResourceType, "Storage Account")
+	accountID, err := renderers.ValidateResourceID(*properties.Resource, StorageAccountResourceType, "Storage Table")
 	if err != nil {
 		return nil, err
 	}
@@ -36,6 +36,7 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outpu
 			Type:     resourcekinds.DaprStateStoreAzureStorage,
 			Provider: providers.ProviderAzure,
 		},
+		//nithya
 		Resource: map[string]string{
 			handlers.KubernetesNameKey:       resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,

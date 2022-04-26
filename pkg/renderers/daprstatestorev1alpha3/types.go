@@ -19,6 +19,14 @@ var StorageAccountResourceType = azresources.KnownType{
 			Type: azresources.StorageStorageAccounts,
 			Name: "*",
 		},
+		{
+			Type: azresources.StorageStorageTableServices,
+			Name: "*",
+		},
+		{
+			Type: azresources.StorageStorageAccountsTables,
+			Name: "*",
+		},
 	},
 }
 

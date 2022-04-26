@@ -64,6 +64,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 	}
 
 	err = handler.CreateDaprStateStore(ctx, *account.Name, *key.Value, properties, *options)
+	//Nithya : resource name might not be empty here.
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ResourceName],
+				"name":      "somename",
 				"labels":    kubernetes.MakeDescriptiveLabels(options.ApplicationName, options.ResourceName),
 			},
 			"spec": map[string]interface{}{
