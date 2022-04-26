@@ -29,7 +29,7 @@ type storageProvider struct {
 	lock    sync.Mutex
 }
 
-// NewStorageProvider creates new storageProvider instance.
+// NewStorageProvider creates new DataStorageProvider instance.
 func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 	return &storageProvider{
 		clients: map[string]store.StorageClient{},
