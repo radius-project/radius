@@ -24,9 +24,9 @@ var (
 var _ DataStorageProvider = (*storageProvider)(nil)
 
 type storageProvider struct {
-	clients map[string]store.StorageClient
-	options StorageProviderOptions
-	lock    sync.Mutex
+	clientsMu sync.Mutex
+	clients   map[string]store.StorageClient
+	options   StorageProviderOptions
 }
 
 // NewStorageProvider creates new DataStorageProvider instance.
@@ -39,6 +39,9 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 
 // GetStorageClient creates or gets storage client.
 func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType string) (store.StorageClient, error) {
+	p.clientsMu.Lock()
+	defer p.clientsMu.Unlock()
+
 	cn := normalizeResourceType(resourceType)
 	if c, ok := p.clients[cn]; ok {
 		return c, nil
@@ -46,20 +49,11 @@ func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType str
 	if err := p.init(ctx, resourceType); err != nil {
 		return nil, err
 	}
-
 	return p.clients[cn], nil
 }
 
 func (p *storageProvider) init(ctx context.Context, resourceType string) error {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
 	cn := normalizeResourceType(resourceType)
-
-	// return immediately if someone already init storage client for storageName.
-	if _, ok := p.clients[cn]; ok {
-		return nil
-	}
 
 	var dbclient store.StorageClient
 	var err error
