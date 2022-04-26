@@ -18,7 +18,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
       container: {
         image: magpieimage
         env: {
-          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername};Password=${adminPassword};Encrypt=True;TrustServerCertificate=True'
+          CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},${sqlRoute.properties.port};Initial Catalog=${db.properties.database};User Id=${adminUsername};Password=${adminPassword};Encrypt=True;TrustServerCertificate=True'
         }
         readinessProbe:{
           kind:'httpGet'
@@ -39,9 +39,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
   resource sqlRoute 'HttpRoute' = {
     name: 'sql-route'
-    properties: {
-      port: 1433
-    }
   }
 
   resource sqlContainer 'Container' = {

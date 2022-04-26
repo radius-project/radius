@@ -1683,24 +1683,34 @@ type GatewayListOptions struct {
 	// placeholder for future optional parameters
 }
 
-type GatewayListener struct {
-	// The port to listen on.
-	Port *float32 `json:"port,omitempty"`
-
-	// The protocol to use for this listener.
-	Protocol *string `json:"protocol,omitempty"`
-}
-
 type GatewayProperties struct {
-	// Dictionary of
-	Listeners map[string]*GatewayListener `json:"listeners,omitempty"`
+	// Declare hostname information for the gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
+
+	// Sets gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
+	Internal *bool `json:"internal,omitempty"`
+
+	// Routes attached to this Gateway
+	Routes []*GatewayRoute `json:"routes,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type GatewayProperties.
 func (g GatewayProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "listeners", g.Listeners)
+	populate(objectMap, "hostname", g.Hostname)
+	populate(objectMap, "internal", g.Internal)
+	populate(objectMap, "routes", g.Routes)
 	return json.Marshal(objectMap)
+}
+
+// GatewayPropertiesHostname - Declare hostname information for the gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+type GatewayPropertiesHostname struct {
+	// Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both are defined.
+	FullyQualifiedHostname *string `json:"fullyQualifiedHostname,omitempty"`
+
+	// Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname' and will be overridden
+// if both are defined.
+	Prefix *string `json:"prefix,omitempty"`
 }
 
 // GatewayResource - Resource that specifies how traffic is exposed to the application.
@@ -1738,6 +1748,18 @@ func (g *GatewayResource) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+type GatewayRoute struct {
+	// The HttpRoute to route to. Ex - myserviceroute.id.
+	Destination *string `json:"destination,omitempty"`
+
+	// The path to match the incoming request path on. Ex - /myservice.
+	Path *string `json:"path,omitempty"`
+
+	// Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute'
+// to '/myroute'
+	ReplacePrefix *string `json:"replacePrefix,omitempty"`
 }
 
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
@@ -1823,46 +1845,6 @@ type HTTPRouteBeginDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// HTTPRouteGateway - Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from
-// the internet.
-type HTTPRouteGateway struct {
-	// REQUIRED; Specifies the public hostname for the route. Use '*' to listen on all hostnames.
-	Hostname *string `json:"hostname,omitempty"`
-
-	// Dictionary of
-	Rules map[string]*HTTPRouteGatewayRule `json:"rules,omitempty"`
-
-	// The gateway which this route is part of.
-	Source *string `json:"source,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteGateway.
-func (h HTTPRouteGateway) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "hostname", h.Hostname)
-	populate(objectMap, "rules", h.Rules)
-	populate(objectMap, "source", h.Source)
-	return json.Marshal(objectMap)
-}
-
-// HTTPRouteGatewayPath - Specifies path matching options to match requests on.
-type HTTPRouteGatewayPath struct {
-	// Specifies the path to match the incoming request.
-	Type *string `json:"type,omitempty"`
-
-	// Specifies the type of matching to match the path on. Supported values: 'prefix', 'exact'.
-	Value *string `json:"value,omitempty"`
-}
-
-// HTTPRouteGatewayRule - Specifies the rule to match requests on.
-type HTTPRouteGatewayRule struct {
-	// Specifies the method to match on the incoming request.
-	Method *string `json:"method,omitempty"`
-
-	// Specifies path matching options to match requests on.
-	Path *HTTPRouteGatewayPath `json:"path,omitempty"`
-}
-
 // HTTPRouteGetOptions contains the optional parameters for the HTTPRoute.Get method.
 type HTTPRouteGetOptions struct {
 	// placeholder for future optional parameters
@@ -1888,13 +1870,10 @@ type HTTPRouteListOptions struct {
 
 type HTTPRouteProperties struct {
 	BasicRouteProperties
-	// Specifies configuration to allow public traffic from outside the network to the route. Configure a gateway to accept traffic from the internet.
-	Gateway *HTTPRouteGateway `json:"gateway,omitempty"`
-
 	// The internal hostname accepting traffic for the route. Readonly.
 	Hostname *float32 `json:"hostname,omitempty"`
 
-	// The port number for the route. Defaults to 80.
+	// The port number for the route. Defaults to 80. Readonly.
 	Port *float32 `json:"port,omitempty"`
 
 	// The scheme used for traffic. Readonly.

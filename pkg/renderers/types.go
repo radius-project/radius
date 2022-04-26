@@ -35,11 +35,13 @@ type RenderOptions struct {
 }
 
 type RuntimeOptions struct {
+	IsDev   bool
 	Gateway GatewayOptions
 }
 
 type GatewayOptions struct {
 	GatewayClass string
+	PublicIP     string
 }
 
 type RendererResource struct {

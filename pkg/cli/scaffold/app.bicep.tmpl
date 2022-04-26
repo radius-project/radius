@@ -17,21 +17,28 @@ resource app 'radius.dev/Application@v1alpha3' = {
         ports: {
           web: {
             containerPort: 3000
-            provides: web.id
+            provides: route.id
           }
         }
       }
     }
   }
 
-  // Create a route to accept HTTP traffic from the internet.
-  // Remove the 'gateway' section to use as an internal route.
-  resource web 'HttpRoute' = {
+  // Creates a route to bind requests from the gateway to a service.
+  resource route 'HttpRoute' = {
+    name: 'route'
+  }
+
+  // Creates a gateway to accept HTTP traffic from the internet.
+  resource gateway 'Gateway' = {
     name: 'web'
     properties: {
-      gateway: {
-        hostname: '*'
-      }
+      routes: [
+        {
+          path: '/'
+          destination: route.id
+        }
+      ]
     }
   }
 }

@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-openapi/jsonpointer"
@@ -24,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
@@ -696,21 +698,43 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 
 func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {
 	options := renderers.RuntimeOptions{}
-	// We require a gateway class to be present before creating a gateway
-	// Look up the first gateway class in the cluster and use that for now
 	if dp.k8s != nil {
+		// We require a gateway class to be present before creating a gateway
+		// Look up the first gateway class in the cluster and use that for now
 		var gateways gatewayv1alpha1.GatewayClassList
 		err := dp.k8s.List(ctx, &gateways)
-		if err != nil {
+		if err != nil || len(gateways.Items) < 1 {
 			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up GatewayClass: %w", err)
 		}
 
-		if len(gateways.Items) > 0 {
-			gatewayClass := gateways.Items[0]
-			options.Gateway = renderers.GatewayOptions{
-				GatewayClass: gatewayClass.Name,
+		gatewayClass := gateways.Items[0].Name
+
+		// Find the public IP of the cluster (External IP of the haproxy-ingress service)
+		var services corev1.ServiceList
+		var publicIP string
+		err = dp.k8s.List(ctx, &services, &client.ListOptions{Namespace: "radius-system"})
+		if err != nil {
+			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up Services: %w", err)
+		}
+
+	outer:
+		for _, service := range services.Items {
+			if service.Name == "haproxy-ingress" {
+				for _, in := range service.Status.LoadBalancer.Ingress {
+					publicIP = in.IP
+					break outer
+				}
 			}
 		}
+
+		options.Gateway = renderers.GatewayOptions{
+			GatewayClass: gatewayClass,
+			PublicIP:     publicIP,
+		}
+
+		// Check if is dev environment. In the future,
+		// this should be replaced with something more understandable.
+		options.IsDev = strings.HasPrefix(publicIP, "172")
 	}
 
 	return options, nil

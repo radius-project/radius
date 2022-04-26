@@ -2,11 +2,15 @@
   "id": "id", 
   "name": "name",
   "properties": {
-    "listeners": {
-      "foo": {
-        "protocol": "HTTP",
-        "port": 80
+    "hostname": {
+      "prefix": "hostname",
+      "fullyQualifiedHostname": "fullyQualifiedHostname"
+    },
+    "routes": [
+      {
+        "path": "/path",
+        "destination": ".../destination"
       }
-    }
+    ]
   }
 }

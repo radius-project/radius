@@ -1,14 +1,20 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-container-httpbinding'
 
-  resource frontendhttp 'HttpRoute' = {
-    name: 'frontend'
+  resource frontendgateway 'Gateway' = {
+    name: 'frontendgateway'
     properties: {
-      port: 80
-      gateway: {
-        hostname: '*'
-      }
+      routes: [
+        {
+          path: '/'
+          destination: frontendhttp.id
+        }
+      ]
     }
+  }
+
+  resource frontendhttp 'HttpRoute' = {
+    name: 'frontendhttp'
   }
 
   resource frontend 'Container' = {
