@@ -53,7 +53,7 @@ func DeleteBicep() error {
 
 // DownloadBicep updates our local copy of bicep
 func DownloadBicep() error {
-	uri, err := tools.GetDownloadURIFromChannel(downloadURIFmt, binaryName, "pr-275")
+	uri, err := tools.GetDownloadURI(downloadURIFmt, binaryName)
 	if err != nil {
 		return err
 	}

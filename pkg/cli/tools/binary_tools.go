@@ -95,23 +95,6 @@ func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
 	}
 }
 
-func GetDownloadURIFromChannel(downloadURIFmt string, binaryName string, channelName string) (string, error) {
-	filename, err := getFilename(binaryName)
-	if err != nil {
-		return "", err
-	}
-
-	if runtime.GOOS == "darwin" {
-		return fmt.Sprintf(downloadURIFmt, channelName, "macos-x64", filename), nil
-	} else if runtime.GOOS == "linux" {
-		return fmt.Sprintf(downloadURIFmt, channelName, "linux-x64", filename), nil
-	} else if runtime.GOOS == "windows" {
-		return fmt.Sprintf(downloadURIFmt, channelName, "windows-x64", filename), nil
-	} else {
-		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
-	}
-}
-
 func DownloadToFolder(filepath string, resp *http.Response) error {
 	// create folders
 	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
