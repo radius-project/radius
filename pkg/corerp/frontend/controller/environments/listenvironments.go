@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
@@ -49,7 +52,30 @@ func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Res
 		return nil, err
 	}
 
-	pagination, err := e.CreatePaginationResponse(ctx, result)
+	pagination, err := e.createPaginationResponse(serviceCtx.APIVersion, result)
 
 	return rest.NewOKResponse(pagination), err
+}
+
+// TODO: make this pagination logic generic function.
+func (e *ListEnvironments) createPaginationResponse(apiversion string, result *store.ObjectQueryResult) (*armrpcv1.PaginatedList, error) {
+	items := []interface{}{}
+	for _, item := range result.Items {
+		denv := &datamodel.Environment{}
+		if err := ctrl.DecodeMap(item.Data, denv); err != nil {
+			return nil, err
+		}
+		versioned, err := converter.EnvironmentDataModelToVersioned(denv, apiversion)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, versioned)
+	}
+
+	// TODO: implement pagination using paginationtoken
+	return &armrpcv1.PaginatedList{
+		Value: items,
+		// TODO: set NextLink: if result.PaginationToken is not empty
+	}, nil
 }
