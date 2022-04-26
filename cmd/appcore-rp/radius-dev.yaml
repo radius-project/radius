@@ -13,10 +13,10 @@ storageProvider:
   provider: "cosmosdb"
   cosmosdb:
     # Create your own SQL API Cosmos DB account and set url in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_URL environment variable
-    url: https://radius-eastus-test.documents.azure.com:443/  
+    url: https://radius-eastus-test.documents.azure.com:443/
     database: applicationscore
-    # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable 
-    masterKey: masterkey
+    # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
+    masterKey: set-me-in-a-different-way
 server:
   host: "0.0.0.0"
   port: 8080
