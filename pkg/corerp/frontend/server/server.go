@@ -31,6 +31,7 @@ func NewServer(ctx context.Context, options ServerOptions) *http.Server {
 		options.Configure(r)
 	}
 
+	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues)
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
 	r.Path("/version").Methods(http.MethodGet).HandlerFunc(reportVersion)
