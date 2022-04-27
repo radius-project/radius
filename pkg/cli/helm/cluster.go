@@ -41,6 +41,12 @@ func NewDefaultClusterOptions() ClusterOptions {
 		chartVersion = fmt.Sprintf("~%s", version.ChartVersion())
 	}
 
+	// By default we use the release semver for the rp tag.
+	tag := version.Release()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
+
 	return ClusterOptions{
 		Namespace: "default",
 		Dapr: DaprOptions{
@@ -53,6 +59,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 		},
 		Radius: RadiusOptions{
 			ChartVersion: chartVersion,
+			Tag:          tag,
 		},
 	}
 }

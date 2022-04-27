@@ -130,7 +130,13 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	options.Namespace = namespace
 	options.Radius.ChartPath = chartPath
 	options.Radius.Image = image
-	options.Radius.Tag = tag
+
+	// If tag is set by CLI, use that.
+	// Otherwise, use the default tag for the release.
+	if tag != "" {
+		options.Radius.Tag = tag
+	}
+
 	options.Radius.AzureProvider = azureProvider
 
 	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
