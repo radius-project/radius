@@ -1,7 +1,8 @@
 # This is an example of configuration file.
 cloudEnvironment:
   name: AzureCloud
-identity:
+  roleLocation: West US
+identity: # 1P AAD APP authentication
   clientId: "PLACEHOLDER"
   instance: "https://login.windows.net"
   tenantId: "common"
