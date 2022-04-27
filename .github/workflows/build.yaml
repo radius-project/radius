@@ -433,7 +433,7 @@ jobs:
 
   delete_artifacts:
     name: Delete artifacts
-    if: ${{ always() }}
+    if: ${{ success() }}
     needs: [ 'build', 'local_dev_tests', 'publish' ]
     runs-on: ubuntu-latest
     steps:

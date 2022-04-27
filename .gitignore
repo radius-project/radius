@@ -11,6 +11,9 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# log files
+*.log
+
 # Auto-generated cli docs files
 docs/content/reference/cli/rad*
 
