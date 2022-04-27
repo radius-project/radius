@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -59,9 +58,6 @@ func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Envi
 		InternalMetadata: datamodel.InternalMetadata{},
 	}
 
-	azID, _ := azresources.Parse(env.ID)
-	env.InternalMetadata.SubscriptionID = strings.ToLower(azID.SubscriptionID)
-	env.InternalMetadata.ResourceGroup = strings.ToLower(azID.ResourceGroup)
 	env.InternalMetadata.CreatedAPIVersion = "2022-03-15-privatepreview"
 	env.InternalMetadata.UpdatedAPIVersion = "2022-03-15-privatepreview"
 

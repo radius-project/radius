@@ -19,8 +19,8 @@
 1. Define api version agnostic datamodel in  [/pkg/corerp/datamodel](datamodel/) and its converters beteen datamodel and api models.
 1. Define routes for new resource type and its operation APIs in [routes.go](frontend/handler/routes.go).
 1. Create resource type directory under `/pkg/frontend/controller/` and related go files by referring to [environments controller](frontend/controller/environments/).
-1. Create `handler_[resourcetype].go` by referring to [existing handler files](frontend/handler/).
 1. Implement operation controllers and tests.
+1. Register handlers in [handlers.go](frontend/handler/handlers.go).
 
 ## References
 

@@ -32,6 +32,7 @@ func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 			},
 		},
 		InternalMetadata: datamodel.InternalMetadata{
+			CreatedAPIVersion: Version,
 			UpdatedAPIVersion: Version,
 		},
 	}

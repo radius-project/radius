@@ -1,0 +1,10 @@
+{
+    "location": "West US",
+    "properties": {
+        "compute": {
+            "kind": "kubernetes",
+            "resourceId": "fakeid"
+        },
+        "provisioningState": "Succeeded"
+    }
+}

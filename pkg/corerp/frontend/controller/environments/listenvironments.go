@@ -7,16 +7,18 @@ package environments
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/store"
 )
 
 var _ ctrl.ControllerInterface = (*ListEnvironments)(nil)
@@ -27,46 +29,53 @@ type ListEnvironments struct {
 }
 
 // NewListEnvironments creates a new ListEnvironments.
-func NewListEnvironments(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (*ListEnvironments, error) {
+func NewListEnvironments(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
 	return &ListEnvironments{
 		BaseController: ctrl.BaseController{
-			DBProvider: db,
-			JobEngine:  jobEngine,
+			DBClient:  storageClient,
+			JobEngine: jobEngine,
 		},
 	}, nil
 }
 
 func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	_ = e.Validate(ctx, req)
 	rID := serviceCtx.ResourceID
 
-	// TODO: Get the environment resource from datastorage. now return fake data.
-
-	m := &datamodel.Environment{
-		TrackedResource: datamodel.TrackedResource{
-			ID:       rID.ID,
-			Name:     rID.Name(),
-			Type:     rID.Type(),
-			Location: "West US",
-		},
-		SystemData: *serviceCtx.SystemData(),
-		Properties: datamodel.EnvironmentProperties{
-			Compute: datamodel.EnvironmentCompute{
-				Kind:       datamodel.KubernetesComputeKind,
-				ResourceID: "fakeID",
-			},
-		},
+	query := store.Query{
+		RootScope:    fmt.Sprintf("/subscriptions/%s/resourceGroup/%s", rID.SubscriptionID, rID.ResourceGroup),
+		ResourceType: rID.Type(),
 	}
 
-	versioned, _ := converter.EnvironmentDataModelToVersioned(m, serviceCtx.APIVersion)
-
-	pagination := armrpcv1.PaginatedList{
-		Value: []interface{}{versioned},
+	result, err := e.DBClient.Query(ctx, query, store.WithMaxQueryItemCount(20))
+	if err != nil {
+		return nil, err
 	}
-	return rest.NewOKResponse(pagination), nil
+
+	pagination, err := e.createPaginationResponse(serviceCtx.APIVersion, result)
+
+	return rest.NewOKResponse(pagination), err
 }
 
-func (e *ListEnvironments) Validate(ctx context.Context, req *http.Request) error {
-	return nil
+// TODO: make this pagination logic generic function.
+func (e *ListEnvironments) createPaginationResponse(apiversion string, result *store.ObjectQueryResult) (*armrpcv1.PaginatedList, error) {
+	items := []interface{}{}
+	for _, item := range result.Items {
+		denv := &datamodel.Environment{}
+		if err := ctrl.DecodeMap(item.Data, denv); err != nil {
+			return nil, err
+		}
+		versioned, err := converter.EnvironmentDataModelToVersioned(denv, apiversion)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, versioned)
+	}
+
+	// TODO: implement pagination using paginationtoken
+	return &armrpcv1.PaginatedList{
+		Value: items,
+		// TODO: set NextLink: if result.PaginationToken is not empty
+	}, nil
 }

@@ -15,8 +15,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/store"
 )
 
 var _ ctrl.ControllerInterface = (*CreateOrUpdateSubscription)(nil)
@@ -27,11 +27,11 @@ type CreateOrUpdateSubscription struct {
 }
 
 // NewCreateOrUpdateSubscription creates a new CreateOrUpdateSubscription.
-func NewCreateOrUpdateSubscription(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (*CreateOrUpdateSubscription, error) {
+func NewCreateOrUpdateSubscription(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
 	return &CreateOrUpdateSubscription{
 		BaseController: ctrl.BaseController{
-			DBProvider: db,
-			JobEngine:  jobEngine,
+			DBClient:  storageClient,
+			JobEngine: jobEngine,
 		},
 	}, nil
 }

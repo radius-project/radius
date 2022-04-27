@@ -16,4 +16,7 @@ func (k *contextKey) String() string {
 var (
 	// armContextKey is the context key for ARM RPC request.
 	armContextKey = &contextKey{"armrpc"}
+
+	// HostingConfigContextKey is the context key for hosting configuration.
+	HostingConfigContextKey = &contextKey{"hostingConfig"}
 )

@@ -7,15 +7,18 @@ package environments
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/store"
+
+	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 )
 
 var _ ctrl.ControllerInterface = (*CreateOrUpdateEnvironment)(nil)
@@ -26,11 +29,11 @@ type CreateOrUpdateEnvironment struct {
 }
 
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
-func NewCreateOrUpdateEnvironment(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (*CreateOrUpdateEnvironment, error) {
+func NewCreateOrUpdateEnvironment(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
 	return &CreateOrUpdateEnvironment{
 		BaseController: ctrl.BaseController{
-			DBProvider: db,
-			JobEngine:  jobEngine,
+			DBClient:  storageClient,
+			JobEngine: jobEngine,
 		},
 	}, nil
 }
@@ -43,7 +46,26 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
+	// Read resource metadata from the storage
+	existingResource := &datamodel.Environment{}
+	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
+		return nil, err
+	}
+
+	newResource.SystemData = ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
+	if existingResource.CreatedAPIVersion != "" {
+		newResource.CreatedAPIVersion = existingResource.CreatedAPIVersion
+	}
+	newResource.TenantID = serviceCtx.HomeTenantID
+
+	err = e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO: Save the resource and queue the async task.
+
 	versioned, err := converter.EnvironmentDataModelToVersioned(newResource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
@@ -55,19 +77,27 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 // Validate extracts versioned resource from request and validate the properties.
 func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Environment, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-
+	serviceOpt := hostoptions.FromContext(ctx)
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err
 	}
-	newVersioned, err := converter.EnvironmentDataModelFromVersioned(content, apiVersion)
 
-	// TODO: Validate incoming request payload.
-	// TODO: Read resource metadata from datastorage.
-	// TODO: Read Systemdata from the existing resource and update it properly.
-	newVersioned.SystemData = *serviceCtx.SystemData()
+	dm, err := converter.EnvironmentDataModelFromVersioned(content, apiVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Add more validation e.g. schema, identity, etc.
+
+	dm.ID = serviceCtx.ResourceID.ID
+	dm.TrackedResource.ID = serviceCtx.ResourceID.ID
+	dm.TrackedResource.Name = serviceCtx.ResourceID.Name()
+	dm.TrackedResource.Type = serviceCtx.ResourceID.Type()
+	dm.TrackedResource.Location = serviceOpt.CloudEnv.RoleLocation
+
 	// TODO: Update the state.
-	newVersioned.Properties.ProvisioningState = datamodel.ProvisioningStateSucceeded
+	dm.Properties.ProvisioningState = datamodel.ProvisioningStateSucceeded
 
-	return newVersioned, err
+	return dm, err
 }

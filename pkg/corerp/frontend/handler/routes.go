@@ -6,11 +6,15 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
+
+	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
+	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
 )
 
 const (
@@ -19,36 +23,46 @@ const (
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
 // TODO: Enable api spec validator.
-func AddRoutes(db db.RadrpDB, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) {
-	h := handler{
-		db:        db,
-		jobEngine: jobEngine,
-		pathBase:  pathBase,
-	}
-
+func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
 	// Provider system notification.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
-	router.Path(h.pathBase+"/subscriptions/{subscriptionID}").
-		Queries(APIVersionParam, "{"+APIVersionParam+"}").
-		Methods(http.MethodPut).HandlerFunc(h.createOrUpdateSubscription)
+	providerRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
 	// Tenant level API routes.
-	tenantLevelPath := h.pathBase + "/providers/applications.core"
+	tenantLevelPath := pathBase + "/providers/applications.core"
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-	router.Path(tenantLevelPath+"/operations").
-		Queries(APIVersionParam, "{"+APIVersionParam+"}").
-		Methods(http.MethodGet).HandlerFunc(h.getOperations)
+	operationsRouter := router.Path(tenantLevelPath+"/operations").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
 	// Resource Group level API routes.
-	resourceGroupLevelPath := h.pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
+	resourceGroupLevelPath := pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
 
 	// Adds environment resource type routes
 	envRTSubrouter := router.PathPrefix(resourceGroupLevelPath+"/environments").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-	envRTSubrouter.Path("/").Methods(http.MethodGet).HandlerFunc(h.listEnvironments)
 	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
-	envResourceRouter.Methods(http.MethodGet).HandlerFunc(h.getEnvironment)
-	envResourceRouter.Methods(http.MethodPut).HandlerFunc(h.createOrUpdateEnvironment)
-	envResourceRouter.Methods(http.MethodPatch).HandlerFunc(h.createOrUpdateEnvironment)
-	envResourceRouter.Methods(http.MethodDelete).HandlerFunc(h.deleteEnvironment)
+
+	// Register handlers
+	handlers := []handlerParam{
+		// Provider handler registration.
+		{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, provider_ctrl.NewCreateOrUpdateSubscription},
+		{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, provider_ctrl.NewGetOperations},
+		// Environments resource handler registration.
+		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewListEnvironments},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewGetEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, env_ctrl.NewDeleteEnvironment},
+
+		// Create the operational controller and add new resource types' handlers.
+	}
+
+	for _, h := range handlers {
+		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.fn); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

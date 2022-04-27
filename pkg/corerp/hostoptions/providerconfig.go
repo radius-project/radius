@@ -5,12 +5,15 @@
 
 package hostoptions
 
+import "github.com/project-radius/radius/pkg/corerp/dataprovider"
+
 // ProviderConfig includes the resource provider configuration.
 type ProviderConfig struct {
-	CloudEnv CloudEnvironmentOptions `yaml:"cloudEnvironment"`
-	Identity IdentityOptions         `yaml:"identity"`
-	Server   ServerOptions           `yaml:"server"`
-	Metrics  MetricOptions           `yaml:"metric"`
+	CloudEnv        CloudEnvironmentOptions             `yaml:"cloudEnvironment"`
+	Identity        IdentityOptions                     `yaml:"identity"`
+	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
+	Server          ServerOptions                       `yaml:"server"`
+	Metrics         MetricOptions                       `yaml:"metric"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
@@ -35,7 +38,8 @@ const (
 
 // CloudEnvironmentOptions represents the cloud environment.
 type CloudEnvironmentOptions struct {
-	Name CloudEnvironmentType `yaml:"name"`
+	Name         CloudEnvironmentType `yaml:"name"`
+	RoleLocation string               `yaml:"roleLocation"`
 }
 
 // IdentityOptions includes authentication options to issue JWT from Azure AD.

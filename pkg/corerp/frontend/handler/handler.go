@@ -10,77 +10,52 @@ import (
 	"fmt"
 	"net/http"
 
-	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
+	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/corerp/dataprovider"
+	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/store"
 )
 
-// A brief note on error handling... The handler is responsible for all of the direct actions
-// with HTTP request/reponse.
-//
-// The RP returns the rest.Response type for "known" or "expected" error conditions:
-// - validation error
-// - missing data
-//
-// The RP returns an error for "unexpected" error conditions:
-// - DB failure
-// - I/O failure
-//
-// This code will assume that any Golang error returned from the RP represents a reliability error
-// within the RP or a bug.
+type ControllerFunc func(store.StorageClient, deployment.DeploymentProcessor) (controller.ControllerInterface, error)
 
-type handler struct {
-	db        db.RadrpDB
-	jobEngine deployment.DeploymentProcessor
-
-	pathBase string
+type handlerParam struct {
+	parent       *mux.Router
+	resourcetype string
+	method       string
+	fn           ControllerFunc
 }
 
-// This includes ARM RPC provider specific handlers.
-
-func (h *handler) getOperations(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-
-	op, err := provider_ctrl.NewGetOperations(h.db, h.jobEngine)
+func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, parent *mux.Router, resourcetype string, method string, CreateController ControllerFunc) error {
+	sc, err := sp.GetStorageClient(ctx, resourcetype)
 	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
+		return err
 	}
 
-	response, err := op.Run(ctx, req)
+	ctrl, err := CreateController(sc, nil)
 	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
+		return err
 	}
 
-	err = response.Apply(ctx, w, req)
-	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
-	}
-}
+	fn := func(w http.ResponseWriter, req *http.Request) {
+		hctx := req.Context()
 
-func (h *handler) createOrUpdateSubscription(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	op, err := provider_ctrl.NewCreateOrUpdateSubscription(h.db, h.jobEngine)
-	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
+		response, err := ctrl.Run(hctx, req)
+		if err != nil {
+			internalServerError(hctx, w, req, err)
+			return
+		}
+		err = response.Apply(hctx, w, req)
+		if err != nil {
+			internalServerError(hctx, w, req, err)
+			return
+		}
 	}
-
-	response, err := op.Run(ctx, req)
-	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
-	}
-	err = response.Apply(ctx, w, req)
-	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
-	}
+	parent.Methods(method).HandlerFunc(fn)
+	return nil
 }
 
 // Responds with an HTTP 500

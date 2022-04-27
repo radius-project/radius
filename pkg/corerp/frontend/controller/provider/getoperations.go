@@ -14,8 +14,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/store"
 )
 
 var _ ctrl.ControllerInterface = (*GetOperations)(nil)
@@ -26,11 +26,11 @@ type GetOperations struct {
 }
 
 // NewGetOperations creates a new GetOperations.
-func NewGetOperations(db db.RadrpDB, jobEngine deployment.DeploymentProcessor) (*GetOperations, error) {
+func NewGetOperations(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
 	return &GetOperations{
 		BaseController: ctrl.BaseController{
-			DBProvider: db,
-			JobEngine:  jobEngine,
+			DBClient:  storageClient,
+			JobEngine: jobEngine,
 		},
 	}, nil
 }
