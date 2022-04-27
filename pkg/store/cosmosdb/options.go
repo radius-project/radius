@@ -8,7 +8,8 @@ package cosmosdb
 import "github.com/project-radius/radius/pkg/store"
 
 const (
-	defaultQueryItemCount = 20
+	defaultQueryItemCount       = 20
+	defaultCollectionThroughPut = 400
 )
 
 // ConnectionOptions represents connection info to connect CosmosDB
@@ -21,6 +22,8 @@ type ConnectionOptions struct {
 	CollectionName string
 	// DefaultQueryItemCount represents the maximum number of items for query.
 	DefaultQueryItemCount int
+	// CollectionThroughput represents shared throughput database share the throughput (RU/s) allocated to that database.
+	CollectionThroughput int
 
 	// MasterKey is the key string for CosmosDB connection.
 	MasterKey string

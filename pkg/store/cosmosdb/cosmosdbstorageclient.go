@@ -17,8 +17,7 @@ import (
 
 const (
 	// PartitionKeyName is the property used for partitioning.
-	PartitionKeyName     = "/partitionKey"
-	collectionThroughPut = 4000
+	PartitionKeyName = "/partitionKey"
 
 	// go-cosmosdb does not return the error response code. Comparing error message is the only way to check the errors.
 	// Once we move to official Go SDK, we can have the better error handling.
@@ -115,7 +114,7 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 	if err != nil && !strings.EqualFold(err.Error(), errResourceNotFoundMsg) {
 		return err
 	}
-	_, err = c.client.CreateCollection(context.Background(), c.options.DatabaseName, cosmosapi.CreateCollectionOptions{
+	opt := cosmosapi.CreateCollectionOptions{
 		Id: c.options.CollectionName,
 		IndexingPolicy: &cosmosapi.IndexingPolicy{
 			IndexingMode: cosmosapi.IndexingMode("consistent"),
@@ -144,8 +143,13 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 			},
 			Kind: "Hash",
 		},
-		OfferThroughput: collectionThroughPut,
-	})
+	}
+
+	if c.options.CollectionThroughput > 0 {
+		opt.OfferThroughput = cosmosapi.OfferThroughput(c.options.CollectionThroughput)
+	}
+
+	_, err = c.client.CreateCollection(context.Background(), c.options.DatabaseName, opt)
 
 	if err != nil && strings.EqualFold(err.Error(), errIDConflictMsg) {
 		return nil
