@@ -145,6 +145,7 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 		},
 	}
 
+	// CollectionThroughput must be set only if radius use Provioned throughput mode.
 	if c.options.CollectionThroughput > 0 {
 		opt.OfferThroughput = cosmosapi.OfferThroughput(c.options.CollectionThroughput)
 	}
