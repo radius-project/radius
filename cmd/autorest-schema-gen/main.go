@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -58,8 +57,14 @@ func main() {
 	}
 
 	// Write JSON to output file.
+
+	err = os.MkdirAll(filepath.Dir(*outputFile), 0750)
+	if err != nil && !os.IsExist(err) {
+		log.Fatalf("Error: fail to create directory path to file %s: %v", *outputFile, err)
+	}
+
 	b, _ := json.MarshalIndent(outputSchema, "", "  ")
-	if err := ioutil.WriteFile(*outputFile, b, 0600); err != nil {
-		log.Fatalf("Error: fail to write to file %s", *outputFile)
+	if err := os.WriteFile(*outputFile, b, 0600); err != nil {
+		log.Fatalf("Error: fail to write to file %s: %v", *outputFile, err)
 	}
 }
