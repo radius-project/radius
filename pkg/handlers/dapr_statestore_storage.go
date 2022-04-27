@@ -95,7 +95,7 @@ func (handler *daprStateStoreAzureStorageHandler) CreateDaprStateStore(ctx conte
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      "somename",
+				"name":      properties[ResourceName],
 				"labels":    kubernetes.MakeDescriptiveLabels(options.ApplicationName, options.ResourceName),
 			},
 			"spec": map[string]interface{}{

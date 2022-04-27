@@ -45,6 +45,7 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outpu
 
 			handlers.StorageAccountIDKey:   accountID.ID,
 			handlers.StorageAccountNameKey: accountID.Types[0].Name,
+			handlers.ResourceName:          accountID.Types[2].Name,
 		},
 	}
 	return []outputresource.OutputResource{outputResource}, nil
