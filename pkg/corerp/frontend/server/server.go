@@ -28,8 +28,9 @@ type ServerOptions struct {
 	Address  string
 	PathBase string
 	// TODO: implement client cert based authentication for arm
-	EnableAuth bool
-	Configure  func(*mux.Router)
+	EnableAuth      bool
+	Configure       func(*mux.Router)
+	ArmMetaEndpoint string
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
@@ -38,9 +39,14 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 	if options.Configure != nil {
 		options.Configure(r)
 	}
-
+	//initialize the manager for ARM client cert validation
+	armCertMgr, err := middleware.NewArmCertManager(options.ArmMetaEndpoint)
+	if err != nil || armCertMgr == nil {
+		return nil
+	}
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues)
+	r.Use(middleware.ValidateCerticate(armCertMgr))
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(healthzAPIName)
