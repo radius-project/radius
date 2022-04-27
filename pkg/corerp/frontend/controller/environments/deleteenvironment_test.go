@@ -31,9 +31,9 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 		mStorageClient.
 			EXPECT().
-			Delete(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.DeleteOptions) error {
-				return &store.ErrNotFound{}
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return nil, &store.ErrNotFound{}
 			})
 
 		ctl, err := NewDeleteEnvironment(mStorageClient, nil)
@@ -49,6 +49,17 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
+		_, envDataModel, _ := getTestModels20220315privatepreview()
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id, ETag: "fakeEtag"},
+					Data:     envDataModel,
+				}, nil
+			})
 
 		mStorageClient.
 			EXPECT().
