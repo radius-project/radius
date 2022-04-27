@@ -73,12 +73,12 @@ var (
 	// TraceparentHeader is W3C trace parent header.
 	TraceparentHeader = "Traceparent"
 
-	// The If-Match HTTP request header makes a request conditional. The resource is returned only if the
+	// IfMatch HTTP request header makes a request conditional. The resource is returned only if the
 	// condition (tag or wildcard in this case)in the If-Match is met.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#etags-for-resources
 	IfMatch = http.CanonicalHeaderKey("If-Match")
 
-	// The If-None-Match HTTP request header also makes a request conditional. The resource is returned only
+	// IfNoneMatch HTTP request header also makes a request conditional. The resource is returned only
 	// if the condition (tag or wildcard in this case) in the If-None-Match is not met.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#etags-for-resources
 	IfNoneMatch = http.CanonicalHeaderKey("If-None-Match")

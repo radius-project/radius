@@ -72,9 +72,12 @@ func TestValidateEtag_IfMatch(t *testing.T) {
 						IfMatch: tt.ifMatchEtag,
 					}))
 			result := ValidateETag(*armRequestContext, tt.etagProvided)
-			if !tt.shouldFail && result != nil {
-				t.Errorf("test failed even though it should not have")
-				t.Logf(result.Error())
+			if !tt.shouldFail {
+				require.Nil(t, result)
+				require.NoError(t, result)
+			} else {
+				require.NotNil(t, result)
+				require.Error(t, result)
 			}
 		})
 	}
@@ -101,9 +104,12 @@ func TestValidateEtag_IfNoneMatch(t *testing.T) {
 						IfNoneMatch: tt.ifNoneMatchEtag,
 					}))
 			result := ValidateETag(*armRequestContext, tt.etagProvided)
-			if !tt.shouldFail && result != nil {
-				t.Errorf("test failed even though it should not have")
-				t.Logf(result.Error())
+			if !tt.shouldFail {
+				require.Nil(t, result)
+				require.NoError(t, result)
+			} else {
+				require.NotNil(t, result)
+				require.Error(t, result)
 			}
 		})
 	}

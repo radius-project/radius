@@ -539,3 +539,38 @@ forLoop:
 	}
 	return aggregateProvisiongState, aggregateProvisiongStateErrorDetails
 }
+
+// PreconditionFailedResponse represents an HTTP 412 with an ARM error payload.
+type PreconditionFailedResponse struct {
+	Body armerrors.ErrorResponse
+}
+
+func NewPreconditionFailedResponse(message string) Response {
+	return &PreconditionFailedResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.PreconditionFailed,
+				Message: message,
+			},
+		},
+	}
+}
+
+func (r *PreconditionFailedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusPreconditionFailed), radlogger.LogHTTPStatusCode, http.StatusPreconditionFailed)
+
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusPreconditionFailed)
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
+
+	return nil
+}
