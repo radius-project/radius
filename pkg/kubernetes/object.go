@@ -91,6 +91,24 @@ func FindHttpRoute(resources []outputresource.OutputResource) (*gatewayv1alpha1.
 	return nil, outputresource.OutputResource{}
 }
 
+// FindHttpRouteByLocalID finds an HttpRoute in a list of output resources, keyed by its localID
+func FindHttpRouteByLocalID(resources []outputresource.OutputResource, localID string) (*gatewayv1alpha1.HTTPRoute, outputresource.OutputResource) {
+	for _, r := range resources {
+		if r.ResourceType.Type != resourcekinds.KubernetesHTTPRoute || r.LocalID != localID {
+			continue
+		}
+
+		httpRoute, ok := r.Resource.(*gatewayv1alpha1.HTTPRoute)
+		if !ok {
+			continue
+		}
+
+		return httpRoute, r
+	}
+
+	return nil, outputresource.OutputResource{}
+}
+
 // FindHttpRoute finds an HttpRoute in a list of output resources
 func FindGateway(resources []outputresource.OutputResource) (*gatewayv1alpha1.Gateway, outputresource.OutputResource) {
 	for _, r := range resources {
@@ -117,6 +135,11 @@ func GetShortenedTargetPortName(name string) string {
 	h := fnv.New32a()
 	h.Write([]byte(name))
 	return "a" + fmt.Sprint(h.Sum32())
+}
+
+// GetDefaultPort() returns the default HTTP port (80)
+func GetDefaultPort() int {
+	return 80
 }
 
 // MakeScrapedSecretName creates a Secret scraped from input values passed through

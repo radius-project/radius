@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	k8slabels "github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"io"
 	"io/ioutil"
@@ -47,8 +46,7 @@ type ARMDiagnosticsClient struct {
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
 func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
-	// Only HTTP Route is supported
-	if len(options.ResourceID.Types) != 3 || !strings.EqualFold(options.ResourceID.Types[2].Type, resourcekinds.RadiusHttpRoute) {
+	if len(options.ResourceID.Types) != 3 || !strings.EqualFold(options.ResourceID.Types[2].Type, resourcekinds.Gateway) {
 		return nil, nil
 	}
 
@@ -57,40 +55,9 @@ func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 		return nil, err
 	}
 
-	status, err := response.RadiusResource.GetStatus()
-	if err != nil {
-		return nil, err
-	} else if status == nil {
-		return nil, nil
-	}
+	hostname := fmt.Sprint(response.RadiusResourceGetResult.RadiusResource.Properties["hostname"])
 
-	// TODO: Right now this is VERY coupled to how we do resource creation on the server.
-	// This will be improved as part of https://github.com/project-radius/radius/issues/1247 .
-	//
-	// When that change goes in we'll be able to work with the route type directly to get this information.
-	for _, output := range status.OutputResources {
-		gvk, _, _, err := output.OutputResourceInfo.RequireKubernetes()
-		if err != nil {
-			continue // Ignore non-kubernetes
-		}
-
-		// If the container has a Kubernetes HTTPRoute then it's using gateways. Look up the IP address
-		if gvk.Kind != resourcekinds.KubernetesHTTPRoute {
-			continue
-		}
-
-		service, err := dc.K8sTypedClient.CoreV1().Services("radius-system").Get(ctx, "haproxy-ingress", metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-
-		for _, in := range service.Status.LoadBalancer.Ingress {
-			endpoint := fmt.Sprintf("http://%s", in.IP)
-			return &endpoint, nil
-		}
-	}
-
-	return nil, nil
+	return &hostname, nil
 }
 
 func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {

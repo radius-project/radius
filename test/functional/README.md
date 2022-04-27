@@ -1,7 +1,3 @@
----
-toc_hide: true
----
+[Writing functional tests](https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-tests/writing-functional-tests.md)
 
-[Writing functional tests](https://edge.radapp.dev/contributing/contributing-code/contributing-code-tests/writing-functional-tests)
-
-[Running functional tests](https://edge.radapp.dev/contributing/contributing-code/contributing-code-tests/running-functional-tests)
+[Running functional tests](https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-tests/running-functional-tests.md)
