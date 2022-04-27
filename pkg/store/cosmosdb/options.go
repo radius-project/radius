@@ -8,8 +8,7 @@ package cosmosdb
 import "github.com/project-radius/radius/pkg/store"
 
 const (
-	defaultQueryItemCount       = 20
-	defaultCollectionThroughPut = 400
+	defaultQueryItemCount = 20
 )
 
 // ConnectionOptions represents connection info to connect CosmosDB
