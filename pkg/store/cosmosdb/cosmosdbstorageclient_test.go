@@ -8,7 +8,6 @@ package cosmosdb
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"testing"
 
@@ -35,10 +34,6 @@ var (
 	dBUrl     = os.Getenv("TEST_COSMOSDB_URL")
 	masterKey = os.Getenv("TEST_COSMOSDB_MASTERKEY")
 )
-
-func getRandomItem(items []string) string {
-	return items[rand.Intn(len(items))]
-}
 
 func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Environment {
 	testID := "/subscriptions/" + subID + "/resourceGroups/" + rgName + "/providers/Applications.Core/environments/" + resourceName

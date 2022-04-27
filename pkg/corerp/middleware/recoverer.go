@@ -30,7 +30,7 @@ func Recoverer(h http.Handler) http.Handler {
 					},
 				})
 
-				resp.Apply(r.Context(), w, r)
+				_ = resp.Apply(r.Context(), w, r)
 			}
 		}()
 

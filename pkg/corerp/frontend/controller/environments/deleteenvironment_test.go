@@ -41,7 +41,7 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, nil)
 		require.NoError(t, err)
-		resp.Apply(ctx, w, req)
+		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 204, w.Result().StatusCode)
 	})
 
@@ -62,7 +62,7 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, nil)
 		require.NoError(t, err)
-		resp.Apply(ctx, w, req)
+		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 	})
 }

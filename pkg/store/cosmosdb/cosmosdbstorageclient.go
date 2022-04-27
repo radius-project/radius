@@ -162,7 +162,7 @@ func constructCosmosDBQuery(query store.Query) (*ResourceScope, *cosmosapi.Query
 	}
 
 	// TODO: Support ScopeRecursive and RoutingScopePrefix later for UCP - https://github.com/project-radius/radius/issues/2224
-	if query.ScopeRecursive == true || query.RoutingScopePrefix != "" {
+	if query.ScopeRecursive || query.RoutingScopePrefix != "" {
 		return nil, nil, &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."}
 	}
 
