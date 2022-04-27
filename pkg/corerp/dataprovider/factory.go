@@ -20,10 +20,11 @@ var storageClientFactory = map[StorageProviderType]storageFactoryFunc{
 
 func initCosmosDBClient(ctx context.Context, opt StorageProviderOptions, collectionName string) (store.StorageClient, error) {
 	sopt := &cosmosdb.ConnectionOptions{
-		Url:            opt.CosmosDB.Url,
-		DatabaseName:   opt.CosmosDB.Database,
-		CollectionName: collectionName,
-		MasterKey:      opt.CosmosDB.MasterKey,
+		Url:                  opt.CosmosDB.Url,
+		DatabaseName:         opt.CosmosDB.Database,
+		CollectionName:       collectionName,
+		MasterKey:            opt.CosmosDB.MasterKey,
+		CollectionThroughput: opt.CosmosDB.CollectionThroughput,
 	}
 	dbclient, err := cosmosdb.NewCosmosDBStorageClient(sopt)
 	if err != nil {

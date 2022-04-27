@@ -21,6 +21,8 @@ type ConnectionOptions struct {
 	CollectionName string
 	// DefaultQueryItemCount represents the maximum number of items for query.
 	DefaultQueryItemCount int
+	// CollectionThroughput represents shared throughput database share the throughput (RU/s) allocated to that database.
+	CollectionThroughput int
 
 	// MasterKey is the key string for CosmosDB connection.
 	MasterKey string

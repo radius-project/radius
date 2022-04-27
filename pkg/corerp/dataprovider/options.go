@@ -13,7 +13,8 @@ type StorageProviderOptions struct {
 
 // CosmosDBOptions represents cosmosdb options for data storage provider.
 type CosmosDBOptions struct {
-	Url       string `yaml:"url"`
-	Database  string `yaml:"database"`
-	MasterKey string `yaml:"masterKey"`
+	Url                  string `yaml:"url"`
+	Database             string `yaml:"database"`
+	MasterKey            string `yaml:"masterKey"`
+	CollectionThroughput int    `yaml:"collectionThroughput,omitempty"`
 }
