@@ -22,7 +22,9 @@ import (
 const (
 	// APIVersionParameterName is the query string parameter for the api version.
 	APIVersionParameterName = "api-version"
+)
 
+var (
 	// AcceptLanguageHeader is the standard http header used so that we don't have to pass in the http request.
 	AcceptLanguageHeader = "Accept-Language"
 
@@ -70,6 +72,12 @@ const (
 
 	// TraceparentHeader is W3C trace parent header.
 	TraceparentHeader = "Traceparent"
+
+	// If-Match Header
+	IfMatch = http.CanonicalHeaderKey("If-Match")
+
+	// If-None-Match Header
+	IfNoneMatch = http.CanonicalHeaderKey("If-None-Match")
 )
 
 // ARMRequestContext represents the service context including proxy request header values.
@@ -107,6 +115,11 @@ type ARMRequestContext struct {
 	UserAgent string
 	// RawSystemMetadata is the raw system metadata from arm request. SystemData() returns unmarshalled system metadata
 	RawSystemMetadata string
+
+	// IfMatch receives "*" or an ETag - No support for multiple ETags for now
+	IfMatch string
+	// IfNoneMatch receives "*" or an ETag - No support for multiple ETags for now
+	IfNoneMatch string
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
@@ -138,6 +151,9 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		ClientReferer:     r.Header.Get(RefererHeader),
 		UserAgent:         r.UserAgent(),
 		RawSystemMetadata: r.Header.Get(ARMResourceSystemDataHeader),
+
+		IfMatch:     r.Header.Get(IfMatch),
+		IfNoneMatch: r.Header.Get(IfNoneMatch),
 	}
 
 	return rpcCtx, nil

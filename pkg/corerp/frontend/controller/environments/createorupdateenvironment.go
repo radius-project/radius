@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 
+	etagValidator "github.com/project-radius/radius/pkg/corerp/api/header"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
@@ -38,7 +39,7 @@ func NewCreateOrUpdateEnvironment(storageClient store.StorageClient, jobEngine d
 	}, nil
 }
 
-// Run exexcutes CreateOrUpdateEnvironment operation.
+// Run executes CreateOrUpdateEnvironment operation.
 func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 	newResource, err := e.Validate(ctx, req, serviceCtx.APIVersion)
@@ -50,6 +51,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	existingResource := &datamodel.Environment{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
+		return nil, err
+	}
+
+	err = etagValidator.Validate(*serviceCtx, etag)
+	if err != nil {
+		// TODO: Send 412 response code here
 		return nil, err
 	}
 
@@ -70,6 +77,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: Add etag here
 
 	return rest.NewOKResponse(versioned), nil
 }
