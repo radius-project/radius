@@ -13,7 +13,6 @@ import (
 	"unicode"
 
 	"github.com/project-radius/radius/pkg/store"
-	"github.com/project-radius/radius/pkg/store/cosmosdb"
 )
 
 var (
@@ -24,8 +23,8 @@ var (
 var _ DataStorageProvider = (*storageProvider)(nil)
 
 type storageProvider struct {
-	clientsMu sync.Mutex
 	clients   map[string]store.StorageClient
+	clientsMu sync.RWMutex
 	options   StorageProviderOptions
 }
 
@@ -39,59 +38,40 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 
 // GetStorageClient creates or gets storage client.
 func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType string) (store.StorageClient, error) {
-	p.clientsMu.Lock()
-	defer p.clientsMu.Unlock()
-
 	cn := normalizeResourceType(resourceType)
-	if c, ok := p.clients[cn]; ok {
+
+	p.clientsMu.RLock()
+	c, ok := p.clients[cn]
+	p.clientsMu.RUnlock()
+	if ok {
 		return c, nil
 	}
-	if err := p.init(ctx, resourceType); err != nil {
-		return nil, err
-	}
-	return p.clients[cn], nil
-}
 
-func (p *storageProvider) init(ctx context.Context, resourceType string) error {
-	cn := normalizeResourceType(resourceType)
-
-	var dbclient store.StorageClient
 	var err error
+	if fn, ok := storageClientFactory[p.options.Provider]; ok {
+		// This write lock ensure that storage init function executes one by one and write client
+		// to map safely.
+		// CosmosDBStorageClient Init() calls database and collection creation control plane APIs.
+		// Ideally, such control plane APIs must be idempotent, but we could see unexpected failures
+		// by calling control plane API concurrently. Even if such issue rarely happens during release
+		// time, it could make the short-term downtime of the service.
+		// We expect that GetStorageClient() will be called during the start time. Thus, having a lock won't
+		// hurt any runtime performance.
+		p.clientsMu.Lock()
+		defer p.clientsMu.Unlock()
 
-	switch p.options.Provider {
-	case CosmosDBProvider:
-		dbclient, err = initCosmosDBProvider(ctx, p.options.CosmosDB, cn)
-	// TODO: Support the other database storage client.
-	default:
+		if c, ok := p.clients[cn]; ok {
+			return c, nil
+		}
+
+		if c, err = fn(ctx, p.options, cn); err == nil {
+			p.clients[cn] = c
+		}
+	} else {
 		err = ErrUnsupportedStorageProvider
 	}
 
-	if err != nil {
-		return err
-	}
-
-	p.clients[cn] = dbclient
-
-	return nil
-}
-
-func initCosmosDBProvider(ctx context.Context, opt CosmosDBOptions, collectionName string) (store.StorageClient, error) {
-	sopt := &cosmosdb.ConnectionOptions{
-		Url:            opt.Url,
-		DatabaseName:   opt.Database,
-		CollectionName: collectionName,
-		MasterKey:      opt.MasterKey,
-	}
-	dbclient, err := cosmosdb.NewCosmosDBStorageClient(sopt)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = dbclient.Init(ctx); err != nil {
-		return nil, err
-	}
-
-	return dbclient, nil
+	return c, err
 }
 
 // normalizeResourceType converts resourcetype to safe string by removing non digit and non letter and replace '/' with '-'
