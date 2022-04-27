@@ -50,7 +50,7 @@ func Test_Render_Success(t *testing.T) {
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
 			"kind":     "state.azure.tablestorage",
-			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account",
+			"resource": "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
 
@@ -91,7 +91,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a Storage Account", err.Error())
+	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.Error())
 }
 
 func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
