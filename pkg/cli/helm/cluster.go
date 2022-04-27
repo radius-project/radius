@@ -41,8 +41,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 		chartVersion = fmt.Sprintf("~%s", version.ChartVersion())
 	}
 
-	// By default we use the release semver for the rp tag.
-	tag := version.Release()
+	tag := version.Channel()
 	if version.IsEdgeChannel() {
 		tag = "latest"
 	}
