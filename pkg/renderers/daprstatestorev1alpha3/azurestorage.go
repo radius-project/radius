@@ -24,7 +24,7 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outpu
 	if properties.Resource == nil || *properties.Resource == "" {
 		return nil, renderers.ErrResourceMissingForResource
 	}
-	accountID, err := renderers.ValidateResourceID(*properties.Resource, StorageAccountResourceType, "Storage Table")
+	tableID, err := renderers.ValidateResourceID(*properties.Resource, StorageAccountResourceType, "Storage Table")
 	if err != nil {
 		return nil, err
 	}
@@ -43,9 +43,9 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outpu
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
 
-			handlers.StorageAccountIDKey:   accountID.ID,
-			handlers.StorageAccountNameKey: accountID.Types[0].Name,
-			handlers.ResourceName:          accountID.Types[2].Name,
+			handlers.ResourceIDKey:         tableID.ID,
+			handlers.StorageAccountNameKey: tableID.Types[0].Name,
+			handlers.ResourceName:          tableID.Types[2].Name,
 		},
 	}
 	return []outputresource.OutputResource{outputResource}, nil
