@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 )
 
 var (
@@ -53,4 +54,44 @@ func DecodeMap(in interface{}, out interface{}) error {
 	}
 	decoder, _ := mapstructure.NewDecoder(cfg)
 	return decoder.Decode(in)
+}
+
+func ValidateETag(armRequestContext servicecontext.ARMRequestContext, etag string) error {
+	ifMatchEtag := armRequestContext.IfMatch
+	ifMatchCheck := checkIfMatch(ifMatchEtag, etag)
+	if ifMatchCheck != nil {
+		return ifMatchCheck
+	}
+
+	ifNoneMatchEtag := armRequestContext.IfNoneMatch
+	ifNoneMatchCheck := checkIfNoneMatch(ifNoneMatchEtag, etag)
+	if ifNoneMatchCheck != nil {
+		return ifNoneMatchCheck
+	}
+
+	return nil
+}
+
+func checkIfMatch(ifMatchEtag string, etag string) error {
+	if ifMatchEtag == "" {
+		return nil
+	}
+
+	if etag == "" {
+		return errors.New("resource doesn't exist")
+	}
+
+	if ifMatchEtag != "*" && ifMatchEtag != etag {
+		return errors.New("etags do not match")
+	}
+
+	return nil
+}
+
+func checkIfNoneMatch(ifNoneMatchEtag string, etag string) error {
+	if ifNoneMatchEtag == "*" && etag != "" {
+		return errors.New("resource already exists")
+	}
+
+	return nil
 }

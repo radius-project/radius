@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 
-	etagValidator "github.com/project-radius/radius/pkg/corerp/api/header"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
@@ -54,7 +53,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
-	err = etagValidator.Validate(*serviceCtx, etag)
+	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
 		// TODO: Send 412 response code here
 		return nil, err
