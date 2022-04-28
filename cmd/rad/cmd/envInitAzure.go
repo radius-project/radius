@@ -101,11 +101,16 @@ func initAzureRadEnvironment(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	clusterOptions := helm.NewDefaultClusterOptions()
-	clusterOptions.Namespace = a.Namespace
-	clusterOptions.Radius.ChartPath = a.ChartPath
-	clusterOptions.Radius.Image = a.Image
-	clusterOptions.Radius.Tag = a.Tag
+	cliOptions := helm.ClusterOptions{
+		Namespace: a.Namespace,
+		Radius: helm.RadiusOptions{
+			ChartPath: a.ChartPath,
+			Image:     a.Image,
+			Tag:       a.Tag,
+		},
+	}
+	clusterOptions := helm.NewClusterOptions(cliOptions)
+
 	clusterOptions.Radius.AzureProvider = &radazure.Provider{
 		SubscriptionID:      a.SubscriptionID,
 		ResourceGroup:       a.ResourceGroup,

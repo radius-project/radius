@@ -126,20 +126,19 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	step := output.BeginStep("Installing Radius...")
 
-	options := helm.NewDefaultClusterOptions()
-	options.Namespace = namespace
-	options.Radius.ChartPath = chartPath
-	options.Radius.Image = image
-
-	// If tag is set by CLI, use that.
-	// Otherwise, use the default tag for the release.
-	if tag != "" {
-		options.Radius.Tag = tag
+	cliOptions := helm.ClusterOptions{
+		Namespace: namespace,
+		Radius: helm.RadiusOptions{
+			ChartPath: chartPath,
+			Image:     image,
+			Tag:       tag,
+		},
 	}
+	clusterOptions := helm.NewClusterOptions(cliOptions)
 
-	options.Radius.AzureProvider = azureProvider
+	clusterOptions.Radius.AzureProvider = azureProvider
 
-	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
+	err = helm.InstallOnCluster(cmd.Context(), clusterOptions, client, runtimeClient)
 	if err != nil {
 		return err
 	}
