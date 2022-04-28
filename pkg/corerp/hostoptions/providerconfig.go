@@ -66,6 +66,7 @@ type ServerOptions struct {
 // MetricOptions includes Geneva metric options.
 type MetricOptions struct {
 	ExporterType string `yaml:"exporterType"`
+	Port         int    `yaml:"port"`
 	Endpoint     string `yaml:"endpoint,omitempty"`
 	Account      string `yaml:"account,omitempty"`
 	Namespace    string `yaml:"namespace,omitempty"`
