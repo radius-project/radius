@@ -16,10 +16,10 @@ const (
 
 // Certificate represents the client certificate fetched from arm metadata endpoint
 type certificate struct {
-	Certificate string `json:"certificate"`
-	NotAfter    string `json:"notAfter"`
-	NotBefore   string `json:"notBefore"`
-	Thumbprint  string `json:"thumbprint"`
+	Certificate string    `json:"certificate"`
+	NotAfter    time.Time `json:"notAfter"`
+	NotBefore   time.Time `json:"notBefore"`
+	Thumbprint  string    `json:"thumbprint"`
 }
 
 // ClientCertificates stores the array of certificate returned from arm metadata endpoint

@@ -87,11 +87,7 @@ func (c certificate) certificateIsCurrent() (bool, error) {
 
 // certificateExpired verifies the expiry of a certificate
 func (c certificate) certificateExpired() (bool, error) {
-	notAfter, err := time.Parse(ArmTimeFormat, c.NotAfter)
-	if err != nil {
-		return false, err
-	}
-	if time.Now().Before(notAfter) {
+	if time.Now().Before(c.NotAfter) {
 		return false, nil
 	}
 	return true, nil
@@ -99,11 +95,7 @@ func (c certificate) certificateExpired() (bool, error) {
 
 // certificateStarted verfies the start time of a certificate
 func (c certificate) certificateStarted() (bool, error) {
-	notBefore, err := time.Parse(ArmTimeFormat, c.NotBefore)
-	if err != nil {
-		return false, err
-	}
-	if time.Now().Before(notBefore) {
+	if time.Now().Before(c.NotBefore) {
 		return false, nil
 	}
 	return true, nil

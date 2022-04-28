@@ -8,7 +8,7 @@ package authentication
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -35,15 +35,14 @@ func NewArmCertManager(armMetaEndpoint string) *ArmCertManager {
 func (armCertMgr *ArmCertManager) getARMClientCert() ([]certificate, error) {
 	client := http.Client{}
 	resp, err := client.Get(armCertMgr.armMetaEndpoint)
-	if err != nil {
-		return nil, err
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to fetch client certificate from arm metadata endpoint")
 	}
 	var certificates clientCertificates
 	err = json.NewDecoder(resp.Body).Decode(&certificates)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed to fetch client certificate from arm metadata endpoint")
 	}
-	fmt.Println("certificates", certificates)
 	return certificates.ClientCertificates, nil
 }
 
@@ -71,7 +70,7 @@ func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]certificate, err
 		return nil, err
 	}
 	if len(certs) == 0 {
-		return nil, fmt.Errorf("failed to retrieve any certificates on ArmCertManager startup")
+		return nil, errors.New("failed to retrieve any certificates on ArmCertManager startup")
 	}
 	armCertMgr.certStore.storeCertificates(certs)
 	go armCertMgr.periodicCertRefresh(ctx)
@@ -88,7 +87,6 @@ func (armCertMgr *ArmCertManager) refreshCert() ([]certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("newCertificates", newCertificates)
 	armCertMgr.certStore.storeCertificates(newCertificates)
 	certs, err := armCertMgr.certStore.getValidCertificates()
 	if err != nil {
