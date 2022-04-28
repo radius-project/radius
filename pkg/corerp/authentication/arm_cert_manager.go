@@ -9,18 +9,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 )
 
+// ArmCertManager defines the arm client manager for fetching the client cert from arm metadata endpoint
 type ArmCertManager struct {
 	armMetaEndpoint string
 	certStore       *armCertStore
 	period          time.Duration
 }
 
+// NewArmCertManager creates a new ArmCertManager
 func NewArmCertManager(armMetaEndpoint string) *ArmCertManager {
 	certMgr := ArmCertManager{
 		armMetaEndpoint: armMetaEndpoint,
@@ -30,41 +31,25 @@ func NewArmCertManager(armMetaEndpoint string) *ArmCertManager {
 	return &certMgr
 }
 
-//an endpoint URL can be passed from config, now it is hardcoded to the dogfood env
-func (armCertMgr *ArmCertManager) getARMClientCert() ([]Certificate, error) {
+// getARMClientCert fetches the client certificates from arm metadata endpoint
+func (armCertMgr *ArmCertManager) getARMClientCert() ([]certificate, error) {
 	client := http.Client{}
 	resp, err := client.Get(armCertMgr.armMetaEndpoint)
-	var certificates ClientCertificates
 	if err != nil {
 		return nil, err
 	}
-
-	body, err := getResponseBody(resp)
+	var certificates clientCertificates
+	err = json.NewDecoder(resp.Body).Decode(&certificates)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(body, &certificates)
-	if err != nil {
-		return nil, err
-	}
+	fmt.Println("certificates", certificates)
 	return certificates.ClientCertificates, nil
 }
 
-func getResponseBody(resp *http.Response) ([]byte, error) {
-	if resp == nil {
-		return nil, fmt.Errorf("nil HTTP Response received")
-	}
-	defer resp.Body.Close()
+// IsValidThumbprint verifies the thumbprint received in the request header against the list of thumbprints
+// fetched from arm metadata endpoint
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
-}
-
-//The function verifies the thumbprint received in the header against the list of thumbprints
-//fetched from arm metadata endpoint
 func (armCertMgr *ArmCertManager) IsValidThumbprint(thumbprint string) (bool, error) {
 	armPublicCerts, err := armCertMgr.certStore.getValidCertificates()
 	if err != nil {
@@ -78,10 +63,10 @@ func (armCertMgr *ArmCertManager) IsValidThumbprint(thumbprint string) (bool, er
 	return false, nil
 }
 
-//It is the starter function for fetching the client certificates from the arm metadata endpoint.
-// it runs in the background the periodic certificate refresher.
-func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, error) {
-	certs, err := armCertMgr.refreshCertificates()
+// Start fetching the client certificates from the arm metadata endpoint during service start up
+//  and runs in the background the periodic certificate refresher.
+func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]certificate, error) {
+	certs, err := armCertMgr.refreshCert()
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +74,7 @@ func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, err
 		return nil, fmt.Errorf("failed to retrieve any certificates on ArmCertManager startup")
 	}
 	armCertMgr.certStore.storeCertificates(certs)
-	go armCertMgr.periodicCertificateRefresh(ctx)
+	go armCertMgr.periodicCertRefresh(ctx)
 	storedCerts, err := armCertMgr.certStore.getValidCertificates()
 	if err != nil {
 		return nil, err
@@ -97,12 +82,13 @@ func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, err
 	return storedCerts, nil
 }
 
-//the function refreshes the arm client certs and updates the store
-func (armCertMgr *ArmCertManager) refreshCertificates() ([]Certificate, error) {
+// refreshCert refreshes the arm client certs and updates it in the cert store
+func (armCertMgr *ArmCertManager) refreshCert() ([]certificate, error) {
 	newCertificates, err := armCertMgr.getARMClientCert()
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("newCertificates", newCertificates)
 	armCertMgr.certStore.storeCertificates(newCertificates)
 	certs, err := armCertMgr.certStore.getValidCertificates()
 	if err != nil {
@@ -111,8 +97,8 @@ func (armCertMgr *ArmCertManager) refreshCertificates() ([]Certificate, error) {
 	return certs, nil
 }
 
-//the function refreshes the arm client certs periodically
-func (armCertMgr *ArmCertManager) periodicCertificateRefresh(ctx context.Context) {
+// periodicCertRefresh refreshes the arm client certs periodically defined in the ArmCertManager
+func (armCertMgr *ArmCertManager) periodicCertRefresh(ctx context.Context) {
 	for {
 		select {
 		case <-time.After(armCertMgr.period):
@@ -120,7 +106,7 @@ func (armCertMgr *ArmCertManager) periodicCertificateRefresh(ctx context.Context
 		case <-ctx.Done():
 			return
 		}
-		certs, err := armCertMgr.refreshCertificates()
+		certs, err := armCertMgr.refreshCert()
 		if err != nil {
 			return
 		}

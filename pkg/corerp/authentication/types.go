@@ -14,24 +14,20 @@ const (
 	ArmTimeFormat = time.RFC3339
 )
 
-//struct for the certificates fetched from arm metadata
-type Certificate struct {
+// Certificate represents the client certificate fetched from arm metadata endpoint
+type certificate struct {
 	Certificate string `json:"certificate"`
 	NotAfter    string `json:"notAfter"`
 	NotBefore   string `json:"notBefore"`
 	Thumbprint  string `json:"thumbprint"`
 }
 
-//arm metadata endpoint returns an array of certificate
-type ClientCertificates struct {
-	ClientCertificates []Certificate `json:"clientCertificates"`
+// ClientCertificates stores the array of certificate returned from arm metadata endpoint
+type clientCertificates struct {
+	ClientCertificates []certificate `json:"clientCertificates"`
 }
 
-/*
-The armCertStore is responsible for storing certificates and returning certificates that are valid based on
-the current time
-*/
+// armCertStore stores active client certificates fetched from arm metadata endpoint
 type armCertStore struct {
-	thumbprintMap map[string]Certificate //maps from thumbprint -> Certificate
-	mutex         sync.Mutex
+	thumbprintMap sync.Map // maps from thumbprint -> Certificate
 }

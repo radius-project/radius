@@ -32,6 +32,7 @@ type BaseController struct {
 }
 
 // GetResource is the helper to get the resource via storage client.
+func (c *BaseController) GetResource(ctx context.Context, id string, out interface{}) (etag string, err error) {
 	etag = ""
 	var res *store.Object
 	if res, err = c.DBClient.Get(ctx, id); err == nil {
