@@ -52,7 +52,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewListEnvironments},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewGetEnvironment},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, env_ctrl.NewCreateOrUpdateEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, env_ctrl.NewPatchEnvironment},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, env_ctrl.NewDeleteEnvironment},
 
 		// Create the operational controller and add new resource types' handlers.
