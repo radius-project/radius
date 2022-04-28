@@ -9,7 +9,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -39,8 +38,9 @@ func Test_Render_User_Secrets(t *testing.T) {
 		ResourceName:    resourceName,
 		ResourceType:    ResourceType,
 		Definition: map[string]interface{}{
-			"host": "localhost",
-			"port": 42,
+			"host":  "localhost",
+			"port":  42,
+			"queue": "abc",
 			"secrets": map[string]string{
 				"connectionString": "admin:deadbeef@localhost:42",
 			},
@@ -52,9 +52,17 @@ func Test_Render_User_Secrets(t *testing.T) {
 
 	require.Len(t, output.Resources, 0)
 
-	expectedSecretValues := map[string]renderers.SecretValueReference{
-		renderers.ConnectionStringValue: {Value: *to.StringPtr("admin:deadbeef@localhost:42")},
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		"queue": {
+			Value: "abc",
+		},
 	}
+	expectedSecretValues := map[string]renderers.SecretValueReference{
+		"connectionString": {
+			Value: "admin:deadbeef@localhost:42",
+		},
+	}
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
 	require.Equal(t, expectedSecretValues, output.SecretValues)
-	require.Equal(t, 0, len(output.ComputedValues))
+	require.Equal(t, 1, len(output.SecretValues))
 }
