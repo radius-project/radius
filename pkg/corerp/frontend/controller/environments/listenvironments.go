@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -22,6 +23,8 @@ import (
 )
 
 var _ ctrl.ControllerInterface = (*ListEnvironments)(nil)
+
+const maxQueryItemCount = 20
 
 // ListEnvironments is the controller implementation to get the list of environments resources in resource group.
 type ListEnvironments struct {
@@ -40,14 +43,24 @@ func NewListEnvironments(storageClient store.StorageClient, jobEngine deployment
 
 func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	rID := serviceCtx.ResourceID
 
-	query := store.Query{
-		RootScope:    fmt.Sprintf("/subscriptions/%s/resourceGroup/%s", rID.SubscriptionID, rID.ResourceGroup),
-		ResourceType: rID.Type(),
+	queryItemCount, err := e.getNumberOfRecords(ctx)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	result, err := e.DBClient.Query(ctx, query, store.WithMaxQueryItemCount(20))
+	query := store.Query{
+		RootScope: fmt.Sprintf("/subscriptions/%s/resourceGroup/%s",
+			serviceCtx.ResourceID.SubscriptionID, serviceCtx.ResourceID.ResourceGroup),
+		ResourceType: serviceCtx.ResourceID.Type(),
+	}
+
+	queryOptions := []store.QueryOptions{
+		store.WithPaginationToken(serviceCtx.SkipToken),
+		store.WithMaxQueryItemCount(queryItemCount),
+	}
+
+	result, err := e.DBClient.Query(ctx, query, queryOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,9 +86,24 @@ func (e *ListEnvironments) createPaginationResponse(apiversion string, result *s
 		items = append(items, versioned)
 	}
 
-	// TODO: implement pagination using paginationtoken
+	// TODO: Convert the paginationToken and the Base URI to a URL and set it to NextLink
+
 	return &armrpcv1.PaginatedList{
-		Value: items,
-		// TODO: set NextLink: if result.PaginationToken is not empty
+		Value:    items,
+		NextLink: result.PaginationToken,
 	}, nil
+}
+
+// GetNumberOfRecords
+func (e *ListEnvironments) getNumberOfRecords(ctx context.Context) (int, error) {
+	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+
+	top := maxQueryItemCount
+	var err error
+
+	if serviceCtx.Top != "" {
+		top, err = strconv.Atoi(serviceCtx.Top)
+	}
+
+	return top, err
 }

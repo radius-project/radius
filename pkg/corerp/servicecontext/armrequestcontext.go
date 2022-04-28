@@ -22,6 +22,12 @@ import (
 const (
 	// APIVersionParameterName is the query string parameter for the api version.
 	APIVersionParameterName = "api-version"
+
+	// SkipTokenQueryParameter
+	SkipTokenQueryParameter = "skipToken"
+
+	// Top is an optional query parameter that defines the maximum number of records to be returned by the server.
+	TopParameter = "top"
 )
 
 var (
@@ -124,6 +130,10 @@ type ARMRequestContext struct {
 	IfMatch string
 	// IfNoneMatch receives "*" or an ETag - No support for multiple ETags for now
 	IfNoneMatch string
+	// SkipToken
+	SkipToken string
+	// Top is the maximum number of records to be returned by the server. The validation will be handled downstream.
+	Top string
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
@@ -158,6 +168,9 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 
 		IfMatch:     r.Header.Get(IfMatch),
 		IfNoneMatch: r.Header.Get(IfNoneMatch),
+
+		SkipToken: r.URL.Query().Get(SkipTokenQueryParameter),
+		Top:       r.URL.Query().Get(TopParameter),
 	}
 
 	return rpcCtx, nil
