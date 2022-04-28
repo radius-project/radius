@@ -22,6 +22,35 @@
 1. Implement operation controllers and tests.
 1. Register handlers in [handlers.go](frontend/handler/handlers.go).
 
+## How to Run and Test Core RP
+
+1. Update StorageProvider section of `cmd/appcore-rp/radius-dev.yaml` by adding your Cosmos DB URL and key
+1. With `cmd/appcore-rp/main.go` file open, go to `Run And Debug` view in VS Code and click `Run`
+1. You should have the service up and running at `localhost:8080` now
+1. To create or update an environment, here is an example curl command:
+
+    ```
+    curl --location --request PUT 'http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0?api-version=2022-03-15-privatepreview' \
+    --header 'X-Ms-Arm-Resource-System-Data: {"lastModifiedBy":"fake@hotmail.com","lastModifiedByType":"User","lastModifiedAt":"2022-03-22T18:54:52.6857175Z"}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "properties": {
+            "compute": {
+                "kind": "Kubernetes",
+                "resourceId": "test-override-2"
+            }
+        }
+    }'
+    ```
+
+1. To get information about an environment, here is an example curl command:
+
+    ```
+    curl --location --request GET 'http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/?api-version=2022-03-15-privatepreview'
+    ```
+
+1. You should also be able to see all changes in Cosmos DB
+
 ## References
 
 * [ARM RPC v1.0 Specification](https://github.com/Azure/azure-resource-manager-rpc)
