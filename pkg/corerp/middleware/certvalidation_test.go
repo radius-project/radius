@@ -37,7 +37,7 @@ func TestCertValidationUnauthorized(t *testing.T) {
 		if err != nil || armCertMgr == nil {
 			fmt.Println("error getting arm certs")
 		}
-		r.Use(ValidateCerticate(armCertMgr))
+		r.Use(ClientCertValidator(armCertMgr))
 		handler := LowercaseURLPath(r)
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
 		handler.ServeHTTP(w, req)

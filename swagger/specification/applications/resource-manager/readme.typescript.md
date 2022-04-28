@@ -28,17 +28,3 @@ typescript:
   output-folder: "$(typescript-sdks-folder)/sdk/applications/arm-applications-connector"
   clear-output-folder: true
 ```
-
-```yaml $(typescript) && $(package-core)
-typescript:
-  package-name: "@azure/arm-applications-core"
-  output-folder: "$(typescript-sdks-folder)/sdk/applications/arm-applications-core"
-  clear-output-folder: true
-```
-
-```yaml $(typescript) && $(package-connector)
-typescript:
-  package-name: "@azure/arm-applications-connector"
-  output-folder: "$(typescript-sdks-folder)/sdk/applications/arm-applications-connector"
-  clear-output-folder: true
-```

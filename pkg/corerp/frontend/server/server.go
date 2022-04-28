@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/corerp/authentication"
 	"github.com/project-radius/radius/pkg/corerp/middleware"
 	mp "github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/version"
@@ -25,12 +26,11 @@ const (
 )
 
 type ServerOptions struct {
-	Address  string
-	PathBase string
-	// TODO: implement client cert based authentication for arm
-	EnableAuth      bool
-	Configure       func(*mux.Router)
-	ArmMetaEndpoint string
+	Address    string
+	PathBase   string
+	EnableAuth bool
+	Configure  func(*mux.Router)
+	ArmCertMgr *authentication.ArmCertManager
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
@@ -39,14 +39,13 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 	if options.Configure != nil {
 		options.Configure(r)
 	}
-	//initialize the manager for ARM client cert validation
-	armCertMgr, err := middleware.NewArmCertManager(options.ArmMetaEndpoint)
-	if err != nil || armCertMgr == nil {
-		return nil
-	}
+
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues)
-	r.Use(middleware.ValidateCerticate(armCertMgr))
+	// add the arm cert validation if EnableAuth is true
+	if options.EnableAuth {
+		r.Use(middleware.ClientCertValidator(options.ArmCertMgr))
+	}
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(healthzAPIName)

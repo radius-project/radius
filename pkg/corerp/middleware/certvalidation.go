@@ -5,7 +5,6 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -20,9 +19,9 @@ const (
 	ArmCertificateRefreshRate   = 1 * time.Hour
 )
 
-// ValidateCerticate validates the thumbprint received in the request header with
+// ClientCertValidator validates the thumbprint received in the request header with
 // the active thumbprints fetched from ARM Metadata endpoint
-func ValidateCerticate(armCertMgr *armAuthenticator.ArmCertManager) func(http.Handler) http.Handler {
+func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			//skip cert validation for health and version endpoint
@@ -48,14 +47,4 @@ func ValidateCerticate(armCertMgr *armAuthenticator.ArmCertManager) func(http.Ha
 			return
 		})
 	}
-}
-
-//create a arm cert manager that
-func NewArmCertManager(armMetaEndpoint string) (*armAuthenticator.ArmCertManager, error) {
-	armCertManager := armAuthenticator.NewArmCertManager(armMetaEndpoint)
-	_, err := armCertManager.Start(context.Background())
-	if err != nil {
-		return armCertManager, err
-	}
-	return armCertManager, nil
 }

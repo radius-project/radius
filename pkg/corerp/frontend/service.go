@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	armAuthenticator "github.com/project-radius/radius/pkg/corerp/authentication"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
 	"github.com/project-radius/radius/pkg/corerp/frontend/server"
@@ -41,6 +42,7 @@ func (s *Service) Run(ctx context.Context) error {
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
+<<<<<<< HEAD
 	server := server.NewServer(ctx,
 		server.ServerOptions{
 			Address:  address,
@@ -58,6 +60,27 @@ func (s *Service) Run(ctx context.Context) error {
 				}
 			},
 		},
+=======
+
+	// initialize the manager for ARM client cert validation
+	armCertMgr, err := newArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint)
+	enableAuth := true
+	if err != nil || armCertMgr == nil {
+		logger.Info("Error creating arm cert manager - ", err)
+		enableAuth = false
+	}
+	server := server.NewServer(ctx, server.ServerOptions{
+		Address:  address,
+		PathBase: s.Options.Config.Server.PathBase,
+		// set the arm cert manager for managing client certificate
+		ArmCertMgr: armCertMgr,
+		EnableAuth: enableAuth,
+		Configure: func(router *mux.Router) {
+			if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
+				panic(err)
+			}
+		}},
+>>>>>>> 3575b301 (fix review comments)
 		s.Options.Config.MetricsProvider,
 	)
 
@@ -69,7 +92,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", address))
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")
@@ -80,4 +103,14 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info("Server stopped...")
 	return nil
+}
+
+// newArmCertManager creates arm cert manager that fetches/refreshes the arm client cert from metadata endpoint
+func newArmCertManager(armMetaEndpoint string) (*armAuthenticator.ArmCertManager, error) {
+	armCertManager := armAuthenticator.NewArmCertManager(armMetaEndpoint)
+	_, err := armCertManager.Start(context.Background())
+	if err != nil {
+		return armCertManager, err
+	}
+	return armCertManager, nil
 }
