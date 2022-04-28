@@ -41,6 +41,11 @@ func NewDefaultClusterOptions() ClusterOptions {
 		chartVersion = fmt.Sprintf("~%s", version.ChartVersion())
 	}
 
+	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
+
 	return ClusterOptions{
 		Namespace: "default",
 		Dapr: DaprOptions{
@@ -53,6 +58,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 		},
 		Radius: RadiusOptions{
 			ChartVersion: chartVersion,
+			Tag:          tag,
 		},
 	}
 }
