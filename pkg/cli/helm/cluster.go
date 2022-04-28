@@ -63,6 +63,30 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 }
 
+func NewClusterOptions(cliOptions ClusterOptions) ClusterOptions {
+	options := NewDefaultClusterOptions()
+
+	// If any of the CLI options are provided, override the default options.
+
+	if cliOptions.Namespace != "" {
+		options.Namespace = cliOptions.Namespace
+	}
+
+	if cliOptions.Radius.ChartPath != "" {
+		options.Radius.ChartPath = cliOptions.Radius.ChartPath
+	}
+
+	if cliOptions.Radius.Image != "" {
+		options.Radius.Image = cliOptions.Radius.Image
+	}
+
+	if cliOptions.Radius.Tag != "" {
+		options.Radius.Tag = cliOptions.Radius.Tag
+	}
+
+	return options
+}
+
 func InstallOnCluster(ctx context.Context, options ClusterOptions, client client_go.Interface, runtimeClient runtime_client.Client) error {
 	// Make sure namespace passed in exists.
 	err := kubernetes.EnsureNamespace(ctx, client, options.Namespace)
