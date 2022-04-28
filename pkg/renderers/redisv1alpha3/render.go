@@ -7,10 +7,7 @@ package redisv1alpha3
 
 import (
 	"context"
-	"strconv"
 
-	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -24,7 +21,6 @@ import (
 var _ renderers.Renderer = (*Renderer)(nil)
 
 type Renderer struct {
-	Arm *armauth.ArmConfig
 }
 
 func (r *Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
@@ -51,7 +47,7 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		}
 	}
 
-	computedValues, secretValues := MakeSecretsAndValues(r.Arm, resource.ResourceName, properties)
+	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,
@@ -91,37 +87,28 @@ func RenderResource(resourceName string, properties radclient.RedisCacheResource
 	return &redisCacheOutputResource, nil
 }
 
-func MakeSecretsAndValues(arm *armauth.ArmConfig, name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	var computedValues map[string]renderers.ComputedValueReference
+func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	var secretValues map[string]renderers.SecretValueReference
-
-	if arm == nil {
-		computedValues = map[string]renderers.ComputedValueReference{
-			"host": {
-				Value: properties.Host,
-			},
-			"port": {
-				Value: properties.Port,
-			},
-			"username": {
-				Value: "",
-			},
+	computedValues := map[string]renderers.ComputedValueReference{
+		"host": {
+			Value: properties.Host,
+		},
+		"port": {
+			Value: properties.Port,
+		},
+	}
+	if properties.Resource == nil {
+		computedValues["username"] = renderers.ComputedValueReference{
+			Value: "",
 		}
 	} else {
-		computedValues = map[string]renderers.ComputedValueReference{
-			"host": {
-				Value: to.String(properties.Host),
-			},
-			"port": {
-				Value: strconv.Itoa(int(to.Int32(properties.Port))),
-			},
-			"username": {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: handlers.RedisUsernameKey,
-			},
+		// An Azure Redis Resource has been specified
+		computedValues["username"] = renderers.ComputedValueReference{
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisUsernameKey,
 		}
 	}
-	if properties.Secrets == nil && arm != nil {
+	if properties.Secrets == nil && properties.Resource != nil {
 		secretValues = map[string]renderers.SecretValueReference{
 			"password": {
 				LocalID:       outputresource.LocalIDAzureRedis,

@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -84,7 +83,7 @@ func Test_Render_Kubernetes_Success(t *testing.T) {
 
 func Test_Render_Azure_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{Arm: &armauth.ArmConfig{}}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -113,10 +112,10 @@ func Test_Render_Azure_Success(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: "localhost",
+			Value: to.StringPtr("localhost"),
 		},
 		"port": {
-			Value: "42",
+			Value: to.Int32Ptr(42),
 		},
 		"username": {
 			LocalID:           "AzureRedis",
@@ -130,7 +129,28 @@ func Test_Render_Azure_Success(t *testing.T) {
 
 func Test_Render_Azure_User_Secrets(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{Arm: &armauth.ArmConfig{}}
+	renderer := Renderer{}
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		"host": {
+			Value: to.StringPtr("localhost"),
+		},
+		"port": {
+			Value: to.Int32Ptr(42),
+		},
+		"username": {
+			Value: "",
+		},
+	}
+
+	expectedSecretValues := map[string]renderers.SecretValueReference{
+		renderers.PasswordStringHolder: {
+			Value: "deadbeef",
+		},
+		renderers.ConnectionStringValue: {
+			Value: "admin:deadbeef@localhost:42",
+		},
+	}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -151,14 +171,13 @@ func Test_Render_Azure_User_Secrets(t *testing.T) {
 
 	require.Len(t, output.Resources, 0)
 
-	expectedComputedValues, expectedSecretValues := expectedComputedAndSecretValues()
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
 func Test_Render_Azure_NoResourceSpecified(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{Arm: &armauth.ArmConfig{}}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -187,30 +206,4 @@ func Test_Render_Azure_InvalidResourceType(t *testing.T) {
 	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a Redis Cache", err.Error())
-}
-
-func expectedComputedAndSecretValues() (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"host": {
-			Value: "localhost",
-		},
-		"port": {
-			Value: "42",
-		},
-		renderers.UsernameStringValue: {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisUsernameKey,
-		},
-	}
-
-	expectedSecretValues := map[string]renderers.SecretValueReference{
-		renderers.PasswordStringHolder: {
-			Value: "deadbeef",
-		},
-		renderers.ConnectionStringValue: {
-			Value: "admin:deadbeef@localhost:42",
-		},
-	}
-
-	return expectedComputedValues, expectedSecretValues
 }

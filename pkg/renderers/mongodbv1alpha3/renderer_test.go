@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -72,7 +71,7 @@ func Test_Kubernetes_Render_Success(t *testing.T) {
 
 func Test_Render_Azure_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{Arm: &armauth.ArmConfig{}}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -123,7 +122,7 @@ func Test_Render_Azure_Success(t *testing.T) {
 
 func Test_Render_Azure_UserSpecifiedSecrets(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{Arm: &armauth.ArmConfig{}}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -157,7 +156,7 @@ func Test_Render_Azure_UserSpecifiedSecrets(t *testing.T) {
 
 func Test_Render_Azure_NoResourceSpecified(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{Arm: &armauth.ArmConfig{}}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
@@ -173,7 +172,7 @@ func Test_Render_Azure_NoResourceSpecified(t *testing.T) {
 
 func Test_Render_Azure_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{Arm: &armauth.ArmConfig{}}
+	renderer := Renderer{}
 
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
