@@ -7,6 +7,7 @@ package environments
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,6 +25,8 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
+	t.Parallel()
+
 	t.Run("delete non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
@@ -39,41 +42,62 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		ctl, err := NewDeleteEnvironment(mStorageClient, nil)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, nil)
+		resp, err := ctl.Run(ctx, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 204, w.Result().StatusCode)
 	})
 
-	t.Run("delete existing resource", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
-		_, envDataModel, _ := getTestModels20220315privatepreview()
+	existingResourceDeletionCases := []struct {
+		caseNumber         int
+		ifMatchEtag        string
+		resourceEtag       string
+		expectedStatusCode int
+		shouldFail         bool
+	}{
+		{1, "", "random-etag", 200, false},
+		{2, "", "", 204, true},
+		{3, "matching-etag", "matching-etag", 200, false},
+		{4, "not-matching-etag", "another-etag", 412, true},
+		{5, "*", "", 204, true},
+		{6, "*", "random-etag", 200, false},
+	}
 
-		mStorageClient.
-			EXPECT().
-			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id, ETag: "fakeEtag"},
-					Data:     envDataModel,
-				}, nil
-			})
+	for _, tt := range existingResourceDeletionCases {
+		t.Run(fmt.Sprint(tt.caseNumber), func(t *testing.T) {
+			w := httptest.NewRecorder()
 
-		mStorageClient.
-			EXPECT().
-			Delete(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.DeleteOptions) error {
-				return nil
-			})
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+			req.Header.Set("If-Match", tt.ifMatchEtag)
 
-		ctl, err := NewDeleteEnvironment(mStorageClient, nil)
+			ctx := radiustesting.ARMTestContextFromRequest(req)
+			_, envDataModel, _ := getTestModels20220315privatepreview()
 
-		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, nil)
-		require.NoError(t, err)
-		_ = resp.Apply(ctx, w, req)
-		require.Equal(t, 200, w.Result().StatusCode)
-	})
+			mStorageClient.
+				EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+					return &store.Object{
+						Metadata: store.Metadata{ID: id, ETag: tt.resourceEtag},
+						Data:     envDataModel,
+					}, nil
+				})
+
+			if !tt.shouldFail {
+				mStorageClient.
+					EXPECT().
+					Delete(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, id string, _ ...store.DeleteOptions) error {
+						return nil
+					})
+			}
+
+			ctl, err := NewDeleteEnvironment(mStorageClient, nil)
+			require.NoError(t, err)
+			resp, err := ctl.Run(ctx, req)
+			require.NoError(t, err)
+			_ = resp.Apply(ctx, w, req)
+			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
+		})
+	}
 }
