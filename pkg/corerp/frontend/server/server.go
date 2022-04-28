@@ -14,6 +14,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/middleware"
 	"github.com/project-radius/radius/pkg/version"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 )
 
 type ServerOptions struct {
@@ -52,11 +55,17 @@ func reportVersion(w http.ResponseWriter, req *http.Request) {
 	info := version.NewVersionInfo()
 
 	b, err := json.MarshalIndent(&info, "", "  ")
+	ctx := req.Context()
+	meter := global.GetMeterProvider().Meter("radius-rp")
+	counter := metric.Must(meter).NewFloat64Counter("healthzRequests",
+		metric.WithDescription("healthz metrics"))
 	if err != nil {
 		w.WriteHeader(500)
+		counter.Add(ctx, 1, attribute.String("healthzFailed", "404"))
 		return
 	}
 
 	w.Header().Add("Content-Type", "application/json")
 	_, _ = w.Write(b)
+	counter.Add(ctx, 1, attribute.String("healthzSuccess", "200"))
 }

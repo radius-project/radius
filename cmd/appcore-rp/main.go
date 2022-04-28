@@ -10,8 +10,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/go-logr/logr"
@@ -19,7 +21,39 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/hosting"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"go.opentelemetry.io/otel/exporters/metric/prometheus"
+	"go.opentelemetry.io/otel/metric/global"
+	export "go.opentelemetry.io/otel/sdk/export/metric"
+	"go.opentelemetry.io/otel/sdk/metric/aggregator/histogram"
+	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
+	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
+	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
 )
+
+func initMeter(port int, endpoint string) {
+	promConfig := prometheus.Config{}
+	c := controller.New(
+		processor.New(
+			selector.NewWithHistogramDistribution(
+				histogram.WithExplicitBoundaries(promConfig.DefaultHistogramBoundaries),
+			),
+			export.CumulativeExportKindSelector(),
+		),
+	)
+	exporter, err := prometheus.NewExporter(promConfig, c)
+	if err != nil {
+		log.Panicf("failed to initialize prometheus exporter %v", err)
+	}
+
+	global.SetMeterProvider(exporter.MeterProvider())
+
+	http.HandleFunc(endpoint, exporter.ServeHTTP)
+	concatenatedPort := ":"+strconv.Itoa(port)
+	go func() {
+		_ = http.ListenAndServe(concatenatedPort, nil)
+	}()
+	log.Printf("Prometheus server running on %s", concatenatedPort)
+}
 
 func main() {
 	var configFile string
@@ -52,6 +86,7 @@ func main() {
 		// Values that will be propagated to all loggers
 		LoggerValues: loggerValues,
 	}
+	initMeter(options.Config.Metrics.Port, options.Config.Metrics.Endpoint)
 
 	// Create a channel to handle the shutdown
 	exitCh := make(chan os.Signal, 1)
