@@ -48,7 +48,7 @@ func initMeter(port int, endpoint string) {
 	global.SetMeterProvider(exporter.MeterProvider())
 
 	http.HandleFunc(endpoint, exporter.ServeHTTP)
-	concatenatedPort := ":"+strconv.Itoa(port)
+	concatenatedPort := ":" + strconv.Itoa(port)
 	go func() {
 		_ = http.ListenAndServe(concatenatedPort, nil)
 	}()
