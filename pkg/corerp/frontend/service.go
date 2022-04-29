@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
 	"github.com/project-radius/radius/pkg/corerp/frontend/server"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
+	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 type Service struct {
@@ -63,9 +64,10 @@ func (s *Service) Run(ctx context.Context) error {
 =======
 
 	// initialize the manager for ARM client cert validation
-	armCertMgr, err := NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint)
-	if err != nil || armCertMgr == nil {
-		logger.Info("Error creating arm cert manager - ", err)
+	armCertMgr := armAuthenticator.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint)
+	_, err := armCertMgr.Start(ctx)
+	if err != nil {
+		logger.V(radlogger.Error).Info("Error creating arm cert manager - ", err)
 	}
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address:  address,
@@ -101,14 +103,4 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info("Server stopped...")
 	return nil
-}
-
-// NewArmCertManager creates arm cert manager that fetches/refreshes the arm client cert from metadata endpoint
-func NewArmCertManager(armMetaEndpoint string) (*armAuthenticator.ArmCertManager, error) {
-	armCertManager := armAuthenticator.NewArmCertManager(armMetaEndpoint)
-	_, err := armCertManager.Start(context.Background())
-	if err != nil {
-		return armCertManager, err
-	}
-	return armCertManager, nil
 }
