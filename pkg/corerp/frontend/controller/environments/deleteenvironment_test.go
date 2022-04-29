@@ -7,7 +7,6 @@ package environments
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -49,22 +48,22 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	existingResourceDeletionCases := []struct {
-		caseNumber         int
+		testDescription    string
 		ifMatchEtag        string
 		resourceEtag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{1, "", "random-etag", 200, false},
-		{2, "", "", 204, true},
-		{3, "matching-etag", "matching-etag", 200, false},
-		{4, "not-matching-etag", "another-etag", 412, true},
-		{5, "*", "", 204, true},
-		{6, "*", "random-etag", 200, false},
+		{"delete-existing-resource-no-if-match", "", "random-etag", 200, false},
+		{"delete-not-existing-resource-no-if-match", "", "", 204, true},
+		{"delete-existing-resource-matching-if-match", "matching-etag", "matching-etag", 200, false},
+		{"delete-existing-resource-not-matching-if-match", "not-matching-etag", "another-etag", 412, true},
+		{"delete-not-existing-resource-*-if-match", "*", "", 204, true},
+		{"delete-existing-resource-*-if-match", "*", "random-etag", 200, false},
 	}
 
 	for _, tt := range existingResourceDeletionCases {
-		t.Run(fmt.Sprint(tt.caseNumber), func(t *testing.T) {
+		t.Run(tt.testDescription, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)

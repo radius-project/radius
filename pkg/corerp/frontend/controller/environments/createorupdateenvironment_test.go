@@ -8,7 +8,6 @@ package environments
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,21 +27,21 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 
 	createNewResourceCases := []struct {
-		caseNumber         int
+		testDescription    string
 		headerKey          string
 		headerValue        string
 		resourceEtag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{1, "If-Match", "", "", 200, false},
-		{2, "If-Match", "*", "", 412, true},
-		{3, "If-Match", "randome-etag", "", 412, true},
-		{4, "If-None-Match", "*", "", 200, false},
+		{"create-new-resource-no-if-match", "If-Match", "", "", 200, false},
+		{"create-new-resource-*-if-match", "If-Match", "*", "", 412, true},
+		{"create-new-resource-etag-if-match", "If-Match", "randome-etag", "", 412, true},
+		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", 200, false},
 	}
 
 	for _, tt := range createNewResourceCases {
-		t.Run(fmt.Sprint(tt.caseNumber), func(t *testing.T) {
+		t.Run(tt.testDescription, func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
@@ -89,22 +88,22 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	}
 
 	updateExistingResourceCases := []struct {
-		caseNumber         int
+		testDescription    string
 		headerKey          string
 		headerValue        string
 		resourceEtag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{1, "If-Match", "", "resource-etag", 200, false},
-		{2, "If-Match", "*", "resource-etag", 200, false},
-		{3, "If-Match", "matching-etag", "matching-etag", 200, false},
-		{4, "If-Match", "not-matching-etag", "another-etag", 412, true},
-		{5, "If-None-Match", "*", "another-etag", 412, true},
+		{"update-resource-no-if-match", "If-Match", "", "resource-etag", 200, false},
+		{"update-resource-*-if-match", "If-Match", "*", "resource-etag", 200, false},
+		{"update-resource-matching-if-match", "If-Match", "matching-etag", "matching-etag", 200, false},
+		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "another-etag", 412, true},
+		{"update-resource-*-if-none-match", "If-None-Match", "*", "another-etag", 412, true},
 	}
 
 	for _, tt := range updateExistingResourceCases {
-		t.Run(fmt.Sprint(tt.caseNumber), func(t *testing.T) {
+		t.Run(tt.testDescription, func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
