@@ -31,10 +31,7 @@ func (a *ArmCertStore) getValidCertificates() ([]Certificate, error) {
 	a.purgeOldCertificates()
 	var validCertificates []Certificate
 	(*sync.Map)(a).Range(func(k, v interface{}) bool {
-		valid, err := v.(Certificate).isValid()
-		if err != nil {
-			return false
-		}
+		valid := v.(Certificate).isValid()
 		if valid {
 			validCertificates = append(validCertificates, v.(Certificate))
 		}
