@@ -49,11 +49,7 @@ func (e *PatchEnvironment) Run(ctx context.Context, req *http.Request) (rest.Res
 	// Read resource metadata from the storage
 	existingResource := &datamodel.Environment{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
-	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
-		return nil, err
-	}
-
-	if etag == "" {
+	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
@@ -68,7 +64,7 @@ func (e *PatchEnvironment) Run(ctx context.Context, req *http.Request) (rest.Res
 	}
 	newResource.TenantID = serviceCtx.HomeTenantID
 
-	err = e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
+	ur, err := e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +74,9 @@ func (e *PatchEnvironment) Run(ctx context.Context, req *http.Request) (rest.Res
 		return nil, err
 	}
 
-	return rest.NewOKResponse(versioned), nil
+	headers := map[string]string{"ETag": ur.ETag}
+
+	return rest.NewOKResponseWithHeaders(versioned, headers), nil
 }
 
 // Validate extracts versioned resource from request and validate the properties.
