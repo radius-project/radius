@@ -44,7 +44,7 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 						ResourceName:    "mystore",
 						ResourceType:    daprstatestorev1alpha3.ResourceType,
 						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDaprComponent: validation.NewOutputResource(outputresource.LocalIDDaprComponent, rest.ResourceType{Type: resourcekinds.DaprStateStoreAzureStorage, Provider: providers.ProviderAzure}, false, rest.OutputResourceStatus{}),
+							outputresource.LocalIDDaprStateStoreAzureStorage: validation.NewOutputResource(outputresource.LocalIDDaprStateStoreAzureStorage, rest.ResourceType{Type: resourcekinds.DaprStateStoreAzureStorage, Provider: providers.ProviderAzure}, false, rest.OutputResourceStatus{}),
 						},
 					},
 				},
