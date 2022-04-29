@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -27,7 +28,12 @@ var (
 // ReadJSONBody extracts the content from request.
 func ReadJSONBody(r *http.Request) ([]byte, error) {
 	defer r.Body.Close()
-	contentType := r.Header.Get(ContentTypeHeaderKey)
+
+	contentType := strings.ToLower(strings.TrimSpace(r.Header.Get(ContentTypeHeaderKey)))
+	if i := strings.Index(contentType, ";"); i > -1 {
+		contentType = contentType[0:i]
+	}
+
 	if contentType != "application/json" {
 		return nil, ErrUnsupportedContentType
 	}
