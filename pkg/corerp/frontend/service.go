@@ -103,7 +103,7 @@ func (s *Service) Run(ctx context.Context) error {
 	return nil
 }
 
-// newArmCertManager creates arm cert manager that fetches/refreshes the arm client cert from metadata endpoint
+// NewArmCertManager creates arm cert manager that fetches/refreshes the arm client cert from metadata endpoint
 func NewArmCertManager(armMetaEndpoint string) (*armAuthenticator.ArmCertManager, error) {
 	armCertManager := armAuthenticator.NewArmCertManager(armMetaEndpoint)
 	_, err := armCertManager.Start(context.Background())

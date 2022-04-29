@@ -9,6 +9,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -43,11 +44,11 @@ func TestCertValidationUnauthorized(t *testing.T) {
 			Thumbprint:  "16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D",
 		}
 		armCertMgr := armAuthenticator.NewArmCertManager("https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01")
-		armCertMgr.CertStore.ThumbprintMap.Store("16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D", cert)
+		(*sync.Map)(armCertMgr.CertStore).Store("16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D", cert)
 		r.Use(ClientCertValidator(armCertMgr))
 		handler := LowercaseURLPath(r)
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
-		req.Header.Set(http.CanonicalHeaderKey(IngressCertThumbprintHeader), "16FD2BA9D0A534E7E1FB46955C29EF0558B81D4Da")
+		req.Header.Set(IngressCertThumbprintHeader, "16FD2BA9D0A534E7E1FB46955C29EF0558B81D4Da")
 		handler.ServeHTTP(w, req)
 		parsed := w.Body.String()
 		assert.Equal(t, tt.expected, parsed)
@@ -80,11 +81,11 @@ func TestCertValidationAuthorized(t *testing.T) {
 			Thumbprint:  "16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D",
 		}
 		armCertMgr := armAuthenticator.NewArmCertManager("https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01")
-		armCertMgr.CertStore.ThumbprintMap.Store("16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D", cert)
+		(*sync.Map)(armCertMgr.CertStore).Store("16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D", cert)
 		r.Use(ClientCertValidator(armCertMgr))
 		handler := LowercaseURLPath(r)
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
-		req.Header.Set(http.CanonicalHeaderKey(IngressCertThumbprintHeader), "16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D")
+		req.Header.Set(IngressCertThumbprintHeader, "16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D")
 		handler.ServeHTTP(w, req)
 		parsed := w.Body.String()
 		assert.Equal(t, tt.expected, parsed)

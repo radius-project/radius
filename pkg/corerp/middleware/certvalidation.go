@@ -30,7 +30,7 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 				next.ServeHTTP(w, r)
 				return
 			}
-			clientRequestThumbprint := r.Header.Get(http.CanonicalHeaderKey(IngressCertThumbprintHeader))
+			clientRequestThumbprint := r.Header.Get(IngressCertThumbprintHeader)
 			if clientRequestThumbprint == "" {
 				log.V(radlogger.Error).Info("X-SSL-Client-Thumbprint header is missing")
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -44,7 +44,6 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 				return
 			}
 			next.ServeHTTP(w, r)
-			return
 		})
 	}
 }
