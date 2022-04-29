@@ -64,4 +64,6 @@ type ServerOptions struct {
 	// ArmMetadataEndpoints provides the client certification to authenticate between ARM and RP.
 	// https://armwiki.azurewebsites.net/authorization/AuthenticateBetweenARMandRP.html
 	ArmMetadataEndpoint string `yaml:"armMetadataEndpoint,omitempty"`
+	// EnableAuth when set the arm client authetication will be performed
+	EnableAuth bool `yaml:"enableAuth,omitempty"`
 }

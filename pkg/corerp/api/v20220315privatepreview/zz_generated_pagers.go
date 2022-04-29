@@ -10,20 +10,19 @@ package v20220315privatepreview
 
 import (
 	"context"
-	"net/http"
-	"reflect"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"net/http"
+	"reflect"
 )
 
 // ApplicationsListBySubscriptionPager provides operations for iterating over paged responses.
 type ApplicationsListBySubscriptionPager struct {
-	client    *ApplicationsClient
-	current   ApplicationsListBySubscriptionResponse
-	err       error
+	client *ApplicationsClient
+	current ApplicationsListBySubscriptionResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, ApplicationsListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, ApplicationsListBySubscriptionResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -48,7 +47,7 @@ func (p *ApplicationsListBySubscriptionPager) NextPage(ctx context.Context) bool
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -73,11 +72,11 @@ func (p *ApplicationsListBySubscriptionPager) PageResponse() ApplicationsListByS
 
 // ApplicationsListPager provides operations for iterating over paged responses.
 type ApplicationsListPager struct {
-	client    *ApplicationsClient
-	current   ApplicationsListResponse
-	err       error
+	client *ApplicationsClient
+	current ApplicationsListResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, ApplicationsListResponse) (*policy.Request, error)
+	advancer func(context.Context, ApplicationsListResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -102,7 +101,7 @@ func (p *ApplicationsListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -127,11 +126,11 @@ func (p *ApplicationsListPager) PageResponse() ApplicationsListResponse {
 
 // EnvironmentsListBySubscriptionPager provides operations for iterating over paged responses.
 type EnvironmentsListBySubscriptionPager struct {
-	client    *EnvironmentsClient
-	current   EnvironmentsListBySubscriptionResponse
-	err       error
+	client *EnvironmentsClient
+	current EnvironmentsListBySubscriptionResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, EnvironmentsListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, EnvironmentsListBySubscriptionResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -156,7 +155,7 @@ func (p *EnvironmentsListBySubscriptionPager) NextPage(ctx context.Context) bool
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -181,11 +180,11 @@ func (p *EnvironmentsListBySubscriptionPager) PageResponse() EnvironmentsListByS
 
 // EnvironmentsListPager provides operations for iterating over paged responses.
 type EnvironmentsListPager struct {
-	client    *EnvironmentsClient
-	current   EnvironmentsListResponse
-	err       error
+	client *EnvironmentsClient
+	current EnvironmentsListResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, EnvironmentsListResponse) (*policy.Request, error)
+	advancer func(context.Context, EnvironmentsListResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -210,7 +209,7 @@ func (p *EnvironmentsListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -235,11 +234,11 @@ func (p *EnvironmentsListPager) PageResponse() EnvironmentsListResponse {
 
 // MongoDatabasesListBySubscriptionPager provides operations for iterating over paged responses.
 type MongoDatabasesListBySubscriptionPager struct {
-	client    *MongoDatabasesClient
-	current   MongoDatabasesListBySubscriptionResponse
-	err       error
+	client *MongoDatabasesClient
+	current MongoDatabasesListBySubscriptionResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, MongoDatabasesListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, MongoDatabasesListBySubscriptionResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -264,7 +263,7 @@ func (p *MongoDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bo
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -289,11 +288,11 @@ func (p *MongoDatabasesListBySubscriptionPager) PageResponse() MongoDatabasesLis
 
 // MongoDatabasesListPager provides operations for iterating over paged responses.
 type MongoDatabasesListPager struct {
-	client    *MongoDatabasesClient
-	current   MongoDatabasesListResponse
-	err       error
+	client *MongoDatabasesClient
+	current MongoDatabasesListResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, MongoDatabasesListResponse) (*policy.Request, error)
+	advancer func(context.Context, MongoDatabasesListResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -318,7 +317,7 @@ func (p *MongoDatabasesListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -340,3 +339,4 @@ func (p *MongoDatabasesListPager) NextPage(ctx context.Context) bool {
 func (p *MongoDatabasesListPager) PageResponse() MongoDatabasesListResponse {
 	return p.current
 }
+

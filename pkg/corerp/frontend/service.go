@@ -63,18 +63,16 @@ func (s *Service) Run(ctx context.Context) error {
 =======
 
 	// initialize the manager for ARM client cert validation
-	armCertMgr, err := newArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint)
-	enableAuth := true
+	armCertMgr, err := NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint)
 	if err != nil || armCertMgr == nil {
 		logger.Info("Error creating arm cert manager - ", err)
-		enableAuth = false
 	}
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr: armCertMgr,
-		EnableAuth: enableAuth,
+		EnableAuth: s.Options.Config.Server.EnableAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) {
 			if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
 				panic(err)
@@ -106,7 +104,7 @@ func (s *Service) Run(ctx context.Context) error {
 }
 
 // newArmCertManager creates arm cert manager that fetches/refreshes the arm client cert from metadata endpoint
-func newArmCertManager(armMetaEndpoint string) (*armAuthenticator.ArmCertManager, error) {
+func NewArmCertManager(armMetaEndpoint string) (*armAuthenticator.ArmCertManager, error) {
 	armCertManager := armAuthenticator.NewArmCertManager(armMetaEndpoint)
 	_, err := armCertManager.Start(context.Background())
 	if err != nil {

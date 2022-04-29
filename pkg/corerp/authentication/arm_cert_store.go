@@ -7,40 +7,44 @@ package authentication
 
 import (
 	"sync"
-	"time"
 )
 
+// ArmCertStore stores active client certificates fetched from arm metadata endpoint
+type ArmCertStore struct {
+	ThumbprintMap sync.Map // maps from thumbprint -> Certificate
+}
+
 // newArmCertStore creates a new armstore to store the active arm client thumbprint
-func newArmCertStore() *armCertStore {
+func newArmCertStore() *ArmCertStore {
 	var syncMap sync.Map
-	return &armCertStore{
-		thumbprintMap: syncMap,
+	return &ArmCertStore{
+		ThumbprintMap: syncMap,
 	}
 }
 
 // storeCertificates stores the thumbprint fetched from arm metadata endpoint in memory
-func (a *armCertStore) storeCertificates(certificates []certificate) {
+func (a *ArmCertStore) storeCertificates(certificates []Certificate) {
 	for _, cert := range certificates {
-		if _, ok := a.thumbprintMap.Load(cert.Thumbprint); !ok {
-			a.thumbprintMap.Store(cert.Thumbprint, cert)
+		if _, ok := a.ThumbprintMap.Load(cert.Thumbprint); !ok {
+			a.ThumbprintMap.Store(cert.Thumbprint, cert)
 		}
 	}
 }
 
 // getValidCertificates purges the thumbprints that are expired and stores the thumbprint that are active
-func (a *armCertStore) getValidCertificates() ([]certificate, error) {
+func (a *ArmCertStore) getValidCertificates() ([]Certificate, error) {
 	err := a.purgeOldCertificates()
 	if err != nil {
 		return nil, err
 	}
-	var validCertificates []certificate
-	a.thumbprintMap.Range(func(k, v interface{}) bool {
-		valid, err := v.(certificate).certificateIsCurrent()
+	var validCertificates []Certificate
+	a.ThumbprintMap.Range(func(k, v interface{}) bool {
+		valid, err := v.(Certificate).certificateIsCurrent()
 		if err != nil {
 			return false
 		}
 		if valid {
-			validCertificates = append(validCertificates, v.(certificate))
+			validCertificates = append(validCertificates, v.(Certificate))
 		}
 		return true
 	})
@@ -48,15 +52,15 @@ func (a *armCertStore) getValidCertificates() ([]certificate, error) {
 }
 
 // purgeOldCertificates updates the cert store with active thumbprints
-func (a *armCertStore) purgeOldCertificates() error {
-	var certificates []certificate
-	a.thumbprintMap.Range(func(k, v interface{}) bool {
-		expired, err := v.(certificate).certificateExpired()
+func (a *ArmCertStore) purgeOldCertificates() error {
+	var certificates []Certificate
+	a.ThumbprintMap.Range(func(k, v interface{}) bool {
+		expired, err := v.(Certificate).certificateExpired()
 		if err != nil {
 			return false
 		}
 		if !expired {
-			certificates = append(certificates, v.(certificate))
+			certificates = append(certificates, v.(Certificate))
 		}
 		return true
 	})
@@ -65,38 +69,6 @@ func (a *armCertStore) purgeOldCertificates() error {
 	for _, cert := range certificates {
 		validThumbprintMap.Store(cert.Thumbprint, cert)
 	}
-	a.thumbprintMap = validThumbprintMap
+	a.ThumbprintMap = validThumbprintMap
 	return nil
-}
-
-// certificateIsCurrent verifies if a certificate has a valid startDate and is not expired
-func (c certificate) certificateIsCurrent() (bool, error) {
-	expired, err := c.certificateExpired()
-	if err != nil {
-		return false, err
-	}
-	hasStarted, err := c.certificateStarted()
-	if err != nil {
-		return false, err
-	}
-	if expired || !hasStarted {
-		return false, nil
-	}
-	return true, nil
-}
-
-// certificateExpired verifies the expiry of a certificate
-func (c certificate) certificateExpired() (bool, error) {
-	if time.Now().Before(c.NotAfter) {
-		return false, nil
-	}
-	return true, nil
-}
-
-// certificateStarted verfies the start time of a certificate
-func (c certificate) certificateStarted() (bool, error) {
-	if time.Now().Before(c.NotBefore) {
-		return false, nil
-	}
-	return true, nil
 }
