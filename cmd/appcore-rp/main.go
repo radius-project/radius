@@ -30,6 +30,8 @@ func main() {
 		log.Fatal("config-file is empty.")
 	}
 
+	flag.Parse()
+
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
 	if err != nil {
 		log.Fatal(err)
