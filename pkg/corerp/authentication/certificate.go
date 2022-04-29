@@ -30,16 +30,10 @@ func (c Certificate) isValid() bool {
 
 // certificateExpired verifies the expiry of a certificate
 func (c Certificate) isExpired() bool {
-	if time.Now().Before(c.NotAfter) {
-		return false
-	}
-	return true
+	return !time.Now().Before(c.NotAfter)
 }
 
 // certificateStarted verfies the start time of a certificate
 func (c Certificate) isStarted() bool {
-	if time.Now().Before(c.NotBefore) {
-		return false
-	}
-	return true
+	return !time.Now().Before(c.NotBefore)
 }

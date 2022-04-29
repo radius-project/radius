@@ -15,9 +15,7 @@ var ArmCertStore sync.Map
 // storeCertificates stores the thumbprint fetched from arm metadata endpoint in memory
 func storeCertificates(certificates []Certificate) {
 	for _, cert := range certificates {
-		if _, ok := ArmCertStore.Load(cert.Thumbprint); !ok {
-			ArmCertStore.Store(cert.Thumbprint, cert)
-		}
+		ArmCertStore.LoadOrStore(cert.Thumbprint, cert)
 	}
 }
 
