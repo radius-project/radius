@@ -21,7 +21,6 @@ var (
 // ArmCertManager defines the arm client manager for fetching the client cert from arm metadata endpoint
 type ArmCertManager struct {
 	armMetaEndpoint string
-	CertStore       *ArmCertStore
 	period          time.Duration
 }
 
@@ -29,7 +28,6 @@ type ArmCertManager struct {
 func NewArmCertManager(armMetaEndpoint string) *ArmCertManager {
 	certMgr := ArmCertManager{
 		armMetaEndpoint: armMetaEndpoint,
-		CertStore:       newArmCertStore(),
 		period:          1 * time.Hour,
 	}
 	return &certMgr
@@ -53,10 +51,7 @@ func (armCertMgr *ArmCertManager) getARMClientCert() ([]Certificate, error) {
 // IsValidThumbprint verifies the thumbprint received in the request header against the list of thumbprints
 // fetched from arm metadata endpoint
 func (armCertMgr *ArmCertManager) IsValidThumbprint(thumbprint string) (bool, error) {
-	armPublicCerts, err := armCertMgr.CertStore.getValidCertificates()
-	if err != nil {
-		return false, err
-	}
+	armPublicCerts := getValidCertificates()
 	for _, cert := range armPublicCerts {
 		if strings.EqualFold(cert.Thumbprint, thumbprint) {
 			return true, nil
@@ -75,12 +70,9 @@ func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, err
 	if len(certs) == 0 {
 		return nil, ErrClientCertFetch
 	}
-	armCertMgr.CertStore.storeCertificates(certs)
+	storeCertificates(certs)
 	go armCertMgr.periodicCertRefresh(ctx)
-	storedCerts, err := armCertMgr.CertStore.getValidCertificates()
-	if err != nil {
-		return nil, err
-	}
+	storedCerts := getValidCertificates()
 	return storedCerts, nil
 }
 
@@ -90,11 +82,8 @@ func (armCertMgr *ArmCertManager) refreshCert() ([]Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	armCertMgr.CertStore.storeCertificates(newCertificates)
-	certs, err := armCertMgr.CertStore.getValidCertificates()
-	if err != nil {
-		return nil, err
-	}
+	storeCertificates(newCertificates)
+	certs := getValidCertificates()
 	return certs, nil
 }
 
@@ -111,6 +100,6 @@ func (armCertMgr *ArmCertManager) periodicCertRefresh(ctx context.Context) {
 		if err != nil {
 			return
 		}
-		armCertMgr.CertStore.storeCertificates(certs)
+		storeCertificates(certs)
 	}
 }

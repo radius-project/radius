@@ -10,40 +10,35 @@ import (
 )
 
 // ArmCertStore stores active client certificates fetched from arm metadata endpoint
-type ArmCertStore sync.Map
-
-// newArmCertStore creates a new armstore to store the active arm client thumbprint
-func newArmCertStore() *ArmCertStore {
-	return &ArmCertStore{}
-}
+var ArmCertStore sync.Map
 
 // storeCertificates stores the thumbprint fetched from arm metadata endpoint in memory
-func (a *ArmCertStore) storeCertificates(certificates []Certificate) {
+func storeCertificates(certificates []Certificate) {
 	for _, cert := range certificates {
-		if _, ok := (*sync.Map)(a).Load(cert.Thumbprint); !ok {
-			(*sync.Map)(a).Store(cert.Thumbprint, cert)
+		if _, ok := ArmCertStore.Load(cert.Thumbprint); !ok {
+			ArmCertStore.Store(cert.Thumbprint, cert)
 		}
 	}
 }
 
 // getValidCertificates purges the thumbprints that are expired and stores the thumbprint that are active
-func (a *ArmCertStore) getValidCertificates() ([]Certificate, error) {
-	a.purgeOldCertificates()
+func getValidCertificates() []Certificate {
+	purgeOldCertificates()
 	var validCertificates []Certificate
-	(*sync.Map)(a).Range(func(k, v interface{}) bool {
+	ArmCertStore.Range(func(k, v interface{}) bool {
 		valid := v.(Certificate).isValid()
 		if valid {
 			validCertificates = append(validCertificates, v.(Certificate))
 		}
 		return true
 	})
-	return validCertificates, nil
+	return validCertificates
 }
 
 // purgeOldCertificates updates the cert store with active thumbprints
-func (a *ArmCertStore) purgeOldCertificates() {
+func purgeOldCertificates() {
 	var certificates []Certificate
-	(*sync.Map)(a).Range(func(k, v interface{}) bool {
+	ArmCertStore.Range(func(k, v interface{}) bool {
 		expired := v.(Certificate).isExpired()
 		if expired {
 			certificates = append(certificates, v.(Certificate))
@@ -51,6 +46,6 @@ func (a *ArmCertStore) purgeOldCertificates() {
 		return true
 	})
 	for _, cert := range certificates {
-		(*sync.Map)(a).Delete(cert.Thumbprint)
+		ArmCertStore.Delete(cert.Thumbprint)
 	}
 }

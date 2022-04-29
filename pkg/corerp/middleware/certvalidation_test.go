@@ -9,7 +9,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 
@@ -44,7 +43,7 @@ func TestCertValidationUnauthorized(t *testing.T) {
 			Thumbprint:  "16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D",
 		}
 		armCertMgr := armAuthenticator.NewArmCertManager("https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01")
-		(*sync.Map)(armCertMgr.CertStore).Store("16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D", cert)
+		armAuthenticator.ArmCertStore.Store("16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D", cert)
 		r.Use(ClientCertValidator(armCertMgr))
 		handler := LowercaseURLPath(r)
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
@@ -81,7 +80,7 @@ func TestCertValidationAuthorized(t *testing.T) {
 			Thumbprint:  "16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D",
 		}
 		armCertMgr := armAuthenticator.NewArmCertManager("https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01")
-		(*sync.Map)(armCertMgr.CertStore).Store("16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D", cert)
+		armAuthenticator.ArmCertStore.Store("16FD2BA9D0A534E7E1FB46955C29EF0558B81D4D", cert)
 		r.Use(ClientCertValidator(armCertMgr))
 		handler := LowercaseURLPath(r)
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
