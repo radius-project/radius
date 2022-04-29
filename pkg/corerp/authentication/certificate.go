@@ -21,33 +21,25 @@ type clientCertificates struct {
 }
 
 // certificateIsCurrent verifies if a certificate has a valid startDate and is not expired
-func (c Certificate) certificateIsCurrent() (bool, error) {
-	expired, err := c.certificateExpired()
-	if err != nil {
-		return false, err
-	}
-	hasStarted, err := c.certificateStarted()
-	if err != nil {
-		return false, err
-	}
-	if expired || !hasStarted {
+func (c Certificate) isValid() (bool, error) {
+	if c.isExpired() || !c.isStarted() {
 		return false, nil
 	}
 	return true, nil
 }
 
 // certificateExpired verifies the expiry of a certificate
-func (c Certificate) certificateExpired() (bool, error) {
+func (c Certificate) isExpired() bool {
 	if time.Now().Before(c.NotAfter) {
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }
 
 // certificateStarted verfies the start time of a certificate
-func (c Certificate) certificateStarted() (bool, error) {
+func (c Certificate) isStarted() bool {
 	if time.Now().Before(c.NotBefore) {
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }

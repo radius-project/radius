@@ -28,13 +28,10 @@ func (a *ArmCertStore) storeCertificates(certificates []Certificate) {
 
 // getValidCertificates purges the thumbprints that are expired and stores the thumbprint that are active
 func (a *ArmCertStore) getValidCertificates() ([]Certificate, error) {
-	err := a.purgeOldCertificates()
-	if err != nil {
-		return nil, err
-	}
+	a.purgeOldCertificates()
 	var validCertificates []Certificate
 	(*sync.Map)(a).Range(func(k, v interface{}) bool {
-		valid, err := v.(Certificate).certificateIsCurrent()
+		valid, err := v.(Certificate).isValid()
 		if err != nil {
 			return false
 		}
@@ -47,13 +44,10 @@ func (a *ArmCertStore) getValidCertificates() ([]Certificate, error) {
 }
 
 // purgeOldCertificates updates the cert store with active thumbprints
-func (a *ArmCertStore) purgeOldCertificates() error {
+func (a *ArmCertStore) purgeOldCertificates() {
 	var certificates []Certificate
 	(*sync.Map)(a).Range(func(k, v interface{}) bool {
-		expired, err := v.(Certificate).certificateExpired()
-		if err != nil {
-			return false
-		}
+		expired := v.(Certificate).isExpired()
 		if expired {
 			certificates = append(certificates, v.(Certificate))
 		}
@@ -62,5 +56,4 @@ func (a *ArmCertStore) purgeOldCertificates() error {
 	for _, cert := range certificates {
 		(*sync.Map)(a).Delete(cert.Thumbprint)
 	}
-	return nil
 }

@@ -14,6 +14,10 @@ import (
 	"time"
 )
 
+var (
+	ErrClientCertFetch = errors.New("failed to fetch client certificate from arm metadata endpoint")
+)
+
 // ArmCertManager defines the arm client manager for fetching the client cert from arm metadata endpoint
 type ArmCertManager struct {
 	armMetaEndpoint string
@@ -36,12 +40,12 @@ func (armCertMgr *ArmCertManager) getARMClientCert() ([]Certificate, error) {
 	client := http.Client{}
 	resp, err := client.Get(armCertMgr.armMetaEndpoint)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return nil, errors.New("failed to fetch client certificate from arm metadata endpoint")
+		return nil, ErrClientCertFetch
 	}
 	var certificates clientCertificates
 	err = json.NewDecoder(resp.Body).Decode(&certificates)
 	if err != nil {
-		return nil, errors.New("failed to fetch client certificate from arm metadata endpoint")
+		return nil, ErrClientCertFetch
 	}
 	return certificates.ClientCertificates, nil
 }
@@ -69,7 +73,7 @@ func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, err
 		return nil, err
 	}
 	if len(certs) == 0 {
-		return nil, errors.New("failed to retrieve any certificates on ArmCertManager startup")
+		return nil, ErrClientCertFetch
 	}
 	armCertMgr.CertStore.storeCertificates(certs)
 	go armCertMgr.periodicCertRefresh(ctx)
