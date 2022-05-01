@@ -5,15 +5,18 @@
 
 package hostoptions
 
-import "github.com/project-radius/radius/pkg/corerp/dataprovider"
+import (
+	"github.com/project-radius/radius/pkg/corerp/dataprovider"
+	"github.com/project-radius/radius/pkg/telemetry/metricsprovider"
+)
 
 // ProviderConfig includes the resource provider configuration.
 type ProviderConfig struct {
-	CloudEnv        CloudEnvironmentOptions             `yaml:"cloudEnvironment"`
-	Identity        IdentityOptions                     `yaml:"identity"`
-	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
-	Server          ServerOptions                       `yaml:"server"`
-	Metrics         MetricOptions                       `yaml:"metric"`
+	CloudEnv        CloudEnvironmentOptions                      `yaml:"cloudEnvironment"`
+	Identity        IdentityOptions                              `yaml:"identity"`
+	StorageProvider dataprovider.StorageProviderOptions          `yaml:"storageProvider"`
+	Server          ServerOptions                                `yaml:"server"`
+	MetricsProvider metricsprovider.MetricsClientProviderOptions `yaml:"metricsProvider"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
@@ -61,14 +64,4 @@ type ServerOptions struct {
 	// ArmMetadataEndpoints provides the client certification to authenticate between ARM and RP.
 	// https://armwiki.azurewebsites.net/authorization/AuthenticateBetweenARMandRP.html
 	ArmMetadataEndpoint string `yaml:"armMetadataEndpoint,omitempty"`
-}
-
-// MetricOptions includes Geneva metric options.
-type MetricOptions struct {
-	ExporterType string `yaml:"exporterType"`
-	Port         int    `yaml:"port"`
-	Endpoint     string `yaml:"endpoint,omitempty"`
-	Account      string `yaml:"account,omitempty"`
-	Namespace    string `yaml:"namespace,omitempty"`
-	Tenant       string `yaml:"tenant,omitempty"`
 }

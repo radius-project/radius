@@ -13,22 +13,24 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/middleware"
+	mp "github.com/project-radius/radius/pkg/telemetry/metricsprovider"
 	"github.com/project-radius/radius/pkg/version"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
+)
+
+var (
+	promMetricsClient *mp.PrometheusMetricsClient
 )
 
 type ServerOptions struct {
 	Address  string
 	PathBase string
 	// TODO: implement client cert based authentication for arm
-	EnableAuth bool
-	Configure  func(*mux.Router)
+	EnableAuth            bool
+	Configure             func(*mux.Router)
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
-func NewServer(ctx context.Context, options ServerOptions) *http.Server {
+func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig mp.MetricsClientProviderOptions) *http.Server {
 	r := mux.NewRouter()
 	if options.Configure != nil {
 		options.Configure(r)
@@ -39,6 +41,10 @@ func NewServer(ctx context.Context, options ServerOptions) *http.Server {
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
 	r.Path("/version").Methods(http.MethodGet).HandlerFunc(reportVersion)
 	r.Path("/healthz").Methods(http.MethodGet).HandlerFunc(reportVersion)
+
+	//setup metrics handler
+	promMetricsClient, _ = mp.NewPrometheusMetricsClient()
+	r.Path(metricsProviderConfig.MetricsClientProviderOptions.Endpoint).HandlerFunc(promMetricsClient.Client.ServeHTTP)
 
 	server := &http.Server{
 		Addr:    options.Address,
@@ -56,16 +62,13 @@ func reportVersion(w http.ResponseWriter, req *http.Request) {
 
 	b, err := json.MarshalIndent(&info, "", "  ")
 	ctx := req.Context()
-	meter := global.GetMeterProvider().Meter("radius-rp")
-	counter := metric.Must(meter).NewFloat64Counter("healthzRequests",
-		metric.WithDescription("healthz metrics"))
+	
 	if err != nil {
 		w.WriteHeader(500)
-		counter.Add(ctx, 1, attribute.String("healthzFailed", "404"))
+		promMetricsClient.Observe(ctx, 1, "radCoreRp_system_unhealthy")
 		return
 	}
-
 	w.Header().Add("Content-Type", "application/json")
 	_, _ = w.Write(b)
-	counter.Add(ctx, 1, attribute.String("healthzSuccess", "200"))
+	promMetricsClient.Observe(ctx, 1, "radCoreRp_system_unhealthy")
 }

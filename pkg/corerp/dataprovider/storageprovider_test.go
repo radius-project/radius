@@ -23,7 +23,7 @@ func TestNormalizeResourceType(t *testing.T) {
 
 	for _, tc := range testrt {
 		t.Run(tc.in, func(t *testing.T) {
-			normalized := normalizeResourceType(tc.in)
+			normalized := NormalizeResourceType(tc.in)
 			require.Equal(t, tc.out, normalized)
 		})
 	}
