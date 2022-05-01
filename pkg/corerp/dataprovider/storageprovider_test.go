@@ -16,7 +16,7 @@ func TestNormalizeResourceType(t *testing.T) {
 		in  string
 		out string
 	}{
-		{"applications.core/environments", "applicationscoÒre-environments"},
+		{"applications.core/environments", "applicationscore-environments"},
 		{"applications.core/provider", "applicationscore-provider"},
 		{"applications.connector/provider", "applicationsconnector-provider"},
 	}
