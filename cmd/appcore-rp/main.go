@@ -21,8 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 )
 
-
-
 func main() {
 	var configFile string
 

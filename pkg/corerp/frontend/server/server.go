@@ -25,8 +25,8 @@ type ServerOptions struct {
 	Address  string
 	PathBase string
 	// TODO: implement client cert based authentication for arm
-	EnableAuth            bool
-	Configure             func(*mux.Router)
+	EnableAuth bool
+	Configure  func(*mux.Router)
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
@@ -62,7 +62,7 @@ func reportVersion(w http.ResponseWriter, req *http.Request) {
 
 	b, err := json.MarshalIndent(&info, "", "  ")
 	ctx := req.Context()
-	
+
 	if err != nil {
 		w.WriteHeader(500)
 		promMetricsClient.Observe(ctx, 1, "radCoreRp_system_unhealthy")

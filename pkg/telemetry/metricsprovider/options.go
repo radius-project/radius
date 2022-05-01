@@ -12,5 +12,5 @@ type MetricsClientProviderOptions struct {
 
 // Represents prometheus options for metrics client provider.
 type PrometheusClientProviderInfo struct {
-	Endpoint    string `yaml:"endpoint"`
+	Endpoint string `yaml:"endpoint"`
 }

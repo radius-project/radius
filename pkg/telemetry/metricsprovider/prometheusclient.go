@@ -21,7 +21,7 @@ import (
 var _ MetricsClient = (*PrometheusMetricsClient)(nil)
 
 type PrometheusMetricsClient struct {
-	Client prometheus.Exporter
+	Client *prometheus.Exporter
 }
 
 func NewPrometheusMetricsClient() (*PrometheusMetricsClient, error) {
@@ -40,7 +40,7 @@ func NewPrometheusMetricsClient() (*PrometheusMetricsClient, error) {
 	}
 
 	global.SetMeterProvider(exporter.MeterProvider())
-	return &PrometheusMetricsClient{Client: *exporter}, nil
+	return &PrometheusMetricsClient{Client: exporter}, nil
 }
 
 func (p *PrometheusMetricsClient) Add(ctx context.Context, val int, metricName string) {
@@ -53,7 +53,7 @@ func (p *PrometheusMetricsClient) Measure(ctx context.Context, val float64, metr
 
 func (p *PrometheusMetricsClient) Observe(ctx context.Context, val float64, metricName string) {
 	callback := func(v float64) metric.Float64ObserverFunc {
-		return metric.Float64ObserverFunc(func(_ context.Context, result metric.Float64ObserverResult) { result.Observe(v,) })
+		return metric.Float64ObserverFunc(func(_ context.Context, result metric.Float64ObserverResult) { result.Observe(v) })
 	}(float64(val))
 	getMeterMust().NewFloat64ValueObserver(metricName, callback).Observation(val)
 }

@@ -41,7 +41,7 @@ func (s *Service) Run(ctx context.Context) error {
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
-	server := server.NewServer(ctx, 
+	server := server.NewServer(ctx,
 		server.ServerOptions{
 			Address:  address,
 			PathBase: s.Options.Config.Server.PathBase,
