@@ -45,16 +45,6 @@ func main() {
 	}
 	defer flush()
 
-	//start metrics exporter server
-	// exporter := mo.InitMeter()
-	// promExporterEndpoint := options.Config.Metrics.Endpoint
-	// promExporterPort := options.Config.Metrics.Port
-	// http.HandleFunc(promExporterEndpoint, exporter.ServeHTTP)
-	// concatenatedPort := ":" + strconv.Itoa(promExporterPort)
-	// go func() {
-	// 	_ = http.ListenAndServe(concatenatedPort, nil)
-	// }()
-
 	loggerValues := []interface{}{}
 	host := &hosting.Host{
 		Services: []hosting.Service{
