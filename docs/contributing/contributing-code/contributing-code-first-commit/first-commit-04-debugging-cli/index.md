@@ -63,7 +63,7 @@ The first time you debug on macOS with a given version of Go you will be prompte
 You can play around with the various debugger features, like stepping into code. When you're done, hit the red square *stop* icon in the debugger tools to end the debugging session.
 
 ## Next step
-- [Run tests](first-commit-05-running-tests.md)
+- [Run tests](../first-commit-05-running-tests/index.md)
 
 ## Related Links
 
