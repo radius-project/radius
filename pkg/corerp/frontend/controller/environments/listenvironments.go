@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
@@ -67,6 +68,8 @@ func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Res
 
 	pagination, err := e.createPaginationResponse(serviceCtx.APIVersion, result)
 
+	e.updateNextLink(ctx, req, pagination)
+
 	return rest.NewOKResponse(pagination), err
 }
 
@@ -86,15 +89,13 @@ func (e *ListEnvironments) createPaginationResponse(apiversion string, result *s
 		items = append(items, versioned)
 	}
 
-	// TODO: Convert the paginationToken and the Base URI to a URL and set it to NextLink
-
 	return &armrpcv1.PaginatedList{
 		Value:    items,
 		NextLink: result.PaginationToken,
 	}, nil
 }
 
-// GetNumberOfRecords
+// getNumberOfRecords
 func (e *ListEnvironments) getNumberOfRecords(ctx context.Context) (int, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
@@ -106,4 +107,26 @@ func (e *ListEnvironments) getNumberOfRecords(ctx context.Context) (int, error) 
 	}
 
 	return top, err
+}
+
+// updateNextLink
+func (e *ListEnvironments) updateNextLink(ctx context.Context, req *http.Request, pagination *armrpcv1.PaginatedList) {
+	if pagination.NextLink == "" {
+		return
+	}
+
+	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+
+	qps := url.Values{}
+	qps.Add("api-version", serviceCtx.APIVersion)
+	qps.Add("skipToken", pagination.NextLink)
+
+	if serviceCtx.Top != "" {
+		queryItemCount, err := e.getNumberOfRecords(ctx)
+		if err == nil {
+			qps.Add("top", strconv.Itoa(queryItemCount))
+		}
+	}
+
+	pagination.NextLink = ctrl.GetURLFromReqWithQueryParameters(req, qps).String()
 }

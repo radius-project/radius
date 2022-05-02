@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -102,4 +103,14 @@ func checkIfNoneMatchHeader(ifNoneMatchETag string, etag string) error {
 	}
 
 	return nil
+}
+
+func GetURLFromReqWithQueryParameters(req *http.Request, qps url.Values) *url.URL {
+	url := url.URL{
+		// Host:     req.Host,
+		// Scheme:   req.URL.Scheme,
+		Path:     req.URL.Path,
+		RawQuery: qps.Encode(),
+	}
+	return &url
 }
