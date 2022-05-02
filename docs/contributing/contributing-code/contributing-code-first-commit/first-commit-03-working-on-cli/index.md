@@ -74,7 +74,7 @@ Use "rad [command] --help" for more information about a command.
 ```
 
 ## Next step
-- [Debug the CLI](first-commit-04-debugging-cli.md)
+- [Debug the CLI](../first-commit-04-debugging-cli/index.md)
 
 ## Related Links
 
