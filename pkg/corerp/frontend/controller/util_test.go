@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,6 +42,74 @@ func TestReadJSONBody(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, string(tc.body), string(parsed))
+			}
+		})
+	}
+}
+
+var tag string = uuid.New().String()
+
+func TestValidateEtag_IfMatch(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		ifMatchEtag  string
+		etagProvided string
+		shouldFail   bool
+	}{
+		{"", "existingEtag", false},
+		{"", "", false},
+		{tag, tag, false},
+		{tag, uuid.New().String(), true},
+		{"*", "", true},
+		{"*", tag, false},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.ifMatchEtag, func(t *testing.T) {
+			armRequestContext := servicecontext.ARMRequestContextFromContext(
+				servicecontext.WithARMRequestContext(
+					context.Background(), &servicecontext.ARMRequestContext{
+						IfMatch: tt.ifMatchEtag,
+					}))
+			result := ValidateETag(*armRequestContext, tt.etagProvided)
+			if !tt.shouldFail {
+				require.Nil(t, result)
+				require.NoError(t, result)
+			} else {
+				require.NotNil(t, result)
+				require.Error(t, result)
+			}
+		})
+	}
+}
+
+func TestValidateEtag_IfNoneMatch(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		ifNoneMatchEtag string
+		etagProvided    string
+		shouldFail      bool
+	}{
+		{"", "", false},
+		{"", tag, false},
+		{"*", "", false},
+		{"*", tag, true},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.ifNoneMatchEtag, func(t *testing.T) {
+			armRequestContext := servicecontext.ARMRequestContextFromContext(
+				servicecontext.WithARMRequestContext(
+					context.Background(), &servicecontext.ARMRequestContext{
+						IfNoneMatch: tt.ifNoneMatchEtag,
+					}))
+			result := ValidateETag(*armRequestContext, tt.etagProvided)
+			if !tt.shouldFail {
+				require.Nil(t, result)
+				require.NoError(t, result)
+			} else {
+				require.NotNil(t, result)
+				require.Error(t, result)
 			}
 		})
 	}

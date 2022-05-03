@@ -22,7 +22,9 @@ import (
 const (
 	// APIVersionParameterName is the query string parameter for the api version.
 	APIVersionParameterName = "api-version"
+)
 
+var (
 	// AcceptLanguageHeader is the standard http header used so that we don't have to pass in the http request.
 	AcceptLanguageHeader = "Accept-Language"
 
@@ -70,6 +72,16 @@ const (
 
 	// TraceparentHeader is W3C trace parent header.
 	TraceparentHeader = "Traceparent"
+
+	// IfMatch HTTP request header makes a request conditional. The resource is returned only if the
+	// condition (tag or wildcard in this case)in the If-Match is met.
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#etags-for-resources
+	IfMatch = http.CanonicalHeaderKey("If-Match")
+
+	// IfNoneMatch HTTP request header also makes a request conditional. The resource is returned only
+	// if the condition (tag or wildcard in this case) in the If-None-Match is not met.
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/Addendum.md#etags-for-resources
+	IfNoneMatch = http.CanonicalHeaderKey("If-None-Match")
 )
 
 // ARMRequestContext represents the service context including proxy request header values.
@@ -107,6 +119,11 @@ type ARMRequestContext struct {
 	UserAgent string
 	// RawSystemMetadata is the raw system metadata from arm request. SystemData() returns unmarshalled system metadata
 	RawSystemMetadata string
+
+	// IfMatch receives "*" or an ETag - No support for multiple ETags for now
+	IfMatch string
+	// IfNoneMatch receives "*" or an ETag - No support for multiple ETags for now
+	IfNoneMatch string
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
@@ -138,6 +155,9 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		ClientReferer:     r.Header.Get(RefererHeader),
 		UserAgent:         r.UserAgent(),
 		RawSystemMetadata: r.Header.Get(ARMResourceSystemDataHeader),
+
+		IfMatch:     r.Header.Get(IfMatch),
+		IfNoneMatch: r.Header.Get(IfNoneMatch),
 	}
 
 	return rpcCtx, nil

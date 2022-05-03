@@ -42,17 +42,18 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out interfa
 }
 
 // SaveResource is the helper to save the resource via storage client.
-func (c *BaseController) SaveResource(ctx context.Context, id string, in interface{}, etag string) error {
-	newObject := &store.Object{
+func (c *BaseController) SaveResource(ctx context.Context, id string, in interface{}, etag string) (*store.Object, error) {
+	nr := &store.Object{
 		Metadata: store.Metadata{
 			ID: id,
 		},
 		Data: in,
 	}
-	if _, err := c.DBClient.Save(ctx, newObject, store.WithETag(etag)); err != nil {
-		return err
+	nr, err := c.DBClient.Save(ctx, nr, store.WithETag(etag))
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return nr, nil
 }
 
 // UpdateSystemData creates or updates new systemdata from old and new resources.
