@@ -64,7 +64,6 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 
 func writeUnauthorizedResp(w http.ResponseWriter) {
 	w.Header().Set(ContentTypeHeaderKey, ApplicationJson)
-	w.WriteHeader(http.StatusUnauthorized)
 	er := &err{
 		Code:    fmt.Sprintf("%d", http.StatusUnauthorized),
 		Message: "Unauthorized",
@@ -73,16 +72,11 @@ func writeUnauthorizedResp(w http.ResponseWriter) {
 		Status: http.StatusUnauthorized,
 		Error:  er,
 	}
-	bResp, err := json.Marshal(errResp)
+	err := json.NewEncoder(w).Encode(errResp)
 	if err != nil {
-		w.Write([]byte(`
-		{
-			"error": {
-				"code": "500",
-				"message": "operation failed"
-			}
-		}
-	`))
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(`{"error": {"code": "500","message": "operation failed"}}`)
+		return
 	}
-	w.Write(bResp)
+	w.WriteHeader(http.StatusUnauthorized)
 }

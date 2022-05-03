@@ -11,7 +11,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"flag"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -25,8 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var rsaBits = flag.Int("rsa-bits", 2048, "Size of RSA key to generate. Ignored if --ecdsa-curve is set")
-
 func TestCertValidationUnauthorized(t *testing.T) {
 	tests := []struct {
 		armid    string
@@ -34,7 +31,7 @@ func TestCertValidationUnauthorized(t *testing.T) {
 	}{
 		{
 			"/subscriptions/1f43aef5-7868-4c56-8a7f-cb6822a75c0e/resourceGroups/proxy-rg/providers/Microsoft.Kubernetes/connectedClusters/mvm2a",
-			"{\"error\":{\"code\":\"401\",\"message\":\"Unauthorized\"}}",
+			"{\"error\":{\"code\":\"401\",\"message\":\"Unauthorized\"}}\n",
 		},
 	}
 	for _, tt := range tests {
@@ -132,6 +129,6 @@ func generateSignedCert() string {
 	if err != nil {
 		fmt.Println("Failed to Generate certificate", err.Error())
 	}
-	fmt.Println(string(caBytes))
+
 	return string(caBytes)
 }

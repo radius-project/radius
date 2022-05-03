@@ -42,11 +42,11 @@ func NewArmCertManager(armMetaEndpoint string, log logr.Logger) *ArmCertManager 
 func (armCertMgr *ArmCertManager) getARMClientCert() ([]Certificate, error) {
 	client := http.Client{}
 	resp, err := client.Get(armCertMgr.armMetaEndpoint)
-	defer resp.Body.Close()
 	if err != nil || resp.StatusCode != http.StatusOK {
 		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err.Error(), " response StatusCode - ", resp.StatusCode)
 		return nil, ErrClientCertFetch
 	}
+	defer resp.Body.Close()
 	var certificates clientCertificates
 	err = json.NewDecoder(resp.Body).Decode(&certificates)
 	if err != nil {
