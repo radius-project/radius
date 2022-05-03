@@ -8,7 +8,6 @@ package middleware
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -33,8 +32,6 @@ func MetricsInterceptor(h http.Handler) http.Handler {
 
 		timeMetricsName := mux.CurrentRoute(r).GetName() + "_" + r.Method + "_time"
 		requestMetricName := mux.CurrentRoute(r).GetName() + "_" + r.Method + "_requests" + "_" + strconv.Itoa(wi.statusCode)
-		fmt.Printf(timeMetricsName + " ")
-		fmt.Printf(requestMetricName)
 		elapsedTime := time.Since(requestStartTime).Microseconds()
 		metric.Must(global.GetMeterProvider().Meter("rad-core-rp")).NewInt64Counter(requestMetricName, metric.WithUnit(unit.Dimensionless)).Add(r.Context(), int64(1))
 		metric.Must(global.GetMeterProvider().Meter("rad-core-rp")).NewInt64ValueRecorder(timeMetricsName, metric.WithUnit(unit.Milliseconds)).Record(r.Context(), int64(elapsedTime))
