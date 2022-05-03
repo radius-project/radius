@@ -6,27 +6,16 @@
 package metricsprovider
 
 import (
-	"context"
-
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/metric/prometheus"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	export "go.opentelemetry.io/otel/sdk/export/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/histogram"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
-	"go.opentelemetry.io/otel/unit"
+	"go.opentelemetry.io/otel/metric/global"
 )
 
-var _ MetricsClient = (*PrometheusMetricsClient)(nil)
-
-type PrometheusMetricsClient struct {
-	Client *prometheus.Exporter
-}
-
-func NewPrometheusMetricsClient() (*PrometheusMetricsClient, error) {
+func RegisterPrometheusMetrics() (*prometheus.Exporter, error) {
 	promConfig := prometheus.Config{}
 	c := controller.New(
 		processor.New(
@@ -42,21 +31,17 @@ func NewPrometheusMetricsClient() (*PrometheusMetricsClient, error) {
 	}
 
 	global.SetMeterProvider(exporter.MeterProvider())
-	return &PrometheusMetricsClient{Client: exporter}, nil
+	return exporter, nil
 }
+// Usage:
+// To record latency
+// 	metric.Must(global.GetMeterProvider().Meter("radius-rp")).NewInt64ValueRecorder(requestMetricName, metric.WithUnit(unit.Dimensionless)).Record(r.Context(), int64(1))
 
-func (p *PrometheusMetricsClient) Add(ctx context.Context, val int, metricName string, labels ...attribute.KeyValue) {
-	getMeterMust().NewInt64Counter(metricName).Add(ctx, int64(val), labels...)
-}
+// For number of requests
+// 	metric.Must(global.GetMeterProvider().Meter("radius-rp")).NewInt64Counter(metricName, metric.WithUnit(unit.Dimensionless)).Add(ctx, int64(val), labels...)
 
-func (p *PrometheusMetricsClient) Observe(ctx context.Context, val float64, metricName string, metricUnit unit.Unit, labels ...attribute.KeyValue) {
-	callback := func(v float64) metric.Float64ObserverFunc {
-		return metric.Float64ObserverFunc(func(_ context.Context, result metric.Float64ObserverResult) { result.Observe(v, labels...) })
-	}(float64(val))
-	getMeterMust().NewFloat64ValueObserver(metricName, callback, metric.WithUnit(metricUnit)).Observation(val)
-}
-
-func getMeterMust() metric.MeterMust {
-	meter := global.GetMeterProvider().Meter("radius-rp")
-	return metric.Must(meter)
-}
+// To use a guage, define a call back function
+// 	callback := func(v int) metric.Int64ObserverFunc {
+// 		return metric.Int64ObserverFunc(func(_ context.Context, result metric.Int64ObserverResult) { result.Observe(int64(v), labels...) })
+// 	}(val)
+// 	getMeterMust().NewInt64ValueObserver(metricName, callback, metric.WithUnit(unit.Dimensionless)).Observation(int64(val))

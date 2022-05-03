@@ -20,9 +20,9 @@ import (
 const (
 	APIVersionParam   = "api-version"
 	serviceNamePrefix = "corerp_"
-	subscriptionRouteName = serviceNamePrefix+"subscription"
-	operationsRouteName = serviceNamePrefix+"operations"
-	environmentRouteName = serviceNamePrefix+"operation"
+	subscriptionRouteName = serviceNamePrefix+"subscriptionAPI"
+	operationsRouteName = serviceNamePrefix+"operationsAPI"
+	environmentRouteName = serviceNamePrefix+"environmentAPI"
 )
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
