@@ -48,9 +48,9 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	existingResourceDeletionCases := []struct {
-		testDescription    string
-		ifMatchEtag        string
-		resourceEtag       string
+		desc               string
+		ifMatchETag        string
+		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
@@ -63,11 +63,11 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	}
 
 	for _, tt := range existingResourceDeletionCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
+		t.Run(tt.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
-			req.Header.Set("If-Match", tt.ifMatchEtag)
+			req.Header.Set("If-Match", tt.ifMatchETag)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 			_, envDataModel, _ := getTestModels20220315privatepreview()
@@ -77,7 +77,7 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: tt.resourceEtag},
+						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
 						Data:     envDataModel,
 					}, nil
 				})

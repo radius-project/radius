@@ -27,10 +27,10 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 
 	createNewResourceCases := []struct {
-		testDescription    string
+		desc               string
 		headerKey          string
 		headerValue        string
-		resourceEtag       string
+		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
@@ -41,7 +41,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	}
 
 	for _, tt := range createNewResourceCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
+		t.Run(tt.desc, func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
@@ -64,9 +64,8 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) (*store.Object, error) {
-						cfg := store.NewSaveConfig(opts...)
 						return &store.Object{
-							Metadata: store.Metadata{ID: obj.ID, ETag: cfg.ETag},
+							Metadata: store.Metadata{ID: obj.ID, ETag: "new-resource-etag"},
 							Data:     envDataModel,
 						}, nil
 					})
@@ -83,15 +82,17 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				actualOutput := &v20220315privatepreview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
+
+				require.Equal(t, "new-resource-etag", w.Header().Get("ETag"))
 			}
 		})
 	}
 
 	updateExistingResourceCases := []struct {
-		testDescription    string
+		desc               string
 		headerKey          string
 		headerValue        string
-		resourceEtag       string
+		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
@@ -103,7 +104,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	}
 
 	for _, tt := range updateExistingResourceCases {
-		t.Run(tt.testDescription, func(t *testing.T) {
+		t.Run(tt.desc, func(t *testing.T) {
 			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
@@ -115,7 +116,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: tt.resourceEtag},
+						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
 						Data:     envDataModel,
 					}, nil
 				})
@@ -125,9 +126,8 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) (*store.Object, error) {
-						cfg := store.NewSaveConfig(opts...)
 						return &store.Object{
-							Metadata: store.Metadata{ID: obj.ID, ETag: cfg.ETag},
+							Metadata: store.Metadata{ID: obj.ID, ETag: "updated-resource-etag"},
 							Data:     envDataModel,
 						}, nil
 					})
@@ -144,6 +144,8 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				actualOutput := &v20220315privatepreview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
+
+				require.Equal(t, "updated-resource-etag", w.Header().Get("ETag"))
 			}
 		})
 	}

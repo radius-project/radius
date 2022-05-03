@@ -64,7 +64,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	}
 	newResource.TenantID = serviceCtx.HomeTenantID
 
-	err = e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
+	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
 	if err != nil {
 		return nil, err
 	}
@@ -76,9 +76,9 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
-	// TODO: Add etag here
+	headers := map[string]string{"ETag": nr.ETag}
 
-	return rest.NewOKResponse(versioned), nil
+	return rest.NewOKResponseWithHeaders(versioned, headers), nil
 }
 
 // Validate extracts versioned resource from request and validate the properties.

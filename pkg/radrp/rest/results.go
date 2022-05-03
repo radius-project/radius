@@ -40,11 +40,19 @@ type Response interface {
 //
 // This is used when modification to an existing resource is processed synchronously.
 type OKResponse struct {
-	Body interface{}
+	Body    interface{}
+	Headers map[string]string
 }
 
 func NewOKResponse(body interface{}) Response {
 	return &OKResponse{Body: body}
+}
+
+func NewOKResponseWithHeaders(body interface{}, headers map[string]string) Response {
+	return &OKResponse{
+		Body:    body,
+		Headers: headers,
+	}
 }
 
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
@@ -54,6 +62,10 @@ func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	for key, element := range r.Headers {
+		w.Header().Add(key, element)
 	}
 
 	w.Header().Add("Content-Type", "application/json")

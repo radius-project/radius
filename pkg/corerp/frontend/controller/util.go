@@ -26,8 +26,8 @@ var (
 	ErrUnsupportedContentType = errors.New("unsupported Content-Type")
 	// ErrRequestedResourceDoesNotExist represents the error of resource that is requested not existing.
 	ErrRequestedResourceDoesNotExist = errors.New("requested resource does not exist")
-	// ErrEtagsDoNotMatch represents the error of the etag of the resource and the requested etag not matching.
-	ErrEtagsDoNotMatch = errors.New("etags do not match")
+	// ErrETagsDoNotMatch represents the error of the eTag of the resource and the requested etag not matching.
+	ErrETagsDoNotMatch = errors.New("etags do not match")
 	// ErrResourceAlreadyExists represents the error of the resource being already existent at the moment.
 	ErrResourceAlreadyExists = errors.New("resource already exists")
 )
@@ -62,17 +62,17 @@ func DecodeMap(in interface{}, out interface{}) error {
 	return decoder.Decode(in)
 }
 
-// ValidateEtag receives an ARMRequestContect and gathers the values in the If-Match and/or
+// ValidateETag receives an ARMRequestContect and gathers the values in the If-Match and/or
 // If-None-Match headers and then checks to see if the etag of the resource matches what is requested.
 func ValidateETag(armRequestContext servicecontext.ARMRequestContext, etag string) error {
-	ifMatchEtag := armRequestContext.IfMatch
-	ifMatchCheck := checkIfMatch(ifMatchEtag, etag)
+	ifMatchETag := armRequestContext.IfMatch
+	ifMatchCheck := checkIfMatchHeader(ifMatchETag, etag)
 	if ifMatchCheck != nil {
 		return ifMatchCheck
 	}
 
-	ifNoneMatchEtag := armRequestContext.IfNoneMatch
-	ifNoneMatchCheck := checkIfNoneMatch(ifNoneMatchEtag, etag)
+	ifNoneMatchETag := armRequestContext.IfNoneMatch
+	ifNoneMatchCheck := checkIfNoneMatchHeader(ifNoneMatchETag, etag)
 	if ifNoneMatchCheck != nil {
 		return ifNoneMatchCheck
 	}
@@ -80,8 +80,8 @@ func ValidateETag(armRequestContext servicecontext.ARMRequestContext, etag strin
 	return nil
 }
 
-func checkIfMatch(ifMatchEtag string, etag string) error {
-	if ifMatchEtag == "" {
+func checkIfMatchHeader(ifMatchETag string, etag string) error {
+	if ifMatchETag == "" {
 		return nil
 	}
 
@@ -89,15 +89,15 @@ func checkIfMatch(ifMatchEtag string, etag string) error {
 		return ErrRequestedResourceDoesNotExist
 	}
 
-	if ifMatchEtag != "*" && ifMatchEtag != etag {
-		return ErrEtagsDoNotMatch
+	if ifMatchETag != "*" && ifMatchETag != etag {
+		return ErrETagsDoNotMatch
 	}
 
 	return nil
 }
 
-func checkIfNoneMatch(ifNoneMatchEtag string, etag string) error {
-	if ifNoneMatchEtag == "*" && etag != "" {
+func checkIfNoneMatchHeader(ifNoneMatchETag string, etag string) error {
+	if ifNoneMatchETag == "*" && etag != "" {
 		return ErrResourceAlreadyExists
 	}
 
