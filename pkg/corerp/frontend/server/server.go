@@ -15,6 +15,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/middleware"
 	mp "github.com/project-radius/radius/pkg/telemetry/metricsprovider"
 	"github.com/project-radius/radius/pkg/version"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/unit"
 )
 
 var (
@@ -39,6 +41,7 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues)
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
+	r.Use(middleware.MetricsInterceptor)
 	r.Path("/version").Methods(http.MethodGet).HandlerFunc(reportVersion)
 	r.Path("/healthz").Methods(http.MethodGet).HandlerFunc(reportVersion)
 
@@ -65,10 +68,10 @@ func reportVersion(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(500)
-		promMetricsClient.Observe(ctx, 1, "radCoreRp_system_unhealthy")
+		promMetricsClient.Observe(ctx, 1, "radcorerp_system_liveliness_failed", unit.Dimensionless, attribute.String("status","Failed"))
 		return
 	}
 	w.Header().Add("Content-Type", "application/json")
 	_, _ = w.Write(b)
-	promMetricsClient.Observe(ctx, 1, "radCoreRp_system_unhealthy")
+	promMetricsClient.Observe(ctx, 1, "radcorerp_system_liveliness", unit.Dimensionless, attribute.String("status","Success"))
 }

@@ -8,6 +8,7 @@ package metricsprovider
 import (
 	"context"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/metric/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
@@ -44,17 +45,13 @@ func NewPrometheusMetricsClient() (*PrometheusMetricsClient, error) {
 	return &PrometheusMetricsClient{Client: exporter}, nil
 }
 
-func (p *PrometheusMetricsClient) Add(ctx context.Context, val int, metricName string) {
-	getMeterMust().NewInt64Counter(metricName).Add(ctx, int64(val))
+func (p *PrometheusMetricsClient) Add(ctx context.Context, val int, metricName string, labels ...attribute.KeyValue) {
+	getMeterMust().NewInt64Counter(metricName).Add(ctx, int64(val), labels...)
 }
 
-func (p *PrometheusMetricsClient) Measure(ctx context.Context, val float64, metricName string) {
-	getMeterMust().NewFloat64Counter(metricName).Add(ctx, val)
-}
-
-func (p *PrometheusMetricsClient) Observe(ctx context.Context, val float64, metricName string, metricUnit unit.Unit) {
+func (p *PrometheusMetricsClient) Observe(ctx context.Context, val float64, metricName string, metricUnit unit.Unit, labels ...attribute.KeyValue) {
 	callback := func(v float64) metric.Float64ObserverFunc {
-		return metric.Float64ObserverFunc(func(_ context.Context, result metric.Float64ObserverResult) { result.Observe(v) })
+		return metric.Float64ObserverFunc(func(_ context.Context, result metric.Float64ObserverResult) { result.Observe(v, labels...) })
 	}(float64(val))
 	getMeterMust().NewFloat64ValueObserver(metricName, callback, metric.WithUnit(metricUnit)).Observation(val)
 }
