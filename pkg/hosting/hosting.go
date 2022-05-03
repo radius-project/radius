@@ -103,7 +103,7 @@ func (host *Host) Run(ctx context.Context, serviceErrors chan<- LifecycleMessage
 			defer func() {
 				value := recover()
 				if value != nil {
-					err := fmt.Errorf("service %s paniced: %v", service.Name(), value)
+					err := fmt.Errorf("service %s panicked: %v", service.Name(), value)
 					messages <- LifecycleMessage{Name: service.Name(), Err: err}
 				}
 			}()
