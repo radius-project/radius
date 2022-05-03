@@ -48,6 +48,9 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 
 	existingResource := &datamodel.Environment{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	if req.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+	}
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
 	}
