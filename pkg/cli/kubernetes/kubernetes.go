@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +36,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 const (
@@ -55,7 +55,7 @@ func init() {
 	// we need to add it here.
 	// TODO centralize these calls.
 	_ = clientgoscheme.AddToScheme(Scheme)
-	_ = gatewayv1alpha1.AddToScheme(Scheme)
+	_ = contourv1.AddToScheme(Scheme)
 }
 
 func ReadKubeConfig() (*api.Config, error) {

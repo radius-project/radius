@@ -57,7 +57,6 @@ require (
 	k8s.io/client-go v0.23.3
 	k8s.io/kubectl v0.23.3
 	sigs.k8s.io/controller-runtime v0.11.0
-	sigs.k8s.io/gateway-api v0.3.0
 	sigs.k8s.io/secrets-store-csi-driver v1.0.0
 )
 
@@ -189,6 +188,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4 // indirect
+	github.com/projectcontour/contour v1.20.1
 	github.com/prometheus/client_golang v1.12.1 // indirect
 	github.com/rubenv/sql-migrate v1.1.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect

@@ -95,8 +95,7 @@ rules:
   - ""
   - "apps"
   - "dapr.io"
-  - "networking.k8s.io"
-  - "networking.x-k8s.io"
+  - "projectcontour.io"
   resources:
   - "*"
   verbs:

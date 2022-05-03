@@ -64,6 +64,7 @@ func NewK8sPodForResource(application string, name string) K8sObject {
 	}
 }
 
+//TODO willsmith REMOVEME
 func NewK8sGatewayForResource(application string, name string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
@@ -76,6 +77,7 @@ func NewK8sGatewayForResource(application string, name string) K8sObject {
 	}
 }
 
+//TODO willsmith REMOVEME
 func NewK8sHttpRouteForResource(application string, name string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
@@ -84,6 +86,18 @@ func NewK8sHttpRouteForResource(application string, name string) K8sObject {
 			Resource: "httproutes",
 		},
 		Kind:   "HTTPRoute",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+func NewK8sHTTPProxyForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "projectcontour.io",
+			Version:  "v1",
+			Resource: "httpproxies",
+		},
+		Kind:   "HTTPProxy",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }
