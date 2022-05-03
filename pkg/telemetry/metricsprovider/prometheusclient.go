@@ -16,6 +16,7 @@ import (
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	"go.opentelemetry.io/otel/unit"
 )
 
 var _ MetricsClient = (*PrometheusMetricsClient)(nil)
@@ -51,11 +52,11 @@ func (p *PrometheusMetricsClient) Measure(ctx context.Context, val float64, metr
 	getMeterMust().NewFloat64Counter(metricName).Add(ctx, val)
 }
 
-func (p *PrometheusMetricsClient) Observe(ctx context.Context, val float64, metricName string) {
+func (p *PrometheusMetricsClient) Observe(ctx context.Context, val float64, metricName string, metricUnit unit.Unit) {
 	callback := func(v float64) metric.Float64ObserverFunc {
 		return metric.Float64ObserverFunc(func(_ context.Context, result metric.Float64ObserverResult) { result.Observe(v) })
 	}(float64(val))
-	getMeterMust().NewFloat64ValueObserver(metricName, callback).Observation(val)
+	getMeterMust().NewFloat64ValueObserver(metricName, callback, metric.WithUnit(metricUnit)).Observation(val)
 }
 
 func getMeterMust() metric.MeterMust {
