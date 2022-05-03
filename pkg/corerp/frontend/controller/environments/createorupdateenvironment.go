@@ -46,7 +46,6 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
-	// Read resource metadata from the storage
 	existingResource := &datamodel.Environment{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
@@ -58,11 +57,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return rest.NewPreconditionFailedResponse(err.Error()), nil
 	}
 
-	newResource.SystemData = ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
-	if existingResource.CreatedAPIVersion != "" {
-		newResource.CreatedAPIVersion = existingResource.CreatedAPIVersion
-	}
-	newResource.TenantID = serviceCtx.HomeTenantID
+	ctrl.UpdateExistingResourceData(ctx, existingResource, newResource)
 
 	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
 	if err != nil {
