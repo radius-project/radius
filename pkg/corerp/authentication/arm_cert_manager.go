@@ -12,23 +12,28 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 var (
-	ErrClientCertFetch = errors.New("failed to fetch client certificate from arm metadata endpoint")
+	ErrClientCertFetch = errors.New("failed to fetch client certificate from arm metadata endpoint - ")
 )
 
 // ArmCertManager defines the arm client manager for fetching the client cert from arm metadata endpoint
 type ArmCertManager struct {
 	armMetaEndpoint string
 	period          time.Duration
+	log             logr.Logger
 }
 
 // NewArmCertManager creates a new ArmCertManager
-func NewArmCertManager(armMetaEndpoint string) *ArmCertManager {
+func NewArmCertManager(armMetaEndpoint string, log logr.Logger) *ArmCertManager {
 	certMgr := ArmCertManager{
 		armMetaEndpoint: armMetaEndpoint,
 		period:          1 * time.Hour,
+		log:             log,
 	}
 	return &certMgr
 }
@@ -37,12 +42,15 @@ func NewArmCertManager(armMetaEndpoint string) *ArmCertManager {
 func (armCertMgr *ArmCertManager) getARMClientCert() ([]Certificate, error) {
 	client := http.Client{}
 	resp, err := client.Get(armCertMgr.armMetaEndpoint)
+	defer resp.Body.Close()
 	if err != nil || resp.StatusCode != http.StatusOK {
+		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err.Error(), " response StatusCode - ", resp.StatusCode)
 		return nil, ErrClientCertFetch
 	}
 	var certificates clientCertificates
 	err = json.NewDecoder(resp.Body).Decode(&certificates)
 	if err != nil {
+		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err.Error())
 		return nil, ErrClientCertFetch
 	}
 	return certificates.ClientCertificates, nil
@@ -64,10 +72,8 @@ func (armCertMgr *ArmCertManager) IsValidThumbprint(thumbprint string) (bool, er
 //  and runs in the background the periodic certificate refresher.
 func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, error) {
 	certs, err := armCertMgr.refreshCert()
-	if err != nil {
-		return nil, err
-	}
-	if len(certs) == 0 {
+	if err != nil || len(certs) == 0 {
+		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err)
 		return nil, ErrClientCertFetch
 	}
 	storeCertificates(certs)
@@ -80,7 +86,8 @@ func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, err
 func (armCertMgr *ArmCertManager) refreshCert() ([]Certificate, error) {
 	newCertificates, err := armCertMgr.getARMClientCert()
 	if err != nil {
-		return nil, err
+		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err)
+		return nil, ErrClientCertFetch
 	}
 	storeCertificates(newCertificates)
 	certs := getValidCertificates()

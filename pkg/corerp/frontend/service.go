@@ -64,7 +64,7 @@ func (s *Service) Run(ctx context.Context) error {
 =======
 
 	// initialize the manager for ARM client cert validation
-	armCertMgr := armAuthenticator.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint)
+	armCertMgr := armAuthenticator.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
 	_, err := armCertMgr.Start(ctx)
 	if err != nil {
 		logger.V(radlogger.Error).Info("Error creating arm cert manager - ", err)
