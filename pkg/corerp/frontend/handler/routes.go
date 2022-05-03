@@ -15,6 +15,9 @@ import (
 
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
 	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
+
+	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
+	connector_provider "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/provider"
 )
 
 const (
@@ -64,6 +67,51 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 
 	for _, h := range handlers {
 		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.routeName, h.fn); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// AddConnectorRoutes adds routes and handlers for connector RP APIs.
+func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
+	// Provider system notification.
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
+	providerRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+
+	// Tenant level API routes.
+	tenantLevelPath := pathBase + "/providers/applications.connector"
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
+	operationsRouter := router.Path(tenantLevelPath+"/operations").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+
+	// Resource Group level API routes.
+	resourceGroupLevelPath := pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.connector"
+
+	// Adds mongo connector resource type routes
+	mongoResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/mongoDatabases").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+
+	mongoResourceRouter := mongoResourceTypeSubrouter.Path("/{mongoDatabases}").Subrouter()
+
+	// Register handlers
+	handlers := []handlerParam{
+		// Provider handler registration.
+		{providerRouter, connector_provider.ResourceTypeName, http.MethodPut, connector_provider.NewCreateOrUpdateSubscription},
+		// Provider operations.
+		{operationsRouter, connector_provider.ResourceTypeName, http.MethodGet, connector_provider.NewGetOperations},
+		// Environments resource handler registration.
+		{mongoResourceTypeSubrouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongo_ctrl.NewListEnvironments},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongo_ctrl.NewGetEnvironment},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, mongo_ctrl.NewCreateOrUpdateEnvironment},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPatch, mongo_ctrl.NewCreateOrUpdateEnvironment},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, mongo_ctrl.NewDeleteEnvironment},
+	}
+
+	for _, h := range handlers {
+		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.fn); err != nil {
 			return err
 		}
 	}
