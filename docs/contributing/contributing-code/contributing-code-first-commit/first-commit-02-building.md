@@ -70,4 +70,4 @@ Use "rad [command] --help" for more information about a command.
 If you got this far then you're able to build, and you should move to the next step.
 
 ## Next step:
-- [Work on the CLI](first-commit-03-working-on-cli.md)
+- [Work on the CLI](first-commit-03-working-on-cli/index.md)
