@@ -38,7 +38,7 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 
 // GetStorageClient creates or gets storage client.
 func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType string) (store.StorageClient, error) {
-	cn := NormalizeResourceType(resourceType)
+	cn := normalizeResourceType(resourceType)
 
 	p.clientsMu.RLock()
 	c, ok := p.clients[cn]
@@ -75,7 +75,7 @@ func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType str
 }
 
 // normalizeResourceType converts resourcetype to safe string by removing non digit and non letter and replace '/' with '-'
-func NormalizeResourceType(s string) string {
+func normalizeResourceType(s string) string {
 	if s == "" {
 		return s
 	}

@@ -7,7 +7,7 @@ package hostoptions
 
 import (
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
-	"github.com/project-radius/radius/pkg/telemetry/metricsprovider"
+	"github.com/project-radius/radius/pkg/telemetry/metrics"
 )
 
 // ProviderConfig includes the resource provider configuration.
@@ -16,7 +16,7 @@ type ProviderConfig struct {
 	Identity        IdentityOptions                              `yaml:"identity"`
 	StorageProvider dataprovider.StorageProviderOptions          `yaml:"storageProvider"`
 	Server          ServerOptions                                `yaml:"server"`
-	MetricsProvider metricsprovider.MetricsClientProviderOptions `yaml:"metricsProvider"`
+	MetricsProvider metrics.MetricsOptions `yaml:"metricsProvider"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`

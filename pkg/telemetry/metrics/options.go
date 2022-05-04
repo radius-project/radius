@@ -3,14 +3,14 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package metricsprovider
+package metrics
 
-// Represents the data metrics provider options.
-type MetricsClientProviderOptions struct {
-	MetricsClientProviderOptions PrometheusClientProviderInfo `yaml:"prometheus,omitempty"`
+// Represents the info for differenct metrics providers
+type MetricsOptions struct {
+	MetricsOptions PrometheusClientProviderInfo `yaml:"prometheus,omitempty"`
 }
 
-// Represents prometheus options for metrics client provider.
+// Represents prometheus provider info
 type PrometheusClientProviderInfo struct {
 	Endpoint string `yaml:"endpoint"`
 }

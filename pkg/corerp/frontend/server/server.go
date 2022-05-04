@@ -13,8 +13,15 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/middleware"
-	mp "github.com/project-radius/radius/pkg/telemetry/metricsprovider"
+	mp "github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/version"
+)
+
+const (
+	versionEndpoint = "/version"
+	healthzEndpoint = "/healthz"
+	versionAPIName = "versionAPI"
+	healthzAPIName = "heathzAPI"
 )
 
 type ServerOptions struct {
@@ -26,7 +33,7 @@ type ServerOptions struct {
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
-func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig mp.MetricsClientProviderOptions) *http.Server {
+func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig mp.MetricsOptions) *http.Server {
 	r := mux.NewRouter()
 	if options.Configure != nil {
 		options.Configure(r)
@@ -35,13 +42,14 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues)
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
-	r.Path("/version").Methods(http.MethodGet).HandlerFunc(reportVersion).Name("versionAPI")
-	r.Path("/healthz").Methods(http.MethodGet).HandlerFunc(reportVersion).Name("healthzAPI")
+	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(versionAPIName)
+	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(healthzAPIName)
 
 	//setup metrics handler
-	promExporter, _ := mp.RegisterPrometheusMetrics()
+	metricsProvider, _ := mp.NewPrometheusMetricsClient()
+	promExporter := metricsProvider.GetExporter()
 	r.Use(middleware.MetricsInterceptor)
-	r.Path(metricsProviderConfig.MetricsClientProviderOptions.Endpoint).HandlerFunc(promExporter.ServeHTTP)
+	r.Path(metricsProviderConfig.MetricsOptions.Endpoint).HandlerFunc(promExporter.ServeHTTP)
 
 	server := &http.Server{
 		Addr:    options.Address,
