@@ -7,6 +7,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -26,6 +27,12 @@ const (
 	subscriptionRouteName = serviceNamePrefix + "subscriptionAPI"
 	operationsRouteName   = serviceNamePrefix + "operationsAPI"
 	environmentRouteName  = serviceNamePrefix + "environmentAPI"
+
+	// Connector RP
+	connectorRPPrefix              = "connectorrp_"
+	connectorSubscriptionRouteName = connectorRPPrefix + "subscription"
+	connectorOperationsRouteName   = connectorRPPrefix + "operations"
+	mongoDatabaseRouteName         = connectorRPPrefix + "mongodatabase"
 )
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
@@ -71,6 +78,10 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		}
 	}
 
+	if err := AddConnectorRoutes(ctx, sp, nil, router, validatorFactory, ""); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -99,20 +110,19 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 	// Register handlers
 	handlers := []handlerParam{
 		// Provider handler registration.
-		{providerRouter, connector_provider.ResourceTypeName, http.MethodPut, connector_provider.NewCreateOrUpdateSubscription},
+		{providerRouter, connector_provider.ResourceTypeName, http.MethodPut, connectorSubscriptionRouteName, connector_provider.NewCreateOrUpdateSubscription},
 		// Provider operations.
-		{operationsRouter, connector_provider.ResourceTypeName, http.MethodGet, connector_provider.NewGetOperations},
-		// Environments resource handler registration.
-		{mongoResourceTypeSubrouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongo_ctrl.NewListEnvironments},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongo_ctrl.NewGetEnvironment},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, mongo_ctrl.NewCreateOrUpdateEnvironment},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPatch, mongo_ctrl.NewCreateOrUpdateEnvironment},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, mongo_ctrl.NewDeleteEnvironment},
+		{operationsRouter, connector_provider.ResourceTypeName, http.MethodGet, connectorOperationsRouteName, connector_provider.NewGetOperations},
+		// MongoDatabases operations
+		{mongoResourceTypeSubrouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongoDatabaseRouteName, mongo_ctrl.NewListMongoDatabases},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongoDatabaseRouteName, mongo_ctrl.NewGetMongoDatabase},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, mongoDatabaseRouteName, mongo_ctrl.NewCreateOrUpdateMongoDatabase},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, mongoDatabaseRouteName, mongo_ctrl.NewDeleteMongoDatabase},
 	}
 
 	for _, h := range handlers {
-		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.fn); err != nil {
-			return err
+		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.routeName, h.fn); err != nil {
+			return fmt.Errorf("failed to register %s handler for route %s: %w", h.method, h.routeName, err)
 		}
 	}
 

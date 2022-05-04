@@ -67,14 +67,18 @@ func (dst *MongoDatabaseResource) ConvertFrom(src api.DataModelInterface) error 
 	dst.Properties = &MongoDatabaseProperties{
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Application:       to.StringPtr(mongo.Properties.Application),
-		FromResource: &FromResource{
+	}
+	if (mongo.Properties.FromResource != datamodel.FromResource{}) {
+		dst.Properties.FromResource = &FromResource{
 			Source: to.StringPtr(mongo.Properties.FromResource.Source),
-		},
-		FromValues: &SecretsValues{
+		}
+	}
+	if (mongo.Properties.FromValues != datamodel.FromValues{}) {
+		dst.Properties.FromValues = &SecretsValues{
 			ConnectionString: to.StringPtr(mongo.Properties.FromValues.ConnectionString),
 			Username:         to.StringPtr(mongo.Properties.FromValues.Username),
 			Password:         to.StringPtr(mongo.Properties.FromValues.Password),
-		},
+		}
 	}
 
 	return nil
