@@ -10,8 +10,6 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
@@ -56,16 +54,6 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in interfa
 		return nil, err
 	}
 	return nr, nil
-}
-
-// UpdateExistingResourceData
-func UpdateExistingResourceData(ctx context.Context, er *datamodel.Environment, nr *datamodel.Environment) {
-	sc := servicecontext.ARMRequestContextFromContext(ctx)
-	nr.SystemData = UpdateSystemData(er.SystemData, *sc.SystemData())
-	if er.CreatedAPIVersion != "" {
-		nr.CreatedAPIVersion = er.CreatedAPIVersion
-	}
-	nr.TenantID = sc.HomeTenantID
 }
 
 // UpdateSystemData creates or updates new systemdata from old and new resources.
