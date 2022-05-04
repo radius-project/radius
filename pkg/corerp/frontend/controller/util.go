@@ -20,6 +20,8 @@ import (
 var (
 	// ContentTypeHeaderKey is the header key of Content-Type
 	ContentTypeHeaderKey = http.CanonicalHeaderKey("Content-Type")
+
+	DefaultSheme = "http"
 )
 
 var (
@@ -107,10 +109,15 @@ func checkIfNoneMatchHeader(ifNoneMatchETag string, etag string) error {
 
 func GetURLFromReqWithQueryParameters(req *http.Request, qps url.Values) *url.URL {
 	url := url.URL{
-		// Host:     req.Host,
-		// Scheme:   req.URL.Scheme,
+		Host:     req.Host,
+		Scheme:   req.URL.Scheme,
 		Path:     req.URL.Path,
 		RawQuery: qps.Encode(),
 	}
+
+	if url.Scheme == "" {
+		url.Scheme = DefaultSheme
+	}
+
 	return &url
 }

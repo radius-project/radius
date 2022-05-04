@@ -121,11 +121,8 @@ func (e *ListEnvironments) updateNextLink(ctx context.Context, req *http.Request
 	qps.Add("api-version", serviceCtx.APIVersion)
 	qps.Add("skipToken", pagination.NextLink)
 
-	if serviceCtx.Top != "" {
-		queryItemCount, err := e.getNumberOfRecords(ctx)
-		if err == nil {
-			qps.Add("top", strconv.Itoa(queryItemCount))
-		}
+	if queryItemCount, err := e.getNumberOfRecords(ctx); err == nil && serviceCtx.Top != "" {
+		qps.Add("top", strconv.Itoa(queryItemCount))
 	}
 
 	pagination.NextLink = ctrl.GetURLFromReqWithQueryParameters(req, qps).String()
