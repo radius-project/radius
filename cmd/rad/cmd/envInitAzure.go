@@ -181,10 +181,6 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	if err != nil {
 		return arguments{}, err
 	}
-	if name == "" {
-		name = resourceGroup
-		output.LogInfo("No environment name provided, using: %v", name)
-	}
 
 	location, err := cmd.Flags().GetString("location")
 	if err != nil {
