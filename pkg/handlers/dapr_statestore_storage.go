@@ -22,7 +22,7 @@ import (
 
 const (
 	StorageAccountNameKey = "storageaccount"
-	StorageAccountIDKey   = "storageaccountid"
+	ResourceIDKey         = "resourceid"
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
@@ -43,14 +43,14 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, optio
 	properties := mergeProperties(*options.Resource, options.ExistingOutputResource)
 
 	// This assertion is important so we don't start creating/modifying a resource
-	err := ValidateResourceIDsForResource(properties, StorageAccountIDKey)
+	err := ValidateResourceIDsForResource(properties, ResourceIDKey)
 	if err != nil {
 		return nil, err
 	}
 
 	var account *storage.Account
 
-	account, err = getStorageAccountByID(ctx, *handler.arm, properties[StorageAccountIDKey])
+	account, err = getStorageAccountByID(ctx, *handler.arm, properties[ResourceIDKey])
 	if err != nil {
 		return nil, err
 	}
