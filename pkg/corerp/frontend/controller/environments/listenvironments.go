@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -22,6 +24,8 @@ import (
 )
 
 var _ ctrl.ControllerInterface = (*ListEnvironments)(nil)
+
+const maxQueryItemCount = 20
 
 // ListEnvironments is the controller implementation to get the list of environments resources in resource group.
 type ListEnvironments struct {
@@ -40,19 +44,31 @@ func NewListEnvironments(storageClient store.StorageClient, jobEngine deployment
 
 func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	rID := serviceCtx.ResourceID
 
-	query := store.Query{
-		RootScope:    fmt.Sprintf("/subscriptions/%s/resourceGroup/%s", rID.SubscriptionID, rID.ResourceGroup),
-		ResourceType: rID.Type(),
+	queryItemCount, err := e.getNumberOfRecords(ctx)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	result, err := e.DBClient.Query(ctx, query, store.WithMaxQueryItemCount(20))
+	query := store.Query{
+		RootScope: fmt.Sprintf("/subscriptions/%s/resourceGroup/%s",
+			serviceCtx.ResourceID.SubscriptionID, serviceCtx.ResourceID.ResourceGroup),
+		ResourceType: serviceCtx.ResourceID.Type(),
+	}
+
+	queryOptions := []store.QueryOptions{
+		store.WithPaginationToken(serviceCtx.SkipToken),
+		store.WithMaxQueryItemCount(queryItemCount),
+	}
+
+	result, err := e.DBClient.Query(ctx, query, queryOptions...)
 	if err != nil {
 		return nil, err
 	}
 
 	pagination, err := e.createPaginationResponse(serviceCtx.APIVersion, result)
+
+	e.updateNextLink(ctx, req, pagination)
 
 	return rest.NewOKResponse(pagination), err
 }
@@ -73,9 +89,43 @@ func (e *ListEnvironments) createPaginationResponse(apiversion string, result *s
 		items = append(items, versioned)
 	}
 
-	// TODO: implement pagination using paginationtoken
 	return &armrpcv1.PaginatedList{
-		Value: items,
-		// TODO: set NextLink: if result.PaginationToken is not empty
+		Value:    items,
+		NextLink: result.PaginationToken,
 	}, nil
+}
+
+// getNumberOfRecords function returns the number of records requested.
+// The default value is defined above.
+// If there is a top query parameter, we use that instead of the default one.
+func (e *ListEnvironments) getNumberOfRecords(ctx context.Context) (int, error) {
+	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+
+	top := maxQueryItemCount
+	var err error
+
+	if serviceCtx.Top != "" {
+		top, err = strconv.Atoi(serviceCtx.Top)
+	}
+
+	return top, err
+}
+
+// updateNextLink function updates the next link by building a URL from the request and the pagination token.
+func (e *ListEnvironments) updateNextLink(ctx context.Context, req *http.Request, pagination *armrpcv1.PaginatedList) {
+	if pagination.NextLink == "" {
+		return
+	}
+
+	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+
+	qps := url.Values{}
+	qps.Add("api-version", serviceCtx.APIVersion)
+	qps.Add("skipToken", pagination.NextLink)
+
+	if queryItemCount, err := e.getNumberOfRecords(ctx); err == nil && serviceCtx.Top != "" {
+		qps.Add("top", strconv.Itoa(queryItemCount))
+	}
+
+	pagination.NextLink = ctrl.GetURLFromReqWithQueryParameters(req, qps).String()
 }
