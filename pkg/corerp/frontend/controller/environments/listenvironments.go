@@ -95,7 +95,9 @@ func (e *ListEnvironments) createPaginationResponse(apiversion string, result *s
 	}, nil
 }
 
-// getNumberOfRecords
+// getNumberOfRecords function returns the number of records requested.
+// The default value is defined above.
+// If there is a top query parameter, we use that instead of the default one.
 func (e *ListEnvironments) getNumberOfRecords(ctx context.Context) (int, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
@@ -109,7 +111,7 @@ func (e *ListEnvironments) getNumberOfRecords(ctx context.Context) (int, error) 
 	return top, err
 }
 
-// updateNextLink
+// updateNextLink function updates the next link by building a URL from the request and the pagination token.
 func (e *ListEnvironments) updateNextLink(ctx context.Context, req *http.Request, pagination *armrpcv1.PaginatedList) {
 	if pagination.NextLink == "" {
 		return
