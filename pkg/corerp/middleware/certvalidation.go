@@ -43,7 +43,7 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 			//skip cert validation for health and version endpoint
 			log := radlogger.GetLogger(r.Context())
 			for _, whiteListEp := range WhiteListEps {
-				if strings.Compare(r.URL.Path, whiteListEp) != 0 {
+				if strings.Compare(r.URL.Path, whiteListEp) == 0 {
 					next.ServeHTTP(w, r)
 					return
 				}
