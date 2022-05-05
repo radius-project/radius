@@ -43,7 +43,10 @@ func (armCertMgr *ArmCertManager) getARMClientCert() ([]Certificate, error) {
 	client := http.Client{}
 	resp, err := client.Get(armCertMgr.armMetaEndpoint)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err.Error(), " response StatusCode - ", resp.StatusCode)
+		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err.Error())
+		return nil, ErrClientCertFetch
+	} else if resp.StatusCode != http.StatusOK {
+		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), "Response code - ", resp.StatusCode)
 		return nil, ErrClientCertFetch
 	}
 	defer resp.Body.Close()
@@ -73,7 +76,7 @@ func (armCertMgr *ArmCertManager) IsValidThumbprint(thumbprint string) (bool, er
 func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, error) {
 	certs, err := armCertMgr.refreshCert()
 	if err != nil || len(certs) == 0 {
-		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err)
+		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err, " number of certs fetched ", len(certs))
 		return nil, ErrClientCertFetch
 	}
 	storeCertificates(certs)

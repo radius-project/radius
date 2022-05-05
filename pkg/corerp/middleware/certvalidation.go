@@ -22,6 +22,8 @@ const (
 	ApplicationJson             = "application/json"
 )
 
+var WhiteListEps = []string{"http://:8080/healthz", "http://:8080/version"}
+
 // armErrorResponse is for setting the response struct as per ARM specs
 // https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md
 type armErrorResponse struct {
@@ -40,9 +42,11 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			//skip cert validation for health and version endpoint
 			log := radlogger.GetLogger(r.Context())
-			if strings.Compare(r.URL.Path, "http://:8080/healthz") == 0 || strings.Compare(r.URL.Path, "http://:8080/version") == 0 {
-				next.ServeHTTP(w, r)
-				return
+			for _, whiteListEp := range WhiteListEps {
+				if strings.Compare(r.URL.Path, whiteListEp) != 0 {
+					next.ServeHTTP(w, r)
+					return
+				}
 			}
 			clientRequestThumbprint := r.Header.Get(IngressCertThumbprintHeader)
 			if clientRequestThumbprint == "" {
