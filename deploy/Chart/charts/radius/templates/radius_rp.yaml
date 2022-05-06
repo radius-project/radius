@@ -188,4 +188,13 @@ spec:
     namespace: {{ .Release.Namespace }}
   version: v1alpha3
   caBundle: {{ if $existingAPIService }}{{ $existingAPIService.spec.caBundle }}{{ else }}{{ b64enc $ca.Cert }}{{ end }}
-
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: radius-config
+  namespace: {{ .Release.Namespace }}
+data:
+  RADIUS_HTTP_ENDPOINT: ""
+  RADIUS_HTTPS_ENDPOINT: ""
+  RADIUS_ENVIRONMENT_KIND: ""

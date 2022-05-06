@@ -13,6 +13,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/environment"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -27,7 +28,6 @@ const (
 	applicationName = "test-application"
 	resourceName    = "test-gateway"
 	publicIP        = "86.753.099.99"
-	privateIP       = "172.24.0.2"
 )
 
 func Test_GetDependencyIDs_Empty(t *testing.T) {
@@ -128,26 +128,27 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	validateGateway(t, output.Resources, &expectedHostname, expectedIncludes)
 }
 
-func Test_Render_WithPrivateIP(t *testing.T) {
+func Test_Render_DevEnvironment(t *testing.T) {
 	r := &Renderer{}
 
+	expectedPublicIP := "http://localhost:32323"
 	properties, expectedIncludes := makeTestGateway(radclient.GatewayProperties{})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	additionalProperties := renderers.RuntimeOptions{
+		Environment: environment.KindDev,
 		Gateway: renderers.GatewayOptions{
-			PublicIP: privateIP,
+			PublicIP: expectedPublicIP,
 		},
-		IsDev: true,
 	}
 
 	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, "unknown", output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedPublicIP, output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, nil, expectedIncludes)
+	validateGateway(t, output.Resources, &expectedPublicIP, expectedIncludes)
 }
 
 func Test_Render_WithMissingPublicIP(t *testing.T) {
@@ -157,6 +158,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	additionalProperties := renderers.RuntimeOptions{
+		Environment: environment.KindKubernetes,
 		Gateway: renderers.GatewayOptions{
 			PublicIP: "",
 		},
@@ -166,17 +168,15 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, "unknown", output.ComputedValues["hostname"].Value)
+	require.Equal(t, resource.ApplicationName, output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, nil, expectedIncludes)
+	validateGateway(t, output.Resources, &resource.ApplicationName, expectedIncludes)
 }
 
 func Test_Render_Fails_WithNoRoute(t *testing.T) {
 	r := &Renderer{}
 
-	properties := radclient.GatewayProperties{
-		Hostname: &radclient.GatewayPropertiesHostname{},
-	}
+	properties := radclient.GatewayProperties{}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	additionalProperties := GetRuntimeOptions()
@@ -319,7 +319,6 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 	if expectedHostname != nil {
 		expectedGatewaySpec = contourv1.HTTPProxySpec{
 			VirtualHost: &contourv1.VirtualHost{
-				// TODO what should fqdn be for private IP?
 				Fqdn: *expectedHostname,
 			},
 			Includes: expectedIncludes,
@@ -434,7 +433,6 @@ func GetRuntimeOptions() renderers.RuntimeOptions {
 		Gateway: renderers.GatewayOptions{
 			PublicIP: publicIP,
 		},
-		IsDev: false,
 	}
 	return additionalProperties
 }

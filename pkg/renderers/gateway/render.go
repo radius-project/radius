@@ -14,6 +14,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/environment"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -185,10 +186,13 @@ func getRouteName(route *radclient.GatewayRoute) (string, error) {
 
 func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, options renderers.RuntimeOptions) (*string, error) {
 	publicIP := options.Gateway.PublicIP
-	isDev := options.IsDev
 
-	if publicIP == "" || isDev {
-		return nil, nil
+	if publicIP == "" {
+		// In the case of no publicIP, use the application name as the hostname
+		return &resource.ApplicationName, nil
+	} else if options.Environment == environment.KindDev {
+		// Use the local dev http endpoint
+		return &options.Gateway.PublicIP, nil
 	} else if gateway.Hostname != nil {
 		if gateway.Hostname.FullyQualifiedHostname != nil {
 			// Use FQDN

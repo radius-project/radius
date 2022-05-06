@@ -23,6 +23,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/environment"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 )
@@ -319,7 +320,7 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		return nil, fmt.Errorf("the 'kind' field for environment entry '%v' must be a string", name)
 	}
 
-	if kind == environments.KindAzureCloud {
+	if kind == environment.KindAzureCloud {
 		decoded := &environments.AzureCloudEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
@@ -334,7 +335,7 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		}
 
 		return decoded, nil
-	} else if kind == environments.KindDev {
+	} else if kind == environment.KindDev {
 		decoded := &environments.LocalEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
@@ -349,7 +350,7 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		}
 
 		return decoded, nil
-	} else if kind == environments.KindKubernetes {
+	} else if kind == environment.KindKubernetes {
 		decoded := &environments.KubernetesEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
@@ -363,7 +364,7 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		}
 
 		return decoded, nil
-	} else if kind == environments.KindLocalRP {
+	} else if kind == environment.KindLocalRP {
 		decoded := &environments.LocalRPEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {

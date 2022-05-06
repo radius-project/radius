@@ -1871,16 +1871,16 @@ type HTTPRouteListOptions struct {
 type HTTPRouteProperties struct {
 	BasicRouteProperties
 	// The internal hostname accepting traffic for the route. Readonly.
-	Hostname *float32 `json:"hostname,omitempty"`
+	Hostname *string `json:"hostname,omitempty"`
 
 	// The port number for the route. Defaults to 80. Readonly.
 	Port *float32 `json:"port,omitempty"`
 
 	// The scheme used for traffic. Readonly.
-	Scheme *float32 `json:"scheme,omitempty"`
+	Scheme *string `json:"scheme,omitempty"`
 
 	// A stable URL that that can be used to route traffic to a resource. Readonly.
-	URL *float32 `json:"url,omitempty"`
+	URL *string `json:"url,omitempty"`
 }
 
 // HTTPRouteResource - Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal

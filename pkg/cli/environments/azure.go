@@ -16,12 +16,13 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/environment"
 )
 
 func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
 	az, ok := e.(*AzureCloudEnvironment)
 	if !ok {
-		return nil, fmt.Errorf("an '%v' environment is required but the kind was '%v'", KindAzureCloud, e.GetKind())
+		return nil, fmt.Errorf("an '%v' environment is required but the kind was '%v'", environment.KindAzureCloud, e.GetKind())
 	}
 
 	return az, nil
