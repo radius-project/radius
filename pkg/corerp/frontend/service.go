@@ -41,19 +41,20 @@ func (s *Service) Run(ctx context.Context) error {
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
-	server := server.NewServer(ctx,
+	server, err := server.NewServer(ctx,
 		server.ServerOptions{
 			Address:  address,
 			PathBase: s.Options.Config.Server.PathBase,
 			// TODO: implement ARM client certificate auth.
-			Configure: func(router *mux.Router) {
-				if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
-					panic(err)
-				}
+			Configure: func(router *mux.Router) error {
+				return handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, "")
 			},
 		},
 		s.Options.Config.MetricsProvider,
 	)
+	if err != nil {
+		return err
+	}
 
 	// Handle shutdown based on the context
 	go func() {
@@ -63,7 +64,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", address))
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

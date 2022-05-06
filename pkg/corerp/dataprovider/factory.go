@@ -7,6 +7,7 @@ package dataprovider
 
 import (
 	context "context"
+	"fmt"
 
 	store "github.com/project-radius/radius/pkg/store"
 	"github.com/project-radius/radius/pkg/store/cosmosdb"
@@ -28,11 +29,11 @@ func initCosmosDBClient(ctx context.Context, opt StorageProviderOptions, collect
 	}
 	dbclient, err := cosmosdb.NewCosmosDBStorageClient(sopt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create CosmosDB client - configuration may be invalid: %w", err)
 	}
 
 	if err = dbclient.Init(ctx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize CosmosDB client - configuration may be invalid: %w", err)
 	}
 
 	return dbclient, nil

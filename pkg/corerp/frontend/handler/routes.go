@@ -7,6 +7,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -64,7 +65,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 
 	for _, h := range handlers {
 		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.routeName, h.fn); err != nil {
-			return err
+			return fmt.Errorf("failed to register %s handler for route %s: %w", h.method, h.routeName, err)
 		}
 	}
 
