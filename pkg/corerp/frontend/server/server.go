@@ -28,15 +28,18 @@ type ServerOptions struct {
 	Address       string
 	PathBase      string
 	EnableArmAuth bool
-	Configure     func(*mux.Router)
+	Configure     func(*mux.Router) error
 	ArmCertMgr    *authentication.ArmCertManager
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
-func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig mp.MetricsOptions) *http.Server {
+func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig mp.MetricsOptions) (*http.Server, error) {
 	r := mux.NewRouter()
 	if options.Configure != nil {
-		options.Configure(r)
+		err := options.Configure(r)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	r.Use(middleware.Recoverer)
@@ -64,5 +67,5 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 		},
 	}
 
-	return server
+	return server, nil
 }
