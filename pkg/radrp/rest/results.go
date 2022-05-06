@@ -68,6 +68,11 @@ func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http
 		w.Header().Add(key, element)
 	}
 
+	if r.Body == nil {
+		w.WriteHeader(http.StatusOK)
+		return nil
+	}
+
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(bytes)

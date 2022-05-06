@@ -63,5 +63,5 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 		return nil, err
 	}
 
-	return rest.NewOKResponse("deleted successfully"), nil
+	return rest.NewOKResponse(nil), nil
 }
