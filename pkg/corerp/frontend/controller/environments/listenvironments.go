@@ -7,7 +7,6 @@ package environments
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -51,8 +50,7 @@ func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Res
 	}
 
 	query := store.Query{
-		RootScope: fmt.Sprintf("/subscriptions/%s/resourceGroup/%s",
-			serviceCtx.ResourceID.SubscriptionID, serviceCtx.ResourceID.ResourceGroup),
+		RootScope:    serviceCtx.ResourceID.RootScope(),
 		ResourceType: serviceCtx.ResourceID.Type(),
 	}
 

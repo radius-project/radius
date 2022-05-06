@@ -40,9 +40,9 @@ func (e *GetEnvironment) Run(ctx context.Context, req *http.Request) (rest.Respo
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	existingResource := &datamodel.Environment{}
-	_, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+		return rest.NewNotFoundResponseUCP(serviceCtx.ResourceID), nil
 	}
 
 	versioned, _ := converter.EnvironmentDataModelToVersioned(existingResource, serviceCtx.APIVersion)

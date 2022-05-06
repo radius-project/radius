@@ -17,6 +17,9 @@ type StorageProviderType string
 const (
 	// CosmosDBProvider represents CosmosDB provider.
 	CosmosDBProvider StorageProviderType = "cosmosdb"
+
+	// InMemoryProvider is an in-memory ephemeral store useful for testing.
+	InMemoryProvider StorageProviderType = "memory"
 )
 
 //go:generate mockgen -destination=./mock_datastorage_provider.go -package=dataprovider -self_package github.com/project-radius/radius/pkg/corerp/dataprovider github.com/project-radius/radius/pkg/corerp/dataprovider DataStorageProvider

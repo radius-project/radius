@@ -23,11 +23,11 @@ func TestFromARMRequest(t *testing.T) {
 	require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
 	require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
 	require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", serviceCtx.ResourceID.ID)
-	require.Equal(t, "00000000-0000-0000-0000-000000000000", serviceCtx.ResourceID.SubscriptionID)
-	require.Equal(t, "radius-test-rg", serviceCtx.ResourceID.ResourceGroup)
-	require.Equal(t, "Applications.Core/environments", serviceCtx.ResourceID.Types[0].Type)
-	require.Equal(t, "env0", serviceCtx.ResourceID.Types[0].Name)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", serviceCtx.ResourceID.String())
+	require.Equal(t, "00000000-0000-0000-0000-000000000000", serviceCtx.ResourceID.ScopeSegments()[0].Type)
+	require.Equal(t, "radius-test-rg", serviceCtx.ResourceID.ScopeSegments()[1].Type)
+	require.Equal(t, "Applications.Core/environments", serviceCtx.ResourceID.Type())
+	require.Equal(t, "env0", serviceCtx.ResourceID.Name())
 	require.True(t, len(serviceCtx.OperationID) > 0)
 }
 

@@ -71,3 +71,35 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 
 	return nil
 }
+
+// AddRoutes adds the routes and handlers for each resource provider APIs.
+// TODO: Enable api spec validator.
+func AddUCPRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
+	// Resource Group level API routes.
+	resourceGroupLevelPath := pathBase + "/resourcegroups/{resourceGroup}/providers/applications.core"
+
+	// Adds environment resource type routes
+	envRTSubrouter := router.PathPrefix(resourceGroupLevelPath+"/environments").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
+
+	// Register handlers
+	handlers := []handlerParam{
+		// Environments resource handler registration.
+		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewListEnvironments},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewGetEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, environmentRouteName, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, environmentRouteName, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, environmentRouteName, env_ctrl.NewDeleteEnvironment},
+
+		// Create the operational controller and add new resource types' handlers.
+	}
+
+	for _, h := range handlers {
+		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.routeName, h.fn); err != nil {
+			return fmt.Errorf("failed to register %s handler for route %s: %w", h.method, h.routeName, err)
+		}
+	}
+
+	return nil
+}

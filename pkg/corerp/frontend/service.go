@@ -47,6 +47,10 @@ func (s *Service) Run(ctx context.Context) error {
 			PathBase: s.Options.Config.Server.PathBase,
 			// TODO: implement ARM client certificate auth.
 			Configure: func(router *mux.Router) error {
+				if s.Options.Config.CloudEnv.Name == "UCP" {
+					return handler.AddUCPRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, "")
+				}
+
 				return handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, "")
 			},
 		},

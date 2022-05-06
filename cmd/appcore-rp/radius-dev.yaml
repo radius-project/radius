@@ -1,7 +1,7 @@
 # This is an example of configuration file.
 cloudEnvironment:
-  name: AzureCloud
-  roleLocation: West US
+  name: UCP
+  roleLocation: global
 identity: # 1P AAD APP authentication
   clientId: "PLACEHOLDER"
   instance: "https://login.windows.net"
@@ -10,7 +10,7 @@ identity: # 1P AAD APP authentication
   audience: "https://management.core.windows.net"
   pemCertPath: "/var/certs/rp-aad-app.pem"
 storageProvider:
-  provider: "cosmosdb"
+  provider: "memory"
   cosmosdb:
     # Create your own SQL API Cosmos DB account and set url in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_URL environment variable
     url: https://radius-eastus-test.documents.azure.com:443/

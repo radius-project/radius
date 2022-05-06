@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/resources"
 )
 
 // The below contants are the headers in request from ARM.
@@ -93,7 +93,7 @@ var (
 // ARMRequestContext represents the service context including proxy request header values.
 type ARMRequestContext struct {
 	// ResourceID represents arm resource ID extracted from resource id.
-	ResourceID azresources.ResourceID
+	ResourceID resources.ID
 
 	// ClientRequestID represents the client request id from arm request.
 	ClientRequestID string
@@ -140,7 +140,7 @@ type ARMRequestContext struct {
 func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
 	path := strings.TrimPrefix(r.URL.Path, pathBase)
-	azID, err := azresources.Parse(path)
+	azID, err := resources.Parse(path)
 	if err != nil {
 		log.V(radlogger.Debug).Info("URL was not a valid resource id: %v", r.URL.Path)
 		// do not stop extracting headers. handler needs to care invalid resource id.

@@ -24,7 +24,7 @@ func TestARMRequestCtx(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {
 			rpcCtx := servicecontext.ARMRequestContextFromContext(r.Context())
 
-			_, _ = w.Write([]byte(rpcCtx.ResourceID.SubscriptionID))
+			_, _ = w.Write([]byte(rpcCtx.ResourceID.ScopeSegments()[0].Name))
 		})
 
 	handler := ARMRequestCtx(testPathBase)(r)

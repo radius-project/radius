@@ -17,6 +17,7 @@ type storageFactoryFunc func(context.Context, StorageProviderOptions, string) (s
 
 var storageClientFactory = map[StorageProviderType]storageFactoryFunc{
 	CosmosDBProvider: initCosmosDBClient,
+	InMemoryProvider: NewInMemoryProvider,
 }
 
 func initCosmosDBClient(ctx context.Context, opt StorageProviderOptions, collectionName string) (store.StorageClient, error) {

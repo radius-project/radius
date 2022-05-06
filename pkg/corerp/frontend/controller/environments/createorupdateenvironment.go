@@ -47,9 +47,9 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	}
 
 	existingResource := &datamodel.Environment{}
-	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if req.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+		return rest.NewNotFoundResponseUCP(serviceCtx.ResourceID), nil
 	}
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
@@ -62,7 +62,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 
 	UpdateExistingResourceData(ctx, existingResource, newResource)
 
-	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
+	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +95,8 @@ func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Requ
 
 	// TODO: Add more validation e.g. schema, identity, etc.
 
-	dm.ID = serviceCtx.ResourceID.ID
-	dm.TrackedResource.ID = serviceCtx.ResourceID.ID
+	dm.ID = serviceCtx.ResourceID.String()
+	dm.TrackedResource.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource.Name = serviceCtx.ResourceID.Name()
 	dm.TrackedResource.Type = serviceCtx.ResourceID.Type()
 	dm.TrackedResource.Location = serviceOpt.CloudEnv.RoleLocation
