@@ -46,6 +46,8 @@ input-file:
   - Applications.Core/preview/2022-03-15-privatepreview/global.json
   - Applications.Core/preview/2022-03-15-privatepreview/environments.json
   - Applications.Core/preview/2022-03-15-privatepreview/applications.json
+  - Applications.Core/preview/2022-03-15-privatepreview/operationresults.json
+  - Applications.Core/preview/2022-03-15-privatepreview/operationstatuses.json
 ```
 
 ### Tag: package-connector-2022-03-15-privatepreview

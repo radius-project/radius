@@ -2,6 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Applications Management APIs",
+    "description": "REST API for Radius Application Operation Results",
     "version": "2022-03-15-privatepreview"
   },
   "host": "management.azure.com",
@@ -33,32 +34,38 @@
     }
   },
   "paths": {
-    "/providers/Applications.Core/operations": {
+    "/subscriptions/{subscriptionId}/providers/Applications.Core/locations/{location}/operationResults/{operationId}": {
       "get": {
-        "tags": [
-          "Operations"
-        ],
-        "description": "Lists the available API operations.",
-        "operationId": "Operations_List",
+        "description": "Get results of an operation by operation id.",
+        "operationId": "OperationResults_GetByOperationId",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RadiusOperationsList": {
-            "$ref": "./examples/OperationsList.json"
+          "RadiusGetOperationResultByOperationId": {
+            "$ref": "./examples/OperationResultGetOp0.json"
           }
         },
+        "tags": [
+          "OperationResults"
+        ],
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/LocationParameter"
+          },
+          {
+            "$ref": "#/parameters/OperationIdParameter"
           }
         ],
         "responses": {
           "200": {
-            "description": "Operation details.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/OperationListResult"
-            }
+            "description": "Operation result"
           },
           "default": {
             "description": "Error response describing why the operation failed.",
@@ -67,11 +74,21 @@
             }
           }
         },
-        "deprecated": false,
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
+        "deprecated": false
       }
+    }
+  },
+  "definitions": {},
+  "parameters": {
+    "OperationIdParameter": {
+      "name": "operationId",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the operation [will be updated to UUID]",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+      "maxLength": 128,
+      "x-ms-parameter-location": "method"
     }
   }
 }

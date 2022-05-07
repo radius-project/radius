@@ -1,0 +1,27 @@
+{
+  "parameters": {
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "location": "westus",
+    "api-version": "2022-03-15-privatepreview",
+    "operationId": "00000000-0000-0000-0000-000000000000"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/locations/westus/operationsStatuses/00000000-0000-0000-0000-000000000000",
+        "name": "{operationId guid}",
+        "status": "Succeeded",
+        "startTime": "",
+        "endTime": "",
+        "percentComplete": "0",
+        "properties": {
+          "state": "Succeeded"
+        },
+        "error": {
+          "code": "BadArgument",
+          "message": "The provided database has an invalid username."
+        }
+      }
+    }
+  }
+}

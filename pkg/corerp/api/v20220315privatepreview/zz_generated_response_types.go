@@ -196,3 +196,15 @@ type MongoDatabasesListResult struct {
 	MongoDatabaseList
 }
 
+// OperationResultsGetByOperationIDResponse contains the response from method OperationResults.GetByOperationID.
+type OperationResultsGetByOperationIDResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// OperationStatusesGetByOperationIDResponse contains the response from method OperationStatuses.GetByOperationID.
+type OperationStatusesGetByOperationIDResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+

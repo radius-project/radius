@@ -309,6 +309,16 @@ type MongoDatabasesListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// OperationResultsGetByOperationIDOptions contains the optional parameters for the OperationResults.GetByOperationID method.
+type OperationResultsGetByOperationIDOptions struct {
+	// placeholder for future optional parameters
+}
+
+// OperationStatusesGetByOperationIDOptions contains the optional parameters for the OperationStatuses.GetByOperationID method.
+type OperationStatusesGetByOperationIDOptions struct {
+	// placeholder for future optional parameters
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}

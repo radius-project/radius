@@ -14,15 +14,18 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
+	operation_status_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/operation/status"
 	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
 )
 
 const (
-	APIVersionParam       = "api-version"
-	serviceNamePrefix     = "corerp_"
-	subscriptionRouteName = serviceNamePrefix + "subscriptionAPI"
-	operationsRouteName   = serviceNamePrefix + "operationsAPI"
-	environmentRouteName  = serviceNamePrefix + "environmentAPI"
+	APIVersionParam          = "api-version"
+	serviceNamePrefix        = "corerp_"
+	subscriptionRouteName    = serviceNamePrefix + "subscriptionAPI"
+	operationsRouteName      = serviceNamePrefix + "operationsAPI"
+	environmentRouteName     = serviceNamePrefix + "environmentAPI"
+	operationResultRouteName = serviceNamePrefix + "operationResultAPI"
+	operationStatusRouteName = serviceNamePrefix + "operationStatusAPI"
 )
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
@@ -47,11 +50,16 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
 
+	// TODO: Make some of it constant like 'subscriptions/{subscriptionId}
+	operationResultRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}/providers/Applications.Core/locations/{location}/operationResults/{operationId}").Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+	operationStatusRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}/providers/Applications.Core/locations/{location}/operationStatuses/{operationId}").Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+
 	// Register handlers
 	handlers := []handlerParam{
 		// Provider handler registration.
 		{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, subscriptionRouteName, provider_ctrl.NewCreateOrUpdateSubscription},
 		{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, operationsRouteName, provider_ctrl.NewGetOperations},
+
 		// Environments resource handler registration.
 		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewListEnvironments},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewGetEnvironment},
@@ -60,6 +68,14 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, environmentRouteName, env_ctrl.NewDeleteEnvironment},
 
 		// Create the operational controller and add new resource types' handlers.
+		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewListEnvironments},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewGetEnvironment},
+
+		// OperationResult resource handler registration
+		{operationResultRouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewGetEnvironment},
+
+		// OperationStatus resource handler registration
+		{operationStatusRouter, operation_status_ctrl.ResourceTypeName, http.MethodGet, operationStatusRouteName, operation_status_ctrl.NewGetOperationStatus},
 	}
 
 	for _, h := range handlers {
