@@ -57,7 +57,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
-		return rest.NewPreconditionFailedResponse(err.Error()), nil
+		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.ID, err.Error()), nil
 	}
 
 	UpdateExistingResourceData(ctx, existingResource, newResource)

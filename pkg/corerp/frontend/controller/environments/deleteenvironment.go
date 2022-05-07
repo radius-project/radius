@@ -51,7 +51,7 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
-		return rest.NewPreconditionFailedResponse(err.Error()), nil
+		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.ID, err.Error()), nil
 	}
 
 	// TODO: handle async deletion later.
@@ -63,5 +63,5 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 		return nil, err
 	}
 
-	return rest.NewOKResponse("deleted successfully"), nil
+	return rest.NewOKResponse(nil), nil
 }

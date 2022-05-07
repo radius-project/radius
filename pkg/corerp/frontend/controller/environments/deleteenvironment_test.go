@@ -7,12 +7,15 @@ package environments
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/stretchr/testify/require"
 )
@@ -43,8 +46,17 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
 		require.NoError(t, err)
-		_ = resp.Apply(ctx, w, req)
-		require.Equal(t, 204, w.Result().StatusCode)
+		err = resp.Apply(ctx, w, req)
+		require.NoError(t, err)
+
+		result := w.Result()
+		require.Equal(t, http.StatusNoContent, result.StatusCode)
+
+		body := result.Body
+		defer body.Close()
+		payload, err := ioutil.ReadAll(body)
+		require.NoError(t, err)
+		require.Empty(t, payload, "response body should be empty")
 	})
 
 	existingResourceDeletionCases := []struct {
@@ -95,8 +107,27 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
-			_ = resp.Apply(ctx, w, req)
-			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
+			err = resp.Apply(ctx, w, req)
+			require.NoError(t, err)
+
+			result := w.Result()
+			require.Equal(t, tt.expectedStatusCode, result.StatusCode)
+
+			body := result.Body
+			defer body.Close()
+			payload, err := ioutil.ReadAll(body)
+			require.NoError(t, err)
+
+			if result.StatusCode == 200 || result.StatusCode == 204 {
+				// We return either 200 or 204 without a response body for success.
+				require.Empty(t, payload, "response body should be empty")
+			} else {
+				armerr := armerrors.ErrorResponse{}
+				err = json.Unmarshal(payload, &armerr)
+				require.NoError(t, err)
+				require.Equal(t, armerrors.PreconditionFailed, armerr.Error.Code)
+				require.NotEmpty(t, armerr.Error.Target)
+			}
 		})
 	}
 }
