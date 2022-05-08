@@ -44,10 +44,14 @@ type OKResponse struct {
 	Headers map[string]string
 }
 
+// NewOKResponse creates an OKResponse that will write a 200 OK with the provided body as JSON.
+// Set the body to nil to write an empty 200 OK.
 func NewOKResponse(body interface{}) Response {
 	return &OKResponse{Body: body}
 }
 
+// NewOKResponseWithHeaders creates an OKResponse that will write a 200 OK with the provided body as JSON.
+// Set the body to nil to write an empty 200 OK.
 func NewOKResponseWithHeaders(body interface{}, headers map[string]string) Response {
 	return &OKResponse{
 		Body:    body,
@@ -66,6 +70,11 @@ func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http
 
 	for key, element := range r.Headers {
 		w.Header().Add(key, element)
+	}
+
+	if r.Body == nil {
+		w.WriteHeader(http.StatusOK)
+		return nil
 	}
 
 	w.Header().Add("Content-Type", "application/json")
@@ -557,12 +566,13 @@ type PreconditionFailedResponse struct {
 	Body armerrors.ErrorResponse
 }
 
-func NewPreconditionFailedResponse(message string) Response {
+func NewPreconditionFailedResponse(target string, message string) Response {
 	return &PreconditionFailedResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.PreconditionFailed,
 				Message: message,
+				Target:  target,
 			},
 		},
 	}

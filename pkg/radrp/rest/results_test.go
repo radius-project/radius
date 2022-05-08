@@ -1,11 +1,15 @@
 package rest
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -483,4 +487,45 @@ func Test_AggregateApplicationProvisioningState_NotProvisionedAndProvisionedIsPr
 
 	require.Equal(t, ProvisioningStateProvisioning, aggregateProvisioningState)
 	require.Equal(t, "Resource b is in NotProvisioned state", aggregateProvisioningStateErrorDetails)
+}
+
+func Test_OKResponse_Empty(t *testing.T) {
+	response := NewOKResponse(nil)
+
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	req := httptest.NewRequest("GET", "http://example.com", nil)
+	w := httptest.NewRecorder()
+
+	err := response.Apply(ctx, w, req)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, []string(nil), w.Header()["Content-Type"])
+	require.Empty(t, w.Body.Bytes())
+}
+
+func Test_OKResponse_WithBody(t *testing.T) {
+	payload := map[string]string{
+		"message": "hi there!",
+	}
+	response := NewOKResponse(payload)
+
+	ctx, cancel := testcontext.GetContext(t)
+	defer cancel()
+
+	req := httptest.NewRequest("GET", "http://example.com", nil)
+	w := httptest.NewRecorder()
+
+	err := response.Apply(ctx, w, req)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, []string{"application/json"}, w.Header()["Content-Type"])
+
+	body := map[string]string{}
+	err = json.Unmarshal(w.Body.Bytes(), &body)
+	require.NoError(t, err)
+	require.Equal(t, payload, body)
 }
