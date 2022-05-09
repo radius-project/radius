@@ -56,6 +56,8 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	var computedHostname string
 	if hostname == nil {
 		computedHostname = "unknown"
+	} else if options.Runtime.Environment == environment.KindDev {
+		computedHostname = options.Runtime.Gateway.PublicIP
 	} else {
 		computedHostname = string(*hostname)
 	}
@@ -192,7 +194,9 @@ func getHostname(ctx context.Context, resource renderers.RendererResource, gatew
 		return &resource.ApplicationName, nil
 	} else if options.Environment == environment.KindDev {
 		// Use the local dev http endpoint
-		return &options.Gateway.PublicIP, nil
+		localhostFQDN := "localhost"
+		return &localhostFQDN, nil
+		// return &options.Gateway.PublicIP, nil
 	} else if gateway.Hostname != nil {
 		if gateway.Hostname.FullyQualifiedHostname != nil {
 			// Use FQDN

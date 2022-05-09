@@ -25,6 +25,7 @@ const (
 
 type ContourOptions struct {
 	ChartVersion string
+	HostNetwork  bool
 }
 
 func ApplyContourHelmChart(options ContourOptions) error {
@@ -50,6 +51,11 @@ func ApplyContourHelmChart(options ContourOptions) error {
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
+	err = AddContourValues(helmChart, options)
+	if err != nil {
+		return err
+	}
+
 	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
@@ -57,11 +63,55 @@ func ApplyContourHelmChart(options ContourOptions) error {
 	if errors.Is(err, driver.ErrReleaseNotFound) {
 		err = RunContourHelmInstall(helmConf, helmChart)
 		if err != nil {
-			return fmt.Errorf("failed to run helm install, err: %w, helm output: %s", err, helmOutput.String())
+			return fmt.Errorf("failed to run contour helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	}
 
 	return err
+}
+
+func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
+	// https://projectcontour.io/docs/main/deploy-options/#host-networking
+	// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
+	envoyNode := helmChart.Values["envoy"].(map[string]interface{})
+	if envoyNode == nil {
+		return fmt.Errorf("envoy node not found in chart values")
+	}
+
+	if options.HostNetwork {
+		envoyNode["hostNetwork"] = true
+		envoyNode["dnsPolicy"] = "ClusterFirstWithHostNet"
+		hostPortsNode := envoyNode["hostPorts"].(map[string]interface{})
+		if hostPortsNode == nil {
+			return fmt.Errorf("envoy.hostPorts node not found in chart values")
+		}
+
+		hostPortsNode["http"] = 80
+		hostPortsNode["https"] = 443
+
+		containerPortsNode := envoyNode["containerPorts"].(map[string]interface{})
+		if containerPortsNode == nil {
+			return fmt.Errorf("envoy.containerPorts node not found in chart values")
+		}
+
+		containerPortsNode["http"] = 80
+		containerPortsNode["https"] = 443
+
+		serviceNode := envoyNode["service"].(map[string]interface{})
+		if serviceNode == nil {
+			return fmt.Errorf("envoy.service node not found in chart values")
+		}
+
+		servicePortsNode := serviceNode["ports"].(map[string]interface{})
+		if serviceNode == nil {
+			return fmt.Errorf("envoy.service.ports node not found in chart values")
+		}
+
+		servicePortsNode["http"] = 8080
+		servicePortsNode["https"] = 8443
+	}
+
+	return nil
 }
 
 func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {

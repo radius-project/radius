@@ -83,7 +83,7 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 
 		err = runRadiusHelmInstall(helmConf, helmChart)
 		if err != nil {
-			return fmt.Errorf("failed to run helm install, err: %w, helm output: %s", err, helmOutput.String())
+			return fmt.Errorf("failed to run radius helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	} else if err == nil {
 		output.LogInfo("Found existing Radius Kubernetes environment")
