@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -29,6 +30,9 @@ const (
 
 	// Top is an optional query parameter that defines the maximum number of records to be returned by the server.
 	TopParameter = "top"
+
+	// MaxQueryItemCount represents the default value for the number of records to be returned by the server.
+	MaxQueryItemCount = 20
 )
 
 var (
@@ -131,10 +135,11 @@ type ARMRequestContext struct {
 	IfMatch string
 	// IfNoneMatch receives "*" or an ETag - No support for multiple ETags for now
 	IfNoneMatch string
+
 	// SkipToken
 	SkipToken string
 	// Top is the maximum number of records to be returned by the server. The validation will be handled downstream.
-	Top string
+	Top int
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
@@ -145,6 +150,12 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 	if err != nil {
 		log.V(radlogger.Debug).Info("URL was not a valid resource id: %v", r.URL.Path)
 		// do not stop extracting headers. handler needs to care invalid resource id.
+	}
+
+	topParam, err := getNumberOfRecords(r.URL.Query().Get(TopParameter))
+	if err != nil {
+		log.V(radlogger.Debug).Info("Error parsing top query parameter: %v", r.URL.Query())
+		topParam = MaxQueryItemCount
 	}
 
 	rpcCtx := &ARMRequestContext{
@@ -171,7 +182,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		IfNoneMatch: r.Header.Get(IfNoneMatch),
 
 		SkipToken: r.URL.Query().Get(SkipTokenQueryParameter),
-		Top:       r.URL.Query().Get(TopParameter),
+		Top:       topParam,
 	}
 
 	return rpcCtx, nil
@@ -189,6 +200,26 @@ func (rc ARMRequestContext) SystemData() *armrpcv1.SystemData {
 	}
 
 	return systemDataProp
+}
+
+// getNumberOfRecords function returns the number of records requested.
+// The default value is defined above.
+// If there is a top query parameter, we use that instead of the default one.
+func getNumberOfRecords(top string) (int, error) {
+	topParam := MaxQueryItemCount
+	var err error
+
+	if top != "" {
+		topParam, err = strconv.Atoi(top)
+	}
+
+	// This is to make sure that we do not accept requests that are requesting
+	// more than the MaxQueryItemCount and set them to the upper limit.
+	if topParam > MaxQueryItemCount {
+		topParam = MaxQueryItemCount
+	}
+
+	return topParam, err
 }
 
 // ARMRequestContextFromContext extracts ARMRPContext from http context.
