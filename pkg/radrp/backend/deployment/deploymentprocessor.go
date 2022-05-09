@@ -696,21 +696,23 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 }
 
 func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {
-	// Get config from radius-config ConfigMap
-	var configMaps corev1.ConfigMapList
-	err := dp.k8s.List(ctx, &configMaps, &client.ListOptions{Namespace: "radius-system"})
-	if err != nil {
-		return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up ConfigMaps: %w", err)
-	}
+	if dp.k8s != nil {
+		// Get config from radius-config ConfigMap
+		var configMaps corev1.ConfigMapList
+		err := dp.k8s.List(ctx, &configMaps, &client.ListOptions{Namespace: "radius-system"})
+		if err != nil {
+			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up ConfigMaps: %w", err)
+		}
 
-	for _, configMap := range configMaps.Items {
-		if configMap.Name == "radius-config" {
-			return renderers.RuntimeOptions{
-				Environment: configMap.Data[environment.EnvironmentKindKey],
-				Gateway: renderers.GatewayOptions{
-					PublicIP: configMap.Data[environment.HTTPEndpointKey],
-				},
-			}, nil
+		for _, configMap := range configMaps.Items {
+			if configMap.Name == "radius-config" {
+				return renderers.RuntimeOptions{
+					Environment: configMap.Data[environment.EnvironmentKindKey],
+					Gateway: renderers.GatewayOptions{
+						PublicIP: configMap.Data[environment.HTTPEndpointKey],
+					},
+				}, nil
+			}
 		}
 	}
 
