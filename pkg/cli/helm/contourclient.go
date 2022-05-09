@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	contourHelmRepo     = "https://charts.bitnami.com/bitnami"
-	contourHelmRepoName = "bitnami"
-	contourReleaseName  = "contour"
+	contourHelmRepo    = "https://charts.bitnami.com/bitnami"
+	contourReleaseName = "contour"
 )
 
 type ContourOptions struct {

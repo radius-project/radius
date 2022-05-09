@@ -131,14 +131,15 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 func Test_Render_DevEnvironment(t *testing.T) {
 	r := &Renderer{}
 
-	expectedPublicIP := "http://localhost:32323"
+	publicIP := "http://localhost:32323"
+	expectedFqdn := "localhost"
 	properties, expectedIncludes := makeTestGateway(radclient.GatewayProperties{})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	additionalProperties := renderers.RuntimeOptions{
 		Environment: environment.KindDev,
 		Gateway: renderers.GatewayOptions{
-			PublicIP: expectedPublicIP,
+			PublicIP: publicIP,
 		},
 	}
 
@@ -146,9 +147,9 @@ func Test_Render_DevEnvironment(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedPublicIP, output.ComputedValues["hostname"].Value)
+	require.Equal(t, publicIP, output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, &expectedPublicIP, expectedIncludes)
+	validateGateway(t, output.Resources, &expectedFqdn, expectedIncludes)
 }
 
 func Test_Render_WithMissingPublicIP(t *testing.T) {
@@ -315,13 +316,15 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 	require.Equal(t, applicationName, gateway.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), gateway.Labels)
 
+	var expectedVirtualHost *contourv1.VirtualHost = nil
 	var expectedGatewaySpec contourv1.HTTPProxySpec
 	if expectedHostname != nil {
+		expectedVirtualHost = &contourv1.VirtualHost{
+			Fqdn: *expectedHostname,
+		}
 		expectedGatewaySpec = contourv1.HTTPProxySpec{
-			VirtualHost: &contourv1.VirtualHost{
-				Fqdn: *expectedHostname,
-			},
-			Includes: expectedIncludes,
+			VirtualHost: expectedVirtualHost,
+			Includes:    expectedIncludes,
 		}
 	} else {
 		expectedGatewaySpec = contourv1.HTTPProxySpec{
@@ -329,6 +332,7 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 		}
 	}
 
+	require.Equal(t, expectedVirtualHost, gateway.Spec.VirtualHost)
 	require.Equal(t, expectedGatewaySpec, gateway.Spec)
 }
 

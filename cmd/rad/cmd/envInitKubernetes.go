@@ -137,14 +137,11 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	httpEndpoint, err := kubernetes.GetPublicIP(cmd.Context(), runtimeClient)
-	if err != nil {
-		return err
-	}
+	httpEndpoint := kubernetes.GetPublicIP(cmd.Context(), runtimeClient)
 
 	radiusConfig := kubernetes.RadiusConfig{
 		EnvironmentKind: environment.KindKubernetes,
-		HTTPEndpoint:    *httpEndpoint,
+		HTTPEndpoint:    httpEndpoint,
 	}
 	err = kubernetes.UpdateRadiusConfig(cmd.Context(), radiusConfig, runtimeClient)
 	if err != nil {

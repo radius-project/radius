@@ -512,14 +512,11 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	httpEndpoint, err := kubernetes.GetPublicIP(ctx, runtimeClient)
-	if err != nil {
-		return err
-	}
+	httpEndpoint := kubernetes.GetPublicIP(ctx, runtimeClient)
 
 	radiusConfig := kubernetes.RadiusConfig{
 		EnvironmentKind: environment.KindAzureCloud,
-		HTTPEndpoint:    *httpEndpoint,
+		HTTPEndpoint:    httpEndpoint,
 	}
 	err = kubernetes.UpdateRadiusConfig(ctx, radiusConfig, runtimeClient)
 	if err != nil {

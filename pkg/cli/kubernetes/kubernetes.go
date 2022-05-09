@@ -400,22 +400,24 @@ func UpdateRadiusConfig(ctx context.Context, newConfig RadiusConfig, runtimeClie
 	return fmt.Errorf("could not find ConfigMap %s in namespace %s", RadiusConfigName, RadiusSystemNamespace)
 }
 
-func GetPublicIP(ctx context.Context, runtimeClient client.Client) (*string, error) {
+func GetPublicIP(ctx context.Context, runtimeClient client.Client) string {
 	// Find the public IP of the cluster (External IP of the contour-envoy service)
+	// If the public IP can't be found, just leave it empty.
+	emptyPublicIP := ""
 	var services corev1.ServiceList
 	err := runtimeClient.List(ctx, &services, &client.ListOptions{Namespace: RadiusSystemNamespace})
 	if err != nil {
-		return nil, fmt.Errorf("failed to look up Services: %w", err)
+		return emptyPublicIP
 	}
 
 	for _, service := range services.Items {
 		if service.Name == IngressServiceName {
 			for _, in := range service.Status.LoadBalancer.Ingress {
-				return &in.IP, nil
+				return in.IP
 
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("could not find LoadBalancer External IP for service %s in namespace %s", IngressServiceName, RadiusSystemNamespace)
+	return emptyPublicIP
 }
