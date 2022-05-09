@@ -22,11 +22,8 @@ server:
   port: 8080
   authType: "ClientCertificate"
   armMetadataEndpoint: "https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01"
-metric:
-  exporterType: statsd
-  endpoint: "udp://geneva-services:8125"
-  account: radiusdogfood
-  namespace: "radius/rp"
-  tenant: westus3
+metricsProvider:
+  prometheus:
+    endpoint: "/metrics"
 featureFlags:
   - "PLACEHOLDER"

@@ -52,4 +52,4 @@ Open `./pkg/rad/config_test.go` in the editor. Each test function has the option
 <img width="600px" src="unittest-commands.png" alt="Commands to launch for a unit test"><br />
 
 ## Next step
--  [Create a PR](first-commit-06-creating-a-pr.md)
+-  [Create a PR](../first-commit-06-creating-a-pr/index.md)

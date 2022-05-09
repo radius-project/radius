@@ -18,7 +18,11 @@ import (
 )
 
 const (
-	APIVersionParam = "api-version"
+	APIVersionParam       = "api-version"
+	serviceNamePrefix     = "corerp_"
+	subscriptionRouteName = serviceNamePrefix + "subscriptionAPI"
+	operationsRouteName   = serviceNamePrefix + "operationsAPI"
+	environmentRouteName  = serviceNamePrefix + "environmentAPI"
 )
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
@@ -46,20 +50,20 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 	// Register handlers
 	handlers := []handlerParam{
 		// Provider handler registration.
-		{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, provider_ctrl.NewCreateOrUpdateSubscription},
-		{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, provider_ctrl.NewGetOperations},
+		{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, subscriptionRouteName, provider_ctrl.NewCreateOrUpdateSubscription},
+		{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, operationsRouteName, provider_ctrl.NewGetOperations},
 		// Environments resource handler registration.
-		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewListEnvironments},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.NewGetEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, env_ctrl.NewCreateOrUpdateEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, env_ctrl.NewCreateOrUpdateEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, env_ctrl.NewDeleteEnvironment},
+		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewListEnvironments},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, environmentRouteName, env_ctrl.NewGetEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, environmentRouteName, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, environmentRouteName, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, environmentRouteName, env_ctrl.NewDeleteEnvironment},
 
 		// Create the operational controller and add new resource types' handlers.
 	}
 
 	for _, h := range handlers {
-		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.fn); err != nil {
+		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.routeName, h.fn); err != nil {
 			return err
 		}
 	}

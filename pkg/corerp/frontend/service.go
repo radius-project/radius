@@ -41,16 +41,19 @@ func (s *Service) Run(ctx context.Context) error {
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
-	server := server.NewServer(ctx, server.ServerOptions{
-		Address:  address,
-		PathBase: s.Options.Config.Server.PathBase,
-		// TODO: implement ARM client certificate auth.
-		Configure: func(router *mux.Router) {
-			if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
-				panic(err)
-			}
+	server := server.NewServer(ctx,
+		server.ServerOptions{
+			Address:  address,
+			PathBase: s.Options.Config.Server.PathBase,
+			// TODO: implement ARM client certificate auth.
+			Configure: func(router *mux.Router) {
+				if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
+					panic(err)
+				}
+			},
 		},
-	})
+		s.Options.Config.MetricsProvider,
+	)
 
 	// Handle shutdown based on the context
 	go func() {
