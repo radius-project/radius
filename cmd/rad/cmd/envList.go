@@ -19,10 +19,15 @@ var envListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List environments",
 	Long:  `List environments`,
-	RunE: getEnvConfigs,
+	RunE:  getEnvConfigs,
 }
 
-func getEnvConfigs(cmd *cobra.Command, args [] string) error {
+type EnvError struct {
+	Name  string
+	Error string
+}
+
+func getEnvConfigs(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.ReadEnvironmentSection(config)
 	if err != nil {
@@ -50,20 +55,42 @@ func getEnvConfigs(cmd *cobra.Command, args [] string) error {
 		}
 		fmt.Println(string(b))
 		fmt.Println()
-	} else {//default format is table
-		fmt.Println("default: "+env.Default)
-		var eList []interface{}
+	} else { //default format is table
+		fmt.Println("default: " + env.Default)
+		var (
+			eList     []interface{}
+			errList   []EnvError
+			isDefault bool = false
+		)
+
 		for key := range env.Items {
-			e,err := env.GetEnvironment(key)
-			eList = append(eList, e)
+			e, err := env.GetEnvironment(key)
 			if err != nil {
-				return err
+				errList = append(errList, EnvError{key, err.Error()})
+			} else {
+				eList = append(eList, e)
 			}
+			if env.Default == key {
+				isDefault = true
+			}
+		}
+
+		// check if default exists
+		if env.Default != "" && !isDefault {
+			errList = append(errList, EnvError{env.Default, "the default environment entry has not been configured"})
 		}
 		formatter := objectformats.GetGenericEnvironmentTableFormat()
 		err = output.Write(format, eList, cmd.OutOrStdout(), formatter)
 		if err != nil {
 			return err
+		}
+		if len(errList) > 0 {
+			fmt.Println()
+			errformatter := objectformats.GetGenericEnvErrorTableFormat()
+			err = output.Write(format, errList, cmd.OutOrStdout(), errformatter)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
