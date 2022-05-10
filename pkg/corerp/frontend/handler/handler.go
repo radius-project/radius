@@ -26,10 +26,11 @@ type handlerParam struct {
 	parent       *mux.Router
 	resourcetype string
 	method       string
+	routeName    string
 	fn           ControllerFunc
 }
 
-func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, parent *mux.Router, resourcetype string, method string, CreateController ControllerFunc) error {
+func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, parent *mux.Router, resourcetype string, method string, routeName string, CreateController ControllerFunc) error {
 	sc, err := sp.GetStorageClient(ctx, resourcetype)
 	if err != nil {
 		return err
@@ -54,7 +55,7 @@ func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, p
 			return
 		}
 	}
-	parent.Methods(method).HandlerFunc(fn)
+	parent.Methods(method).HandlerFunc(fn).Name(routeName)
 	return nil
 }
 

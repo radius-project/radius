@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: ucp
+  name: ucp
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: ucp
+  template:
+    metadata:
+      labels:
+        control-plane: ucp
+{{ if .Values.global.rp.provider.azure.podidentity }}
+        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
+{{ end }}
+    spec:
+      serviceAccountName: ucp-manager
+      containers:
+      - image: {{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}
+        name: ucp
+        ports:
+        - containerPort: 9443
+          name: ucp
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ucp
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 443
+      name: https
+      protocol: TCP
+      targetPort: 9443
+  selector:
+    control-plane: ucp

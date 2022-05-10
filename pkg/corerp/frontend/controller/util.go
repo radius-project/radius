@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -19,6 +20,9 @@ import (
 var (
 	// ContentTypeHeaderKey is the header key of Content-Type
 	ContentTypeHeaderKey = http.CanonicalHeaderKey("Content-Type")
+
+	// DefaultScheme is the default scheme used if there is no scheme in the URL.
+	DefaultSheme = "http"
 )
 
 var (
@@ -80,6 +84,8 @@ func ValidateETag(armRequestContext servicecontext.ARMRequestContext, etag strin
 	return nil
 }
 
+// checkIfMatchHeader function checks if the etag of the resource matches
+// the one provided in the if-match header
 func checkIfMatchHeader(ifMatchETag string, etag string) error {
 	if ifMatchETag == "" {
 		return nil
@@ -96,10 +102,28 @@ func checkIfMatchHeader(ifMatchETag string, etag string) error {
 	return nil
 }
 
+// checkIfNoneMatchHeader function checks if the etag of the resource matches
+// the one provided in the if-none-match header
 func checkIfNoneMatchHeader(ifNoneMatchETag string, etag string) error {
 	if ifNoneMatchETag == "*" && etag != "" {
 		return ErrResourceAlreadyExists
 	}
 
 	return nil
+}
+
+// GetURLFromReqWithQueryParameters function builds a URL from the request and query parameters
+func GetURLFromReqWithQueryParameters(req *http.Request, qps url.Values) *url.URL {
+	url := url.URL{
+		Host:     req.Host,
+		Scheme:   req.URL.Scheme,
+		Path:     req.URL.Path,
+		RawQuery: qps.Encode(),
+	}
+
+	if url.Scheme == "" {
+		url.Scheme = DefaultSheme
+	}
+
+	return &url
 }

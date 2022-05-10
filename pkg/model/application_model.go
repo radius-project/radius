@@ -259,6 +259,14 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureStorage,
+				Provider: providers.ProviderAzure,
+			},
+			HealthHandler:   handlers.NewDaprStateStoreAzureStorageHealthHandler(arm, k8s),
+			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
 				Provider: providers.ProviderAzure,
 			},

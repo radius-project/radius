@@ -24,6 +24,7 @@ const (
 	ServiceBusNamespacesTopics                  = "topics"
 	StorageStorageAccounts                      = "Microsoft.Storage/storageAccounts"
 	StorageStorageAccountsTables                = "tables"
+	StorageStorageTableServices                 = "tableServices"
 	SqlServers                                  = "Microsoft.Sql/servers"
 	SqlServersDatabases                         = "databases"
 	WebServerFarms                              = "Microsoft.Web/serverFarms"

@@ -5,6 +5,9 @@ global:
   extensibility:
     image: radius.azurecr.io/bicep-extensibility
     tag: latest
+  ucp:
+    image: radius.azurecr.io/ucpd
+    tag: latest # Tag for ucp image.
   radius:
     container: radius.azurecr.io/radius-controller
     tag: latest # Tag for radius-controller image.
