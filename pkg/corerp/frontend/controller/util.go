@@ -141,9 +141,6 @@ func GetNextLinkURL(ctx context.Context, req *http.Request, paginationToken stri
 	qps := url.Values{}
 	qps.Add("api-version", serviceCtx.APIVersion)
 	qps.Add("skipToken", paginationToken)
-
-	// TODO: What if the original query did not include top param? Should we still go ahead and
-	// add the default value for Top or just not include it at all?
 	qps.Add("top", strconv.Itoa(serviceCtx.Top))
 
 	return GetURLFromReqWithQueryParameters(req, qps).String()

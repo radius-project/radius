@@ -26,17 +26,20 @@ const (
 	// APIVersionParameterName is the query string parameter for the api version.
 	APIVersionParameterName = "api-version"
 
-	// SkipTokenQueryParameter
-	SkipTokenQueryParameter = "skipToken"
+	// SkipTokenParameterName is the query string parameter for the skip token which is used for pagination purposes.
+	SkipTokenParameterName = "skipToken"
 
-	// Top is an optional query parameter that defines the maximum number of records to be returned by the server.
-	TopParameter = "top"
+	// TopParameterName is an optional query parameter that defines the number of records requested by the client.
+	TopParameterName = "top"
+)
 
+// The constants below define the default, max, and min values for the number of records to be returned by the server.
+const (
 	// MaxQueryItemCount represents the default value for the maximum number of records to be returned by the server.
 	MaxQueryItemCount = 20
 
 	// DefaultQueryItemCount represents the default value for the number of records to be returned by the server.
-	DefaultQueryItemCount = 20
+	DefaultQueryItemCount = 10
 
 	// MinQueryItemCount represents the default value for the minimum number of records to be returned by the server.
 	MinQueryItemCount = 5
@@ -164,7 +167,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
-	topParam, err := getQueryItemCount(r.URL.Query().Get(TopParameter))
+	queryItemCount, err := getQueryItemCount(r.URL.Query().Get(TopParameterName))
 	if err != nil {
 		log.V(radlogger.Debug).Info("Error parsing top query parameter: %v", r.URL.Query())
 		return nil, err
@@ -193,8 +196,8 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		IfMatch:     r.Header.Get(IfMatch),
 		IfNoneMatch: r.Header.Get(IfNoneMatch),
 
-		SkipToken: r.URL.Query().Get(SkipTokenQueryParameter),
-		Top:       topParam,
+		SkipToken: r.URL.Query().Get(SkipTokenParameterName),
+		Top:       queryItemCount,
 	}
 
 	return rpcCtx, nil
@@ -218,12 +221,12 @@ func (rc ARMRequestContext) SystemData() *armrpcv1.SystemData {
 // The default value is defined above.
 // If there is a top query parameter, we use that instead of the default one.
 // This function also checks if the top parameter is within the defined limits.
-func getQueryItemCount(top string) (int, error) {
+func getQueryItemCount(topQueryParam string) (int, error) {
 	topParam := DefaultQueryItemCount
 	var err error
 
-	if top != "" {
-		topParam, err = strconv.Atoi(top)
+	if topQueryParam != "" {
+		topParam, err = strconv.Atoi(topQueryParam)
 	}
 
 	if topParam > MaxQueryItemCount || topParam < MinQueryItemCount {
