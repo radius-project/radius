@@ -22,7 +22,7 @@ Since the extensibility features in Bicep at the time of writing are in the very
 
 * We will maintain a copy of the type generator source in the Radius repository until the type generator is released and supported separately by the Bicep team. This code lives under `/hack/**`
 * We will create and use the [`bicep-extensibility`](https://github.com/project-radius/bicep/tree/bicep-extensibility) branch to contain the code necessary to support Radius types as extensibility types in Bicep
-* Whenever the type definitions for the resource provider are update, the following must take place:
+* Whenever the type definitions for the resource provider are updated, the following must take place:
     1. Generate a set of markdown and json files that describe the type definitions in the Bicep internal serialization format (`make generate`)
     1. Verify the changes had the desired effect by inspecting the artifacts in the [project-radius/bicep](https://github.com/project-radius/bicep/tree/bicep-extensibility) repo under branch `bicep-extensibility` provide the desired functionality
     1. Merge the automatically generated PR, this will result with the generated Bicep bits to be published in the [radius blob storage](https://radiuspublic.blob.core.windows.net)
