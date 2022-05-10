@@ -29,10 +29,9 @@ const (
 	environmentRouteName  = serviceNamePrefix + "environmentAPI"
 
 	// Connector RP
-	connectorRPPrefix              = "connectorrp_"
-	connectorSubscriptionRouteName = connectorRPPrefix + "subscription"
-	connectorOperationsRouteName   = connectorRPPrefix + "operations"
-	mongoDatabaseRouteName         = connectorRPPrefix + "mongodatabase"
+	connectorRPPrefix            = "connectorrp_"
+	connectorOperationsRouteName = connectorRPPrefix + "operations"
+	mongoDatabaseRouteName       = connectorRPPrefix + "mongodatabase"
 )
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
@@ -78,10 +77,6 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		}
 	}
 
-	if err := AddConnectorRoutes(ctx, sp, nil, router, validatorFactory, ""); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -89,8 +84,8 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
 	// Provider system notification.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
-	providerRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}").
-		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+	// providerRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}").
+	// 	Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
 	// Tenant level API routes.
 	tenantLevelPath := pathBase + "/providers/applications.connector"
@@ -109,8 +104,9 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 
 	// Register handlers
 	handlers := []handlerParam{
+		// TODO PUT subscriptions is a tenant-level api, implement it after connector RP is separated out of core RP.
 		// Provider handler registration.
-		{providerRouter, connector_provider.ResourceTypeName, http.MethodPut, connectorSubscriptionRouteName, connector_provider.NewCreateOrUpdateSubscription},
+		// {providerRouter, connector_provider.ResourceTypeName, http.MethodPut, connectorRPPrefix + "subscription", connector_provider.NewCreateOrUpdateSubscription},
 		// Provider operations.
 		{operationsRouter, connector_provider.ResourceTypeName, http.MethodGet, connectorOperationsRouteName, connector_provider.NewGetOperations},
 		// MongoDatabases operations

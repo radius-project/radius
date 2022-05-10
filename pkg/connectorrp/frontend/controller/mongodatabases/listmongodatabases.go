@@ -57,12 +57,7 @@ func (mongo *ListMongoDatabases) Run(ctx context.Context, req *http.Request) (re
 		ResourceType: rID.Type(),
 	}
 
-	queryOptions := []store.QueryOptions{
-		store.WithPaginationToken(serviceCtx.SkipToken),
-		store.WithMaxQueryItemCount(queryItemCount),
-	}
-
-	result, err := mongo.DBClient.Query(ctx, query, queryOptions...)
+	result, err := mongo.DBClient.Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(queryItemCount))
 	if err != nil {
 		return nil, err
 	}
