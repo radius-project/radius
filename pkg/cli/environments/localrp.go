@@ -27,7 +27,7 @@ type LocalRPEnvironment struct {
 	Kind                      string `mapstructure:"kind" validate:"required"`
 	SubscriptionID            string `mapstructure:"subscriptionid" validate:"required"`
 	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required"`
-	ControlPlaneResourceGroup string `mapstring:"controlplanresourcegroup,omitempty"`
+	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup,omitempty"`
 	ClusterName               string `mapstructure:"clustername" validate:"required"`
 	DefaultApplication        string `mapstructure:"defaultapplication,omitempty"`
 	Context                   string `mapstructure:"context" validate:"required"`
