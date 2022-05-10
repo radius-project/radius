@@ -8,7 +8,7 @@ accepted
 
 [Bicep Extensibility](https://github.com/Azure/bicep/issues/3565) is a feature delivered by the ARM team which allows for resource to be deployed outside of the ARM control plane. We would like to adopt bicep extensibility for radius types to integrate in a more modular way with the Bicep project and reduce the need to keep a separate Bicep fork.
 
-Since the extensibility features in Bicep at the time of writing are in the very early design and implementation steps, we were unable to completely reduce the need to keep a separate Bicep fork,due to the following blocker:
+Since the extensibility features in Bicep at the time of writing are in the very early design and implementation steps, we were unable to completely reduce the need to keep a separate Bicep fork, due to the following blocker:
 
 1. The mechanism by which extensibility types are loaded to the Bicep binaries is via a statically linked dll, as a consequence every time the extensibility types definition changes the Bicep solution requires compilation which in turn creates a tight coupling between Bicep and the Extensibility Provider components
 
