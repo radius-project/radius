@@ -38,8 +38,8 @@ func NewArmCertManager(armMetaEndpoint string, log logr.Logger) *ArmCertManager 
 	return &certMgr
 }
 
-// getARMClientCert fetches the client certificates from arm metadata endpoint
-func (armCertMgr *ArmCertManager) getARMClientCert() ([]Certificate, error) {
+// fetchARMClientCert fetches the client certificates from arm metadata endpoint
+func (armCertMgr *ArmCertManager) fetchARMClientCert() ([]Certificate, error) {
 	client := http.Client{}
 	resp, err := client.Get(armCertMgr.armMetaEndpoint)
 	if err != nil || resp.StatusCode != http.StatusOK {
@@ -87,7 +87,7 @@ func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, err
 
 // refreshCert refreshes the arm client certs and updates it in the cert store
 func (armCertMgr *ArmCertManager) refreshCert() ([]Certificate, error) {
-	newCertificates, err := armCertMgr.getARMClientCert()
+	newCertificates, err := armCertMgr.fetchARMClientCert()
 	if err != nil {
 		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err)
 		return nil, ErrClientCertFetch

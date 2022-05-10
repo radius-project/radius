@@ -22,6 +22,7 @@ import (
 	armAuthenticator "github.com/project-radius/radius/pkg/corerp/authentication"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCertValidationUnauthorized(t *testing.T) {
@@ -31,7 +32,7 @@ func TestCertValidationUnauthorized(t *testing.T) {
 	}{
 		{
 			"/subscriptions/1f43aef5-7868-4c56-8a7f-cb6822a75c0e/resourceGroups/proxy-rg/providers/Microsoft.Kubernetes/connectedClusters/mvm2a",
-			"{\"error\":{\"code\":\"401\",\"message\":\"Unauthorized\"}}\n",
+			"{\n  \"error\": {\n    \"code\": \"InvalidAuthenticationInfo\",\n    \"message\": \"Server failed to authenticate the request\"\n  }\n}",
 		},
 	}
 	for _, tt := range tests {
@@ -43,7 +44,8 @@ func TestCertValidationUnauthorized(t *testing.T) {
 			})
 		//create certiticate
 		tm := time.Now()
-		certificate := generateSignedCert()
+		certificate, err := generateSignedCert()
+		require.NoError(t, err)
 		cert := armAuthenticator.Certificate{
 			Certificate: certificate,
 			NotAfter:    tm.Add(time.Minute * 15),
@@ -82,7 +84,8 @@ func TestCertValidationAuthorized(t *testing.T) {
 				_, _ = w.Write([]byte(r.URL.Path))
 			})
 		tm := time.Now()
-		certificate := generateSignedCert()
+		certificate, err := generateSignedCert()
+		require.NoError(t, err)
 		cert := armAuthenticator.Certificate{
 			Certificate: certificate,
 			NotAfter:    tm.Add(time.Minute * 15),
@@ -103,7 +106,7 @@ func TestCertValidationAuthorized(t *testing.T) {
 	}
 }
 
-func generateSignedCert() string {
+func generateSignedCert() (string, error) {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
@@ -124,11 +127,13 @@ func generateSignedCert() string {
 	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		fmt.Println("Failed to GenerateKey: ", err.Error())
+		return "", err
 	}
 	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
 		fmt.Println("Failed to Generate certificate", err.Error())
+		return "", err
 	}
 
-	return string(caBytes)
+	return string(caBytes), nil
 }

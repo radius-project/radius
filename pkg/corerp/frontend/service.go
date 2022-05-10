@@ -68,6 +68,7 @@ func (s *Service) Run(ctx context.Context) error {
 	_, err := armCertMgr.Start(ctx)
 	if err != nil {
 		logger.V(radlogger.Error).Info("Error creating arm cert manager - ", err)
+		return err
 	}
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address:  address,

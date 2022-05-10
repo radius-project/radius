@@ -21,8 +21,8 @@ import (
 const (
 	versionEndpoint = "/version"
 	healthzEndpoint = "/healthz"
-	versionAPIName = "versionAPI"
-	healthzAPIName = "heathzAPI"
+	versionAPIName  = "versionAPI"
+	healthzAPIName  = "heathzAPI"
 )
 
 type ServerOptions struct {
@@ -47,6 +47,7 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 		r.Use(middleware.ClientCertValidator(options.ArmCertMgr))
 	}
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
+
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(healthzAPIName)
 

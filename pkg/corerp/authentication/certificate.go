@@ -22,10 +22,7 @@ type clientCertificates struct {
 
 // certificateIsCurrent verifies if a certificate has a valid startDate and is not expired
 func (c Certificate) isValid() bool {
-	if c.isExpired() || !c.isStarted() {
-		return false
-	}
-	return true
+	return !c.isExpired() && c.isStarted()
 }
 
 // certificateExpired verifies the expiry of a certificate
