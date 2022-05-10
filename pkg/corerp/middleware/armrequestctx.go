@@ -17,7 +17,8 @@ func ARMRequestCtx(pathBase string) func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			rpcContext, err := servicecontext.FromARMRequest(r, pathBase)
 			if err != nil {
-				h.ServeHTTP(w, r)
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
 			}
 			r = r.WithContext(servicecontext.WithARMRequestContext(r.Context(), rpcContext))
 			h.ServeHTTP(w, r)

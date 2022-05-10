@@ -9,8 +9,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
-	"strconv"
 
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -79,25 +77,6 @@ func (e *ListEnvironments) createPaginationResponse(ctx context.Context, req *ht
 
 	return &armrpcv1.PaginatedList{
 		Value:    items,
-		NextLink: e.updateNextLink(ctx, req, result.PaginationToken),
+		NextLink: ctrl.GetNextLinkURL(ctx, req, result.PaginationToken),
 	}, nil
-}
-
-// updateNextLink function updates the next link by building a URL from the request and the pagination token.
-func (e *ListEnvironments) updateNextLink(ctx context.Context, req *http.Request, paginationToken string) string {
-	if paginationToken == "" {
-		return ""
-	}
-
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-
-	qps := url.Values{}
-	qps.Add("api-version", serviceCtx.APIVersion)
-	qps.Add("skipToken", paginationToken)
-
-	// TODO: What if the original query did not include top param? Should we still go ahead and
-	// add the default value for Top or just not include it at all?
-	qps.Add("top", strconv.Itoa(serviceCtx.Top))
-
-	return ctrl.GetURLFromReqWithQueryParameters(req, qps).String()
 }

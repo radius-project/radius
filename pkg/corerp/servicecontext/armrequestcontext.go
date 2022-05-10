@@ -8,6 +8,7 @@ package servicecontext
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,8 +32,14 @@ const (
 	// Top is an optional query parameter that defines the maximum number of records to be returned by the server.
 	TopParameter = "top"
 
-	// MaxQueryItemCount represents the default value for the number of records to be returned by the server.
+	// MaxQueryItemCount represents the default value for the maximum number of records to be returned by the server.
 	MaxQueryItemCount = 20
+
+	// DefaultQueryItemCount represents the default value for the number of records to be returned by the server.
+	DefaultQueryItemCount = 20
+
+	// MinQueryItemCount represents the default value for the minimum number of records to be returned by the server.
+	MinQueryItemCount = 5
 )
 
 var (
@@ -95,6 +102,11 @@ var (
 	IfNoneMatch = http.CanonicalHeaderKey("If-None-Match")
 )
 
+var (
+	// ErrTopQueryParamOutOfBounds represents the error of top query parameter being out of defined bounds.
+	ErrTopQueryParamOutOfBounds = errors.New("top query parameter is not within the limits")
+)
+
 // ARMRequestContext represents the service context including proxy request header values.
 type ARMRequestContext struct {
 	// ResourceID represents arm resource ID extracted from resource id.
@@ -152,10 +164,10 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
-	topParam, err := getNumberOfRecords(r.URL.Query().Get(TopParameter))
+	topParam, err := getQueryItemCount(r.URL.Query().Get(TopParameter))
 	if err != nil {
 		log.V(radlogger.Debug).Info("Error parsing top query parameter: %v", r.URL.Query())
-		topParam = MaxQueryItemCount
+		return nil, err
 	}
 
 	rpcCtx := &ARMRequestContext{
@@ -202,21 +214,20 @@ func (rc ARMRequestContext) SystemData() *armrpcv1.SystemData {
 	return systemDataProp
 }
 
-// getNumberOfRecords function returns the number of records requested.
+// getQueryItemCount function returns the number of records requested.
 // The default value is defined above.
 // If there is a top query parameter, we use that instead of the default one.
-func getNumberOfRecords(top string) (int, error) {
-	topParam := MaxQueryItemCount
+// This function also checks if the top parameter is within the defined limits.
+func getQueryItemCount(top string) (int, error) {
+	topParam := DefaultQueryItemCount
 	var err error
 
 	if top != "" {
 		topParam, err = strconv.Atoi(top)
 	}
 
-	// This is to make sure that we do not accept requests that are requesting
-	// more than the MaxQueryItemCount and set them to the upper limit.
-	if topParam > MaxQueryItemCount {
-		topParam = MaxQueryItemCount
+	if topParam > MaxQueryItemCount || topParam < MinQueryItemCount {
+		return topParam, ErrTopQueryParamOutOfBounds
 	}
 
 	return topParam, err
