@@ -1,5 +1,9 @@
 # 001 ADR: Adopt Architectural Decision Records (ADRs)
 
+## Stakeholders
+
+* Radius Core Team
+
 ## Status
 
 accepted
