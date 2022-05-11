@@ -12,7 +12,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -87,7 +86,6 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 // Validate extracts versioned resource from request and validates the properties.
 func (mongo *CreateOrUpdateMongoDatabase) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.MongoDatabase, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	serviceOpt := hostoptions.FromContext(ctx)
 	content, err := base_ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err
@@ -99,10 +97,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Validate(ctx context.Context, req *htt
 	}
 
 	dm.ID = serviceCtx.ResourceID.ID
-	dm.TrackedResource.ID = serviceCtx.ResourceID.ID
-	dm.TrackedResource.Name = serviceCtx.ResourceID.Name()
-	dm.TrackedResource.Type = serviceCtx.ResourceID.Type()
-	dm.TrackedResource.Location = serviceOpt.CloudEnv.RoleLocation
+	dm.TrackedResource = base_ctrl.BuildTrackedResource(ctx)
 	dm.Properties.ProvisioningState = datamodel.ProvisioningStateSucceeded
 
 	return dm, nil
