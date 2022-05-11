@@ -1,6 +1,10 @@
 <!-- The title of an ADR should be made of a short noun phrase. For example, "ADR 1: Deployment on Ruby on Rails 3.0.10" or "ADR 9: LDAP for Multitenant Integration" -->
-# ADR XXX: This is the title  
+# 000 ADR: This is the title  
 
+## Stakeholders
+
+<!-- The individual or group that has an interest and should approve this decision, for example: 
+ Radius UCP PM and Devs or Radius UCP maintainers -->
 ## Status
 
 proposed

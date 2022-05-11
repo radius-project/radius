@@ -1,4 +1,4 @@
-# ADR 1: Use Architectural Decision Records (ADRs)
+# 001 ADR: Adopt Architectural Decision Records (ADRs)
 
 ## Status
 
