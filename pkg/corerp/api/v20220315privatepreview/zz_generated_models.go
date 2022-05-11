@@ -90,6 +90,12 @@ type ApplicationsUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// BasicRouteProperties - Basic properties of a route.
+type BasicRouteProperties struct {
+	// Status of the resource
+	Status *RouteStatus `json:"status,omitempty"`
+}
+
 // EnvironmentCompute - Compute resource used by application environment resource.
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
@@ -233,6 +239,94 @@ type FromResource struct {
 	Source *string `json:"source,omitempty" azure:"ro"`
 }
 
+// HTTPRouteProperties - HTTP Route properties
+type HTTPRouteProperties struct {
+	BasicRouteProperties
+	// REQUIRED; The resource id of the application linked to HTTP Route resource.
+	Application *string `json:"application,omitempty"`
+
+	// The internal hostname accepting traffic for the HTTP Route. Readonly.
+	Hostname *string `json:"hostname,omitempty"`
+
+	// The port number for the HTTP Route. Defaults to 80. Readonly.
+	Port *float32 `json:"port,omitempty"`
+
+	// The scheme used for traffic. Readonly.
+	Scheme *string `json:"scheme,omitempty"`
+
+	// A stable URL that that can be used to route traffic to a resource. Readonly.
+	URL *string `json:"url,omitempty"`
+
+	// READ-ONLY; Gets the status of the HTTP Route at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// HTTPRouteResource - Radius HTTP Route Resource.
+type HTTPRouteResource struct {
+	TrackedResource
+	// REQUIRED; HTTP Route properties
+	Properties *HTTPRouteProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResource.
+func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	h.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", h.Properties)
+	populate(objectMap, "systemData", h.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// HTTPRouteResourceList - The list of HTTP Routes.
+type HTTPRouteResourceList struct {
+	// The link used to get the next page of HTTP Routes list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// The list of HTTP Route.
+	Value []*HTTPRouteResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResourceList.
+func (h HTTPRouteResourceList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", h.NextLink)
+	populate(objectMap, "value", h.Value)
+	return json.Marshal(objectMap)
+}
+
+// HTTPRoutesCreateOrUpdateOptions contains the optional parameters for the HTTPRoutes.CreateOrUpdate method.
+type HTTPRoutesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesDeleteOptions contains the optional parameters for the HTTPRoutes.Delete method.
+type HTTPRoutesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesGetOptions contains the optional parameters for the HTTPRoutes.Get method.
+type HTTPRoutesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesListBySubscriptionOptions contains the optional parameters for the HTTPRoutes.ListBySubscription method.
+type HTTPRoutesListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesListOptions contains the optional parameters for the HTTPRoutes.List method.
+type HTTPRoutesListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesUpdateOptions contains the optional parameters for the HTTPRoutes.Update method.
+type HTTPRoutesUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // MongoDatabaseList - Object that includes an array of MongoDatabase and a possible link for next set
 type MongoDatabaseList struct {
 	// The link used to fetch the next page of MongoDatabase list.
@@ -332,6 +426,25 @@ func (r Resource) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "name", r.Name)
 	populate(objectMap, "type", r.Type)
+}
+
+// RouteStatus - Status of a route.
+type RouteStatus struct {
+	// Health state of the route
+	HealthState *string `json:"healthState,omitempty"`
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+
+	// Provisioning state of the route
+	ProvisioningState *string `json:"provisioningState,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RouteStatus.
+func (r RouteStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "healthState", r.HealthState)
+	populate(objectMap, "outputResources", r.OutputResources)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	return json.Marshal(objectMap)
 }
 
 // SecretsValues - Secrets values provided for the resource
