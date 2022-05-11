@@ -22,6 +22,8 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
+	"github.com/project-radius/radius/pkg/telemetry/metrics"
+	mh "github.com/project-radius/radius/pkg/telemetry/metrics/hostoptions"
 )
 
 func main() {
@@ -39,6 +41,7 @@ func main() {
 	flag.Parse()
 
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
+	metricOptions := mh.NewHostOptionsFromEnvironment(*options.Config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,7 +52,7 @@ func main() {
 	}
 	defer flush()
 
-	hostingSvc := []hosting.Service{frontend.NewService(options)}
+	hostingSvc := []hosting.Service{frontend.NewService(options), metrics.NewService(metricOptions)}
 
 	if enableAsyncWorker {
 		logger.Info("Enable AsyncRequestProcessWorker.")
