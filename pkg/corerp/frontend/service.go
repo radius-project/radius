@@ -50,6 +50,12 @@ func (s *Service) Run(ctx context.Context) error {
 				if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
 					panic(err)
 				}
+
+				// TODO Connector RP will be moved into a separate service, for now using core RP's infra to unblock end to end testing
+				// https://github.com/project-radius/core-team/issues/90
+				if err := handler.AddConnectorRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
+					panic(err)
+				}
 			},
 		},
 		s.Options.Config.MetricsProvider,
