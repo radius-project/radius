@@ -19,8 +19,20 @@ spec:
 {{ end }}
     spec:
       serviceAccountName: ucp-manager
+      automountServiceAccountToken: true
       containers:
       - image: {{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}
+        env:
+        - name: DEFAULT_PLANES_CONFIG
+          value: /etc/config/ucp-config.json
+        - name: BASE_PATH
+          value: '/apis/api.ucp.dev/v1alpha3' # listen for APIService URLs
+        - name: TLS_CERT_DIR
+          value: '/var/tls/cert'
+        - name: HOSTING_PLATFORM
+          value: 'kubernetes'
+        - name: UCP_SERVER_URL
+          value: 'localhost:9443'
         name: ucp
         ports:
         - containerPort: 9443
@@ -28,6 +40,23 @@ spec:
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+        - name: cert
+          mountPath: '/var/tls/cert'
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+      volumes:
+        - name: config-volume
+          configMap:
+            # Provide the name of the ConfigMap containing the files you want
+            # to add to the container
+            name: ucp-config
+        - name: cert
+          secret:
+            secretName: ucp-cert
 ---
 apiVersion: v1
 kind: Service
@@ -42,3 +71,32 @@ spec:
       targetPort: 9443
   selector:
     control-plane: ucp
+---
+{{define "ucp-config"}}
+[
+  {
+      "ID": "/planes/radius/local",
+      "properties": {
+          "URL": "http://localhost:7443"
+      }
+  },
+  {
+      "ID": "/planes/deployments/local",
+      "properties": {
+          "URL": "http://localhost:6443"
+      }
+  }
+]
+{{end}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ucp-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: "{{ .Release.Service }}"
+    release: "{{ .Release.Name }}"
+data:
+  ucp-config.json: {{ (include "ucp-config" .) | trim | quote }}
