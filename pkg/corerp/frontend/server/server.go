@@ -26,11 +26,11 @@ const (
 )
 
 type ServerOptions struct {
-	Address    string
-	PathBase   string
-	EnableAuth bool
-	Configure  func(*mux.Router)
-	ArmCertMgr *authentication.ArmCertManager
+	Address       string
+	PathBase      string
+	EnableArmAuth bool
+	Configure     func(*mux.Router)
+	ArmCertMgr    *authentication.ArmCertManager
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
@@ -43,7 +43,7 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues)
 	// add the arm cert validation if EnableAuth is true
-	if options.EnableAuth {
+	if options.EnableArmAuth {
 		r.Use(middleware.ClientCertValidator(options.ArmCertMgr))
 	}
 	r.Use(middleware.ARMRequestCtx(options.PathBase))

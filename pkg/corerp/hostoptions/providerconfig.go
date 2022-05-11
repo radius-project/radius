@@ -65,5 +65,5 @@ type ServerOptions struct {
 	// https://armwiki.azurewebsites.net/authorization/AuthenticateBetweenARMandRP.html
 	ArmMetadataEndpoint string `yaml:"armMetadataEndpoint,omitempty"`
 	// EnableAuth when set the arm client authetication will be performed
-	EnableAuth bool `yaml:"enableAuth,omitempty"`
+	EnableArmAuth bool `yaml:"enableArmAuth,omitempty"`
 }

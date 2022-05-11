@@ -63,19 +63,23 @@ func (s *Service) Run(ctx context.Context) error {
 		},
 =======
 
+	var armCertMgr *armAuthenticator.ArmCertManager
 	// initialize the manager for ARM client cert validation
-	armCertMgr := armAuthenticator.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
-	_, err := armCertMgr.Start(ctx)
-	if err != nil {
-		logger.V(radlogger.Error).Info("Error creating arm cert manager - ", err)
-		return err
+	if s.Options.Config.Server.EnableArmAuth {
+		armCertMgr = armAuthenticator.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
+		err := armCertMgr.Start(ctx)
+		if err != nil {
+			logger.V(radlogger.Error).Info("Error creating arm cert manager - ", err)
+			return err
+		}
 	}
+
 	server := server.NewServer(ctx, server.ServerOptions{
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate
-		ArmCertMgr: armCertMgr,
-		EnableAuth: s.Options.Config.Server.EnableAuth, // when enabled the client cert validation will be done
+		ArmCertMgr:    armCertMgr,
+		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) {
 			if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
 				panic(err)
@@ -93,7 +97,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", address))
-	err = server.ListenAndServe()
+	err := server.ListenAndServe()
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

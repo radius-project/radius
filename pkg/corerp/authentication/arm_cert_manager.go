@@ -73,16 +73,15 @@ func (armCertMgr *ArmCertManager) IsValidThumbprint(thumbprint string) (bool, er
 
 // Start fetching the client certificates from the arm metadata endpoint during service start up
 //  and runs in the background the periodic certificate refresher.
-func (armCertMgr *ArmCertManager) Start(ctx context.Context) ([]Certificate, error) {
+func (armCertMgr *ArmCertManager) Start(ctx context.Context) error {
 	certs, err := armCertMgr.refreshCert()
 	if err != nil || len(certs) == 0 {
 		armCertMgr.log.V(radlogger.Error).Info(ErrClientCertFetch.Error(), err, " number of certs fetched ", len(certs))
-		return nil, ErrClientCertFetch
+		return ErrClientCertFetch
 	}
 	storeCertificates(certs)
 	go armCertMgr.periodicCertRefresh(ctx)
-	storedCerts := getValidCertificates()
-	return storedCerts, nil
+	return nil
 }
 
 // refreshCert refreshes the arm client certs and updates it in the cert store
