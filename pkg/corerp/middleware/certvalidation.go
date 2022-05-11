@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/project-radius/radius/pkg/corerp/authentication"
 	armAuthenticator "github.com/project-radius/radius/pkg/corerp/authentication"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
@@ -38,13 +39,8 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 				handleErr(r.Context(), w, r)
 				return
 			}
-			isValid, err := armCertMgr.IsValidThumbprint(clientRequestThumbprint)
-			if err != nil {
-				msg := fmt.Sprintf("Error validating the thumbprint %v", err)
-				log.V(radlogger.Error).Info(msg)
-				handleErr(r.Context(), w, r)
-				return
-			} else if !isValid {
+			isValid := authentication.IsValidThumbprint(clientRequestThumbprint)
+			if !isValid {
 				log.V(radlogger.Error).Info("Thumbprint validating failed")
 				handleErr(r.Context(), w, r)
 				return
@@ -54,31 +50,23 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 	}
 }
 
-// Responds with an HTTP 500
-func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := radlogger.GetLogger(ctx)
-	logger.Error(err, "unhandled error")
-
-	// Try to use the ARM format to send back the error info
-	body := armerrors.ErrorResponse{
-		Error: armerrors.ErrorDetails{
-			Message: err.Error(),
-		},
-	}
-
-	response := rest.NewInternalServerErrorARMResponse(body)
-	err = response.Apply(ctx, w, req)
-	if err != nil {
-		// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
-		w.WriteHeader(http.StatusInternalServerError)
-		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
-	}
-}
-
 func handleErr(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	logger := radlogger.GetLogger(ctx)
 	resp := rest.NewClientAuthenticationFailedARMResponse()
 	err := resp.Apply(req.Context(), w, req)
 	if err != nil {
-		internalServerError(req.Context(), w, req, err)
+		// Responds with an HTTP 500
+		body := armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Message: err.Error(),
+			},
+		}
+		se := rest.NewInternalServerErrorARMResponse(body)
+		err := se.Apply(req.Context(), w, req)
+		if err != nil {
+			// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
+		}
 	}
 }

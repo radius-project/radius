@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
 	"github.com/project-radius/radius/pkg/corerp/frontend/server"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
-	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 type Service struct {
@@ -69,7 +68,7 @@ func (s *Service) Run(ctx context.Context) error {
 		armCertMgr = armAuthenticator.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
 		err := armCertMgr.Start(ctx)
 		if err != nil {
-			logger.V(radlogger.Error).Info("Error creating arm cert manager - ", err)
+			logger.Error(err, "Error creating arm cert manager")
 			return err
 		}
 	}
