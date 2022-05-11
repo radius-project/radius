@@ -55,10 +55,11 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Println(string(b))
 		fmt.Println()
-	} else { //default format is table
+	} else {
+		//default format is table
 		fmt.Println("default: " + env.Default)
 		var (
-			eList     []interface{}
+			envList   []interface{}
 			errList   []EnvError
 			isDefault bool = false
 		)
@@ -68,7 +69,7 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				errList = append(errList, EnvError{key, err.Error()})
 			} else {
-				eList = append(eList, e)
+				envList = append(envList, e)
 			}
 			if env.Default == key {
 				isDefault = true
@@ -80,7 +81,7 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 			errList = append(errList, EnvError{env.Default, "the default environment entry has not been configured"})
 		}
 		formatter := objectformats.GetGenericEnvironmentTableFormat()
-		err = output.Write(format, eList, cmd.OutOrStdout(), formatter)
+		err = output.Write(format, envList, cmd.OutOrStdout(), formatter)
 		if err != nil {
 			return err
 		}
