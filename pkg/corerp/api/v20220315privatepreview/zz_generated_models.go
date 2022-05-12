@@ -249,7 +249,7 @@ type HTTPRouteProperties struct {
 	Hostname *string `json:"hostname,omitempty"`
 
 	// The port number for the HTTP Route. Defaults to 80. Readonly.
-	Port *float32 `json:"port,omitempty"`
+	Port *int32 `json:"port,omitempty"`
 
 	// The scheme used for traffic. Readonly.
 	Scheme *string `json:"scheme,omitempty"`
