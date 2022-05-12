@@ -22,12 +22,6 @@ import (
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	HAProxyVersion    = "0.13.4"
-	GatewayCRDVersion = "v0.3.0"
-	DaprVersion       = "1.6.0"
-)
-
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "Initializes a kubernetes environment",

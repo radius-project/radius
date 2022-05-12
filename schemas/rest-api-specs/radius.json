@@ -1191,7 +1191,7 @@
       "properties": {
         "hostname": {
           "description": "The internal hostname accepting traffic for the route. Readonly.",
-          "type": "number"
+          "type": "string"
         },
         "port": {
           "description": "The port number for the route. Defaults to 80. Readonly.",
@@ -1199,11 +1199,11 @@
         },
         "scheme": {
           "description": "The scheme used for traffic. Readonly.",
-          "type": "number"
+          "type": "string"
         },
         "url": {
           "description": "A stable URL that that can be used to route traffic to a resource. Readonly.",
-          "type": "number"
+          "type": "string"
         }
       },
       "type": "object"
