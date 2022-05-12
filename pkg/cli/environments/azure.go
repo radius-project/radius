@@ -72,7 +72,6 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	//third parameter indicates this is not UCP env.
-	//both not UCP env and UCP env not applicable are indicated by value "no"
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, false)
 	if err != nil {
 		return nil, err
