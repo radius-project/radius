@@ -70,14 +70,14 @@ func ApplyContourHelmChart(options ContourOptions) error {
 }
 
 func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
-	// https://projectcontour.io/docs/main/deploy-options/#host-networking
-	// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
-	envoyNode := helmChart.Values["envoy"].(map[string]interface{})
-	if envoyNode == nil {
-		return fmt.Errorf("envoy node not found in chart values")
-	}
-
 	if options.HostNetwork {
+		// https://projectcontour.io/docs/main/deploy-options/#host-networking
+		// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
+		envoyNode := helmChart.Values["envoy"].(map[string]interface{})
+		if envoyNode == nil {
+			return fmt.Errorf("envoy node not found in chart values")
+		}
+
 		envoyNode["hostNetwork"] = true
 		envoyNode["dnsPolicy"] = "ClusterFirstWithHostNet"
 
@@ -114,8 +114,6 @@ func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = contourReleaseName
 	installClient.Namespace = RadiusSystemNamespace
-	installClient.Timeout = installTimeout
-	installClient.Wait = true
 
 	return runInstall(installClient, helmChart)
 }
