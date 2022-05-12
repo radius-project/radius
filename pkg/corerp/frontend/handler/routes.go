@@ -22,11 +22,12 @@ import (
 )
 
 const (
-	APIVersionParam       = "api-version"
-	serviceNamePrefix     = "corerp_"
-	subscriptionRouteName = serviceNamePrefix + "subscriptionAPI"
-	operationsRouteName   = serviceNamePrefix + "operationsAPI"
-	environmentRouteName  = serviceNamePrefix + "environmentAPI"
+	APIVersionParam          = "api-version"
+	serviceNamePrefix        = "corerp_"
+	subscriptionRouteName    = serviceNamePrefix + "subscriptionAPI"
+	operationsRouteName      = serviceNamePrefix + "operationsAPI"
+	environmentRouteName     = serviceNamePrefix + "environmentAPI"
+	operationStatusRouteName = serviceNamePrefix + "operationStatusAPI"
 
 	// Connector RP
 	connectorRPPrefix            = "connectorrp_"
@@ -56,6 +57,13 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
 
+	// OperationStatus resource paths
+	locationLevelPath := pathBase + "/subscriptions/{subscriptionID}/providers/Applications.Core/locations/{location}"
+	locationsRouter := router.PathPrefix(locationLevelPath).
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+
+	operationStatusRouter := locationsRouter.Path("/operationStatuses/{operationId}").Subrouter()
+
 	// Register handlers
 	handlers := []handlerParam{
 		// Provider handler registration.
@@ -67,6 +75,8 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, environmentRouteName, env_ctrl.NewCreateOrUpdateEnvironment},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, environmentRouteName, env_ctrl.NewCreateOrUpdateEnvironment},
 		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, environmentRouteName, env_ctrl.NewDeleteEnvironment},
+
+		{operationStatusRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, operationStatusRouteName, provider_ctrl.NewGetOperationStatus},
 
 		// Create the operational controller and add new resource types' handlers.
 	}

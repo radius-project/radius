@@ -119,6 +119,68 @@
           "nextLinkName": "nextLink"
         }
       }
+    },
+    "/subscriptions/{subscriptionId}/providers/Applications.Core/locations/{location}/operationStatuses/{operationId}": {
+      "get": {
+        "description": "Gets the status of an Async Operation.",
+        "operationId": "OperationStatuses_Get",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RadiusEnvironmentsGet": {
+            "$ref": "./examples/OperationStatusesGetOp0.json"
+          }
+        },
+        "tags": [
+          "OperationStatuses"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/LocationParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/OperationIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Async Operation Status details.",
+            "schema": {
+              "$ref": "#/definitions/OperationStatusResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "OperationStatusResource": {
+      "description": "Operation status.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/OperationStatusResult"
+        }
+      ],
+      "required": [
+        "id",
+        "name",
+        "status",
+        "startTime"
+      ]
     }
   }
 }
