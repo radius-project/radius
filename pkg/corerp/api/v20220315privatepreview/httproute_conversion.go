@@ -16,6 +16,14 @@ import (
 func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
+	status := datamodel.RouteStatus{}
+	if src.Properties.BasicRouteProperties.Status != nil {
+		status = datamodel.RouteStatus{
+			HealthState:       to.String(src.Properties.BasicRouteProperties.Status.HealthState),
+			ProvisioningState: to.String(src.Properties.BasicRouteProperties.Status.ProvisioningState),
+			OutputResources:   src.Properties.BasicRouteProperties.Status.OutputResources,
+		}
+	}
 	converted := &datamodel.HTTPRoute{
 		TrackedResource: datamodel.TrackedResource{
 			ID:       to.String(src.ID),
@@ -32,11 +40,7 @@ func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
 			Scheme:            to.String(src.Properties.Scheme),
 			URL:               to.String(src.Properties.URL),
 			BasicRouteProperties: datamodel.BasicRouteProperties{
-				Status: datamodel.RouteStatus{
-					HealthState:       to.String(src.Properties.BasicRouteProperties.Status.HealthState),
-					ProvisioningState: to.String(src.Properties.BasicRouteProperties.Status.ProvisioningState),
-					OutputResources:   src.Properties.BasicRouteProperties.Status.OutputResources,
-				},
+				Status: status,
 			},
 		},
 		InternalMetadata: datamodel.InternalMetadata{
