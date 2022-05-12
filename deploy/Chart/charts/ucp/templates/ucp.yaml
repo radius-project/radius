@@ -18,7 +18,7 @@ spec:
         aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
 {{ end }}
     spec:
-      serviceAccountName: ucp-manager
+      serviceAccountName: ucp
       automountServiceAccountToken: true
       containers:
       - image: {{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}
@@ -77,14 +77,18 @@ spec:
   {
       "ID": "/planes/radius/local",
       "properties": {
-          "URL": "http://localhost:7443"
-      }
+           "resourceProviders": {
+               "Applications.Core": "http://localhost:7443"
+           }
+       }
   },
   {
       "ID": "/planes/deployments/local",
       "properties": {
-          "URL": "http://localhost:6443"
-      }
+           "resourceProviders": {
+               "Microsoft.Resources": "http://localhost:6443"
+           }
+       }
   }
 ]
 {{end}}
