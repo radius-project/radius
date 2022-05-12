@@ -13,3 +13,4 @@ global:
     tag: latest # Tag for radius-rp image.
     provider:
       azure: {}
+    publicEndpointOverride: ''

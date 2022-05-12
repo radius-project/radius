@@ -26,11 +26,12 @@ const (
 )
 
 type RadiusOptions struct {
-	ChartPath     string
-	ChartVersion  string
-	Image         string
-	Tag           string
-	AzureProvider *azure.Provider
+	ChartPath              string
+	ChartVersion           string
+	Image                  string
+	Tag                    string
+	PublicEndpointOverride string
+	AzureProvider          *azure.Provider
 }
 
 func ApplyRadiusHelmChart(options RadiusOptions) error {
@@ -53,7 +54,7 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	err = addRadiusValues(helmChart, options.Image, options.Tag)
+	err = addRadiusValues(helmChart, options.Image, options.Tag, options.PublicEndpointOverride)
 	if err != nil {
 		return fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -101,7 +102,7 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	return runInstall(installClient, helmChart)
 }
 
-func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string) error {
+func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string, publicEndpointOverride string) error {
 	values := helmChart.Values
 
 	_, ok := values["global"]
@@ -135,6 +136,10 @@ func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string
 	if containerTag != "" {
 		rp["tag"] = containerTag
 		radius["tag"] = containerTag
+	}
+
+	if publicEndpointOverride != "" {
+		rp["publicEndpointOverride"] = publicEndpointOverride
 	}
 
 	return nil

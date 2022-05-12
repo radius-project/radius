@@ -13,7 +13,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
-	"github.com/project-radius/radius/pkg/environment"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -53,9 +52,10 @@ func Test_Render_WithNoHostname(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
-	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
+	expectedURL := "http://" + expectedHostname
+	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, &expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
 
 func Test_Render_WithPrefix(t *testing.T) {
@@ -77,15 +77,17 @@ func Test_Render_WithPrefix(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", prefix, applicationName, publicIP)
-	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
+	expectedURL := "http://" + expectedHostname
+	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, &expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
 
 func Test_Render_WithFQHostname(t *testing.T) {
 	r := &Renderer{}
 
 	expectedHostname := "test-fqdn.contoso.com"
+	expectedURL := "http://" + expectedHostname
 	properties, expectedIncludes := makeTestGateway(radclient.GatewayProperties{
 		Hostname: &radclient.GatewayPropertiesHostname{
 			FullyQualifiedHostname: &expectedHostname,
@@ -99,15 +101,16 @@ func Test_Render_WithFQHostname(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, &expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
 
 func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	r := &Renderer{}
 
-	expectedHostname := "test-fqdn.contoso.com"
+	expectedHostname := "http://test-fqdn.contoso.com"
+	expectedURL := "http://" + expectedHostname
 	prefix := "test-prefix"
 	properties, expectedIncludes := makeTestGateway(radclient.GatewayProperties{
 		Hostname: &radclient.GatewayPropertiesHostname{
@@ -123,9 +126,9 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, &expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
 
 func Test_Render_DevEnvironment(t *testing.T) {
@@ -137,9 +140,9 @@ func Test_Render_DevEnvironment(t *testing.T) {
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	additionalProperties := renderers.RuntimeOptions{
-		Environment: environment.KindDev,
 		Gateway: renderers.GatewayOptions{
-			PublicIP: publicIP,
+			PublicEndpointOverride: true,
+			PublicIP:               publicIP,
 		},
 	}
 
@@ -149,7 +152,31 @@ func Test_Render_DevEnvironment(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, publicIP, output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, &expectedFqdn, expectedIncludes)
+	validateGateway(t, output.Resources, expectedFqdn, expectedIncludes)
+}
+
+func Test_Render_PublicEndpointOverride(t *testing.T) {
+	r := &Renderer{}
+
+	publicIP := "http://www.contoso.com:32323"
+	expectedFqdn := "www.contoso.com"
+	properties, expectedIncludes := makeTestGateway(radclient.GatewayProperties{})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	additionalProperties := renderers.RuntimeOptions{
+		Gateway: renderers.GatewayOptions{
+			PublicEndpointOverride: true,
+			PublicIP:               publicIP,
+		},
+	}
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, publicIP, output.ComputedValues["hostname"].Value)
+
+	validateGateway(t, output.Resources, expectedFqdn, expectedIncludes)
 }
 
 func Test_Render_WithMissingPublicIP(t *testing.T) {
@@ -159,9 +186,9 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 	additionalProperties := renderers.RuntimeOptions{
-		Environment: environment.KindKubernetes,
 		Gateway: renderers.GatewayOptions{
-			PublicIP: "",
+			PublicEndpointOverride: false,
+			PublicIP:               "",
 		},
 	}
 
@@ -169,9 +196,9 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, resource.ApplicationName, output.ComputedValues["hostname"].Value)
+	require.Equal(t, "unknown", output.ComputedValues["hostname"].Value)
 
-	validateGateway(t, output.Resources, &resource.ApplicationName, expectedIncludes)
+	validateGateway(t, output.Resources, resource.ApplicationName, expectedIncludes)
 }
 
 func Test_Render_Fails_WithNoRoute(t *testing.T) {
@@ -227,12 +254,13 @@ func Test_Render_Single_Route(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 	additionalProperties := GetRuntimeOptions()
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
+	expectedURL := "http://" + expectedHostname
 
 	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
 
 	expectedIncludes := []contourv1.Include{
 		{
@@ -245,7 +273,7 @@ func Test_Render_Single_Route(t *testing.T) {
 		},
 	}
 
-	validateGateway(t, output.Resources, &expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 	validateHttpRoute(t, output.Resources, routeName, path)
 }
 
@@ -276,12 +304,13 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 	additionalProperties := GetRuntimeOptions()
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
+	expectedURL := "http://" + expectedHostname
 
 	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 3)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedHostname, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
 
 	expectedIncludes := []contourv1.Include{
 		{
@@ -302,12 +331,12 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 		},
 	}
 
-	validateGateway(t, output.Resources, &expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 	validateHttpRoute(t, output.Resources, routeAName, routeAPath)
 	validateHttpRoute(t, output.Resources, routeBName, routeBPath)
 }
 
-func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname *string, expectedIncludes []contourv1.Include) {
+func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include) {
 	gateway, gatewayOutputResource := kubernetes.FindGateway(outputResources)
 
 	expectedGatewayOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
@@ -318,9 +347,9 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 
 	var expectedVirtualHost *contourv1.VirtualHost = nil
 	var expectedGatewaySpec contourv1.HTTPProxySpec
-	if expectedHostname != nil {
+	if expectedHostname != "" {
 		expectedVirtualHost = &contourv1.VirtualHost{
-			Fqdn: *expectedHostname,
+			Fqdn: expectedHostname,
 		}
 		expectedGatewaySpec = contourv1.HTTPProxySpec{
 			VirtualHost: expectedVirtualHost,

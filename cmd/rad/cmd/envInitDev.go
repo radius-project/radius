@@ -14,10 +14,8 @@ import (
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/k3d"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/environment"
 	"github.com/spf13/cobra"
 )
 
@@ -104,18 +102,9 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	}
 	options := helm.NewClusterOptions(cliOptions)
 	options.Contour.HostNetwork = true
+	options.Radius.PublicEndpointOverride = cluster.HTTPEndpoint
 
 	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
-	if err != nil {
-		return err
-	}
-
-	radiusConfig := kubernetes.RadiusConfig{
-		EnvironmentKind: environment.KindDev,
-		HTTPEndpoint:    cluster.HTTPEndpoint,
-		HTTPSEndpoint:   cluster.HTTPSEndpoint,
-	}
-	err = kubernetes.UpdateRadiusConfig(cmd.Context(), radiusConfig, runtimeClient)
 	if err != nil {
 		return err
 	}

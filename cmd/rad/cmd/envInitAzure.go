@@ -30,10 +30,8 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	radazure "github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/environment"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/version"
@@ -508,17 +506,6 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	}
 
 	err = helm.InstallOnCluster(ctx, clusterOptions, client, runtimeClient)
-	if err != nil {
-		return err
-	}
-
-	httpEndpoint := kubernetes.GetPublicIP(ctx, runtimeClient)
-
-	radiusConfig := kubernetes.RadiusConfig{
-		EnvironmentKind: environment.KindAzureCloud,
-		HTTPEndpoint:    httpEndpoint,
-	}
-	err = kubernetes.UpdateRadiusConfig(ctx, radiusConfig, runtimeClient)
 	if err != nil {
 		return err
 	}

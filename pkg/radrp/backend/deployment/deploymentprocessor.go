@@ -9,11 +9,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/environment"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/healthcontract"
 	"github.com/project-radius/radius/pkg/model"
@@ -697,21 +697,34 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency db.Ra
 
 func (dp *deploymentProcessor) getRuntimeOptions(ctx context.Context) (renderers.RuntimeOptions, error) {
 	if dp.k8s != nil {
-		// Get config from radius-config ConfigMap
-		var configMaps corev1.ConfigMapList
-		err := dp.k8s.List(ctx, &configMaps, &client.ListOptions{Namespace: "radius-system"})
-		if err != nil {
-			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up ConfigMaps: %w", err)
+		// If the public endpoint override is specified (Local Dev scenario), then use it.
+		publicEndpoint := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+		if publicEndpoint != "" {
+			return renderers.RuntimeOptions{
+				Gateway: renderers.GatewayOptions{
+					PublicEndpointOverride: true,
+					PublicIP:               publicEndpoint,
+				},
+			}, nil
 		}
 
-		for _, configMap := range configMaps.Items {
-			if configMap.Name == "radius-config" {
-				return renderers.RuntimeOptions{
-					Environment: configMap.Data[environment.EnvironmentKindKey],
-					Gateway: renderers.GatewayOptions{
-						PublicIP: configMap.Data[environment.HTTPEndpointKey],
-					},
-				}, nil
+		// Find the public IP of the cluster (External IP of the contour-envoy service)
+		var services corev1.ServiceList
+		err := dp.k8s.List(ctx, &services, &client.ListOptions{Namespace: "radius-system"})
+		if err != nil {
+			return renderers.RuntimeOptions{}, fmt.Errorf("failed to look up Services: %w", err)
+		}
+
+		for _, service := range services.Items {
+			if service.Name == "contour-envoy" {
+				for _, in := range service.Status.LoadBalancer.Ingress {
+					return renderers.RuntimeOptions{
+						Gateway: renderers.GatewayOptions{
+							PublicEndpointOverride: false,
+							PublicIP:               in.IP,
+						},
+					}, nil
+				}
 			}
 		}
 	}

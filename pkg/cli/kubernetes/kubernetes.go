@@ -8,7 +8,6 @@ package kubernetes
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -19,9 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/project-radius/radius/pkg/azure/radclient"
-	"github.com/project-radius/radius/pkg/environment"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -373,51 +370,4 @@ func NewLocationRewriteRoundTripper(prefix string, inner http.RoundTripper) *Loc
 
 	// If we get here it's likely not a fully-qualified URL. Treat it as a hostname.
 	return &LocationRewriteRoundTripper{Inner: inner, Host: prefix}
-}
-
-type RadiusConfig struct {
-	EnvironmentKind string
-	HTTPEndpoint    string
-	HTTPSEndpoint   string
-}
-
-func UpdateRadiusConfig(ctx context.Context, newConfig RadiusConfig, runtimeClient client.Client) error {
-	var configMaps corev1.ConfigMapList
-	err := runtimeClient.List(ctx, &configMaps, &client.ListOptions{Namespace: RadiusSystemNamespace})
-	if err != nil {
-		return fmt.Errorf("failed to look up ConfigMaps: %w", err)
-	}
-
-	for _, configMap := range configMaps.Items {
-		if configMap.Name == RadiusConfigName {
-			configMap.Data[environment.HTTPEndpointKey] = newConfig.HTTPEndpoint
-			configMap.Data[environment.HTTPSEndpointKey] = newConfig.HTTPSEndpoint
-			configMap.Data[environment.EnvironmentKindKey] = newConfig.EnvironmentKind
-			return runtimeClient.Update(ctx, &configMap, &client.UpdateOptions{})
-		}
-	}
-
-	return fmt.Errorf("could not find ConfigMap %s in namespace %s", RadiusConfigName, RadiusSystemNamespace)
-}
-
-func GetPublicIP(ctx context.Context, runtimeClient client.Client) string {
-	// Find the public IP of the cluster (External IP of the contour-envoy service)
-	// If the public IP can't be found, just leave it empty.
-	emptyPublicIP := ""
-	var services corev1.ServiceList
-	err := runtimeClient.List(ctx, &services, &client.ListOptions{Namespace: RadiusSystemNamespace})
-	if err != nil {
-		return emptyPublicIP
-	}
-
-	for _, service := range services.Items {
-		if service.Name == IngressServiceName {
-			for _, in := range service.Status.LoadBalancer.Ingress {
-				return in.IP
-
-			}
-		}
-	}
-
-	return emptyPublicIP
 }

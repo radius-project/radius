@@ -35,12 +35,12 @@ type RenderOptions struct {
 }
 
 type RuntimeOptions struct {
-	Environment string
-	Gateway     GatewayOptions
+	Gateway GatewayOptions
 }
 
 type GatewayOptions struct {
-	PublicIP string
+	PublicEndpointOverride bool
+	PublicIP               string
 }
 
 type RendererResource struct {

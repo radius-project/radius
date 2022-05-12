@@ -80,19 +80,14 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 	if options.HostNetwork {
 		envoyNode["hostNetwork"] = true
 		envoyNode["dnsPolicy"] = "ClusterFirstWithHostNet"
-		hostPortsNode := envoyNode["hostPorts"].(map[string]interface{})
-		if hostPortsNode == nil {
-			return fmt.Errorf("envoy.hostPorts node not found in chart values")
-		}
-
-		hostPortsNode["http"] = 80
-		hostPortsNode["https"] = 443
 
 		containerPortsNode := envoyNode["containerPorts"].(map[string]interface{})
 		if containerPortsNode == nil {
 			return fmt.Errorf("envoy.containerPorts node not found in chart values")
 		}
 
+		// Sets the container ports for the Envoy pod. These need to be set to 80 and
+		// 443 to allow Envoy to access the host network.
 		containerPortsNode["http"] = 80
 		containerPortsNode["https"] = 443
 
@@ -106,6 +101,8 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 			return fmt.Errorf("envoy.service.ports node not found in chart values")
 		}
 
+		// This is a hack that sets the default LoadBalancer service ports to 8080 and 8443
+		// so that they don't conflict with Envoy while using Host Networking.
 		servicePortsNode["http"] = 8080
 		servicePortsNode["https"] = 8443
 	}
@@ -117,6 +114,9 @@ func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = contourReleaseName
 	installClient.Namespace = RadiusSystemNamespace
+	installClient.Timeout = installTimeout
+	installClient.Wait = true
+
 	return runInstall(installClient, helmChart)
 }
 

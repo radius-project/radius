@@ -12,11 +12,11 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/environment"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,21 +137,10 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	httpEndpoint := kubernetes.GetPublicIP(cmd.Context(), runtimeClient)
-
-	radiusConfig := kubernetes.RadiusConfig{
-		EnvironmentKind: environment.KindKubernetes,
-		HTTPEndpoint:    httpEndpoint,
-	}
-	err = kubernetes.UpdateRadiusConfig(cmd.Context(), radiusConfig, runtimeClient)
-	if err != nil {
-		return err
-	}
-
 	output.CompleteStep(step)
 
 	env.Items[environmentName] = map[string]interface{}{
-		"kind":      environment.KindKubernetes,
+		"kind":      environments.KindKubernetes,
 		"context":   contextName,
 		"namespace": namespace,
 	}

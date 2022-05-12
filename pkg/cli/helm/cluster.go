@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	ContourDefaultVersion = ""
-	DaprDefaultVersion    = "1.6.0"
+	ContourChartDefaultVersion = "7.4.6"
+	DaprDefaultVersion         = "1.6.0"
 )
 
 type ClusterOptions struct {
@@ -47,7 +47,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 			Version: DaprDefaultVersion,
 		},
 		Contour: ContourOptions{
-			ChartVersion: ContourDefaultVersion,
+			ChartVersion: ContourChartDefaultVersion,
 		},
 		Radius: RadiusOptions{
 			ChartVersion: chartVersion,
