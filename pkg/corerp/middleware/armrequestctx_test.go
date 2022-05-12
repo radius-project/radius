@@ -7,34 +7,57 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestARMRequestCtx(t *testing.T) {
 
+	topParamError := armerrors.ErrorDetails{
+		Code:    strconv.Itoa(http.StatusBadRequest),
+		Message: fmt.Sprintf("unexpected error: %v", servicecontext.ErrTopQueryParamOutOfBounds),
+	}
+
 	armRequestCtxTestCases := []struct {
 		desc string
 		url  string
 		code int
+		ok   bool
 		body string
+		err  armerrors.ErrorDetails
 	}{
 		{
 			"get-env-success",
 			"/subscriptions/00001b53-0000-0000-0000-00006235a42c/resourcegroups/radius-test-rg/providers/Applications.Core/environments/env0",
 			http.StatusOK,
+			true,
 			"00001b53-0000-0000-0000-00006235a42c",
+			armerrors.ErrorDetails{},
+		},
+		{
+			"out-of-bounds-top-query-param",
+			"/subscriptions/00001b53-0000-0000-0000-00006235a42c/resourcegroups/radius-test-rg/providers/Applications.Core/environments?top=10000",
+			http.StatusBadRequest,
+			false,
+			"",
+			topParamError,
 		},
 		{
 			"bad-top-query-param",
-			"/subscriptions/00001b53-0000-0000-0000-00006235a42c/resourcegroups/radius-test-rg/providers/Applications.Core/environments?top=10000",
+			"/subscriptions/00001b53-0000-0000-0000-00006235a42c/resourcegroups/radius-test-rg/providers/Applications.Core/environments?top=xyz",
 			http.StatusBadRequest,
-			servicecontext.ErrTopQueryParamOutOfBounds.Error() + "\n",
+			false,
+			"",
+			topParamError,
 		},
 	}
 
@@ -56,8 +79,15 @@ func TestARMRequestCtx(t *testing.T) {
 			req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, testUrl, nil)
 			handler.ServeHTTP(w, req)
 
-			assert.Equal(t, tt.body, w.Body.String())
 			assert.Equal(t, tt.code, w.Code)
+
+			if !tt.ok {
+				errResp := &armerrors.ErrorResponse{}
+				_ = json.Unmarshal(w.Body.Bytes(), errResp)
+				assert.Equal(t, tt.err, errResp.Error)
+			} else {
+				assert.Equal(t, tt.body, w.Body.String())
+			}
 		})
 	}
 }
