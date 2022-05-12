@@ -9,10 +9,16 @@
 generate: generate-arm-json generate-radclient generate-go generate-bicep-types ## Generates all targets.
 
 .PHONY: generate-arm-json
-generate-arm-json: ## Generates ARM-JSON from our environment creation Bicep files
+generate-arm-json: generate-jq-installed ## Generates ARM-JSON from our environment creation Bicep files
 	@echo "$(ARROW) Updating ARM-JSON..."
 	az bicep build --file deploy/rp-full.bicep
 	jq 'del(.metadata)' deploy/rp-full.json  > deploy/rp-full.tmp && mv deploy/rp-full.tmp deploy/rp-full.json
+
+.PHONY: generate-jq-installed
+generate-jq-installed:
+	@echo "$(ARROW) Detecting jq..."
+	@which node > /dev/null || { echo "jq is a required dependency"; exit 1; }
+	@echo "$(ARROW) OK"
 
 .PHONY: generate-node-installed
 generate-node-installed:
