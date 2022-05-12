@@ -117,41 +117,41 @@
             }
           },
           {
-            "name": "Applications.Core/httproutes/read",
+            "name": "Applications.Core/httpRoutes/read",
             "isDataAction": false,
             "display": {
               "provider": "Applications.Core",
-              "resource": "httproutes",
+              "resource": "httpRoutes",
               "operation": "Get/List HTTP Route",
               "description": "Get or list of HTTP Routes."
             }
           },
           {
-            "name": "Applications.Core/httproutes/write",
+            "name": "Applications.Core/httpRoutes/write",
             "isDataAction": false,
             "display": {
               "provider": "Applications.Core",
-              "resource": "httproutes",
+              "resource": "httpRoutes",
               "operation": "Create/Update HTTP Route",
               "description": "Create or update an HTTP Route."
             }
           },
           {
-            "name": "Applications.Core/httproutes/delete",
+            "name": "Applications.Core/httpRoutes/delete",
             "isDataAction": false,
             "display": {
               "provider": "Applications.Core",
-              "resource": "httproutes",
+              "resource": "httpRoutes",
               "operation": "Delete HTTP Route",
               "description": "Deletes an HTTP Route."
             }
           },
           {
-            "name": "Applications.Core/httproutes/join/action",
+            "name": "Applications.Core/httpRoutes/join/action",
             "isDataAction": false,
             "display": {
               "provider": "Applications.Core",
-              "resource": "httproutes",
+              "resource": "httpRoutes",
               "operation": "Join HTTP Route",
               "description": "Join to httproute."
             }

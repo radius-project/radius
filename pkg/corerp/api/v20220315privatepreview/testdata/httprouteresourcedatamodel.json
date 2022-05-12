@@ -1,7 +1,7 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httproutes/route0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/route0",
     "name": "route0",
-    "type": "Applications.Core/httproutes",
+    "type": "Applications.Core/httpRoutes",
     "systemData": {
         "createdBy": "fakeid@live.com",
         "createdByType": "User",

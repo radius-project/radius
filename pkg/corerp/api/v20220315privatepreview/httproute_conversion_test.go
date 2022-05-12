@@ -27,9 +27,9 @@ func TestHTTPRouteConvertVersionedToDataModel(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	ct := dm.(*datamodel.HTTPRoute)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httproutes/route0", ct.ID)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/route0", ct.ID)
 	require.Equal(t, "route0", ct.Name)
-	require.Equal(t, "Applications.Core/httproutes", ct.Type)
+	require.Equal(t, "Applications.Core/httpRoutes", ct.Type)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", ct.Properties.Application)
 	require.Equal(t, "localhost", ct.Properties.Hostname)
 	require.Equal(t, int32(8080), ct.Properties.Port)
@@ -51,9 +51,9 @@ func TestHTTPRouteConvertDataModelToVersioned(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httproutes/route0", r.ID)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/route0", r.ID)
 	require.Equal(t, "route0", r.Name)
-	require.Equal(t, "Applications.Core/httproutes", r.Type)
+	require.Equal(t, "Applications.Core/httpRoutes", r.Type)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", r.Properties.Application)
 	require.Equal(t, "localhost", r.Properties.Hostname)
 	require.Equal(t, int32(8080), r.Properties.Port)

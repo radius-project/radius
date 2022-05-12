@@ -9,18 +9,18 @@
       "body": {
         "value": [
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/httproutes/route0",
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/httpRoutes/route0",
             "name": "route0",
-            "type": "Applications.Core/httproutes",
+            "type": "Applications.Core/httpRoutes",
             "properties": {
               "provisioningState": "Succeeded",
               "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
             }
           },
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/httproutes/route1",
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/httpRoutes/route1",
             "name": "route1",
-            "type": "Applications.Core/httproutes",
+            "type": "Applications.Core/httpRoutes",
             "properties": {
               "provisioningState": "Succeeded",
               "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0"

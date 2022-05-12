@@ -50,7 +50,7 @@ func (client *HTTPRoutesClient) CreateOrUpdate(ctx context.Context, resourceGrou
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *HTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httproutes/{httpRouteName}"
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}"
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
@@ -115,7 +115,7 @@ func (client *HTTPRoutesClient) Delete(ctx context.Context, resourceGroupName st
 
 // deleteCreateRequest creates the Delete request.
 func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, httpRouteName string, options *HTTPRoutesDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httproutes/{httpRouteName}"
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}"
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
@@ -171,7 +171,7 @@ func (client *HTTPRoutesClient) Get(ctx context.Context, resourceGroupName strin
 
 // getCreateRequest creates the Get request.
 func (client *HTTPRoutesClient) getCreateRequest(ctx context.Context, resourceGroupName string, httpRouteName string, options *HTTPRoutesGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httproutes/{httpRouteName}"
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}"
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
@@ -233,7 +233,7 @@ func (client *HTTPRoutesClient) List(resourceGroupName string, options *HTTPRout
 
 // listCreateRequest creates the List request.
 func (client *HTTPRoutesClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *HTTPRoutesListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httproutes"
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes"
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
@@ -291,7 +291,7 @@ func (client *HTTPRoutesClient) ListBySubscription(options *HTTPRoutesListBySubs
 
 // listBySubscriptionCreateRequest creates the ListBySubscription request.
 func (client *HTTPRoutesClient) listBySubscriptionCreateRequest(ctx context.Context, options *HTTPRoutesListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Core/httproutes"
+	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Core/httpRoutes"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -348,7 +348,7 @@ func (client *HTTPRoutesClient) Update(ctx context.Context, resourceGroupName st
 
 // updateCreateRequest creates the Update request.
 func (client *HTTPRoutesClient) updateCreateRequest(ctx context.Context, resourceGroupName string, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httproutes/{httpRouteName}"
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}"
 	if resourceGroupName == "" {
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
