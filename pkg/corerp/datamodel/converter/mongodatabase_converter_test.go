@@ -67,7 +67,7 @@ func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 		{
 			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-invalid.json",
 			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field FromResource.properties.fromResource.source of type string"),
+			errors.New("json: cannot unmarshal number into Go struct field MongoDatabaseProperties.properties.resource of type string"),
 		},
 		{
 			"",

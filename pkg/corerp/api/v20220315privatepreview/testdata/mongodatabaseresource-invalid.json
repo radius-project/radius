@@ -3,8 +3,6 @@
     "name": "mongo0",
     "type": "Applications.Connector/mongoDatabases",
     "properties": {
-        "fromResource": {
-            "source": 12345
-        }
+        "resource": 12345
     }
 }

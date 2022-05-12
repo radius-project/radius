@@ -14,10 +14,8 @@
             "type": "Applications.Connector/mongoDatabases",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-              "fromResource": {
-                "source": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
-              }
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
             }
           },
           {
@@ -27,10 +25,13 @@
             "properties": {
               "provisioningState": "Succeeded",
               "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-              "fromValues": {
-                "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "host": "testAccount1.mongo.cosmos.azure.com",
+              "port": 10255,
+              "secrets": {
                 "username": "testUser",
-                "password": "testPassword"
+                "password": "testPassword",
+                "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
               }
             }
           }

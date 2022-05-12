@@ -315,22 +315,62 @@
     "MongoDatabaseProperties": {
       "description": "MongoDatabse connector properties",
       "type": "object",
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "required": [
+        "environment"
+      ],
       "properties": {
         "provisioningState": {
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the mongo database connector at the time the operation was called"
         },
+        "environment": {
+          "description": "Fully qualified resource ID for the environment that the connector is linked to",
+          "type": "string"
+        },
         "application": {
           "$ref": "global.json#/definitions/Application",
           "description": "Fully qualified resource ID for the application that the connector is consumed by"
         },
-        "fromResource": {
-          "$ref": "global.json#/definitions/FromResource",
-          "description": "Target resource that the connector binds to"
+        "resource": {
+          "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this connector",
+          "type": "string",
+          "example": [
+            "account::mongodb.id"
+          ]
         },
-        "fromValues": {
-          "$ref": "global.json#/definitions/SecretsValues",
-          "description": "Secret values to connect to the Mongo database"
+        "host": {
+          "description": "Host name of the target Mongo database",
+          "type": "string"
+        },
+        "port": {
+          "description": "Port value of the target Mongo database",
+          "type": "integer",
+          "example": [
+            27017
+          ]
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secrets values provided for the resource",
+          "properties": {
+            "username": {
+              "description": "Username to use when connecting to the target Mongo database",
+              "type": "string"
+            },
+            "password": {
+              "description": "Password to use when connecting to the target Mongo database",
+              "type": "string"
+            },
+            "connectionString": {
+              "description": "Connection string used to connect to the target Mongo database",
+              "type": "string"
+            }
+          }
         }
       }
     }

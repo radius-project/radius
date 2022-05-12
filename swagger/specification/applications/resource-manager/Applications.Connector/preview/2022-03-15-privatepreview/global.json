@@ -58,40 +58,31 @@
         "app.id"
       ]
     },
-    "FromResource": {
-      "description": "Target resource that the connector binds to",
-      "type": "object",
+    "ResourceStatus": {
+      "description": "Status of a resource.",
       "properties": {
-        "source": {
-          "readOnly": true,
-          "type": "string",
-          "description": "Fully qualified resource ID for the resource that the connector binds to",
-          "example": [
-            "account::mongodb.id"
-          ]
+        "outputResources": {
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "type": "array"
         }
       },
-      "required": [
-        "source"
-      ]
+      "type": "object"
     },
-    "SecretsValues": {
-      "description": "Secrets values provided for the resource",
-      "type": "object",
+    "OutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object"
+    },
+    "BasicResourceProperties": {
+      "description": "Basic properties of a Radius resource.",
       "properties": {
-        "connectionString": {
-          "description": "The connection string used to connect to the target mongo database the connector binds to",
-          "type": "string"
-        },
-        "username": {
-          "description": "The username to use when connecting to the target mongo database",
-          "type": "string"
-        },
-        "password": {
-          "description": "The password to use when connecting to the target mongo database",
-          "type": "string"
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of the resource"
         }
-      }
+      },
+      "type": "object"
     }
   },
   "paths": {
@@ -101,7 +92,7 @@
           "Operations"
         ],
         "description": "Retrieves a list of available API operations",
-        "operationId": "ConnectorOperations_List",
+        "operationId": "Operations_List",
         "produces": [
           "application/json"
         ],

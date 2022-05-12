@@ -29,19 +29,17 @@ func (mongo MongoDatabase) ResourceTypeName() string {
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
 	ProvisioningState ProvisioningStates `json:"provisioningState,omitempty"`
+	Environment       string             `json:"environment"`
 	Application       string             `json:"application,omitempty"`
-	FromResource      FromResource       `json:"fromResource,omitempty"`
-	FromValues        FromValues         `json:"fromValues,omitempty"`
+	Resource          string             `json:"resource,omitempty"`
+	Host              string             `json:"host,omitempty"`
+	Port              int                `json:"port,omitempty"`
+	Secrets           Secrets            `json:"secrets,omitempty"`
 }
 
-// FromResource represents the target resource that the mongo database connector binds to
-type FromResource struct {
-	Source string `json:"source"` // Fully qualified resource ID for the resource that the connector binds to
-}
-
-// FromValues values provided for the target resource that the mongo database connector binds to
-type FromValues struct {
-	ConnectionString string `json:"connectionString"`
+// Secrets values consisting of secrets provided for the resource
+type Secrets struct {
 	Username         string `json:"username"`
 	Password         string `json:"password"`
+	ConnectionString string `json:"connectionString"`
 }

@@ -90,6 +90,12 @@ type ApplicationsUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// BasicResourceProperties - Basic properties of a Radius resource.
+type BasicResourceProperties struct {
+	// Status of the resource
+	Status *ResourceStatus `json:"status,omitempty"`
+}
+
 // EnvironmentCompute - Compute resource used by application environment resource.
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
@@ -227,12 +233,6 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
-// FromResource - Target resource that the connector binds to
-type FromResource struct {
-	// READ-ONLY; Fully qualified resource ID for the resource that the connector binds to
-	Source *string `json:"source,omitempty" azure:"ro"`
-}
-
 // MongoDatabaseList - Object that includes an array of MongoDatabase and a possible link for next set
 type MongoDatabaseList struct {
 	// The link used to fetch the next page of MongoDatabase list.
@@ -252,17 +252,39 @@ func (m MongoDatabaseList) MarshalJSON() ([]byte, error) {
 
 // MongoDatabaseProperties - MongoDatabse connector properties
 type MongoDatabaseProperties struct {
-	// Target resource that the connector binds to
-	FromResource *FromResource `json:"fromResource,omitempty"`
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
 
-	// Secret values to connect to the Mongo database
-	FromValues *SecretsValues `json:"fromValues,omitempty"`
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
 
 	// Provisioning state of the mongo database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
 
+	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
+	Resource *string `json:"resource,omitempty"`
+
+	// Secrets values provided for the resource
+	Secrets *MongoDatabasePropertiesSecrets `json:"secrets,omitempty"`
+
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
+}
+
+// MongoDatabasePropertiesSecrets - Secrets values provided for the resource
+type MongoDatabasePropertiesSecrets struct {
+	// Connection string used to connect to the target Mongo database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Mongo database
+	Password *string `json:"password,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabaseResource - MongoDatabse connector
@@ -334,16 +356,16 @@ func (r Resource) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "type", r.Type)
 }
 
-// SecretsValues - Secrets values provided for the resource
-type SecretsValues struct {
-	// The connection string used to connect to the target mongo database the connector binds to
-	ConnectionString *string `json:"connectionString,omitempty"`
+// ResourceStatus - Status of a resource.
+type ResourceStatus struct {
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
 
-	// The password to use when connecting to the target mongo database
-	Password *string `json:"password,omitempty"`
-
-	// The username to use when connecting to the target mongo database
-	Username *string `json:"username,omitempty"`
+// MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
+func (r ResourceStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "outputResources", r.OutputResources)
+	return json.Marshal(objectMap)
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

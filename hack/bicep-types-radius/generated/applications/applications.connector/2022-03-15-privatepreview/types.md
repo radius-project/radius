@@ -15,19 +15,23 @@
 ## MongoDatabaseProperties
 ### Properties
 * **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
-* **fromResource**: [FromResource](#fromresource): Target resource that the connector binds to
-* **fromValues**: [SecretsValues](#secretsvalues): Secrets values provided for the resource
+* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
+* **host**: string: Host name of the target Mongo database
+* **port**: int: Port value of the target Mongo database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this connector
+* **secrets**: [MongoDatabasePropertiesSecrets](#mongodatabasepropertiessecrets): Secrets values provided for the resource
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
-## FromResource
+## MongoDatabasePropertiesSecrets
 ### Properties
-* **source**: string (Required, ReadOnly): Fully qualified resource ID for the resource that the connector binds to
+* **connectionString**: string: Connection string used to connect to the target Mongo database
+* **password**: string: Password to use when connecting to the target Mongo database
+* **username**: string: Username to use when connecting to the target Mongo database
 
-## SecretsValues
+## ResourceStatus
 ### Properties
-* **connectionString**: string: The connection string used to connect to the target mongo database the connector binds to
-* **password**: string: The password to use when connecting to the target mongo database
-* **username**: string: The username to use when connecting to the target mongo database
+* **outputResources**: any[]: Array of any
 
 ## SystemData
 ### Properties
