@@ -192,12 +192,12 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	}
 
 	if !interactive {
+		if subscriptionID == "" || resourceGroup == "" || location == "" {
+			return arguments{}, errors.New("subscription id, resource group and location must be specified")
+		}
 		if name == "" {
 			name = resourceGroup
 			output.LogInfo("No environment name provided, using: %v", name)
-		}
-		if subscriptionID == "" || resourceGroup == "" || location == "" {
-			return arguments{}, errors.New("subscription id, resource group and location must be specified")
 		}
 	}
 
