@@ -39,10 +39,11 @@ import (
 )
 
 const (
-	APIServerBasePath   = "/apis/api.radius.dev/v1alpha3"
-	UCPBasePath         = "/apis/api.ucp.dev/v1alpha3/planes/deploymentengine" //"/apis/api.bicep.dev/v1alpha3"
-	Location            = "Location"
-	AzureAsyncOperation = "Azure-AsyncOperation"
+	APIServerBasePath        = "/apis/api.radius.dev/v1alpha3"
+	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
+	UCPBasePath              = "/apis/api.ucp.dev/v1alpha3/planes/deployments"
+	Location                 = "Location"
+	AzureAsyncOperation      = "Azure-AsyncOperation"
 )
 
 var (
@@ -123,14 +124,20 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 }
 
 func GetBaseUrlForDeploymentEngine(overrideURL string) string {
-	return strings.TrimSuffix(overrideURL, "/") + UCPBasePath
+	return strings.TrimSuffix(overrideURL, "/") + DeploymentEngineBasePath
 }
 
-func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string) (string, http.RoundTripper, error) {
+func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string, enableucp bool) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
+	var basePath string
+	if enableucp == true {
+		basePath = UCPBasePath
+	} else {
+		basePath = DeploymentEngineBasePath
+	}
 	if overrideURL != "" {
-		baseURL = strings.TrimSuffix(overrideURL, "/") + UCPBasePath
+		baseURL = strings.TrimSuffix(overrideURL, "/") + basePath
 		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
 	} else {
 		restConfig, err := GetConfig(context)
@@ -143,7 +150,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 			return "", nil, err
 		}
 
-		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + UCPBasePath
+		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + basePath
 		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
 	return baseURL, roundTripper, nil

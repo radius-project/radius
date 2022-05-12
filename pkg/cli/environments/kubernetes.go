@@ -27,7 +27,7 @@ type KubernetesEnvironment struct {
 	DefaultApplication         string `mapstructure:"defaultapplication,omitempty"`
 	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
 	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
-
+	EnableUCP                  bool   `mapstructure:"enableucp,omitempty"`
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
 }
@@ -38,6 +38,10 @@ func (e *KubernetesEnvironment) GetName() string {
 
 func (e *KubernetesEnvironment) GetKind() string {
 	return e.Kind
+}
+
+func (e *KubernetesEnvironment) GetEnableUCP() bool {
+	return e.EnableUCP
 }
 
 func (e *KubernetesEnvironment) GetDefaultApplication() string {
@@ -64,7 +68,7 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, e.EnableUCP)
 
 	if err != nil {
 		return nil, err
