@@ -181,22 +181,24 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 	if err != nil {
 		return arguments{}, err
 	}
-	if name == "" {
-		name = resourceGroup
-		output.LogInfo("No environment name provided, using: %v", name)
-	}
 
 	location, err := cmd.Flags().GetString("location")
 	if err != nil {
 		return arguments{}, err
 	}
 
-	if interactive && (subscriptionID != "" || resourceGroup != "" || location != "") {
-		return arguments{}, errors.New("subcription id, resource group or location cannot be specified with interactive")
+	if interactive && (subscriptionID != "" || resourceGroup != "" || location != "" || name != "") {
+		return arguments{}, errors.New("subcription id, resource group, location or environment name cannot be specified with interactive")
 	}
 
-	if !interactive && (subscriptionID == "" || resourceGroup == "" || location == "") {
-		return arguments{}, errors.New("subscription id, resource group and location must be specified")
+	if !interactive {
+		if subscriptionID == "" || resourceGroup == "" || location == "" {
+			return arguments{}, errors.New("subscription id, resource group and location must be specified")
+		}
+		if name == "" {
+			name = resourceGroup
+			output.LogInfo("No environment name provided, using: %v", name)
+		}
 	}
 
 	deploymentTemplate, err := cmd.Flags().GetString("deployment-template")
