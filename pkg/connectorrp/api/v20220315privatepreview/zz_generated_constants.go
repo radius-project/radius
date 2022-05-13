@@ -38,26 +38,7 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
-// EnvironmentComputeKind - Type of compute resource.
-type EnvironmentComputeKind string
-
-const (
-	EnvironmentComputeKindKubernetes EnvironmentComputeKind = "kubernetes"
-)
-
-// PossibleEnvironmentComputeKindValues returns the possible values for the EnvironmentComputeKind const type.
-func PossibleEnvironmentComputeKindValues() []EnvironmentComputeKind {
-	return []EnvironmentComputeKind{	
-		EnvironmentComputeKindKubernetes,
-	}
-}
-
-// ToPtr returns a *EnvironmentComputeKind pointing to the current value.
-func (c EnvironmentComputeKind) ToPtr() *EnvironmentComputeKind {
-	return &c
-}
-
-// ProvisioningState - Gets the status of the environment at the time the operation was called.
+// ProvisioningState - Provisioning state of the connector at the time the operation was called
 type ProvisioningState string
 
 const (
@@ -65,6 +46,7 @@ const (
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
 	ProvisioningStateFailed ProvisioningState = "Failed"
+	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
@@ -76,6 +58,7 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateCanceled,
 		ProvisioningStateDeleting,
 		ProvisioningStateFailed,
+		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
 	}

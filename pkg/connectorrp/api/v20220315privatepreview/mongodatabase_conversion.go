@@ -6,8 +6,9 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/api"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -24,7 +25,7 @@ func (src *MongoDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.MongoDatabase{
-		TrackedResource: datamodel.TrackedResource{
+		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
 			Type:     to.String(src.Type),
@@ -37,10 +38,10 @@ func (src *MongoDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 			Application:       to.String(src.Properties.Application),
 			Resource:          to.String(src.Properties.Resource),
 			Host:              to.String(src.Properties.Host),
-			Port:              int(to.Int32(src.Properties.Port)),
+			Port:              to.Int32(src.Properties.Port),
 			Secrets:           secrets,
 		},
-		InternalMetadata: datamodel.InternalMetadata{
+		InternalMetadata: basedatamodel.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}
@@ -66,7 +67,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src api.DataModelInterface) error 
 		Application:       to.StringPtr(mongo.Properties.Application),
 		Resource:          to.StringPtr(mongo.Properties.Resource),
 		Host:              to.StringPtr(mongo.Properties.Host),
-		Port:              to.Int32Ptr(int32(mongo.Properties.Port)),
+		Port:              to.Int32Ptr(mongo.Properties.Port),
 	}
 	if (mongo.Properties.Secrets != datamodel.Secrets{}) {
 		dst.Properties.Secrets = &MongoDatabasePropertiesSecrets{

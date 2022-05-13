@@ -12,9 +12,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"

@@ -31,6 +31,8 @@ func toProvisioningStateDataModel(state *ProvisioningState) basedatamodel.Provis
 		return basedatamodel.ProvisioningStateFailed
 	case ProvisioningStateCanceled:
 		return basedatamodel.ProvisioningStateCanceled
+	case ProvisioningStateProvisioning:
+		return basedatamodel.ProvisioningStateProvisioning
 	default:
 		return basedatamodel.ProvisioningStateAccepted
 	}
@@ -52,7 +54,7 @@ func fromProvisioningStateDataModel(state basedatamodel.ProvisioningStates) *Pro
 	case basedatamodel.ProvisioningStateCanceled:
 		converted = ProvisioningStateCanceled
 	default:
-		converted = ProvisioningStateAccepted // should we return error ?
+		converted = ProvisioningStateAccepted
 	}
 
 	return &converted

@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications Management APIs",
+    "title": "Applications.Connector Management APIs",
     "description": "REST APIs for Applications.Connector/mongoDatabases",
     "version": "2022-03-15-privatepreview"
   },

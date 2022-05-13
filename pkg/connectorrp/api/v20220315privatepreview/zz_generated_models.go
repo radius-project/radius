@@ -15,163 +15,10 @@ import (
 	"time"
 )
 
-// ApplicationProperties - Application properties
-type ApplicationProperties struct {
-	// REQUIRED; The resource id of the environment linked to application.
-	Environment *string `json:"environment,omitempty"`
-
-	// READ-ONLY; Gets the status of the application at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-}
-
-// ApplicationResource - Radius Application.
-type ApplicationResource struct {
-	TrackedResource
-	// REQUIRED; Application properties
-	Properties *ApplicationProperties `json:"properties,omitempty"`
-
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ApplicationResource.
-func (a ApplicationResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	a.TrackedResource.marshalInternal(objectMap)
-	populate(objectMap, "properties", a.Properties)
-	populate(objectMap, "systemData", a.SystemData)
-	return json.Marshal(objectMap)
-}
-
-// ApplicationResourceList - The list of applications.
-type ApplicationResourceList struct {
-	// The link used to get the next page of applications list.
-	NextLink *string `json:"nextLink,omitempty"`
-
-	// The list of applications.
-	Value []*ApplicationResource `json:"value,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ApplicationResourceList.
-func (a ApplicationResourceList) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "nextLink", a.NextLink)
-	populate(objectMap, "value", a.Value)
-	return json.Marshal(objectMap)
-}
-
-// ApplicationsCreateOrUpdateOptions contains the optional parameters for the Applications.CreateOrUpdate method.
-type ApplicationsCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ApplicationsDeleteOptions contains the optional parameters for the Applications.Delete method.
-type ApplicationsDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ApplicationsGetOptions contains the optional parameters for the Applications.Get method.
-type ApplicationsGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ApplicationsListBySubscriptionOptions contains the optional parameters for the Applications.ListBySubscription method.
-type ApplicationsListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ApplicationsListOptions contains the optional parameters for the Applications.List method.
-type ApplicationsListOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ApplicationsUpdateOptions contains the optional parameters for the Applications.Update method.
-type ApplicationsUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// EnvironmentCompute - Compute resource used by application environment resource.
-type EnvironmentCompute struct {
-	// REQUIRED; Type of compute resource.
-	Kind *EnvironmentComputeKind `json:"kind,omitempty"`
-
-	// REQUIRED; The resource id of the compute resource for application environment.
-	ResourceID *string `json:"resourceId,omitempty"`
-}
-
-// EnvironmentProperties - Application environment properties
-type EnvironmentProperties struct {
-	// REQUIRED; The compute resource used by application environment.
-	Compute *EnvironmentCompute `json:"compute,omitempty"`
-
-	// READ-ONLY; Gets the status of the environment at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-}
-
-// EnvironmentResource - Application environment.
-type EnvironmentResource struct {
-	TrackedResource
-	// REQUIRED; Application environment properties
-	Properties *EnvironmentProperties `json:"properties,omitempty"`
-
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type EnvironmentResource.
-func (e EnvironmentResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	e.TrackedResource.marshalInternal(objectMap)
-	populate(objectMap, "properties", e.Properties)
-	populate(objectMap, "systemData", e.SystemData)
-	return json.Marshal(objectMap)
-}
-
-// EnvironmentResourceList - The list of environments.
-type EnvironmentResourceList struct {
-	// The link used to get the next page of environments list.
-	NextLink *string `json:"nextLink,omitempty"`
-
-	// The list of environments.
-	Value []*EnvironmentResource `json:"value,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type EnvironmentResourceList.
-func (e EnvironmentResourceList) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "nextLink", e.NextLink)
-	populate(objectMap, "value", e.Value)
-	return json.Marshal(objectMap)
-}
-
-// EnvironmentsCreateOrUpdateOptions contains the optional parameters for the Environments.CreateOrUpdate method.
-type EnvironmentsCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// EnvironmentsDeleteOptions contains the optional parameters for the Environments.Delete method.
-type EnvironmentsDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// EnvironmentsGetOptions contains the optional parameters for the Environments.Get method.
-type EnvironmentsGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// EnvironmentsListBySubscriptionOptions contains the optional parameters for the Environments.ListBySubscription method.
-type EnvironmentsListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// EnvironmentsListOptions contains the optional parameters for the Environments.List method.
-type EnvironmentsListOptions struct {
-	// placeholder for future optional parameters
-}
-
-// EnvironmentsUpdateOptions contains the optional parameters for the Environments.Update method.
-type EnvironmentsUpdateOptions struct {
-	// placeholder for future optional parameters
+// BasicResourceProperties - Basic properties of a Radius resource.
+type BasicResourceProperties struct {
+	// Status of the resource
+	Status *ResourceStatus `json:"status,omitempty"`
 }
 
 // ErrorAdditionalInfo - The resource management error additional info.
@@ -227,6 +74,104 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
+// MongoDatabaseList - Object that includes an array of MongoDatabase and a possible link for next set
+type MongoDatabaseList struct {
+	// The link used to fetch the next page of MongoDatabase list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of MongoDatabase resources
+	Value []*MongoDatabaseResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseList.
+func (m MongoDatabaseList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", m.NextLink)
+	populate(objectMap, "value", m.Value)
+	return json.Marshal(objectMap)
+}
+
+// MongoDatabaseProperties - MongoDatabse connector properties
+type MongoDatabaseProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
+	Resource *string `json:"resource,omitempty"`
+
+	// Secrets values provided for the resource
+	Secrets *MongoDatabasePropertiesSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the mongo database connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MongoDatabasePropertiesSecrets - Secrets values provided for the resource
+type MongoDatabasePropertiesSecrets struct {
+	// Connection string used to connect to the target Mongo database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Mongo database
+	Password *string `json:"password,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
+}
+
+// MongoDatabaseResource - MongoDatabse connector
+type MongoDatabaseResource struct {
+	TrackedResource
+	// REQUIRED; MongoDatabse connector properties
+	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResource.
+func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	m.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", m.Properties)
+	populate(objectMap, "systemData", m.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// MongoDatabasesCreateOrUpdateOptions contains the optional parameters for the MongoDatabases.CreateOrUpdate method.
+type MongoDatabasesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongoDatabasesDeleteOptions contains the optional parameters for the MongoDatabases.Delete method.
+type MongoDatabasesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongoDatabasesGetOptions contains the optional parameters for the MongoDatabases.Get method.
+type MongoDatabasesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongoDatabasesListBySubscriptionOptions contains the optional parameters for the MongoDatabases.ListBySubscription method.
+type MongoDatabasesListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongoDatabasesListOptions contains the optional parameters for the MongoDatabases.List method.
+type MongoDatabasesListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -250,6 +195,18 @@ func (r Resource) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "name", r.Name)
 	populate(objectMap, "type", r.Type)
+}
+
+// ResourceStatus - Status of a resource.
+type ResourceStatus struct {
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
+func (r ResourceStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "outputResources", r.OutputResources)
+	return json.Marshal(objectMap)
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

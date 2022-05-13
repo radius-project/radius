@@ -36,7 +36,7 @@ func TestToProvisioningStateDataModel(t *testing.T) {
 }
 
 func TestFromProvisioningStateDataModel(t *testing.T) {
-	stateTests := []struct {
+	testCases := []struct {
 		datamodel basedatamodel.ProvisioningStates
 		versioned ProvisioningState
 	}{
@@ -49,9 +49,9 @@ func TestFromProvisioningStateDataModel(t *testing.T) {
 		{"", ProvisioningStateAccepted},
 	}
 
-	for _, tt := range stateTests {
-		sc := fromProvisioningStateDataModel(tt.datamodel)
-		require.Equal(t, tt.versioned, *sc)
+	for _, testCase := range testCases {
+		sc := fromProvisioningStateDataModel(testCase.datamodel)
+		require.Equal(t, testCase.versioned, *sc)
 	}
 }
 

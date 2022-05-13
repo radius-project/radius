@@ -6,12 +6,13 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
 // MongoDatabase represents MongoDatabase connector resource.
 type MongoDatabase struct {
-	TrackedResource
+	basedatamodel.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
@@ -19,7 +20,7 @@ type MongoDatabase struct {
 	Properties MongoDatabaseProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	InternalMetadata
+	basedatamodel.InternalMetadata
 }
 
 func (mongo MongoDatabase) ResourceTypeName() string {
@@ -28,13 +29,13 @@ func (mongo MongoDatabase) ResourceTypeName() string {
 
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
-	ProvisioningState ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string             `json:"environment"`
-	Application       string             `json:"application,omitempty"`
-	Resource          string             `json:"resource,omitempty"`
-	Host              string             `json:"host,omitempty"`
-	Port              int                `json:"port,omitempty"`
-	Secrets           Secrets            `json:"secrets,omitempty"`
+	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
+	Environment       string                           `json:"environment"`
+	Application       string                           `json:"application,omitempty"`
+	Resource          string                           `json:"resource,omitempty"`
+	Host              string                           `json:"host,omitempty"`
+	Port              int32                            `json:"port,omitempty"`
+	Secrets           Secrets                          `json:"secrets,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

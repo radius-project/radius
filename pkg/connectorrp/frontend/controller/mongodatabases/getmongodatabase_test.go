@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/stretchr/testify/require"
 
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 )
 
 func TestGetMongoDatabase_20220315PrivatePreview(t *testing.T) {

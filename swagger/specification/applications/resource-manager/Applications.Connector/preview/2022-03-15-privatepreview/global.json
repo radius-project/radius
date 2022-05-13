@@ -43,6 +43,7 @@
         "Deleting",
         "Failed",
         "Provisioning",
+        "Updating",
         "Succeeded"
       ],
       "x-ms-enum": {

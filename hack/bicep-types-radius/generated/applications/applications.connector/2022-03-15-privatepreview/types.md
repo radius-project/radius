@@ -18,7 +18,7 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **host**: string: Host name of the target Mongo database
 * **port**: int: Port value of the target Mongo database
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 * **secrets**: [MongoDatabasePropertiesSecrets](#mongodatabasepropertiessecrets): Secrets values provided for the resource
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
