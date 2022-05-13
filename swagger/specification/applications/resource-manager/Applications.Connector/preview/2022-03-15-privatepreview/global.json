@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Connector Management API",
+    "title": "Applications.Connector Management APIs",
     "version": "2022-03-15-privatepreview"
   },
   "host": "management.azure.com",
@@ -38,13 +38,13 @@
       "type": "string",
       "readOnly": true,
       "enum": [
-        "Accepted",
-        "Canceled",
-        "Deleting",
+        "Succeeded",
         "Failed",
-        "Provisioning",
+        "Canceled",
+        "Accepted",
         "Updating",
-        "Succeeded"
+        "Deleting",
+        "Provisioning"
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
