@@ -30,8 +30,8 @@ spec:
           value: '/var/tls/cert'
         - name: HOSTING_PLATFORM
           value: 'kubernetes'
-        - name: UCP_SERVER_URL
-          value: 'localhost:9443'
+        - name: PORT
+          value: '9443'
         name: ucp
         ports:
         - containerPort: 9443
