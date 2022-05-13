@@ -90,12 +90,6 @@ type ApplicationsUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// BasicRouteProperties - Basic properties of a route.
-type BasicRouteProperties struct {
-	// Status of the resource
-	Status *RouteStatus `json:"status,omitempty"`
-}
-
 // EnvironmentCompute - Compute resource used by application environment resource.
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
@@ -241,7 +235,6 @@ type FromResource struct {
 
 // HTTPRouteProperties - HTTP Route properties
 type HTTPRouteProperties struct {
-	BasicRouteProperties
 	// REQUIRED; The resource id of the application linked to HTTP Route resource.
 	Application *string `json:"application,omitempty"`
 
@@ -426,25 +419,6 @@ func (r Resource) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "name", r.Name)
 	populate(objectMap, "type", r.Type)
-}
-
-// RouteStatus - Status of a route.
-type RouteStatus struct {
-	// Health state of the route
-	HealthState *string `json:"healthState,omitempty"`
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
-
-	// Provisioning state of the route
-	ProvisioningState *string `json:"provisioningState,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type RouteStatus.
-func (r RouteStatus) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "healthState", r.HealthState)
-	populate(objectMap, "outputResources", r.OutputResources)
-	populate(objectMap, "provisioningState", r.ProvisioningState)
-	return json.Marshal(objectMap)
 }
 
 // SecretsValues - Secrets values provided for the resource

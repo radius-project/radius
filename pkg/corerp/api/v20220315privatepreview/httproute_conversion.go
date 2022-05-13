@@ -16,14 +16,6 @@ import (
 func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
-	status := datamodel.RouteStatus{}
-	if src.Properties.BasicRouteProperties.Status != nil {
-		status = datamodel.RouteStatus{
-			HealthState:       to.String(src.Properties.BasicRouteProperties.Status.HealthState),
-			ProvisioningState: to.String(src.Properties.BasicRouteProperties.Status.ProvisioningState),
-			OutputResources:   src.Properties.BasicRouteProperties.Status.OutputResources,
-		}
-	}
 	converted := &datamodel.HTTPRoute{
 		TrackedResource: datamodel.TrackedResource{
 			ID:       to.String(src.ID),
@@ -39,9 +31,6 @@ func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
 			Port:              to.Int32(src.Properties.Port),
 			Scheme:            to.String(src.Properties.Scheme),
 			URL:               to.String(src.Properties.URL),
-			BasicRouteProperties: datamodel.BasicRouteProperties{
-				Status: status,
-			},
 		},
 		InternalMetadata: datamodel.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -71,13 +60,6 @@ func (dst *HTTPRouteResource) ConvertFrom(src api.DataModelInterface) error {
 		Port:              to.Int32Ptr((route.Properties.Port)),
 		Scheme:            to.StringPtr(route.Properties.Scheme),
 		URL:               to.StringPtr(route.Properties.URL),
-		BasicRouteProperties: BasicRouteProperties{
-			Status: &RouteStatus{
-				HealthState:       to.StringPtr(route.Properties.BasicRouteProperties.Status.HealthState),
-				ProvisioningState: to.StringPtr(route.Properties.BasicRouteProperties.Status.ProvisioningState),
-				OutputResources:   route.Properties.BasicRouteProperties.Status.OutputResources,
-			},
-		},
 	}
 
 	return nil
