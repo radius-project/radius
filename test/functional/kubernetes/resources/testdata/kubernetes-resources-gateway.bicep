@@ -1,54 +1,61 @@
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-gateway'
 
-  resource backendgateway 'Gateway' = {
-    name: 'backendgateway'
+  resource gateway 'Gateway' = {
+    name: 'gateway'
     properties: {
       routes: [
         {
-          path: '/frontend'
-          destination: frontendhttp.id
+          path: '/'
+          destination: frontendroute.id
         }
         {
-          path: '/backend'
-          destination: backendhttp.id
+          path: '/rewriteme'
+          destination: backendroute.id
+          replacePrefix: '/backend'
         }
       ]
     }
   }
 
-  resource backendhttp 'HttpRoute' = {
-    name: 'backendhttp'
+  resource frontendroute 'HttpRoute' = {
+    name: 'frontendroute'
   }
-  
-  resource backend 'Container' = {
-    name: 'backend'
+
+  resource frontend 'Container' = {
+    name: 'frontend'
     properties: {
       container: {
-        image: 'rynowak/backend:0.5.0-dev'
+        image: 'willdavsmith/frontend:test'
         ports: {
           web: {
-            containerPort: 80
-            provides: backendhttp.id
+            containerPort: 8080
+            provides: frontendroute.id
           }
+        }
+      }
+      connections: {
+        backend: {
+          kind: 'Http'
+          source: backendroute.id
         }
       }
     }
   }
 
-  resource frontendhttp 'HttpRoute' = {
-    name: 'frontendhttp'
+  resource backendroute 'HttpRoute' = {
+    name: 'backendroute'
   }
-  
-  resource frontend 'Container' = {
-    name: 'frontend'
+
+  resource backend 'Container' = {
+    name: 'backend'
     properties: {
       container: {
-        image: 'rynowak/frontend:0.5.0-dev'
+        image: 'willdavsmith/backend:test'
         ports: {
           web: {
-            containerPort: 80
-            provides: frontendhttp.id
+            containerPort: 8081
+            provides: backendroute.id
           }
         }
       }

@@ -26,6 +26,7 @@ import (
 	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -63,6 +64,7 @@ type ApplicationTest struct {
 type TestOptions struct {
 	ConfigFilePath  string
 	K8sClient       *k8s.Clientset
+	K8sConfig       *rest.Config
 	DynamicClient   dynamic.Interface
 	DiscoveryClient discovery.DiscoveryInterface
 	Client          client.Client
@@ -75,7 +77,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 	k8sconfig, err := kubernetes.ReadKubeConfig()
 	require.NoError(t, err, "failed to read k8s config")
 
-	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
+	k8s, k8sConfig, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
 	require.NoError(t, err, "failed to create kubernetes client")
 
 	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
@@ -87,6 +89,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 	return TestOptions{
 		ConfigFilePath: config.ConfigFileUsed(),
 		K8sClient:      k8s,
+		K8sConfig:      k8sConfig,
 		DynamicClient:  dynamicClient,
 		Client:         client,
 	}
