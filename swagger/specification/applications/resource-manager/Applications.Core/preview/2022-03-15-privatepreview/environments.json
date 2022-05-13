@@ -403,21 +403,8 @@
       ],
       "properties": {
         "provisioningState": {
-          "readOnly": true,
-          "type": "string",
-          "description": "Gets the status of the environment at the time the operation was called.",
-          "enum": [
-            "Succeeded",
-            "Failed",
-            "Canceled",
-            "Accepted",
-            "Updating",
-            "Deleting"
-          ],
-          "x-ms-enum": {
-            "name": "ProvisioningState",
-            "modelAsString": true
-          }
+          "$ref": "global.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the environment at the time the operation was called."
         },
         "compute": {
           "$ref": "#/definitions/EnvironmentCompute",
