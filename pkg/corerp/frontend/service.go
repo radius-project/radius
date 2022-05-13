@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	armAuthenticator "github.com/project-radius/radius/pkg/corerp/authentication"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
 	"github.com/project-radius/radius/pkg/corerp/frontend/server"
@@ -41,23 +42,34 @@ func (s *Service) Run(ctx context.Context) error {
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
-	server := server.NewServer(ctx,
-		server.ServerOptions{
-			Address:  address,
-			PathBase: s.Options.Config.Server.PathBase,
-			// TODO: implement ARM client certificate auth.
-			Configure: func(router *mux.Router) {
-				if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
-					panic(err)
-				}
 
-				// TODO Connector RP will be moved into a separate service, for now using core RP's infra to unblock end to end testing
-				// https://github.com/project-radius/core-team/issues/90
-				if err := handler.AddConnectorRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
-					panic(err)
-				}
-			},
-		},
+	// initialize the manager for ARM client cert validation
+	var acm *armAuthenticator.ArmCertManager
+	if s.Options.Config.Server.EnableArmAuth {
+		acm = armAuthenticator.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
+		err := acm.Start(ctx)
+		if err != nil {
+			logger.Error(err, "Error creating arm cert manager")
+			return err
+		}
+	}
+	server := server.NewServer(ctx, server.ServerOptions{
+		Address:  address,
+		PathBase: s.Options.Config.Server.PathBase,
+		// set the arm cert manager for managing client certificate
+		ArmCertMgr:    acm,
+		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
+		Configure: func(router *mux.Router) {
+			if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
+				panic(err)
+			}
+
+			// TODO Connector RP will be moved into a separate service, for now using core RP's infra to unblock end to end testing
+			// https://github.com/project-radius/core-team/issues/90
+			if err := handler.AddConnectorRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
+				panic(err)
+			}
+		}},
 		s.Options.Config.MetricsProvider,
 	)
 
