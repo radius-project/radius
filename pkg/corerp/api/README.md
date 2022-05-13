@@ -36,7 +36,6 @@ These settings apply only when `--tag=2022-03-15-privatepreview` is specified on
 input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environments.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
 ```
 
 ### Common

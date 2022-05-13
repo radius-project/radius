@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package datamodel
+package basedatamodel
 
 // ProvisioningStates is the state of resource.
 type ProvisioningStates string

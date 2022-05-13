@@ -10,8 +10,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -98,7 +99,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Validate(ctx context.Context, req *htt
 
 	dm.ID = serviceCtx.ResourceID.ID
 	dm.TrackedResource = base_ctrl.BuildTrackedResource(ctx)
-	dm.Properties.ProvisioningState = datamodel.ProvisioningStateSucceeded
+	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
 
 	return dm, nil
 }

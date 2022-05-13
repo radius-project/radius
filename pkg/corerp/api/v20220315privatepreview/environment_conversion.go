@@ -6,7 +6,8 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/api"
+	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -17,7 +18,7 @@ func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
 	converted := &datamodel.Environment{
-		TrackedResource: datamodel.TrackedResource{
+		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
 			Type:     to.String(src.Type),
@@ -31,7 +32,7 @@ func (src *EnvironmentResource) ConvertTo() (api.DataModelInterface, error) {
 				ResourceID: to.String(src.Properties.Compute.ResourceID),
 			},
 		},
-		InternalMetadata: datamodel.InternalMetadata{
+		InternalMetadata: basedatamodel.InternalMetadata{
 			CreatedAPIVersion: Version,
 			UpdatedAPIVersion: Version,
 		},
