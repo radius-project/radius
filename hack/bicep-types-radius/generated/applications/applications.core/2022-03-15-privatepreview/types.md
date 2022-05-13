@@ -24,6 +24,18 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/environments' (ReadOnly, DeployTimeConstant): The resource type
 
+## Resource Applications.Core/httpRoutes@2022-03-15-privatepreview
+* **Valid Scope(s)**: ResourceGroup
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [HttpRouteProperties](#httprouteproperties) (Required): HTTP Route properties
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Core/httpRoutes' (ReadOnly, DeployTimeConstant): The resource type
+
 ## ApplicationProperties
 ### Properties
 * **environment**: string (Required): The resource id of the environment linked to application.
@@ -52,6 +64,27 @@
 ### Properties
 * **kind**: 'kubernetes' (Required): Type of compute resource.
 * **resourceId**: string (Required): The resource id of the compute resource for application environment.
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## HttpRouteProperties
+### Properties
+* **application**: string (Required): The resource id of the application linked to HTTP Route resource.
+* **hostname**: string: The internal hostname accepting traffic for the HTTP Route. Readonly.
+* **port**: int: The port number for the HTTP Route. Defaults to 80. Readonly.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Succeeded' | 'Updating' (ReadOnly): Gets the status of the environment at the time the operation was called.
+* **scheme**: string: The scheme used for traffic. Readonly.
+* **status**: [RouteStatus](#routestatus): Status of a route.
+* **url**: string: A stable URL that that can be used to route traffic to a resource. Readonly.
+
+## RouteStatus
+### Properties
+* **healthState**: string: Health state of the route
+* **outputResources**: any[]: Array of AnyObject
+* **provisioningState**: string: Provisioning state of the route
 
 ## TrackedResourceTags
 ### Properties
