@@ -19,7 +19,7 @@ type HTTPRoute struct {
 	Properties HTTPRouteProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	InternalMetadata InternalMetadata `json:"internalMetadata"`
+	InternalMetadata
 }
 
 // ResourceTypeName returns the qualified name of the resource
