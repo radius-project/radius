@@ -73,7 +73,8 @@
     },
     "OutputResource": {
       "description": "Properties of an output resource.",
-      "type": "object"
+      "type": "object",
+      "properties": {}
     },
     "BasicResourceProperties": {
       "description": "Basic properties of a Radius resource.",
