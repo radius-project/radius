@@ -19,7 +19,6 @@ spec:
 {{ end }}
     spec:
       serviceAccountName: ucp
-      automountServiceAccountToken: true
       containers:
       - image: {{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}
         env:
@@ -72,27 +71,6 @@ spec:
   selector:
     control-plane: ucp
 ---
-{{define "ucp-config"}}
-[
-  {
-      "ID": "/planes/radius/local",
-      "properties": {
-           "resourceProviders": {
-               "Applications.Core": "http://localhost:7443"
-           }
-       }
-  },
-  {
-      "ID": "/planes/deployments/local",
-      "properties": {
-           "resourceProviders": {
-               "Microsoft.Resources": "http://localhost:6443"
-           }
-       }
-  }
-]
-{{end}}
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -103,4 +81,5 @@ metadata:
     heritage: "{{ .Release.Service }}"
     release: "{{ .Release.Name }}"
 data:
-  ucp-config.json: {{ (include "ucp-config" .) | trim | quote }}
+  ucp-config.json: |-
+{{ .Files.Get "ucp-config.json" | indent 4}}

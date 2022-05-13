@@ -1,0 +1,18 @@
+[
+    {
+        "ID": "/planes/radius/local",
+        "properties": {
+             "resourceProviders": {
+                 "Applications.Core": "http://localhost:7443"
+             }
+         }
+    },
+    {
+        "ID": "/planes/deployments/local",
+        "properties": {
+             "resourceProviders": {
+                 "Microsoft.Resources": "http://localhost:6443"
+             }
+         }
+    }
+  ]
