@@ -31,7 +31,7 @@
 
 ## ResourceStatus
 ### Properties
-* **outputResources**: any[]: Array of any
+* **outputResources**: any[]: Array of AnyObject
 
 ## SystemData
 ### Properties

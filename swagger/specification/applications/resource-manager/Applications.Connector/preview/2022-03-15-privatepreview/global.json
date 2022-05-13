@@ -59,32 +59,32 @@
         "app.id"
       ]
     },
-    "ResourceStatus": {
-      "description": "Status of a resource.",
-      "properties": {
-        "outputResources": {
-          "items": {
-            "$ref": "#/definitions/OutputResource"
-          },
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "OutputResource": {
-      "description": "Properties of an output resource.",
-      "type": "object",
-      "properties": {}
-    },
     "BasicResourceProperties": {
       "description": "Basic properties of a Radius resource.",
+      "type": "object",
       "properties": {
         "status": {
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of the resource"
         }
-      },
-      "type": "object"
+      }
+    },
+    "ResourceStatus": {
+      "description": "Status of a resource.",
+      "type": "object",
+      "properties": {
+        "outputResources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          }
+        }
+      }
+    },
+    "OutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object",
+      "properties": {}
     }
   },
   "paths": {
