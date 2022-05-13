@@ -1,13 +1,6 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "metadata": {
-    "_generator": {
-      "name": "bicep",
-      "version": "0.6.1.6515",
-      "templateHash": "12931903957622840575"
-    }
-  },
   "parameters": {
     "clusterName": {
       "type": "string",
@@ -194,8 +187,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.6.1.6515",
-              "templateHash": "1091669613424611220"
+              "version": "0.6.11.53198",
+              "templateHash": "9652338613199054654"
             }
           },
           "parameters": {

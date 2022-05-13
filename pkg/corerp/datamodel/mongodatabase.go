@@ -19,7 +19,7 @@ type MongoDatabase struct {
 	Properties MongoDatabaseProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	InternalMetadata InternalMetadata `json:"internalMetadata"`
+	InternalMetadata
 }
 
 func (mongo MongoDatabase) ResourceTypeName() string {

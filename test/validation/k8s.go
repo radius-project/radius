@@ -64,26 +64,14 @@ func NewK8sPodForResource(application string, name string) K8sObject {
 	}
 }
 
-func NewK8sGatewayForResource(application string, name string) K8sObject {
+func NewK8sHTTPProxyForResource(application string, name string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
-			Group:    "networking.x-k8s.io",
-			Version:  "v1alpha1",
-			Resource: "gateways",
+			Group:    "projectcontour.io",
+			Version:  "v1",
+			Resource: "httpproxies",
 		},
-		Kind:   "Gateway",
-		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
-	}
-}
-
-func NewK8sHttpRouteForResource(application string, name string) K8sObject {
-	return K8sObject{
-		GroupVersionResource: schema.GroupVersionResource{
-			Group:    "networking.x-k8s.io",
-			Version:  "v1alpha1",
-			Resource: "httproutes",
-		},
-		Kind:   "HTTPRoute",
+		Kind:   "HTTPProxy",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }

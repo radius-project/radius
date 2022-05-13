@@ -10,6 +10,9 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/hostoptions"
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
@@ -80,4 +83,19 @@ func UpdateSystemData(old armrpcv1.SystemData, new armrpcv1.SystemData) armrpcv1
 	}
 
 	return newSystemData
+}
+
+// BuildTrackedResource create TrackedResource instance from request context
+func BuildTrackedResource(ctx context.Context) datamodel.TrackedResource {
+	requestCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceOpt := hostoptions.FromContext(ctx)
+
+	trackedResource := datamodel.TrackedResource{
+		ID:       requestCtx.ResourceID.ID,
+		Name:     requestCtx.ResourceID.Name(),
+		Type:     requestCtx.ResourceID.Type(),
+		Location: serviceOpt.CloudEnv.RoleLocation,
+	}
+
+	return trackedResource
 }
