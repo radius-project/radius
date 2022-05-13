@@ -20,8 +20,8 @@ type ApplicationProperties struct {
 	// REQUIRED; The resource id of the environment linked to application.
 	Environment *string `json:"environment,omitempty"`
 
-	// READ-ONLY; Gets the status of the application at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+	// Provisioning state of the application at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
 }
 
 // ApplicationResource - Radius Application.
@@ -90,6 +90,12 @@ type ApplicationsUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// BasicResourceProperties - Basic properties of a Radius resource.
+type BasicResourceProperties struct {
+	// Status of the resource
+	Status *ResourceStatus `json:"status,omitempty"`
+}
+
 // EnvironmentCompute - Compute resource used by application environment resource.
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
@@ -104,8 +110,8 @@ type EnvironmentProperties struct {
 	// REQUIRED; The compute resource used by application environment.
 	Compute *EnvironmentCompute `json:"compute,omitempty"`
 
-	// READ-ONLY; Gets the status of the environment at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+	// Provisioning state of the environment at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
 }
 
 // EnvironmentResource - Application environment.
@@ -235,6 +241,7 @@ type FromResource struct {
 
 // HTTPRouteProperties - HTTP Route properties
 type HTTPRouteProperties struct {
+	BasicResourceProperties
 	// REQUIRED; The resource id of the application linked to HTTP Route resource.
 	Application *string `json:"application,omitempty"`
 
@@ -244,14 +251,14 @@ type HTTPRouteProperties struct {
 	// The port number for the HTTP Route. Defaults to 80. Readonly.
 	Port *int32 `json:"port,omitempty"`
 
+	// Provisioning state of the HTTP Route at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
+
 	// The scheme used for traffic. Readonly.
 	Scheme *string `json:"scheme,omitempty"`
 
 	// A stable URL that that can be used to route traffic to a resource. Readonly.
 	URL *string `json:"url,omitempty"`
-
-	// READ-ONLY; Gets the status of the HTTP Route at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // HTTPRouteResource - Radius HTTP Route Resource.
@@ -419,6 +426,18 @@ func (r Resource) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "name", r.Name)
 	populate(objectMap, "type", r.Type)
+}
+
+// ResourceStatus - Status of a resource.
+type ResourceStatus struct {
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
+func (r ResourceStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "outputResources", r.OutputResources)
+	return json.Marshal(objectMap)
 }
 
 // SecretsValues - Secrets values provided for the resource
