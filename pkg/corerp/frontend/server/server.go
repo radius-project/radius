@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/authentication"
 	"github.com/project-radius/radius/pkg/corerp/middleware"
+	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -51,7 +52,7 @@ func NewServer(ctx context.Context, options ServerOptions) (*http.Server, error)
 
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
-	r.Use(middleware.MetricsInterceptor)
+	r.Use(provider.NewPrometheusMetricsProvider().MetricsMiddleware)
 
 	server := &http.Server{
 		Addr:    options.Address,

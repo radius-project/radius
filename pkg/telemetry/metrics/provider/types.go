@@ -6,11 +6,15 @@
 package provider
 
 import (
-	"go.opentelemetry.io/otel/exporters/metric/prometheus"
+	"context"
+
+	"go.opentelemetry.io/otel/attribute"
 )
 
-// MetricsProvider is an interface defining to publish metrics.
-type MetricsProvider interface{
-	//GetExporter should return an exporter which is used to collect metrics from the metrics endpoint of the server.
-	GetExporter()(*prometheus.Exporter)
+// MetricsProvider defines functions to publish metrics like requests and latency to the metrics endpoint.
+type MetricsProvider interface {
+	// IncrementRequestCount should increment the number of requests for request metric with the given labels/attributes.
+	IncrementRequestCount(ctx context.Context, val int, labels ...attribute.KeyValue)
+	// RecordLatency should record the latency of a request for latency metric with the given labels/attributes.
+	RecordLatency(ctx context.Context, val int, labels ...attribute.KeyValue)
 }
