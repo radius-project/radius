@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package metrics
+package metricsservice
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/hostoptions"
+	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 )
 

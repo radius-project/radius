@@ -20,10 +20,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
+	mh "github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
-	"github.com/project-radius/radius/pkg/telemetry/metrics"
-	mh "github.com/project-radius/radius/pkg/telemetry/metrics/hostoptions"
 )
 
 func main() {
@@ -52,7 +52,7 @@ func main() {
 	}
 	defer flush()
 
-	hostingSvc := []hosting.Service{frontend.NewService(options), metrics.NewService(metricOptions)}
+	hostingSvc := []hosting.Service{frontend.NewService(options), metricsservice.NewService(metricOptions)}
 
 	if enableAsyncWorker {
 		logger.Info("Enable AsyncRequestProcessWorker.")
