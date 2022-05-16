@@ -19,6 +19,7 @@ import (
 const (
 	ContourChartDefaultVersion = "7.4.6"
 	DaprDefaultVersion         = "1.6.0"
+	OsmDefaultVersion          = "1.0.0"
 )
 
 type ClusterOptions struct {
@@ -26,6 +27,7 @@ type ClusterOptions struct {
 	Dapr      DaprOptions
 	Contour   ContourOptions
 	Radius    RadiusOptions
+	Osm       OsmOptions
 }
 
 func NewDefaultClusterOptions() ClusterOptions {
@@ -52,6 +54,10 @@ func NewDefaultClusterOptions() ClusterOptions {
 		Radius: RadiusOptions{
 			ChartVersion: chartVersion,
 			Tag:          tag,
+		},
+		Osm: OsmOptions{
+			//Need a default version?
+			ChartVersion: chartVersion,
 		},
 	}
 }
@@ -108,6 +114,11 @@ func InstallOnCluster(ctx context.Context, options ClusterOptions, client client
 	}
 
 	err = ApplyDaprHelmChart(options.Dapr.Version)
+	if err != nil {
+		return err
+	}
+
+	err = ApplyOsmHelmChart(options.Osm)
 	if err != nil {
 		return err
 	}

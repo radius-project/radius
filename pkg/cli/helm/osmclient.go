@@ -52,7 +52,7 @@ func ApplyOsmHelmChart(options OsmOptions) error {
 	//Inokve the installation of osm control plane
 
 	//retrieve the history of the releases
-	_, err = histClient.Run(radiusReleaseName)
+	_, err = histClient.Run(osmReleaseName)
 	//if a previous release is not found
 	if errors.Is(err, driver.ErrReleaseNotFound) {
 		output.LogInfo("Installing new OSM Kubernetes environment to namespace: %s", RadiusSystemNamespace)
