@@ -1,0 +1,367 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Applications.Connector Management APIs",
+    "description": "REST APIs for Applications.Connector/rabbitMQMessageQueues",
+    "version": "2022-03-15-privatepreview"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "flow": "implicit",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "paths": {
+    "/subscriptions/{subscriptionId}/providers/Applications.Connector/rabbitMQMessageQueues": {
+      "get": {
+        "description": "Lists information about all rabbitMQMessageQueue resources in the given subscription",
+        "operationId": "RabbitMQMessageQueues_ListBySubscription",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesListBySubscription": {
+            "$ref": "./examples/RabbitMQMessageQueuesListBySubscription.json"
+          }
+        },
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of RabbitMQMessageQueue resources",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueList"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false,
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues": {
+      "get": {
+        "description": "Lists information about all rabbitMQMessageQueue resources in the given subscription and resource group",
+        "operationId": "RabbitMQMessageQueues_List",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesList": {
+            "$ref": "./examples/RabbitMQMessageQueuesList.json"
+          }
+        },
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of RabbitMQMessageQueue resources",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false,
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
+      "get": {
+        "description": "Retrieves information about a rabbitMQMessageQueue resource",
+        "operationId": "RabbitMQMessageQueues_Get",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesGet": {
+            "$ref": "./examples/RabbitMQMessageQueuesGet.json"
+          }
+        },
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RabbitMQMessageQueue resource",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "Creates or updates a RabbitMQMessageQueue resource",
+        "operationId": "RabbitMQMessageQueues_CreateOrUpdate",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesPut": {
+            "$ref": "./examples/RabbitMQMessageQueuesPut.json"
+          }
+        },
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
+          },
+          {
+            "name": "RabbitMQMessageQueueParameters",
+            "description": "rabbitMQMessageQueue create parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request was successful; response contains the rabbitMQMessageQueue resource",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "201": {
+            "description": "The request was successful, resource will be updated asynchronously",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deletes an existing rabbitMQMessageQueue resource",
+        "operationId": "RabbitMQMessageQueues_Delete",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesDelete": {
+            "$ref": "./examples/RabbitMQMessageQueuesDelete.json"
+          }
+        },
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The RabbitMQMessageQueue connector was successfully deleted."
+          },
+          "202": {
+            "description": "The RabbitMQMessageQueue connector will be deleted asynchronously."
+          },
+          "204": {
+            "description": "The RabbitMQMessageQueue connector does not exist."
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "RabbitMQMessageQueueList": {
+      "description": "Object that includes an array of RabbitMQMessageQueue and a possible link for next set",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "List of RabbitMQMessageQueue resources",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RabbitMQMessageQueueResource"
+          }
+        },
+        "nextLink": {
+          "description": "The link used to fetch the next page of RabbitMQMessageQueue list.",
+          "type": "string"
+        }
+      }
+    },
+    "RabbitMQMessageQueueResource": {
+      "description": "RabbitMQMessageQueue connector",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "systemData": {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
+        }
+      }
+    },
+    "RabbitMQMessageQueueProperties": {
+      "description": "RabbitMQMessageQueue connector properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "provisioningState": {
+          "$ref": "global.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the rabbitMQ message queue connector at the time the operation was called"
+        },
+        "environment": {
+          "description": "Fully qualified resource ID for the environment that the connector is linked to",
+          "type": "string"
+        },
+        "application": {
+          "$ref": "global.json#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the connector is consumed by"
+        },
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secrets provided by resources,",
+          "additionalProperties": false,
+          "properties": {
+            "connectionString": {
+              "description": "The connection string used to connect to this RabbitMQ instance",
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": ["environment"]
+    }
+  },
+  "parameters": {
+    "RabbitMQMessageQueueNameParameter": {
+      "description": "The name of the RabbitMQMessageQueue connector resource",
+      "name": "rabbitMQMessageQueueName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+      "maxLength": 128,
+      "x-ms-parameter-location": "method"
+    }
+  }
+}

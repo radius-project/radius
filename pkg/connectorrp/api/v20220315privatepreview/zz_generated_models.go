@@ -172,6 +172,92 @@ type MongoDatabasesListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// RabbitMQMessageQueueList - Object that includes an array of RabbitMQMessageQueue and a possible link for next set
+type RabbitMQMessageQueueList struct {
+	// The link used to fetch the next page of RabbitMQMessageQueue list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of RabbitMQMessageQueue resources
+	Value []*RabbitMQMessageQueueResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueList.
+func (r RabbitMQMessageQueueList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", r.NextLink)
+	populate(objectMap, "value", r.Value)
+	return json.Marshal(objectMap)
+}
+
+// RabbitMQMessageQueueProperties - RabbitMQMessageQueue connector properties
+type RabbitMQMessageQueueProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// Secrets provided by resources,
+	Secrets *RabbitMQMessageQueuePropertiesSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// RabbitMQMessageQueuePropertiesSecrets - Secrets provided by resources,
+type RabbitMQMessageQueuePropertiesSecrets struct {
+	// The connection string used to connect to this RabbitMQ instance
+	ConnectionString *string `json:"connectionString,omitempty"`
+}
+
+// RabbitMQMessageQueueResource - RabbitMQMessageQueue connector
+type RabbitMQMessageQueueResource struct {
+	TrackedResource
+	// REQUIRED; RabbitMQMessageQueue connector properties
+	Properties *RabbitMQMessageQueueProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResource.
+func (r RabbitMQMessageQueueResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", r.Properties)
+	populate(objectMap, "systemData", r.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// RabbitMQMessageQueuesCreateOrUpdateOptions contains the optional parameters for the RabbitMQMessageQueues.CreateOrUpdate method.
+type RabbitMQMessageQueuesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQMessageQueuesDeleteOptions contains the optional parameters for the RabbitMQMessageQueues.Delete method.
+type RabbitMQMessageQueuesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQMessageQueuesGetOptions contains the optional parameters for the RabbitMQMessageQueues.Get method.
+type RabbitMQMessageQueuesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQMessageQueuesListBySubscriptionOptions contains the optional parameters for the RabbitMQMessageQueues.ListBySubscription method.
+type RabbitMQMessageQueuesListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQMessageQueuesListOptions contains the optional parameters for the RabbitMQMessageQueues.List method.
+type RabbitMQMessageQueuesListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}

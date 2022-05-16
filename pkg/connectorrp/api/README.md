@@ -35,6 +35,7 @@ These settings apply only when `--tag=connector-2022-03-15-privatepreview` is sp
 ```yaml $(tag) == 'connector-2022-03-15-privatepreview'
 input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
 ```
 
 ### Common

@@ -124,3 +124,111 @@ func (p *MongoDatabasesListPager) PageResponse() MongoDatabasesListResponse {
 	return p.current
 }
 
+// RabbitMQMessageQueuesListBySubscriptionPager provides operations for iterating over paged responses.
+type RabbitMQMessageQueuesListBySubscriptionPager struct {
+	client *RabbitMQMessageQueuesClient
+	current RabbitMQMessageQueuesListBySubscriptionResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, RabbitMQMessageQueuesListBySubscriptionResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *RabbitMQMessageQueuesListBySubscriptionPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *RabbitMQMessageQueuesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.RabbitMQMessageQueueList.NextLink == nil || len(*p.current.RabbitMQMessageQueueList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listBySubscriptionHandleError(resp)
+		return false
+	}
+	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current RabbitMQMessageQueuesListBySubscriptionResponse page.
+func (p *RabbitMQMessageQueuesListBySubscriptionPager) PageResponse() RabbitMQMessageQueuesListBySubscriptionResponse {
+	return p.current
+}
+
+// RabbitMQMessageQueuesListPager provides operations for iterating over paged responses.
+type RabbitMQMessageQueuesListPager struct {
+	client *RabbitMQMessageQueuesClient
+	current RabbitMQMessageQueuesListResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, RabbitMQMessageQueuesListResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *RabbitMQMessageQueuesListPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *RabbitMQMessageQueuesListPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.RabbitMQMessageQueueList.NextLink == nil || len(*p.current.RabbitMQMessageQueueList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listHandleError(resp)
+		return false
+	}
+	result, err := p.client.listHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current RabbitMQMessageQueuesListResponse page.
+func (p *RabbitMQMessageQueuesListPager) PageResponse() RabbitMQMessageQueuesListResponse {
+	return p.current
+}
+
