@@ -11,11 +11,17 @@ import (
 	"net/http"
 	"os"
 
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
+	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	RadiusSystemNamespace = "radius-system"
 )
 
 func GetMagpieImage() string {
@@ -44,14 +50,31 @@ func setDefault() (string, string) {
 	return defaultDockerReg, imageTag
 }
 
+func GetHostname(ctx context.Context, client runtime_client.Client) (string, error) {
+	var httpproxies contourv1.HTTPProxyList
+
+	err := client.List(ctx, &httpproxies, &runtime_client.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	for _, httpProxy := range httpproxies.Items {
+		if httpProxy.Spec.VirtualHost != nil {
+			// Found a root proxy
+			return httpProxy.Spec.VirtualHost.Fqdn, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
+}
+
 func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort int, readyChan chan struct{}, stopChan <-chan struct{}, errChan chan error) {
-	namespaceName := "radius-system"
 	serviceName := "contour-envoy"
 	label := "app.kubernetes.io/component=envoy"
 	remotePort := 8080
 
 	// Get the backing pod of the Ingress Service
-	pods, err := client.CoreV1().Pods(namespaceName).List(ctx, metav1.ListOptions{LabelSelector: label, Limit: 1})
+	pods, err := client.CoreV1().Pods(RadiusSystemNamespace).List(ctx, metav1.ListOptions{LabelSelector: label, Limit: 1})
 	if err != nil {
 		errChan <- err
 		return
@@ -67,7 +90,7 @@ func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Conf
 	// Create API Server URL using pod name
 	url := client.CoreV1().RESTClient().Post().
 		Resource("pods").
-		Namespace(namespaceName).
+		Namespace(RadiusSystemNamespace).
 		Name(pod.Name).
 		SubResource("portforward").URL()
 

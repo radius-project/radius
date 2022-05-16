@@ -62,6 +62,12 @@ func Test_Gateway(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetestest.ApplicationTest) {
+				// Get hostname from root HTTPProxy
+				// Note: this just gets the hostname from the first root proxy
+				// that it finds. Testing multiple gateways here will not work.
+				hostname, err := functional.GetHostname(ctx, at.Options.Client)
+				require.NoError(t, err)
+
 				// Setup service port-forwarding
 				localHostname := "localhost"
 				localPort := 8888
@@ -81,41 +87,44 @@ func Test_Gateway(t *testing.T) {
 					Timeout: time.Second * 10,
 				}
 
-				testRequest(t, client, application, url, 200)
-				testRequest(t, client, application, rewrittenURL, 200)
-				testRequest(t, client, application, invalidURL, 404)
+				testRequest(t, client, hostname, url, 200)
+				testRequest(t, client, hostname, rewrittenURL, 200)
+				testRequest(t, client, hostname, invalidURL, 404)
 			},
 		},
 	})
 	test.Test(t)
 }
 
-func testRequest(t *testing.T, client *http.Client, application string, url string, expectedStatusCode int) {
+func testRequest(t *testing.T, client *http.Client, hostname, url string, expectedStatusCode int) {
 	req, err := http.NewRequest(http.MethodGet, url+"/healthz", nil)
 	require.NoError(t, err)
 
-	req.Host = application
+	req.Host = hostname
 
-	res, err := client.Do(req)
-	require.NoError(t, err)
+	retries := 5
+	for i := 0; i < retries; i++ {
+		t.Logf("making request to %s", url)
+		response, err := client.Do(req)
+		if err != nil {
+			t.Logf("got error %s", err.Error())
+			time.Sleep(1 * time.Second)
+			continue
+		}
 
-	defer res.Body.Close()
+		if response.Body != nil {
+			defer response.Body.Close()
+		}
 
-	if res.StatusCode == http.StatusNotFound {
-		// Retry with localhost to support local dev tests
-		localReq, err := http.NewRequest(http.MethodGet, url+"/healthz", nil)
-		require.NoError(t, err)
+		if response.StatusCode != expectedStatusCode {
+			t.Logf("got status: %d, wanted: %d. retrying...", response.StatusCode, expectedStatusCode)
+			time.Sleep(1 * time.Second)
+			continue
+		}
 
-		localReq.Host = "localhost"
-
-		localRes, err := client.Do(localReq)
-		require.NoError(t, err)
-
-		defer localRes.Body.Close()
-
-		require.Equal(t, expectedStatusCode, localRes.StatusCode)
+		// Encountered the correct status code
 		return
 	}
 
-	require.Equal(t, expectedStatusCode, res.StatusCode)
+	require.NoError(t, fmt.Errorf("status code %d was not encountered after %d retries", expectedStatusCode, retries))
 }
