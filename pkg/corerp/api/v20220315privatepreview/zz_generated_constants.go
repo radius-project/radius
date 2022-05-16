@@ -65,7 +65,6 @@ const (
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
 	ProvisioningStateFailed ProvisioningState = "Failed"
-	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
@@ -77,7 +76,6 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateCanceled,
 		ProvisioningStateDeleting,
 		ProvisioningStateFailed,
-		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
 	}

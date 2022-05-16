@@ -12,7 +12,7 @@ generate: generate-arm-json generate-radclient generate-go generate-bicep-types 
 generate-arm-json: generate-jq-installed ## Generates ARM-JSON from our environment creation Bicep files
 	@echo "$(ARROW) Updating ARM-JSON..."
 	az bicep build --file deploy/rp-full.bicep
-	jq 'del(.metadata)' deploy/rp-full.json  > deploy/rp-full.tmp && mv deploy/rp-full.tmp deploy/rp-full.json
+	jq 'del(.metadata, .resources[].properties.template.metadata)' deploy/rp-full.json  > deploy/rp-full.tmp && mv deploy/rp-full.tmp deploy/rp-full.json
 
 .PHONY: generate-jq-installed
 generate-jq-installed:

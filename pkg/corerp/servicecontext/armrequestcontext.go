@@ -13,7 +13,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/radlogger"
 )
 

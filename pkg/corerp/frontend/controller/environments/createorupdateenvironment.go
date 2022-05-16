@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
@@ -96,7 +97,7 @@ func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Requ
 	dm.ID = serviceCtx.ResourceID.ID
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	// TODO: Update the state.
-	dm.Properties.ProvisioningState = datamodel.ProvisioningStateSucceeded
+	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
 
 	return dm, err
 }

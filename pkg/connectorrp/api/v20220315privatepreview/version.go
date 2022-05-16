@@ -3,10 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package datamodel
+package v20220315privatepreview
 
-import "errors"
-
-var (
-	ErrUnsupportedAPIVersion = errors.New("unsupported api-version")
-)
+// Version represents the api version in this package.
+const Version = "2022-03-15-privatepreview"

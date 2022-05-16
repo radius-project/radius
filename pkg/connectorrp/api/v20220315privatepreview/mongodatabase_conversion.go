@@ -6,32 +6,26 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/api"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel.
 func (src *MongoDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
-	fromResource := datamodel.FromResource{}
-	if src.Properties.FromResource != nil {
-		fromResource = datamodel.FromResource{
-			Source: to.String(src.Properties.FromResource.Source),
-		}
-	}
-
-	fromValues := datamodel.FromValues{}
-	if src.Properties.FromValues != nil {
-		fromValues = datamodel.FromValues{
-			ConnectionString: to.String(src.Properties.FromValues.ConnectionString),
-			Username:         to.String(src.Properties.FromValues.Username),
-			Password:         to.String(src.Properties.FromValues.Password),
+	secrets := datamodel.Secrets{}
+	if src.Properties.Secrets != nil {
+		secrets = datamodel.Secrets{
+			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+			Username:         to.String(src.Properties.Secrets.Username),
+			Password:         to.String(src.Properties.Secrets.Password),
 		}
 	}
 
 	converted := &datamodel.MongoDatabase{
-		TrackedResource: datamodel.TrackedResource{
+		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
 			Type:     to.String(src.Type),
@@ -40,11 +34,14 @@ func (src *MongoDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
-			FromResource:      fromResource,
-			FromValues:        fromValues,
+			Resource:          to.String(src.Properties.Resource),
+			Host:              to.String(src.Properties.Host),
+			Port:              to.Int32(src.Properties.Port),
+			Secrets:           secrets,
 		},
-		InternalMetadata: datamodel.InternalMetadata{
+		InternalMetadata: basedatamodel.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}
@@ -66,18 +63,17 @@ func (dst *MongoDatabaseResource) ConvertFrom(src api.DataModelInterface) error 
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 	dst.Properties = &MongoDatabaseProperties{
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
+		Environment:       to.StringPtr(mongo.Properties.Environment),
 		Application:       to.StringPtr(mongo.Properties.Application),
+		Resource:          to.StringPtr(mongo.Properties.Resource),
+		Host:              to.StringPtr(mongo.Properties.Host),
+		Port:              to.Int32Ptr(mongo.Properties.Port),
 	}
-	if (mongo.Properties.FromResource != datamodel.FromResource{}) {
-		dst.Properties.FromResource = &FromResource{
-			Source: to.StringPtr(mongo.Properties.FromResource.Source),
-		}
-	}
-	if (mongo.Properties.FromValues != datamodel.FromValues{}) {
-		dst.Properties.FromValues = &SecretsValues{
-			ConnectionString: to.StringPtr(mongo.Properties.FromValues.ConnectionString),
-			Username:         to.StringPtr(mongo.Properties.FromValues.Username),
-			Password:         to.StringPtr(mongo.Properties.FromValues.Password),
+	if (mongo.Properties.Secrets != datamodel.Secrets{}) {
+		dst.Properties.Secrets = &MongoDatabasePropertiesSecrets{
+			ConnectionString: to.StringPtr(mongo.Properties.Secrets.ConnectionString),
+			Username:         to.StringPtr(mongo.Properties.Secrets.Username),
+			Password:         to.StringPtr(mongo.Properties.Secrets.Password),
 		}
 	}
 

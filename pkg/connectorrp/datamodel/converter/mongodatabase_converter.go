@@ -8,9 +8,10 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/corerp/api"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 )
 
 // MongoDatabaseDataModelFromVersioned converts version agnostic MongoDatabase datamodel to versioned model.
@@ -22,7 +23,7 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 		return versioned, err
 
 	default:
-		return nil, datamodel.ErrUnsupportedAPIVersion
+		return nil, basedatamodel.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -38,6 +39,6 @@ func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datam
 		return dm.(*datamodel.MongoDatabase), err
 
 	default:
-		return nil, datamodel.ErrUnsupportedAPIVersion
+		return nil, basedatamodel.ErrUnsupportedAPIVersion
 	}
 }

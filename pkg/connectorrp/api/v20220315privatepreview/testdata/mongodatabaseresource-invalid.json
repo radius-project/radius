@@ -3,9 +3,6 @@
     "name": "mongo0",
     "type": "Applications.Connector/mongoDatabases",
     "properties": {
-        "fromValues": {
-            "connectionstring": "test-connection-string",
-            "username": "testusername"
-        }
+        "resource": 12345
     }
 }

@@ -10,9 +10,10 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"reflect"
 	"time"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 )
 
 // ApplicationProperties - Application properties
@@ -233,176 +234,6 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
-// FromResource - Target resource that the connector binds to
-type FromResource struct {
-	// READ-ONLY; Fully qualified resource ID for the resource that the connector binds to
-	Source *string `json:"source,omitempty" azure:"ro"`
-}
-
-// HTTPRouteProperties - HTTP Route properties
-type HTTPRouteProperties struct {
-	BasicResourceProperties
-	// REQUIRED; The resource id of the application linked to HTTP Route resource.
-	Application *string `json:"application,omitempty"`
-
-	// The internal hostname accepting traffic for the HTTP Route. Readonly.
-	Hostname *string `json:"hostname,omitempty"`
-
-	// The port number for the HTTP Route. Defaults to 80. Readonly.
-	Port *int32 `json:"port,omitempty"`
-
-	// Provisioning state of the HTTP Route at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
-
-	// The scheme used for traffic. Readonly.
-	Scheme *string `json:"scheme,omitempty"`
-
-	// A stable URL that that can be used to route traffic to a resource. Readonly.
-	URL *string `json:"url,omitempty"`
-}
-
-// HTTPRouteResource - Radius HTTP Route Resource.
-type HTTPRouteResource struct {
-	TrackedResource
-	// REQUIRED; HTTP Route properties
-	Properties *HTTPRouteProperties `json:"properties,omitempty"`
-
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResource.
-func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	h.TrackedResource.marshalInternal(objectMap)
-	populate(objectMap, "properties", h.Properties)
-	populate(objectMap, "systemData", h.SystemData)
-	return json.Marshal(objectMap)
-}
-
-// HTTPRouteResourceList - The list of HTTP Routes.
-type HTTPRouteResourceList struct {
-	// The link used to get the next page of HTTP Routes list.
-	NextLink *string `json:"nextLink,omitempty"`
-
-	// The list of HTTP Route.
-	Value []*HTTPRouteResource `json:"value,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResourceList.
-func (h HTTPRouteResourceList) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "nextLink", h.NextLink)
-	populate(objectMap, "value", h.Value)
-	return json.Marshal(objectMap)
-}
-
-// HTTPRoutesCreateOrUpdateOptions contains the optional parameters for the HTTPRoutes.CreateOrUpdate method.
-type HTTPRoutesCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// HTTPRoutesDeleteOptions contains the optional parameters for the HTTPRoutes.Delete method.
-type HTTPRoutesDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// HTTPRoutesGetOptions contains the optional parameters for the HTTPRoutes.Get method.
-type HTTPRoutesGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// HTTPRoutesListBySubscriptionOptions contains the optional parameters for the HTTPRoutes.ListBySubscription method.
-type HTTPRoutesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// HTTPRoutesListOptions contains the optional parameters for the HTTPRoutes.List method.
-type HTTPRoutesListOptions struct {
-	// placeholder for future optional parameters
-}
-
-// HTTPRoutesUpdateOptions contains the optional parameters for the HTTPRoutes.Update method.
-type HTTPRoutesUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabaseList - Object that includes an array of MongoDatabase and a possible link for next set
-type MongoDatabaseList struct {
-	// The link used to fetch the next page of MongoDatabase list.
-	NextLink *string `json:"nextLink,omitempty"`
-
-	// List of MongoDatabase resources
-	Value []*MongoDatabaseResource `json:"value,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseList.
-func (m MongoDatabaseList) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "nextLink", m.NextLink)
-	populate(objectMap, "value", m.Value)
-	return json.Marshal(objectMap)
-}
-
-// MongoDatabaseProperties - MongoDatabse connector properties
-type MongoDatabaseProperties struct {
-	// Target resource that the connector binds to
-	FromResource *FromResource `json:"fromResource,omitempty"`
-
-	// Secret values to connect to the Mongo database
-	FromValues *SecretsValues `json:"fromValues,omitempty"`
-
-	// Provisioning state of the mongo database connector at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
-}
-
-// MongoDatabaseResource - MongoDatabse connector
-type MongoDatabaseResource struct {
-	TrackedResource
-	// REQUIRED; MongoDatabse connector properties
-	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
-
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResource.
-func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	m.TrackedResource.marshalInternal(objectMap)
-	populate(objectMap, "properties", m.Properties)
-	populate(objectMap, "systemData", m.SystemData)
-	return json.Marshal(objectMap)
-}
-
-// MongoDatabasesCreateOrUpdateOptions contains the optional parameters for the MongoDatabases.CreateOrUpdate method.
-type MongoDatabasesCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabasesDeleteOptions contains the optional parameters for the MongoDatabases.Delete method.
-type MongoDatabasesDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabasesGetOptions contains the optional parameters for the MongoDatabases.Get method.
-type MongoDatabasesGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabasesListBySubscriptionOptions contains the optional parameters for the MongoDatabases.ListBySubscription method.
-type MongoDatabasesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabasesListOptions contains the optional parameters for the MongoDatabases.List method.
-type MongoDatabasesListOptions struct {
-	// placeholder for future optional parameters
-}
-
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -426,30 +257,6 @@ func (r Resource) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "name", r.Name)
 	populate(objectMap, "type", r.Type)
-}
-
-// ResourceStatus - Status of a resource.
-type ResourceStatus struct {
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
-func (r ResourceStatus) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "outputResources", r.OutputResources)
-	return json.Marshal(objectMap)
-}
-
-// SecretsValues - Secrets values provided for the resource
-type SecretsValues struct {
-	// The connection string used to connect to the target mongo database the connector binds to
-	ConnectionString *string `json:"connectionString,omitempty"`
-
-	// The password to use when connecting to the target mongo database
-	Password *string `json:"password,omitempty"`
-
-	// The username to use when connecting to the target mongo database
-	Username *string `json:"username,omitempty"`
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
@@ -495,27 +302,27 @@ func (s *SystemData) UnmarshalJSON(data []byte) error {
 		var err error
 		switch key {
 		case "createdAt":
-				var aux timeRFC3339
-				err = unpopulate(val, &aux)
-				s.CreatedAt = (*time.Time)(&aux)
-				delete(rawMsg, key)
+			var aux timeRFC3339
+			err = unpopulate(val, &aux)
+			s.CreatedAt = (*time.Time)(&aux)
+			delete(rawMsg, key)
 		case "createdBy":
-				err = unpopulate(val, &s.CreatedBy)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.CreatedBy)
+			delete(rawMsg, key)
 		case "createdByType":
-				err = unpopulate(val, &s.CreatedByType)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.CreatedByType)
+			delete(rawMsg, key)
 		case "lastModifiedAt":
-				var aux timeRFC3339
-				err = unpopulate(val, &aux)
-				s.LastModifiedAt = (*time.Time)(&aux)
-				delete(rawMsg, key)
+			var aux timeRFC3339
+			err = unpopulate(val, &aux)
+			s.LastModifiedAt = (*time.Time)(&aux)
+			delete(rawMsg, key)
 		case "lastModifiedBy":
-				err = unpopulate(val, &s.LastModifiedBy)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.LastModifiedBy)
+			delete(rawMsg, key)
 		case "lastModifiedByType":
-				err = unpopulate(val, &s.LastModifiedByType)
-				delete(rawMsg, key)
+			err = unpopulate(val, &s.LastModifiedByType)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -563,4 +370,3 @@ func unpopulate(data json.RawMessage, v interface{}) error {
 	}
 	return json.Unmarshal(data, v)
 }
-
