@@ -10,3 +10,6 @@
 ### applications.core/environments
 * [2022-03-15-privatepreview](applications/applications.core/2022-03-15-privatepreview/types.md#resource-applicationscoreenvironments2022-03-15-privatepreview)
 
+### applications.core/httproutes
+* [2022-03-15-privatepreview](applications/applications.core/2022-03-15-privatepreview/types.md#resource-applicationscorehttproutes2022-03-15-privatepreview)
+
