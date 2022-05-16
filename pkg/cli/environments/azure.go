@@ -40,6 +40,7 @@ type AzureCloudEnvironment struct {
 	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
 	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
 
+	EnableUCP bool `mapstructure:"enableucp,omitempty"`
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain" yaml:",omitempty"`
 }
@@ -72,7 +73,7 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	//third parameter indicates this is not UCP env.
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, false)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}

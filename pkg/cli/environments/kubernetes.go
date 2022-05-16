@@ -28,6 +28,7 @@ type KubernetesEnvironment struct {
 	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
 	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
 	EnableUCP                  bool   `mapstructure:"enableucp,omitempty"`
+
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
 }
