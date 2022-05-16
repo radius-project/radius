@@ -19,7 +19,7 @@ import (
 const (
 	ContourChartDefaultVersion = "7.4.6"
 	DaprDefaultVersion         = "1.6.0"
-	OsmDefaultVersion          = "1.0.0"
+	OsmDefaultVersion          = "0.11.1"
 )
 
 type ClusterOptions struct {
@@ -57,7 +57,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 		},
 		Osm: OsmOptions{
 			//Need a default version?
-			ChartVersion: chartVersion,
+			ChartVersion: OsmDefaultVersion,
 		},
 	}
 }
