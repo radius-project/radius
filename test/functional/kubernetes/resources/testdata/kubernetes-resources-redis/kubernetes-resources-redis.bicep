@@ -26,6 +26,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
         image: magpieimage
         env: {
         }
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+        }
       }
       connections: {
         redis: {

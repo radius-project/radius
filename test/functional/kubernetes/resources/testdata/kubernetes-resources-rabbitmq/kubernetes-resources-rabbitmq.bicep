@@ -24,6 +24,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: magpieimage
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+        }
       }
       connections: {
         rabbitmq: {
