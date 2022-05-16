@@ -41,7 +41,7 @@ import (
 const (
 	APIServerBasePath        = "/apis/api.radius.dev/v1alpha3"
 	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
-	UCPBasePath              = "/apis/api.ucp.dev/v1alpha3/planes/deployments"
+	UCPBasePath              = "/apis/api.ucp.dev/v1alpha3/planes/deployments/local"
 	Location                 = "Location"
 	AzureAsyncOperation      = "Azure-AsyncOperation"
 )
@@ -131,7 +131,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 	var baseURL string
 	var roundTripper http.RoundTripper
 	var basePath string
-	if enableucp == true {
+	if enableucp {
 		basePath = UCPBasePath
 	} else {
 		basePath = DeploymentEngineBasePath
