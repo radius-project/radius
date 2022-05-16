@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // MockStorageClient is a mock of StorageClient interface.
@@ -36,7 +35,7 @@ func (m *MockStorageClient) EXPECT() *MockStorageClientMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockStorageClient) Delete(arg0 context.Context, arg1 resources.ID, arg2 ...DeleteOptions) error {
+func (m *MockStorageClient) Delete(arg0 context.Context, arg1 string, arg2 ...DeleteOptions) error {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
@@ -55,7 +54,7 @@ func (mr *MockStorageClientMockRecorder) Delete(arg0, arg1 interface{}, arg2 ...
 }
 
 // Get mocks base method.
-func (m *MockStorageClient) Get(arg0 context.Context, arg1 resources.ID, arg2 ...GetOptions) (*Object, error) {
+func (m *MockStorageClient) Get(arg0 context.Context, arg1 string, arg2 ...GetOptions) (*Object, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
@@ -75,14 +74,14 @@ func (mr *MockStorageClientMockRecorder) Get(arg0, arg1 interface{}, arg2 ...int
 }
 
 // Query mocks base method.
-func (m *MockStorageClient) Query(arg0 context.Context, arg1 Query, arg2 ...QueryOptions) ([]Object, error) {
+func (m *MockStorageClient) Query(arg0 context.Context, arg1 Query, arg2 ...QueryOptions) (*ObjectQueryResult, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Query", varargs...)
-	ret0, _ := ret[0].([]Object)
+	ret0, _ := ret[0].(*ObjectQueryResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -95,15 +94,16 @@ func (mr *MockStorageClientMockRecorder) Query(arg0, arg1 interface{}, arg2 ...i
 }
 
 // Save mocks base method.
-func (m *MockStorageClient) Save(arg0 context.Context, arg1 *Object, arg2 ...SaveOptions) error {
+func (m *MockStorageClient) Save(arg0 context.Context, arg1 *Object, arg2 ...SaveOptions) (*Object, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Save", varargs...)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*Object)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Save indicates an expected call of Save.
