@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
@@ -48,20 +47,8 @@ func setDefault() (string, string) {
 func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort int, readyChan chan struct{}, stopChan <-chan struct{}, errChan chan error) {
 	namespaceName := "radius-system"
 	serviceName := "contour-envoy"
+	label := "app.kubernetes.io/component=envoy"
 	remotePort := 8080
-
-	// Get the Ingress Service
-	service, err := client.CoreV1().Services(namespaceName).Get(ctx, serviceName, metav1.GetOptions{})
-	if err != nil {
-		errChan <- err
-		return
-	}
-
-	labels := []string{}
-	for key, val := range service.Spec.Selector {
-		labels = append(labels, key+"="+val)
-	}
-	label := strings.Join(labels, ",")
 
 	// Get the backing pod of the Ingress Service
 	pods, err := client.CoreV1().Pods(namespaceName).List(ctx, metav1.ListOptions{LabelSelector: label, Limit: 1})

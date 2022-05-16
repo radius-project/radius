@@ -100,5 +100,22 @@ func testRequest(t *testing.T, client *http.Client, application string, url stri
 	require.NoError(t, err)
 
 	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusNotFound {
+		// Retry with localhost to support local dev tests
+		localReq, err := http.NewRequest(http.MethodGet, url+"/healthz", nil)
+		require.NoError(t, err)
+
+		localReq.Host = "localhost"
+
+		localRes, err := client.Do(localReq)
+		require.NoError(t, err)
+
+		defer localRes.Body.Close()
+
+		require.Equal(t, expectedStatusCode, localRes.StatusCode)
+		return
+	}
+
 	require.Equal(t, expectedStatusCode, res.StatusCode)
 }
