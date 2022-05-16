@@ -1,0 +1,39 @@
+{
+    "parameters": {
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
+      "api-version": "2022-03-15-privatepreview"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "value": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/sqlDatabases/sql0",
+              "name": "sql0",
+              "type": "Applications.Connector/sqlDatabases",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+              }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Connector/sqlDatabases/sql1",
+              "name": "sql1",
+              "type": "Applications.Connector/sqlDatabases",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+                "database": "testDatabase",
+                "server": "testAccount1.sql.cosmos.azure.com"
+              }
+            }
+          ],
+          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Connector/sqlDatabases?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+        }
+      }
+    }
+  }
+  

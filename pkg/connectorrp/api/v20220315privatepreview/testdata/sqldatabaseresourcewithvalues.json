@@ -1,0 +1,10 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/sqlDatabases/sql0",
+    "name": "sql0",
+    "type": "Applications.Connector/sqlDatabases",
+    "properties": {
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "database": "testDatabase",
+        "server": "testAccount1.sql.cosmos.azure.com"
+    }
+}

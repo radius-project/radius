@@ -1,0 +1,43 @@
+{
+    "parameters": {
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
+      "api-version": "2022-03-15-privatepreview"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "value": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+              "name": "redis0",
+              "type": "Applications.Connector/redisCaches",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache"
+              }
+            },
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Connector/redisCaches/redis1",
+              "name": "redis1",
+              "type": "Applications.Connector/redisCaches",
+              "properties": {
+                "provisioningState": "Succeeded",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+                "host":"myrediscache.redis.cache.windows.net",
+                "port":"6380",
+                "secrets": {
+                  "connectionString": "myrediscache.redis.cache.windows.net:6380",
+                  "password": "testPassword"
+                }
+              }
+            }
+          ],
+          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Connector/redisCaches?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+        }
+      }
+    }
+  }
+  

@@ -124,3 +124,219 @@ func (p *MongoDatabasesListPager) PageResponse() MongoDatabasesListResponse {
 	return p.current
 }
 
+// RedisCachesListBySubscriptionPager provides operations for iterating over paged responses.
+type RedisCachesListBySubscriptionPager struct {
+	client *RedisCachesClient
+	current RedisCachesListBySubscriptionResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, RedisCachesListBySubscriptionResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *RedisCachesListBySubscriptionPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *RedisCachesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.RedisCacheList.NextLink == nil || len(*p.current.RedisCacheList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listBySubscriptionHandleError(resp)
+		return false
+	}
+	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current RedisCachesListBySubscriptionResponse page.
+func (p *RedisCachesListBySubscriptionPager) PageResponse() RedisCachesListBySubscriptionResponse {
+	return p.current
+}
+
+// RedisCachesListPager provides operations for iterating over paged responses.
+type RedisCachesListPager struct {
+	client *RedisCachesClient
+	current RedisCachesListResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, RedisCachesListResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *RedisCachesListPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *RedisCachesListPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.RedisCacheList.NextLink == nil || len(*p.current.RedisCacheList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listHandleError(resp)
+		return false
+	}
+	result, err := p.client.listHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current RedisCachesListResponse page.
+func (p *RedisCachesListPager) PageResponse() RedisCachesListResponse {
+	return p.current
+}
+
+// SQLDatabasesListBySubscriptionPager provides operations for iterating over paged responses.
+type SQLDatabasesListBySubscriptionPager struct {
+	client *SQLDatabasesClient
+	current SQLDatabasesListBySubscriptionResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, SQLDatabasesListBySubscriptionResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *SQLDatabasesListBySubscriptionPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *SQLDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.SQLDatabaseList.NextLink == nil || len(*p.current.SQLDatabaseList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listBySubscriptionHandleError(resp)
+		return false
+	}
+	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current SQLDatabasesListBySubscriptionResponse page.
+func (p *SQLDatabasesListBySubscriptionPager) PageResponse() SQLDatabasesListBySubscriptionResponse {
+	return p.current
+}
+
+// SQLDatabasesListPager provides operations for iterating over paged responses.
+type SQLDatabasesListPager struct {
+	client *SQLDatabasesClient
+	current SQLDatabasesListResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, SQLDatabasesListResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *SQLDatabasesListPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *SQLDatabasesListPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.SQLDatabaseList.NextLink == nil || len(*p.current.SQLDatabaseList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listHandleError(resp)
+		return false
+	}
+	result, err := p.client.listHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current SQLDatabasesListResponse page.
+func (p *SQLDatabasesListPager) PageResponse() SQLDatabasesListResponse {
+	return p.current
+}
+
