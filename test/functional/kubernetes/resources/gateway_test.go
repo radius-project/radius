@@ -67,9 +67,9 @@ func Test_Gateway(t *testing.T) {
 				localPort := 8888
 				readyChan := make(chan struct{}, 1)
 				stopChan := make(chan struct{}, 1)
+				errorChan := make(chan error)
 
-				go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, readyChan, stopChan)
-				defer close(stopChan)
+				go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, readyChan, stopChan, errorChan)
 
 				// Send requests to backing container via port-forward
 				url := fmt.Sprintf("http://%s:%d", localHostname, localPort)

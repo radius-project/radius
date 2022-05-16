@@ -45,7 +45,7 @@ func setDefault() (string, string) {
 	return defaultDockerReg, imageTag
 }
 
-func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort int, readyChan chan struct{}, stopChan <-chan struct{}) error {
+func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort int, readyChan chan struct{}, stopChan <-chan struct{}, errChan chan error) {
 	namespaceName := "radius-system"
 	serviceName := "contour-envoy"
 	remotePort := 8080
@@ -53,7 +53,8 @@ func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Conf
 	// Get the Ingress Service
 	service, err := client.CoreV1().Services(namespaceName).Get(ctx, serviceName, metav1.GetOptions{})
 	if err != nil {
-		return err
+		errChan <- err
+		return
 	}
 
 	labels := []string{}
@@ -65,11 +66,13 @@ func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Conf
 	// Get the backing pod of the Ingress Service
 	pods, err := client.CoreV1().Pods(namespaceName).List(ctx, metav1.ListOptions{LabelSelector: label, Limit: 1})
 	if err != nil {
-		return err
+		errChan <- err
+		return
 	}
 
 	if len(pods.Items) == 0 {
-		return fmt.Errorf("no pods exist for service: %s", serviceName)
+		errChan <- fmt.Errorf("no pods exist for service: %s", serviceName)
+		return
 	}
 
 	pod := pods.Items[0]
@@ -83,7 +86,8 @@ func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Conf
 
 	transport, upgrader, err := spdy.RoundTripperFor(config)
 	if err != nil {
-		return err
+		errChan <- err
+		return
 	}
 
 	out := os.Stdout
@@ -94,9 +98,10 @@ func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Conf
 
 	fw, err := portforward.NewOnAddresses(dialer, []string{localHostname}, ports, stopChan, readyChan, out, errOut)
 	if err != nil {
-		return err
+		errChan <- err
+		return
 	}
 
 	// Run the port-forward with the desired configuration
-	return fw.ForwardPorts()
+	errChan <- fw.ForwardPorts()
 }
