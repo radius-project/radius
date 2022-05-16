@@ -11,7 +11,6 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
@@ -21,12 +20,12 @@ import (
 
 var _ ctrl.ControllerInterface = (*GetOperationStatus)(nil)
 
-// GetOperationStatus
+// GetOperationStatus is the controller implementation to get an async operation status.
 type GetOperationStatus struct {
 	ctrl.BaseController
 }
 
-// NewGetOperationStatus
+// NewGetOperationStatus creates a new GetOperationStatus.
 func NewGetOperationStatus(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
 	return &GetOperationStatus{
 		BaseController: ctrl.BaseController{
@@ -36,17 +35,18 @@ func NewGetOperationStatus(storageClient store.StorageClient, jobEngine deployme
 	}, nil
 }
 
+// Run returns the async operation status.
+// Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 func (e *GetOperationStatus) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	os := &datamodel.OperationStatus{}
+	// TODO: Add additional validation
+
+	os := &datamodel.AsyncOperationStatus{}
 	_, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, os)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	// TODO: Based on the provisioning state (if in terminal state), update endTime and percentComplete
-
-	versioned, _ := converter.OperationStatusDataModelToVersioned(os, serviceCtx.APIVersion)
-	return rest.NewOKResponse(versioned), nil
+	return rest.NewOKResponse(os.AsyncOperationStatus), nil
 }
