@@ -20,9 +20,8 @@ import (
 )
 
 const (
-	osmReleaseName     = "osm"
-	osmHelmRepo        = "https://openservicemesh.github.io/osm"
-	OsmSystemNamespace = "osm-system"
+	osmReleaseName = "osm"
+	osmHelmRepo    = "https://openservicemesh.github.io/osm"
 )
 
 // currently we only have the chartversion option
@@ -33,7 +32,7 @@ type OsmOptions struct {
 func ApplyOsmHelmChart(options OsmOptions) error {
 	var helmOutput strings.Builder
 
-	helmConf, err := HelmConfig(OsmSystemNamespace, helmOutput)
+	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -56,7 +55,7 @@ func ApplyOsmHelmChart(options OsmOptions) error {
 	_, err = histClient.Run(radiusReleaseName)
 	//if a previous release is not found
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("Installing new OSM Kubernetes environment to namespace: %s", OsmSystemNamespace)
+		output.LogInfo("Installing new OSM Kubernetes environment to namespace: %s", RadiusSystemNamespace)
 
 		//Installation of osm
 		err = runOsmHelmInstall(helmConf, helmChart)
