@@ -70,6 +70,23 @@ func ApplyOsmHelmChart(options OsmOptions) error {
 }
 
 func runOsmHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
-	// TO IMPLEMENT
-	return nil
+	installClient := helm.NewInstall(helmConf)
+	installClient.Namespace = RadiusSystemNamespace
+	installClient.ReleaseName = osmReleaseName
+	installClient.Wait = true
+	installClient.Timeout = installTimeout
+	return runInstall(installClient, helmChart)
+}
+
+func RunOsmHelmUninstall(helmConf *helm.Configuration) error {
+	output.LogInfo("Uninstalling OSM from namespace: %s", RadiusSystemNamespace)
+	uninstallClient := helm.NewUninstall(helmConf)
+	uninstallClient.Timeout = uninstallTimeout
+	uninstallClient.Wait = true
+	_, err := uninstallClient.Run(osmReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("OSM not found")
+		return nil
+	}
+	return err
 }
