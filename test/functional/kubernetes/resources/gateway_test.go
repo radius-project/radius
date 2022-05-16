@@ -91,7 +91,7 @@ func Test_Gateway(t *testing.T) {
 }
 
 func testRequest(t *testing.T, client *http.Client, application string, url string, expectedStatusCode int) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url+"/healthz", nil)
 	require.NoError(t, err)
 
 	req.Host = application
