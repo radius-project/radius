@@ -1,0 +1,9 @@
+{
+    "statusCode": 200,
+    "body": "{}",
+    "headers": {
+        "Location": [
+            "http://example.com/asyncresponseID"
+        ]
+    } 
+}

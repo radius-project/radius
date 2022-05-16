@@ -1,0 +1,7 @@
+{
+    "url": "http://example.com/some-path?query=yes",
+    "method": "PUT",
+    "headers": {
+    },
+    "body": ""
+}

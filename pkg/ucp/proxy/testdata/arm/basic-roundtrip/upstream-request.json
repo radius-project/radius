@@ -1,0 +1,4 @@
+{
+    "url": "http://ucp.example.com/some-path?query=yes",
+    "method": "GET"
+}

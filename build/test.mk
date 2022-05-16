@@ -31,3 +31,7 @@ ENV_SETUP=$(GOBIN)/setup-envtest
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
+
+.PHONY: generate-controller-gen-installed
+test-get-envtools:
+	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)

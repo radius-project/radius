@@ -1,0 +1,9 @@
+{
+    "statusCode": 200,
+    "body": "{}",
+    "headers": {
+        "Azure-Asyncoperation": [
+            "http://example.com/asyncresponseID"
+        ]
+    } 
+}
