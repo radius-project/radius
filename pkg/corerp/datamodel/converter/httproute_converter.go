@@ -8,7 +8,8 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/corerp/api"
+	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
@@ -22,7 +23,7 @@ func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (
 		return versioned, err
 
 	default:
-		return nil, datamodel.ErrUnsupportedAPIVersion
+		return nil, basedatamodel.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -38,6 +39,6 @@ func HTTPRouteDataModelFromVersioned(content []byte, version string) (*datamodel
 		return dm.(*datamodel.HTTPRoute), err
 
 	default:
-		return nil, datamodel.ErrUnsupportedAPIVersion
+		return nil, basedatamodel.ErrUnsupportedAPIVersion
 	}
 }

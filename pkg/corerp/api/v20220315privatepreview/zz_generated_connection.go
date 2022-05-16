@@ -33,7 +33,7 @@ type connectionOptions struct {
 	PerRetryPolicies []policy.Policy
 }
 
-// connection - REST API for Radius Application Environment
+// connection - REST API for Applications.Core Environment Resource
 type connection struct {
 	u string
 	p runtime.Pipeline

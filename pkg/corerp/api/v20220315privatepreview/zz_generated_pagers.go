@@ -10,20 +10,19 @@ package v20220315privatepreview
 
 import (
 	"context"
-	"net/http"
-	"reflect"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"net/http"
+	"reflect"
 )
 
 // ApplicationsListBySubscriptionPager provides operations for iterating over paged responses.
 type ApplicationsListBySubscriptionPager struct {
-	client    *ApplicationsClient
-	current   ApplicationsListBySubscriptionResponse
-	err       error
+	client *ApplicationsClient
+	current ApplicationsListBySubscriptionResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, ApplicationsListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, ApplicationsListBySubscriptionResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -48,7 +47,7 @@ func (p *ApplicationsListBySubscriptionPager) NextPage(ctx context.Context) bool
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -73,11 +72,11 @@ func (p *ApplicationsListBySubscriptionPager) PageResponse() ApplicationsListByS
 
 // ApplicationsListPager provides operations for iterating over paged responses.
 type ApplicationsListPager struct {
-	client    *ApplicationsClient
-	current   ApplicationsListResponse
-	err       error
+	client *ApplicationsClient
+	current ApplicationsListResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, ApplicationsListResponse) (*policy.Request, error)
+	advancer func(context.Context, ApplicationsListResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -102,7 +101,7 @@ func (p *ApplicationsListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -127,11 +126,11 @@ func (p *ApplicationsListPager) PageResponse() ApplicationsListResponse {
 
 // EnvironmentsListBySubscriptionPager provides operations for iterating over paged responses.
 type EnvironmentsListBySubscriptionPager struct {
-	client    *EnvironmentsClient
-	current   EnvironmentsListBySubscriptionResponse
-	err       error
+	client *EnvironmentsClient
+	current EnvironmentsListBySubscriptionResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, EnvironmentsListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, EnvironmentsListBySubscriptionResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -156,7 +155,7 @@ func (p *EnvironmentsListBySubscriptionPager) NextPage(ctx context.Context) bool
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -181,11 +180,11 @@ func (p *EnvironmentsListBySubscriptionPager) PageResponse() EnvironmentsListByS
 
 // EnvironmentsListPager provides operations for iterating over paged responses.
 type EnvironmentsListPager struct {
-	client    *EnvironmentsClient
-	current   EnvironmentsListResponse
-	err       error
+	client *EnvironmentsClient
+	current EnvironmentsListResponse
+	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer  func(context.Context, EnvironmentsListResponse) (*policy.Request, error)
+	advancer func(context.Context, EnvironmentsListResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
@@ -210,7 +209,7 @@ func (p *EnvironmentsListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.client.con.Pipeline().Do(req)
+	resp, err := p.	client.con.Pipeline().Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -232,3 +231,112 @@ func (p *EnvironmentsListPager) NextPage(ctx context.Context) bool {
 func (p *EnvironmentsListPager) PageResponse() EnvironmentsListResponse {
 	return p.current
 }
+
+// HTTPRoutesListBySubscriptionPager provides operations for iterating over paged responses.
+type HTTPRoutesListBySubscriptionPager struct {
+	client *HTTPRoutesClient
+	current HTTPRoutesListBySubscriptionResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, HTTPRoutesListBySubscriptionResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *HTTPRoutesListBySubscriptionPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *HTTPRoutesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.HTTPRouteResourceList.NextLink == nil || len(*p.current.HTTPRouteResourceList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listBySubscriptionHandleError(resp)
+		return false
+	}
+	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current HTTPRoutesListBySubscriptionResponse page.
+func (p *HTTPRoutesListBySubscriptionPager) PageResponse() HTTPRoutesListBySubscriptionResponse {
+	return p.current
+}
+
+// HTTPRoutesListPager provides operations for iterating over paged responses.
+type HTTPRoutesListPager struct {
+	client *HTTPRoutesClient
+	current HTTPRoutesListResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, HTTPRoutesListResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *HTTPRoutesListPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *HTTPRoutesListPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.HTTPRouteResourceList.NextLink == nil || len(*p.current.HTTPRouteResourceList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listHandleError(resp)
+		return false
+	}
+	result, err := p.client.listHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current HTTPRoutesListResponse page.
+func (p *HTTPRoutesListPager) PageResponse() HTTPRoutesListResponse {
+	return p.current
+}
+
