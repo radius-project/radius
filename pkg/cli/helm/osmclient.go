@@ -11,12 +11,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	// "github.com/project-radius/radius/pkg/cli/azure"
+	// "helm.sh/helm/v3/pkg/chart/loader"
 )
 
 const (
@@ -25,9 +25,52 @@ const (
 	OsmSystemNamespace = "osm-system"
 )
 
-// double check this 
-type osmOptions struct {
-	ChartPath              string
-	ChartVersion           string
-	Image                  string
+// currently we only have the chartversion option
+type OsmOptions struct {
+	ChartVersion string
+}
+
+func ApplyOsmHelmChart(options OsmOptions) error {
+	var helmOutput strings.Builder
+
+	helmConf, err := HelmConfig(OsmSystemNamespace, helmOutput)
+	if err != nil {
+		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+	}
+
+	var helmChart *chart.Chart
+	// ChartPath is not one of the osmoptions, so we will just retrieve the chart from the container registry
+	helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, osmHelmRepo, osmReleaseName)
+
+	if err != nil {
+		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
+	}
+
+	// Retrieve the history
+	histClient := helm.NewHistory(helmConf)
+	histClient.Max = 1 // Only need to check if at least 1 exists
+
+	//Inokve the installation of osm control plane
+
+	//retrieve the history of the releases
+	_, err = histClient.Run(radiusReleaseName)
+	//if a previous release is not found
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		output.LogInfo("Installing new OSM Kubernetes environment to namespace: %s", OsmSystemNamespace)
+
+		//Installation of osm
+		err = runOsmHelmInstall(helmConf, helmChart)
+		if err != nil {
+			return fmt.Errorf("failed to run osm helm install, err: %w, helm output: %s", err, helmOutput.String())
+		}
+	} else if err == nil {
+		output.LogInfo("Found existing OSM Kubernetes installation")
+	}
+	return err
+
+}
+
+func runOsmHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
+	// TO IMPLEMENT
+	return nil
 }
