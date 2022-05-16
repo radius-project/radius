@@ -66,3 +66,25 @@ func Test_Render_User_Secrets(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 	require.Equal(t, 1, len(output.SecretValues))
 }
+
+func Test_Render_NoQueueSpecified(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{}
+
+	resource := renderers.RendererResource{
+		ApplicationName: applicationName,
+		ResourceName:    resourceName,
+		ResourceType:    ResourceType,
+		Definition: map[string]interface{}{
+			"host": "localhost",
+			"port": 42,
+			"secrets": map[string]string{
+				"connectionString": "admin:deadbeef@localhost:42",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	require.Error(t, err)
+	require.Equal(t, "queue name must be specified", err.Error())
+}

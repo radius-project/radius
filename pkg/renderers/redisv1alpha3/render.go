@@ -98,6 +98,7 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 		},
 	}
 	if properties.Resource == nil {
+		// Using cluster credentials
 		computedValues["username"] = renderers.ComputedValueReference{
 			Value: "",
 		}
