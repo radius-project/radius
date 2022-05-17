@@ -148,5 +148,10 @@ func UninstallOnCluster(ctx context.Context) error {
 		return err
 	}
 
+	err = RunOsmHelmUninstall(helmConf)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
