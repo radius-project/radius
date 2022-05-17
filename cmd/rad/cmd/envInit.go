@@ -112,7 +112,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 		}, nil
 	}
 
-	clientID, err := prompt.Text("Enter the `appId` of the service principal used to create Azure resources:\nFor example, by using:\n`az ad sp create-for-rbac`\nFor more information, see: https://docs.microsoft.com/en-us/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac", prompt.UUIDv4Validator)
+	clientID, err := prompt.Text("Enter the `appId` of the service principal used to create Azure resources:\nFor example, by using:\n`az ad sp create-for-rbac --role Owner`\nFor more information, see: https://docs.microsoft.com/en-us/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac", prompt.UUIDv4Validator)
 	if err != nil {
 		return nil, err
 	}
