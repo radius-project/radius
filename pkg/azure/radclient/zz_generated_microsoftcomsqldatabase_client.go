@@ -73,7 +73,7 @@ func (client *MicrosoftComSQLDatabaseClient) createOrUpdate(ctx context.Context,
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *MicrosoftComSQLDatabaseClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLDatabaseName string, parameters MicrosoftSQLDatabaseResource, options *MicrosoftComSQLDatabaseBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *MicrosoftComSQLDatabaseClient) deleteOperation(ctx context.Context
 
 // deleteCreateRequest creates the Delete request.
 func (client *MicrosoftComSQLDatabaseClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLDatabaseName string, options *MicrosoftComSQLDatabaseBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *MicrosoftComSQLDatabaseClient) Get(ctx context.Context, resourceGr
 
 // getCreateRequest creates the Get request.
 func (client *MicrosoftComSQLDatabaseClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, microsoftSQLDatabaseName string, options *MicrosoftComSQLDatabaseGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *MicrosoftComSQLDatabaseClient) List(ctx context.Context, resourceG
 
 // listCreateRequest creates the List request.
 func (client *MicrosoftComSQLDatabaseClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *MicrosoftComSQLDatabaseListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

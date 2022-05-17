@@ -73,7 +73,7 @@ func (client *RadiusResourceClient) deleteOperation(ctx context.Context, resourc
 
 // deleteCreateRequest creates the Delete request.
 func (client *RadiusResourceClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, radiusResourceType string, radiusResourceName string, options *RadiusResourceBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -137,7 +137,7 @@ func (client *RadiusResourceClient) Get(ctx context.Context, resourceGroupName s
 
 // getCreateRequest creates the Get request.
 func (client *RadiusResourceClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, radiusResourceType string, radiusResourceName string, options *RadiusResourceGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -219,7 +219,7 @@ func (client *RadiusResourceClient) List(ctx context.Context, resourceGroupName 
 
 // listCreateRequest creates the List request.
 func (client *RadiusResourceClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *RadiusResourceListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

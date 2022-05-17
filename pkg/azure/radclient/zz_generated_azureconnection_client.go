@@ -73,7 +73,7 @@ func (client *AzureConnectionClient) createOrUpdate(ctx context.Context, resourc
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *AzureConnectionClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureConnectionName string, parameters AzureConnectionResource, options *AzureConnectionBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *AzureConnectionClient) deleteOperation(ctx context.Context, resour
 
 // deleteCreateRequest creates the Delete request.
 func (client *AzureConnectionClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureConnectionName string, options *AzureConnectionBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *AzureConnectionClient) Get(ctx context.Context, resourceGroupName 
 
 // getCreateRequest creates the Get request.
 func (client *AzureConnectionClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, azureConnectionName string, options *AzureConnectionGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *AzureConnectionClient) List(ctx context.Context, resourceGroupName
 
 // listCreateRequest creates the List request.
 func (client *AzureConnectionClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *AzureConnectionListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

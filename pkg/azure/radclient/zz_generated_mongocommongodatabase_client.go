@@ -73,7 +73,7 @@ func (client *MongoComMongoDatabaseClient) createOrUpdate(ctx context.Context, r
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *MongoComMongoDatabaseClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDatabaseName string, parameters MongoDatabaseResource, options *MongoComMongoDatabaseBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *MongoComMongoDatabaseClient) deleteOperation(ctx context.Context, 
 
 // deleteCreateRequest creates the Delete request.
 func (client *MongoComMongoDatabaseClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDatabaseName string, options *MongoComMongoDatabaseBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *MongoComMongoDatabaseClient) Get(ctx context.Context, resourceGrou
 
 // getCreateRequest creates the Get request.
 func (client *MongoComMongoDatabaseClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, mongoDatabaseName string, options *MongoComMongoDatabaseGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *MongoComMongoDatabaseClient) List(ctx context.Context, resourceGro
 
 // listCreateRequest creates the List request.
 func (client *MongoComMongoDatabaseClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *MongoComMongoDatabaseListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

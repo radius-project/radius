@@ -2551,7 +2551,7 @@
     }
   },
   "paths": {
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application": {
       "get": {
         "description": "List the Application resources deployed in the application.",
         "operationId": "Application_List",
@@ -2585,7 +2585,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}": {
       "delete": {
         "description": "Deletes a Application resource.",
         "operationId": "Application_Delete",
@@ -2721,7 +2721,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection": {
       "get": {
         "description": "List the AzureConnection resources deployed in the application.",
         "operationId": "AzureConnection_List",
@@ -2758,7 +2758,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/AzureConnection/{azureConnectionName}": {
       "delete": {
         "description": "Deletes a AzureConnection resource.",
         "operationId": "AzureConnection_Delete",
@@ -2903,7 +2903,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container": {
       "get": {
         "description": "List the Container resources deployed in the application.",
         "operationId": "Container_List",
@@ -2940,7 +2940,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}": {
       "delete": {
         "description": "Deletes a Container resource.",
         "operationId": "Container_Delete",
@@ -3085,7 +3085,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender": {
       "get": {
         "description": "List the Extender resources deployed in the application.",
         "operationId": "Extender_List",
@@ -3122,7 +3122,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}": {
       "delete": {
         "description": "Deletes a Extender resource.",
         "operationId": "Extender_Delete",
@@ -3267,7 +3267,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Gateway": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Gateway": {
       "get": {
         "description": "List the Gateway resources deployed in the application.",
         "operationId": "Gateway_List",
@@ -3304,7 +3304,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Gateway/{gatewayName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Gateway/{gatewayName}": {
       "delete": {
         "description": "Deletes a Gateway resource.",
         "operationId": "Gateway_Delete",
@@ -3449,7 +3449,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute": {
       "get": {
         "description": "List the HttpRoute resources deployed in the application.",
         "operationId": "HttpRoute_List",
@@ -3486,7 +3486,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}": {
       "delete": {
         "description": "Deletes a HttpRoute resource.",
         "operationId": "HttpRoute_Delete",
@@ -3631,7 +3631,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/RadiusResource": {
       "get": {
         "description": "List the RadiusResource resources deployed in the application.",
         "operationId": "RadiusResource_List",
@@ -3668,7 +3668,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume": {
       "get": {
         "description": "List the Volume resources deployed in the application.",
         "operationId": "Volume_List",
@@ -3705,7 +3705,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}": {
       "delete": {
         "description": "Deletes a Volume resource.",
         "operationId": "Volume_Delete",
@@ -3850,7 +3850,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute": {
       "get": {
         "description": "List the dapr.io.InvokeHttpRoute resources deployed in the application.",
         "operationId": "dapr.io.InvokeHttpRoute_List",
@@ -3887,7 +3887,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}": {
       "delete": {
         "description": "Deletes a dapr.io.InvokeHttpRoute resource.",
         "operationId": "dapr.io.InvokeHttpRoute_Delete",
@@ -4032,7 +4032,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic": {
       "get": {
         "description": "List the dapr.io.PubSubTopic resources deployed in the application.",
         "operationId": "dapr.io.PubSubTopic_List",
@@ -4069,7 +4069,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}": {
       "delete": {
         "description": "Deletes a dapr.io.PubSubTopic resource.",
         "operationId": "dapr.io.PubSubTopic_Delete",
@@ -4214,7 +4214,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.SecretStore": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.SecretStore": {
       "get": {
         "description": "List the dapr.io.SecretStore resources deployed in the application.",
         "operationId": "dapr.io.SecretStore_List",
@@ -4251,7 +4251,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.SecretStore/{daprSecretStoreName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.SecretStore/{daprSecretStoreName}": {
       "delete": {
         "description": "Deletes a dapr.io.SecretStore resource.",
         "operationId": "dapr.io.SecretStore_Delete",
@@ -4396,7 +4396,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore": {
       "get": {
         "description": "List the dapr.io.StateStore resources deployed in the application.",
         "operationId": "dapr.io.StateStore_List",
@@ -4433,7 +4433,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}": {
       "delete": {
         "description": "Deletes a dapr.io.StateStore resource.",
         "operationId": "dapr.io.StateStore_Delete",
@@ -4578,7 +4578,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase": {
       "get": {
         "description": "List the microsoft.com.SQLDatabase resources deployed in the application.",
         "operationId": "microsoft.com.SQLDatabase_List",
@@ -4615,7 +4615,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/microsoft.com.SQLDatabase/{microsoftSQLDatabaseName}": {
       "delete": {
         "description": "Deletes a microsoft.com.SQLDatabase resource.",
         "operationId": "microsoft.com.SQLDatabase_Delete",
@@ -4760,7 +4760,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase": {
       "get": {
         "description": "List the mongo.com.MongoDatabase resources deployed in the application.",
         "operationId": "mongo.com.MongoDatabase_List",
@@ -4797,7 +4797,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/mongo.com.MongoDatabase/{mongoDatabaseName}": {
       "delete": {
         "description": "Deletes a mongo.com.MongoDatabase resource.",
         "operationId": "mongo.com.MongoDatabase_Delete",
@@ -4942,7 +4942,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue": {
       "get": {
         "description": "List the rabbitmq.com.MessageQueue resources deployed in the application.",
         "operationId": "rabbitmq.com.MessageQueue_List",
@@ -4979,7 +4979,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}": {
       "delete": {
         "description": "Deletes a rabbitmq.com.MessageQueue resource.",
         "operationId": "rabbitmq.com.MessageQueue_Delete",
@@ -5124,7 +5124,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache": {
       "get": {
         "description": "List the redislabs.com.RedisCache resources deployed in the application.",
         "operationId": "redislabs.com.RedisCache_List",
@@ -5161,7 +5161,7 @@
         ]
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}": {
       "delete": {
         "description": "Deletes a redislabs.com.RedisCache resource.",
         "operationId": "redislabs.com.RedisCache_Delete",
@@ -5306,7 +5306,7 @@
         }
       }
     },
-    "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/{radiusResourceType}/{radiusResourceName}": {
       "delete": {
         "description": "Deletes a RadiusResource resource.",
         "operationId": "RadiusResource_Delete",

@@ -73,7 +73,7 @@ func (client *ExtenderClient) createOrUpdate(ctx context.Context, resourceGroupN
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *ExtenderClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, extenderName string, parameters ExtenderResource, options *ExtenderBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *ExtenderClient) deleteOperation(ctx context.Context, resourceGroup
 
 // deleteCreateRequest creates the Delete request.
 func (client *ExtenderClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, extenderName string, options *ExtenderBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *ExtenderClient) Get(ctx context.Context, resourceGroupName string,
 
 // getCreateRequest creates the Get request.
 func (client *ExtenderClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, extenderName string, options *ExtenderGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender/{extenderName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *ExtenderClient) List(ctx context.Context, resourceGroupName string
 
 // listCreateRequest creates the List request.
 func (client *ExtenderClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ExtenderListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Extender"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

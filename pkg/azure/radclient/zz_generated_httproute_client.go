@@ -73,7 +73,7 @@ func (client *HTTPRouteClient) createOrUpdate(ctx context.Context, resourceGroup
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *HTTPRouteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, parameters HTTPRouteResource, options *HTTPRouteBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *HTTPRouteClient) deleteOperation(ctx context.Context, resourceGrou
 
 // deleteCreateRequest creates the Delete request.
 func (client *HTTPRouteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, options *HTTPRouteBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *HTTPRouteClient) Get(ctx context.Context, resourceGroupName string
 
 // getCreateRequest creates the Get request.
 func (client *HTTPRouteClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, httpRouteName string, options *HTTPRouteGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute/{httpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *HTTPRouteClient) List(ctx context.Context, resourceGroupName strin
 
 // listCreateRequest creates the List request.
 func (client *HTTPRouteClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *HTTPRouteListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/HttpRoute"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

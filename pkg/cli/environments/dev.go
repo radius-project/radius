@@ -155,12 +155,14 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
+
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL, e.EnableUCP, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
-	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
+	//subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 	return &azure.ARMDiagnosticsClient{
 		K8sTypedClient:   k8sClient,
 		RestConfig:       config,
@@ -172,12 +174,13 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 }
 
 func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL, e.EnableUCP, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
-	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
+	//subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
 	return &azure.ARMManagementClient{
 		Connection:      connection,

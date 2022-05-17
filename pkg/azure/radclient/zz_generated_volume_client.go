@@ -73,7 +73,7 @@ func (client *VolumeClient) createOrUpdate(ctx context.Context, resourceGroupNam
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *VolumeClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, parameters VolumeResource, options *VolumeBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *VolumeClient) deleteOperation(ctx context.Context, resourceGroupNa
 
 // deleteCreateRequest creates the Delete request.
 func (client *VolumeClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *VolumeClient) Get(ctx context.Context, resourceGroupName string, a
 
 // getCreateRequest creates the Get request.
 func (client *VolumeClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, volumeName string, options *VolumeGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume/{volumeName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *VolumeClient) List(ctx context.Context, resourceGroupName string, 
 
 // listCreateRequest creates the List request.
 func (client *VolumeClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *VolumeListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Volume"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

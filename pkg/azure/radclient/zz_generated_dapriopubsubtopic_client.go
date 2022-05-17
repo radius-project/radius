@@ -73,7 +73,7 @@ func (client *DaprIoPubSubTopicClient) createOrUpdate(ctx context.Context, resou
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *DaprIoPubSubTopicClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicName string, parameters DaprPubSubTopicResource, options *DaprIoPubSubTopicBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *DaprIoPubSubTopicClient) deleteOperation(ctx context.Context, reso
 
 // deleteCreateRequest creates the Delete request.
 func (client *DaprIoPubSubTopicClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicName string, options *DaprIoPubSubTopicBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *DaprIoPubSubTopicClient) Get(ctx context.Context, resourceGroupNam
 
 // getCreateRequest creates the Get request.
 func (client *DaprIoPubSubTopicClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprPubSubTopicName string, options *DaprIoPubSubTopicGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic/{daprPubSubTopicName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *DaprIoPubSubTopicClient) List(ctx context.Context, resourceGroupNa
 
 // listCreateRequest creates the List request.
 func (client *DaprIoPubSubTopicClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoPubSubTopicListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.PubSubTopic"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

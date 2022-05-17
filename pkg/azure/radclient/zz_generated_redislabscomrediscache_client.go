@@ -73,7 +73,7 @@ func (client *RedislabsComRedisCacheClient) createOrUpdate(ctx context.Context, 
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *RedislabsComRedisCacheClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisCacheName string, parameters RedisCacheResource, options *RedislabsComRedisCacheBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *RedislabsComRedisCacheClient) deleteOperation(ctx context.Context,
 
 // deleteCreateRequest creates the Delete request.
 func (client *RedislabsComRedisCacheClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisCacheName string, options *RedislabsComRedisCacheBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *RedislabsComRedisCacheClient) Get(ctx context.Context, resourceGro
 
 // getCreateRequest creates the Get request.
 func (client *RedislabsComRedisCacheClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, redisCacheName string, options *RedislabsComRedisCacheGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache/{redisCacheName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *RedislabsComRedisCacheClient) List(ctx context.Context, resourceGr
 
 // listCreateRequest creates the List request.
 func (client *RedislabsComRedisCacheClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *RedislabsComRedisCacheListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/redislabs.com.RedisCache"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

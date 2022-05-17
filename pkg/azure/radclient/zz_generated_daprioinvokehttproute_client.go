@@ -73,7 +73,7 @@ func (client *DaprIoInvokeHTTPRouteClient) createOrUpdate(ctx context.Context, r
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *DaprIoInvokeHTTPRouteClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeHTTPRouteName string, parameters DaprInvokeHTTPRouteResource, options *DaprIoInvokeHTTPRouteBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *DaprIoInvokeHTTPRouteClient) deleteOperation(ctx context.Context, 
 
 // deleteCreateRequest creates the Delete request.
 func (client *DaprIoInvokeHTTPRouteClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeHTTPRouteName string, options *DaprIoInvokeHTTPRouteBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *DaprIoInvokeHTTPRouteClient) Get(ctx context.Context, resourceGrou
 
 // getCreateRequest creates the Get request.
 func (client *DaprIoInvokeHTTPRouteClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprInvokeHTTPRouteName string, options *DaprIoInvokeHTTPRouteGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute/{daprInvokeHttpRouteName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *DaprIoInvokeHTTPRouteClient) List(ctx context.Context, resourceGro
 
 // listCreateRequest creates the List request.
 func (client *DaprIoInvokeHTTPRouteClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoInvokeHTTPRouteListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.InvokeHttpRoute"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

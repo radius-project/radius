@@ -73,7 +73,7 @@ func (client *ContainerClient) createOrUpdate(ctx context.Context, resourceGroup
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *ContainerClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerName string, parameters ContainerResource, options *ContainerBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *ContainerClient) deleteOperation(ctx context.Context, resourceGrou
 
 // deleteCreateRequest creates the Delete request.
 func (client *ContainerClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerName string, options *ContainerBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *ContainerClient) Get(ctx context.Context, resourceGroupName string
 
 // getCreateRequest creates the Get request.
 func (client *ContainerClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, containerName string, options *ContainerGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container/{containerName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *ContainerClient) List(ctx context.Context, resourceGroupName strin
 
 // listCreateRequest creates the List request.
 func (client *ContainerClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ContainerListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/Container"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

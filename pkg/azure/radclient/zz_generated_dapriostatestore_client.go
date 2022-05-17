@@ -73,7 +73,7 @@ func (client *DaprIoStateStoreClient) createOrUpdate(ctx context.Context, resour
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *DaprIoStateStoreClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreName string, parameters DaprStateStoreResource, options *DaprIoStateStoreBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *DaprIoStateStoreClient) deleteOperation(ctx context.Context, resou
 
 // deleteCreateRequest creates the Delete request.
 func (client *DaprIoStateStoreClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreName string, options *DaprIoStateStoreBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *DaprIoStateStoreClient) Get(ctx context.Context, resourceGroupName
 
 // getCreateRequest creates the Get request.
 func (client *DaprIoStateStoreClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, daprStateStoreName string, options *DaprIoStateStoreGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore/{daprStateStoreName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *DaprIoStateStoreClient) List(ctx context.Context, resourceGroupNam
 
 // listCreateRequest creates the List request.
 func (client *DaprIoStateStoreClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *DaprIoStateStoreListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/dapr.io.StateStore"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

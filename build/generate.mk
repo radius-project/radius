@@ -24,7 +24,7 @@ generate-autorest-installed:
 	@echo "$(ARROW) Detecting autorest..."
 	@which autorest > /dev/null || { echo "run 'npm install -g autorest' to install autorest"; exit 1; }
 	@echo "$(ARROW) OK"
-
+	
 .PHONY: generate-openapi-specs
 generate-openapi-specs:
 	@echo "$(ARROW) Generating OpenAPI schema manifest..."
@@ -36,6 +36,17 @@ generate-openapi-specs:
 		pkg/radrp/schema/application.json \
 		pkg/radrp/schema/traits.json \
 		pkg/radrp/schema/*/*.json
+
+    
+	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' pkg/radrp/schema/application.json
+	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' schemas/rest-api-specs/radius.json
+	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' pkg/radrp/schema/common-types.json
+	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' pkg/radrp/schema/resource-types.json
+	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' pkg/radrp/schema/traits.json
+
+
+
+ 	
 
 .PHONY: generate-radclient
 generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).

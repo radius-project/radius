@@ -73,7 +73,7 @@ func (client *RabbitmqComMessageQueueClient) createOrUpdate(ctx context.Context,
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *RabbitmqComMessageQueueClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQMessageQueueName string, parameters RabbitMQMessageQueueResource, options *RabbitmqComMessageQueueBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -153,7 +153,7 @@ func (client *RabbitmqComMessageQueueClient) deleteOperation(ctx context.Context
 
 // deleteCreateRequest creates the Delete request.
 func (client *RabbitmqComMessageQueueClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQMessageQueueName string, options *RabbitmqComMessageQueueBeginDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -213,7 +213,7 @@ func (client *RabbitmqComMessageQueueClient) Get(ctx context.Context, resourceGr
 
 // getCreateRequest creates the Get request.
 func (client *RabbitmqComMessageQueueClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, rabbitMQMessageQueueName string, options *RabbitmqComMessageQueueGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue/{rabbitMQMessageQueueName}"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
@@ -282,7 +282,7 @@ func (client *RabbitmqComMessageQueueClient) List(ctx context.Context, resourceG
 
 // listCreateRequest creates the List request.
 func (client *RabbitmqComMessageQueueClient) listCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *RabbitmqComMessageQueueListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue"
+	urlPath := "/resourceGroups/{resourceGroupName}/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/{applicationName}/rabbitmq.com.MessageQueue"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}

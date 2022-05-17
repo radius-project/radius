@@ -42,6 +42,7 @@ const (
 	APIServerBasePath        = "/apis/api.radius.dev/v1alpha3"
 	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
 	DeploymentsUCPPath       = "/apis/api.ucp.dev/v1alpha3/planes/deployments/local"
+	ApisUCPUrl               = "/apis/api.ucp.dev/v1alpha3/planes/radius/local"
 	Location                 = "Location"
 	AzureAsyncOperation      = "Azure-AsyncOperation"
 )
@@ -111,11 +112,16 @@ func CreateRestRoundTripper(context string, group string, overrideURL string) (h
 	return NewLocationRewriteRoundTripper(merged.Host, client), err
 }
 
-func CreateAPIServerConnection(context string, overrideURL string) (string, *arm.Connection, error) {
+func CreateAPIServerConnection(context string, overrideURL string, enableUCP bool, subscription string) (string, *arm.Connection, error) {
 
 	baseURL, roundTripper, err := GetBaseUrlAndRoundTripper(overrideURL, "api.radius.dev", context)
 	if err != nil {
 		return "", nil, err
+	}
+	if enableUCP {
+		baseURL = ApisUCPUrl
+	} else {
+		baseURL = baseURL + "/subscriptions/" + subscription
 	}
 
 	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{

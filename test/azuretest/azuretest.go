@@ -49,7 +49,7 @@ func NewTestOptions(t *testing.T) TestOptions {
 	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
 	require.NoError(t, err, "failed to create runtime client")
 
-	_, radiusConnection, err := kubernetes.CreateAPIServerConnection(az.Context, az.APIServerBaseURL)
+	_, radiusConnection, err := kubernetes.CreateAPIServerConnection(az.Context, az.APIServerBaseURL, false, "dummy")
 	require.NoError(t, err, "failed to create API Server connection")
 
 	radiusBaseURL, radiusRoundTripper, err := kubernetes.GetBaseUrlAndRoundTripper(az.APIServerBaseURL, "api.radius.dev", az.Context)
