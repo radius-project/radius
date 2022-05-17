@@ -142,6 +142,72 @@ type EnvironmentsUpdateResult struct {
 	EnvironmentResource
 }
 
+// GatewaysCreateOrUpdateResponse contains the response from method Gateways.CreateOrUpdate.
+type GatewaysCreateOrUpdateResponse struct {
+	GatewaysCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysCreateOrUpdateResult contains the result from method Gateways.CreateOrUpdate.
+type GatewaysCreateOrUpdateResult struct {
+	GatewayResource
+}
+
+// GatewaysDeleteResponse contains the response from method Gateways.Delete.
+type GatewaysDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysGetResponse contains the response from method Gateways.Get.
+type GatewaysGetResponse struct {
+	GatewaysGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysGetResult contains the result from method Gateways.Get.
+type GatewaysGetResult struct {
+	GatewayResource
+}
+
+// GatewaysListBySubscriptionResponse contains the response from method Gateways.ListBySubscription.
+type GatewaysListBySubscriptionResponse struct {
+	GatewaysListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysListBySubscriptionResult contains the result from method Gateways.ListBySubscription.
+type GatewaysListBySubscriptionResult struct {
+	GatewayResourceList
+}
+
+// GatewaysListResponse contains the response from method Gateways.List.
+type GatewaysListResponse struct {
+	GatewaysListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysListResult contains the result from method Gateways.List.
+type GatewaysListResult struct {
+	GatewayResourceList
+}
+
+// GatewaysUpdateResponse contains the response from method Gateways.Update.
+type GatewaysUpdateResponse struct {
+	GatewaysUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysUpdateResult contains the result from method Gateways.Update.
+type GatewaysUpdateResult struct {
+	GatewayResource
+}
+
 // HTTPRoutesCreateOrUpdateResponse contains the response from method HTTPRoutes.CreateOrUpdate.
 type HTTPRoutesCreateOrUpdateResponse struct {
 	HTTPRoutesCreateOrUpdateResult
