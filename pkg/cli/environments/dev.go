@@ -38,6 +38,7 @@ type LocalEnvironment struct {
 	APIServerBaseURL           string     `mapstructure:"apiserverbaseurl,omitempty"`
 	APIDeploymentEngineBaseURL string     `mapstructure:"apideploymentenginebaseurl,omitempty"`
 	Providers                  *Providers `mapstructure:"providers"`
+	EnableUCP                  bool       `mapstructure:"enableucp,omitempty"`
 
 	EnableUCP bool `mapstructure:"enableucp,omitempty"`
 	// We tolerate and allow extra fields - this helps with forwards compat.
@@ -133,14 +134,19 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 	op.Sender = &devsender{RoundTripper: roundTripper}
 	op.Authorizer = auth
 
-	ucp := azclients.NewUCPClient(url)
-	ucp.PollingDelay = 5 * time.Second
-	ucp.Authorizer = auth
-	ucp.Sender = &devsender{RoundTripper: roundTripper}
+	var ucpClient *azclients.UCPClient
+	if e.EnableUCP {
+		ucp := azclients.NewUCPClient(url)
+		ucpClient = &ucp
+		ucpClient.PollingDelay = 5 * time.Second
+		ucpClient.Authorizer = auth
+		ucpClient.Sender = &devsender{RoundTripper: roundTripper}
+	}
 
 	client := &azure.ARMDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
+		UCPClient:        ucpClient,
 		SubscriptionID:   subscriptionId,
 		ResourceGroup:    resourceGroup,
 		Tags:             tags,

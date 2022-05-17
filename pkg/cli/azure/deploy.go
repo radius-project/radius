@@ -27,7 +27,7 @@ type ARMDeploymentClient struct {
 	ResourceGroup    string
 	SubscriptionID   string
 	Client           resources.DeploymentsClient
-	UCPClient        azclients.UCPClient
+	UCPClient        *azclients.UCPClient
 	OperationsClient resources.DeploymentOperationsClient
 	Tags             map[string]*string
 }
@@ -78,6 +78,9 @@ func (dc *ARMDeploymentClient) startDeployment(ctx context.Context, name string,
 		return nil, err
 	}
 
+	if dc.UCPClient != nil {
+
+	}
 	future, err := dc.UCPClient.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Template:   template,

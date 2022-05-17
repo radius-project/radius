@@ -106,13 +106,18 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	op.PollingDelay = 5 * time.Second
 	op.Sender = &sender{RoundTripper: roundTripper}
 
-	ucp := azclients.NewUCPClient(url)
-	ucp.PollingDelay = 5 * time.Second
-	ucp.Sender = &sender{RoundTripper: roundTripper}
+	var ucpClient *azclients.UCPClient
+	if e.EnableUCP {
+		t := azclients.NewUCPClient(url)
+		ucpClient = &t
+		ucpClient.PollingDelay = 5 * time.Second
+		ucpClient.Sender = &sender{RoundTripper: roundTripper}
+	}
 
 	return &azure.ARMDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
+		UCPClient:        ucpClient,
 		SubscriptionID:   e.SubscriptionID,
 		ResourceGroup:    e.ResourceGroup,
 		Tags:             tags,
