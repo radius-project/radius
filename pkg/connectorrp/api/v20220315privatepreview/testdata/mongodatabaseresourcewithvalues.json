@@ -1,0 +1,15 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/mongoDatabases/mongo0",
+    "name": "mongo0",
+    "type": "Applications.Connector/mongoDatabases",
+    "properties": {
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "host": "testAccount1.mongo.cosmos.azure.com",
+        "port": 10255,
+        "secrets": {
+          "username": "testUser",
+          "password": "testPassword",
+          "connectionString": "test-connection-string"
+        }
+    }
+}

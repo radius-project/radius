@@ -232,27 +232,27 @@ func (p *EnvironmentsListPager) PageResponse() EnvironmentsListResponse {
 	return p.current
 }
 
-// MongoDatabasesListBySubscriptionPager provides operations for iterating over paged responses.
-type MongoDatabasesListBySubscriptionPager struct {
-	client *MongoDatabasesClient
-	current MongoDatabasesListBySubscriptionResponse
+// HTTPRoutesListBySubscriptionPager provides operations for iterating over paged responses.
+type HTTPRoutesListBySubscriptionPager struct {
+	client *HTTPRoutesClient
+	current HTTPRoutesListBySubscriptionResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, MongoDatabasesListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, HTTPRoutesListBySubscriptionResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *MongoDatabasesListBySubscriptionPager) Err() error {
+func (p *HTTPRoutesListBySubscriptionPager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *MongoDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+func (p *HTTPRoutesListBySubscriptionPager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.MongoDatabaseList.NextLink == nil || len(*p.current.MongoDatabaseList.NextLink) == 0 {
+		if p.current.HTTPRouteResourceList.NextLink == nil || len(*p.current.HTTPRouteResourceList.NextLink) == 0 {
 			return false
 		}
 		req, err = p.advancer(ctx, p.current)
@@ -281,32 +281,32 @@ func (p *MongoDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bo
 	return true
 }
 
-// PageResponse returns the current MongoDatabasesListBySubscriptionResponse page.
-func (p *MongoDatabasesListBySubscriptionPager) PageResponse() MongoDatabasesListBySubscriptionResponse {
+// PageResponse returns the current HTTPRoutesListBySubscriptionResponse page.
+func (p *HTTPRoutesListBySubscriptionPager) PageResponse() HTTPRoutesListBySubscriptionResponse {
 	return p.current
 }
 
-// MongoDatabasesListPager provides operations for iterating over paged responses.
-type MongoDatabasesListPager struct {
-	client *MongoDatabasesClient
-	current MongoDatabasesListResponse
+// HTTPRoutesListPager provides operations for iterating over paged responses.
+type HTTPRoutesListPager struct {
+	client *HTTPRoutesClient
+	current HTTPRoutesListResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, MongoDatabasesListResponse) (*policy.Request, error)
+	advancer func(context.Context, HTTPRoutesListResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *MongoDatabasesListPager) Err() error {
+func (p *HTTPRoutesListPager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *MongoDatabasesListPager) NextPage(ctx context.Context) bool {
+func (p *HTTPRoutesListPager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.MongoDatabaseList.NextLink == nil || len(*p.current.MongoDatabaseList.NextLink) == 0 {
+		if p.current.HTTPRouteResourceList.NextLink == nil || len(*p.current.HTTPRouteResourceList.NextLink) == 0 {
 			return false
 		}
 		req, err = p.advancer(ctx, p.current)
@@ -335,8 +335,8 @@ func (p *MongoDatabasesListPager) NextPage(ctx context.Context) bool {
 	return true
 }
 
-// PageResponse returns the current MongoDatabasesListResponse page.
-func (p *MongoDatabasesListPager) PageResponse() MongoDatabasesListResponse {
+// PageResponse returns the current HTTPRoutesListResponse page.
+func (p *HTTPRoutesListPager) PageResponse() HTTPRoutesListResponse {
 	return p.current
 }
 

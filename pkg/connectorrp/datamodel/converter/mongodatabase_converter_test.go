@@ -8,12 +8,22 @@ package converter
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"testing"
 
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
+
+func loadTestData(testfile string) []byte {
+	d, err := ioutil.ReadFile(testfile)
+	if err != nil {
+		return nil
+	}
+	return d
+}
 
 // Validates type conversion between versioned client side data model and RP data model.
 func TestMongoDatabaseDataModelToVersioned(t *testing.T) {
@@ -33,7 +43,7 @@ func TestMongoDatabaseDataModelToVersioned(t *testing.T) {
 			"",
 			"unsupported",
 			nil,
-			datamodel.ErrUnsupportedAPIVersion,
+			basedatamodel.ErrUnsupportedAPIVersion,
 		},
 	}
 
@@ -67,12 +77,12 @@ func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 		{
 			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-invalid.json",
 			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field FromResource.properties.fromResource.source of type string"),
+			errors.New("json: cannot unmarshal number into Go struct field MongoDatabaseProperties.properties.resource of type string"),
 		},
 		{
 			"",
 			"unsupported",
-			datamodel.ErrUnsupportedAPIVersion,
+			basedatamodel.ErrUnsupportedAPIVersion,
 		},
 	}
 

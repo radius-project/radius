@@ -9,9 +9,16 @@
 generate: generate-arm-json generate-radclient generate-go generate-bicep-types ## Generates all targets.
 
 .PHONY: generate-arm-json
-generate-arm-json: ## Generates ARM-JSON from our environment creation Bicep files
+generate-arm-json: generate-jq-installed ## Generates ARM-JSON from our environment creation Bicep files
 	@echo "$(ARROW) Updating ARM-JSON..."
 	az bicep build --file deploy/rp-full.bicep
+	jq 'del(.metadata, .resources[].properties.template.metadata)' deploy/rp-full.json  > deploy/rp-full.tmp && mv deploy/rp-full.tmp deploy/rp-full.json
+
+.PHONY: generate-jq-installed
+generate-jq-installed:
+	@echo "$(ARROW) Detecting jq..."
+	@which node > /dev/null || { echo "jq is a required dependency"; exit 1; }
+	@echo "$(ARROW) OK"
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -23,6 +30,7 @@ generate-node-installed:
 generate-autorest-installed:
 	@echo "$(ARROW) Detecting autorest..."
 	@which autorest > /dev/null || { echo "run 'npm install -g autorest' to install autorest"; exit 1; }
+	autorest --reset
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-specs
@@ -64,7 +72,7 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	go generate -v ./...
 
 .PHONY: generate-bicep-types
-generate-bicep-types: generate-openapi-specs ## Generate Bicep extensibility types
+generate-bicep-types: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
 	@echo "$(ARROW) Build autorest.bicep..."
 	cd hack/bicep-types-radius/src/autorest.bicep; \

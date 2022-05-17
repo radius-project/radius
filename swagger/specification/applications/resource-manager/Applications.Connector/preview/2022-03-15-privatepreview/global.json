@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Connector Management API",
+    "title": "Applications.Connector Management APIs",
     "version": "2022-03-15-privatepreview"
   },
   "host": "management.azure.com",
@@ -38,12 +38,13 @@
       "type": "string",
       "readOnly": true,
       "enum": [
-        "Accepted",
-        "Canceled",
-        "Deleting",
+        "Succeeded",
         "Failed",
-        "Provisioning",
-        "Succeeded"
+        "Canceled",
+        "Accepted",
+        "Updating",
+        "Deleting",
+        "Provisioning"
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
@@ -58,40 +59,32 @@
         "app.id"
       ]
     },
-    "FromResource": {
-      "description": "Target resource that the connector binds to",
+    "BasicResourceProperties": {
+      "description": "Basic properties of a Radius resource.",
       "type": "object",
       "properties": {
-        "source": {
-          "readOnly": true,
-          "type": "string",
-          "description": "Fully qualified resource ID for the resource that the connector binds to",
-          "example": [
-            "account::mongodb.id"
-          ]
-        }
-      },
-      "required": [
-        "source"
-      ]
-    },
-    "SecretsValues": {
-      "description": "Secrets values provided for the resource",
-      "type": "object",
-      "properties": {
-        "connectionString": {
-          "description": "The connection string used to connect to the target mongo database the connector binds to",
-          "type": "string"
-        },
-        "username": {
-          "description": "The username to use when connecting to the target mongo database",
-          "type": "string"
-        },
-        "password": {
-          "description": "The password to use when connecting to the target mongo database",
-          "type": "string"
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of the resource"
         }
       }
+    },
+    "ResourceStatus": {
+      "description": "Status of a resource.",
+      "type": "object",
+      "properties": {
+        "outputResources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          }
+        }
+      }
+    },
+    "OutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object",
+      "properties": {}
     }
   },
   "paths": {
@@ -101,7 +94,7 @@
           "Operations"
         ],
         "description": "Retrieves a list of available API operations",
-        "operationId": "ConnectorOperations_List",
+        "operationId": "Operations_List",
         "produces": [
           "application/json"
         ],

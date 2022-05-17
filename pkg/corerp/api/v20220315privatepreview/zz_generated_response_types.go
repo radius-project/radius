@@ -142,57 +142,69 @@ type EnvironmentsUpdateResult struct {
 	EnvironmentResource
 }
 
-// MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
-type MongoDatabasesCreateOrUpdateResponse struct {
-	MongoDatabasesCreateOrUpdateResult
+// HTTPRoutesCreateOrUpdateResponse contains the response from method HTTPRoutes.CreateOrUpdate.
+type HTTPRoutesCreateOrUpdateResponse struct {
+	HTTPRoutesCreateOrUpdateResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesCreateOrUpdateResult contains the result from method MongoDatabases.CreateOrUpdate.
-type MongoDatabasesCreateOrUpdateResult struct {
-	MongoDatabaseResource
+// HTTPRoutesCreateOrUpdateResult contains the result from method HTTPRoutes.CreateOrUpdate.
+type HTTPRoutesCreateOrUpdateResult struct {
+	HTTPRouteResource
 }
 
-// MongoDatabasesDeleteResponse contains the response from method MongoDatabases.Delete.
-type MongoDatabasesDeleteResponse struct {
+// HTTPRoutesDeleteResponse contains the response from method HTTPRoutes.Delete.
+type HTTPRoutesDeleteResponse struct {
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesGetResponse contains the response from method MongoDatabases.Get.
-type MongoDatabasesGetResponse struct {
-	MongoDatabasesGetResult
+// HTTPRoutesGetResponse contains the response from method HTTPRoutes.Get.
+type HTTPRoutesGetResponse struct {
+	HTTPRoutesGetResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesGetResult contains the result from method MongoDatabases.Get.
-type MongoDatabasesGetResult struct {
-	MongoDatabaseResource
+// HTTPRoutesGetResult contains the result from method HTTPRoutes.Get.
+type HTTPRoutesGetResult struct {
+	HTTPRouteResource
 }
 
-// MongoDatabasesListBySubscriptionResponse contains the response from method MongoDatabases.ListBySubscription.
-type MongoDatabasesListBySubscriptionResponse struct {
-	MongoDatabasesListBySubscriptionResult
+// HTTPRoutesListBySubscriptionResponse contains the response from method HTTPRoutes.ListBySubscription.
+type HTTPRoutesListBySubscriptionResponse struct {
+	HTTPRoutesListBySubscriptionResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesListBySubscriptionResult contains the result from method MongoDatabases.ListBySubscription.
-type MongoDatabasesListBySubscriptionResult struct {
-	MongoDatabaseList
+// HTTPRoutesListBySubscriptionResult contains the result from method HTTPRoutes.ListBySubscription.
+type HTTPRoutesListBySubscriptionResult struct {
+	HTTPRouteResourceList
 }
 
-// MongoDatabasesListResponse contains the response from method MongoDatabases.List.
-type MongoDatabasesListResponse struct {
-	MongoDatabasesListResult
+// HTTPRoutesListResponse contains the response from method HTTPRoutes.List.
+type HTTPRoutesListResponse struct {
+	HTTPRoutesListResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesListResult contains the result from method MongoDatabases.List.
-type MongoDatabasesListResult struct {
-	MongoDatabaseList
+// HTTPRoutesListResult contains the result from method HTTPRoutes.List.
+type HTTPRoutesListResult struct {
+	HTTPRouteResourceList
+}
+
+// HTTPRoutesUpdateResponse contains the response from method HTTPRoutes.Update.
+type HTTPRoutesUpdateResponse struct {
+	HTTPRoutesUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesUpdateResult contains the result from method HTTPRoutes.Update.
+type HTTPRoutesUpdateResult struct {
+	HTTPRouteResource
 }
 
