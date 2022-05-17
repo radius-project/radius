@@ -142,14 +142,14 @@ func (dc *ARMDeploymentClient) waitForCompletion(ctx context.Context, future res
 	var err error
 	var deployment resources.DeploymentExtended
 	if dc.UCPClient != nil {
-		err := future.WaitForCompletionRef(ctx, dc.UCPClient.Client)
+		err = future.WaitForCompletionRef(ctx, dc.UCPClient.Client)
 		if err != nil {
 			return clients.DeploymentResult{}, err
 		}
 
 		deployment, err = dc.UCPClient.Result(&future)
 	} else {
-		err := future.WaitForCompletionRef(ctx, dc.Client.Client)
+		err = future.WaitForCompletionRef(ctx, dc.Client.Client)
 		if err != nil {
 			return clients.DeploymentResult{}, err
 		}
