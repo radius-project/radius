@@ -133,6 +133,11 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 	op.Sender = &devsender{RoundTripper: roundTripper}
 	op.Authorizer = auth
 
+	ucp := azclients.NewUCPClient(url)
+	ucp.PollingDelay = 5 * time.Second
+	ucp.Authorizer = auth
+	ucp.Sender = &devsender{RoundTripper: roundTripper}
+
 	client := &azure.ARMDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,

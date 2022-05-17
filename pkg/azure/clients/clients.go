@@ -45,6 +45,14 @@ func NewGroupsClient(subscriptionID string, authorizer autorest.Authorizer) reso
 	return rgc
 }
 
+func NewUCPClient(uri string) UCPClient {
+	rgc := NewUCPClientWithBaseURI(uri)
+
+	// Don't timeout, let the user cancel
+	rgc.PollingDuration = 0
+	return rgc
+}
+
 func NewSubscriptionClient(authorizer autorest.Authorizer) subscription.SubscriptionsClient {
 	sc := subscription.NewSubscriptionsClient()
 	sc.Authorizer = authorizer

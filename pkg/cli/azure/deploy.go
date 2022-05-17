@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
@@ -26,6 +27,7 @@ type ARMDeploymentClient struct {
 	ResourceGroup    string
 	SubscriptionID   string
 	Client           resources.DeploymentsClient
+	UCPClient        azclients.UCPClient
 	OperationsClient resources.DeploymentOperationsClient
 	Tags             map[string]*string
 }
@@ -76,7 +78,7 @@ func (dc *ARMDeploymentClient) startDeployment(ctx context.Context, name string,
 		return nil, err
 	}
 
-	future, err := dc.Client.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
+	future, err := dc.UCPClient.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Template:   template,
 			Parameters: options.Parameters,
@@ -125,12 +127,12 @@ func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExte
 }
 
 func (dc *ARMDeploymentClient) waitForCompletion(ctx context.Context, future resources.DeploymentsCreateOrUpdateFuture) (clients.DeploymentResult, error) {
-	err := future.WaitForCompletionRef(ctx, dc.Client.Client)
+	err := future.WaitForCompletionRef(ctx, dc.UCPClient.Client)
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
 
-	deployment, err := future.Result(dc.Client)
+	deployment, err := dc.UCPClient.Result(&future)
 
 	if err != nil {
 		return clients.DeploymentResult{}, err
