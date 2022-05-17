@@ -18,16 +18,16 @@ import (
 )
 
 const (
-	osmReleaseName = "osm"
-	osmHelmRepo    = "https://openservicemesh.github.io/osm"
+	OSMReleaseName = "osm"
+	OSMHelmRepo    = "https://openservicemesh.github.io/osm"
 )
 
 // currently we only have the chartversion option
-type OsmOptions struct {
+type OSMOptions struct {
 	ChartVersion string
 }
 
-func ApplyOsmHelmChart(options OsmOptions) error {
+func ApplyOSMHelmChart(options OSMOptions) error {
 	var helmOutput strings.Builder
 
 	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
@@ -36,8 +36,8 @@ func ApplyOsmHelmChart(options OsmOptions) error {
 	}
 
 	var helmChart *chart.Chart
-	// ChartPath is not one of the osmoptions, so we will just retrieve the chart from the container registry
-	helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, osmHelmRepo, osmReleaseName)
+	// ChartPath is not one of the OSMoptions, so we will just retrieve the chart from the container registry
+	helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, OSMHelmRepo, OSMReleaseName)
 
 	if err != nil {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
@@ -47,41 +47,41 @@ func ApplyOsmHelmChart(options OsmOptions) error {
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
-	//Inokve the installation of osm control plane
+	//Inokve the installation of OSM control plane
 
 	//retrieve the history of the releases
-	_, err = histClient.Run(osmReleaseName)
+	_, err = histClient.Run(OSMReleaseName)
 	//if a previous release is not found
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("Installing new OSM Kubernetes environment to namespace: %s", RadiusSystemNamespace)
+		output.LogInfo("Installing Open Service Mesh to namespace: %s", RadiusSystemNamespace)
 
-		//Installation of osm
-		err = runOsmHelmInstall(helmConf, helmChart)
+		//Installation of OSM
+		err = runOSMHelmInstall(helmConf, helmChart)
 		if err != nil {
-			return fmt.Errorf("failed to run osm helm install, err: %w, helm output: %s", err, helmOutput.String())
+			return fmt.Errorf("failed to run OSM helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	} else if err == nil {
-		output.LogInfo("Found existing OSM Kubernetes installation")
+		output.LogInfo("Found existing Open Service Mesh installation")
 	}
 	return err
 
 }
 
-func runOsmHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
+func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.Namespace = RadiusSystemNamespace
-	installClient.ReleaseName = osmReleaseName
+	installClient.ReleaseName = OSMReleaseName
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
 	return runInstall(installClient, helmChart)
 }
 
-func RunOsmHelmUninstall(helmConf *helm.Configuration) error {
+func RunOSMHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling OSM from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = uninstallTimeout
 	uninstallClient.Wait = true
-	_, err := uninstallClient.Run(osmReleaseName)
+	_, err := uninstallClient.Run(OSMReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
 		output.LogInfo("OSM not found")
 		return nil
