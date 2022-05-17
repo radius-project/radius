@@ -131,7 +131,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 	var baseURL string
 	var roundTripper http.RoundTripper
 	var basePath string
-	if enableucp {
+	if enableUCP {
 		basePath = UCPBasePath
 	} else {
 		basePath = DeploymentEngineBasePath
