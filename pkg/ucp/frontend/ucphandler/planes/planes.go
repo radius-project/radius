@@ -212,6 +212,10 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		httpScheme = "https"
 	}
 	ctx = context.WithValue(ctx, proxy.HttpSchemeField, httpScheme)
+	// The Host field in the request that the client makes to UCP contains the UCP Host address
+	// That address will be used to construct the URL for reverse proxying
+	ctx = context.WithValue(ctx, proxy.UCPHostField, r.Host)
+
 	sender := proxy.NewARMProxy(options, downstream, nil)
 	sender.ServeHTTP(w, r.WithContext(ctx))
 

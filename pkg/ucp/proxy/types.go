@@ -17,6 +17,7 @@ import (
 type PlaneUrlFieldType string
 type PlaneIdFieldType string
 type HttpSchemeType string
+type UCPHostType string
 
 const (
 	LocationHeader                             = "Location"
@@ -24,6 +25,7 @@ const (
 	PlaneUrlField             PlaneIdFieldType = "planeurl"
 	PlaneIdField              PlaneIdFieldType = "planeid"
 	HttpSchemeField           HttpSchemeType   = "httpscheme"
+	UCPHostField              UCPHostType      = "ucphost"
 )
 
 type DirectorFunc = func(r *http.Request)
@@ -98,13 +100,13 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
 		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
 			// This is an Async Response with a Azure-AsyncOperation Header
-			err := convertHeaderToUCPIDs(ctx, p.ProxyAddress, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
+			err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
 			if err != nil {
 				return err
 			}
 		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
 			// This is an Async Response with a Location Header
-			err := convertHeaderToUCPIDs(ctx, p.ProxyAddress, LocationHeader, locationHeader, resp)
+			err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
 			if err != nil {
 				return err
 			}
@@ -113,7 +115,7 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	return nil
 }
 
-func convertHeaderToUCPIDs(ctx context.Context, proxyAddress string, headerName string, header []string, resp *http.Response) error {
+func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []string, resp *http.Response) error {
 	segments := strings.Split(strings.TrimSuffix(strings.TrimPrefix(header[0], "/"), "/"), "/")
 	// segment 0 -> http
 	// segment 1 -> ""
@@ -127,8 +129,12 @@ func convertHeaderToUCPIDs(ctx context.Context, proxyAddress string, headerName 
 	if strings.TrimSuffix(planeURL, "/") != strings.TrimSuffix(key, "/") {
 		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", planeURL, headerName)
 	}
-	// Make sure we only have the base URL here
 
+	proxyAddress := ctx.Value(UCPHostField).(string)
+	if proxyAddress == "" {
+		return fmt.Errorf("UCP Host Address unknown. Cannot convert response header")
+	}
+	// Make sure we only have the base URL here
 	if ctx.Value(PlaneIdField) == nil {
 		return fmt.Errorf("Could not find plane ID data in %s header", headerName)
 	}
