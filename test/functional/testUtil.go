@@ -68,10 +68,9 @@ func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client) 
 	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
 }
 
-func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort int, readyChan chan struct{}, stopChan <-chan struct{}, errChan chan error) {
+func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort, remotePort int, readyChan chan struct{}, stopChan <-chan struct{}, errChan chan error) {
 	serviceName := "contour-envoy"
 	label := "app.kubernetes.io/component=envoy"
-	remotePort := 8080
 
 	// Get the backing pod of the Ingress Service
 	pods, err := client.CoreV1().Pods(RadiusSystemNamespace).List(ctx, metav1.ListOptions{LabelSelector: label, Limit: 1})

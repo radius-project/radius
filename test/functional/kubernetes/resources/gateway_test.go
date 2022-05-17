@@ -72,14 +72,22 @@ func Test_Gateway(t *testing.T) {
 				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client)
 				require.NoError(t, err)
 
-				// Setup service port-forwarding
+				var remotePort int
+				if hostname == "localhost" {
+					// contour-envoy runs on port 80 by default in local scenario
+					remotePort = 80
+				} else {
+					remotePort = 8080
+				}
+
+				// Set up pod port-forwarding for contour-envoy
 				localHostname := "localhost"
 				localPort := 8888
 				readyChan := make(chan struct{}, 1)
 				stopChan := make(chan struct{}, 1)
 				errorChan := make(chan error)
 
-				go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, readyChan, stopChan, errorChan)
+				go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, remotePort, readyChan, stopChan, errorChan)
 
 				// Send requests to backing container via port-forward
 				baseURL := fmt.Sprintf("http://%s:%d", localHostname, localPort)
