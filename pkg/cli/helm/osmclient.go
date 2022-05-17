@@ -15,8 +15,6 @@ import (
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/storage/driver"
-	// "github.com/project-radius/radius/pkg/cli/azure"
-	// "helm.sh/helm/v3/pkg/chart/loader"
 )
 
 const (
