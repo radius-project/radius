@@ -127,7 +127,7 @@ func GetBaseUrlForDeploymentEngine(overrideURL string) string {
 	return strings.TrimSuffix(overrideURL, "/") + DeploymentEngineBasePath
 }
 
-func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string, enableucp bool) (string, http.RoundTripper, error) {
+func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string, enableUCP bool) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
 	var basePath string
