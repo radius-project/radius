@@ -1,3 +1,6 @@
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieport int = 3000
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-gateway'
 
@@ -10,9 +13,15 @@ resource app 'radius.dev/Application@v1alpha3' = {
           destination: frontendroute.id
         }
         {
-          path: '/rewriteme'
+          path: '/backend1'
           destination: backendroute.id
-          replacePrefix: '/backend'
+        }
+        {
+          // Route /backend2 requests to the backend, and
+          // transform the request to /
+          path: '/backend2'
+          destination: backendroute.id
+          replacePrefix: '/'
         }
       ]
     }
@@ -26,12 +35,17 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'frontend'
     properties: {
       container: {
-        image: 'willdavsmith/frontend:test'
+        image: magpieimage
         ports: {
           web: {
-            containerPort: 8080
+            containerPort: magpieport
             provides: frontendroute.id
           }
+        }
+        readinessProbe: {
+          kind: 'httpGet'
+          containerPort: magpieport
+          path: '/healthz'
         }
       }
       connections: {
@@ -51,12 +65,17 @@ resource app 'radius.dev/Application@v1alpha3' = {
     name: 'backend'
     properties: {
       container: {
-        image: 'willdavsmith/backend:test'
+        image: magpieimage
         ports: {
           web: {
-            containerPort: 8081
+            containerPort: magpieport
             provides: backendroute.id
           }
+        }
+        readinessProbe: {
+          kind: 'httpGet'
+          containerPort: magpieport
+          path: '/healthz'
         }
       }
     }

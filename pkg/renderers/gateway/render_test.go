@@ -429,6 +429,7 @@ func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputReso
 		expectedPathRewritePolicy = &contourv1.PathRewritePolicy{
 			ReplacePrefix: []contourv1.ReplacePrefix{
 				{
+					Prefix:      expectedMatchPath,
 					Replacement: *expectedReplacePrefix,
 				},
 			},

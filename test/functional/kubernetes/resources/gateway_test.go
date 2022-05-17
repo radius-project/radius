@@ -22,6 +22,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	retryTimeout = 10
+)
+
 func Test_Gateway(t *testing.T) {
 	template := "testdata/kubernetes-resources-gateway.bicep"
 	application := "kubernetes-resources-gateway"
@@ -65,7 +69,7 @@ func Test_Gateway(t *testing.T) {
 				// Get hostname from root HTTPProxy
 				// Note: this just gets the hostname from the first root proxy
 				// that it finds. Testing multiple gateways here will not work.
-				hostname, err := functional.GetHostname(ctx, at.Options.Client)
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client)
 				require.NoError(t, err)
 
 				// Setup service port-forwarding
@@ -78,18 +82,19 @@ func Test_Gateway(t *testing.T) {
 				go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, readyChan, stopChan, errorChan)
 
 				// Send requests to backing container via port-forward
-				url := fmt.Sprintf("http://%s:%d", localHostname, localPort)
-				rewrittenURL := url + "/rewriteme"
-				invalidURL := url + "/backend"
+				baseURL := fmt.Sprintf("http://%s:%d", localHostname, localPort)
 
 				<-readyChan
 				client := &http.Client{
 					Timeout: time.Second * 10,
 				}
 
-				testRequest(t, client, hostname, url, 200)
-				testRequest(t, client, hostname, rewrittenURL, 200)
-				testRequest(t, client, hostname, invalidURL, 404)
+				testRequest(t, client, hostname, baseURL+"/healthz", 200)
+
+				// Both of these URLs route to the same backend service,
+				// but /backend2 maps to / which allows it to access /healthz
+				testRequest(t, client, hostname, baseURL+"/backend2/healthz", 200)
+				testRequest(t, client, hostname, baseURL+"/backend1/healthz", 404)
 			},
 		},
 	})
@@ -97,7 +102,7 @@ func Test_Gateway(t *testing.T) {
 }
 
 func testRequest(t *testing.T, client *http.Client, hostname, url string, expectedStatusCode int) {
-	req, err := http.NewRequest(http.MethodGet, url+"/healthz", nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	req.Host = hostname
@@ -118,7 +123,7 @@ func testRequest(t *testing.T, client *http.Client, hostname, url string, expect
 
 		if response.StatusCode != expectedStatusCode {
 			t.Logf("got status: %d, wanted: %d. retrying...", response.StatusCode, expectedStatusCode)
-			time.Sleep(1 * time.Second)
+			time.Sleep(retryTimeout * time.Second)
 			continue
 		}
 

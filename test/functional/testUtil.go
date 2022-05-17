@@ -50,7 +50,7 @@ func setDefault() (string, string) {
 	return defaultDockerReg, imageTag
 }
 
-func GetHostname(ctx context.Context, client runtime_client.Client) (string, error) {
+func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client) (string, error) {
 	var httpproxies contourv1.HTTPProxyList
 
 	err := client.List(ctx, &httpproxies, &runtime_client.ListOptions{})

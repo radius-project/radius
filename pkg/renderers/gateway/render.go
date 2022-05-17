@@ -154,6 +154,7 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 			pathRewritePolicy = &contourv1.PathRewritePolicy{
 				ReplacePrefix: []contourv1.ReplacePrefix{
 					{
+						Prefix:      *route.Path,
 						Replacement: *route.ReplacePrefix,
 					},
 				},
