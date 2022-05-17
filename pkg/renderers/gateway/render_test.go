@@ -377,8 +377,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 	}
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 
-	var expectedPathRewritePolicy *contourv1.PathRewritePolicy = nil
-	expectedPathRewritePolicy = &contourv1.PathRewritePolicy{
+	expectedPathRewritePolicy := &contourv1.PathRewritePolicy{
 		ReplacePrefix: []contourv1.ReplacePrefix{
 			{
 				Prefix:      path,
@@ -476,8 +475,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 	}
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 
-	var expectedPathRewritePolicy *contourv1.PathRewritePolicy = nil
-	expectedPathRewritePolicy = &contourv1.PathRewritePolicy{
+	expectedPathRewritePolicy := &contourv1.PathRewritePolicy{
 		ReplacePrefix: []contourv1.ReplacePrefix{
 			{
 				Prefix:      routeBPath,
