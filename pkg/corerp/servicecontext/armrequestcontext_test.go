@@ -59,6 +59,43 @@ func TestFromContext(t *testing.T) {
 	require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
 }
 
+func TestTopQueryParam(t *testing.T) {
+	topQueryParamCases := []struct {
+		desc        string
+		qpKey       string
+		qpValue     string
+		expectedTop int
+		shouldFail  bool
+	}{
+		{"no-top-query-param", "top", "", DefaultQueryItemCount, false},
+		{"invalid-top-query-param", "top", "xyz", 0, true},
+		{"out-of-bounds-top-query-param", "top", "100000", 0, true},
+		{"out-of-bounds-top-query-param", "top", "-100", 0, true},
+	}
+
+	for _, tt := range topQueryParamCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			req, err := getTestHTTPRequest()
+
+			q := req.URL.Query()
+			q.Add(tt.qpKey, tt.qpValue)
+			req.URL.RawQuery = q.Encode()
+
+			require.NoError(t, err)
+			serviceCtx, err := FromARMRequest(req, "")
+
+			if tt.shouldFail {
+				require.NotNil(t, err)
+				require.Nil(t, serviceCtx)
+			} else {
+				require.Nil(t, err)
+				require.NotNil(t, serviceCtx)
+				require.Equal(t, tt.expectedTop, serviceCtx.Top)
+			}
+		})
+	}
+}
+
 func getTestHTTPRequest() (*http.Request, error) {
 	jsonData, err := ioutil.ReadFile("./testdata/armrpcheaders.json")
 	if err != nil {

@@ -66,8 +66,8 @@ func TestListEnvironmentsRun_20220315PrivatePreview(t *testing.T) {
 		top        string
 		skipToken  bool
 	}{
-		{"list-envs-more-items-than-top", 5, 2, "2", true},
-		{"list-envs-less-items-than-top", 2, 2, "5", false},
+		{"list-envs-more-items-than-top", 10, 5, "5", true},
+		{"list-envs-less-items-than-top", 5, 5, "10", false},
 		{"list-envs-no-top", 5, 5, "", false},
 	}
 
