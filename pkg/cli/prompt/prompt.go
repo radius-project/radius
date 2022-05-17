@@ -15,8 +15,8 @@ import (
 type BinaryAnswer int
 
 const (
-	unknown = -1
-	Yes BinaryAnswer = iota
+	unknown              = -1
+	Yes     BinaryAnswer = iota
 	No
 )
 
@@ -25,9 +25,9 @@ func EmptyValidator(string) (bool, error) {
 	return true, nil
 }
 
-func UUIDv4Validator(uuid string)(bool, error) {
+func UUIDv4Validator(uuid string) (bool, error) {
 	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
-    return r.MatchString(uuid), nil
+	return r.MatchString(uuid), nil
 }
 
 // Confirm prompts the user to confirm the answer to a yes/no question.
