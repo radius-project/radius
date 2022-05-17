@@ -222,11 +222,14 @@ func (rc ARMRequestContext) SystemData() *armrpcv1.SystemData {
 // If there is a top query parameter, we use that instead of the default one.
 // This function also checks if the top parameter is within the defined limits.
 func getQueryItemCount(topQueryParam string) (int, error) {
-	topParam := DefaultQueryItemCount
-	var err error
+	if topQueryParam == "" {
+		return DefaultQueryItemCount, nil
+	}
 
-	if topQueryParam != "" {
-		topParam, err = strconv.Atoi(topQueryParam)
+	topParam, err := strconv.Atoi(topQueryParam)
+
+	if err != nil {
+		return topParam, err
 	}
 
 	if topParam > MaxQueryItemCount || topParam < MinQueryItemCount {

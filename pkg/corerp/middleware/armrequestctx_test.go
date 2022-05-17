@@ -22,9 +22,14 @@ import (
 
 func TestARMRequestCtx(t *testing.T) {
 
-	topParamError := armerrors.ErrorDetails{
+	outOfBoundsTopParamError := armerrors.ErrorDetails{
 		Code:    strconv.Itoa(http.StatusBadRequest),
 		Message: fmt.Sprintf("unexpected error: %v", servicecontext.ErrTopQueryParamOutOfBounds),
+	}
+
+	invalidTopParamError := armerrors.ErrorDetails{
+		Code:    strconv.Itoa(http.StatusBadRequest),
+		Message: "unexpected error: strconv.Atoi: parsing \"xyz\": invalid syntax",
 	}
 
 	armRequestCtxTestCases := []struct {
@@ -49,7 +54,7 @@ func TestARMRequestCtx(t *testing.T) {
 			http.StatusBadRequest,
 			false,
 			"",
-			topParamError,
+			outOfBoundsTopParamError,
 		},
 		{
 			"bad-top-query-param",
@@ -57,7 +62,7 @@ func TestARMRequestCtx(t *testing.T) {
 			http.StatusBadRequest,
 			false,
 			"",
-			topParamError,
+			invalidTopParamError,
 		},
 	}
 
