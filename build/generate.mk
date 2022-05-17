@@ -30,6 +30,7 @@ generate-node-installed:
 generate-autorest-installed:
 	@echo "$(ARROW) Detecting autorest..."
 	@which autorest > /dev/null || { echo "run 'npm install -g autorest' to install autorest"; exit 1; }
+	autorest --reset
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-specs
@@ -71,7 +72,7 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	go generate -v ./...
 
 .PHONY: generate-bicep-types
-generate-bicep-types: generate-openapi-specs ## Generate Bicep extensibility types
+generate-bicep-types: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
 	@echo "$(ARROW) Build autorest.bicep..."
 	cd hack/bicep-types-radius/src/autorest.bicep; \
