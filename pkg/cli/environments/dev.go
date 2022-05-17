@@ -88,7 +88,6 @@ func (s *devsender) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	//third parameter indicates this is not UCP env.
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, e.EnableUCP)
 
 	if err != nil {
