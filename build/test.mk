@@ -18,7 +18,7 @@ ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
 test: test-get-envtools ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -v ./pkg/... $(GOTEST_OPTS)
 
-.PHONY: generate-controller-gen-installed
+.PHONY: test-get-envtools
 test-get-envtools:
 	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 
