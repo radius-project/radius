@@ -39,6 +39,7 @@ type AzureCloudEnvironment struct {
 	Namespace                  string `mapstructure:"namespace" validate:"required"`
 	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
 	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
+	EnableUCP                  bool   `mapstructure:"enableucp,omitempty"`
 
 	EnableUCP bool `mapstructure:"enableucp,omitempty"`
 	// We tolerate and allow extra fields - this helps with forwards compat.
@@ -104,6 +105,10 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	op := azclients.NewOperationsClientWithBaseUri(url, e.SubscriptionID)
 	op.PollingDelay = 5 * time.Second
 	op.Sender = &sender{RoundTripper: roundTripper}
+
+	ucp := azclients.NewUCPClient(url)
+	ucp.PollingDelay = 5 * time.Second
+	ucp.Sender = &sender{RoundTripper: roundTripper}
 
 	return &azure.ARMDeploymentClient{
 		Client:           dc,
