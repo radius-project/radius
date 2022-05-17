@@ -22,6 +22,9 @@ spec:
       containers:
       - args:
         - --kubernetes=true
+        envFrom:
+        - secretRef: 
+            name: radius-rp
         env:
         - name: ASPNETCORE_URLS
           value: https://+:6443
