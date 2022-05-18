@@ -49,6 +49,7 @@ func (src *GatewayResource) ConvertTo() (api.DataModelInterface, error) {
 			UpdatedAPIVersion: Version,
 		},
 	}
+
 	return converted, nil
 }
 
