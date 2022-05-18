@@ -16,7 +16,7 @@ import (
 
 const (
 	timeMetricsName   = "corerp_request_duration"
-	requestMetricName = "corerp_rprequest_counts"
+	requestMetricName = "corerp_request_counts"
 	coreRPMeterName   = "rad-coreRP"
 )
 
