@@ -16,7 +16,7 @@ type AsyncController interface {
 	// Run runs async request operation.
 	Run(ctx context.Context) error
 
-	// AsyncResponseCh gets the output AsyncResponse channel.
+	// AsyncResponseCh gets the output AsyncResponse channel. Worker will listen this channel to update operationstatus record.
 	AsyncResponseCh() <-chan *AsyncReplyResponse
 	// Reply stores async request response.
 	Reply(resp *AsyncReplyResponse)
