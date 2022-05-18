@@ -71,6 +71,10 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - name: Install setup-envtest
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        run: |
+          go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Make build

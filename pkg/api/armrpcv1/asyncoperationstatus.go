@@ -8,24 +8,28 @@ package armrpcv1
 import (
 	"time"
 
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
-// AsyncOperationStatus is asynchronous operation status resource model.
-// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
+// OperationStatus represents an OperationStatus resource.
 type AsyncOperationStatus struct {
-	// ID represents the id of async operation resource.
-	ID string `json:"id"`
-	// Name is GUID representing the name of async operation resource.
-	Name string `json:"name"`
-	// Status is the provisioning status.
-	Status string `json:"status"`
-	// StartTime is the start time of async operation.
-	StartTime time.Time `json:"startTime"`
-	// EndTime is the end time of async operation.
-	EndTime *time.Time `json:"endTime,omitempty"`
-	// Optional. Properties is the result when operation is succeeded.
-	Properties interface{} `json:"properties,omitempty"`
-	// Error is the error response when operation is cancelled or failed.
+
+	// Id represents the async operation id.
+	ID string `json:"id,omitempty"`
+
+	// Name represents the async operation name and is usually set to the async operation id.
+	Name string `json:"name,omitempty"`
+
+	// Status represents the provisioning state of the resource.
+	Status basedatamodel.ProvisioningStates `json:"status,omitempty"`
+
+	// StartTime represents the async operation start time.
+	StartTime time.Time `json:"startTime,omitempty"`
+
+	// EndTime represents the async operation end time.
+	EndTime time.Time `json:"endTime,omitempty"`
+
+	// Error represents the error occured during provisioning.
 	Error *armerrors.ErrorResponse `json:"error,omitempty"`
 }
