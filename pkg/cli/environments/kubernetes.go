@@ -75,31 +75,37 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		return nil, err
 	}
 
-	dc := azclients.NewDeploymentsClientWithBaseURI(url, e.Namespace)
-
-	// Poll faster than the default, many deployments are quick
-	dc.PollingDelay = 5 * time.Second
-
-	dc.Sender = &sender{RoundTripper: roundTripper}
-
-	op := azclients.NewOperationsClientWithBaseUri(url, e.Namespace)
-	op.PollingDelay = 5 * time.Second
-	op.Sender = &sender{RoundTripper: roundTripper}
-
-	var ucpClient *azclients.UCPClient
 	if e.EnableUCP {
-		ucp := azclients.NewUCPClient(url)
-		ucpClient = &ucp
+		ucpClient := azclients.NewUCPDeploymentClient(url)
 		ucpClient.PollingDelay = 5 * time.Second
 		ucpClient.Sender = &sender{RoundTripper: roundTripper}
+
+		ucpOperationClient := azclients.NewUCPOperationClient(url)
+		ucpOperationClient.PollingDelay = 5 * time.Second
+		ucpOperationClient.Sender = &sender{RoundTripper: roundTripper}
+
+		return &azure.ARMDeploymentClient{
+			Client:           ucpClient,
+			OperationsClient: ucpOperationClient,
+			ResourceGroup:    e.Namespace,
+		}, nil
+	} else {
+		dc := azclients.NewDeploymentsClientWithBaseURI(url, e.Namespace)
+
+		// Poll faster than the default, many deployments are quick
+		dc.PollingDelay = 5 * time.Second
+
+		dc.Sender = &sender{RoundTripper: roundTripper}
+
+		op := azclients.NewOperationsClientWithBaseUri(url, e.Namespace)
+		op.PollingDelay = 5 * time.Second
+		op.Sender = &sender{RoundTripper: roundTripper}
+		return &azure.ARMDeploymentClient{
+			Client:           dc,
+			OperationsClient: op,
+			ResourceGroup:    e.Namespace,
+		}, nil
 	}
-	return &azure.ARMDeploymentClient{
-		Client:           dc,
-		UCPClient:        ucpClient,
-		OperationsClient: op,
-		SubscriptionID:   e.Namespace,
-		ResourceGroup:    e.Namespace,
-	}, nil
 }
 
 func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {

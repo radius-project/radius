@@ -6,6 +6,7 @@
 package clients
 
 import (
+	"context"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/2017-03-09/resources/mgmt/features"
@@ -36,6 +37,22 @@ import (
 // All Azure Clients should be put in this file. If you see "New(.*)Client" elsewhere,
 // please move it to this file.
 
+type AzureDeploymentClient struct {
+	resources.DeploymentsClient
+}
+
+func (client AzureDeploymentClient) GetAutorestClient() autorest.Client {
+	return client.Client
+}
+
+func (client AzureDeploymentClient) GetDeploymentClient() resources.DeploymentsClient {
+	return client.DeploymentsClient
+}
+
+func (client AzureDeploymentClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, deploymentName string, parameters resources.Deployment) (result resources.DeploymentsCreateOrUpdateFuture, err error) {
+	return client.DeploymentsClient.CreateOrUpdate(ctx, resourceGroupName, deploymentName, parameters)
+}
+
 func NewGroupsClient(subscriptionID string, authorizer autorest.Authorizer) resources.GroupsClient {
 	rgc := resources.NewGroupsClient(subscriptionID)
 	rgc.Authorizer = authorizer
@@ -45,12 +62,20 @@ func NewGroupsClient(subscriptionID string, authorizer autorest.Authorizer) reso
 	return rgc
 }
 
-func NewUCPClient(uri string) UCPClient {
-	rgc := NewUCPClientWithBaseURI(uri)
+func NewUCPDeploymentClient(uri string) UCPDeploymentsClient {
+	rgc := NewUCPDeploymentsClientWithBaseURI(uri)
 
 	// Don't timeout, let the user cancel
 	rgc.PollingDuration = 0
 	return rgc
+}
+
+func NewUCPOperationClient(uri string) UCPOperationsClient {
+	op := NewUCPOperationsClientWithBaseURI(uri)
+
+	// Don't timeout, let the user cancel
+	op.PollingDuration = 0
+	return op
 }
 
 func NewSubscriptionClient(authorizer autorest.Authorizer) subscription.SubscriptionsClient {
@@ -123,17 +148,21 @@ func NewWorkspacesClient(subscriptionID string, authorizer autorest.Authorizer) 
 	return lwc
 }
 
-func NewDeploymentsClient(subscriptionID string, authorizer autorest.Authorizer) resources.DeploymentsClient {
+func NewDeploymentsClient(subscriptionID string, authorizer autorest.Authorizer) AzureDeploymentClient {
 	dc := resources.NewDeploymentsClient(subscriptionID)
 	dc.Authorizer = authorizer
 
 	// Don't set a timeout, the user can cancel the command if they want a timeout.
 	dc.PollingDuration = 0
 
-	return dc
+	return AzureDeploymentClient{dc}
 }
 
-func NewDeploymentsClientWithBaseURI(uri string, subscriptionID string) resources.DeploymentsClient {
+func NewDeploymentsClientWithBaseURI(uri string, subscriptionID string) AzureDeploymentClient {
+	return AzureDeploymentClient{newDeploymentsClientWithBaseURI(uri, subscriptionID)}
+}
+
+func newDeploymentsClientWithBaseURI(uri string, subscriptionID string) resources.DeploymentsClient {
 	dc := resources.NewDeploymentsClientWithBaseURI(uri, subscriptionID)
 	// Don't set a timeout, the user can cancel the command if they want a timeout.
 	dc.PollingDuration = 0

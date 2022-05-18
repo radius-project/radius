@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
@@ -23,12 +23,20 @@ import (
 // OperationPollInterval is the interval used for polling of deployment operations for progress.
 const OperationPollInterval time.Duration = time.Second * 5
 
+type GenericDeploymentClient interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, deploymentName string, parameters resources.Deployment) (result resources.DeploymentsCreateOrUpdateFuture, err error)
+	GetAutorestClient() autorest.Client
+	GetDeploymentClient() resources.DeploymentsClient
+}
+
+type GenericOperationClient interface {
+	List(ctx context.Context, resourceGroupName string, deploymentName string, top *int32) (resources.DeploymentOperationsListResultPage, error)
+}
+
 type ARMDeploymentClient struct {
 	ResourceGroup    string
-	SubscriptionID   string
-	Client           resources.DeploymentsClient
-	UCPClient        *azclients.UCPClient
-	OperationsClient resources.DeploymentOperationsClient
+	Client           GenericDeploymentClient
+	OperationsClient GenericOperationClient
 	Tags             map[string]*string
 }
 
@@ -77,26 +85,15 @@ func (dc *ARMDeploymentClient) startDeployment(ctx context.Context, name string,
 	if err != nil {
 		return nil, err
 	}
-	var future resources.DeploymentsCreateOrUpdateFuture
-	if dc.UCPClient != nil {
-		future, err = dc.UCPClient.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
-			Properties: &resources.DeploymentProperties{
-				Template:   template,
-				Parameters: options.Parameters,
-				Mode:       resources.DeploymentModeIncremental,
-			},
-			Tags: dc.Tags,
-		})
-	} else {
-		future, err = dc.Client.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
-			Properties: &resources.DeploymentProperties{
-				Template:   template,
-				Parameters: options.Parameters,
-				Mode:       resources.DeploymentModeIncremental,
-			},
-			Tags: dc.Tags,
-		})
-	}
+
+	future, err := dc.Client.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
+		Properties: &resources.DeploymentProperties{
+			Template:   template,
+			Parameters: options.Parameters,
+			Mode:       resources.DeploymentModeIncremental,
+		},
+		Tags: dc.Tags,
+	})
 
 	if err != nil {
 		return nil, err
@@ -141,21 +138,13 @@ func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExte
 func (dc *ARMDeploymentClient) waitForCompletion(ctx context.Context, future resources.DeploymentsCreateOrUpdateFuture) (clients.DeploymentResult, error) {
 	var err error
 	var deployment resources.DeploymentExtended
-	if dc.UCPClient != nil {
-		err = future.WaitForCompletionRef(ctx, dc.UCPClient.Client)
-		if err != nil {
-			return clients.DeploymentResult{}, err
-		}
 
-		deployment, err = dc.UCPClient.Result(&future)
-	} else {
-		err = future.WaitForCompletionRef(ctx, dc.Client.Client)
-		if err != nil {
-			return clients.DeploymentResult{}, err
-		}
-
-		deployment, err = future.Result(dc.Client)
+	err = future.WaitForCompletionRef(ctx, dc.Client.GetAutorestClient())
+	if err != nil {
+		return clients.DeploymentResult{}, err
 	}
+
+	deployment, err = future.Result(dc.Client.GetDeploymentClient())
 
 	if err != nil {
 		return clients.DeploymentResult{}, err

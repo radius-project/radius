@@ -121,38 +121,42 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		tags["azureLocation"] = resp.Location
 	}
 
-	dc := azclients.NewDeploymentsClientWithBaseURI(url, subscriptionId)
-
-	// Poll faster than the default, many deployments are quick
-	dc.PollingDelay = 5 * time.Second
-	dc.Authorizer = auth
-
-	dc.Sender = &devsender{RoundTripper: roundTripper}
-
-	op := azclients.NewOperationsClientWithBaseUri(url, subscriptionId)
-	op.PollingDelay = 5 * time.Second
-	op.Sender = &devsender{RoundTripper: roundTripper}
-	op.Authorizer = auth
-
-	var ucpClient *azclients.UCPClient
 	if e.EnableUCP {
-		ucp := azclients.NewUCPClient(url)
-		ucpClient = &ucp
+		ucpClient := azclients.NewUCPDeploymentClient(url)
 		ucpClient.PollingDelay = 5 * time.Second
-		ucpClient.Authorizer = auth
-		ucpClient.Sender = &devsender{RoundTripper: roundTripper}
-	}
+		ucpClient.Sender = &sender{RoundTripper: roundTripper}
 
-	client := &azure.ARMDeploymentClient{
-		Client:           dc,
-		OperationsClient: op,
-		UCPClient:        ucpClient,
-		SubscriptionID:   subscriptionId,
-		ResourceGroup:    resourceGroup,
-		Tags:             tags,
-	}
+		ucpOperationClient := azclients.NewUCPOperationClient(url)
+		ucpOperationClient.PollingDelay = 5 * time.Second
+		ucpOperationClient.Sender = &sender{RoundTripper: roundTripper}
 
-	return client, nil
+		return &azure.ARMDeploymentClient{
+			Client:           ucpClient,
+			OperationsClient: ucpOperationClient,
+			ResourceGroup:    resourceGroup,
+			Tags:             tags,
+		}, nil
+	} else {
+		dc := azclients.NewDeploymentsClientWithBaseURI(url, subscriptionId)
+
+		// Poll faster than the default, many deployments are quick
+		dc.PollingDelay = 5 * time.Second
+		dc.Authorizer = auth
+
+		dc.Sender = &devsender{RoundTripper: roundTripper}
+
+		op := azclients.NewOperationsClientWithBaseUri(url, subscriptionId)
+		op.PollingDelay = 5 * time.Second
+		op.Sender = &devsender{RoundTripper: roundTripper}
+		op.Authorizer = auth
+		client := &azure.ARMDeploymentClient{
+			Client:           dc,
+			OperationsClient: op,
+			ResourceGroup:    resourceGroup,
+			Tags:             tags,
+		}
+		return client, nil
+	}
 }
 
 func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {

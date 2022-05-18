@@ -709,7 +709,7 @@ func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name
 		return resources.DeploymentExtended{}, err
 	}
 
-	dep, err := op.Result(dc)
+	dep, err := op.Result(dc.DeploymentsClient)
 	if err != nil {
 		return resources.DeploymentExtended{}, err
 	}
