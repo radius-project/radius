@@ -1,0 +1,104 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package inmemory
+
+import (
+	"container/list"
+	"errors"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/queue"
+)
+
+var (
+	messageLockDuration   = 5 * time.Minute
+	messageExpireDuration = 24 * time.Hour
+)
+
+type element struct {
+	val     *queue.Message
+	visible bool
+}
+
+// inmemQueue implements in-memory queue for dev/test
+type inmemQueue struct {
+	v   *list.List
+	vMu sync.Mutex
+}
+
+func newInMemQueue() *inmemQueue {
+	return &inmemQueue{
+		v: &list.List{},
+	}
+}
+
+func (q *inmemQueue) Enqueue(msg *queue.Message) {
+	q.updateQueue()
+
+	q.vMu.Lock()
+	defer q.vMu.Unlock()
+
+	msg.Metadata.ID = uuid.NewString()
+	msg.Metadata.DequeueCount = 0
+	msg.Metadata.EnqueueAt = time.Now().UTC()
+	msg.Metadata.ExpireAt = time.Now().UTC().Add(messageExpireDuration)
+
+	q.v.PushBack(&element{val: msg, visible: true})
+}
+
+func (q *inmemQueue) Dequeue() *queue.Message {
+	q.updateQueue()
+
+	q.vMu.Lock()
+	defer q.vMu.Unlock()
+
+	for e := q.v.Front(); e != nil; e = e.Next() {
+		elem := e.Value.(*element)
+		if elem.visible {
+			elem.val.DequeueCount++
+			elem.val.NextVisibleAt = time.Now().Add(messageLockDuration)
+			elem.visible = false
+			return elem.val
+		}
+	}
+
+	return nil
+}
+
+func (q *inmemQueue) Complete(msg *queue.Message) error {
+	q.vMu.Lock()
+	defer q.vMu.Unlock()
+
+	for e := q.v.Front(); e != nil; e = e.Next() {
+		elem := e.Value.(*element)
+		if elem.val.ID == msg.ID {
+			q.v.Remove(e)
+			return nil
+		}
+	}
+	return errors.New("id not found")
+}
+
+func (q *inmemQueue) updateQueue() {
+	q.vMu.Lock()
+	defer q.vMu.Unlock()
+
+	for e := q.v.Front(); e != nil; e = e.Next() {
+		elem, ok := e.Value.(*element)
+		if !ok {
+			continue
+		}
+
+		now := time.Now().UTC()
+		if elem.val.ExpireAt.UnixNano() <= now.UnixNano() {
+			q.v.Remove(e)
+		} else if elem.val.NextVisibleAt.UnixNano() <= now.UnixNano() {
+			elem.visible = true
+		}
+	}
+}
