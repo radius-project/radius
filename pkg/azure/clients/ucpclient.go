@@ -18,8 +18,8 @@ type UCPDeploymentsClient struct {
 	resources.DeploymentsClient
 }
 
-// NewDeploymentsClientWithBaseURI creates an instance of the DeploymentsClient client using a custom endpoint.  Use
-// this when interacting with an Azure cloud that uses a non-standard base URI (sovereign clouds, Azure stack).
+// NewDeploymentsClientWithBaseURI creates an instance of the UCPDeploymentsClient client using a custom endpoint.  Use
+// this when interacting with UCP resources that uses a non-standard base URI
 func NewUCPDeploymentsClientWithBaseURI(baseURI string) UCPDeploymentsClient {
 	return UCPDeploymentsClient{newDeploymentsClientWithBaseURI(baseURI, "")}
 }
