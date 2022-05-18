@@ -44,7 +44,7 @@ func populateEnvErrors(env cli.EnvironmentSection) interface{} {
 	}
 
 	if env.Default != "" && !isDefault {
-		errList = append(errList, fmt.Sprintf("the default environment entry %v has not been configured", env.Default))
+		errList = append(errList, fmt.Sprintf("the default environment entry '%v' has not been configured", env.Default))
 	}
 	if len(errList) > 0 {
 		retenv.Errors = errList
@@ -75,7 +75,7 @@ func displayErrors(cmd *cobra.Command, env cli.EnvironmentSection) error {
 
 	// check if default exists
 	if env.Default != "" && !isDefault {
-		errList = append(errList, envError{fmt.Sprintf("the default environment entry %v has not been configured", env.Default)})
+		errList = append(errList, envError{fmt.Sprintf("the default environment entry '%v' has not been configured", env.Default)})
 	}
 	if len(errList) > 0 {
 		fmt.Println()
