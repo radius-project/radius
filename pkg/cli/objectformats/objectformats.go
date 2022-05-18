@@ -87,12 +87,7 @@ func GetGenericEnvErrorTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
-				Heading:  "ENV NAME",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "ERROR DESCRIPTION",
-				JSONPath: "{ .Error }",
+				JSONPath: "{ .Errors }",
 			},
 		},
 	}
