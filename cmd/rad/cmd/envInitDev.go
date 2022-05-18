@@ -95,6 +95,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	options := helm.NewClusterOptions(cliOptions)
 	options.Contour.HostNetwork = true
 	options.Radius.PublicEndpointOverride = cluster.HTTPEndpoint
+	options.Radius.AzureProvider = azureProvider
 
 	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
 	if err != nil {

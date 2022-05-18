@@ -11,6 +11,9 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
@@ -19,8 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/keys"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var envDeleteCmd = &cobra.Command{
@@ -87,7 +88,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	if ok {
 
 		if !yes {
-			confirmed, err := prompt.Confirm(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/n]?", dev.ClusterName))
+			confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/N]?", dev.ClusterName), prompt.No)
 			if err != nil {
 				return err
 			}
