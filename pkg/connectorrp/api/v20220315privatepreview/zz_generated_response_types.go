@@ -10,6 +10,60 @@ package v20220315privatepreview
 
 import "net/http"
 
+// DaprSecretStoresCreateOrUpdateResponse contains the response from method DaprSecretStores.CreateOrUpdate.
+type DaprSecretStoresCreateOrUpdateResponse struct {
+	DaprSecretStoresCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprSecretStoresCreateOrUpdateResult contains the result from method DaprSecretStores.CreateOrUpdate.
+type DaprSecretStoresCreateOrUpdateResult struct {
+	DaprSecretStoreResource
+}
+
+// DaprSecretStoresDeleteResponse contains the response from method DaprSecretStores.Delete.
+type DaprSecretStoresDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprSecretStoresGetResponse contains the response from method DaprSecretStores.Get.
+type DaprSecretStoresGetResponse struct {
+	DaprSecretStoresGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprSecretStoresGetResult contains the result from method DaprSecretStores.Get.
+type DaprSecretStoresGetResult struct {
+	DaprSecretStoreResource
+}
+
+// DaprSecretStoresListBySubscriptionResponse contains the response from method DaprSecretStores.ListBySubscription.
+type DaprSecretStoresListBySubscriptionResponse struct {
+	DaprSecretStoresListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprSecretStoresListBySubscriptionResult contains the result from method DaprSecretStores.ListBySubscription.
+type DaprSecretStoresListBySubscriptionResult struct {
+	DaprSecretStoreList
+}
+
+// DaprSecretStoresListResponse contains the response from method DaprSecretStores.List.
+type DaprSecretStoresListResponse struct {
+	DaprSecretStoresListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprSecretStoresListResult contains the result from method DaprSecretStores.List.
+type DaprSecretStoresListResult struct {
+	DaprSecretStoreList
+}
+
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
 type MongoDatabasesCreateOrUpdateResponse struct {
 	MongoDatabasesCreateOrUpdateResult

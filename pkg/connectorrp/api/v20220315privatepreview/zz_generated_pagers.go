@@ -16,6 +16,114 @@ import (
 	"reflect"
 )
 
+// DaprSecretStoresListBySubscriptionPager provides operations for iterating over paged responses.
+type DaprSecretStoresListBySubscriptionPager struct {
+	client *DaprSecretStoresClient
+	current DaprSecretStoresListBySubscriptionResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, DaprSecretStoresListBySubscriptionResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *DaprSecretStoresListBySubscriptionPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *DaprSecretStoresListBySubscriptionPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.DaprSecretStoreList.NextLink == nil || len(*p.current.DaprSecretStoreList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listBySubscriptionHandleError(resp)
+		return false
+	}
+	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current DaprSecretStoresListBySubscriptionResponse page.
+func (p *DaprSecretStoresListBySubscriptionPager) PageResponse() DaprSecretStoresListBySubscriptionResponse {
+	return p.current
+}
+
+// DaprSecretStoresListPager provides operations for iterating over paged responses.
+type DaprSecretStoresListPager struct {
+	client *DaprSecretStoresClient
+	current DaprSecretStoresListResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, DaprSecretStoresListResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *DaprSecretStoresListPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *DaprSecretStoresListPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.DaprSecretStoreList.NextLink == nil || len(*p.current.DaprSecretStoreList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.con.Pipeline().Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listHandleError(resp)
+		return false
+	}
+	result, err := p.client.listHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current DaprSecretStoresListResponse page.
+func (p *DaprSecretStoresListPager) PageResponse() DaprSecretStoresListResponse {
+	return p.current
+}
+
 // MongoDatabasesListBySubscriptionPager provides operations for iterating over paged responses.
 type MongoDatabasesListBySubscriptionPager struct {
 	client *MongoDatabasesClient
