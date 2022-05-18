@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -101,7 +102,9 @@ type ARMRequestContext struct {
 	// CorrelationID represents the request corrleation id from arm request.
 	CorrelationID string
 	// OperationID represents the unique id per operation, which will be used as async operation id later.
-	OperationID string
+	OperationID uuid.UUID
+	// OperationName represetns the name of the operation.
+	OperationName string
 	// Traceparent represents W3C trace prarent header for distributed tracing.
 	Traceparent string
 
@@ -137,6 +140,20 @@ type ARMRequestContext struct {
 	Top string
 }
 
+func FromAsyncOperationMessage(msg *datamodel.AsyncOperationMessage) (*ARMRequestContext, error) {
+	azID, err := azresources.Parse(msg.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcCtx := &ARMRequestContext{
+		ResourceID:  azID,
+		OperationID: msg.AsyncOperationID,
+	}
+
+	return rpcCtx, nil
+}
+
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
@@ -151,7 +168,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		ResourceID:      azID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
-		OperationID:     uuid.NewString(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
+		OperationID:     uuid.New(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
 		Traceparent:     r.Header.Get(TraceparentHeader),
 
 		HomeTenantID:        r.Header.Get(HomeTenantIDHeader),

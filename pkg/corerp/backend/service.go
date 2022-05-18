@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/backend/server"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
-	"github.com/project-radius/radius/pkg/jobqueue"
 	jq "github.com/project-radius/radius/pkg/jobqueue/inmemory"
 )
 
@@ -42,13 +41,5 @@ func (w *Service) Run(ctx context.Context) error {
 	worker.Start(ctx)
 
 	logger.Info("Server stopped...")
-	return nil
-}
-
-func (w *Service) getOperationController(ctx context.Context, job *jobqueue.JobMessageResponse) error {
-	return nil
-}
-
-func (w *Service) runOperation(ctx context.Context, job *jobqueue.JobMessageResponse) error {
 	return nil
 }

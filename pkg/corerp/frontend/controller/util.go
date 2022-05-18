@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 )
 
@@ -53,17 +52,6 @@ func ReadJSONBody(r *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("error reading request body: %w", err)
 	}
 	return data, nil
-}
-
-// DecodeMap decodes map[string]interface{} structure to the type of out.
-func DecodeMap(in interface{}, out interface{}) error {
-	cfg := &mapstructure.DecoderConfig{
-		TagName: "json",
-		Result:  out,
-		Squash:  true,
-	}
-	decoder, _ := mapstructure.NewDecoder(cfg)
-	return decoder.Decode(in)
 }
 
 // ValidateETag receives an ARMRequestContect and gathers the values in the If-Match and/or

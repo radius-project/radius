@@ -23,9 +23,9 @@ type AsyncOperationStatus struct {
 	// StartTime is the start time of async operation.
 	StartTime time.Time `json:"startTime"`
 	// EndTime is the end time of async operation.
-	EndTime time.Time `json:"endTime"`
+	EndTime *time.Time `json:"endTime,omitempty"`
 	// Optional. Properties is the result when operation is succeeded.
-	Properties interface{} `json:"properties"`
+	Properties interface{} `json:"properties,omitempty"`
 	// Error is the error response when operation is cancelled or failed.
 	Error *armerrors.ErrorResponse `json:"error,omitempty"`
 }

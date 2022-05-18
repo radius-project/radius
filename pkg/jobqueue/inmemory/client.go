@@ -24,27 +24,23 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) Enqueue(ctx context.Context, msg *jobqueue.JobMessage, options ...jobqueue.EnqueueOptions) error {
+func (c *Client) Enqueue(ctx context.Context, msg *jobqueue.Message, options ...jobqueue.EnqueueOptions) error {
 	c.queue.Enqueue(msg)
-
 	return nil
 }
 
-func (c *Client) Dequeue(ctx context.Context, options ...jobqueue.DequeueOptions) (<-chan jobqueue.JobMessageResponse, error) {
-	out := make(chan jobqueue.JobMessageResponse, 1)
+func (c *Client) Dequeue(ctx context.Context, options ...jobqueue.DequeueOptions) (<-chan *jobqueue.Message, error) {
+	out := make(chan *jobqueue.Message, 1)
 
 	go func() {
 		for {
 			msg := c.queue.Dequeue()
-
-			out <- jobqueue.JobMessageResponse{
-				Message: msg,
-				Finish: func(err error) {
-					if err != nil {
-						c.queue.Complete(msg)
-					}
-				},
-			}
+			out <- jobqueue.WithFinish(msg, func(err error) error {
+				if err != nil {
+					c.queue.Complete(msg)
+				}
+				return nil
+			})
 
 			select {
 			case <-ctx.Done():

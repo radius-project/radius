@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+	"github.com/project-radius/radius/pkg/util"
 
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
@@ -78,7 +79,7 @@ func (e *ListEnvironments) createPaginationResponse(apiversion string, result *s
 	items := []interface{}{}
 	for _, item := range result.Items {
 		denv := &datamodel.Environment{}
-		if err := ctrl.DecodeMap(item.Data, denv); err != nil {
+		if err := util.DecodeMap(item.Data, denv); err != nil {
 			return nil, err
 		}
 		versioned, err := converter.EnvironmentDataModelToVersioned(denv, apiversion)

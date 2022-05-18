@@ -6,14 +6,14 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
 )
 
 type AsyncOperationStatus struct {
 	armrpcv1.AsyncOperationStatus
 
-	// ResourceID is the resource id associated with operation status.
-	ResourceID string `json:"resourceID"`
+	// LinkedResourceID is the resource id associated with operation status.
+	LinkedResourceID string `json:"resourceID"`
 
 	// OperationName is the async operation name.
 	OperationName string `json:"operationName"`

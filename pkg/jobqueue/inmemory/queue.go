@@ -17,7 +17,7 @@ import (
 var defaultQueue = inmemQueue{}
 
 type element struct {
-	val     *jobqueue.JobMessage
+	val     *jobqueue.Message
 	visible bool
 }
 
@@ -35,7 +35,7 @@ func newInMemQueue(maxDequeueCnt int) *inmemQueue {
 	}
 }
 
-func (q *inmemQueue) Enqueue(msg *jobqueue.JobMessage) {
+func (q *inmemQueue) Enqueue(msg *jobqueue.Message) {
 	q.updateQueue()
 
 	q.vMu.Lock()
@@ -44,7 +44,7 @@ func (q *inmemQueue) Enqueue(msg *jobqueue.JobMessage) {
 	q.v.PushBack(&element{val: msg, visible: true})
 }
 
-func (q *inmemQueue) Dequeue() *jobqueue.JobMessage {
+func (q *inmemQueue) Dequeue() *jobqueue.Message {
 	q.updateQueue()
 
 	q.vMu.Lock()
@@ -63,7 +63,7 @@ func (q *inmemQueue) Dequeue() *jobqueue.JobMessage {
 	return nil
 }
 
-func (q *inmemQueue) Complete(msg *jobqueue.JobMessage) error {
+func (q *inmemQueue) Complete(msg *jobqueue.Message) error {
 	q.vMu.Lock()
 	defer q.vMu.Unlock()
 

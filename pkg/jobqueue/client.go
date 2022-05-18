@@ -9,14 +9,14 @@ import (
 	"context"
 )
 
-// Enqueuer is an interface to enqueue Message to the job queue.
+// Enqueuer is an interface to enqueue Message to queue.
 type Enqueuer interface {
-	// Enqueue enqueues job message to the job queue.
-	Enqueue(context.Context, *JobMessage, ...EnqueueOptions) error
+	// Enqueue enqueues message to the job queue.
+	Enqueue(context.Context, *Message, ...EnqueueOptions) error
 }
 
-// Dequeuer is an interface to dequeue job message from the job queue.
+// Dequeuer is an interface to dequeue job message from queue.
 type Dequeuer interface {
-	// Dequeue dequeues job message from the job queue.
-	Dequeue(context.Context, ...DequeueOptions) (<-chan JobMessageResponse, error)
+	// Dequeue dequeues message from the queue.
+	Dequeue(context.Context, ...DequeueOptions) (<-chan *Message, error)
 }

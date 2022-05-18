@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/util"
 )
 
 // ControllerInterface is an interface of each operation controller.
@@ -36,7 +37,7 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out interfa
 	etag = ""
 	var res *store.Object
 	if res, err = c.DBClient.Get(ctx, id); err == nil {
-		if err = DecodeMap(res.Data, out); err == nil {
+		if err = util.DecodeMap(res.Data, out); err == nil {
 			etag = res.ETag
 			return
 		}
