@@ -41,7 +41,9 @@ func (w *Service) Run(ctx context.Context) error {
 	worker := server.NewAsyncRequestProcessWorker(w.Options, sp, controllers)
 
 	logger.Info("Start AsyncRequestProcessWorker...")
-	worker.Start(ctx)
+	if err := worker.Start(ctx); err != nil {
+		logger.Error(err, "failed to start worker...")
+	}
 
 	logger.Info("Server stopped...")
 	return nil
