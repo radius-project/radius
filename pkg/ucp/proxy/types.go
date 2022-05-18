@@ -14,16 +14,23 @@ import (
 	"strings"
 )
 
+type UCPRequestInfo struct {
+	PlaneURL   string
+	PlaneID    string
+	HTTPScheme string
+	UCPHost    string
+}
+
 type PlaneUrlFieldType string
 type PlaneIdFieldType string
 type HttpSchemeType string
+type UCPHostType string
+type UCPRequestInfoFieldType string
 
 const (
-	LocationHeader                             = "Location"
-	AzureAsyncOperationHeader                  = "Azure-Asyncoperation"
-	PlaneUrlField             PlaneIdFieldType = "planeurl"
-	PlaneIdField              PlaneIdFieldType = "planeid"
-	HttpSchemeField           HttpSchemeType   = "httpscheme"
+	LocationHeader                                    = "Location"
+	AzureAsyncOperationHeader                         = "Azure-Asyncoperation"
+	UCPRequestInfoField       UCPRequestInfoFieldType = "ucprequestinfo"
 )
 
 type DirectorFunc = func(r *http.Request)
@@ -98,13 +105,13 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
 		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
 			// This is an Async Response with a Azure-AsyncOperation Header
-			err := convertHeaderToUCPIDs(ctx, p.ProxyAddress, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
+			err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
 			if err != nil {
 				return err
 			}
 		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
 			// This is an Async Response with a Location Header
-			err := convertHeaderToUCPIDs(ctx, p.ProxyAddress, LocationHeader, locationHeader, resp)
+			err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
 			if err != nil {
 				return err
 			}
@@ -113,30 +120,40 @@ func (p *armProxy) processAsyncResponse(resp *http.Response) error {
 	return nil
 }
 
-func convertHeaderToUCPIDs(ctx context.Context, proxyAddress string, headerName string, header []string, resp *http.Response) error {
+func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []string, resp *http.Response) error {
 	segments := strings.Split(strings.TrimSuffix(strings.TrimPrefix(header[0], "/"), "/"), "/")
 	// segment 0 -> http
 	// segment 1 -> ""
 	// segment 2 -> hostname + port
 	key := segments[0] + "//" + segments[2]
+
+	if ctx.Value(UCPRequestInfoField) == nil {
+		return fmt.Errorf("Could not find ucp request data in %s header", headerName)
+	}
+	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
+	fmt.Println(requestInfo)
 	// Doing a reverse lookup of the URL of the responding server to find the corresponding plane ID
-	if ctx.Value(PlaneUrlField) == nil {
+	if requestInfo.PlaneURL == "" {
 		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
 	}
-	planeURL := ctx.Value(PlaneUrlField).(string)
-	if strings.TrimSuffix(planeURL, "/") != strings.TrimSuffix(key, "/") {
-		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", planeURL, headerName)
+	if strings.TrimSuffix(requestInfo.PlaneURL, "/") != strings.TrimSuffix(key, "/") {
+		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", requestInfo.PlaneURL, headerName)
+	}
+
+	if requestInfo.UCPHost == "" {
+		return fmt.Errorf("UCP Host Address unknown. Cannot convert response header")
 	}
 	// Make sure we only have the base URL here
-
-	if ctx.Value(PlaneIdField) == nil {
+	if requestInfo.PlaneID == "" {
 		return fmt.Errorf("Could not find plane ID data in %s header", headerName)
 	}
-	planeID := ctx.Value(PlaneIdField).(string)
-	httpScheme := ctx.Value(HttpSchemeField).(string)
+
+	if requestInfo.HTTPScheme == "" {
+		return fmt.Errorf("Could not find http scheme data in %s header", headerName)
+	}
 	// Found a plane matching the URL in the location header
 	// Convert to UCP ID using the planeID corresponding to the URL of the server from where the response was received
-	val := httpScheme + "://" + proxyAddress + planeID + "/" + strings.Join(segments[3:], "/")
+	val := requestInfo.HTTPScheme + "://" + requestInfo.UCPHost + requestInfo.PlaneID + "/" + strings.Join(segments[3:], "/")
 
 	// Replace the header with the computed value.
 	// Do not use the Del/Set methods on header as it can change the header casing to canonical form

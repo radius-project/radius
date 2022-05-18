@@ -203,15 +203,23 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		RoundTripper: http.DefaultTransport,
 		ProxyAddress: ucp.options.Address,
 	}
-	ctx = context.WithValue(ctx, proxy.PlaneUrlField, proxyURL)
-	ctx = context.WithValue(ctx, proxy.PlaneIdField, planePath)
+
 	// As per https://github.com/golang/go/issues/28940#issuecomment-441749380, the way to check
 	// for http vs https is check the TLS field
 	httpScheme := "http"
 	if r.TLS != nil {
 		httpScheme = "https"
 	}
-	ctx = context.WithValue(ctx, proxy.HttpSchemeField, httpScheme)
+
+	requestInfo := proxy.UCPRequestInfo{
+		PlaneURL:   proxyURL,
+		PlaneID:    planePath,
+		HTTPScheme: httpScheme,
+		// The Host field in the request that the client makes to UCP contains the UCP Host address
+		// That address will be used to construct the URL for reverse proxying
+		UCPHost: r.Host,
+	}
+	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 	sender.ServeHTTP(w, r.WithContext(ctx))
 
