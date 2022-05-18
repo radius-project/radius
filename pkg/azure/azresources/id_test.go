@@ -198,6 +198,56 @@ func Test_MakeID(t *testing.T) {
 	}
 }
 
+func Test_MakeUCPID(t *testing.T) {
+	values := []struct {
+		expected string
+		types    []ResourceType
+	}{
+		{
+			expected: "/resourceGroups/r1/providers/foo/bar",
+			types: []ResourceType{
+				{Type: "foo/bar"},
+			},
+		},
+		{
+			expected: "/resourceGroups/r1/providers/foo/bar/radius",
+			types: []ResourceType{
+				{Type: "foo/bar", Name: "radius"},
+			},
+		},
+		{
+			expected: "/resourceGroups/r1/providers/foo/bar/radius/t1",
+			types: []ResourceType{
+				{Type: "foo/bar", Name: "radius"},
+				{Type: "t1"},
+			},
+		},
+		{
+			expected: "/resourceGroups/r1/providers/foo/bar/radius/t1/n1/t2",
+			types: []ResourceType{
+				{Type: "foo/bar", Name: "radius"},
+				{Type: "t1", Name: "n1"},
+				{Type: "t2"},
+			},
+		},
+		{
+			expected: "/resourceGroups/r1/providers/foo/bar/radius/t1/n1/t2/n2",
+			types: []ResourceType{
+				{Type: "foo/bar", Name: "radius"},
+				{Type: "t1", Name: "n1"},
+				{Type: "t2", Name: "n2"},
+			},
+		},
+	}
+
+	for i, v := range values {
+		t.Run(fmt.Sprintf("%d: %v", i, v.expected), func(t *testing.T) {
+			actual := MakeUCPID("r1", v.types[0], v.types[1:]...)
+			require.Equal(t, v.expected, actual)
+		})
+	}
+}
+
 func Test_MakeCollectionURITemplate(t *testing.T) {
 	values := []struct {
 		types    KnownType

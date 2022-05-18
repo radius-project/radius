@@ -121,42 +121,26 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		tags["azureLocation"] = resp.Location
 	}
 
-	if e.EnableUCP {
-		ucpClient := azclients.NewUCPDeploymentClient(url)
-		ucpClient.PollingDelay = 5 * time.Second
-		ucpClient.Sender = &sender{RoundTripper: roundTripper}
+	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
 
-		ucpOperationClient := azclients.NewUCPOperationClient(url)
-		ucpOperationClient.PollingDelay = 5 * time.Second
-		ucpOperationClient.Sender = &sender{RoundTripper: roundTripper}
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
+	dc.Authorizer = auth
 
-		return &azure.ARMDeploymentClient{
-			Client:           ucpClient,
-			OperationsClient: ucpOperationClient,
-			ResourceGroup:    resourceGroup,
-			Tags:             tags,
-		}, nil
-	} else {
-		dc := azclients.NewDeploymentsClientWithBaseURI(url, subscriptionId)
+	dc.Sender = &devsender{RoundTripper: roundTripper}
 
-		// Poll faster than the default, many deployments are quick
-		dc.PollingDelay = 5 * time.Second
-		dc.Authorizer = auth
+	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
+	op.PollingDelay = 5 * time.Second
+	op.Sender = &devsender{RoundTripper: roundTripper}
+	op.Authorizer = auth
 
-		dc.Sender = &devsender{RoundTripper: roundTripper}
-
-		op := azclients.NewOperationsClientWithBaseUri(url, subscriptionId)
-		op.PollingDelay = 5 * time.Second
-		op.Sender = &devsender{RoundTripper: roundTripper}
-		op.Authorizer = auth
-		client := &azure.ARMDeploymentClient{
-			Client:           dc,
-			OperationsClient: op,
-			ResourceGroup:    resourceGroup,
-			Tags:             tags,
-		}
-		return client, nil
+	client := &azure.ResouceDeploymentClient{
+		Client:           dc,
+		OperationsClient: op,
+		ResourceGroup:    resourceGroup,
+		Tags:             tags,
 	}
+	return client, nil
 }
 
 func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {

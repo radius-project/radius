@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 )
@@ -23,26 +23,18 @@ import (
 // OperationPollInterval is the interval used for polling of deployment operations for progress.
 const OperationPollInterval time.Duration = time.Second * 5
 
-type GenericDeploymentClient interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, deploymentName string, parameters resources.Deployment) (result resources.DeploymentsCreateOrUpdateFuture, err error)
-	GetAutorestClient() autorest.Client
-	GetDeploymentClient() resources.DeploymentsClient
-}
-
-type GenericOperationClient interface {
-	List(ctx context.Context, resourceGroupName string, deploymentName string, top *int32) (resources.DeploymentOperationsListResultPage, error)
-}
-
-type ARMDeploymentClient struct {
+type ResouceDeploymentClient struct {
+	SubscriptionID   string
 	ResourceGroup    string
-	Client           GenericDeploymentClient
-	OperationsClient GenericOperationClient
+	Client           azclients.ResourceDeploymentClient
+	OperationsClient azclients.ResourceDeploymentOperationsClient
 	Tags             map[string]*string
+	EnableUCP        bool
 }
 
-var _ clients.DeploymentClient = (*ARMDeploymentClient)(nil)
+var _ clients.DeploymentClient = (*ResouceDeploymentClient)(nil)
 
-func (dc *ARMDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
+func (dc *ResouceDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	// Used for graceful shutdown of the polling listener.
 	wg := sync.WaitGroup{}
 	defer func() {
@@ -79,14 +71,25 @@ func (dc *ARMDeploymentClient) Deploy(ctx context.Context, options clients.Deplo
 	return summary, nil
 }
 
-func (dc *ARMDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*resources.DeploymentsCreateOrUpdateFuture, error) {
+func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*resources.DeploymentsCreateOrUpdateFuture, error) {
 	template := map[string]interface{}{}
 	err := json.Unmarshal([]byte(options.Template), &template)
 	if err != nil {
 		return nil, err
 	}
 
-	future, err := dc.Client.CreateOrUpdate(ctx, dc.ResourceGroup, name, resources.Deployment{
+	resourceType := azresources.ResourceType{
+		Type: "Microsoft.Resources",
+		Name: "deployments",
+	}
+	var resourceId string
+	if dc.EnableUCP {
+		resourceId = azresources.MakeUCPID(dc.ResourceGroup, resourceType)
+	} else {
+		resourceId = azresources.MakeID(dc.SubscriptionID, dc.ResourceGroup, resourceType)
+	}
+
+	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Template:   template,
 			Parameters: options.Parameters,
@@ -102,7 +105,7 @@ func (dc *ARMDeploymentClient) startDeployment(ctx context.Context, name string,
 	return &future, nil
 }
 
-func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExtended) (clients.DeploymentResult, error) {
+func (dc *ResouceDeploymentClient) createSummary(deployment resources.DeploymentExtended) (clients.DeploymentResult, error) {
 	if deployment.Properties == nil || deployment.Properties.OutputResources == nil {
 		return clients.DeploymentResult{}, nil
 	}
@@ -135,16 +138,16 @@ func (dc *ARMDeploymentClient) createSummary(deployment resources.DeploymentExte
 	return clients.DeploymentResult{Resources: resources, Outputs: outputs}, nil
 }
 
-func (dc *ARMDeploymentClient) waitForCompletion(ctx context.Context, future resources.DeploymentsCreateOrUpdateFuture) (clients.DeploymentResult, error) {
+func (dc *ResouceDeploymentClient) waitForCompletion(ctx context.Context, future resources.DeploymentsCreateOrUpdateFuture) (clients.DeploymentResult, error) {
 	var err error
 	var deployment resources.DeploymentExtended
 
-	err = future.WaitForCompletionRef(ctx, dc.Client.GetAutorestClient())
+	err = future.WaitForCompletionRef(ctx, dc.Client.Client)
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
 
-	deployment, err = future.Result(dc.Client.GetDeploymentClient())
+	deployment, err = future.Result(dc.Client.DeploymentsClient)
 
 	if err != nil {
 		return clients.DeploymentResult{}, err
@@ -158,7 +161,7 @@ func (dc *ARMDeploymentClient) waitForCompletion(ctx context.Context, future res
 	return summary, nil
 }
 
-func (dc *ARMDeploymentClient) monitorProgress(ctx context.Context, name string, progressChan chan<- clients.ResourceProgress) error {
+func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name string, progressChan chan<- clients.ResourceProgress) error {
 	// A note about this: since we're doing polling we might not see all of the operations
 	// complete before the overall deployment completes. That's fine, this will be handled
 	// by the presentation layer. In this code we just cancel when we're told to.
@@ -215,8 +218,22 @@ func (dc *ARMDeploymentClient) monitorProgress(ctx context.Context, name string,
 	return nil
 }
 
-func (dc *ARMDeploymentClient) listOperations(ctx context.Context, name string) ([]resources.DeploymentOperation, error) {
-	operationList, err := dc.OperationsClient.List(ctx, dc.ResourceGroup, name, nil)
+func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name string) ([]resources.DeploymentOperation, error) {
+	resourceType := azresources.ResourceType{
+		Type: "Microsoft.Resources",
+		Name: "deployments",
+	}
+	resourceDeployment := azresources.ResourceType{
+		Type: name,
+	}
+	var resourceId string
+	if dc.EnableUCP {
+		resourceId = azresources.MakeUCPID(dc.ResourceGroup, resourceType, resourceDeployment)
+	} else {
+		resourceId = azresources.MakeID(dc.SubscriptionID, dc.ResourceGroup, resourceType, resourceDeployment)
+	}
+
+	operationList, err := dc.OperationsClient.List(ctx, resourceId, nil)
 	if err != nil {
 		return nil, err
 	}

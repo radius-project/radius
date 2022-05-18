@@ -95,41 +95,23 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	}
 	tags["azureLocation"] = resp.Location
 
-	if e.EnableUCP {
-		ucpClient := azclients.NewUCPDeploymentClient(url)
-		ucpClient.PollingDelay = 5 * time.Second
-		ucpClient.Sender = &sender{RoundTripper: roundTripper}
+	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
 
-		ucpOperationClient := azclients.NewUCPOperationClient(url)
-		ucpOperationClient.PollingDelay = 5 * time.Second
-		ucpOperationClient.Sender = &sender{RoundTripper: roundTripper}
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
 
-		return &azure.ARMDeploymentClient{
-			Client:           ucpClient,
-			OperationsClient: ucpOperationClient,
-			ResourceGroup:    e.ResourceGroup,
-			Tags:             tags,
-		}, nil
+	dc.Sender = &sender{RoundTripper: roundTripper}
 
-	} else {
-		dc := azclients.NewDeploymentsClientWithBaseURI(url, e.SubscriptionID)
+	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
+	op.PollingDelay = 5 * time.Second
+	op.Sender = &sender{RoundTripper: roundTripper}
 
-		// Poll faster than the default, many deployments are quick
-		dc.PollingDelay = 5 * time.Second
-
-		dc.Sender = &sender{RoundTripper: roundTripper}
-
-		op := azclients.NewOperationsClientWithBaseUri(url, e.SubscriptionID)
-		op.PollingDelay = 5 * time.Second
-		op.Sender = &sender{RoundTripper: roundTripper}
-
-		return &azure.ARMDeploymentClient{
-			Client:           dc,
-			OperationsClient: op,
-			ResourceGroup:    e.ResourceGroup,
-			Tags:             tags,
-		}, nil
-	}
+	return &azure.ResouceDeploymentClient{
+		Client:           dc,
+		OperationsClient: op,
+		ResourceGroup:    e.ResourceGroup,
+		Tags:             tags,
+	}, nil
 }
 
 func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {

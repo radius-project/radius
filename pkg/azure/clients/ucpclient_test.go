@@ -14,7 +14,7 @@ import (
 )
 
 func TestUCPClientPrepare(t *testing.T) {
-	ucpClient := NewUCPDeploymentsClientWithBaseURI("http://localhost:5050")
+	ucpClient := NewResourceDeploymentClientWithBaseURI("http://localhost:5050")
 
 	request, err := ucpClient.CreateOrUpdatePreparer(context.TODO(), "my-rg", "my-deployment", resources.Deployment{})
 	require.NoError(t, err)
