@@ -42,7 +42,7 @@ func (c *Client) Dequeue(ctx context.Context, options ...queue.DequeueOptions) (
 			msg := c.queue.Dequeue()
 			if msg != nil {
 				msg.WithFinish(func(err error) error {
-					c.queue.Complete(msg)
+					_ = c.queue.Complete(msg)
 					return nil
 				})
 				msg.WithExtend(func() error {

@@ -24,14 +24,16 @@ func TestClient(t *testing.T) {
 	recvCnt := 0
 	done := make(chan struct{})
 
+	// Consumer
 	go func(msgCh <-chan *queue.Message) {
 		for msg := range msgCh {
 			require.Equal(t, "test", msg.Data)
-			recvCnt = recvCnt + 1
+			recvCnt++
 		}
 		done <- struct{}{}
 	}(msgCh)
 
+	// Producer
 	for i := 0; i < 10; i++ {
 		err := cli.Enqueue(ctx, &queue.Message{Data: "test"})
 		require.NoError(t, err)
