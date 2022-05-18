@@ -114,13 +114,17 @@ func CreateRestRoundTripper(context string, group string, overrideURL string) (h
 
 func CreateAPIServerConnection(context string, overrideURL string, enableUCP bool, subscription string) (string, *arm.Connection, error) {
 
-	baseURL, roundTripper, err := GetBaseUrlAndRoundTripper(overrideURL, "api.radius.dev", context)
+	var group string
+	if enableUCP {
+		group = "api.ucp.dev"
+	} else {
+		group = "api.radius.dev"
+	}
+	baseURL, roundTripper, err := GetBaseUrlAndRoundTripper(overrideURL, group, context, enableUCP)
 	if err != nil {
 		return "", nil, err
 	}
-	if enableUCP {
-		baseURL = ApisUCPUrl
-	} else {
+	if !enableUCP {
 		baseURL = baseURL + "/subscriptions/" + subscription
 	}
 
@@ -162,7 +166,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 	return baseURL, roundTripper, nil
 }
 
-func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string) (string, http.RoundTripper, error) {
+func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string, enableUCP bool) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
 	if overrideURL != "" {
@@ -178,8 +182,11 @@ func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string)
 		if err != nil {
 			return "", nil, err
 		}
-
-		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+		if enableUCP {
+			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + ApisUCPUrl
+		} else {
+			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+		}
 		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
 	return baseURL, roundTripper, nil

@@ -37,11 +37,9 @@ generate-openapi-specs:
 		pkg/radrp/schema/traits.json \
 		pkg/radrp/schema/*/*.json
 
-    
-	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' pkg/radrp/schema/application.json
-	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' schemas/rest-api-specs/radius.json
-	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' pkg/radrp/schema/common-types.json
-	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' pkg/radrp/schema/resource-types.json
+	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json
+	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environments.json
+	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json
 	sed -i'' -e 's|/subscriptions/{subscriptionId}/|/|g' pkg/radrp/schema/traits.json
 
 
@@ -52,7 +50,7 @@ generate-openapi-specs:
 generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).
 	autorest --use=@autorest/go@4.0.0-preview.29 \
         --module-version=$(AUTOREST_MODULE_VERSION) \
-		--input-file=schemas/rest-api-specs/radius.json \
+		--input-file=swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json \
 		--tag=package-2018-09-01-preview \
 		--go  \
 		--gomod-root=. \
