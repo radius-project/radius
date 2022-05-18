@@ -40,7 +40,6 @@ type LocalEnvironment struct {
 	Providers                  *Providers `mapstructure:"providers"`
 	EnableUCP                  bool       `mapstructure:"enableucp,omitempty"`
 
-	EnableUCP bool `mapstructure:"enableucp,omitempty"`
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
 }
