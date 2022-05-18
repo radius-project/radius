@@ -124,8 +124,8 @@ func Test_ConvertHeaderToUCPIDs_NoContextDataSet(t *testing.T) {
 	}
 	err := convertHeaderToUCPIDs(context.Background(), AzureAsyncOperationHeader, []string{"http://example.com/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"}, &response)
 	require.Error(t, err, "Should have have failed")
-	require.Equal(t, "Could not find plane URL data in Azure-Asyncoperation header", err.Error())
+	require.Equal(t, "Could not find ucp request data in Azure-Asyncoperation header", err.Error())
 	err = convertHeaderToUCPIDs(context.Background(), LocationHeader, []string{"http://example.com/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"}, &response)
 	require.Error(t, err, "Should have have failed")
-	require.Equal(t, "Could not find plane URL data in Location header", err.Error())
+	require.Equal(t, "Could not find ucp request data in Location header", err.Error())
 }

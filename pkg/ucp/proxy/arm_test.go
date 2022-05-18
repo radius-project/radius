@@ -21,10 +21,12 @@ import (
 )
 
 func createTestContext(ctx context.Context, planeURL string, planeID string, httpScheme string, ucpHost string) context.Context {
-	ctx = context.WithValue(ctx, PlaneUrlField, planeURL)
-	ctx = context.WithValue(ctx, PlaneIdField, planeID)
-	ctx = context.WithValue(ctx, HttpSchemeField, httpScheme)
-	ctx = context.WithValue(ctx, UCPHostField, ucpHost)
+	ctx = context.WithValue(ctx, UCPRequestInfoField, UCPRequestInfo{
+		PlaneID:    planeID,
+		PlaneURL:   planeURL,
+		HTTPScheme: httpScheme,
+		UCPHost:    ucpHost,
+	})
 	return ctx
 }
 

@@ -14,18 +14,23 @@ import (
 	"strings"
 )
 
+type UCPRequestInfo struct {
+	PlaneURL   string
+	PlaneID    string
+	HTTPScheme string
+	UCPHost    string
+}
+
 type PlaneUrlFieldType string
 type PlaneIdFieldType string
 type HttpSchemeType string
 type UCPHostType string
+type UCPRequestInfoFieldType string
 
 const (
-	LocationHeader                             = "Location"
-	AzureAsyncOperationHeader                  = "Azure-Asyncoperation"
-	PlaneUrlField             PlaneIdFieldType = "planeurl"
-	PlaneIdField              PlaneIdFieldType = "planeid"
-	HttpSchemeField           HttpSchemeType   = "httpscheme"
-	UCPHostField              UCPHostType      = "ucphost"
+	LocationHeader                                    = "Location"
+	AzureAsyncOperationHeader                         = "Azure-Asyncoperation"
+	UCPRequestInfoField       UCPRequestInfoFieldType = "ucprequestinfo"
 )
 
 type DirectorFunc = func(r *http.Request)
@@ -121,28 +126,34 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	// segment 1 -> ""
 	// segment 2 -> hostname + port
 	key := segments[0] + "//" + segments[2]
+
+	if ctx.Value(UCPRequestInfoField) == nil {
+		return fmt.Errorf("Could not find ucp request data in %s header", headerName)
+	}
+	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
+	fmt.Println(requestInfo)
 	// Doing a reverse lookup of the URL of the responding server to find the corresponding plane ID
-	if ctx.Value(PlaneUrlField) == nil {
+	if requestInfo.PlaneURL == "" {
 		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
 	}
-	planeURL := ctx.Value(PlaneUrlField).(string)
-	if strings.TrimSuffix(planeURL, "/") != strings.TrimSuffix(key, "/") {
-		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", planeURL, headerName)
+	if strings.TrimSuffix(requestInfo.PlaneURL, "/") != strings.TrimSuffix(key, "/") {
+		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", requestInfo.PlaneURL, headerName)
 	}
 
-	proxyAddress := ctx.Value(UCPHostField).(string)
-	if proxyAddress == "" {
+	if requestInfo.UCPHost == "" {
 		return fmt.Errorf("UCP Host Address unknown. Cannot convert response header")
 	}
 	// Make sure we only have the base URL here
-	if ctx.Value(PlaneIdField) == nil {
+	if requestInfo.PlaneID == "" {
 		return fmt.Errorf("Could not find plane ID data in %s header", headerName)
 	}
-	planeID := ctx.Value(PlaneIdField).(string)
-	httpScheme := ctx.Value(HttpSchemeField).(string)
+
+	if requestInfo.HTTPScheme == "" {
+		return fmt.Errorf("Could not find http scheme data in %s header", headerName)
+	}
 	// Found a plane matching the URL in the location header
 	// Convert to UCP ID using the planeID corresponding to the URL of the server from where the response was received
-	val := httpScheme + "://" + proxyAddress + planeID + "/" + strings.Join(segments[3:], "/")
+	val := requestInfo.HTTPScheme + "://" + requestInfo.UCPHost + requestInfo.PlaneID + "/" + strings.Join(segments[3:], "/")
 
 	// Replace the header with the computed value.
 	// Do not use the Del/Set methods on header as it can change the header casing to canonical form
