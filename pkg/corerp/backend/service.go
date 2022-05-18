@@ -7,8 +7,10 @@ package backend
 
 import (
 	"context"
+	"errors"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	asynctrl_environments "github.com/project-radius/radius/pkg/corerp/backend/controller/environments"
 	"github.com/project-radius/radius/pkg/corerp/backend/server"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
@@ -42,6 +44,13 @@ func (w *Service) Run(ctx context.Context) error {
 		asynctrl_environments.NewCreateOrUpdateEnvironmentAsync)
 
 	inmemRequestQueueClient := jq.NewClient()
+
+	opSc, err := sp.GetStorageClient(ctx, "applications.core/operationstatuses")
+	if err != nil {
+		return errors.New("failed to create operationstatuses storageclient")
+	}
+
+	asyncOperationManager := asyncoperation.NewAsyncOperationManager(opSc, nil, "Applications.Core", w.Options.Config.CloudEnv.RoleLocation)
 
 	worker := server.NewAsyncRequestProcessor(w.Options, sp, inmemRequestQueueClient, handlers)
 	worker.Start(ctx)

@@ -7,6 +7,7 @@ package asyncoperation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -67,6 +68,10 @@ func (osm *AsyncOperationManager) Get(ctx context.Context, rootScope string, ope
 }
 
 func (osm *AsyncOperationManager) Create(ctx context.Context, rootScope string, operationID uuid.UUID, operationName string, linkResourceID string, status string, operationTimeout time.Duration) error {
+	if osm.enqueuer == nil {
+		return errors.New("enqueuer client is not set")
+	}
+
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 	opRID := osm.operationStatusResourceID(rootScope, operationID)
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	asyncctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
@@ -31,10 +32,11 @@ const (
 )
 
 type AsyncRequestProcessor struct {
-	Options      hostoptions.HostOptions
-	requestQueue queue.Dequeuer
-	sp           dataprovider.DataStorageProvider
-	handlers     *HandlerRegistry
+	Options               hostoptions.HostOptions
+	requestQueue          queue.Dequeuer
+	sp                    dataprovider.DataStorageProvider
+	handlers              *HandlerRegistry
+	asyncOperationManager asyncoperation.AsyncOperationManagerInterface
 
 	sem *semaphore.Weighted
 }
@@ -43,13 +45,15 @@ func NewAsyncRequestProcessor(
 	options hostoptions.HostOptions,
 	sp dataprovider.DataStorageProvider,
 	dequeueClient queue.Dequeuer,
+	asyncOperationManager asyncoperation.AsyncOperationManagerInterface,
 	handlers *HandlerRegistry) *AsyncRequestProcessor {
 	return &AsyncRequestProcessor{
-		Options:      options,
-		sp:           sp,
-		requestQueue: dequeueClient,
-		handlers:     handlers,
-		sem:          semaphore.NewWeighted(MaxConcurrency),
+		Options:               options,
+		sp:                    sp,
+		requestQueue:          dequeueClient,
+		handlers:              handlers,
+		asyncOperationManager: asyncOperationManager,
+		sem:                   semaphore.NewWeighted(MaxConcurrency),
 	}
 }
 
