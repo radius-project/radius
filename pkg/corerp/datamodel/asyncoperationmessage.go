@@ -11,6 +11,11 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	// DefaultAsyncOperationTimeout is the default timeout duration of async operation.
+	DefaultAsyncOperationTimeout = 1 * time.Hour
+)
+
 // AsyncOperationMessage represents the async operation queue.
 type AsyncOperationMessage struct {
 	// AsyncOperationID represents the unique id of the async operation.

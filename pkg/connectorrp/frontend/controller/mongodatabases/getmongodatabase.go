@@ -12,9 +12,9 @@ import (
 
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 )
@@ -27,11 +27,11 @@ type GetMongoDatabase struct {
 }
 
 // NewGetMongoDatabase creates a new instance of GetMongoDatabase.
-func NewGetMongoDatabase(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
+func NewGetMongoDatabase(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (base_ctrl.ControllerInterface, error) {
 	return &GetMongoDatabase{
 		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }

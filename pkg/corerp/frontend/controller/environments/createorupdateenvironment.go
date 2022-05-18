@@ -11,10 +11,10 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 
@@ -29,11 +29,11 @@ type CreateOrUpdateEnvironment struct {
 }
 
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
-func NewCreateOrUpdateEnvironment(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
+func NewCreateOrUpdateEnvironment(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (ctrl.ControllerInterface, error) {
 	return &CreateOrUpdateEnvironment{
 		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }

@@ -11,40 +11,48 @@ import (
 	"sync"
 	"time"
 
-	"github.com/project-radius/radius/pkg/jobqueue"
+	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/queue"
+)
+
+var (
+	messageLockDuration   = 5 * time.Minute
+	messageExpireDuration = 24 * time.Hour
 )
 
 var defaultQueue = inmemQueue{}
 
 type element struct {
-	val     *jobqueue.Message
+	val     *queue.Message
 	visible bool
 }
 
 type inmemQueue struct {
 	v   *list.List
 	vMu sync.Mutex
-
-	maxDequeueCount int
 }
 
-func newInMemQueue(maxDequeueCnt int) *inmemQueue {
+func newInMemQueue() *inmemQueue {
 	return &inmemQueue{
-		v:               &list.List{},
-		maxDequeueCount: maxDequeueCnt,
+		v: &list.List{},
 	}
 }
 
-func (q *inmemQueue) Enqueue(msg *jobqueue.Message) {
+func (q *inmemQueue) Enqueue(msg *queue.Message) {
 	q.updateQueue()
 
 	q.vMu.Lock()
 	defer q.vMu.Unlock()
 
+	msg.Metadata.ID = uuid.NewString()
+	msg.Metadata.DequeueCount = 0
+	msg.Metadata.EnqueueAt = time.Now().UTC()
+	msg.Metadata.ExpireAt = time.Now().UTC().Add(messageExpireDuration)
+
 	q.v.PushBack(&element{val: msg, visible: true})
 }
 
-func (q *inmemQueue) Dequeue() *jobqueue.Message {
+func (q *inmemQueue) Dequeue() *queue.Message {
 	q.updateQueue()
 
 	q.vMu.Lock()
@@ -54,7 +62,7 @@ func (q *inmemQueue) Dequeue() *jobqueue.Message {
 		elem := e.Value.(*element)
 		if elem.visible {
 			elem.val.DequeueCount = elem.val.DequeueCount + 1
-			elem.val.NextVisibleTime = time.Now().Add(time.Minute * 5)
+			elem.val.NextVisibleAt = time.Now().Add(messageLockDuration)
 			elem.visible = false
 			return elem.val
 		}
@@ -63,7 +71,7 @@ func (q *inmemQueue) Dequeue() *jobqueue.Message {
 	return nil
 }
 
-func (q *inmemQueue) Complete(msg *jobqueue.Message) error {
+func (q *inmemQueue) Complete(msg *queue.Message) error {
 	q.vMu.Lock()
 	defer q.vMu.Unlock()
 
@@ -87,16 +95,12 @@ func (q *inmemQueue) updateQueue() {
 			continue
 		}
 
-		if elem.val.ExpireTime.UnixNano() >= time.Now().UnixNano() {
+		if elem.val.ExpireAt.UnixNano() >= time.Now().UnixNano() {
 			q.v.Remove(e)
 		}
 
-		if elem.val.NextVisibleTime.UnixNano() >= time.Now().UnixNano() {
+		if elem.val.NextVisibleAt.UnixNano() >= time.Now().UnixNano() {
 			elem.visible = true
-		}
-
-		if elem.val.DequeueCount >= q.maxDequeueCount {
-			q.v.Remove(e)
 		}
 	}
 }

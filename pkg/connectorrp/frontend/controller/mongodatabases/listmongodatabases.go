@@ -13,10 +13,11 @@ import (
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
+	"github.com/project-radius/radius/pkg/util"
 
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 )
@@ -29,11 +30,11 @@ type ListMongoDatabases struct {
 }
 
 // NewListMongoDatabases creates a new instance of ListMongoDatabases.
-func NewListMongoDatabases(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
+func NewListMongoDatabases(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (base_ctrl.ControllerInterface, error) {
 	return &ListMongoDatabases{
 		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }
@@ -63,7 +64,7 @@ func (mongo *ListMongoDatabases) createPaginatedList(ctx context.Context, req *h
 	items := []interface{}{}
 	for _, item := range result.Items {
 		dm := &datamodel.MongoDatabase{}
-		if err := base_ctrl.DecodeMap(item.Data, dm); err != nil {
+		if err := util.DecodeMap(item.Data, dm); err != nil {
 			return nil, err
 		}
 

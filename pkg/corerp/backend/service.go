@@ -9,10 +9,11 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	asynctrl_environments "github.com/project-radius/radius/pkg/corerp/backend/controller/environments"
 	"github.com/project-radius/radius/pkg/corerp/backend/server"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
-	jq "github.com/project-radius/radius/pkg/jobqueue/inmemory"
+	jq "github.com/project-radius/radius/pkg/queue/inmemory"
 )
 
 type Service struct {
@@ -34,10 +35,15 @@ func (w *Service) Run(ctx context.Context) error {
 
 	sp := dataprovider.NewStorageProvider(w.Options.Config.StorageProvider)
 	ctx = hostoptions.WithContext(ctx, w.Options.Config)
-	jqClient := jq.NewClient()
 
-	worker := server.NewAsyncRequestProcessor(w.Options, sp, jqClient)
-	// TODO: Register controllers.
+	handlers := server.NewHandlerRegistry(sp)
+	handlers.RegisterController(
+		ctx, "APPLICATIONSCORE.ENVIRONMENT.PUT", "applications.core/environments",
+		asynctrl_environments.NewCreateOrUpdateEnvironmentAsync)
+
+	inmemRequestQueueClient := jq.NewClient()
+
+	worker := server.NewAsyncRequestProcessor(w.Options, sp, inmemRequestQueueClient, handlers)
 	worker.Start(ctx)
 
 	logger.Info("Server stopped...")

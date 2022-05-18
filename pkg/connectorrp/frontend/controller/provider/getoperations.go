@@ -11,9 +11,9 @@ import (
 
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 )
@@ -26,11 +26,11 @@ type GetOperations struct {
 }
 
 // NewGetOperations creates a new instance of GetOperations.
-func NewGetOperations(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (controller.ControllerInterface, error) {
+func NewGetOperations(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (controller.ControllerInterface, error) {
 	return &GetOperations{
 		BaseController: controller.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }

@@ -11,9 +11,9 @@ import (
 
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/project-radius/radius/pkg/util"
@@ -27,9 +27,8 @@ type ControllerInterface interface {
 
 // BaseController is the base operation controller.
 type BaseController struct {
-	// TODO: db.RadrpDB and deployment.DeploymentProcessor will be replaced with new implementation.
-	DBClient  store.StorageClient
-	JobEngine deployment.DeploymentProcessor
+	DBClient              store.StorageClient
+	AsyncOperationManager asyncoperation.AsyncOperationManagerInterface
 }
 
 // GetResource is the helper to get the resource via storage client.

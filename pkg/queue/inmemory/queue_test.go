@@ -12,6 +12,6 @@ import (
 )
 
 func TestEnqueue(t *testing.T) {
-	q := newInMemQueue(3)
+	q := newInMemQueue()
 	require.NotNil(t, q)
 }

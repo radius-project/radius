@@ -11,10 +11,10 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 )
@@ -27,11 +27,11 @@ type CreateOrUpdateSubscription struct {
 }
 
 // NewCreateOrUpdateSubscription creates a new instance of CreateOrUpdateSubscription.
-func NewCreateOrUpdateSubscription(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (controller.ControllerInterface, error) {
+func NewCreateOrUpdateSubscription(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (controller.ControllerInterface, error) {
 	return &CreateOrUpdateSubscription{
 		BaseController: controller.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }

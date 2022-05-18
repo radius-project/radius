@@ -10,11 +10,11 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 )
@@ -27,11 +27,11 @@ type GetEnvironment struct {
 }
 
 // NewGetEnvironment creates a new GetEnvironment.
-func NewGetEnvironment(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
+func NewGetEnvironment(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (ctrl.ControllerInterface, error) {
 	return &GetEnvironment{
 		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }

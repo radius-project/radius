@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
 )
 
+// AsyncOperationStatus is the datamodel for Async operation statuses.
 type AsyncOperationStatus struct {
 	armrpcv1.AsyncOperationStatus
 
@@ -21,9 +22,9 @@ type AsyncOperationStatus struct {
 	// Location represents the location of operationstatus.
 	Location string `json:"location"`
 
-	// ClientTenantID is async operation caller's tenant id such as the value from x-ms-home-tenant-id header
-	ClientTenantID string `json:"clientTenantID,omitempty"`
+	// HomeTenantID is async operation caller's tenant id such as the value from x-ms-home-tenant-id header.
+	HomeTenantID string `json:"clientTenantID,omitempty"`
 
-	// ClientObjectID is async operation caller's client id such as the value from x-ms-client-object-id header
+	// ClientObjectID is async operation caller's client id such as the value from x-ms-client-object-id header.
 	ClientObjectID string `json:"clientObjectID,omitempty"`
 }

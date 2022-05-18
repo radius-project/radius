@@ -10,10 +10,10 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 )
@@ -26,11 +26,11 @@ type DeleteEnvironment struct {
 }
 
 // NewDeleteEnvironment creates a new DeleteEnvironment.
-func NewDeleteEnvironment(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
+func NewDeleteEnvironment(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (ctrl.ControllerInterface, error) {
 	return &DeleteEnvironment{
 		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }

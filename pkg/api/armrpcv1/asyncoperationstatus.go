@@ -30,5 +30,5 @@ type AsyncOperationStatus struct {
 	EndTime *time.Time `json:"endTime,omitempty"`
 
 	// Error represents the error occured during provisioning.
-	Error *armerrors.ErrorResponse `json:"error,omitempty"`
+	Error *armerrors.ErrorDetails `json:"error,omitempty"`
 }

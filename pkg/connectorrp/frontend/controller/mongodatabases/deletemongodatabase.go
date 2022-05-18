@@ -11,9 +11,9 @@ import (
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 )
@@ -26,11 +26,11 @@ type DeleteMongoDatabase struct {
 }
 
 // NewDeleteMongoDatabase creates a new instance DeleteMongoDatabase.
-func NewDeleteMongoDatabase(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
+func NewDeleteMongoDatabase(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (base_ctrl.ControllerInterface, error) {
 	return &DeleteMongoDatabase{
 		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }

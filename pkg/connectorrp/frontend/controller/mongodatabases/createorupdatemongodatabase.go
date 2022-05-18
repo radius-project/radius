@@ -13,8 +13,8 @@ import (
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/store"
 
@@ -29,11 +29,11 @@ type CreateOrUpdateMongoDatabase struct {
 }
 
 // NewCreateOrUpdateMongoDatabase creates a new instance of CreateOrUpdateMongoDatabase.
-func NewCreateOrUpdateMongoDatabase(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
+func NewCreateOrUpdateMongoDatabase(storageClient store.StorageClient, asyncOpManager asyncoperation.AsyncOperationManagerInterface) (base_ctrl.ControllerInterface, error) {
 	return &CreateOrUpdateMongoDatabase{
 		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
+			DBClient:              storageClient,
+			AsyncOperationManager: asyncOpManager,
 		},
 	}, nil
 }
