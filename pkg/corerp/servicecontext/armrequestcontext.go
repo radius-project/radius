@@ -120,7 +120,9 @@ type ARMRequestContext struct {
 	// CorrelationID represents the request corrleation id from arm request.
 	CorrelationID string
 	// OperationID represents the unique id per operation, which will be used as async operation id later.
-	OperationID string
+	OperationID uuid.UUID
+	// OperationName represents the name of the operation.
+	OperationName string
 	// Traceparent represents W3C trace prarent header for distributed tracing.
 	Traceparent string
 
@@ -177,7 +179,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		ResourceID:      azID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
-		OperationID:     uuid.NewString(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
+		OperationID:     uuid.New(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
 		Traceparent:     r.Header.Get(TraceparentHeader),
 
 		HomeTenantID:        r.Header.Get(HomeTenantIDHeader),
