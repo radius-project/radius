@@ -22,6 +22,7 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 		planeURL       string
 		planeID        string
 		httpScheme     string
+		ucpHost        string
 		expectedHeader string
 	}
 	positiveTestData := data{
@@ -32,6 +33,7 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 			planeURL:       "http://localhost:7443",
 			planeID:        "/planes/test/local",
 			httpScheme:     "http",
+			ucpHost:        "localhost:9443",
 		},
 		{
 			name:           AzureAsyncOperationHeader,
@@ -40,6 +42,7 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 			planeURL:       "http://localhost:7443",
 			planeID:        "/planes/test/local",
 			httpScheme:     "http",
+			ucpHost:        "localhost:9443",
 		},
 		{
 			name:           LocationHeader,
@@ -48,6 +51,7 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 			planeURL:       "https://localhost:7443",
 			planeID:        "/planes/test/local",
 			httpScheme:     "https",
+			ucpHost:        "localhost:9443",
 		},
 		{
 			name:           AzureAsyncOperationHeader,
@@ -56,6 +60,7 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 			planeURL:       "https://example.com",
 			planeID:        "/planes/test/local",
 			httpScheme:     "https",
+			ucpHost:        "localhost:9443",
 		},
 		{
 			name:           AzureAsyncOperationHeader,
@@ -64,6 +69,7 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 			planeURL:       "https://example.com",
 			planeID:        "/planes/test/local",
 			httpScheme:     "https",
+			ucpHost:        "localhost:9443",
 		},
 		{
 			name:           AzureAsyncOperationHeader,
@@ -72,14 +78,15 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 			planeURL:       "https://example.com/",
 			planeID:        "/planes/test/local",
 			httpScheme:     "https",
+			ucpHost:        "localhost:9443",
 		},
 	}
 	for _, datum := range positiveTestData {
 		response := http.Response{
 			Header: http.Header{},
 		}
-		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.httpScheme)
-		err := convertHeaderToUCPIDs(ctx, "localhost:9443", datum.name, datum.header, &response)
+		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.httpScheme, datum.ucpHost)
+		err := convertHeaderToUCPIDs(ctx, datum.name, datum.header, &response)
 		require.NoError(t, err, "%q should have not have failed", datum)
 		// response.SetHeader converts the header into CanonicalMIME format
 		require.Equal(t, datum.expectedHeader, response.Header[textproto.CanonicalMIMEHeaderKey(datum.name)][0])
@@ -104,8 +111,8 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 		response := http.Response{
 			Header: http.Header{},
 		}
-		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.httpScheme)
-		err := convertHeaderToUCPIDs(ctx, "localhost:9443", datum.name, datum.header, &response)
+		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.httpScheme, datum.ucpHost)
+		err := convertHeaderToUCPIDs(ctx, datum.name, datum.header, &response)
 		require.Error(t, err, "%q should have have failed", datum)
 		require.Equal(t, fmt.Sprintf("PlaneURL: %s received in the request context does not match the url found in %s header", datum.planeURL, datum.name), err.Error())
 	}
@@ -115,10 +122,10 @@ func Test_ConvertHeaderToUCPIDs_NoContextDataSet(t *testing.T) {
 	response := http.Response{
 		Header: http.Header{},
 	}
-	err := convertHeaderToUCPIDs(context.Background(), "localhost:9443", AzureAsyncOperationHeader, []string{"http://example.com/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"}, &response)
+	err := convertHeaderToUCPIDs(context.Background(), AzureAsyncOperationHeader, []string{"http://example.com/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"}, &response)
 	require.Error(t, err, "Should have have failed")
-	require.Equal(t, "Could not find plane URL data in Azure-Asyncoperation header", err.Error())
-	err = convertHeaderToUCPIDs(context.Background(), "localhost:9443", LocationHeader, []string{"http://example.com/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"}, &response)
+	require.Equal(t, "Could not find ucp request data in Azure-Asyncoperation header", err.Error())
+	err = convertHeaderToUCPIDs(context.Background(), LocationHeader, []string{"http://example.com/subscriptions/sid/resourceGroups/rg/providers/Microsoft.CustomProviders/resourceProviders/radiusv3/Application/testApp/Container/test"}, &response)
 	require.Error(t, err, "Should have have failed")
-	require.Equal(t, "Could not find plane URL data in Location header", err.Error())
+	require.Equal(t, "Could not find ucp request data in Location header", err.Error())
 }

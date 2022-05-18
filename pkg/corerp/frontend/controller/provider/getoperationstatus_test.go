@@ -13,11 +13,14 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/stretchr/testify/require"
 )
+
+const testHeaderfile = "operationstatus_requestheaders.json"
 
 func TestGetOperationStatusRun(t *testing.T) {
 	mctrl := gomock.NewController(t)
@@ -26,7 +29,13 @@ func TestGetOperationStatusRun(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	osDataModel, osExpectedOutput := getOperationStatusTestModels20220315privatepreview()
+	rawDataModel := radiustesting.ReadFixture("operationstatus_datamodel.json")
+	osDataModel := &datamodel.AsyncOperationStatus{}
+	_ = json.Unmarshal(rawDataModel, osDataModel)
+
+	rawExpectedOutput := radiustesting.ReadFixture("operationstatus_output.json")
+	expectedOutput := &armrpcv1.AsyncOperationStatus{}
+	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -72,9 +81,9 @@ func TestGetOperationStatusRun(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
-		actualOutput := &datamodel.AsyncOperationStatus{}
+		actualOutput := &armrpcv1.AsyncOperationStatus{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		require.Equal(t, osExpectedOutput, actualOutput)
+		require.Equal(t, expectedOutput, actualOutput)
 	})
 }

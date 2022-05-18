@@ -12,9 +12,8 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
-// OperationStatus represents an OperationStatus resource.
+// AsyncOperationStatus represents an OperationStatus resource.
 type AsyncOperationStatus struct {
-
 	// Id represents the async operation id.
 	ID string `json:"id,omitempty"`
 
@@ -28,8 +27,8 @@ type AsyncOperationStatus struct {
 	StartTime time.Time `json:"startTime,omitempty"`
 
 	// EndTime represents the async operation end time.
-	EndTime time.Time `json:"endTime,omitempty"`
+	EndTime *time.Time `json:"endTime,omitempty"`
 
 	// Error represents the error occured during provisioning.
-	Error *armerrors.ErrorResponse `json:"error,omitempty"`
+	Error *armerrors.ErrorDetails `json:"error,omitempty"`
 }
