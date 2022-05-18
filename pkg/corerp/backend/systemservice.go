@@ -59,7 +59,7 @@ func (s *SystemService) Run(ctx context.Context) error {
 		_ = server.Shutdown(ctx)
 	}()
 
-	logger.Info(fmt.Sprintf("System http serverlistening on: '%s'...", address))
+	logger.Info(fmt.Sprintf("System service endpoint on: '%s'...", address))
 	if err := server.ListenAndServe(); err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")
