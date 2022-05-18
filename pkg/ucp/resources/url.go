@@ -51,3 +51,4 @@ func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error)
 
 	return segments[1], segments[2], remainder, nil
 }
+

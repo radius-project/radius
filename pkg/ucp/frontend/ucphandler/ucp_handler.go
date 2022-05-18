@@ -19,7 +19,8 @@ func NewUCPHandler(options UCPHandlerOptions) UCPHandler {
 	return UCPHandler{
 		Options: options,
 		Planes: ucpplanes.NewPlanesUCPHandler(ucpplanes.Options{
-			Address: options.Address,
+		Address:  options.Address,
+			BasePath: options.BasePath,
 		}),
 		ResourceGroups: ucpresourcegroups.NewResourceGroupsUCPHandler(),
 	}

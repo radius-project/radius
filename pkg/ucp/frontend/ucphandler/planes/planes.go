@@ -35,7 +35,8 @@ type PlanesUCPHandler interface {
 }
 
 type Options struct {
-	Address string
+	Address  string
+	BasePath string
 }
 
 // NewPlanesUCPHandler creates a new Planes UCP handler
