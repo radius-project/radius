@@ -244,28 +244,6 @@ func MakeID(subscriptionID string, resourceGroup string, resourceType ResourceTy
 	return "/" + strings.Join(segments, "/")
 }
 
-func MakeUCPID(resourceGroup string, resourceType ResourceType, resourceTypes ...ResourceType) string {
-	segments := []string{
-		"resourceGroups",
-		resourceGroup,
-		"providers",
-	}
-
-	segments = append(segments, resourceType.Type)
-	if resourceType.Name != "" {
-		segments = append(segments, resourceType.Name)
-	}
-
-	for _, rt := range resourceTypes {
-		segments = append(segments, rt.Type)
-		if rt.Name != "" {
-			segments = append(segments, rt.Name)
-		}
-	}
-
-	return "/" + strings.Join(segments, "/")
-}
-
 // MakeCollectionURITemplate creates a URI template for a collection given the provided resource types.
 func MakeCollectionURITemplate(t KnownType) string {
 	segments := []string{

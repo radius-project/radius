@@ -47,7 +47,7 @@ const (
 	IngressServiceName       = "contour-envoy"
 	RadiusConfigName         = "radius-config"
 	RadiusSystemNamespace    = "radius-system"
-	DeploymentsUCPPath       = "/apis/api.ucp.dev/v1alpha3/planes/deployments/local"
+	DeploymentsUCPPath       = "/apis/api.ucp.dev/v1alpha3"
 )
 
 var (

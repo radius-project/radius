@@ -111,6 +111,7 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		OperationsClient: op,
 		ResourceGroup:    e.ResourceGroup,
 		Tags:             tags,
+		EnableUCP:        e.EnableUCP,
 	}, nil
 }
 

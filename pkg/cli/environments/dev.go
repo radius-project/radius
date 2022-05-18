@@ -139,6 +139,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		OperationsClient: op,
 		ResourceGroup:    resourceGroup,
 		Tags:             tags,
+		EnableUCP:        e.EnableUCP,
 	}
 	return client, nil
 }

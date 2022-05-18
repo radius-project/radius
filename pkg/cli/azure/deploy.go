@@ -18,6 +18,7 @@ import (
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // OperationPollInterval is the interval used for polling of deployment operations for progress.
@@ -78,17 +79,29 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 		return nil, err
 	}
 
-	resourceType := azresources.ResourceType{
-		Type: "Microsoft.Resources",
-		Name: "deployments",
-	}
 	var resourceId string
 	if dc.EnableUCP {
-		resourceId = azresources.MakeUCPID(dc.ResourceGroup, resourceType)
+		scopes := []ucpresources.ScopeSegment{
+			{Type: "planes", Name: "deployments/local"},
+			{Type: "resourcegroups", Name: dc.ResourceGroup},
+		}
+		types := []ucpresources.TypeSegment{
+			{Type: "Microsoft.Resources/deployments", Name: name},
+		}
+
+		resourceId = ucpresources.MakeRelativeID(scopes, types...)
 	} else {
-		resourceId = azresources.MakeID(dc.SubscriptionID, dc.ResourceGroup, resourceType)
+		scopes := []ucpresources.ScopeSegment{
+			{Type: "subscription", Name: dc.SubscriptionID},
+			{Type: "resourcegroups", Name: dc.ResourceGroup},
+		}
+		types := []ucpresources.TypeSegment{
+			{Type: "Microsoft.Resources/deployments", Name: name},
+		}
+		resourceId = ucpresources.MakeRelativeID(scopes, types...)
 	}
 
+	// /apis/api.ucp.dev/v1alpha3/planes/deployments/local/resourceGroups/justin-azure-rg/providers/Microsoft.Resources/deployments/rad-deploy-d6b4f46b-bf81-4b1d-a6df-c77432d1c334
 	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Template:   template,
@@ -219,18 +232,30 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 }
 
 func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name string) ([]resources.DeploymentOperation, error) {
-	resourceType := azresources.ResourceType{
-		Type: "Microsoft.Resources",
-		Name: "deployments",
-	}
-	resourceDeployment := azresources.ResourceType{
-		Type: name,
-	}
+
 	var resourceId string
 	if dc.EnableUCP {
-		resourceId = azresources.MakeUCPID(dc.ResourceGroup, resourceType, resourceDeployment)
+		// deployments/{deploymentName}/operations
+		scopes := []ucpresources.ScopeSegment{
+			{Type: "planes", Name: "deployments"},
+			{Type: "local", Name: ""},
+			{Type: "resourcegroups", Name: dc.ResourceGroup},
+		}
+		types := []ucpresources.TypeSegment{
+			{Type: "deployments", Name: name},
+			{Type: "operations"},
+		}
+		resourceId = ucpresources.MakeRelativeID(scopes, types...)
 	} else {
-		resourceId = azresources.MakeID(dc.SubscriptionID, dc.ResourceGroup, resourceType, resourceDeployment)
+		scopes := []ucpresources.ScopeSegment{
+			{Type: "subscription", Name: dc.SubscriptionID},
+			{Type: "resourcegroups", Name: dc.ResourceGroup},
+		}
+		types := []ucpresources.TypeSegment{
+			{Type: "deployments", Name: name},
+			{Type: "operations"},
+		}
+		resourceId = ucpresources.MakeRelativeID(scopes, types...)
 	}
 
 	operationList, err := dc.OperationsClient.List(ctx, resourceId, nil)

@@ -16,7 +16,7 @@ import (
 func TestUCPClientPrepare(t *testing.T) {
 	ucpClient := NewResourceDeploymentClientWithBaseURI("http://localhost:5050")
 
-	request, err := ucpClient.CreateOrUpdatePreparer(context.TODO(), "my-rg", "my-deployment", resources.Deployment{})
+	request, err := ucpClient.ResourceCreateOrUpdatePreparer(context.TODO(), "/resourcegroups/my-rg/providers/Microsoft.Resources/deployments/my-deployment", resources.Deployment{})
 	require.NoError(t, err)
 
 	require.Equal(t, "/resourcegroups/my-rg/providers/Microsoft.Resources/deployments/my-deployment", request.URL.Path)
