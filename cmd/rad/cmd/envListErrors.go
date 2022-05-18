@@ -78,7 +78,7 @@ func displayErrors(cmd *cobra.Command, env cli.EnvironmentSection) error {
 		errList = append(errList, envError{fmt.Sprintf("the default environment entry %v has not been configured", env.Default)})
 	}
 	if len(errList) > 0 {
-		fmt.Print("\n" + "Error: ")
+		fmt.Println()
 		errformatter := objectformats.GetGenericEnvErrorTableFormat()
 		err = output.Write(output.FormatTable, errList, cmd.OutOrStdout(), errformatter)
 		if err != nil {
