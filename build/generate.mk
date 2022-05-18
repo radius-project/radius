@@ -30,7 +30,6 @@ generate-node-installed:
 generate-autorest-installed:
 	@echo "$(ARROW) Detecting autorest..."
 	@which autorest > /dev/null || { echo "run 'npm install -g autorest' to install autorest"; exit 1; }
-	autorest --reset
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-specs
