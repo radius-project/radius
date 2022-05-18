@@ -149,7 +149,14 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 			return "", nil, err
 		}
 
-		roundTripper, err = CreateRestRoundTripper(context, "api.ucp.dev", overrideURL)
+		var k8sType string
+		if enableUCP {
+			k8sType = "api.ucp.dev"
+		} else {
+			k8sType = "api.bicep.dev"
+		}
+
+		roundTripper, err = CreateRestRoundTripper(context, k8sType, overrideURL)
 		if err != nil {
 			return "", nil, err
 		}
