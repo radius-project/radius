@@ -41,7 +41,6 @@ import (
 const (
 	APIServerBasePath        = "/apis/api.radius.dev/v1alpha3"
 	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
-	DeploymentsUCPPath       = "/apis/api.ucp.dev/v1alpha3/planes/deployments/local"
 	Location                 = "Location"
 	AzureAsyncOperation      = "Azure-AsyncOperation"
 	IngressServiceName       = "contour-envoy"
