@@ -25,6 +25,8 @@ type element struct {
 	visible bool
 }
 
+var defaultQueue = newInMemQueue()
+
 // inmemQueue implements in-memory queue for dev/test
 type inmemQueue struct {
 	v   *list.List

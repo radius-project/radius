@@ -15,7 +15,7 @@ import (
 var _ queue.Enqueuer = (*Client)(nil)
 var _ queue.Dequeuer = (*Client)(nil)
 
-// Client is the in-memory queue client.
+// Client is the queue client used for dev and test purpose.
 type Client struct {
 	queue *inmemQueue
 }
@@ -23,7 +23,7 @@ type Client struct {
 // NewClient creates the in-memory queue Client instance.
 func NewClient() *Client {
 	return &Client{
-		queue: newInMemQueue(),
+		queue: defaultQueue,
 	}
 }
 
@@ -42,8 +42,7 @@ func (c *Client) Dequeue(ctx context.Context, options ...queue.DequeueOptions) (
 			msg := c.queue.Dequeue()
 			if msg != nil {
 				msg.WithFinish(func(err error) error {
-					_ = c.queue.Complete(msg)
-					return nil
+					return c.queue.Complete(msg)
 				})
 				msg.WithExtend(func() error {
 					msg.NextVisibleAt = msg.NextVisibleAt.Add(messageLockDuration)
