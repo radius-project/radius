@@ -101,7 +101,6 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 		resourceId = ucpresources.MakeRelativeID(scopes, types...)
 	}
 
-	// /apis/api.ucp.dev/v1alpha3/planes/deployments/local/resourceGroups/justin-azure-rg/providers/Microsoft.Resources/deployments/rad-deploy-d6b4f46b-bf81-4b1d-a6df-c77432d1c334
 	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Template:   template,
@@ -253,7 +252,6 @@ func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name stri
 		}
 		resourceId = ucpresources.MakeRelativeID(scopes)
 	}
-	//"/subscriptions/default/resourcegroups/default/providers/deployments/rad-deploy-6de8cdf7-e64e-4aa2-8e2d-a2baa8f74275/operations"
 
 	operationList, err := dc.OperationsClient.List(ctx, resourceId, nil)
 	if err != nil {
