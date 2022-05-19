@@ -36,7 +36,7 @@ func (w *Service) Run(ctx context.Context) error {
 
 	controllers := server.NewControllerRegistry(sp)
 
-	// TODO: register handlers
+	// TODO: register async operation controllers.
 
 	worker := server.NewAsyncRequestProcessWorker(w.Options, sp, controllers)
 

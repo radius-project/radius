@@ -48,7 +48,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 	ctx = hostoptions.WithContext(ctx, w.options.Config)
 
-	// TODO: implement message loop
+	// TODO: run multiple operation concurrently.
 loop:
 	for {
 		select {
