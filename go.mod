@@ -41,6 +41,11 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.mongodb.org/mongo-driver v1.8.2
+	go.opentelemetry.io/otel v0.20.0
+	go.opentelemetry.io/otel/exporters/metric/prometheus v0.20.0
+	go.opentelemetry.io/otel/metric v0.20.0
+	go.opentelemetry.io/otel/sdk/export/metric v0.20.0
+	go.opentelemetry.io/otel/sdk/metric v0.20.0
 	go.uber.org/zap v1.20.0
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -166,13 +171,8 @@ require (
 	go.etcd.io/etcd/raft/v3 v3.5.2 // indirect
 	go.opentelemetry.io/contrib v0.20.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0 // indirect
-	go.opentelemetry.io/otel v0.20.0 // indirect
-	go.opentelemetry.io/otel/exporters/metric/prometheus v0.20.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp v0.20.0 // indirect
-	go.opentelemetry.io/otel/metric v0.20.0 // indirect
 	go.opentelemetry.io/otel/sdk v0.20.0 // indirect
-	go.opentelemetry.io/otel/sdk/export/metric v0.20.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v0.20.0 // indirect
 	go.opentelemetry.io/otel/trace v0.20.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.7.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
