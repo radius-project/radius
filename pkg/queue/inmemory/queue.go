@@ -83,7 +83,8 @@ func (q *InmemQueue) Complete(msg *queue.Message) error {
 			return nil
 		}
 	}
-	return errors.New("id not found")
+
+	return errors.New("message has already completed")
 }
 
 func (q *InmemQueue) updateQueue() {
@@ -93,7 +94,7 @@ func (q *InmemQueue) updateQueue() {
 	for e := q.v.Front(); e != nil; e = e.Next() {
 		elem, ok := e.Value.(*element)
 		if !ok {
-			continue
+			panic("invalid queue value type")
 		}
 
 		now := time.Now().UTC()

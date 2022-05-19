@@ -8,7 +8,6 @@ package inmemory
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/project-radius/radius/pkg/queue"
 	"github.com/stretchr/testify/require"
@@ -24,35 +23,44 @@ func TestClient(t *testing.T) {
 	recvCnt := 0
 	done := make(chan struct{})
 
+	msgCount := 10
+
 	// Consumer
 	go func(msgCh <-chan *queue.Message) {
 		for msg := range msgCh {
 			require.Equal(t, 1, msg.DequeueCount)
 			require.Equal(t, "test", msg.Data)
 			recvCnt++
+
+			if recvCnt == msgCount {
+				done <- struct{}{}
+			}
 		}
-		done <- struct{}{}
 	}(msgCh)
 
 	// Producer
-	for i := 0; i < 10; i++ {
+	for i := 0; i < msgCount; i++ {
 		err := cli.Enqueue(ctx, &queue.Message{Data: "test"})
 		require.NoError(t, err)
 	}
-	time.Sleep(100 * time.Millisecond)
-	cancel()
+
 	<-done
-	require.Equal(t, 10, recvCnt)
+	cancel()
+
+	require.Equal(t, msgCount, recvCnt)
 }
 
 func TestMessageFinish(t *testing.T) {
 	cli := NewClient(NewInMemQueue())
 
 	ctx, cancel := context.WithCancel(context.Background())
-	msgCh, _ := cli.Dequeue(ctx)
+	msgCh, err := cli.Dequeue(ctx)
+	require.NoError(t, err)
 
-	_ = cli.Enqueue(ctx, &queue.Message{Data: "test1"})
-	_ = cli.Enqueue(ctx, &queue.Message{Data: "test2"})
+	err = cli.Enqueue(ctx, &queue.Message{Data: "test1"})
+	require.NoError(t, err)
+	err = cli.Enqueue(ctx, &queue.Message{Data: "test2"})
+	require.NoError(t, err)
 	recv := <-msgCh
 	require.Equal(t, "test1", recv.Data)
 
@@ -61,7 +69,8 @@ func TestMessageFinish(t *testing.T) {
 	require.Equal(t, "test1", first.val.Data)
 
 	// Finish message
-	_ = recv.Finish(nil)
+	err = recv.Finish(nil)
+	require.NoError(t, err)
 
 	// Ensure that the first element of queue is test2 because we finish message.
 	first = cli.queue.v.Front().Value.(*element)
@@ -76,14 +85,17 @@ func TestExtendMessageLock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	msgCh, _ := cli.Dequeue(ctx)
 
-	_ = cli.Enqueue(ctx, &queue.Message{Data: "test1"})
+	err := cli.Enqueue(ctx, &queue.Message{Data: "test1"})
+	require.NoError(t, err)
+
 	recv := <-msgCh
 	require.Equal(t, "test1", recv.Data)
 
 	old := recv.NextVisibleAt
 
 	// Extend message lock
-	_ = recv.Extend()
+	err = recv.Extend()
+	require.NoError(t, err)
 
 	first := cli.queue.v.Front().Value.(*element)
 

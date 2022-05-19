@@ -63,7 +63,12 @@ func TestComplete(t *testing.T) {
 	})
 
 	msg := q.Dequeue()
-	_ = q.Complete(msg)
+	err := q.Complete(msg)
+	require.NoError(t, err)
+
+	// Try to complete the message again.
+	err = q.Complete(msg)
+	require.Error(t, err)
 
 	msg2 := q.Dequeue()
 	require.Nil(t, msg2)
@@ -81,7 +86,8 @@ func TestEnqueueDequeueMulti(t *testing.T) {
 		msg := q.Dequeue()
 		require.Equal(t, fmt.Sprintf("test%d", i), msg.Data)
 
-		_ = q.Complete(msg)
+		err := q.Complete(msg)
+		require.NoError(t, err)
 	}
 
 	require.Nil(t, q.v.Front())

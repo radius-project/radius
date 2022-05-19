@@ -12,6 +12,8 @@ import (
 	"github.com/project-radius/radius/pkg/queue"
 )
 
+var dequeueInterval = 5 * time.Millisecond
+
 var _ queue.Enqueuer = (*Client)(nil)
 var _ queue.Dequeuer = (*Client)(nil)
 
@@ -36,7 +38,7 @@ func (c *Client) Enqueue(ctx context.Context, msg *queue.Message, options ...que
 	return nil
 }
 
-// Dequeue dequeus message from in-memory queue.
+// Dequeue dequeues message from the in-memory queue.
 func (c *Client) Dequeue(ctx context.Context, options ...queue.DequeueOptions) (<-chan *queue.Message, error) {
 	out := make(chan *queue.Message, 1)
 
@@ -58,7 +60,7 @@ func (c *Client) Dequeue(ctx context.Context, options ...queue.DequeueOptions) (
 			case <-ctx.Done():
 				close(out)
 				return
-			case <-time.After(5 * time.Millisecond):
+			case <-time.After(dequeueInterval):
 			}
 		}
 	}()
