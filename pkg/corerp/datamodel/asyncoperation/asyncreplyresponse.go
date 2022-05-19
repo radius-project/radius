@@ -20,14 +20,18 @@ type AsyncReplyResponse struct {
 	OperationID uuid.UUID
 	// OperationName represents the async operation name.
 	OperationName string
+
 	// ResourceID represents the linked resource.
 	ResourceID azresources.ResourceID
+
 	// Status represents the provisioning status.
 	Status basedatamodel.ProvisioningStates
+
 	// StartTime represents the start time of async request operation.
 	StartTime *time.Time
 	// EndTime represents the end time of async request operation.
 	EndTime *time.Time
+
 	// Error represents the error when status is Cancelled or Failed.
 	Error *armerrors.ErrorDetails
 }
@@ -56,6 +60,10 @@ func (a *AsyncReplyResponse) SetFailed(err armerrors.ErrorDetails) {
 	now := time.Now().UTC()
 	a.EndTime = &now
 	a.Status = basedatamodel.ProvisioningStateFailed
+	a.Error = &armerrors.ErrorDetails{
+		Code:    err.Code,
+		Message: err.Message,
+	}
 }
 
 // SetCanceled sets the response status to Canceled.
