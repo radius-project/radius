@@ -8,6 +8,7 @@ package controller
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/store"
 )
 
@@ -17,9 +18,9 @@ type AsyncController interface {
 	Run(ctx context.Context) error
 
 	// AsyncResponseCh gets the output AsyncResponse channel. Worker will listen this channel to update operationstatus record.
-	AsyncResponseCh() <-chan *AsyncReplyResponse
+	AsyncResponseCh() <-chan *datamodel.AsyncReplyResponse
 	// Reply stores async request response.
-	Reply(resp *AsyncReplyResponse)
+	Reply(resp *datamodel.AsyncReplyResponse)
 
 	// StorageClient gets storage client for this controller
 	StorageClient() store.StorageClient
@@ -28,15 +29,15 @@ type AsyncController interface {
 // BaseAsyncController is the base struct of async operation controller.
 type BaseAsyncController struct {
 	StoreClient store.StorageClient
-	AsyncResp   chan *AsyncReplyResponse
+	AsyncResp   chan *datamodel.AsyncReplyResponse
 }
 
 // AsyncResponseCh gets the output channel of asynchronous response.
-func (b *BaseAsyncController) AsyncResponseCh() <-chan *AsyncReplyResponse {
+func (b *BaseAsyncController) AsyncResponseCh() <-chan *datamodel.AsyncReplyResponse {
 	return b.AsyncResp
 }
 
 // Reply replies the async response.
-func (b *BaseAsyncController) Reply(resp *AsyncReplyResponse) {
+func (b *BaseAsyncController) Reply(resp *datamodel.AsyncReplyResponse) {
 	b.AsyncResp <- resp
 }
