@@ -8,9 +8,8 @@ package provider
 import "go.opentelemetry.io/otel/exporters/metric/prometheus"
 
 // NewPrometheusMetricsExporter returns prometheus exporter used for metrics collection
-func NewPrometheusMetricsExporter() (*prometheus.Exporter, error) {
-	promConfig := prometheus.Config{}
-	exporter, err := prometheus.InstallNewPipeline(promConfig)
+func NewPrometheusMetricsExporter(config prometheus.Config) (*prometheus.Exporter, error) {
+	exporter, err := prometheus.InstallNewPipeline(config)
 	if err != nil {
 		return nil, err
 	}
