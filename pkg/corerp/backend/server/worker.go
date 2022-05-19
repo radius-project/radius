@@ -46,16 +46,7 @@ func NewAsyncRequestProcessWorker(
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	ctx = hostoptions.WithContext(ctx, w.options.Config)
-
-	// TODO: run multiple operation concurrently.
-loop:
-	for {
-		select {
-		case <-ctx.Done():
-			break loop
-		}
-	}
+	// TODO: implement message loop to run multiple operation concurrently.
 
 	logger.Info("Server stopped...")
 	return nil

@@ -37,6 +37,7 @@ func (w *Service) Run(ctx context.Context) error {
 	controllers := server.NewControllerRegistry(sp)
 
 	// TODO: register async operation controllers.
+	// controllers.Register(ctx, "APPLICATIONSCORE.ENVIRONMENTS.PUT", "Applications.Core/environments", NewAsyncCreateOrUpdateEnvironment)
 
 	worker := server.NewAsyncRequestProcessWorker(w.Options, sp, controllers)
 
