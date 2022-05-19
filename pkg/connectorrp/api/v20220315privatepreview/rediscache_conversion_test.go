@@ -24,6 +24,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	// act
 	dm, err := versionedResource.ConvertTo()
 
+	resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.redis"}
 	// assert
 	require.NoError(t, err)
 	convertedResource := dm.(*datamodel.RedisCache)
@@ -38,6 +39,8 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
 	require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
 	require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
 }
 
 func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
@@ -51,6 +54,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 	versionedResource := &RedisCacheResource{}
 	err = versionedResource.ConvertFrom(resource)
 
+	resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.redis"}
 	// assert
 	require.NoError(t, err)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", resource.ID)
@@ -63,6 +67,8 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, int32(10255), resource.Properties.Port)
 	require.Equal(t, "test-connection-string", resource.Properties.Secrets.ConnectionString)
 	require.Equal(t, "testPassword", resource.Properties.Secrets.Password)
+	require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
 }
 
 func TestRedisCache_ConvertFromValidation(t *testing.T) {

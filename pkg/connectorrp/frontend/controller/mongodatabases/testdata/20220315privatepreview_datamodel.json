@@ -14,8 +14,11 @@
     "properties": {
         "status": {
             "outputResources": [{
-                "type":33,
-                "flags":0
+              "LocalID": "Deployment",
+              "ResourceType": {
+                "Type": "azure.cosmosdb.mongo",
+                "Provider": "azure"
+              }
             }]
         },
         "provisioningState": "Succeeded",

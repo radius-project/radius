@@ -28,6 +28,7 @@ func loadTestData(testfile string) []byte {
 	}
 	return d
 }
+
 func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
 	rawPayload := loadTestData("mongodatabaseresource.json")
@@ -38,6 +39,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	// act
 	dm, err := versionedResource.ConvertTo()
 
+	resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.cosmosdb.mongo"}
 	// assert
 	require.NoError(t, err)
 	convertedResource := dm.(*datamodel.MongoDatabase)
@@ -53,6 +55,9 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "testUser", convertedResource.Properties.Secrets.Username)
 	require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
 	require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+
 }
 
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
@@ -66,6 +71,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	versionedResource := &MongoDatabaseResource{}
 	err = versionedResource.ConvertFrom(resource)
 
+	resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.cosmosdb.mongo"}
 	// assert
 	require.NoError(t, err)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/mongoDatabases/mongo0", resource.ID)
@@ -79,6 +85,8 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "test-connection-string", resource.Properties.Secrets.ConnectionString)
 	require.Equal(t, "testUser", resource.Properties.Secrets.Username)
 	require.Equal(t, "testPassword", resource.Properties.Secrets.Password)
+	require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
 }
 
 func TestMongoDatabase_ConvertFromValidation(t *testing.T) {

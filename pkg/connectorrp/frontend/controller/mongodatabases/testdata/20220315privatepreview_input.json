@@ -3,8 +3,11 @@
     "properties": {
         "status": {
           "outputResources": [{
-              "type":33,
-              "flags":0
+            "LocalID": "Deployment",
+            "ResourceType": {
+              "Type": "azure.cosmosdb.mongo",
+              "Provider": "azure"
+            }
           }]
         },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",

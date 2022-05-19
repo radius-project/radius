@@ -24,6 +24,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	// act
 	dm, err := versionedResource.ConvertTo()
 
+	resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.sql.database"}
 	// assert
 	require.NoError(t, err)
 	convertedResource := dm.(*datamodel.SqlDatabase)
@@ -36,6 +37,8 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "testAccount1.sql.cosmos.azure.com", convertedResource.Properties.Server)
 	require.Equal(t, "testDatabase", convertedResource.Properties.Database)
 	require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
 }
 
 func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
@@ -49,6 +52,7 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	versionedResource := &SQLDatabaseResource{}
 	err = versionedResource.ConvertFrom(resource)
 
+	resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.sql.database"}
 	// assert
 	require.NoError(t, err)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/sqlDatabases/sql0", resource.ID)
@@ -59,6 +63,8 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.Resource)
 	require.Equal(t, "testAccount1.sql.cosmos.azure.com", resource.Properties.Server)
 	require.Equal(t, "testDatabase", resource.Properties.Database)
+	require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
 }
 
 func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
