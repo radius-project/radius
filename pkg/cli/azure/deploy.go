@@ -92,7 +92,7 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 		resourceId = ucpresources.MakeRelativeID(scopes, types...)
 	} else {
 		scopes := []ucpresources.ScopeSegment{
-			{Type: "subscription", Name: dc.SubscriptionID},
+			{Type: "subscriptions", Name: dc.SubscriptionID},
 			{Type: "resourcegroups", Name: dc.ResourceGroup},
 		}
 		types := []ucpresources.TypeSegment{
@@ -232,31 +232,28 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 }
 
 func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name string) ([]resources.DeploymentOperation, error) {
-
 	var resourceId string
+
+	// No providers section, hence all segments are part of scopes
 	if dc.EnableUCP {
-		// deployments/{deploymentName}/operations
 		scopes := []ucpresources.ScopeSegment{
 			{Type: "planes", Name: "deployments"},
 			{Type: "local", Name: ""},
 			{Type: "resourcegroups", Name: dc.ResourceGroup},
-		}
-		types := []ucpresources.TypeSegment{
 			{Type: "deployments", Name: name},
 			{Type: "operations"},
 		}
-		resourceId = ucpresources.MakeRelativeID(scopes, types...)
+		resourceId = ucpresources.MakeRelativeID(scopes)
 	} else {
 		scopes := []ucpresources.ScopeSegment{
-			{Type: "subscription", Name: dc.SubscriptionID},
+			{Type: "subscriptions", Name: dc.SubscriptionID},
 			{Type: "resourcegroups", Name: dc.ResourceGroup},
-		}
-		types := []ucpresources.TypeSegment{
 			{Type: "deployments", Name: name},
 			{Type: "operations"},
 		}
-		resourceId = ucpresources.MakeRelativeID(scopes, types...)
+		resourceId = ucpresources.MakeRelativeID(scopes)
 	}
+	//"/subscriptions/default/resourcegroups/default/providers/deployments/rad-deploy-6de8cdf7-e64e-4aa2-8e2d-a2baa8f74275/operations"
 
 	operationList, err := dc.OperationsClient.List(ctx, resourceId, nil)
 	if err != nil {

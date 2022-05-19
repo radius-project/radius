@@ -88,6 +88,7 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	return &azure.ResouceDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
+		SubscriptionID:   e.Namespace,
 		ResourceGroup:    e.Namespace,
 		EnableUCP:        e.EnableUCP,
 	}, nil

@@ -108,6 +108,7 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	return &azure.ResouceDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
+		SubscriptionID:   e.SubscriptionID,
 		ResourceGroup:    e.ResourceGroup,
 		Tags:             tags,
 		EnableUCP:        e.EnableUCP,

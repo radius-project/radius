@@ -136,6 +136,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 	client := &azure.ResouceDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
+		SubscriptionID:   subscriptionId,
 		ResourceGroup:    resourceGroup,
 		Tags:             tags,
 		EnableUCP:        e.EnableUCP,
