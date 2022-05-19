@@ -14,8 +14,21 @@
         "env": "dev"
     },
     "properties": {
+        "status": {
+            "outputResources": [{
+              "type":33,
+              "flags":0
+            }]
+        },
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
+        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db",
+        "host": "testAccount1.mongo.cosmos.azure.com",
+        "port": 10255,
+        "secrets": {
+          "username": "testUser",
+          "password": "testPassword",
+          "connectionString": "test-connection-string"
+        }
     }
 }

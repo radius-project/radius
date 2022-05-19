@@ -29,6 +29,7 @@ func (mongo MongoDatabase) ResourceTypeName() string {
 
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
+	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Environment       string                           `json:"environment"`
 	Application       string                           `json:"application,omitempty"`

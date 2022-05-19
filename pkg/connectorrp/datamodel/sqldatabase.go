@@ -29,6 +29,7 @@ func (sql SqlDatabase) ResourceTypeName() string {
 
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
+	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Environment       string                           `json:"environment"`
 	Application       string                           `json:"application,omitempty"`

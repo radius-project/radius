@@ -29,6 +29,7 @@ func (redis RedisCache) ResourceTypeName() string {
 
 // RedisCacheProperties represents the properties of RedisCache resource.
 type RedisCacheProperties struct {
+	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Environment       string                           `json:"environment"`
 	Application       string                           `json:"application,omitempty"`

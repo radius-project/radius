@@ -24,6 +24,11 @@ func (src *SQLDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.SqlDatabaseProperties{
+			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+				Status: basedatamodel.ResourceStatus{
+					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+				},
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -52,6 +57,11 @@ func (dst *SQLDatabaseResource) ConvertFrom(src api.DataModelInterface) error {
 	dst.Location = to.StringPtr(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
 	dst.Properties = &SQLDatabaseProperties{
+		BasicResourceProperties: BasicResourceProperties{
+			Status: &ResourceStatus{
+				OutputResources: sql.Properties.BasicResourceProperties.Status.OutputResources,
+			},
+		},
 		ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
 		Environment:       to.StringPtr(sql.Properties.Environment),
 		Application:       to.StringPtr(sql.Properties.Application),

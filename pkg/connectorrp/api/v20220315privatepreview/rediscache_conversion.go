@@ -32,6 +32,11 @@ func (src *RedisCacheResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RedisCacheProperties{
+			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+				Status: basedatamodel.ResourceStatus{
+					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+				},
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -61,6 +66,11 @@ func (dst *RedisCacheResource) ConvertFrom(src api.DataModelInterface) error {
 	dst.Location = to.StringPtr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheProperties{
+		BasicResourceProperties: BasicResourceProperties{
+			Status: &ResourceStatus{
+				OutputResources: redis.Properties.BasicResourceProperties.Status.OutputResources,
+			},
+		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
 		Environment:       to.StringPtr(redis.Properties.Environment),
 		Application:       to.StringPtr(redis.Properties.Application),
