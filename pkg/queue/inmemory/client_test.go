@@ -27,6 +27,7 @@ func TestClient(t *testing.T) {
 	// Consumer
 	go func(msgCh <-chan *queue.Message) {
 		for msg := range msgCh {
+			require.Equal(t, 1, msg.DequeueCount)
 			require.Equal(t, "test", msg.Data)
 			recvCnt++
 		}
