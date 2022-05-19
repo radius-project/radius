@@ -6,7 +6,6 @@
 package helm
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"strings"
@@ -35,9 +34,8 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	var helmChart *chart.Chart
 	// ChartPath is not one of the OSMoptions, so we will just retrieve the chart from the container registry
-	helmChart, err = helmChartFromContainerRegistry(options.ChartVersion, helmConf, OSMHelmRepo, OSMReleaseName)
+	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, OSMHelmRepo, OSMReleaseName)
 
 	if err != nil {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
@@ -47,21 +45,21 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
-	//Inokve the installation of OSM control plane
+	// Invoke the installation of OSM control plane
 
-	//retrieve the history of the releases
+	// retrieve the history of the releases
 	_, err = histClient.Run(OSMReleaseName)
-	//if a previous release is not found
+	// if a previous release is not found
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("Installing Open Service Mesh to namespace: %s", RadiusSystemNamespace)
+		output.LogInfo("Installing Open Service Mesh (OSM) to namespace: %s", RadiusSystemNamespace)
 
-		//Installation of OSM
+		// Installation of OSM
 		err = runOSMHelmInstall(helmConf, helmChart)
 		if err != nil {
-			return fmt.Errorf("failed to run OSM helm install, err: %w, helm output: %s", err, helmOutput.String())
+			return fmt.Errorf("failed to run Open Service Mesh (OSM) helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	} else if err == nil {
-		output.LogInfo("Found existing Open Service Mesh installation")
+		output.LogInfo("Found existing Open Service Mesh (OSM) installation")
 	}
 	return err
 
@@ -77,13 +75,13 @@ func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) err
 }
 
 func RunOSMHelmUninstall(helmConf *helm.Configuration) error {
-	output.LogInfo("Uninstalling OSM from namespace: %s", RadiusSystemNamespace)
+	output.LogInfo("Uninstalling Open Service Mesh (OSM) from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = uninstallTimeout
 	uninstallClient.Wait = true
 	_, err := uninstallClient.Run(OSMReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("OSM not found")
+		output.LogInfo("Open Service Mesh (OSM) not found")
 		return nil
 	}
 	return err

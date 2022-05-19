@@ -56,7 +56,6 @@ func NewDefaultClusterOptions() ClusterOptions {
 			Tag:          tag,
 		},
 		OSM: OSMOptions{
-			//Need a default version?
 			ChartVersion: OSMDefaultVersion,
 		},
 	}
