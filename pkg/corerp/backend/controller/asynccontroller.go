@@ -14,16 +14,16 @@ import (
 
 // AsyncController is an interface to implement async operation controller. This is to implement request-reply pattern using messaging queue.
 // Frontend Controller enqueues AsyncRequestMessage and creates OperationStatuses. AsyncRequestProcessWorker consumes this async request
-// message and executes this AsyncController. To implement Reply pattern, it uses go channel and Worker listens to this reply go channel to
+// message and executes this AsyncController. To implement "Reply" pattern, it uses go channel and Worker listens to this reply go channel to
 // update OperationStatuses record. AsyncController can use Reply() to send the response to worker over go channel.
 type AsyncController interface {
 	// Run runs async request operation.
-	Run(ctx context.Context) error
-	// Reply stores async request response.
-	Reply(resp *asyncoperation.AsyncReplyResponse)
+	Run(ctx context.Context, message *asyncoperation.AsyncRequestMessage) error
+	// Reply stores async request result.
+	Reply(resp *asyncoperation.AsyncOperationResult)
 
-	// AsyncResponseCh gets the output AsyncResponse channel. Worker will listen this channel to update operationstatus record.
-	AsyncResponseCh() <-chan *asyncoperation.AsyncReplyResponse
+	// ResultCh gets the output AsyncResponse channel. Worker will listen this channel to update operationstatus record.
+	ResultCh() <-chan *asyncoperation.AsyncOperationResult
 	// StorageClient gets storage client for this controller.
 	StorageClient() store.StorageClient
 }
@@ -31,12 +31,12 @@ type AsyncController interface {
 // BaseAsyncController is the base struct of async operation controller.
 type BaseAsyncController struct {
 	storageClient store.StorageClient
-	asyncRespCh   chan *asyncoperation.AsyncReplyResponse
+	resultCh      chan *asyncoperation.AsyncOperationResult
 }
 
 // NewBaseAsyncController creates BaseAsyncController instance.
-func NewBaseAsyncController(store store.StorageClient, ch chan *asyncoperation.AsyncReplyResponse) BaseAsyncController {
-	return BaseAsyncController{storageClient: store, asyncRespCh: ch}
+func NewBaseAsyncController(store store.StorageClient, ch chan *asyncoperation.AsyncOperationResult) BaseAsyncController {
+	return BaseAsyncController{storageClient: store, resultCh: ch}
 }
 
 // StorageClient gets storage client for this controller.
@@ -44,12 +44,14 @@ func (b *BaseAsyncController) StorageClient() store.StorageClient {
 	return b.storageClient
 }
 
-// AsyncResponseCh gets the output channel of asynchronous response.
-func (b *BaseAsyncController) AsyncResponseCh() <-chan *asyncoperation.AsyncReplyResponse {
-	return b.asyncRespCh
+// ResultCh gets the output channel of asynchronous response.
+func (b *BaseAsyncController) ResultCh() <-chan *asyncoperation.AsyncOperationResult {
+	return b.resultCh
 }
 
-// Reply replies the async response.
-func (b *BaseAsyncController) Reply(resp *asyncoperation.AsyncReplyResponse) {
-	b.asyncRespCh <- resp
+// Reply sends the result to resultCh. Controller can update the operationstatuses
+// while processing async operation. For instance, it can set the status to Canceling
+// during operation cancellation.
+func (b *BaseAsyncController) Reply(resp *asyncoperation.AsyncOperationResult) {
+	b.resultCh <- resp
 }

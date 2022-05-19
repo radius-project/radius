@@ -14,8 +14,8 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
-// AsyncReplyResponse is the response of async operation controller.
-type AsyncReplyResponse struct {
+// AsyncOperationResult is the response of async operation controller.
+type AsyncOperationResult struct {
 	// OperationID represents the async operation id.
 	OperationID uuid.UUID
 	// OperationName represents the async operation name.
@@ -36,10 +36,13 @@ type AsyncReplyResponse struct {
 	Error *armerrors.ErrorDetails
 }
 
-// NewAsyncReplyResponse creates NewAsyncReplyResponse object.
-func NewAsyncReplyResponse(operationID uuid.UUID, operationName string, resourceID azresources.ResourceID, status basedatamodel.ProvisioningStates) *AsyncReplyResponse {
+// NewAsyncOperationResult creates NewAsyncOperationResult object.
+func NewAsyncOperationResult(
+	operationID uuid.UUID, operationName string,
+	resourceID azresources.ResourceID,
+	status basedatamodel.ProvisioningStates) *AsyncOperationResult {
 	now := time.Now().UTC()
-	return &AsyncReplyResponse{
+	return &AsyncOperationResult{
 		OperationID:   operationID,
 		OperationName: operationName,
 		ResourceID:    resourceID,
@@ -49,14 +52,14 @@ func NewAsyncReplyResponse(operationID uuid.UUID, operationName string, resource
 }
 
 // SetSucceeded sets the response status to Succeeded.
-func (a *AsyncReplyResponse) SetSucceeded() {
+func (a *AsyncOperationResult) SetSucceeded() {
 	now := time.Now().UTC()
 	a.EndTime = &now
 	a.Status = basedatamodel.ProvisioningStateSucceeded
 }
 
 // SetFailed sets the error response with Failed status.
-func (a *AsyncReplyResponse) SetFailed(err armerrors.ErrorDetails) {
+func (a *AsyncOperationResult) SetFailed(err armerrors.ErrorDetails) {
 	now := time.Now().UTC()
 	a.EndTime = &now
 	a.Status = basedatamodel.ProvisioningStateFailed
@@ -67,7 +70,7 @@ func (a *AsyncReplyResponse) SetFailed(err armerrors.ErrorDetails) {
 }
 
 // SetCanceled sets the response status to Canceled.
-func (a *AsyncReplyResponse) SetCanceled(message string) {
+func (a *AsyncOperationResult) SetCanceled(message string) {
 	now := time.Now().UTC()
 	a.EndTime = &now
 	a.Status = basedatamodel.ProvisioningStateCanceled

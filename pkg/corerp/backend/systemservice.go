@@ -18,13 +18,13 @@ import (
 
 // SystemService represents the service which provides the basic health status and metric server.
 type SystemService struct {
-	Options hostoptions.HostOptions
+	options hostoptions.HostOptions
 }
 
 // NewSystemService creates SystemService instance.
 func NewSystemService(options hostoptions.HostOptions) *SystemService {
 	return &SystemService{
-		Options: options,
+		options: options,
 	}
 }
 
@@ -41,7 +41,7 @@ func (s *SystemService) Run(ctx context.Context) error {
 
 	// TODO: Add prometheus metric later.
 
-	address := fmt.Sprintf(":%d", *s.Options.Config.WorkerServer.SystemHTTPServerPort)
+	address := fmt.Sprintf(":%d", *s.options.Config.WorkerServer.SystemHTTPServerPort)
 
 	server := &http.Server{
 		Addr:    address,
