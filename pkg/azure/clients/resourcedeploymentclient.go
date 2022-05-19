@@ -7,7 +7,9 @@ package clients
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
@@ -27,8 +29,13 @@ func NewResourceDeploymentClientWithBaseURI(baseURI string) ResourceDeploymentCl
 
 // CreateOrUpdate creates a deployment
 // resourceId - the resourceId to deploy to. NOTE, must start with a '/'. Ex: "/resourcegroups/{resourceGroupName}/deployments/{deploymentName}/operations
-func (client ResourceDeploymentClient) CreateOrUpdate(ctx context.Context, resourceId string, parameters resources.Deployment) (result resources.DeploymentsCreateOrUpdateFuture, err error) {
-	req, err := client.ResourceCreateOrUpdatePreparer(ctx, resourceId, parameters)
+func (client ResourceDeploymentClient) CreateOrUpdate(ctx context.Context, resourceID string, parameters resources.Deployment) (result resources.DeploymentsCreateOrUpdateFuture, err error) {
+	if !strings.HasPrefix(resourceID, "/") {
+		err = errors.New("resourceID must contain starting slash")
+		return
+	}
+
+	req, err := client.ResourceCreateOrUpdatePreparer(ctx, resourceID, parameters)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "ResourceDeploymentClient", "CreateOrUpdate", nil, "Failure preparing request")
 		return
@@ -43,7 +50,7 @@ func (client ResourceDeploymentClient) CreateOrUpdate(ctx context.Context, resou
 }
 
 // CreateOrUpdatePreparer prepares the CreateOrUpdate request.
-func (client ResourceDeploymentClient) ResourceCreateOrUpdatePreparer(ctx context.Context, resourceId string, parameters resources.Deployment) (*http.Request, error) {
+func (client ResourceDeploymentClient) ResourceCreateOrUpdatePreparer(ctx context.Context, resourceID string, parameters resources.Deployment) (*http.Request, error) {
 	const APIVersion = "2020-10-01"
 	queryParameters := map[string]interface{}{
 		"api-version": APIVersion,
@@ -53,7 +60,7 @@ func (client ResourceDeploymentClient) ResourceCreateOrUpdatePreparer(ctx contex
 		autorest.AsContentType("application/json; charset=utf-8"),
 		autorest.AsPut(),
 		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPath(resourceId),
+		autorest.WithPath(resourceID),
 		autorest.WithJSON(parameters),
 		autorest.WithQueryParameters(queryParameters))
 	return preparer.Prepare((&http.Request{}).WithContext(ctx))

@@ -46,7 +46,9 @@ const (
 	IngressServiceName       = "contour-envoy"
 	RadiusConfigName         = "radius-config"
 	RadiusSystemNamespace    = "radius-system"
-	DeploymentsUCPPath       = "/apis/api.ucp.dev/v1alpha3"
+	UCPBasePath              = "/apis/api.ucp.dev/v1alpha3"
+	UCPType                  = "api.ucp.dev"
+	BicepType                = "api.bicep.dev"
 )
 
 var (
@@ -127,7 +129,7 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 }
 
 func GetBaseUrlForDeploymentEngine(overrideURL string) string {
-	return strings.TrimSuffix(overrideURL, "/") + DeploymentsUCPPath
+	return strings.TrimSuffix(overrideURL, "/") + UCPBasePath
 }
 
 func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string, enableUCP bool) (string, http.RoundTripper, error) {
@@ -135,7 +137,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 	var roundTripper http.RoundTripper
 	var basePath string
 	if enableUCP {
-		basePath = DeploymentsUCPPath
+		basePath = UCPBasePath
 	} else {
 		basePath = DeploymentEngineBasePath
 	}
@@ -150,9 +152,9 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 
 		var k8sType string
 		if enableUCP {
-			k8sType = "api.ucp.dev"
+			k8sType = UCPType
 		} else {
-			k8sType = "api.bicep.dev"
+			k8sType = BicepType
 		}
 
 		roundTripper, err = CreateRestRoundTripper(context, k8sType, overrideURL)

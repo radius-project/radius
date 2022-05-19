@@ -7,7 +7,9 @@ package clients
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
@@ -30,10 +32,14 @@ func NewResourceDeploymentOperationsClientWithBaseURI(baseURI string) ResourceDe
 // Parameters:
 // resourceId - the resourceId to deploy to. NOTE, must start with a '/'. Ex: "/resourcegroups/{resourceGroupName}/deployments/{deploymentName}/operations
 // top - the number of results to return.
-func (client ResourceDeploymentOperationsClient) List(ctx context.Context, resourceId string, top *int32) (resources.DeploymentOperationsListResultPage, error) {
+func (client ResourceDeploymentOperationsClient) List(ctx context.Context, resourceID string, top *int32) (resources.DeploymentOperationsListResultPage, error) {
 	fn := client.listNextResults
 
-	req, err := client.ListPreparer(ctx, resourceId, top)
+	if !strings.HasPrefix(resourceID, "/") {
+		return resources.NewDeploymentOperationsListResultPage(resources.DeploymentOperationsListResult{}, fn), errors.New("resourceID must contain starting slash")
+	}
+
+	req, err := client.ListPreparer(ctx, resourceID, top)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "resources.DeploymentOperationsClient", "List", nil, "Failure preparing request")
 		return resources.NewDeploymentOperationsListResultPage(resources.DeploymentOperationsListResult{}, fn), err
