@@ -25,21 +25,21 @@ type element struct {
 	visible bool
 }
 
-var defaultQueue = newInMemQueue()
+var defaultQueue = NewInMemQueue()
 
-// inmemQueue implements in-memory queue for dev/test
-type inmemQueue struct {
+// InmemQueue implements in-memory queue for dev/test
+type InmemQueue struct {
 	v   *list.List
 	vMu sync.Mutex
 }
 
-func newInMemQueue() *inmemQueue {
-	return &inmemQueue{
+func NewInMemQueue() *InmemQueue {
+	return &InmemQueue{
 		v: &list.List{},
 	}
 }
 
-func (q *inmemQueue) Enqueue(msg *queue.Message) {
+func (q *InmemQueue) Enqueue(msg *queue.Message) {
 	q.updateQueue()
 
 	q.vMu.Lock()
@@ -53,7 +53,7 @@ func (q *inmemQueue) Enqueue(msg *queue.Message) {
 	q.v.PushBack(&element{val: msg, visible: true})
 }
 
-func (q *inmemQueue) Dequeue() *queue.Message {
+func (q *InmemQueue) Dequeue() *queue.Message {
 	q.updateQueue()
 
 	q.vMu.Lock()
@@ -72,7 +72,7 @@ func (q *inmemQueue) Dequeue() *queue.Message {
 	return nil
 }
 
-func (q *inmemQueue) Complete(msg *queue.Message) error {
+func (q *InmemQueue) Complete(msg *queue.Message) error {
 	q.vMu.Lock()
 	defer q.vMu.Unlock()
 
@@ -86,7 +86,7 @@ func (q *inmemQueue) Complete(msg *queue.Message) error {
 	return errors.New("id not found")
 }
 
-func (q *inmemQueue) updateQueue() {
+func (q *InmemQueue) updateQueue() {
 	q.vMu.Lock()
 	defer q.vMu.Unlock()
 

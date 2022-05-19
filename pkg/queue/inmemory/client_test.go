@@ -15,7 +15,7 @@ import (
 )
 
 func TestClient(t *testing.T) {
-	cli := NewClient()
+	cli := NewClient(NewInMemQueue())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	msgCh, err := cli.Dequeue(ctx)
@@ -45,7 +45,7 @@ func TestClient(t *testing.T) {
 }
 
 func TestMessageFinish(t *testing.T) {
-	cli := NewClient()
+	cli := NewClient(NewInMemQueue())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	msgCh, _ := cli.Dequeue(ctx)
@@ -70,7 +70,7 @@ func TestMessageFinish(t *testing.T) {
 }
 
 func TestExtendMessageLock(t *testing.T) {
-	cli := NewClient()
+	cli := NewClient(NewInMemQueue())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	msgCh, _ := cli.Dequeue(ctx)

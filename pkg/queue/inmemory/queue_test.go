@@ -16,7 +16,7 @@ import (
 )
 
 func TestEnqueueDequeue(t *testing.T) {
-	q := newInMemQueue()
+	q := NewInMemQueue()
 
 	q.Enqueue(&queue.Message{
 		Data: "test",
@@ -38,7 +38,7 @@ func TestEnqueueDequeue(t *testing.T) {
 }
 
 func TestExpiry(t *testing.T) {
-	q := newInMemQueue()
+	q := NewInMemQueue()
 
 	q.Enqueue(&queue.Message{
 		Data: "test",
@@ -56,7 +56,7 @@ func TestExpiry(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
-	q := newInMemQueue()
+	q := NewInMemQueue()
 
 	q.Enqueue(&queue.Message{
 		Data: "test",
@@ -70,7 +70,7 @@ func TestComplete(t *testing.T) {
 }
 
 func TestEnqueueDequeueMulti(t *testing.T) {
-	q := newInMemQueue()
+	q := NewInMemQueue()
 	for i := 0; i < 10; i++ {
 		q.Enqueue(&queue.Message{
 			Data: fmt.Sprintf("test%d", i),
