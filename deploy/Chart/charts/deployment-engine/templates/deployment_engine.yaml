@@ -22,6 +22,13 @@ spec:
       containers:
       - args:
         - --kubernetes=true
+        resources:
+          requests:
+            cpu: 0.1
+            memory: 50Mi
+          limits:
+            cpu: 0.2
+            memory: 100Mi
         env:
         - name: ASPNETCORE_URLS
           value: https://+:6443
@@ -48,6 +55,13 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
       - env:
+        resources:
+          requests:
+            cpu: 0.1
+            memory: 50Mi
+          limits:
+            cpu: 0.2
+            memory: 100Mi
         - name: ASPNETCORE_URLS
           value: http://+:5000
         image: {{ .Values.global.extensibility.image }}:{{ .Values.global.extensibility.tag }}

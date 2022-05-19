@@ -41,11 +41,11 @@ spec:
               key: adminPassword
         resources:
           requests:
+            cpu: 0.1
+            memory: 100Mi
+          limits:
             cpu: 0.2
             memory: 200Mi
-          limits:
-            cpu: 1.0
-            memory: 1Gi
         ports:
         - containerPort: 27017
         volumeMounts:

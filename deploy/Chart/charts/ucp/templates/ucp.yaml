@@ -22,6 +22,13 @@ spec:
       containers:
       - image: {{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}
         name: ucp
+        resources:
+          requests:
+            cpu: 0.1
+            memory: 50Mi
+          limits:
+            cpu: 0.2
+            memory: 100Mi
         ports:
         - containerPort: 9443
           name: ucp
