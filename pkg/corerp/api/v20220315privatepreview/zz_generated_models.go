@@ -96,6 +96,17 @@ type BasicResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty"`
 }
 
+// MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
+func (b BasicResourceProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	b.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+func (b BasicResourceProperties) marshalInternal(objectMap map[string]interface{}) {
+	populate(objectMap, "status", b.Status)
+}
+
 // EnvironmentCompute - Compute resource used by application environment resource.
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
@@ -233,6 +244,125 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
+// GatewayProperties - Gateway properties
+type GatewayProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The resource id of the application linked to Gateway resource.
+	Application *string `json:"application,omitempty"`
+
+	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
+
+	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
+	Internal *bool `json:"internal,omitempty"`
+
+	// Routes attached to this Gateway
+	Routes []*GatewayRoute `json:"routes,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayProperties.
+func (g GatewayProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	g.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", g.Application)
+	populate(objectMap, "hostname", g.Hostname)
+	populate(objectMap, "internal", g.Internal)
+	populate(objectMap, "provisioningState", g.ProvisioningState)
+	populate(objectMap, "routes", g.Routes)
+	return json.Marshal(objectMap)
+}
+
+// GatewayPropertiesHostname - Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+type GatewayPropertiesHostname struct {
+	// Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both are defined.
+	FullyQualifiedHostname *string `json:"fullyQualifiedHostname,omitempty"`
+
+	// Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname' and will be overridden
+// if both are defined.
+	Prefix *string `json:"prefix,omitempty"`
+}
+
+// GatewayResource - Gateway Resource that specifies how traffic is exposed to the application.
+type GatewayResource struct {
+	TrackedResource
+	// REQUIRED; Gateway properties
+	Properties *GatewayProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayResource.
+func (g GatewayResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	g.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", g.Properties)
+	populate(objectMap, "systemData", g.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// GatewayResourceList - The list of Gateways.
+type GatewayResourceList struct {
+	// The link used to get the next page of Gateways list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// The list of Gateways.
+	Value []*GatewayResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayResourceList.
+func (g GatewayResourceList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", g.NextLink)
+	populate(objectMap, "value", g.Value)
+	return json.Marshal(objectMap)
+}
+
+type GatewayRoute struct {
+	// The HttpRoute to route to. Ex - myserviceroute.id.
+	Destination *string `json:"destination,omitempty"`
+
+	// The path to match the incoming request path on. Ex - /myservice.
+	Path *string `json:"path,omitempty"`
+
+	// Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute'
+// to '/myroute'
+	ReplacePrefix *string `json:"replacePrefix,omitempty"`
+}
+
+// GatewaysCreateOrUpdateOptions contains the optional parameters for the Gateways.CreateOrUpdate method.
+type GatewaysCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysDeleteOptions contains the optional parameters for the Gateways.Delete method.
+type GatewaysDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysGetOptions contains the optional parameters for the Gateways.Get method.
+type GatewaysGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysListBySubscriptionOptions contains the optional parameters for the Gateways.ListBySubscription method.
+type GatewaysListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysListOptions contains the optional parameters for the Gateways.List method.
+type GatewaysListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysUpdateOptions contains the optional parameters for the Gateways.Update method.
+type GatewaysUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // HTTPRouteProperties - HTTP Route properties
 type HTTPRouteProperties struct {
 	BasicResourceProperties
@@ -253,6 +383,19 @@ type HTTPRouteProperties struct {
 
 	// READ-ONLY; Provisioning state of the HTTP Route at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteProperties.
+func (h HTTPRouteProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	h.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", h.Application)
+	populate(objectMap, "hostname", h.Hostname)
+	populate(objectMap, "port", h.Port)
+	populate(objectMap, "provisioningState", h.ProvisioningState)
+	populate(objectMap, "scheme", h.Scheme)
+	populate(objectMap, "url", h.URL)
+	return json.Marshal(objectMap)
 }
 
 // HTTPRouteResource - Radius HTTP Route Resource.
