@@ -7,7 +7,6 @@ package backend
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -37,8 +36,8 @@ func (s *SystemService) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/version", reportVersion)
-	mux.HandleFunc("/healthz", reportVersion)
+	mux.HandleFunc("/version", version.ReportVersionHandler)
+	mux.HandleFunc("/healthz", version.ReportVersionHandler)
 
 	// TODO: Add prometheus metric later.
 
@@ -70,17 +69,4 @@ func (s *SystemService) Run(ctx context.Context) error {
 
 	logger.Info("Server stopped...")
 	return nil
-}
-
-func reportVersion(w http.ResponseWriter, req *http.Request) {
-	info := version.NewVersionInfo()
-
-	b, err := json.MarshalIndent(&info, "", "  ")
-
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	w.Header().Add("Content-Type", "application/json")
-	_, _ = w.Write(b)
 }
