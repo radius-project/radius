@@ -14,11 +14,13 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
+// ResourceDeploymentOperationsClient is an operations client which takes in a resourceID as the destination to query.
+// It is used by both Azure and UCP clients.
 type ResourceDeploymentOperationsClient struct {
 	resources.DeploymentOperationsClient
 }
 
-// NewResourceDeploymentOperationsClientWithBaseURI creates an instance of the UCPOperations client using a custom endpoint.  Use
+// NewResourceDeploymentOperationsClientWithBaseURI creates an instance of the ResourceOperations client using a custom endpoint.  Use
 // this when interacting with UCP resources that uses a non-standard base URI.
 func NewResourceDeploymentOperationsClientWithBaseURI(baseURI string) ResourceDeploymentOperationsClient {
 	return ResourceDeploymentOperationsClient{NewOperationsClientWithBaseUri(baseURI, "")}
@@ -31,7 +33,7 @@ func NewResourceDeploymentOperationsClientWithBaseURI(baseURI string) ResourceDe
 func (client ResourceDeploymentOperationsClient) List(ctx context.Context, resourceId string, top *int32) (resources.DeploymentOperationsListResultPage, error) {
 	fn := client.listNextResults
 
-	req, err := client.ListUCPPreparer(ctx, resourceId, top)
+	req, err := client.ListPreparer(ctx, resourceId, top)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "resources.DeploymentOperationsClient", "List", nil, "Failure preparing request")
 		return resources.NewDeploymentOperationsListResultPage(resources.DeploymentOperationsListResult{}, fn), err
@@ -63,7 +65,7 @@ func (client ResourceDeploymentOperationsClient) List(ctx context.Context, resou
 }
 
 // ListPreparer prepares the List request.
-func (client ResourceDeploymentOperationsClient) ListUCPPreparer(ctx context.Context, resourceId string, top *int32) (*http.Request, error) {
+func (client ResourceDeploymentOperationsClient) ListPreparer(ctx context.Context, resourceId string, top *int32) (*http.Request, error) {
 	const APIVersion = "2020-10-01"
 	queryParameters := map[string]interface{}{
 		"api-version": APIVersion,
