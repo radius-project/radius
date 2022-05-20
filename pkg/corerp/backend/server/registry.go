@@ -19,7 +19,7 @@ type ControllerFactoryFunc func(store.StorageClient) (asyncctrl.AsyncController,
 // ControllerRegistry is an registry to register async controllers.
 type ControllerRegistry struct {
 	ctrlMap   map[string]asyncctrl.AsyncController
-	ctrlMapMu sync.Mutex
+	ctrlMapMu sync.RWMutex
 	sp        dataprovider.DataStorageProvider
 }
 
@@ -52,8 +52,8 @@ func (h *ControllerRegistry) Register(ctx context.Context, operationName, resour
 
 // Get gets the registered async controller instance.
 func (h *ControllerRegistry) Get(operationName string) asyncctrl.AsyncController {
-	h.ctrlMapMu.Lock()
-	defer h.ctrlMapMu.Unlock()
+	h.ctrlMapMu.RLock()
+	defer h.ctrlMapMu.RUnlock()
 
 	if h, ok := h.ctrlMap[operationName]; ok {
 		return h
