@@ -47,18 +47,7 @@ generate-openapi-specs:
 
 .PHONY: generate-radclient
 generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).
-	autorest --use=@autorest/go@4.0.0-preview.29 \
-        --module-version=$(AUTOREST_MODULE_VERSION) \
-		--input-file=schemas/rest-api-specs/radius.json \
-		--tag=package-2018-09-01-preview \
-		--go  \
-		--gomod-root=. \
-		--output-folder=./pkg/azure/radclient \
-		--modelerfour.lenient-model-deduplication \
-		--license-header=MICROSOFT_MIT_NO_VERSION \
-		--file-prefix=zz_generated_ \
-		--azure-arm \
-		--verbose
+	autorest pkg/corerp/api/README.md --tag=2022-03-15-privatepreview
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:

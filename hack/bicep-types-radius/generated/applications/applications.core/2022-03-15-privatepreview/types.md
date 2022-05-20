@@ -1,7 +1,7 @@
 # Applications.Core @ 2022-03-15-privatepreview
 
 ## Resource Applications.Core/applications@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
