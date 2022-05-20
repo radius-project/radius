@@ -14,20 +14,24 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 )
 
+// Service is a service to run AsyncReqeustProcessWorker.
 type Service struct {
 	options hostoptions.HostOptions
 }
 
+// NewService creates new service instance to run AsyncReqeustProcessWorker.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
 		options: options,
 	}
 }
 
+// Name represents the service name.
 func (w *Service) Name() string {
 	return "async request process worker"
 }
 
+// Run starts the service and worker.
 func (w *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
