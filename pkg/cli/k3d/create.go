@@ -67,6 +67,11 @@ func CreateCluster(ctx context.Context, name string) (*ClusterConfig, error) {
 		return nil, fmt.Errorf("failed to determine local registry URL: %w", err)
 	}
 
+	config.HTTPEndpoint, config.HTTPSEndpoint, err = client.getIngressEndpoints(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine public endpoints: %w", err)
+	}
+
 	// We're using the default port of 5000 here.
 	config.RegistryPullEndpoint = config.RegistryName + ":5000"
 
@@ -79,4 +84,6 @@ type ClusterConfig struct {
 	RegistryName         string
 	RegistryPushEndpoint string
 	RegistryPullEndpoint string
+	HTTPEndpoint         string
+	HTTPSEndpoint        string
 }

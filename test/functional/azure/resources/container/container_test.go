@@ -117,9 +117,9 @@ func Test_ContainerGateway(t *testing.T) {
 					application: {
 						validation.NewK8sPodForResource(application, "frontend"),
 						validation.NewK8sPodForResource(application, "backend"),
-						validation.NewK8sGatewayForResource(application, "gateway"),
-						validation.NewK8sHttpRouteForResource(application, "frontendhttp"),
-						validation.NewK8sHttpRouteForResource(application, "backendhttp"),
+						validation.NewK8sHTTPProxyForResource(application, "gateway"),
+						validation.NewK8sHTTPProxyForResource(application, "frontendhttp"),
+						validation.NewK8sHTTPProxyForResource(application, "backendhttp"),
 					},
 				},
 			},

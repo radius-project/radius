@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 			"",
 			"unsupported",
 			nil,
-			datamodel.ErrUnsupportedAPIVersion,
+			basedatamodel.ErrUnsupportedAPIVersion,
 		},
 	}
 
@@ -70,7 +71,7 @@ func TestApplicationDataModelFromVersioned(t *testing.T) {
 		{
 			"",
 			"unsupported",
-			datamodel.ErrUnsupportedAPIVersion,
+			basedatamodel.ErrUnsupportedAPIVersion,
 		},
 	}
 

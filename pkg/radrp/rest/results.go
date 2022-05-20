@@ -596,3 +596,36 @@ func (r *PreconditionFailedResponse) Apply(ctx context.Context, w http.ResponseW
 
 	return nil
 }
+
+// ClientAuthenticationFailed represents an HTTP 401 with an ARM error payload.
+type ClientAuthenticationFailed struct {
+	Body armerrors.ErrorResponse
+}
+
+func NewClientAuthenticationFailedARMResponse() Response {
+	return &ClientAuthenticationFailed{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.InvalidAuthenticationInfo,
+				Message: "Server failed to authenticate the request",
+			},
+		},
+	}
+}
+func (r *ClientAuthenticationFailed) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusUnauthorized), radlogger.LogHTTPStatusCode, http.StatusUnauthorized)
+
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
+	return nil
+}

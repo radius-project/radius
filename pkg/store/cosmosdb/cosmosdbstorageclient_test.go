@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,7 @@ var (
 func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Environment {
 	testID := "/subscriptions/" + subID + "/resourceGroups/" + rgName + "/providers/Applications.Core/environments/" + resourceName
 	env := &datamodel.Environment{
-		TrackedResource: datamodel.TrackedResource{
+		TrackedResource: basedatamodel.TrackedResource{
 			ID:       testID,
 			Name:     resourceName,
 			Type:     "Applications.Core/environments",
@@ -50,7 +51,7 @@ func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Envi
 				ResourceID: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 			},
 		},
-		InternalMetadata: datamodel.InternalMetadata{},
+		InternalMetadata: basedatamodel.InternalMetadata{},
 	}
 
 	env.InternalMetadata.CreatedAPIVersion = "2022-03-15-privatepreview"

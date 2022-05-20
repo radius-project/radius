@@ -24,6 +24,9 @@ const (
 	// Used for InvalidResourceType.
 	InvalidResourceType = "InvalidResourceType"
 
+	// Used for InvalidResourceType.
+	InvalidAuthenticationInfo = "InvalidAuthenticationInfo"
+
 	// PreconditionFailed is used for cases when the precondition of a request fails.
 	PreconditionFailed = "PreconditionFailed"
 )
