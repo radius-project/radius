@@ -41,6 +41,10 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
+	err = modifyOSMResources(helmChart)
+	if err != nil {
+		return fmt.Errorf("Unable to modify the Open Service Mesh's resources")
+	}
 	// Retrieve the history
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
@@ -87,22 +91,74 @@ func RunOSMHelmUninstall(helmConf *helm.Configuration) error {
 	return err
 }
 
-func addOSMValues(helmChart *chart.Chart) error {
+func modifyOSMResources(helmChart *chart.Chart) error {
 	values := helmChart.Values
-	_, ok := values["global"]
-	if !ok {
-		values["global"] = make(map[string]interface{})
+
+	// A Map that alters the resource requests and limits of OSM pods
+	modification := map[string]interface{}{
+		"OpenServiceMesh": map[string]interface{}{
+			"injector": map[string]interface{}{
+				"resource": map[string]interface{}{
+					"limits": map[string]interface{}{
+						"cpu":    "0.1",
+						"memory": "16M",
+					},
+					"requests": map[string]interface{}{
+						"cpu":    "0.1",
+						"memory": "32M",
+					},
+				},
+			},
+			"osmController": map[string]interface{}{
+				"resource": map[string]interface{}{
+					"limits": map[string]interface{}{
+						"cpu":    "0.75",
+						"memory": "512M",
+					},
+					"requests": map[string]interface{}{
+						"cpu":    "0.2",
+						"memory": "32M",
+					},
+				},
+			},
+			"osmBootstrap": map[string]interface{}{
+				"resource": map[string]interface{}{
+					"limits": map[string]interface{}{
+						"cpu":    "0.2",
+						"memory": "32M",
+					},
+					"requests": map[string]interface{}{
+						"cpu":    "0.1",
+						"memory": "32M",
+					},
+				},
+			},
+		},
 	}
-	global := values["global"].(map[string]interface{})
-	global["osm"] = "hello"
 
-	_, ok = global["osm"]
-	if !ok {
-		global["osm"] = make(map[string]interface{})
-	}
-
-	osmConfig := global["osm"].(map[string]interface{})
-	osmConfig["injector"] = map[string]interface{}{"resource": map[string]interface{}{"limits": map[string]interface{}{"cpu": "0.1", "memory": "12M"}, "requests": map[string]interface{}{"cpu": "0.1", "memory": "21M"}}}
-
+	// merging the modifications into the values map
+	values = MergeMaps(values, modification)
 	return nil
+}
+
+func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	// b merges into a
+	// This function is retrieved from the helm Github repo
+	// https://github.com/helm/helm/blob/v3.9.0/pkg/cli/values/options.go#L91
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if bv, ok := out[k]; ok {
+				if bv, ok := bv.(map[string]interface{}); ok {
+					out[k] = MergeMaps(bv, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
 }
