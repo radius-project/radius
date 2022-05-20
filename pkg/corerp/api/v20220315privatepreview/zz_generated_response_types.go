@@ -40,27 +40,15 @@ type ApplicationsGetResult struct {
 	ApplicationResource
 }
 
-// ApplicationsListBySubscriptionResponse contains the response from method Applications.ListBySubscription.
-type ApplicationsListBySubscriptionResponse struct {
-	ApplicationsListBySubscriptionResult
+// ApplicationsListByScopeResponse contains the response from method Applications.ListByScope.
+type ApplicationsListByScopeResponse struct {
+	ApplicationsListByScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ApplicationsListBySubscriptionResult contains the result from method Applications.ListBySubscription.
-type ApplicationsListBySubscriptionResult struct {
-	ApplicationResourceList
-}
-
-// ApplicationsListResponse contains the response from method Applications.List.
-type ApplicationsListResponse struct {
-	ApplicationsListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// ApplicationsListResult contains the result from method Applications.List.
-type ApplicationsListResult struct {
+// ApplicationsListByScopeResult contains the result from method Applications.ListByScope.
+type ApplicationsListByScopeResult struct {
 	ApplicationResourceList
 }
 

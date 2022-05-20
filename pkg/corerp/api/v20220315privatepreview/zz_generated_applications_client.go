@@ -23,18 +23,18 @@ import (
 // Don't use this type directly, use NewApplicationsClient() instead.
 type ApplicationsClient struct {
 	con *connection
-	subscriptionID string
+	scope string
 }
 
 // NewApplicationsClient creates a new instance of ApplicationsClient with the specified values.
-func NewApplicationsClient(con *connection, subscriptionID string) *ApplicationsClient {
-	return &ApplicationsClient{con: con, subscriptionID: subscriptionID}
+func NewApplicationsClient(con *connection, scope string) *ApplicationsClient {
+	return &ApplicationsClient{con: con, scope: scope}
 }
 
 // CreateOrUpdate - Create or update an Application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, applicationName string, applicationResource ApplicationResource, options *ApplicationsCreateOrUpdateOptions) (ApplicationsCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, applicationName, applicationResource, options)
+func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsCreateOrUpdateOptions) (ApplicationsCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, applicationName, applicationResource, options)
 	if err != nil {
 		return ApplicationsCreateOrUpdateResponse{}, err
 	}
@@ -49,16 +49,12 @@ func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, resourceGr
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, applicationResource ApplicationResource, options *ApplicationsCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/applications/{applicationName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{scope}/providers/Applications.Core/applications/{applicationName}"
+	if client.scope == "" {
+		return nil, errors.New("parameter client.scope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -98,8 +94,8 @@ func (client *ApplicationsClient) createOrUpdateHandleError(resp *http.Response)
 
 // Delete - Delete an Application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationsClient) Delete(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationsDeleteOptions) (ApplicationsDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, applicationName, options)
+func (client *ApplicationsClient) Delete(ctx context.Context, applicationName string, options *ApplicationsDeleteOptions) (ApplicationsDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, applicationName, options)
 	if err != nil {
 		return ApplicationsDeleteResponse{}, err
 	}
@@ -114,16 +110,12 @@ func (client *ApplicationsClient) Delete(ctx context.Context, resourceGroupName 
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationsDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/applications/{applicationName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, applicationName string, options *ApplicationsDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{scope}/providers/Applications.Core/applications/{applicationName}"
+	if client.scope == "" {
+		return nil, errors.New("parameter client.scope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -154,8 +146,8 @@ func (client *ApplicationsClient) deleteHandleError(resp *http.Response) error {
 
 // Get - Gets the properties of an Application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationsClient) Get(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationsGetOptions) (ApplicationsGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, applicationName, options)
+func (client *ApplicationsClient) Get(ctx context.Context, applicationName string, options *ApplicationsGetOptions) (ApplicationsGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, applicationName, options)
 	if err != nil {
 		return ApplicationsGetResponse{}, err
 	}
@@ -170,16 +162,12 @@ func (client *ApplicationsClient) Get(ctx context.Context, resourceGroupName str
 }
 
 // getCreateRequest creates the Get request.
-func (client *ApplicationsClient) getCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, options *ApplicationsGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/applications/{applicationName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *ApplicationsClient) getCreateRequest(ctx context.Context, applicationName string, options *ApplicationsGetOptions) (*policy.Request, error) {
+	urlPath := "/{scope}/providers/Applications.Core/applications/{applicationName}"
+	if client.scope == "" {
+		return nil, errors.New("parameter client.scope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -217,31 +205,27 @@ func (client *ApplicationsClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - List of Applications.
+// ListByScope - List all applications in the given subscription.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationsClient) List(resourceGroupName string, options *ApplicationsListOptions) (*ApplicationsListPager) {
-	return &ApplicationsListPager{
+func (client *ApplicationsClient) ListByScope(options *ApplicationsListByScopeOptions) (*ApplicationsListByScopePager) {
+	return &ApplicationsListByScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp ApplicationsListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp ApplicationsListByScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.ApplicationResourceList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *ApplicationsClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *ApplicationsListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/applications"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+// listByScopeCreateRequest creates the ListByScope request.
+func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, options *ApplicationsListByScopeOptions) (*policy.Request, error) {
+	urlPath := "/{scope}/providers/Applications.Core/applications"
+	if client.scope == "" {
+		return nil, errors.New("parameter client.scope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -253,71 +237,17 @@ func (client *ApplicationsClient) listCreateRequest(ctx context.Context, resourc
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *ApplicationsClient) listHandleResponse(resp *http.Response) (ApplicationsListResponse, error) {
-	result := ApplicationsListResponse{RawResponse: resp}
+// listByScopeHandleResponse handles the ListByScope response.
+func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response) (ApplicationsListByScopeResponse, error) {
+	result := ApplicationsListByScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResourceList); err != nil {
-		return ApplicationsListResponse{}, err
+		return ApplicationsListByScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *ApplicationsClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - List all applications in the given subscription.
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationsClient) ListBySubscription(options *ApplicationsListBySubscriptionOptions) (*ApplicationsListBySubscriptionPager) {
-	return &ApplicationsListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp ApplicationsListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.ApplicationResourceList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *ApplicationsClient) listBySubscriptionCreateRequest(ctx context.Context, options *ApplicationsListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Core/applications"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *ApplicationsClient) listBySubscriptionHandleResponse(resp *http.Response) (ApplicationsListBySubscriptionResponse, error) {
-	result := ApplicationsListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResourceList); err != nil {
-		return ApplicationsListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *ApplicationsClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByScopeHandleError handles the ListByScope error response.
+func (client *ApplicationsClient) listByScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -331,8 +261,8 @@ func (client *ApplicationsClient) listBySubscriptionHandleError(resp *http.Respo
 
 // Update - Update the properties of an existing Application.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ApplicationsClient) Update(ctx context.Context, resourceGroupName string, applicationName string, applicationResource ApplicationResource, options *ApplicationsUpdateOptions) (ApplicationsUpdateResponse, error) {
-	req, err := client.updateCreateRequest(ctx, resourceGroupName, applicationName, applicationResource, options)
+func (client *ApplicationsClient) Update(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsUpdateOptions) (ApplicationsUpdateResponse, error) {
+	req, err := client.updateCreateRequest(ctx, applicationName, applicationResource, options)
 	if err != nil {
 		return ApplicationsUpdateResponse{}, err
 	}
@@ -347,16 +277,12 @@ func (client *ApplicationsClient) Update(ctx context.Context, resourceGroupName 
 }
 
 // updateCreateRequest creates the Update request.
-func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, resourceGroupName string, applicationName string, applicationResource ApplicationResource, options *ApplicationsUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/applications/{applicationName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{scope}/providers/Applications.Core/applications/{applicationName}"
+	if client.scope == "" {
+		return nil, errors.New("parameter client.scope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}

@@ -638,6 +638,14 @@
     }
   },
   "parameters": {
+    "Scope": {
+      "name": "scope",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The scope.",
+      "minLength": 1
+    },
     "SubscriptionIdParameter": {
       "name": "subscriptionId",
       "in": "path",

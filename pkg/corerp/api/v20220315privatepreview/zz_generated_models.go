@@ -75,13 +75,8 @@ type ApplicationsGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ApplicationsListBySubscriptionOptions contains the optional parameters for the Applications.ListBySubscription method.
-type ApplicationsListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ApplicationsListOptions contains the optional parameters for the Applications.List method.
-type ApplicationsListOptions struct {
+// ApplicationsListByScopeOptions contains the optional parameters for the Applications.ListByScope method.
+type ApplicationsListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
