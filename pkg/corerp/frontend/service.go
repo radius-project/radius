@@ -60,13 +60,17 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    acm,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) {
-			if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
+			// TODO: Once https://github.com/project-radius/radius/issues/2329 is resolved, pass the standaloneMode parameter as true/false
+			// based on the config
+			if err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, "", false); err != nil {
 				panic(err)
 			}
 
 			// TODO Connector RP will be moved into a separate service, for now using core RP's infra to unblock end to end testing
 			// https://github.com/project-radius/core-team/issues/90
-			if err := handler.AddConnectorRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, ""); err != nil {
+			// TODO: Once https://github.com/project-radius/radius/issues/2329 is resolved, pass the standaloneMode parameter as true/false
+			// based on the config
+			if err := handler.AddConnectorRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, "", false); err != nil {
 				panic(err)
 			}
 		}},
