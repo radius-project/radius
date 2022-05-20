@@ -113,7 +113,7 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 					},
 					"requests": map[string]interface{}{
 						"cpu":    "100m",
-						"memory": "32M",
+						"memory": "16M",
 					},
 				},
 			},
