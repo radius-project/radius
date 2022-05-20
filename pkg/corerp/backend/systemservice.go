@@ -41,7 +41,7 @@ func (s *SystemService) Run(ctx context.Context) error {
 
 	// TODO: Add prometheus metric later.
 
-	address := fmt.Sprintf(":%d", *s.options.Config.WorkerServer.SystemHTTPServerPort)
+	address := fmt.Sprintf(":%d", *s.options.Config.WorkerServer.Port)
 
 	server := &http.Server{
 		Addr:    address,

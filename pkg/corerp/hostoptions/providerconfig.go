@@ -38,6 +38,6 @@ type ServerOptions struct {
 
 // WorkerServerOptions includes the worker server options.
 type WorkerServerOptions struct {
-	// SystemHTTPServerPort is the localhost port which provides the system-level info, such as healthprobe and metric port
-	SystemHTTPServerPort *int32 `yaml:"systemHttpServerPort,omitempty"`
+	// Port is the localhost port which provides the system-level info, such as healthprobe and metric port
+	Port *int32 `yaml:"port,omitempty"`
 }

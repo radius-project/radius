@@ -18,7 +18,7 @@ storageProvider:
     # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
     masterKey: set-me-in-a-different-way
 workerServer:
-  systemHttpServerPort: 8080
+  port: 2020
 metricsProvider:
   prometheus:
     endpoint: "/metrics"
