@@ -21,6 +21,9 @@ docker-build-$(1): build-$(1)-linux-amd64
 	@mkdir -p $(DOCKER_OUT_DIR)/$(1)
 	@cp -v $(3) $(DOCKER_OUT_DIR)/$(1)
 	@cp -v $(BINS_OUT_DIR_linux_amd64)/$(1) $(DOCKER_OUT_DIR)/$(1)
+	if [ -f cmd/$(1)/radius-*.yaml ]; then \
+		cp cmd/$(1)/radius-*.yaml $(DOCKER_OUT_DIR)/$(1)/.; \
+    fi
 
 	cd $(DOCKER_OUT_DIR)/$(1) && docker build $(2) \
 		--platform linux/amd64 \
@@ -42,7 +45,7 @@ docker-push-$(1):
 endef
 
 # defines a target for each image
-DOCKER_IMAGES := radius-rp ucpd
+DOCKER_IMAGES := radius-rp ucpd appcore-rp
 
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
 
