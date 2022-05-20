@@ -100,11 +100,11 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 			"injector": map[string]interface{}{
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
-						"cpu":    "0.1",
+						"cpu":    "100m",
 						"memory": "16M",
 					},
 					"requests": map[string]interface{}{
-						"cpu":    "0.1",
+						"cpu":    "100m",
 						"memory": "32M",
 					},
 				},
@@ -112,11 +112,11 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 			"osmController": map[string]interface{}{
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
-						"cpu":    "0.75",
+						"cpu":    "750m",
 						"memory": "512M",
 					},
 					"requests": map[string]interface{}{
-						"cpu":    "0.2",
+						"cpu":    "200m",
 						"memory": "32M",
 					},
 				},
@@ -124,11 +124,11 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 			"osmBootstrap": map[string]interface{}{
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
-						"cpu":    "0.2",
+						"cpu":    "200m",
 						"memory": "32M",
 					},
 					"requests": map[string]interface{}{
-						"cpu":    "0.1",
+						"cpu":    "100m",
 						"memory": "32M",
 					},
 				},
@@ -138,6 +138,7 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 
 	// merging the modifications into the values map
 	values = MergeMaps(values, modification)
+	helmChart.Values = values
 	return nil
 }
 
