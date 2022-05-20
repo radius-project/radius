@@ -70,17 +70,20 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 }
 
 func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
-	upgradeClient := helm.NewUpgrade(helmConf)
-	upgradeClient.Install = true
-	upgradeClient.Namespace = RadiusSystemNamespace
-	_, err := upgradeClient.Run(OSMReleaseName, helmChart, helmChart.Values)
+	installClient := helm.NewInstall(helmConf)
+	installClient.Namespace = RadiusSystemNamespace
+	installClient.ReleaseName = OSMReleaseName
+	installClient.Wait = true
+	installClient.Timeout = installTimeout
+	err := runInstall(installClient, helmChart)
+	if err != nil {
+		upgradeClient := helm.NewUpgrade(helmConf)
+		upgradeClient.Install = true
+		upgradeClient.Namespace = RadiusSystemNamespace
+		_, err := upgradeClient.Run(OSMReleaseName, helmChart, helmChart.Values)
+		return err
+	}
 	return err
-	// installClient := helm.NewInstall(helmConf)
-	// installClient.Namespace = RadiusSystemNamespace
-	// installClient.ReleaseName = OSMReleaseName
-	// installClient.Wait = true
-	// installClient.Timeout = installTimeout
-	// return runInstall(installClient, helmChart)
 }
 
 func RunOSMHelmUninstall(helmConf *helm.Configuration) error {
