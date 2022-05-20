@@ -10,25 +10,25 @@ import (
 	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
-// MongoDatabase represents MongoDatabase connector resource.
-type MongoDatabase struct {
+// RedisCache represents RedisCache connector resource.
+type RedisCache struct {
 	basedatamodel.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
-	Properties MongoDatabaseProperties `json:"properties"`
+	Properties RedisCacheProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	basedatamodel.InternalMetadata
 }
 
-func (mongo MongoDatabase) ResourceTypeName() string {
-	return "Applications.Connector/mongoDatabases"
+func (redis RedisCache) ResourceTypeName() string {
+	return "Applications.Connector/redisCaches"
 }
 
-// MongoDatabaseProperties represents the properties of MongoDatabase resource.
-type MongoDatabaseProperties struct {
+// RedisCacheProperties represents the properties of RedisCache resource.
+type RedisCacheProperties struct {
 	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Environment       string                           `json:"environment"`
@@ -36,12 +36,11 @@ type MongoDatabaseProperties struct {
 	Resource          string                           `json:"resource,omitempty"`
 	Host              string                           `json:"host,omitempty"`
 	Port              int32                            `json:"port,omitempty"`
-	Secrets           Secrets                          `json:"secrets,omitempty"`
+	Secrets           RedisSecrets                     `json:"secrets,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
-type Secrets struct {
-	Username         string `json:"username"`
-	Password         string `json:"password"`
+type RedisSecrets struct {
 	ConnectionString string `json:"connectionString"`
+	Password         string `json:"password"`
 }

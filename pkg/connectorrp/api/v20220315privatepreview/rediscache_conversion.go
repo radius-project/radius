@@ -13,18 +13,17 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
-// ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel.
-func (src *MongoDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
-	secrets := datamodel.Secrets{}
+// ConvertTo converts from the versioned RedisCache resource to version-agnostic datamodel.
+func (src *RedisCacheResource) ConvertTo() (api.DataModelInterface, error) {
+	secrets := datamodel.RedisSecrets{}
 	if src.Properties.Secrets != nil {
-		secrets = datamodel.Secrets{
+		secrets = datamodel.RedisSecrets{
 			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
-			Username:         to.String(src.Properties.Secrets.Username),
 			Password:         to.String(src.Properties.Secrets.Password),
 		}
 	}
 
-	converted := &datamodel.MongoDatabase{
+	converted := &datamodel.RedisCache{
 		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
@@ -32,7 +31,7 @@ func (src *MongoDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 			Location: to.String(src.Location),
 			Tags:     to.StringMap(src.Tags),
 		},
-		Properties: datamodel.MongoDatabaseProperties{
+		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: basedatamodel.BasicResourceProperties{
 				Status: basedatamodel.ResourceStatus{
 					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
@@ -53,37 +52,36 @@ func (src *MongoDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabase resource.
-func (dst *MongoDatabaseResource) ConvertFrom(src api.DataModelInterface) error {
-	mongo, ok := src.(*datamodel.MongoDatabase)
+// ConvertFrom converts from version-agnostic datamodel to the versioned RedisCache resource.
+func (dst *RedisCacheResource) ConvertFrom(src api.DataModelInterface) error {
+	redis, ok := src.(*datamodel.RedisCache)
 	if !ok {
 		return api.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(mongo.ID)
-	dst.Name = to.StringPtr(mongo.Name)
-	dst.Type = to.StringPtr(mongo.Type)
-	dst.SystemData = fromSystemDataModel(mongo.SystemData)
-	dst.Location = to.StringPtr(mongo.Location)
-	dst.Tags = *to.StringMapPtr(mongo.Tags)
-	dst.Properties = &MongoDatabaseProperties{
+	dst.ID = to.StringPtr(redis.ID)
+	dst.Name = to.StringPtr(redis.Name)
+	dst.Type = to.StringPtr(redis.Type)
+	dst.SystemData = fromSystemDataModel(redis.SystemData)
+	dst.Location = to.StringPtr(redis.Location)
+	dst.Tags = *to.StringMapPtr(redis.Tags)
+	dst.Properties = &RedisCacheProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: mongo.Properties.BasicResourceProperties.Status.OutputResources,
+				OutputResources: redis.Properties.BasicResourceProperties.Status.OutputResources,
 			},
 		},
-		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
-		Environment:       to.StringPtr(mongo.Properties.Environment),
-		Application:       to.StringPtr(mongo.Properties.Application),
-		Resource:          to.StringPtr(mongo.Properties.Resource),
-		Host:              to.StringPtr(mongo.Properties.Host),
-		Port:              to.Int32Ptr(mongo.Properties.Port),
+		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
+		Environment:       to.StringPtr(redis.Properties.Environment),
+		Application:       to.StringPtr(redis.Properties.Application),
+		Resource:          to.StringPtr(redis.Properties.Resource),
+		Host:              to.StringPtr(redis.Properties.Host),
+		Port:              to.Int32Ptr(redis.Properties.Port),
 	}
-	if (mongo.Properties.Secrets != datamodel.Secrets{}) {
-		dst.Properties.Secrets = &MongoDatabasePropertiesSecrets{
-			ConnectionString: to.StringPtr(mongo.Properties.Secrets.ConnectionString),
-			Username:         to.StringPtr(mongo.Properties.Secrets.Username),
-			Password:         to.StringPtr(mongo.Properties.Secrets.Password),
+	if (redis.Properties.Secrets != datamodel.RedisSecrets{}) {
+		dst.Properties.Secrets = &RedisCachePropertiesSecrets{
+			ConnectionString: to.StringPtr(redis.Properties.Secrets.ConnectionString),
+			Password:         to.StringPtr(redis.Properties.Secrets.Password),
 		}
 	}
 

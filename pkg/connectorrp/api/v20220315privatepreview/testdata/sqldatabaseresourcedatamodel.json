@@ -1,7 +1,7 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/mongoDatabases/mongo0",
-    "name": "mongo0",
-    "type": "Applications.Connector/mongoDatabases",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/sqlDatabases/sql0",
+    "name": "sql0",
+    "type": "Applications.Connector/sqlDatabases",
     "systemData": {
         "createdBy": "fakeid@live.com",
         "createdByType": "User",
@@ -18,20 +18,15 @@
             "outputResources": [{
               "LocalID": "Deployment",
               "ResourceType": {
-                "Type": "azure.cosmosdb.mongo",
+                "Type": "azure.sql.database",
                 "Provider": "azure"
               }
             }]
         },
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db",
-        "host": "testAccount1.mongo.cosmos.azure.com",
-        "port": 10255,
-        "secrets": {
-          "username": "testUser",
-          "password": "testPassword",
-          "connectionString": "test-connection-string"
-        }
+        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+        "database": "testDatabase",
+        "server": "testAccount1.sql.cosmos.azure.com"
     }
 }
