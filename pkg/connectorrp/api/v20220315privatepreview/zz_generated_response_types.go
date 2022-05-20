@@ -64,3 +64,111 @@ type MongoDatabasesListResult struct {
 	MongoDatabaseList
 }
 
+// RedisCachesCreateOrUpdateResponse contains the response from method RedisCaches.CreateOrUpdate.
+type RedisCachesCreateOrUpdateResponse struct {
+	RedisCachesCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisCachesCreateOrUpdateResult contains the result from method RedisCaches.CreateOrUpdate.
+type RedisCachesCreateOrUpdateResult struct {
+	RedisCacheResource
+}
+
+// RedisCachesDeleteResponse contains the response from method RedisCaches.Delete.
+type RedisCachesDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisCachesGetResponse contains the response from method RedisCaches.Get.
+type RedisCachesGetResponse struct {
+	RedisCachesGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisCachesGetResult contains the result from method RedisCaches.Get.
+type RedisCachesGetResult struct {
+	RedisCacheResource
+}
+
+// RedisCachesListBySubscriptionResponse contains the response from method RedisCaches.ListBySubscription.
+type RedisCachesListBySubscriptionResponse struct {
+	RedisCachesListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisCachesListBySubscriptionResult contains the result from method RedisCaches.ListBySubscription.
+type RedisCachesListBySubscriptionResult struct {
+	RedisCacheList
+}
+
+// RedisCachesListResponse contains the response from method RedisCaches.List.
+type RedisCachesListResponse struct {
+	RedisCachesListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisCachesListResult contains the result from method RedisCaches.List.
+type RedisCachesListResult struct {
+	RedisCacheList
+}
+
+// SQLDatabasesCreateOrUpdateResponse contains the response from method SQLDatabases.CreateOrUpdate.
+type SQLDatabasesCreateOrUpdateResponse struct {
+	SQLDatabasesCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// SQLDatabasesCreateOrUpdateResult contains the result from method SQLDatabases.CreateOrUpdate.
+type SQLDatabasesCreateOrUpdateResult struct {
+	SQLDatabaseResource
+}
+
+// SQLDatabasesDeleteResponse contains the response from method SQLDatabases.Delete.
+type SQLDatabasesDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// SQLDatabasesGetResponse contains the response from method SQLDatabases.Get.
+type SQLDatabasesGetResponse struct {
+	SQLDatabasesGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// SQLDatabasesGetResult contains the result from method SQLDatabases.Get.
+type SQLDatabasesGetResult struct {
+	SQLDatabaseResource
+}
+
+// SQLDatabasesListBySubscriptionResponse contains the response from method SQLDatabases.ListBySubscription.
+type SQLDatabasesListBySubscriptionResponse struct {
+	SQLDatabasesListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// SQLDatabasesListBySubscriptionResult contains the result from method SQLDatabases.ListBySubscription.
+type SQLDatabasesListBySubscriptionResult struct {
+	SQLDatabaseList
+}
+
+// SQLDatabasesListResponse contains the response from method SQLDatabases.List.
+type SQLDatabasesListResponse struct {
+	SQLDatabasesListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// SQLDatabasesListResult contains the result from method SQLDatabases.List.
+type SQLDatabasesListResult struct {
+	SQLDatabaseList
+}
+
