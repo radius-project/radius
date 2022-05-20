@@ -28,24 +28,24 @@ type element struct {
 	visible bool
 }
 
-var defaultQueue = NewInMemQueue(messageLockDuration)
+var defaultQueue = newInMemQueue(messageLockDuration)
 
-// InmemQueue implements in-memory queue for dev/test
-type InmemQueue struct {
+// inmemQueue implements in-memory queue for dev/test
+type inmemQueue struct {
 	v   *list.List
 	vMu sync.Mutex
 
 	lockDuration time.Duration
 }
 
-func NewInMemQueue(lockDuration time.Duration) *InmemQueue {
-	return &InmemQueue{
+func newInMemQueue(lockDuration time.Duration) *inmemQueue {
+	return &inmemQueue{
 		v:            &list.List{},
 		lockDuration: lockDuration,
 	}
 }
 
-func (q *InmemQueue) Enqueue(msg *queue.Message) {
+func (q *inmemQueue) Enqueue(msg *queue.Message) {
 	q.updateQueue()
 
 	q.vMu.Lock()
@@ -59,7 +59,7 @@ func (q *InmemQueue) Enqueue(msg *queue.Message) {
 	q.v.PushBack(&element{val: msg, visible: true})
 }
 
-func (q *InmemQueue) Dequeue() *queue.Message {
+func (q *inmemQueue) Dequeue() *queue.Message {
 	q.updateQueue()
 
 	var found *queue.Message
@@ -78,7 +78,7 @@ func (q *InmemQueue) Dequeue() *queue.Message {
 	return found
 }
 
-func (q *InmemQueue) Complete(msg *queue.Message) error {
+func (q *inmemQueue) Complete(msg *queue.Message) error {
 	found := false
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
@@ -96,7 +96,7 @@ func (q *InmemQueue) Complete(msg *queue.Message) error {
 	return nil
 }
 
-func (q *InmemQueue) Extend(msg *queue.Message) error {
+func (q *inmemQueue) Extend(msg *queue.Message) error {
 	found := false
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
@@ -114,7 +114,7 @@ func (q *InmemQueue) Extend(msg *queue.Message) error {
 	return nil
 }
 
-func (q *InmemQueue) updateQueue() {
+func (q *inmemQueue) updateQueue() {
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		now := time.Now().UTC()
 		if elem.val.ExpireAt.UnixNano() <= now.UnixNano() {
@@ -126,7 +126,7 @@ func (q *InmemQueue) updateQueue() {
 	})
 }
 
-func (q *InmemQueue) elementRange(fn func(*list.Element, *element) bool) {
+func (q *inmemQueue) elementRange(fn func(*list.Element, *element) bool) {
 	q.vMu.Lock()
 	defer q.vMu.Unlock()
 
