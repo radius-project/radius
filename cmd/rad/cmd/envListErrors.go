@@ -23,50 +23,26 @@ type envWithError struct {
 	Errors []string `json:"errors"`
 }
 
-// populateEnvErrors populates errors (if any) in users' environment configuration and is used when listing envs in JSON format
-func populateEnvErrors(env cli.EnvironmentSection) interface{} {
+// displayErrors displays errors (if any) in users' environment configuration when listing envs in List, Json, Table formats
+func displayErrors(format string, cmd *cobra.Command, env cli.EnvironmentSection) (bool, error) {
 	var (
-		retenv    = envWithError{env, nil}
-		errList   []string
-		isDefault bool = false
+		err           error
+		errList       []envError
+		errJsonList   []string
+		isDefault     bool = false
+		hasError      bool = false
+		retenv             = envWithError{env, nil}
+		defaultErrMsg      = "the default environment entry '%v' has not been configured"
 	)
 
 	for key := range env.Items {
 		_, err := env.GetEnvironment(key)
 		if err != nil {
-			errList = append(errList, err.Error())
-		}
-
-		if env.Default == key {
-			isDefault = true
-		}
-
-	}
-
-	if env.Default != "" && !isDefault {
-		errList = append(errList, fmt.Sprintf("the default environment entry '%v' has not been configured", env.Default))
-	}
-	if len(errList) > 0 {
-		retenv.Errors = errList
-		return retenv
-	}
-
-	return env
-}
-
-// displayErrors displays errors (if any) in users' environment configuration when listing envs in List and Table formats
-func displayErrors(cmd *cobra.Command, env cli.EnvironmentSection) error {
-
-	var (
-		errList   []envError
-		isDefault bool = false
-		err       error
-	)
-
-	for key := range env.Items {
-		_, err := env.GetEnvironment(key)
-		if err != nil {
-			errList = append(errList, envError{err.Error()})
+			if format == output.FormatJson {
+				errJsonList = append(errJsonList, err.Error())
+			} else {
+				errList = append(errList, envError{err.Error()})
+			}
 		}
 		if env.Default == key {
 			isDefault = true
@@ -75,15 +51,29 @@ func displayErrors(cmd *cobra.Command, env cli.EnvironmentSection) error {
 
 	// check if default exists
 	if env.Default != "" && !isDefault {
-		errList = append(errList, envError{fmt.Sprintf("the default environment entry '%v' has not been configured", env.Default)})
+		if format == output.FormatJson {
+			errJsonList = append(errJsonList, fmt.Sprintf(defaultErrMsg, env.Default))
+		} else {
+			errList = append(errList, envError{fmt.Sprintf(defaultErrMsg, env.Default)})
+		}
 	}
-	if len(errList) > 0 {
+
+	if len(errJsonList) > 0 {
+		hasError = true
+		retenv.Errors = errJsonList
+		err = output.Write(format, &retenv, cmd.OutOrStdout(), output.FormatterOptions{Columns: []output.Column{}})
+		if err != nil {
+			return hasError, err
+		}
+	} else if len(errList) > 0 {
+		hasError = true
 		fmt.Println()
 		errformatter := objectformats.GetGenericEnvErrorTableFormat()
 		err = output.Write(output.FormatTable, errList, cmd.OutOrStdout(), errformatter)
 		if err != nil {
-			return err
+			return hasError, err
 		}
 	}
-	return nil
+
+	return hasError, nil
 }

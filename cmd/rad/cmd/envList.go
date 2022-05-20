@@ -26,6 +26,7 @@ var envListCmd = &cobra.Command{
 func getEnvConfigs(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.ReadEnvironmentSection(config)
+
 	if err != nil {
 		return err
 	}
@@ -40,10 +41,15 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if format == "json" {
-		env := populateEnvErrors(env)
-		err = output.Write(format, &env, cmd.OutOrStdout(), output.FormatterOptions{Columns: []output.Column{}})
+		hasError, err := displayErrors(format, cmd, env)
 		if err != nil {
 			return err
+		}
+		if !hasError {
+			err = output.Write(format, &env, cmd.OutOrStdout(), output.FormatterOptions{Columns: []output.Column{}})
+			if err != nil {
+				return err
+			}
 		}
 	} else if format == "list" {
 		b, err := yaml.Marshal(&env)
@@ -51,7 +57,7 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		fmt.Println(string(b))
-		err = displayErrors(cmd, env)
+		_, err = displayErrors(format, cmd, env)
 		if err != nil {
 			return err
 		}
@@ -79,7 +85,7 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		err = displayErrors(cmd, env)
+		_, err = displayErrors(format, cmd, env)
 		if err != nil {
 			return err
 		}
