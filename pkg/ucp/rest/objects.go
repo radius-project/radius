@@ -5,6 +5,8 @@
 
 package rest
 
+import "strings"
+
 type PlaneProperties struct {
 	ResourceProviders map[string]string `json:"resourceProviders" yaml:"resourceProviders"`
 	Kind              string            `json:"kind" yaml:"kind"`
@@ -23,11 +25,42 @@ type PlaneList struct {
 
 // ResourceGroup represents a resource group within UCP
 type ResourceGroup struct {
-	ID   string `json:"id" yaml:"id"`
-	Name string `json:"name" yaml:"name"`
+	ID                string `json:"id" yaml:"id"`
+	Name              string `json:"name" yaml:"name"`
+	ProvisioningState string `json:"provisioningState" yaml:"provisioningState"`
 }
 
 // ResourceGroupList represents a list of resource groups
 type ResourceGroupList struct {
 	Value []ResourceGroup `json:"value" yaml:"value"`
+}
+
+// Resource represents a resource within a UCP resource group
+type Resource struct {
+	ID                string `json:"id" yaml:"id"`
+	Name              string `json:"name" yaml:"name"`
+	ProvisioningState string `json:"provisioningState" yaml:"provisioningState"`
+	Type              string `json:"type" yaml:"type"`
+}
+
+// ResourceList represents a list of resources
+type ResourceList struct {
+	Value []Resource `json:"value" yaml:"value"`
+}
+
+// ProvisioningState values allowed
+const (
+	ProvisioningStateSucceeded = "Succeeded"
+	ProvisioningStateDeleting  = "Deleting"
+)
+
+func (plane *Plane) LookupResourceProvider(key string) string {
+	var value string
+	for k, v := range plane.Properties.ResourceProviders {
+		if strings.EqualFold(k, key) {
+			value = v
+			break
+		}
+	}
+	return value
 }

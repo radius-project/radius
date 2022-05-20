@@ -403,6 +403,7 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 
 		scopes := id.ScopeSegments()
 		for _, scope := range scopes {
+			scope.Type = strings.ReplaceAll(scope.Type, resources.SegmentSeparator, "-")
 			key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(scope.Type))
 			value := strings.ToLower(scope.Name)
 
@@ -458,6 +459,7 @@ func createLabelSelector(query store.Query) (labels.Selector, error) {
 	}
 
 	for _, scope := range id.ScopeSegments() {
+		scope.Type = strings.ReplaceAll(scope.Type, resources.SegmentSeparator, "-")
 		key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(scope.Type))
 		value := strings.ToLower(scope.Name)
 

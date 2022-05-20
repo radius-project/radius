@@ -68,8 +68,9 @@ var testPlane = rest.Plane{
 }
 
 var testResourceGroup = rest.ResourceGroup{
-	Name: "rg1",
-	ID:   testPlaneID + "/resourceGroups/rg1",
+	Name:              "rg1",
+	ID:                testPlaneID + "/resourceGroups/rg1",
+	ProvisioningState: rest.ProvisioningStateSucceeded,
 }
 
 func Test_ProxyToRP(t *testing.T) {
@@ -147,14 +148,16 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any())
+	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+		return nil, &store.ErrNotFound{}
+	})
 	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
 
 	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourceGroups/rg1", bytes.NewBuffer(body))
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, createResourceGroupResponse.StatusCode)
+	assert.Equal(t, http.StatusCreated, createResourceGroupResponse.StatusCode)
 	createResourceGroupResponseBody, err := ioutil.ReadAll(createResourceGroupResponse.Body)
 	require.NoError(t, err)
 	var responseResourceGroup rest.ResourceGroup

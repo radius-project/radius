@@ -23,7 +23,7 @@ func NewARMProxy(options ReverseProxyOptions, downstream *url.URL, configure fun
 	builder := ReverseProxyBuilder{
 		Downstream:    downstream,
 		EnableLogging: true,
-		Directors:     []DirectorFunc{trimPlanesPrefix},
+		Directors:     []DirectorFunc{},
 		Transport: Transport{
 			roundTripper: options.RoundTripper,
 		},

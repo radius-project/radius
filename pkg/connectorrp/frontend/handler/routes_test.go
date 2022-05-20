@@ -23,27 +23,27 @@ var handlerTests = []struct {
 	isAzureAPI bool
 }{
 	{
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases?api-version=2022-03-15-privatepreview",
+		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo/listsecrets?api-version=2022-03-15-privatepreview",
+		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	}, {
