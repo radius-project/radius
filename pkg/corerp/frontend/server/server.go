@@ -7,7 +7,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"net/http"
 
@@ -48,8 +47,8 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 	}
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
 
-	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(versionAPIName)
-	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(healthzAPIName)
+	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
+	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
 
 	//setup metrics handler
 	metricsProvider, _ := mp.NewPrometheusMetricsClient()
@@ -66,17 +65,4 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 	}
 
 	return server
-}
-
-func reportVersion(w http.ResponseWriter, req *http.Request) {
-	info := version.NewVersionInfo()
-
-	b, err := json.MarshalIndent(&info, "", "  ")
-
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	w.Header().Add("Content-Type", "application/json")
-	_, _ = w.Write(b)
 }

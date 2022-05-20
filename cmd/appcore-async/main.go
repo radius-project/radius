@@ -16,7 +16,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/corerp/backend"
-	"github.com/project-radius/radius/pkg/corerp/frontend"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/hosting"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -24,12 +23,9 @@ import (
 
 func main() {
 	var configFile string
-	var enableAsyncWorker bool
 
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
-	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", false, "Flag to run async request process worker (for dev/test purpose).")
-
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
 	}
@@ -47,16 +43,12 @@ func main() {
 	}
 	defer flush()
 
-	hostingSvc := []hosting.Service{frontend.NewService(options)}
-
-	if enableAsyncWorker {
-		logger.Info("Enable AsyncRequestProcessWorker.")
-		hostingSvc = append(hostingSvc, backend.NewService(options))
-	}
-
 	loggerValues := []interface{}{}
 	host := &hosting.Host{
-		Services: hostingSvc,
+		Services: []hosting.Service{
+			backend.NewSystemService(options),
+			backend.NewService(options),
+		},
 
 		// Values that will be propagated to all loggers
 		LoggerValues: loggerValues,

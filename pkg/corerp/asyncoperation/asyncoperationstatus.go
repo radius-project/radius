@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package datamodel
+package asyncoperation
 
 import (
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
