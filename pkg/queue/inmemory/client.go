@@ -22,11 +22,12 @@ type Client struct {
 	queue *InmemQueue
 }
 
-// NewClient creates the in-memory queue Client instance.
+// NewClient creates the in-memory queue Client instance. Client will use the default global queue if queue is not given.
 func NewClient(queue *InmemQueue) *Client {
 	if queue == nil {
 		queue = defaultQueue
 	}
+
 	return &Client{
 		queue: queue,
 	}

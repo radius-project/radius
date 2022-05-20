@@ -20,22 +20,28 @@ var (
 	messageExpireDuration = 24 * time.Hour
 )
 
+var ErrAlreadyCompletedMessage = errors.New("message has already completed")
+
 type element struct {
-	val     *queue.Message
+	val *queue.Message
+
 	visible bool
 }
 
-var defaultQueue = NewInMemQueue()
+var defaultQueue = NewInMemQueue(messageLockDuration)
 
 // InmemQueue implements in-memory queue for dev/test
 type InmemQueue struct {
 	v   *list.List
 	vMu sync.Mutex
+
+	lockDuration time.Duration
 }
 
-func NewInMemQueue() *InmemQueue {
+func NewInMemQueue(lockDuration time.Duration) *InmemQueue {
 	return &InmemQueue{
-		v: &list.List{},
+		v:            &list.List{},
+		lockDuration: lockDuration,
 	}
 }
 
@@ -56,52 +62,79 @@ func (q *InmemQueue) Enqueue(msg *queue.Message) {
 func (q *InmemQueue) Dequeue() *queue.Message {
 	q.updateQueue()
 
-	q.vMu.Lock()
-	defer q.vMu.Unlock()
+	var found *queue.Message
 
-	for e := q.v.Front(); e != nil; e = e.Next() {
-		elem := e.Value.(*element)
+	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.visible {
 			elem.val.DequeueCount++
-			elem.val.NextVisibleAt = time.Now().Add(messageLockDuration)
+			elem.val.NextVisibleAt = time.Now().Add(q.lockDuration)
 			elem.visible = false
-			return elem.val
+			found = elem.val
+			return true
 		}
+		return false
+	})
+
+	return found
+}
+
+func (q *InmemQueue) Complete(msg *queue.Message) error {
+	found := false
+	q.elementRange(func(e *list.Element, elem *element) bool {
+		if elem.val.ID == msg.ID {
+			found = true
+			q.v.Remove(e)
+			return true
+		}
+		return false
+	})
+
+	if !found {
+		return ErrAlreadyCompletedMessage
 	}
 
 	return nil
 }
 
-func (q *InmemQueue) Complete(msg *queue.Message) error {
-	q.vMu.Lock()
-	defer q.vMu.Unlock()
-
-	for e := q.v.Front(); e != nil; e = e.Next() {
-		elem := e.Value.(*element)
+func (q *InmemQueue) Extend(msg *queue.Message) error {
+	found := false
+	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
-			q.v.Remove(e)
-			return nil
+			found = true
+			elem.val.NextVisibleAt.Add(q.lockDuration)
+			return true
 		}
+		return false
+	})
+
+	if !found {
+		return ErrAlreadyCompletedMessage
 	}
 
-	return errors.New("message has already completed")
+	return nil
 }
 
 func (q *InmemQueue) updateQueue() {
-	q.vMu.Lock()
-	defer q.vMu.Unlock()
-
-	for e := q.v.Front(); e != nil; e = e.Next() {
-		elem, ok := e.Value.(*element)
-		if !ok {
-			panic("invalid queue value type")
-		}
-
+	q.elementRange(func(e *list.Element, elem *element) bool {
 		now := time.Now().UTC()
 		if elem.val.ExpireAt.UnixNano() <= now.UnixNano() {
 			q.v.Remove(e)
 		} else if elem.val.NextVisibleAt.UnixNano() <= now.UnixNano() {
 			elem.visible = true
+		}
+		return false
+	})
+}
+
+func (q *InmemQueue) elementRange(fn func(*list.Element, *element) bool) {
+	q.vMu.Lock()
+	defer q.vMu.Unlock()
+
+	for e := q.v.Front(); e != nil; e = e.Next() {
+		elem := e.Value.(*element)
+		done := fn(e, elem)
+		if done {
+			return
 		}
 	}
 }
