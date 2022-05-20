@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: appcore-rp
+  name: appcore-rp
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: appcore-rp
+  template:
+    metadata:
+      labels:
+        control-plane: appcore-rp
+{{ if .Values.global.rp.provider.azure.podidentity }}
+        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
+{{ end }}
+    spec:
+      serviceAccountName: appcore-rp
+      containers:
+      - image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
+        env:
+        - name: DEFAULT_PLANES_CONFIG
+          value: /etc/config/appcore-rp-config.json
+        - name: BASE_PATH
+          value: '/apis/api.appcore-rp.dev/v1alpha3' # listen for APIService URLs
+        - name: TLS_CERT_DIR
+          value: '/var/tls/cert'
+        - name: PORT
+          value: '5443'
+        name: appcore-rp
+        ports:
+        - containerPort: 5443
+          name: appcore-rp
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - name: cert
+          mountPath: '/var/tls/cert'
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+      volumes:
+        - name: cert
+          secret:
+            secretName: appcore-rp-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appcore-rp
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 443
+      name: https
+      protocol: TCP
+      targetPort: 5443
+  selector:
+    control-plane: appcore-rp

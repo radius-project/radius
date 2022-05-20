@@ -15,3 +15,6 @@ dependencies:
   - name: ucp
     version: '42.42.42-dev'
     repository: "file://ucp"
+  - name: appcore-rp
+    version: '42.42.42-dev'
+    repository: "file://appcore-rp"
