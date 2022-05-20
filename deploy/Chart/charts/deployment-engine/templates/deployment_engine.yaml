@@ -22,13 +22,6 @@ spec:
       containers:
       - args:
         - --kubernetes=true
-        resources:
-          requests:
-            cpu: 0.1
-            memory: 50Mi
-          limits:
-            cpu: 0.2
-            memory: 100Mi
         env:
         - name: ASPNETCORE_URLS
           value: https://+:6443
