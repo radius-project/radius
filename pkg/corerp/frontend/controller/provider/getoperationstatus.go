@@ -10,7 +10,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel/asyncoperation"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"

@@ -48,6 +48,6 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 	// TODO: implement message loop to run multiple operation concurrently.
 
-	logger.Info("Server stopped...")
+	logger.Info("Message loop stopped...")
 	return nil
 }

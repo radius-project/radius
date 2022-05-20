@@ -14,7 +14,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/asyncoperation"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/store"
 	"github.com/stretchr/testify/require"
