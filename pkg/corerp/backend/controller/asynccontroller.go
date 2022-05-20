@@ -8,7 +8,7 @@ package controller
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel/asyncoperation"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/store"
 )
 
