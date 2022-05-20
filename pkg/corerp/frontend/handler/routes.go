@@ -7,6 +7,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -228,6 +229,13 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			return err
 		}
 	}
+
+	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		tpl, err1 := route.GetPathTemplate()
+		met, err2 := route.GetMethods()
+		fmt.Println(tpl, err1, met, err2)
+		return nil
+	})
 
 	return nil
 }

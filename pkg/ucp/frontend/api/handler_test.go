@@ -89,6 +89,7 @@ func Test_Handler_GetPlane(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	planesUCP := planes.NewMockPlanesUCPHandler(ctrl)
 	ucp := ucphandler.UCPHandler{
+		Options:        ucphandler.UCPHandlerOptions{},
 		Planes:         planesUCP,
 		ResourceGroups: resourcegroups.NewMockResourceGroupsUCPHandler(ctrl),
 	}
@@ -228,7 +229,7 @@ func Test_Handler_DeleteResourceGroup(t *testing.T) {
 
 	handler := initializeTestEnv(t, ucp, dbClient)
 
-	rgUCP.EXPECT().DeleteByID(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, DB store.StorageClient, path string) (rest.Response, error) {
+	rgUCP.EXPECT().DeleteByID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, DB store.StorageClient, path string, req *http.Request) (rest.Response, error) {
 		return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
 	})
 
