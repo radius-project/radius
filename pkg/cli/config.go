@@ -305,6 +305,7 @@ func SaveConfig(v *viper.Viper) error {
 
 func (env EnvironmentSection) decodeEnvironmentSection(name string) (environments.Environment, error) {
 	raw, ok := env.Items[cases.Fold().String(name)]
+
 	if !ok {
 		return nil, fmt.Errorf("the environment '%v' could not be found in the list of environments. use `rad env list` to list environments", name)
 	}
@@ -323,14 +324,14 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		decoded := &environments.AzureCloudEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
+			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
 		}
 
 		decoded.Name = name
 
 		err = validate(decoded)
 		if err != nil {
-			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
+			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
 		}
 
 		return decoded, nil
@@ -338,14 +339,14 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		decoded := &environments.LocalEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
+			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
 		}
 
 		decoded.Name = name
 
 		err = validate(decoded)
 		if err != nil {
-			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
+			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
 		}
 
 		return decoded, nil
@@ -353,13 +354,13 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		decoded := &environments.KubernetesEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
+			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
 		}
 
 		decoded.Name = name
 		err = validate(decoded)
 		if err != nil {
-			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
+			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
 		}
 
 		return decoded, nil
@@ -367,14 +368,14 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		decoded := &environments.LocalRPEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
+			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
 		}
 
 		decoded.Name = name
 
 		err = validate(decoded)
 		if err != nil {
-			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
+			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
 		}
 
 		return decoded, nil
@@ -382,14 +383,14 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		decoded := &environments.GenericEnvironment{}
 		err := mapstructure.Decode(raw, decoded)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
+			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
 		}
 
 		decoded.Name = name
 
 		err = validate(decoded)
 		if err != nil {
-			return nil, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
+			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
 		}
 
 		return decoded, nil
