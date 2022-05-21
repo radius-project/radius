@@ -24,6 +24,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 	// act
 	dm, err := versionedResource.ConvertTo()
 
+	resourceType := map[string]interface{}{"Provider": "kubernetes", "Type": "Secret"}
 	// assert
 	require.NoError(t, err)
 	convertedResource := dm.(*datamodel.DaprSecretStore)
@@ -36,6 +37,9 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "secretstores.hashicorp.vault", convertedResource.Properties.Type)
 	require.Equal(t, "v1", convertedResource.Properties.Version)
 	require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
+	require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+	require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 }
 
 func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
@@ -49,6 +53,8 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 	versionedResource := &DaprSecretStoreResource{}
 	err = versionedResource.ConvertFrom(resource)
 
+	resourceType := map[string]interface{}{"Provider": "kubernetes", "Type": "Secret"}
+
 	// assert
 	require.NoError(t, err)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprSecretStores/daprSecretStore0", resource.ID)
@@ -60,6 +66,8 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "secretstores.hashicorp.vault", resource.Properties.Type)
 	require.Equal(t, "v1", resource.Properties.Version)
 	require.Equal(t, "bar", resource.Properties.Metadata["foo"])
+	require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
 }
 
 func TestDaprSecretStore_ConvertFromValidation(t *testing.T) {

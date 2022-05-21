@@ -24,6 +24,11 @@ func (src *DaprSecretStoreResource) ConvertTo() (api.DataModelInterface, error) 
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
+			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+				Status: basedatamodel.ResourceStatus{
+					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+				},
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -53,6 +58,11 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src api.DataModelInterface) erro
 	dst.Location = to.StringPtr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	dst.Properties = &DaprSecretStoreProperties{
+		BasicResourceProperties: BasicResourceProperties{
+			Status: &ResourceStatus{
+				OutputResources: daprSecretStore.Properties.BasicResourceProperties.Status.OutputResources,
+			},
+		},
 		ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),
 		Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
 		Application:       to.StringPtr(daprSecretStore.Properties.Application),

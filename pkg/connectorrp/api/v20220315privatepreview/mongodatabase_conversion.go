@@ -33,6 +33,11 @@ func (src *MongoDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.MongoDatabaseProperties{
+			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+				Status: basedatamodel.ResourceStatus{
+					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+				},
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -62,6 +67,11 @@ func (dst *MongoDatabaseResource) ConvertFrom(src api.DataModelInterface) error 
 	dst.Location = to.StringPtr(mongo.Location)
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 	dst.Properties = &MongoDatabaseProperties{
+		BasicResourceProperties: BasicResourceProperties{
+			Status: &ResourceStatus{
+				OutputResources: mongo.Properties.BasicResourceProperties.Status.OutputResources,
+			},
+		},
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Environment:       to.StringPtr(mongo.Properties.Environment),
 		Application:       to.StringPtr(mongo.Properties.Application),

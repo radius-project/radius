@@ -36,11 +36,12 @@ func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
 
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.
 type DaprSecretStoreProperties struct {
+	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Environment       string                           `json:"environment"`
 	Application       string                           `json:"application,omitempty"`
-	Kind              DaprSecretStoreKind              `json:"kind,omitempty"`
-	Type              string                           `json:"type,omitempty"`
-	Version           string                           `json:"version,omitempty"`
-	Metadata          map[string]interface{}           `json:"metadata,omitempty"`
+	Kind              DaprSecretStoreKind              `json:"kind"`
+	Type              string                           `json:"type"`
+	Version           string                           `json:"version"`
+	Metadata          map[string]interface{}           `json:"metadata"`
 }
