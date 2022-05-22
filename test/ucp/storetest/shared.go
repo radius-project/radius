@@ -299,78 +299,87 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err = client.Save(ctx, &obj2)
 		require.NoError(t, err)
 
-		// Query resources at resource group scope
-		objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope})
-		require.NoError(t, err)
-		expected := []store.Object{
-			obj1,
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_at_resource_group_scope", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+				nested1,
+			}
+			compareObjectLists(t, expected, objs)
+		})
 
-		// Query all resources at resource group scope with a prefix
-		objs, err = client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, RoutingScopePrefix: ResourcePath1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			obj1,
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_at_resource_group_scope_with_prefix", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, RoutingScopePrefix: ResourcePath1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+				nested1,
+			}
+			compareObjectLists(t, expected, objs)
+		})
 
-		// Query all resources at resource group scope with a type filter
-		objs, err = client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, ResourceType: NestedResourceType1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			nested1,
-		}
-		require.ElementsMatch(t, expected, objs)
+		t.Run("query_at_resource_group_scope_with_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, ResourceType: NestedResourceType1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				nested1,
+			}
+			require.ElementsMatch(t, expected, objs)
+		})
 
-		// Query all resources at resource group scope with a prefix and type filter
-		objs, err = client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, RoutingScopePrefix: ResourcePath1, ResourceType: NestedResourceType1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_at_resource_group_scope_with_prefix_and_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, RoutingScopePrefix: ResourcePath1, ResourceType: NestedResourceType1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				nested1,
+			}
+			compareObjectLists(t, expected, objs)
+		})
 
-		// Query all resources at exactly plane scope
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope})
-		require.NoError(t, err)
-		require.Empty(t, objs)
+		t.Run("query_at_plane_scope", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope})
+			require.NoError(t, err)
+			require.Empty(t, objs)
+		})
 
-		// Query all resources recursively at plane scope
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true})
-		require.NoError(t, err)
-		expected = []store.Object{
-			obj1,
-			obj2,
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_at_plane_scope_recursive", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+				obj2,
+				nested1,
+			}
+			compareObjectLists(t, expected, objs)
+		})
 
-		// Query all resources recursively at plane scope with a prefix
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, RoutingScopePrefix: ResourcePath1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			obj1,
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_at_plane_scope_recursive_with_prefix", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, RoutingScopePrefix: ResourcePath1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+				nested1,
+			}
+			compareObjectLists(t, expected, objs)
+		})
 
-		// Query all resources recursively at plane scope with a prefix and type filter
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, RoutingScopePrefix: ResourcePath1, ResourceType: NestedResourceType1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_at_plane_scope_recursive_and_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, ResourceType: NestedResourceType1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				nested1,
+			}
+			compareObjectLists(t, expected, objs)
+		})
 
-		// Query all resources recursively at plane scope with a type filter
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, ResourceType: NestedResourceType1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_at_plane_scope_recursive_with_prefix_and_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, RoutingScopePrefix: ResourcePath1, ResourceType: NestedResourceType1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				nested1,
+			}
+			compareObjectLists(t, expected, objs)
+		})
 	})
 }
