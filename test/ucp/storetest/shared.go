@@ -87,10 +87,10 @@ func compareObjects(t *testing.T, expected *store.Object, actual *store.Object) 
 
 func compareObjectLists(t *testing.T, expected []store.Object, actual []store.Object) {
 	expectedCopy := []store.Object{}
-	copy(expectedCopy, expected)
+	expectedCopy = append(expectedCopy, expected...)
 
 	actualCopy := []store.Object{}
-	copy(actualCopy, actual)
+	actualCopy = append(actualCopy, actual...)
 
 	// Compare everything except ETags
 	for i := range expectedCopy {
@@ -325,7 +325,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				nested1,
 			}
-			require.ElementsMatch(t, expected, objs)
+			compareObjectLists(t, expected, objs)
 		})
 
 		t.Run("query_at_resource_group_scope_with_prefix_and_type_filter", func(t *testing.T) {
