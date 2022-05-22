@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Applications.Core Management APIs",
-    "description": "REST API for Radius Application Environment",
+    "description": "REST API for Applications.Core Environment Resource",
     "version": "2022-03-15-privatepreview"
   },
   "host": "management.azure.com",
@@ -403,21 +403,8 @@
       ],
       "properties": {
         "provisioningState": {
-          "readOnly": true,
-          "type": "string",
-          "description": "Gets the status of the environment at the time the operation was called.",
-          "enum": [
-            "Succeeded",
-            "Failed",
-            "Canceled",
-            "Accepted",
-            "Updating",
-            "Deleting"
-          ],
-          "x-ms-enum": {
-            "name": "ProvisioningState",
-            "modelAsString": true
-          }
+          "$ref": "global.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the environment at the time the operation was called."
         },
         "compute": {
           "$ref": "#/definitions/EnvironmentCompute",

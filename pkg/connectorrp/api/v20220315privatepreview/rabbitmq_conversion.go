@@ -31,6 +31,11 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (api.DataModelInterface, er
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
+			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+				Status: basedatamodel.ResourceStatus{
+					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+				},
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -58,6 +63,11 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src api.DataModelInterface)
 	dst.Location = to.StringPtr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQMessageQueueProperties{
+		BasicResourceProperties: BasicResourceProperties{
+			Status: &ResourceStatus{
+				OutputResources: rabbitmq.Properties.BasicResourceProperties.Status.OutputResources,
+			},
+		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
 		Environment:       to.StringPtr(rabbitmq.Properties.Environment),
 		Application:       to.StringPtr(rabbitmq.Properties.Application),

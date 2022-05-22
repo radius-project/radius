@@ -20,7 +20,7 @@ type ApplicationProperties struct {
 	// REQUIRED; The resource id of the environment linked to application.
 	Environment *string `json:"environment,omitempty"`
 
-	// READ-ONLY; Gets the status of the application at the time the operation was called.
+	// READ-ONLY; Provisioning state of the application at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
@@ -90,6 +90,23 @@ type ApplicationsUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// BasicResourceProperties - Basic properties of a Radius resource.
+type BasicResourceProperties struct {
+	// Status of the resource
+	Status *ResourceStatus `json:"status,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
+func (b BasicResourceProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	b.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+func (b BasicResourceProperties) marshalInternal(objectMap map[string]interface{}) {
+	populate(objectMap, "status", b.Status)
+}
+
 // EnvironmentCompute - Compute resource used by application environment resource.
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
@@ -104,7 +121,7 @@ type EnvironmentProperties struct {
 	// REQUIRED; The compute resource used by application environment.
 	Compute *EnvironmentCompute `json:"compute,omitempty"`
 
-	// READ-ONLY; Gets the status of the environment at the time the operation was called.
+	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
@@ -227,6 +244,226 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
+// GatewayProperties - Gateway properties
+type GatewayProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The resource id of the application linked to Gateway resource.
+	Application *string `json:"application,omitempty"`
+
+	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
+
+	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
+	Internal *bool `json:"internal,omitempty"`
+
+	// Routes attached to this Gateway
+	Routes []*GatewayRoute `json:"routes,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayProperties.
+func (g GatewayProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	g.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", g.Application)
+	populate(objectMap, "hostname", g.Hostname)
+	populate(objectMap, "internal", g.Internal)
+	populate(objectMap, "provisioningState", g.ProvisioningState)
+	populate(objectMap, "routes", g.Routes)
+	return json.Marshal(objectMap)
+}
+
+// GatewayPropertiesHostname - Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+type GatewayPropertiesHostname struct {
+	// Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both are defined.
+	FullyQualifiedHostname *string `json:"fullyQualifiedHostname,omitempty"`
+
+	// Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname' and will be overridden
+// if both are defined.
+	Prefix *string `json:"prefix,omitempty"`
+}
+
+// GatewayResource - Gateway Resource that specifies how traffic is exposed to the application.
+type GatewayResource struct {
+	TrackedResource
+	// REQUIRED; Gateway properties
+	Properties *GatewayProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayResource.
+func (g GatewayResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	g.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", g.Properties)
+	populate(objectMap, "systemData", g.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// GatewayResourceList - The list of Gateways.
+type GatewayResourceList struct {
+	// The link used to get the next page of Gateways list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// The list of Gateways.
+	Value []*GatewayResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GatewayResourceList.
+func (g GatewayResourceList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", g.NextLink)
+	populate(objectMap, "value", g.Value)
+	return json.Marshal(objectMap)
+}
+
+type GatewayRoute struct {
+	// The HttpRoute to route to. Ex - myserviceroute.id.
+	Destination *string `json:"destination,omitempty"`
+
+	// The path to match the incoming request path on. Ex - /myservice.
+	Path *string `json:"path,omitempty"`
+
+	// Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute'
+// to '/myroute'
+	ReplacePrefix *string `json:"replacePrefix,omitempty"`
+}
+
+// GatewaysCreateOrUpdateOptions contains the optional parameters for the Gateways.CreateOrUpdate method.
+type GatewaysCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysDeleteOptions contains the optional parameters for the Gateways.Delete method.
+type GatewaysDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysGetOptions contains the optional parameters for the Gateways.Get method.
+type GatewaysGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysListBySubscriptionOptions contains the optional parameters for the Gateways.ListBySubscription method.
+type GatewaysListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysListOptions contains the optional parameters for the Gateways.List method.
+type GatewaysListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GatewaysUpdateOptions contains the optional parameters for the Gateways.Update method.
+type GatewaysUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRouteProperties - HTTP Route properties
+type HTTPRouteProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The resource id of the application linked to HTTP Route resource.
+	Application *string `json:"application,omitempty"`
+
+	// The internal hostname accepting traffic for the HTTP Route. Readonly.
+	Hostname *string `json:"hostname,omitempty"`
+
+	// The port number for the HTTP Route. Defaults to 80. Readonly.
+	Port *int32 `json:"port,omitempty"`
+
+	// The scheme used for traffic. Readonly.
+	Scheme *string `json:"scheme,omitempty"`
+
+	// A stable URL that that can be used to route traffic to a resource. Readonly.
+	URL *string `json:"url,omitempty"`
+
+	// READ-ONLY; Provisioning state of the HTTP Route at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteProperties.
+func (h HTTPRouteProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	h.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", h.Application)
+	populate(objectMap, "hostname", h.Hostname)
+	populate(objectMap, "port", h.Port)
+	populate(objectMap, "provisioningState", h.ProvisioningState)
+	populate(objectMap, "scheme", h.Scheme)
+	populate(objectMap, "url", h.URL)
+	return json.Marshal(objectMap)
+}
+
+// HTTPRouteResource - Radius HTTP Route Resource.
+type HTTPRouteResource struct {
+	TrackedResource
+	// REQUIRED; HTTP Route properties
+	Properties *HTTPRouteProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResource.
+func (h HTTPRouteResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	h.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", h.Properties)
+	populate(objectMap, "systemData", h.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// HTTPRouteResourceList - The list of HTTP Routes.
+type HTTPRouteResourceList struct {
+	// The link used to get the next page of HTTP Routes list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// The list of HTTP Route.
+	Value []*HTTPRouteResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteResourceList.
+func (h HTTPRouteResourceList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", h.NextLink)
+	populate(objectMap, "value", h.Value)
+	return json.Marshal(objectMap)
+}
+
+// HTTPRoutesCreateOrUpdateOptions contains the optional parameters for the HTTPRoutes.CreateOrUpdate method.
+type HTTPRoutesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesDeleteOptions contains the optional parameters for the HTTPRoutes.Delete method.
+type HTTPRoutesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesGetOptions contains the optional parameters for the HTTPRoutes.Get method.
+type HTTPRoutesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesListBySubscriptionOptions contains the optional parameters for the HTTPRoutes.ListBySubscription method.
+type HTTPRoutesListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesListOptions contains the optional parameters for the HTTPRoutes.List method.
+type HTTPRoutesListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// HTTPRoutesUpdateOptions contains the optional parameters for the HTTPRoutes.Update method.
+type HTTPRoutesUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -250,6 +487,18 @@ func (r Resource) marshalInternal(objectMap map[string]interface{}) {
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "name", r.Name)
 	populate(objectMap, "type", r.Type)
+}
+
+// ResourceStatus - Status of a resource.
+type ResourceStatus struct {
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
+func (r ResourceStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "outputResources", r.OutputResources)
+	return json.Marshal(objectMap)
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

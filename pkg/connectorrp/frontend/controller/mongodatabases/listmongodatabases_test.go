@@ -66,8 +66,8 @@ func TestListMongoDatabasesRun_20220315PrivatePreview(t *testing.T) {
 		max         string
 		skipToken   bool
 	}{
-		{"list-mongodb-more-items-than-max", 5, 2, "2", true},
-		{"list-mongodb-less-items-than-max", 2, 2, "5", false},
+		{"list-mongodb-more-items-than-max", 10, 5, "5", true},
+		{"list-mongodb-less-items-than-max", 5, 5, "10", false},
 		{"list-mongodb-no-max", 5, 5, "", false},
 	}
 

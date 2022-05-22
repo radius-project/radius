@@ -32,6 +32,53 @@
       }
     }
   },
+  "definitions": {
+    "ProvisioningState": {
+      "readOnly": true,
+      "type": "string",
+      "description": "Provisioning state of the resource at the time the operation was called.",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Accepted",
+        "Updating",
+        "Deleting",
+        "Provisioning"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true
+      }
+    },
+    "BasicResourceProperties": {
+      "description": "Basic properties of a Radius resource.",
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of the resource"
+        }
+      }
+    },
+    "ResourceStatus": {
+      "description": "Status of a resource.",
+      "type": "object",
+      "properties": {
+        "outputResources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          }
+        }
+      }
+    },
+    "OutputResource": {
+      "description": "Properties of an output resource.",
+      "type": "object",
+      "properties": {}
+    }
+  },
   "paths": {
     "/providers/Applications.Core/operations": {
       "get": {

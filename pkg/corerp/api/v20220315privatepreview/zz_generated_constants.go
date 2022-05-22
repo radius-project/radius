@@ -57,7 +57,7 @@ func (c EnvironmentComputeKind) ToPtr() *EnvironmentComputeKind {
 	return &c
 }
 
-// ProvisioningState - Gets the status of the environment at the time the operation was called.
+// ProvisioningState - Provisioning state of the resource at the time the operation was called.
 type ProvisioningState string
 
 const (
@@ -65,6 +65,7 @@ const (
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
 	ProvisioningStateFailed ProvisioningState = "Failed"
+	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
@@ -76,6 +77,7 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateCanceled,
 		ProvisioningStateDeleting,
 		ProvisioningStateFailed,
+		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
 	}

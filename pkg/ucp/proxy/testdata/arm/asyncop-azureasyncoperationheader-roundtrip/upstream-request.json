@@ -1,0 +1,6 @@
+{
+    "url": "http://ucp.example.com/some-path?query=yes",
+    "headers": {
+    },
+    "method": "PUT"
+}

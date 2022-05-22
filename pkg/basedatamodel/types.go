@@ -44,3 +44,11 @@ type InternalMetadata struct {
 
 	// TODO: will add more properties.
 }
+
+type BasicResourceProperties struct {
+	Status ResourceStatus `json:"status,omitempty"`
+}
+
+type ResourceStatus struct {
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
