@@ -49,6 +49,10 @@ import (
 )
 
 const (
+	// LabelKind is used to determine whether an object holds scopes or resources. Conflicts are not be possible due to the way we do naming.
+	// Each Kubernetes object holds only scopes or only resources.
+	LabelKind = "ucp.dev/kind"
+
 	// LabelScopeFormat is used format a label that describes the scope. The placeholder is replaced by the scope type (eg: resourceGroup).
 	LabelScopeFormat = "ucp.dev/scope-%s"
 
@@ -87,6 +91,9 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 	}
 	if query.RootScope == "" {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RootScope' is required"}
+	}
+	if query.IsScopeQuery && query.RoutingScopePrefix != "" {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RoutingScopePrefix' is not supported for scope queries"}
 	}
 
 	selector, err := createLabelSelector(query)
@@ -335,13 +342,19 @@ func (c *APIServerClient) synchronize() {
 func resourceName(id resources.ID) string {
 	// The kubernetes resource names we use are built according to the following format
 	//
-	// <resource name>.<id hash>
+	// resource.<resource name>.<id hash> (for a resource)
+	// scope.<resource name>.<id hash> (for a scope)
 	hasher := sha1.New()
 	_, _ = hasher.Write([]byte(strings.ToLower(id.String())))
 	hash := hasher.Sum(nil)
 
-	// example: resource1.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%x", id.Name(), hash)
+	prefix := store.UCPResourcePrefix
+	if id.IsScope() {
+		prefix = store.UCPScopePrefix
+	}
+
+	// example: resource.resource1.ec291e26078b7ea8a74abfac82530005a0ecbf15
+	return fmt.Sprintf("%s.%s.%x", prefix, id.Name(), hash)
 }
 
 func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
@@ -354,7 +367,14 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 			continue
 		}
 
-		for _, scope := range id.ScopeSegments() {
+		if id.IsScope() {
+			set[LabelKind] = store.UCPScopePrefix
+		} else {
+			set[LabelKind] = store.UCPResourcePrefix
+		}
+
+		scopes := id.ScopeSegments()
+		for _, scope := range scopes {
 			key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(scope.Type))
 			value := strings.ToLower(scope.Name)
 
@@ -366,16 +386,21 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 			set[key] = value
 		}
 
-		if id.Type() != "" {
-			// '/' is not valid in a label values, so we use '_'
-			value := strings.ToLower(strings.ReplaceAll(id.Type(), resources.SegmentSeparator, "_"))
-			existing, ok := set[LabelResourceType]
-			if ok && existing != value {
-				value = LabelValueMultiple
-			}
-
-			set[LabelResourceType] = value
+		var resourceType string
+		if id.IsScope() {
+			resourceType = scopes[len(scopes)-1].Type
+		} else {
+			resourceType = id.Type()
 		}
+
+		// '/' is not valid in a label values, so we use '_'
+		value := strings.ToLower(strings.ReplaceAll(resourceType, resources.SegmentSeparator, "_"))
+		existing, ok := set[LabelResourceType]
+		if ok && existing != value {
+			value = LabelValueMultiple
+		}
+
+		set[LabelResourceType] = value
 	}
 
 	return set
@@ -388,6 +413,22 @@ func createLabelSelector(query store.Query) (labels.Selector, error) {
 	}
 
 	selector := labels.NewSelector()
+	if query.IsScopeQuery {
+		requirement, err := labels.NewRequirement(LabelKind, selection.Equals, []string{store.UCPScopePrefix})
+		if err != nil {
+			return nil, err
+		}
+
+		selector = selector.Add(*requirement)
+	} else {
+		requirement, err := labels.NewRequirement(LabelKind, selection.Equals, []string{store.UCPResourcePrefix})
+		if err != nil {
+			return nil, err
+		}
+
+		selector = selector.Add(*requirement)
+	}
+
 	for _, scope := range id.ScopeSegments() {
 		key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(scope.Type))
 		value := strings.ToLower(scope.Name)
@@ -485,7 +526,16 @@ func idMatchesQuery(id resources.ID, query store.Query) bool {
 		return false
 	}
 
-	if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
+	if query.ResourceType != "" && query.IsScopeQuery {
+		// Example:
+		// id is ucp:/planes/radius/local/resourceGroups/cool-group
+		// query.ResourceType is subscriptions
+		//
+		// Query resource type is not a match
+		scopes := id.ScopeSegments()
+		resourceType := scopes[len(scopes)-1].Type
+		return strings.EqualFold(resourceType, query.ResourceType)
+	} else if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
 		// Example:
 		// id is ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
 		// query.ResourceType is Applications.Core/containers
