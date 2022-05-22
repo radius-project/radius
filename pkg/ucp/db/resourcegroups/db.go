@@ -6,7 +6,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -20,7 +19,7 @@ func GetByID(ctx context.Context, db store.StorageClient, ID resources.ID) (rest
 		return rg, err
 	}
 	if resp != nil {
-		err = json.Unmarshal(resp.Data, &rg)
+		err = resp.As(&rg)
 	}
 	return rg, err
 }
@@ -32,12 +31,8 @@ func Save(ctx context.Context, db store.StorageClient, rg rest.ResourceGroup) (r
 	o.Metadata.ContentType = "application/json"
 	id := resources.UCPPrefix + rg.ID
 	o.Metadata.ID = id
-	bytes, err := json.Marshal(rg)
-	if err != nil {
-		return rest.ResourceGroup{}, err
-	}
-	o.Data = bytes
-	err = db.Save(ctx, &o)
+	o.Data = &rg
+	err := db.Save(ctx, &o)
 	if err == nil {
 		storedResourceGroup = rg
 	}
@@ -55,7 +50,7 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 	if len(resp) > 0 {
 		for _, item := range resp {
 			var rg rest.ResourceGroup
-			err = json.Unmarshal(item.Data, &rg)
+			err = item.As(&rg)
 			if err != nil {
 				return listOfResourceGroups, err
 			}

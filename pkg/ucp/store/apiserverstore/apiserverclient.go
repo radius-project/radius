@@ -32,6 +32,7 @@ package apiserverstore
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -120,7 +121,19 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 			}
 
 			if idMatchesQuery(id, query) {
-				results = append(results, *readEntry(&entry))
+				converted, err := readEntry(&entry)
+				if err != nil {
+					return nil, err
+				}
+
+				match, err := converted.MatchesFilters(query.Filters)
+				if err != nil {
+					return nil, err
+				} else if !match {
+					continue
+				}
+
+				results = append(results, *converted)
 			}
 		}
 	}
@@ -149,8 +162,10 @@ func (c *APIServerClient) Get(ctx context.Context, id resources.ID, options ...s
 		return nil, err
 	}
 
-	obj := read(&resource, id)
-	if obj == nil {
+	obj, err := read(&resource, id)
+	if err != nil {
+		return nil, err
+	} else if obj == nil {
 		return nil, &store.ErrNotFound{}
 	}
 
@@ -245,8 +260,6 @@ func (c *APIServerClient) Save(ctx context.Context, obj *store.Object, options .
 		return err
 	}
 
-	obj.ETag = etag.New(obj.Data)
-
 	resourceName := resourceName(id)
 
 	config := store.NewSaveConfig(options...)
@@ -265,7 +278,14 @@ func (c *APIServerClient) Save(ctx context.Context, obj *store.Object, options .
 		resource.Name = resourceName
 		resource.Namespace = c.namespace
 
-		converted := convert(obj)
+		converted, err := convert(obj)
+		if err != nil {
+			return false, err
+		}
+
+		// Set the ETag so the caller can see the computed value.
+		obj.ETag = converted.ETag
+
 		index := findIndex(&resource, id)
 		if index == nil && config.ETag != "" {
 			// The ETag is only meaning for a replace/update operation not a create. We treat
@@ -465,7 +485,13 @@ func findIndex(resource *ucpv1alpha1.Resource, id resources.ID) *int {
 	return nil
 }
 
-func readEntry(entry *ucpv1alpha1.ResourceEntry) *store.Object {
+func readEntry(entry *ucpv1alpha1.ResourceEntry) (*store.Object, error) {
+	var data interface{}
+	err := json.Unmarshal(entry.Data.Raw, &data)
+	if err != nil {
+		return nil, err
+	}
+
 	obj := store.Object{
 		Metadata: store.Metadata{
 			ID:          entry.ID,
@@ -473,31 +499,37 @@ func readEntry(entry *ucpv1alpha1.ResourceEntry) *store.Object {
 			APIVersion:  entry.APIVersion,
 			ContentType: entry.ContentType,
 		},
-		Data: entry.Data.Raw,
+		Data: data,
 	}
-	return &obj
+
+	return &obj, nil
 }
 
-func read(resource *ucpv1alpha1.Resource, id resources.ID) *store.Object {
+func read(resource *ucpv1alpha1.Resource, id resources.ID) (*store.Object, error) {
 	for _, entry := range resource.Entries {
 		if strings.EqualFold(entry.ID, id.String()) {
 			return readEntry(&entry)
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
-func convert(obj *store.Object) *ucpv1alpha1.ResourceEntry {
+func convert(obj *store.Object) (*ucpv1alpha1.ResourceEntry, error) {
+	raw, err := json.Marshal(obj.Data)
+	if err != nil {
+		return nil, err
+	}
+
 	resource := ucpv1alpha1.ResourceEntry{
 		ID:          obj.ID,
 		APIVersion:  obj.APIVersion,
-		ETag:        obj.ETag,
+		ETag:        etag.New(raw), // Don't trust the ETag on the object, it's likely unset.
 		ContentType: obj.ContentType,
-		Data:        &runtime.RawExtension{Raw: obj.Data},
+		Data:        &runtime.RawExtension{Raw: raw},
 	}
 
-	return &resource
+	return &resource, nil
 }
 
 func idMatchesQuery(id resources.ID, query store.Query) bool {

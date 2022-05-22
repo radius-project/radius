@@ -88,6 +88,13 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 				return nil, err
 			}
 
+			match, err := value.MatchesFilters(query.Filters)
+			if err != nil {
+				return nil, err
+			} else if !match {
+				continue
+			}
+
 			value.ETag = etag.NewFromRevision(kv.ModRevision)
 			values = append(values, value)
 		}

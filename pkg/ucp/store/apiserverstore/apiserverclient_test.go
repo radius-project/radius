@@ -135,8 +135,8 @@ func Test_APIServer_Client(t *testing.T) {
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource2ID.String(),
-					ETag: etag.New(shared.Data2),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -169,13 +169,13 @@ func Test_APIServer_Client(t *testing.T) {
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
 				ID:   shared.Resource2ID.String(),
-				ETag: etag.New(shared.Data2),
-				Data: &runtime.RawExtension{Raw: shared.Data2},
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 			},
 			{
 				ID:   shared.Resource1ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
@@ -195,7 +195,7 @@ func Test_APIServer_Client(t *testing.T) {
 			{
 				Metadata: store.Metadata{
 					ID:   shared.Resource2ID.String(),
-					ETag: etag.New(shared.Data2),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
 				},
 				Data: shared.Data2,
 			},
@@ -244,8 +244,8 @@ func Test_APIServer_Client(t *testing.T) {
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource2ID.String(),
-					ETag: etag.New(shared.Data2),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -279,13 +279,13 @@ func Test_APIServer_Client(t *testing.T) {
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
 				ID:   shared.Resource2ID.String(),
-				ETag: etag.New(shared.Data2),
-				Data: &runtime.RawExtension{Raw: shared.Data2},
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 			},
 			{
 				ID:   shared.Resource1ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
@@ -317,8 +317,8 @@ func Test_APIServer_Client(t *testing.T) {
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource2ID.String(),
-					ETag: etag.New(shared.Data2),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -341,8 +341,8 @@ func Test_APIServer_Client(t *testing.T) {
 		// out of back from the call to Save().
 		<-readyChan
 
-		resource.Entries[0].Data = &runtime.RawExtension{Raw: shared.Data1}
-		resource.Entries[0].ETag = etag.New(shared.Data1)
+		resource.Entries[0].Data = &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)}
+		resource.Entries[0].ETag = etag.New(shared.MarshalOrPanic(shared.Data1))
 		err = rc.Update(ctx, &resource)
 		require.NoError(t, err)
 
@@ -373,13 +373,13 @@ func Test_APIServer_Client(t *testing.T) {
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
 				ID:   shared.Resource2ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 			{
 				ID:   shared.Resource1ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
@@ -411,13 +411,13 @@ func Test_APIServer_Client(t *testing.T) {
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource1ID.String(),
-					ETag: etag.New(shared.Data1),
-					Data: &runtime.RawExtension{Raw: shared.Data1},
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 				},
 				{
 					ID:   shared.Resource2ID.String(),
-					ETag: etag.New(shared.Data1),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -434,7 +434,7 @@ func Test_APIServer_Client(t *testing.T) {
 		// out of back from the call to Delete().
 		<-readyChan
 
-		resource.Entries[1].Data = &runtime.RawExtension{Raw: shared.Data1}
+		resource.Entries[1].Data = &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)}
 		err = rc.Update(ctx, &resource)
 		require.NoError(t, err)
 
@@ -465,8 +465,8 @@ func Test_APIServer_Client(t *testing.T) {
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
 				ID:   shared.Resource2ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
@@ -498,11 +498,11 @@ func Test_APIServer_Client(t *testing.T) {
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource1ID.String(),
-					Data: &runtime.RawExtension{Raw: shared.Data1},
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 				},
 				{
 					ID:   shared.Resource2ID.String(),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
