@@ -3,6 +3,6 @@
     "name": "rabbitmq0",
     "type": "Applications.Connector/rabbitMQMessageQueues",
     "properties": {
-        "resource": 12345
+        "queue": 12345
     }
 }
