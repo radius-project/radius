@@ -329,3 +329,68 @@ func (client *MongoDatabasesClient) listBySubscriptionHandleError(resp *http.Res
 	return runtime.NewResponseError(&errType, resp)
 }
 
+// ListSecrets - Lists secrets values for the specified MongoDatabase resource
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *MongoDatabasesClient) ListSecrets(ctx context.Context, resourceGroupName string, mongoDatabaseName string, options *MongoDatabasesListSecretsOptions) (MongoDatabasesListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, resourceGroupName, mongoDatabaseName, options)
+	if err != nil {
+		return MongoDatabasesListSecretsResponse{}, err
+	}
+	resp, err := 	client.con.Pipeline().Do(req)
+	if err != nil {
+		return MongoDatabasesListSecretsResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return MongoDatabasesListSecretsResponse{}, client.listSecretsHandleError(resp)
+	}
+	return client.listSecretsHandleResponse(resp)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context, resourceGroupName string, mongoDatabaseName string, options *MongoDatabasesListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}/listSecrets"
+	if client.subscriptionID == "" {
+		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	if mongoDatabaseName == "" {
+		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{mongoDatabaseName}", url.PathEscape(mongoDatabaseName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *MongoDatabasesClient) listSecretsHandleResponse(resp *http.Response) (MongoDatabasesListSecretsResponse, error) {
+	result := MongoDatabasesListSecretsResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseSecrets); err != nil {
+		return MongoDatabasesListSecretsResponse{}, err
+	}
+	return result, nil
+}
+
+// listSecretsHandleError handles the ListSecrets error response.
+func (client *MongoDatabasesClient) listSecretsHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
+	if err != nil {
+		return runtime.NewResponseError(err, resp)
+	}
+		errType := ErrorResponse{raw: string(body)}
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
+	}
+	return runtime.NewResponseError(&errType, resp)
+}
+

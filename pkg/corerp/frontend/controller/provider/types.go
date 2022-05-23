@@ -6,5 +6,6 @@
 package provider
 
 const (
-	ResourceTypeName = "Applications.Core/provider"
+	ResourceTypeName                = "Applications.Core/provider"
+	OperationStatusResourceTypeName = "Applications.Core/operationStatuses"
 )

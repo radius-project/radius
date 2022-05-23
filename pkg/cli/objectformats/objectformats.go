@@ -83,4 +83,13 @@ func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 	}
 }
 
-
+func GetGenericEnvErrorTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "errors:",
+				JSONPath: "{ .Errors }",
+			},
+		},
+	}
+}

@@ -39,6 +39,7 @@ type LocalEnvironment struct {
 	APIDeploymentEngineBaseURL string     `mapstructure:"apideploymentenginebaseurl,omitempty"`
 	Providers                  *Providers `mapstructure:"providers"`
 
+	EnableUCP bool `mapstructure:"enableucp,omitempty"`
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
 }
@@ -87,7 +88,7 @@ func (s *devsender) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, e.EnableUCP)
 
 	if err != nil {
 		return nil, err

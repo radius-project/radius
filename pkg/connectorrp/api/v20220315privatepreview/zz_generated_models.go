@@ -21,6 +21,92 @@ type BasicResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty"`
 }
 
+// DaprSecretStoreList - Object that includes an array of DaprSecretStore and a possible link for next set
+type DaprSecretStoreList struct {
+	// The link used to fetch the next page of DaprSecretStore list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of DaprSecretStore resources
+	Value []*DaprSecretStoreResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreList.
+func (d DaprSecretStoreList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", d.NextLink)
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
+// DaprSecretStoreProperties - DaprSecretStore connector properties
+type DaprSecretStoreProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; Radius kind for Dapr Secret Store
+	Kind *DaprSecretStorePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// REQUIRED; Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+	Type *string `json:"type,omitempty"`
+
+	// REQUIRED; Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// DaprSecretStoreResource - DaprSecretStore connector
+type DaprSecretStoreResource struct {
+	TrackedResource
+	// REQUIRED; DaprSecretStore connector properties
+	Properties *DaprSecretStoreProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreResource.
+func (d DaprSecretStoreResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", d.Properties)
+	populate(objectMap, "systemData", d.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// DaprSecretStoresCreateOrUpdateOptions contains the optional parameters for the DaprSecretStores.CreateOrUpdate method.
+type DaprSecretStoresCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresDeleteOptions contains the optional parameters for the DaprSecretStores.Delete method.
+type DaprSecretStoresDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresGetOptions contains the optional parameters for the DaprSecretStores.Get method.
+type DaprSecretStoresGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresListBySubscriptionOptions contains the optional parameters for the DaprSecretStores.ListBySubscription method.
+type DaprSecretStoresListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresListOptions contains the optional parameters for the DaprSecretStores.List method.
+type DaprSecretStoresListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.
@@ -107,25 +193,13 @@ type MongoDatabaseProperties struct {
 	Resource *string `json:"resource,omitempty"`
 
 	// Secrets values provided for the resource
-	Secrets *MongoDatabasePropertiesSecrets `json:"secrets,omitempty"`
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-}
-
-// MongoDatabasePropertiesSecrets - Secrets values provided for the resource
-type MongoDatabasePropertiesSecrets struct {
-	// Connection string used to connect to the target Mongo database
-	ConnectionString *string `json:"connectionString,omitempty"`
-
-	// Password to use when connecting to the target Mongo database
-	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target Mongo database
-	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabaseResource - MongoDatabse connector
@@ -145,6 +219,18 @@ func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "properties", m.Properties)
 	populate(objectMap, "systemData", m.SystemData)
 	return json.Marshal(objectMap)
+}
+
+// MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
+type MongoDatabaseSecrets struct {
+	// Connection string used to connect to the target Mongo database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Mongo database
+	Password *string `json:"password,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabasesCreateOrUpdateOptions contains the optional parameters for the MongoDatabases.CreateOrUpdate method.
@@ -169,6 +255,103 @@ type MongoDatabasesListBySubscriptionOptions struct {
 
 // MongoDatabasesListOptions contains the optional parameters for the MongoDatabases.List method.
 type MongoDatabasesListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongoDatabasesListSecretsOptions contains the optional parameters for the MongoDatabases.ListSecrets method.
+type MongoDatabasesListSecretsOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedisCacheList - Object that includes an array of RedisCache and a possible link for next set
+type RedisCacheList struct {
+	// The link used to fetch the next page of RedisCache list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of RedisCache resources
+	Value []*RedisCacheResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheList.
+func (r RedisCacheList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", r.NextLink)
+	populate(objectMap, "value", r.Value)
+	return json.Marshal(objectMap)
+}
+
+// RedisCacheProperties - RedisCache connector properties
+type RedisCacheProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The host name of the target redis cache
+	Host *string `json:"host,omitempty"`
+
+	// The port value of the target redis cache
+	Port *int32 `json:"port,omitempty"`
+
+	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
+	Resource *string `json:"resource,omitempty"`
+	Secrets *RedisCachePropertiesSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+type RedisCachePropertiesSecrets struct {
+	// The Redis connection string used to connect to the redis cache
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// The password for this Redis instance
+	Password *string `json:"password,omitempty"`
+}
+
+// RedisCacheResource - RedisCache connector
+type RedisCacheResource struct {
+	TrackedResource
+	// REQUIRED; RedisCache connector properties
+	Properties *RedisCacheProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheResource.
+func (r RedisCacheResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", r.Properties)
+	populate(objectMap, "systemData", r.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// RedisCachesCreateOrUpdateOptions contains the optional parameters for the RedisCaches.CreateOrUpdate method.
+type RedisCachesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedisCachesDeleteOptions contains the optional parameters for the RedisCaches.Delete method.
+type RedisCachesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedisCachesGetOptions contains the optional parameters for the RedisCaches.Get method.
+type RedisCachesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedisCachesListBySubscriptionOptions contains the optional parameters for the RedisCaches.ListBySubscription method.
+type RedisCachesListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RedisCachesListOptions contains the optional parameters for the RedisCaches.List method.
+type RedisCachesListOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -207,6 +390,89 @@ func (r ResourceStatus) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "outputResources", r.OutputResources)
 	return json.Marshal(objectMap)
+}
+
+// SQLDatabaseList - Object that includes an array of SQLDatabase and a possible link for next set
+type SQLDatabaseList struct {
+	// The link used to fetch the next page of SQLDatabase list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of SQLDatabase resources
+	Value []*SQLDatabaseResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type SQLDatabaseList.
+func (s SQLDatabaseList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", s.NextLink)
+	populate(objectMap, "value", s.Value)
+	return json.Marshal(objectMap)
+}
+
+// SQLDatabaseProperties - SQLDatabse connector properties
+type SQLDatabaseProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The resource id of the environment linked to the sqlDatabase connector
+	Environment *string `json:"environment,omitempty"`
+
+	// The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
+	// Fully qualified resource ID of a supported resource with SQL API to use for this connector
+	Resource *string `json:"resource,omitempty"`
+
+	// The fully qualified domain name of the SQL database.
+	Server *string `json:"server,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the environment that the connector is linked to
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the SQL database connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// SQLDatabaseResource - SQLDatabse connector
+type SQLDatabaseResource struct {
+	TrackedResource
+	// REQUIRED; SQLDatabse connector properties
+	Properties *SQLDatabaseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type SQLDatabaseResource.
+func (s SQLDatabaseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	s.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", s.Properties)
+	populate(objectMap, "systemData", s.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// SQLDatabasesCreateOrUpdateOptions contains the optional parameters for the SQLDatabases.CreateOrUpdate method.
+type SQLDatabasesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SQLDatabasesDeleteOptions contains the optional parameters for the SQLDatabases.Delete method.
+type SQLDatabasesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SQLDatabasesGetOptions contains the optional parameters for the SQLDatabases.Get method.
+type SQLDatabasesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SQLDatabasesListBySubscriptionOptions contains the optional parameters for the SQLDatabases.ListBySubscription method.
+type SQLDatabasesListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SQLDatabasesListOptions contains the optional parameters for the SQLDatabases.List method.
+type SQLDatabasesListOptions struct {
+	// placeholder for future optional parameters
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

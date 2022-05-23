@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
@@ -19,12 +20,13 @@ var envListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List environments",
 	Long:  `List environments`,
-	RunE: getEnvConfigs,
+	RunE:  getEnvConfigs,
 }
 
-func getEnvConfigs(cmd *cobra.Command, args [] string) error {
+func getEnvConfigs(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.ReadEnvironmentSection(config)
+
 	if err != nil {
 		return err
 	}
@@ -39,9 +41,15 @@ func getEnvConfigs(cmd *cobra.Command, args [] string) error {
 		return err
 	}
 	if format == "json" {
-		err = output.Write(format, &env, cmd.OutOrStdout(), output.FormatterOptions{Columns: []output.Column{}})
+		hasError, err := displayErrors(format, cmd, env)
 		if err != nil {
 			return err
+		}
+		if !hasError {
+			err = output.Write(format, &env, cmd.OutOrStdout(), output.FormatterOptions{Columns: []output.Column{}})
+			if err != nil {
+				return err
+			}
 		}
 	} else if format == "list" {
 		b, err := yaml.Marshal(&env)
@@ -49,19 +57,35 @@ func getEnvConfigs(cmd *cobra.Command, args [] string) error {
 			return err
 		}
 		fmt.Println(string(b))
-		fmt.Println()
-	} else {//default format is table
-		fmt.Println("default: "+env.Default)
-		var eList []interface{}
+		_, err = displayErrors(format, cmd, env)
+		if err != nil {
+			return err
+		}
+	} else {
+		//default format is table
+		fmt.Println("default: " + env.Default)
+		var envList []interface{}
+
 		for key := range env.Items {
-			e,err := env.GetEnvironment(key)
-			eList = append(eList, e)
-			if err != nil {
-				return err
+			env, _ := env.GetEnvironment(key)
+			if env != nil {
+				envList = append(envList, env)
+			} else {
+				undefinedEnv := &environments.GenericEnvironment{
+					Name: key,
+					Kind: "unknown",
+				}
+				envList = append(envList, undefinedEnv)
 			}
 		}
+
 		formatter := objectformats.GetGenericEnvironmentTableFormat()
-		err = output.Write(format, eList, cmd.OutOrStdout(), formatter)
+		err = output.Write(format, envList, cmd.OutOrStdout(), formatter)
+		if err != nil {
+			return err
+		}
+
+		_, err = displayErrors(format, cmd, env)
 		if err != nil {
 			return err
 		}

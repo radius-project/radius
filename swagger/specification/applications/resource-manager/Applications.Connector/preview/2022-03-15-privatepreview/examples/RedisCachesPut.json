@@ -1,0 +1,32 @@
+{
+    "parameters": {
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
+      "resourceGroupName": "testGroup",
+      "redisCacheName": "redis0",
+      "api-version": "2022-03-15-privatepreview",
+      "RedisCacheResource": {
+        "location": "West US",
+        "properties": {
+          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache"
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+          "name": "redis0",
+          "type": "Applications.Connector/redisCaches",
+          "properties": {
+            "provisioningState": "Succeeded",
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache"
+          }
+        }
+      }
+    }
+  }
+  

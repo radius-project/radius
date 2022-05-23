@@ -155,6 +155,46 @@
               "operation": "Join HTTP Route",
               "description": "Join to httproute."
             }
+          },
+          {
+            "name": "Applications.Core/gateways/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "gateways",
+              "operation": "Get/List Gateways",
+              "description": "Get or list of Gateways."
+            }
+          },
+          {
+            "name": "Applications.Core/gateways/write",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "gateways",
+              "operation": "Create/Update Gateway",
+              "description": "Create or update a Gateway."
+            }
+          },
+          {
+            "name": "Applications.Core/gateways/delete",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "gateways",
+              "operation": "Delete Gateway",
+              "description": "Deletes a Gateway."
+            }
+          },
+          {
+            "name": "Applications.Core/gateways/join/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "gateways",
+              "operation": "Join Gateway",
+              "description": "Join to Gateway."
+            }
           }
         ]
       }
