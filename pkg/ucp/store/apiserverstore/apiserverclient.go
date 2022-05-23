@@ -50,7 +50,7 @@ import (
 )
 
 const (
-	// LabelKind is used to determine whether an object holds scopes or resources. Conflicts are not be possible due to the way we do naming.
+	// LabelKind is used to determine whether an object holds scopes or resources. Conflicts are not possible due to the way we do naming.
 	// Each Kubernetes object holds only scopes or only resources.
 	LabelKind = "ucp.dev/kind"
 
