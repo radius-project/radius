@@ -1,0 +1,52 @@
+{
+    "parameters": {
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
+      "api-version": "2022-03-15-privatepreview"
+    },
+    "responses": {
+        "200": {
+          "body": {
+            "value": [
+              {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/containers/container0",
+                  "name": "container0",
+                  "type": "Applications.Core/containers",
+                  "properties": {
+                      "provisioningState": "Succeeded",
+                      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+                      "connections": { 
+                          "inventory": { 
+                          "kind": "dapr.io/InvokeHttp",
+                          "source": "inventory_route_id" 
+                          } 
+                      },
+                      "container": { 
+                          "image": "radius.azurecr.io/webapptutorial-todoapp"
+                      }
+                  }
+              },
+              {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/containers/container1",
+                  "name": "container1",
+                  "type": "Applications.Core/containers",
+                  "properties": {
+                      "provisioningState": "Succeeded",
+                      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app1",
+                      "connections": { 
+                          "inventory": { 
+                          "kind": "dapr.io/InvokeHttp",
+                          "source": "inventory_route_id" 
+                          } 
+                      },
+                      "container": { 
+                          "image": "radius.azurecr.io/webapptutorial-todoapp"
+                      }
+                  }
+              }
+            ],
+            "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Core/containers?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+          }
+        }
+      }
+  }
+  
