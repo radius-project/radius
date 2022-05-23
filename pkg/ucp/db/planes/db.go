@@ -6,7 +6,6 @@ package planes
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -25,9 +24,9 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 	if len(resp) > 0 {
 		for _, item := range resp {
 			var plane rest.Plane
-			err = json.Unmarshal(item.Data, &plane)
+			err = item.As(&plane)
 			if err != nil {
-				return listOfPlanes, err
+				return rest.PlaneList{}, err
 			}
 			listOfPlanes.Value = append(listOfPlanes.Value, plane)
 		}
@@ -41,8 +40,9 @@ func GetByID(ctx context.Context, db store.StorageClient, ID resources.ID) (rest
 	if err != nil {
 		return plane, err
 	}
+
 	if resp != nil {
-		err = json.Unmarshal(resp.Data, &plane)
+		err = resp.As(&plane)
 	}
 	return plane, err
 }
@@ -54,12 +54,8 @@ func Save(ctx context.Context, db store.StorageClient, plane rest.Plane) (rest.P
 	o.Metadata.ContentType = "application/json"
 	id := resources.UCPPrefix + plane.ID
 	o.Metadata.ID = id
-	bytes, err := json.Marshal(plane)
-	if err != nil {
-		return rest.Plane{}, err
-	}
-	o.Data = bytes
-	err = db.Save(ctx, &o)
+	o.Data = &plane
+	err := db.Save(ctx, &o)
 	if err == nil {
 		storedPlane = plane
 	}

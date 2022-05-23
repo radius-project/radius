@@ -5,7 +5,6 @@
 package planes
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -36,7 +35,7 @@ func TestSaveValidPlane(t *testing.T) {
 	o.Metadata.ContentType = "application/json"
 	id := resources.UCPPrefix + plane.ID
 	o.Metadata.ID = id
-	o.Data, _ = json.Marshal(plane)
+	o.Data = &plane
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()

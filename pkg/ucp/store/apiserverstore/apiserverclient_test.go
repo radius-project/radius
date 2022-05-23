@@ -62,12 +62,12 @@ func Test_APIServer_Client(t *testing.T) {
 	// The APIServer implementation is complex enough that we have some of our tests in addition
 	// to the standard suite.
 
-	t.Run("save_and_validate_kubernetes_object", func(t *testing.T) {
+	t.Run("save_resource_and_validate_kubernetes_object", func(t *testing.T) {
 		clear(t)
 
 		obj1 := store.Object{
 			Metadata: store.Metadata{
-				ID: shared.BasicResource1ID.String(),
+				ID: shared.Resource1ID.String(),
 			},
 			Data: shared.Data1,
 		}
@@ -75,14 +75,44 @@ func Test_APIServer_Client(t *testing.T) {
 		require.NoError(t, err)
 
 		// Now let's look at the kubernetes object.
-		resourceName := resourceName(shared.BasicResource1ID)
+		resourceName := resourceName(shared.Resource1ID)
 
 		resource := ucpv1alpha1.Resource{}
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
 		require.NoError(t, err)
 
 		expected := map[string]string{
+			"ucp.dev/kind":                 "resource",
 			"ucp.dev/resource-type":        "system.resources_resourcetype1",
+			"ucp.dev/scope-radius":         "local",
+			"ucp.dev/scope-resourcegroups": "group1",
+		}
+
+		require.Equal(t, expected, resource.Labels)
+	})
+
+	t.Run("save_scope_and_validate_kubernetes_object", func(t *testing.T) {
+		clear(t)
+
+		obj1 := store.Object{
+			Metadata: store.Metadata{
+				ID: shared.ResourceGroup1ID.String(),
+			},
+			Data: shared.ResourceGroup1Data,
+		}
+		err := client.Save(ctx, &obj1)
+		require.NoError(t, err)
+
+		// Now let's look at the kubernetes object.
+		resourceName := resourceName(shared.ResourceGroup1ID)
+
+		resource := ucpv1alpha1.Resource{}
+		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
+		require.NoError(t, err)
+
+		expected := map[string]string{
+			"ucp.dev/kind":                 "scope",
+			"ucp.dev/resource-type":        "resourcegroups",
 			"ucp.dev/scope-radius":         "local",
 			"ucp.dev/scope-resourcegroups": "group1",
 		}
@@ -99,14 +129,14 @@ func Test_APIServer_Client(t *testing.T) {
 		// resource name. That's obviously not the case, but it's good enough for tests.
 		resource := ucpv1alpha1.Resource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.BasicResource1ID),
+				Name:      resourceName(shared.Resource1ID),
 				Namespace: ns,
 			},
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
-					ID:   shared.BasicResource2ID.String(),
-					ETag: etag.New(shared.Data2),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ID:   shared.Resource2ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -115,7 +145,7 @@ func Test_APIServer_Client(t *testing.T) {
 
 		obj1 := store.Object{
 			Metadata: store.Metadata{
-				ID: shared.BasicResource1ID.String(),
+				ID: shared.Resource1ID.String(),
 			},
 			Data: shared.Data1,
 		}
@@ -123,12 +153,13 @@ func Test_APIServer_Client(t *testing.T) {
 		require.NoError(t, err)
 
 		// Now let's look at the kubernetes object.
-		resourceName := resourceName(shared.BasicResource1ID)
+		resourceName := resourceName(shared.Resource1ID)
 
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
 		require.NoError(t, err)
 
 		expectedLabels := map[string]string{
+			"ucp.dev/kind":                 "resource",
 			"ucp.dev/resource-type":        "m_u_l_t_i_p_l_e",
 			"ucp.dev/scope-radius":         "local",
 			"ucp.dev/scope-resourcegroups": "m_u_l_t_i_p_l_e",
@@ -137,23 +168,23 @@ func Test_APIServer_Client(t *testing.T) {
 
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
-				ID:   shared.BasicResource2ID.String(),
-				ETag: etag.New(shared.Data2),
-				Data: &runtime.RawExtension{Raw: shared.Data2},
+				ID:   shared.Resource2ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 			},
 			{
-				ID:   shared.BasicResource1ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ID:   shared.Resource1ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
 
 		// Now we should be able to get resource 1 directly. We can't get resource 2 directly because we stored it
 		// with the wrong name on purpose.
-		obj, err := client.Get(ctx, shared.BasicResource1ID)
+		obj, err := client.Get(ctx, shared.Resource1ID)
 		require.NoError(t, err)
-		require.Equal(t, shared.BasicResource1ID.String(), obj.ID)
+		require.Equal(t, shared.Resource1ID.String(), obj.ID)
 		require.Equal(t, shared.Data1, obj.Data)
 
 		// We can query it though...
@@ -163,8 +194,8 @@ func Test_APIServer_Client(t *testing.T) {
 			*obj,
 			{
 				Metadata: store.Metadata{
-					ID:   shared.BasicResource2ID.String(),
-					ETag: etag.New(shared.Data2),
+					ID:   shared.Resource2ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
 				},
 				Data: shared.Data2,
 			},
@@ -193,7 +224,7 @@ func Test_APIServer_Client(t *testing.T) {
 		go func() {
 			obj1 := store.Object{
 				Metadata: store.Metadata{
-					ID: shared.BasicResource1ID.String(),
+					ID: shared.Resource1ID.String(),
 				},
 				Data: shared.Data1,
 			}
@@ -207,14 +238,14 @@ func Test_APIServer_Client(t *testing.T) {
 
 		resource := ucpv1alpha1.Resource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.BasicResource1ID),
+				Name:      resourceName(shared.Resource1ID),
 				Namespace: ns,
 			},
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
-					ID:   shared.BasicResource2ID.String(),
-					ETag: etag.New(shared.Data2),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ID:   shared.Resource2ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -232,12 +263,13 @@ func Test_APIServer_Client(t *testing.T) {
 		require.NoError(t, err, "concurrent save of resource1 failed")
 
 		// Now let's look at the kubernetes object to make sure it wasn't corrupted.
-		resourceName := resourceName(shared.BasicResource1ID)
+		resourceName := resourceName(shared.Resource1ID)
 
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
 		require.NoError(t, err)
 
 		expectedLabels := map[string]string{
+			"ucp.dev/kind":                 "resource",
 			"ucp.dev/resource-type":        "m_u_l_t_i_p_l_e",
 			"ucp.dev/scope-radius":         "local",
 			"ucp.dev/scope-resourcegroups": "m_u_l_t_i_p_l_e",
@@ -246,14 +278,14 @@ func Test_APIServer_Client(t *testing.T) {
 
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
-				ID:   shared.BasicResource2ID.String(),
-				ETag: etag.New(shared.Data2),
-				Data: &runtime.RawExtension{Raw: shared.Data2},
+				ID:   shared.Resource2ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 			},
 			{
-				ID:   shared.BasicResource1ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ID:   shared.Resource1ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
@@ -279,14 +311,14 @@ func Test_APIServer_Client(t *testing.T) {
 		// First we create the resource
 		resource := ucpv1alpha1.Resource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.BasicResource1ID),
+				Name:      resourceName(shared.Resource1ID),
 				Namespace: ns,
 			},
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
-					ID:   shared.BasicResource2ID.String(),
-					ETag: etag.New(shared.Data2),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ID:   shared.Resource2ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data2)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -297,7 +329,7 @@ func Test_APIServer_Client(t *testing.T) {
 		go func() {
 			obj1 := store.Object{
 				Metadata: store.Metadata{
-					ID: shared.BasicResource1ID.String(),
+					ID: shared.Resource1ID.String(),
 				},
 				Data: shared.Data1,
 			}
@@ -309,8 +341,8 @@ func Test_APIServer_Client(t *testing.T) {
 		// out of back from the call to Save().
 		<-readyChan
 
-		resource.Entries[0].Data = &runtime.RawExtension{Raw: shared.Data1}
-		resource.Entries[0].ETag = etag.New(shared.Data1)
+		resource.Entries[0].Data = &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)}
+		resource.Entries[0].ETag = etag.New(shared.MarshalOrPanic(shared.Data1))
 		err = rc.Update(ctx, &resource)
 		require.NoError(t, err)
 
@@ -325,12 +357,13 @@ func Test_APIServer_Client(t *testing.T) {
 		require.NoError(t, err, "concurrent save of resource1 failed")
 
 		// Now let's look at the kubernetes object to make sure it wasn't corrupted.
-		resourceName := resourceName(shared.BasicResource1ID)
+		resourceName := resourceName(shared.Resource1ID)
 
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
 		require.NoError(t, err)
 
 		expectedLabels := map[string]string{
+			"ucp.dev/kind":                 "resource",
 			"ucp.dev/resource-type":        "m_u_l_t_i_p_l_e",
 			"ucp.dev/scope-radius":         "local",
 			"ucp.dev/scope-resourcegroups": "m_u_l_t_i_p_l_e",
@@ -339,14 +372,14 @@ func Test_APIServer_Client(t *testing.T) {
 
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
-				ID:   shared.BasicResource2ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ID:   shared.Resource2ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 			{
-				ID:   shared.BasicResource1ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ID:   shared.Resource1ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
@@ -372,19 +405,19 @@ func Test_APIServer_Client(t *testing.T) {
 		// First we create the resource
 		resource := ucpv1alpha1.Resource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.BasicResource1ID),
+				Name:      resourceName(shared.Resource1ID),
 				Namespace: ns,
 			},
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
-					ID:   shared.BasicResource1ID.String(),
-					ETag: etag.New(shared.Data1),
-					Data: &runtime.RawExtension{Raw: shared.Data1},
+					ID:   shared.Resource1ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 				},
 				{
-					ID:   shared.BasicResource2ID.String(),
-					ETag: etag.New(shared.Data1),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ID:   shared.Resource2ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -393,7 +426,7 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// Start an operation to "delete" resource 1
 		go func() {
-			err = client.Delete(ctx, shared.BasicResource1ID)
+			err = client.Delete(ctx, shared.Resource1ID)
 			errChan <- err
 		}()
 
@@ -401,7 +434,7 @@ func Test_APIServer_Client(t *testing.T) {
 		// out of back from the call to Delete().
 		<-readyChan
 
-		resource.Entries[1].Data = &runtime.RawExtension{Raw: shared.Data1}
+		resource.Entries[1].Data = &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)}
 		err = rc.Update(ctx, &resource)
 		require.NoError(t, err)
 
@@ -416,12 +449,13 @@ func Test_APIServer_Client(t *testing.T) {
 		require.NoError(t, err, "concurrent delete of resource1 failed")
 
 		// Now let's look at the kubernetes object to make sure it wasn't corrupted.
-		resourceName := resourceName(shared.BasicResource1ID)
+		resourceName := resourceName(shared.Resource1ID)
 
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
 		require.NoError(t, err)
 
 		expectedLabels := map[string]string{
+			"ucp.dev/kind":                 "resource",
 			"ucp.dev/resource-type":        "system.resources_resourcetype2",
 			"ucp.dev/scope-radius":         "local",
 			"ucp.dev/scope-resourcegroups": "group2",
@@ -430,9 +464,9 @@ func Test_APIServer_Client(t *testing.T) {
 
 		expectedEntries := []ucpv1alpha1.ResourceEntry{
 			{
-				ID:   shared.BasicResource2ID.String(),
-				ETag: etag.New(shared.Data1),
-				Data: &runtime.RawExtension{Raw: shared.Data1},
+				ID:   shared.Resource2ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+				Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 			},
 		}
 		require.Equal(t, expectedEntries, resource.Entries)
@@ -458,17 +492,17 @@ func Test_APIServer_Client(t *testing.T) {
 		// First we create the resource
 		resource := ucpv1alpha1.Resource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.BasicResource1ID),
+				Name:      resourceName(shared.Resource1ID),
 				Namespace: ns,
 			},
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
-					ID:   shared.BasicResource1ID.String(),
-					Data: &runtime.RawExtension{Raw: shared.Data1},
+					ID:   shared.Resource1ID.String(),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
 				},
 				{
-					ID:   shared.BasicResource2ID.String(),
-					Data: &runtime.RawExtension{Raw: shared.Data2},
+					ID:   shared.Resource2ID.String(),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data2)},
 				},
 			},
 		}
@@ -477,7 +511,7 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// Start an operation to "delete" resource 1
 		go func() {
-			err = client.Delete(ctx, shared.BasicResource1ID)
+			err = client.Delete(ctx, shared.Resource1ID)
 			errChan <- err
 		}()
 
@@ -500,7 +534,7 @@ func Test_APIServer_Client(t *testing.T) {
 		require.NoError(t, err, "concurrent delete of resource1 failed")
 
 		// Now let's look at the kubernetes object to make sure it was deleted.
-		resourceName := resourceName(shared.BasicResource1ID)
+		resourceName := resourceName(shared.Resource1ID)
 
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
 		require.True(t, apierrors.IsNotFound(err))
@@ -568,7 +602,7 @@ func ensureNamespace(ctx context.Context, client runtimeclient.Client, namespace
 	return client.Create(ctx, &nsObject, &runtimeclient.CreateOptions{})
 }
 
-func Test_AssignLabels_NoConflicts(t *testing.T) {
+func Test_AssignLabels_Resource_NoConflicts(t *testing.T) {
 	resource := ucpv1alpha1.Resource{
 		Entries: []ucpv1alpha1.ResourceEntry{
 			{
@@ -578,7 +612,28 @@ func Test_AssignLabels_NoConflicts(t *testing.T) {
 	}
 
 	expected := labels.Set{
+		"ucp.dev/kind":                 "resource",
 		"ucp.dev/resource-type":        "applications.core_applications",
+		"ucp.dev/scope-radius":         "local",
+		"ucp.dev/scope-resourcegroups": "cool-group",
+	}
+
+	labels := assignLabels(&resource)
+	require.Equal(t, expected, labels)
+}
+
+func Test_AssignLabels_Scope_NoConflicts(t *testing.T) {
+	resource := ucpv1alpha1.Resource{
+		Entries: []ucpv1alpha1.ResourceEntry{
+			{
+				ID: "ucp:/planes/radius/local/resourceGroups/cool-group",
+			},
+		},
+	}
+
+	expected := labels.Set{
+		"ucp.dev/kind":                 "scope",
+		"ucp.dev/resource-type":        "resourcegroups",
 		"ucp.dev/scope-radius":         "local",
 		"ucp.dev/scope-resourcegroups": "cool-group",
 	}
@@ -600,6 +655,7 @@ func Test_AssignLabels_PartialConflict(t *testing.T) {
 	}
 
 	expected := labels.Set{
+		"ucp.dev/kind":                 "resource",
 		"ucp.dev/resource-type":        "m_u_l_t_i_p_l_e",
 		"ucp.dev/scope-radius":         "local",
 		"ucp.dev/scope-resourcegroups": "cool-group",
@@ -622,6 +678,7 @@ func Test_AssignLabels_AllConflict(t *testing.T) {
 	}
 
 	expected := labels.Set{
+		"ucp.dev/kind":                 "resource",
 		"ucp.dev/resource-type":        "m_u_l_t_i_p_l_e",
 		"ucp.dev/scope-azure":          "azurecloud",
 		"ucp.dev/scope-radius":         "local",

@@ -61,4 +61,15 @@ type Query struct {
 	// Example: To query all resources in a radius local plane scope
 	// 	set RootScope to ucp://planes/radius/local and ScopeRecursive = True and IsScopeQuery to False.
 	IsScopeQuery bool
+
+	// TODO: Revisit filter design
+
+	// Filters is an query filter to filter the specific property value.
+	Filters []QueryFilter
+}
+
+// QueryFilter is the filter which filters property in resource entity.
+type QueryFilter struct {
+	Field string
+	Value string
 }

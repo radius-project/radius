@@ -32,6 +32,7 @@ package apiserverstore
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -49,6 +50,10 @@ import (
 )
 
 const (
+	// LabelKind is used to determine whether an object holds scopes or resources. Conflicts are not possible due to the way we do naming.
+	// Each Kubernetes object holds only scopes or only resources.
+	LabelKind = "ucp.dev/kind"
+
 	// LabelScopeFormat is used format a label that describes the scope. The placeholder is replaced by the scope type (eg: resourceGroup).
 	LabelScopeFormat = "ucp.dev/scope-%s"
 
@@ -88,6 +93,9 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 	if query.RootScope == "" {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RootScope' is required"}
 	}
+	if query.IsScopeQuery && query.RoutingScopePrefix != "" {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RoutingScopePrefix' is not supported for scope queries"}
+	}
 
 	selector, err := createLabelSelector(query)
 	if err != nil {
@@ -113,7 +121,19 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 			}
 
 			if idMatchesQuery(id, query) {
-				results = append(results, *readEntry(&entry))
+				converted, err := readEntry(&entry)
+				if err != nil {
+					return nil, err
+				}
+
+				match, err := converted.MatchesFilters(query.Filters)
+				if err != nil {
+					return nil, err
+				} else if !match {
+					continue
+				}
+
+				results = append(results, *converted)
 			}
 		}
 	}
@@ -142,8 +162,10 @@ func (c *APIServerClient) Get(ctx context.Context, id resources.ID, options ...s
 		return nil, err
 	}
 
-	obj := read(&resource, id)
-	if obj == nil {
+	obj, err := read(&resource, id)
+	if err != nil {
+		return nil, err
+	} else if obj == nil {
 		return nil, &store.ErrNotFound{}
 	}
 
@@ -238,8 +260,6 @@ func (c *APIServerClient) Save(ctx context.Context, obj *store.Object, options .
 		return err
 	}
 
-	obj.ETag = etag.New(obj.Data)
-
 	resourceName := resourceName(id)
 
 	config := store.NewSaveConfig(options...)
@@ -258,7 +278,14 @@ func (c *APIServerClient) Save(ctx context.Context, obj *store.Object, options .
 		resource.Name = resourceName
 		resource.Namespace = c.namespace
 
-		converted := convert(obj)
+		converted, err := convert(obj)
+		if err != nil {
+			return false, err
+		}
+
+		// Set the ETag so the caller can see the computed value.
+		obj.ETag = converted.ETag
+
 		index := findIndex(&resource, id)
 		if index == nil && config.ETag != "" {
 			// The ETag is only meaning for a replace/update operation not a create. We treat
@@ -335,13 +362,19 @@ func (c *APIServerClient) synchronize() {
 func resourceName(id resources.ID) string {
 	// The kubernetes resource names we use are built according to the following format
 	//
-	// <resource name>.<id hash>
+	// resource.<resource name>.<id hash> (for a resource)
+	// scope.<resource name>.<id hash> (for a scope)
 	hasher := sha1.New()
 	_, _ = hasher.Write([]byte(strings.ToLower(id.String())))
 	hash := hasher.Sum(nil)
 
-	// example: resource1.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%x", id.Name(), hash)
+	prefix := store.UCPResourcePrefix
+	if id.IsScope() {
+		prefix = store.UCPScopePrefix
+	}
+
+	// example: resource.resource1.ec291e26078b7ea8a74abfac82530005a0ecbf15
+	return fmt.Sprintf("%s.%s.%x", prefix, id.Name(), hash)
 }
 
 func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
@@ -354,7 +387,14 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 			continue
 		}
 
-		for _, scope := range id.ScopeSegments() {
+		if id.IsScope() {
+			set[LabelKind] = store.UCPScopePrefix
+		} else {
+			set[LabelKind] = store.UCPResourcePrefix
+		}
+
+		scopes := id.ScopeSegments()
+		for _, scope := range scopes {
 			key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(scope.Type))
 			value := strings.ToLower(scope.Name)
 
@@ -366,16 +406,21 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 			set[key] = value
 		}
 
-		if id.Type() != "" {
-			// '/' is not valid in a label values, so we use '_'
-			value := strings.ToLower(strings.ReplaceAll(id.Type(), resources.SegmentSeparator, "_"))
-			existing, ok := set[LabelResourceType]
-			if ok && existing != value {
-				value = LabelValueMultiple
-			}
-
-			set[LabelResourceType] = value
+		var resourceType string
+		if id.IsScope() {
+			resourceType = scopes[len(scopes)-1].Type
+		} else {
+			resourceType = id.Type()
 		}
+
+		// '/' is not valid in a label values, so we use '_'
+		value := strings.ToLower(strings.ReplaceAll(resourceType, resources.SegmentSeparator, "_"))
+		existing, ok := set[LabelResourceType]
+		if ok && existing != value {
+			value = LabelValueMultiple
+		}
+
+		set[LabelResourceType] = value
 	}
 
 	return set
@@ -388,6 +433,22 @@ func createLabelSelector(query store.Query) (labels.Selector, error) {
 	}
 
 	selector := labels.NewSelector()
+	if query.IsScopeQuery {
+		requirement, err := labels.NewRequirement(LabelKind, selection.Equals, []string{store.UCPScopePrefix})
+		if err != nil {
+			return nil, err
+		}
+
+		selector = selector.Add(*requirement)
+	} else {
+		requirement, err := labels.NewRequirement(LabelKind, selection.Equals, []string{store.UCPResourcePrefix})
+		if err != nil {
+			return nil, err
+		}
+
+		selector = selector.Add(*requirement)
+	}
+
 	for _, scope := range id.ScopeSegments() {
 		key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(scope.Type))
 		value := strings.ToLower(scope.Name)
@@ -424,7 +485,13 @@ func findIndex(resource *ucpv1alpha1.Resource, id resources.ID) *int {
 	return nil
 }
 
-func readEntry(entry *ucpv1alpha1.ResourceEntry) *store.Object {
+func readEntry(entry *ucpv1alpha1.ResourceEntry) (*store.Object, error) {
+	var data interface{}
+	err := json.Unmarshal(entry.Data.Raw, &data)
+	if err != nil {
+		return nil, err
+	}
+
 	obj := store.Object{
 		Metadata: store.Metadata{
 			ID:          entry.ID,
@@ -432,31 +499,37 @@ func readEntry(entry *ucpv1alpha1.ResourceEntry) *store.Object {
 			APIVersion:  entry.APIVersion,
 			ContentType: entry.ContentType,
 		},
-		Data: entry.Data.Raw,
+		Data: data,
 	}
-	return &obj
+
+	return &obj, nil
 }
 
-func read(resource *ucpv1alpha1.Resource, id resources.ID) *store.Object {
+func read(resource *ucpv1alpha1.Resource, id resources.ID) (*store.Object, error) {
 	for _, entry := range resource.Entries {
 		if strings.EqualFold(entry.ID, id.String()) {
 			return readEntry(&entry)
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
-func convert(obj *store.Object) *ucpv1alpha1.ResourceEntry {
+func convert(obj *store.Object) (*ucpv1alpha1.ResourceEntry, error) {
+	raw, err := json.Marshal(obj.Data)
+	if err != nil {
+		return nil, err
+	}
+
 	resource := ucpv1alpha1.ResourceEntry{
 		ID:          obj.ID,
 		APIVersion:  obj.APIVersion,
-		ETag:        obj.ETag,
+		ETag:        etag.New(raw), // Don't trust the ETag on the object, it's likely unset.
 		ContentType: obj.ContentType,
-		Data:        &runtime.RawExtension{Raw: obj.Data},
+		Data:        &runtime.RawExtension{Raw: raw},
 	}
 
-	return &resource
+	return &resource, nil
 }
 
 func idMatchesQuery(id resources.ID, query store.Query) bool {
@@ -485,7 +558,16 @@ func idMatchesQuery(id resources.ID, query store.Query) bool {
 		return false
 	}
 
-	if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
+	if query.ResourceType != "" && query.IsScopeQuery {
+		// Example:
+		// id is ucp:/planes/radius/local/resourceGroups/cool-group
+		// query.ResourceType is subscriptions
+		//
+		// Query resource type is not a match
+		scopes := id.ScopeSegments()
+		resourceType := scopes[len(scopes)-1].Type
+		return strings.EqualFold(resourceType, query.ResourceType)
+	} else if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
 		// Example:
 		// id is ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
 		// query.ResourceType is Applications.Core/containers

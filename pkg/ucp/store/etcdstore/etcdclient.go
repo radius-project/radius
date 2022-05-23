@@ -64,6 +64,9 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 	if query.RootScope == "" {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RootScope' is required"}
 	}
+	if query.IsScopeQuery && query.RoutingScopePrefix != "" {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RoutingScopePrefix' is not supported for scope queries"}
+	}
 
 	key := keyFromQuery(query)
 
@@ -83,6 +86,13 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 			err = json.Unmarshal(kv.Value, &value)
 			if err != nil {
 				return nil, err
+			}
+
+			match, err := value.MatchesFilters(query.Filters)
+			if err != nil {
+				return nil, err
+			} else if !match {
+				continue
 			}
 
 			value.ETag = etag.NewFromRevision(kv.ModRevision)
@@ -323,7 +333,11 @@ func keyMatchesQuery(key []byte, query store.Query) bool {
 		return false // Not a match for the routing scope.
 	}
 
-	if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
+	if query.ResourceType != "" && query.IsScopeQuery {
+		scopes := id.ScopeSegments()
+		resourceType := scopes[len(scopes)-1].Type
+		return strings.EqualFold(resourceType, query.ResourceType)
+	} else if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
 		return false // Not a match for the resource type
 	}
 
