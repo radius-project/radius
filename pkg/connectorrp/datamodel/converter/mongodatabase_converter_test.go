@@ -100,43 +100,6 @@ func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 	}
 }
 
-// func TestMongoDatabaseSecretsDataModelFromVersioned(t *testing.T) {
-// 	testset := []struct {
-// 		versionedModelFile string
-// 		apiVersion         string
-// 		err                error
-// 	}{
-// 		{
-// 			"../../api/v20220315privatepreview/testdata/mongodatabasesecrets.json",
-// 			"2022-03-15-privatepreview",
-// 			nil,
-// 		},
-// 		{
-// 			"../../api/v20220315privatepreview/testdata/mongodatabasesecrets-invalid.json",
-// 			"2022-03-15-privatepreview",
-// 			errors.New("json: cannot unmarshal number into Go struct field MongoDatabaseProperties.properties.resource of type string"),
-// 		},
-// 		{
-// 			"",
-// 			"unsupported",
-// 			basedatamodel.ErrUnsupportedAPIVersion,
-// 		},
-// 	}
-
-// 	for _, tc := range testset {
-// 		t.Run(tc.apiVersion, func(t *testing.T) {
-// 			c := loadTestData(tc.versionedModelFile)
-// 			dm, err := MongoDatabaseDataModelFromVersioned(c, tc.apiVersion)
-// 			if tc.err != nil {
-// 				require.ErrorAs(t, tc.err, &err)
-// 			} else {
-// 				require.NoError(t, err)
-// 				require.IsType(t, tc.apiVersion, dm.InternalMetadata.UpdatedAPIVersion)
-// 			}
-// 		})
-// 	}
-// }
-
 func TestMongoDatabaseSecretsDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string
