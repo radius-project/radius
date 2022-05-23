@@ -33,5 +33,5 @@ type AsyncOperationStatus struct {
 	Error *armerrors.ErrorDetails `json:"error,omitempty"`
 
 	// OperationType represents the type of the async operation
-	OperationType basedatamodel.AsynOperationType `json:"operationType,omitempty"`
+	OperationType basedatamodel.AsyncOperationType `json:"operationType,omitempty"`
 }

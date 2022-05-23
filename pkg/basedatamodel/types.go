@@ -20,12 +20,12 @@ const (
 )
 
 // AsyncOperationType is the type of the ongoing operation
-type AsynOperationType string
+type AsyncOperationType string
 
 const (
-	AsyncOperationTypePut    AsynOperationType = "PUT"
-	AsyncOperationTypePatch  AsynOperationType = "PATCH"
-	AsyncOperationTypeDelete AsynOperationType = "DELETE"
+	AsyncOperationTypePut    AsyncOperationType = "PUT"
+	AsyncOperationTypePatch  AsyncOperationType = "PATCH"
+	AsyncOperationTypeDelete AsyncOperationType = "DELETE"
 )
 
 // TrackedResource represents the common tracked resource.

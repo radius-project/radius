@@ -48,8 +48,11 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 	}
 
 	if !os.InTerminalState() {
-		headers := map[string]string{"Retry-After": "60"}
-		resp := rest.NewAsyncOperationResultResponse(http.StatusAccepted, req.URL.String(), req.URL.Scheme, headers)
+		headers := map[string]string{
+			"Location":    req.URL.String(),
+			"Retry-After": asyncoperation.DefaultRetryAfter,
+		}
+		resp := rest.NewAsyncOperationResultResponse(headers)
 		return resp, nil
 	}
 

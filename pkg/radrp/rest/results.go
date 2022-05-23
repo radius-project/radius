@@ -646,48 +646,26 @@ func (r *ClientAuthenticationFailed) Apply(ctx context.Context, w http.ResponseW
 
 // AsyncOperationResultResponse
 type AsyncOperationResultResponse struct {
-	Location string
-	Scheme   string
-	Headers  map[string]string
+	Headers map[string]string
 }
 
-func NewAsyncOperationResultResponse(httpStatus int, location string, scheme string, headers map[string]string) Response {
+func NewAsyncOperationResultResponse(headers map[string]string) Response {
 	return &AsyncOperationResultResponse{
-		Location: location,
-		Scheme:   scheme,
-		Headers:  headers,
+		Headers: headers,
 	}
 }
 
 func (r *AsyncOperationResultResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), radlogger.LogHTTPStatusCode, http.StatusAccepted)
-	w.WriteHeader(http.StatusAccepted)
 
-	location := url.URL{
-		Host:   req.Host,
-		Scheme: req.URL.Scheme,
-		Path:   r.Location,
-	}
-
-	// In production this is the header we get from app service for the 'real' protocol
-	protocol := req.Header.Get(textproto.CanonicalMIMEHeaderKey("X-Forwarded-Proto"))
-	if protocol != "" {
-		location.Scheme = protocol
-	}
-
-	if location.Scheme == "" {
-		location.Scheme = r.Scheme
-	}
-
-	logger.Info(fmt.Sprintf("Returning location: %s", location.String()))
+	w.Header().Add("Content-Type", "application/json")
 
 	for key, element := range r.Headers {
 		w.Header().Add(key, element)
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-	w.Header().Add("Location", location.String())
+	w.WriteHeader(http.StatusAccepted)
 
 	return nil
 }

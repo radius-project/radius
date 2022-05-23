@@ -60,7 +60,7 @@ func TestGetOperationResultRun(t *testing.T) {
 	opResTestCases := []struct {
 		desc              string
 		provisioningState basedatamodel.ProvisioningStates
-		opType            basedatamodel.AsynOperationType
+		opType            basedatamodel.AsyncOperationType
 		respCode          int
 		headersCheck      bool
 	}{
@@ -76,7 +76,7 @@ func TestGetOperationResultRun(t *testing.T) {
 			basedatamodel.ProvisioningStateSucceeded,
 			basedatamodel.AsyncOperationTypePut,
 			http.StatusOK,
-			true,
+			false,
 		},
 		{
 			"delete-succeeded-state",
@@ -129,8 +129,11 @@ func TestGetOperationResultRun(t *testing.T) {
 			require.Equal(t, tt.respCode, w.Result().StatusCode)
 
 			if tt.headersCheck {
-				require.NotNil(t, w.Result().Header.Get("Location"))
-				require.NotNil(t, w.Result().Header.Get("Retry-After"))
+				require.NotNil(t, w.Header().Get("Location"))
+				require.Equal(t, req.URL.String(), w.Header().Get("Location"))
+
+				require.NotNil(t, w.Header().Get("Retry-After"))
+				require.Equal(t, asyncoperation.DefaultRetryAfter, w.Header().Get("Retry-After"))
 			}
 		})
 	}
