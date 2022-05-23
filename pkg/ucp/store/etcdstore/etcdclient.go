@@ -37,6 +37,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/resourceid"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
@@ -103,7 +104,7 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 	return values, nil
 }
 
-func (c *ETCDClient) Get(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
+func (c *ETCDClient) Get(ctx context.Context, id resourceid.ID, options ...store.GetOptions) (*store.Object, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
@@ -135,7 +136,7 @@ func (c *ETCDClient) Get(ctx context.Context, id resources.ID, options ...store.
 	return &value, nil
 }
 
-func (c *ETCDClient) Delete(ctx context.Context, id resources.ID, options ...store.DeleteOptions) error {
+func (c *ETCDClient) Delete(ctx context.Context, id resourceid.ID, options ...store.DeleteOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
@@ -198,7 +199,7 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 	}
 
 	id := obj.Metadata.ID
-	parsed, err := resources.Parse(id)
+	parsed, err := resourceid.Parse(id)
 	if err != nil {
 		return err
 	}
@@ -247,19 +248,19 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 	return nil
 }
 
-func idFromKey(key []byte) (resources.ID, error) {
+func idFromKey(key []byte) (resourceid.ID, error) {
 	parts := strings.Split(string(key), SectionSeparator)
 	// sample valid key:
 	// scope|ucp:/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 	if len(parts) != 3 {
-		return resources.ID{}, errors.New("the ETCd key '%q' is invalid because it does not have 3 sections")
+		return resourceid.ID{}, errors.New("the ETCd key '%q' is invalid because it does not have 3 sections")
 	}
 
 	if parts[2] == "" {
 		// Scope reference
-		parsed, err := resources.Parse(parts[1])
+		parsed, err := resourceid.Parse(parts[1])
 		if err != nil {
-			return resources.ID{}, err
+			return resourceid.ID{}, err
 		}
 
 		return parsed, nil
@@ -271,16 +272,16 @@ func idFromKey(key []byte) (resources.ID, error) {
 	// 	/subscriptions/{guid}/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 	//
 	// We put it back together by adding "providers" and then it's a valid resource ID.
-	parsed, err := resources.Parse(parts[1] + resources.ProvidersSegment + parts[2])
+	parsed, err := resourceid.Parse(parts[1] + resources.ProvidersSegment + parts[2])
 	if err != nil {
-		return resources.ID{}, err
+		return resourceid.ID{}, err
 	}
 
 	return parsed, nil
 }
 
 // keyFromID returns the key to use for an ID. They key should be used as an exact match.
-func keyFromID(id resources.ID) string {
+func keyFromID(id resourceid.ID) string {
 	var scopeOrResource = store.UCPResourcePrefix
 	if id.IsScope() {
 		scopeOrResource = store.UCPScopePrefix
@@ -348,13 +349,13 @@ func normalize(part string) string {
 	if len(part) == 0 {
 		return ""
 	}
-	if strings.HasPrefix(part, resources.UCPPrefix+resources.SegmentSeparator) {
+	if strings.HasPrefix(part, resources.UCPPrefix+resourceid.SegmentSeparator) {
 		// Already prefixed
-	} else if !strings.HasPrefix(part, resources.SegmentSeparator) {
-		part = resources.SegmentSeparator + part
+	} else if !strings.HasPrefix(part, resourceid.SegmentSeparator) {
+		part = resourceid.SegmentSeparator + part
 	}
-	if !strings.HasSuffix(part, resources.SegmentSeparator) {
-		part = part + resources.SegmentSeparator
+	if !strings.HasSuffix(part, resourceid.SegmentSeparator) {
+		part = part + resourceid.SegmentSeparator
 	}
 
 	return strings.ToLower(part)

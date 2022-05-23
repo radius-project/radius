@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/resourceid"
 	planesdb "github.com/project-radius/radius/pkg/ucp/db/planes"
 	"github.com/project-radius/radius/pkg/ucp/planes"
 	"github.com/project-radius/radius/pkg/ucp/proxy"
@@ -63,7 +64,7 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	plane.Type = planes.PlaneTypePrefix + "/" + planeType
 	plane.Name = name
 	planeExists := true
-	ID, err := resources.Parse(resources.UCPPrefix + plane.ID)
+	ID, err := resourceid.Parse(resources.UCPPrefix + plane.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -109,7 +110,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 	//make id fully qualified. Ex, plane id : ucp:/planes/radius/local
 	id := resources.UCPPrefix + path
 	id = strings.ToLower(id)
-	resourceId, err := resources.Parse(id)
+	resourceId, err := resourceid.Parse(id)
 	if err != nil {
 		if err != nil {
 			return rest.NewBadRequestResponse(err.Error()), nil
@@ -130,7 +131,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
 	//make id fully qualified. Ex, plane id : ucp:/planes/radius/local
 	id := resources.UCPPrefix + path
-	resourceId, err := resources.Parse(id)
+	resourceId, err := resourceid.Parse(id)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
@@ -158,7 +159,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 
 	// Lookup the plane
 	planePath := PlanesPath + "/" + planeType + "/" + name
-	planeID, err := resources.Parse(resources.UCPPrefix + planePath)
+	planeID, err := resourceid.Parse(resources.UCPPrefix + planePath)
 	if err != nil {
 		if err != nil {
 			return rest.InternalServerError(err), err
@@ -173,7 +174,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	// Get the resource provider
-	resourceID, err := resources.Parse(resources.UCPPrefix + path)
+	resourceID, err := resourceid.Parse(resources.UCPPrefix + path)
 	if err != nil {
 		return rest.InternalServerError(err), err
 	}

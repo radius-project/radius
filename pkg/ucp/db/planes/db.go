@@ -7,6 +7,7 @@ package planes
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/resourceid"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -34,7 +35,7 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 	return listOfPlanes, nil
 }
 
-func GetByID(ctx context.Context, db store.StorageClient, ID resources.ID) (rest.Plane, error) {
+func GetByID(ctx context.Context, db store.StorageClient, ID resourceid.ID) (rest.Plane, error) {
 	var plane rest.Plane
 	resp, err := db.Get(ctx, ID)
 	if err != nil {
@@ -62,7 +63,7 @@ func Save(ctx context.Context, db store.StorageClient, plane rest.Plane) (rest.P
 	return storedPlane, err
 }
 
-func DeleteByID(ctx context.Context, db store.StorageClient, ID resources.ID) error {
+func DeleteByID(ctx context.Context, db store.StorageClient, ID resourceid.ID) error {
 	err := db.Delete(ctx, ID)
 	return err
 }

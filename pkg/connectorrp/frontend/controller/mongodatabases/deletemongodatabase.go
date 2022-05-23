@@ -40,7 +40,7 @@ func (mongo *DeleteMongoDatabase) Run(ctx context.Context, req *http.Request) (r
 
 	// Read resource metadata from the storage
 	existingResource := &datamodel.MongoDatabase{}
-	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
@@ -54,10 +54,10 @@ func (mongo *DeleteMongoDatabase) Run(ctx context.Context, req *http.Request) (r
 
 	err = base_ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.ID, err.Error()), nil
+		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	err = mongo.DBClient.Delete(ctx, serviceCtx.ResourceID.ID)
+	err = mongo.DBClient.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil

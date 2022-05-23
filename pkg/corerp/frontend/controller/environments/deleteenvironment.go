@@ -40,7 +40,7 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 
 	// Read resource metadata from the storage
 	existingResource := &datamodel.Environment{}
-	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
 	}
@@ -51,11 +51,11 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.ID, err.Error()), nil
+		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
 	// TODO: handle async deletion later.
-	err = e.DBClient.Delete(ctx, serviceCtx.ResourceID.ID)
+	err = e.DBClient.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil

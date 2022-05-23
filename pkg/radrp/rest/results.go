@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/resourceid"
 )
 
 // Translation of internal representation of health state to user facing values
@@ -327,13 +328,25 @@ type NotFoundResponse struct {
 	Body armerrors.ErrorResponse
 }
 
-func NewNotFoundResponse(id azresources.ResourceID) Response {
+func NewAzureNotFoundResponse(id azresources.ResourceID) Response {
 	return &NotFoundResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.NotFound,
 				Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 				Target:  id.ID,
+			},
+		},
+	}
+}
+
+func NewNotFoundResponse(id resourceid.ID) Response {
+	return &NotFoundResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.NotFound,
+				Message: fmt.Sprintf("the resource with id '%s' was not found", id.String()),
+				Target:  id.String(),
 			},
 		},
 	}

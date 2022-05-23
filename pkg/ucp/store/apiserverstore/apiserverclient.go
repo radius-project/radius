@@ -37,6 +37,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/resourceid"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
@@ -111,7 +112,7 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 	results := []store.Object{}
 	for _, resource := range rs.Items {
 		for _, entry := range resource.Entries {
-			id, err := resources.Parse(entry.ID)
+			id, err := resourceid.Parse(entry.ID)
 			if err != nil {
 				// Ignore invalid IDs when querying, we don't want a single piece of bad data to
 				// break all queries.
@@ -141,7 +142,7 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 	return results, nil
 }
 
-func (c *APIServerClient) Get(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
+func (c *APIServerClient) Get(ctx context.Context, id resourceid.ID, options ...store.GetOptions) (*store.Object, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
@@ -172,7 +173,7 @@ func (c *APIServerClient) Get(ctx context.Context, id resources.ID, options ...s
 	return obj, nil
 }
 
-func (c *APIServerClient) Delete(ctx context.Context, id resources.ID, options ...store.DeleteOptions) error {
+func (c *APIServerClient) Delete(ctx context.Context, id resourceid.ID, options ...store.DeleteOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
@@ -255,7 +256,7 @@ func (c *APIServerClient) Save(ctx context.Context, obj *store.Object, options .
 		return &store.ErrInvalid{Message: "invalid argument. 'obj' is required"}
 	}
 
-	id, err := resources.Parse(obj.ID)
+	id, err := resourceid.Parse(obj.ID)
 	if err != nil {
 		return err
 	}
@@ -359,7 +360,7 @@ func (c *APIServerClient) synchronize() {
 	}
 }
 
-func resourceName(id resources.ID) string {
+func resourceName(id resourceid.ID) string {
 	// The kubernetes resource names we use are built according to the following format
 	//
 	// resource.<resource name>.<id hash> (for a resource)
@@ -382,7 +383,7 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 	for _, entry := range resource.Entries {
 		// It's ok to ignore errors here because we've already validated this data. We don't expect this to happen
 		// unless someone manually tampers with our data.
-		id, err := resources.Parse(entry.ID)
+		id, err := resourceid.Parse(entry.ID)
 		if err != nil {
 			continue
 		}
@@ -414,7 +415,7 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 		}
 
 		// '/' is not valid in a label values, so we use '_'
-		value := strings.ToLower(strings.ReplaceAll(resourceType, resources.SegmentSeparator, "_"))
+		value := strings.ToLower(strings.ReplaceAll(resourceType, resourceid.SegmentSeparator, "_"))
 		existing, ok := set[LabelResourceType]
 		if ok && existing != value {
 			value = LabelValueMultiple
@@ -427,7 +428,7 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 }
 
 func createLabelSelector(query store.Query) (labels.Selector, error) {
-	id, err := resources.Parse(query.RootScope)
+	id, err := resourceid.Parse(query.RootScope)
 	if err != nil {
 		return nil, err
 	}
@@ -462,7 +463,7 @@ func createLabelSelector(query store.Query) (labels.Selector, error) {
 	}
 
 	if query.ResourceType != "" {
-		value := strings.ToLower(strings.ReplaceAll(query.ResourceType, resources.SegmentSeparator, "_"))
+		value := strings.ToLower(strings.ReplaceAll(query.ResourceType, resourceid.SegmentSeparator, "_"))
 		requirement, err := labels.NewRequirement(LabelResourceType, selection.In, []string{value, LabelValueMultiple})
 		if err != nil {
 			return nil, err
@@ -474,7 +475,7 @@ func createLabelSelector(query store.Query) (labels.Selector, error) {
 	return selector, nil
 }
 
-func findIndex(resource *ucpv1alpha1.Resource, id resources.ID) *int {
+func findIndex(resource *ucpv1alpha1.Resource, id resourceid.ID) *int {
 	for i, entry := range resource.Entries {
 		if strings.EqualFold(entry.ID, id.String()) {
 			index := i
@@ -505,7 +506,7 @@ func readEntry(entry *ucpv1alpha1.ResourceEntry) (*store.Object, error) {
 	return &obj, nil
 }
 
-func read(resource *ucpv1alpha1.Resource, id resources.ID) (*store.Object, error) {
+func read(resource *ucpv1alpha1.Resource, id resourceid.ID) (*store.Object, error) {
 	for _, entry := range resource.Entries {
 		if strings.EqualFold(entry.ID, id.String()) {
 			return readEntry(&entry)
@@ -532,7 +533,7 @@ func convert(obj *store.Object) (*ucpv1alpha1.ResourceEntry, error) {
 	return &resource, nil
 }
 
-func idMatchesQuery(id resources.ID, query store.Query) bool {
+func idMatchesQuery(id resourceid.ID, query store.Query) bool {
 	if query.ScopeRecursive && !strings.HasPrefix(normalize(id.RootScope()), normalize(query.RootScope)) {
 		// Example:
 		// id is ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
@@ -584,14 +585,14 @@ func normalize(part string) string {
 		return ""
 	}
 
-	if strings.HasPrefix(part, resources.UCPPrefix+resources.SegmentSeparator) {
+	if strings.HasPrefix(part, resources.UCPPrefix+resourceid.SegmentSeparator) {
 		// Already prefixed
-	} else if !strings.HasPrefix(part, resources.SegmentSeparator) {
-		part = resources.SegmentSeparator + part
+	} else if !strings.HasPrefix(part, resourceid.SegmentSeparator) {
+		part = resourceid.SegmentSeparator + part
 	}
 
-	if !strings.HasSuffix(part, resources.SegmentSeparator) {
-		part = part + resources.SegmentSeparator
+	if !strings.HasSuffix(part, resourceid.SegmentSeparator) {
+		part = part + resourceid.SegmentSeparator
 	}
 
 	return strings.ToLower(part)

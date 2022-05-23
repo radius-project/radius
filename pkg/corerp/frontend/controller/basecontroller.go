@@ -91,7 +91,7 @@ func BuildTrackedResource(ctx context.Context) basedatamodel.TrackedResource {
 	serviceOpt := hostoptions.FromContext(ctx)
 
 	trackedResource := basedatamodel.TrackedResource{
-		ID:       requestCtx.ResourceID.ID,
+		ID:       requestCtx.ResourceID.String(),
 		Name:     requestCtx.ResourceID.Name(),
 		Type:     requestCtx.ResourceID.Type(),
 		Location: serviceOpt.CloudEnv.RoleLocation,

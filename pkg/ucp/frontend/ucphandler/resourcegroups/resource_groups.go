@@ -10,6 +10,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/resourceid"
 	resourcegroupsdb "github.com/project-radius/radius/pkg/ucp/db/resourcegroups"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -41,7 +42,7 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 
 	rg.ID = path
 	rgExists := true
-	ID, err := resources.Parse(resources.UCPPrefix + rg.ID)
+	ID, err := resourceid.Parse(resources.UCPPrefix + rg.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -88,7 +89,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 	//make id fully qualified. Ex, plane id : ucp:/planes/radius/local/resourceGroups/rg
 	id := resources.UCPPrefix + path
 	id = strings.ToLower(id)
-	resourceId, err := resources.Parse(id)
+	resourceId, err := resourceid.Parse(id)
 	if err != nil {
 		if err != nil {
 			return rest.NewBadRequestResponse(err.Error()), nil
@@ -109,7 +110,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
 	//make id fully qualified. Ex, plane id : ucp:/planes/radius/local/resourceGroups/rg
 	id := resources.UCPPrefix + path
-	resourceId, err := resources.Parse(id)
+	resourceId, err := resourceid.Parse(id)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/resourceid"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -110,7 +111,7 @@ func Test_GetResourceGroupByID(t *testing.T) {
 		Name: testResourceGroupName,
 	}
 
-	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
+	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id resourceid.ID, options ...store.GetOptions) (*store.Object, error) {
 		return &store.Object{
 			Metadata: store.Metadata{},
 			Data:     &rg,

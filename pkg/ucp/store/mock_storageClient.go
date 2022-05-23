@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	resources "github.com/project-radius/radius/pkg/ucp/resources"
+	resourceid "github.com/project-radius/radius/pkg/resourceid"
 )
 
 // MockStorageClient is a mock of StorageClient interface.
@@ -36,7 +36,7 @@ func (m *MockStorageClient) EXPECT() *MockStorageClientMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockStorageClient) Delete(arg0 context.Context, arg1 resources.ID, arg2 ...DeleteOptions) error {
+func (m *MockStorageClient) Delete(arg0 context.Context, arg1 resourceid.ID, arg2 ...DeleteOptions) error {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
@@ -55,7 +55,7 @@ func (mr *MockStorageClientMockRecorder) Delete(arg0, arg1 interface{}, arg2 ...
 }
 
 // Get mocks base method.
-func (m *MockStorageClient) Get(arg0 context.Context, arg1 resources.ID, arg2 ...GetOptions) (*Object, error) {
+func (m *MockStorageClient) Get(arg0 context.Context, arg1 resourceid.ID, arg2 ...GetOptions) (*Object, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
