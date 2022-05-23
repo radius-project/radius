@@ -38,21 +38,28 @@ var rootCmd = &cobra.Command{
 
 		stopped, serviceErrors := host.RunAsync(ctx)
 
-		// Monitor for failures to start, and shut down if a service fails.
-		go func() {
-			for message := range serviceErrors {
-				if message.Err != nil {
-					logger.Info("Service errored, shutting down....")
-					cancel()
-				}
-			}
-		}()
+		exitCh := make(chan os.Signal, 2)
+		signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM)
+
+		select {
+		// Shutdown triggered
+		case <-exitCh:
+			logger.Info("Shutting down....")
+			cancel()
+
+		// A service terminated with a failure. Shut down
+		case <-serviceErrors:
+			logger.Info("Error occurred - shutting down....")
+			cancel()
+		}
 
 		// Finished shutting down. An error returned here is a failure to terminate
 		// gracefully, so just crash if that happens.
 		err = <-stopped
-		if err != nil {
-			return err
+		if err == nil {
+			os.Exit(0)
+		} else {
+			panic(err)
 		}
 
 		return nil
@@ -60,14 +67,5 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-c
-		cancel()
-	}()
-
-	cobra.CheckErr(rootCmd.ExecuteContext(ctx))
+	cobra.CheckErr(rootCmd.ExecuteContext(context.Background()))
 }
