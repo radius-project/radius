@@ -54,7 +54,7 @@ func TestGetByIdPlane(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
-	mockStorageClient.EXPECT().Get(ctx, resourceId)
+	mockStorageClient.EXPECT().Get(ctx, id)
 	_, err := GetByID(ctx, mockStorageClient, resourceId)
 	assert.Equal(t, nil, err)
 

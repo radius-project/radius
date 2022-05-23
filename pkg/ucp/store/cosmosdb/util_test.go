@@ -8,7 +8,7 @@ package cosmosdb
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 

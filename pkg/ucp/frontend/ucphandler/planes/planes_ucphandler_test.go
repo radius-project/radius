@@ -71,15 +71,13 @@ func Test_ListPlane(t *testing.T) {
 	query.ScopeRecursive = true
 	query.IsScopeQuery = true
 
-	expectedPlaneList := rest.PlaneList{
-		Value: []rest.Plane{},
-	}
+	expectedPlaneList := rest.PlaneList{}
 	expectedResponse := rest.NewOKResponse(expectedPlaneList)
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
-	mockStorageClient.EXPECT().Query(gomock.Any(), query)
+	mockStorageClient.EXPECT().Query(gomock.Any(), query).Return(&store.ObjectQueryResult{}, nil)
 	actualResponse, err := testHandler.List(ctx, mockStorageClient, path)
 	assert.Equal(t, nil, err)
 	assert.DeepEqual(t, expectedResponse, actualResponse)

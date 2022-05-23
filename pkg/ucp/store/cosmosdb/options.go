@@ -5,7 +5,7 @@
 
 package cosmosdb
 
-import "github.com/project-radius/radius/pkg/store"
+import "github.com/project-radius/radius/pkg/ucp/store"
 
 const (
 	defaultQueryItemCount = 20

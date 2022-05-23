@@ -9,8 +9,8 @@ import (
 	context "context"
 	"fmt"
 
-	store "github.com/project-radius/radius/pkg/store"
-	"github.com/project-radius/radius/pkg/store/cosmosdb"
+	store "github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/store/cosmosdb"
 )
 
 type storageFactoryFunc func(context.Context, StorageProviderOptions, string) (store.StorageClient, error)

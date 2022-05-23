@@ -8,7 +8,7 @@ package dataprovider
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // StorageProviderType represents types of storage provider.

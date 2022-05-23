@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	store "github.com/project-radius/radius/pkg/store"
+	store "github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // MockDataStorageProvider is a mock of DataStorageProvider interface.

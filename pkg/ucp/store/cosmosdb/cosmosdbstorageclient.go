@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
 
@@ -339,21 +339,21 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 }
 
 // Save upserts the resource.
-func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) (*store.Object, error) {
+func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 	cfg := store.NewSaveConfig(opts...)
 	azID, err := azresources.Parse(obj.ID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	docID, err := GenerateCosmosDBKey(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	rs, err := NewResourceScope(azID.ID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	entity := &ResourceEntity{
@@ -389,15 +389,15 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		resp, _, err = c.client.ReplaceDocument(ctx, c.options.DatabaseName, c.options.CollectionName, entity.ID, entity, op)
 		// TODO: use the response code when switching to official SDK.
 		if err != nil && strings.HasPrefix(err.Error(), errEtagPreconditionMsgPrefix) {
-			return nil, &store.ErrConflict{Message: "ETag is not matched."}
+			return &store.ErrConcurrency{}
 		}
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	obj.ETag = resp.Etag
 
-	return obj, nil
+	return nil
 }

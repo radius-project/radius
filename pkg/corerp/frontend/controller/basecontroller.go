@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // ControllerInterface is an interface of each operation controller.
@@ -52,7 +52,7 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in interfa
 		},
 		Data: in,
 	}
-	nr, err := c.DBClient.Save(ctx, nr, store.WithETag(etag))
+	err := c.DBClient.Save(ctx, nr, store.WithETag(etag))
 	if err != nil {
 		return nil, err
 	}

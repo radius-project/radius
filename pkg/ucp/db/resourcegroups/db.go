@@ -14,7 +14,7 @@ import (
 
 func GetByID(ctx context.Context, db store.StorageClient, ID resources.ID) (rest.ResourceGroup, error) {
 	var rg rest.ResourceGroup
-	resp, err := db.Get(ctx, ID)
+	resp, err := db.Get(ctx, ID.String())
 	if err != nil {
 		return rg, err
 	}
@@ -40,15 +40,14 @@ func Save(ctx context.Context, db store.StorageClient, rg rest.ResourceGroup) (r
 }
 
 func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (rest.ResourceGroupList, error) {
-	listOfResourceGroups := rest.ResourceGroupList{
-		Value: []rest.ResourceGroup{},
-	}
-	resp, err := db.Query(ctx, query)
+	result, err := db.Query(ctx, query)
 	if err != nil {
-		return listOfResourceGroups, err
+		return rest.ResourceGroupList{}, err
 	}
-	if len(resp) > 0 {
-		for _, item := range resp {
+
+	listOfResourceGroups := rest.ResourceGroupList{}
+	if len(result.Items) > 0 {
+		for _, item := range result.Items {
 			var rg rest.ResourceGroup
 			err = item.As(&rg)
 			if err != nil {
@@ -61,6 +60,6 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 }
 
 func DeleteByID(ctx context.Context, db store.StorageClient, ID resources.ID) error {
-	err := db.Delete(ctx, ID)
+	err := db.Delete(ctx, ID.String())
 	return err
 }
