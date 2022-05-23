@@ -15,7 +15,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/health"
-	"github.com/project-radius/radius/pkg/hosting"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/backend/healthlistener"
 	"github.com/project-radius/radius/pkg/radrp/frontend"
