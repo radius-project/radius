@@ -19,9 +19,14 @@ const (
 	ProvisioningStateCanceled     ProvisioningStates = "Canceled"
 )
 
-func TerminalProvisioningStateValues() []ProvisioningStates {
-	return []ProvisioningStates{ProvisioningStateSucceeded, ProvisioningStateFailed, ProvisioningStateCanceled}
-}
+// AsyncOperationType is the type of the ongoing operation
+type AsynOperationType string
+
+const (
+	AsyncOperationTypePut    AsynOperationType = "PUT"
+	AsyncOperationTypePatch  AsynOperationType = "PATCH"
+	AsyncOperationTypeDelete AsynOperationType = "DELETE"
+)
 
 // TrackedResource represents the common tracked resource.
 type TrackedResource struct {

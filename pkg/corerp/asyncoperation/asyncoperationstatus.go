@@ -31,10 +31,7 @@ type AsyncOperationStatus struct {
 }
 
 func (aos *AsyncOperationStatus) InTerminalState() bool {
-	for _, terminalState := range basedatamodel.TerminalProvisioningStateValues() {
-		if aos.AsyncOperationStatus.Status == terminalState {
-			return true
-		}
-	}
-	return false
+	return aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateSucceeded ||
+		aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateFailed ||
+		aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateCanceled
 }

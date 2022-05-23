@@ -60,12 +60,45 @@ func TestGetOperationResultRun(t *testing.T) {
 	opResTestCases := []struct {
 		desc              string
 		provisioningState basedatamodel.ProvisioningStates
+		opType            basedatamodel.AsynOperationType
 		respCode          int
 		headersCheck      bool
 	}{
-		{"not-in-terminal-state", basedatamodel.ProvisioningStateAccepted, http.StatusAccepted, true},
-		{"succeeded-state", basedatamodel.ProvisioningStateSucceeded, http.StatusOK, true},
-		{"failed-state", basedatamodel.ProvisioningStateFailed, http.StatusOK, true},
+		{
+			"not-in-terminal-state",
+			basedatamodel.ProvisioningStateAccepted,
+			basedatamodel.AsyncOperationTypePut,
+			http.StatusAccepted,
+			true,
+		},
+		{
+			"put-succeeded-state",
+			basedatamodel.ProvisioningStateSucceeded,
+			basedatamodel.AsyncOperationTypePut,
+			http.StatusOK,
+			true,
+		},
+		{
+			"delete-succeeded-state",
+			basedatamodel.ProvisioningStateSucceeded,
+			basedatamodel.AsyncOperationTypeDelete,
+			http.StatusNoContent,
+			false,
+		},
+		{
+			"put-failed-state",
+			basedatamodel.ProvisioningStateFailed,
+			basedatamodel.AsyncOperationTypePut,
+			http.StatusOK,
+			false,
+		},
+		{
+			"delete-failed-state",
+			basedatamodel.ProvisioningStateFailed,
+			basedatamodel.AsyncOperationTypeDelete,
+			http.StatusOK,
+			false,
+		},
 	}
 
 	for _, tt := range opResTestCases {
@@ -75,6 +108,7 @@ func TestGetOperationResultRun(t *testing.T) {
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
 			osDataModel.Status = tt.provisioningState
+			osDataModel.OperationType = tt.opType
 
 			mStorageClient.
 				EXPECT().

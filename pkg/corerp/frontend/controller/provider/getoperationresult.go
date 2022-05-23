@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
@@ -46,12 +47,15 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	// TODO: How are we going to decide on 204 or 200
-	// TODO: If the resource is deleted we don't have a ProvisioningState to represent that
 	if !os.InTerminalState() {
-		resp := rest.NewAcceptedAsyncResponse(nil, req.URL.String(), req.URL.Scheme)
+		headers := map[string]string{"Retry-After": "60"}
+		resp := rest.NewAsyncOperationResultResponse(http.StatusAccepted, req.URL.String(), req.URL.Scheme, headers)
 		return resp, nil
 	}
 
-	return rest.NewOKResponse(os.AsyncOperationStatus), nil
+	if os.Status == basedatamodel.ProvisioningStateSucceeded && os.OperationType == basedatamodel.AsyncOperationTypeDelete {
+		return rest.NewNoContentResponse(), nil
+	}
+
+	return rest.NewOKResponse(nil), nil
 }
