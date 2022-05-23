@@ -332,32 +332,6 @@
       }
     },
     "definitions": {
-      "ResourceStatus": {
-        "description": "Status of a resource.",
-        "properties": {
-          "outputResources": {
-            "items": {
-              "$ref": "#/definitions/OutputResource"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      },
-      "OutputResource": {
-        "description": "Properties of an output resource.",
-        "type": "object"
-      },
-      "BasicResourceProperties": {
-        "description": "Basic properties of a Radius resource.",
-        "properties": {
-          "status": {
-            "$ref": "#/definitions/ResourceStatus",
-            "description": "Status of the resource"
-          }
-        },
-        "type": "object"
-      },
       "ContainerResourceList": {
         "description": "The list of containers.",
         "type": "object",
@@ -768,7 +742,7 @@
       "ContainerProperties": {
         "allOf": [
           {
-            "$ref": "#/definitions/BasicResourceProperties"
+            "$ref": "global.json#/definitions/BasicResourceProperties"
           }
         ],
         "description": "Container properties",
