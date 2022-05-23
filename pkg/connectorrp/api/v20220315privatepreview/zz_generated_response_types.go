@@ -118,6 +118,18 @@ type MongoDatabasesListResult struct {
 	MongoDatabaseList
 }
 
+// MongoDatabasesListSecretsResponse contains the response from method MongoDatabases.ListSecrets.
+type MongoDatabasesListSecretsResponse struct {
+	MongoDatabasesListSecretsResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// MongoDatabasesListSecretsResult contains the result from method MongoDatabases.ListSecrets.
+type MongoDatabasesListSecretsResult struct {
+	MongoDatabaseSecrets
+}
+
 // RedisCachesCreateOrUpdateResponse contains the response from method RedisCaches.CreateOrUpdate.
 type RedisCachesCreateOrUpdateResponse struct {
 	RedisCachesCreateOrUpdateResult

@@ -193,25 +193,13 @@ type MongoDatabaseProperties struct {
 	Resource *string `json:"resource,omitempty"`
 
 	// Secrets values provided for the resource
-	Secrets *MongoDatabasePropertiesSecrets `json:"secrets,omitempty"`
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-}
-
-// MongoDatabasePropertiesSecrets - Secrets values provided for the resource
-type MongoDatabasePropertiesSecrets struct {
-	// Connection string used to connect to the target Mongo database
-	ConnectionString *string `json:"connectionString,omitempty"`
-
-	// Password to use when connecting to the target Mongo database
-	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target Mongo database
-	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabaseResource - MongoDatabse connector
@@ -231,6 +219,18 @@ func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "properties", m.Properties)
 	populate(objectMap, "systemData", m.SystemData)
 	return json.Marshal(objectMap)
+}
+
+// MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
+type MongoDatabaseSecrets struct {
+	// Connection string used to connect to the target Mongo database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Mongo database
+	Password *string `json:"password,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabasesCreateOrUpdateOptions contains the optional parameters for the MongoDatabases.CreateOrUpdate method.
@@ -255,6 +255,11 @@ type MongoDatabasesListBySubscriptionOptions struct {
 
 // MongoDatabasesListOptions contains the optional parameters for the MongoDatabases.List method.
 type MongoDatabasesListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongoDatabasesListSecretsOptions contains the optional parameters for the MongoDatabases.ListSecrets method.
+type MongoDatabasesListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
