@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/resourceid"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -83,8 +83,8 @@ func MarshalOrPanic(in interface{}) []byte {
 	return b
 }
 
-func parseOrPanic(id string) resourceid.ID {
-	parsed, err := resourceid.Parse(id)
+func parseOrPanic(id string) resources.ID {
+	parsed, err := resources.Parse(id)
 	if err != nil {
 		panic(err)
 	}
@@ -92,7 +92,7 @@ func parseOrPanic(id string) resourceid.ID {
 	return parsed
 }
 
-func createObject(id resourceid.ID, data interface{}) store.Object {
+func createObject(id resources.ID, data interface{}) store.Object {
 	return store.Object{
 		Metadata: store.Metadata{
 			ID:          id.String(),

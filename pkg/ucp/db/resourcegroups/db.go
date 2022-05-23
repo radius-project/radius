@@ -7,13 +7,12 @@ package db
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/resourceid"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-func GetByID(ctx context.Context, db store.StorageClient, ID resourceid.ID) (rest.ResourceGroup, error) {
+func GetByID(ctx context.Context, db store.StorageClient, ID resources.ID) (rest.ResourceGroup, error) {
 	var rg rest.ResourceGroup
 	resp, err := db.Get(ctx, ID)
 	if err != nil {
@@ -61,7 +60,7 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 	return listOfResourceGroups, nil
 }
 
-func DeleteByID(ctx context.Context, db store.StorageClient, ID resourceid.ID) error {
+func DeleteByID(ctx context.Context, db store.StorageClient, ID resources.ID) error {
 	err := db.Delete(ctx, ID)
 	return err
 }

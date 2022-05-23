@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/resourceid"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -51,7 +50,7 @@ func TestGetByIdPlane(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 	id := "ucp:/planes/radius/local"
-	resourceId, _ := resourceid.Parse(id)
+	resourceId, _ := resources.Parse(id)
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)

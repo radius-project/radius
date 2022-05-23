@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resourceid
+package resources
 
 import (
 	"fmt"

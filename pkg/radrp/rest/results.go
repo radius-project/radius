@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
-	"github.com/project-radius/radius/pkg/resourceid"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // Translation of internal representation of health state to user facing values
@@ -328,7 +328,7 @@ type NotFoundResponse struct {
 	Body armerrors.ErrorResponse
 }
 
-func NewAzureNotFoundResponse(id azresources.ResourceID) Response {
+func NewLegacyNotFoundResponse(id azresources.ResourceID) Response {
 	return &NotFoundResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
@@ -340,7 +340,7 @@ func NewAzureNotFoundResponse(id azresources.ResourceID) Response {
 	}
 }
 
-func NewNotFoundResponse(id resourceid.ID) Response {
+func NewNotFoundResponse(id resources.ID) Response {
 	return &NotFoundResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{

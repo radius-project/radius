@@ -9,8 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/project-radius/radius/pkg/resourceid"
 )
 
 func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error) {
@@ -21,13 +19,13 @@ func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error)
 	// Remove the /planes/foo/bar/ prefix from the URL with the minimum amount of
 	// garbage allocated during parsing.
 	splitCount := 5
-	if !strings.HasPrefix(path, resourceid.SegmentSeparator) {
+	if !strings.HasPrefix(path, SegmentSeparator) {
 		splitCount--
 	}
 
 	minimumSegmentCount := splitCount - 1
 
-	segments := strings.SplitN(path, resourceid.SegmentSeparator, splitCount)
+	segments := strings.SplitN(path, SegmentSeparator, splitCount)
 	if len(segments) < minimumSegmentCount {
 		return "", "", "", errors.New("URL path is not a valid UCP path")
 	}
@@ -48,7 +46,7 @@ func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error)
 
 	remainder := "/"
 	if len(segments) > minimumSegmentCount {
-		remainder = resourceid.SegmentSeparator + segments[3]
+		remainder = SegmentSeparator + segments[3]
 	}
 
 	return segments[1], segments[2], remainder, nil
