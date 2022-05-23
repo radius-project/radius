@@ -21,6 +21,92 @@ type BasicResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty"`
 }
 
+// DaprSecretStoreList - Object that includes an array of DaprSecretStore and a possible link for next set
+type DaprSecretStoreList struct {
+	// The link used to fetch the next page of DaprSecretStore list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of DaprSecretStore resources
+	Value []*DaprSecretStoreResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreList.
+func (d DaprSecretStoreList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", d.NextLink)
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
+// DaprSecretStoreProperties - DaprSecretStore connector properties
+type DaprSecretStoreProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; Radius kind for Dapr Secret Store
+	Kind *DaprSecretStorePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// REQUIRED; Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+	Type *string `json:"type,omitempty"`
+
+	// REQUIRED; Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// DaprSecretStoreResource - DaprSecretStore connector
+type DaprSecretStoreResource struct {
+	TrackedResource
+	// REQUIRED; DaprSecretStore connector properties
+	Properties *DaprSecretStoreProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreResource.
+func (d DaprSecretStoreResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", d.Properties)
+	populate(objectMap, "systemData", d.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// DaprSecretStoresCreateOrUpdateOptions contains the optional parameters for the DaprSecretStores.CreateOrUpdate method.
+type DaprSecretStoresCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresDeleteOptions contains the optional parameters for the DaprSecretStores.Delete method.
+type DaprSecretStoresDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresGetOptions contains the optional parameters for the DaprSecretStores.Get method.
+type DaprSecretStoresGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresListBySubscriptionOptions contains the optional parameters for the DaprSecretStores.ListBySubscription method.
+type DaprSecretStoresListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresListOptions contains the optional parameters for the DaprSecretStores.List method.
+type DaprSecretStoresListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.
