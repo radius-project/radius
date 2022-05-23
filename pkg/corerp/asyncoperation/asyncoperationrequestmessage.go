@@ -16,8 +16,8 @@ var (
 	DefaultAsyncOperationTimeout = 1 * time.Hour
 )
 
-// AsyncRequestMessage is a message used for async request queue message broker.
-type AsyncRequestMessage struct {
+// AsyncOperationRequestMessage is a message used for async request queue message broker.
+type AsyncOperationRequestMessage struct {
 	// OperationID represents the unique id of the async operation.
 	OperationID uuid.UUID `json:"asyncOperationID"`
 	// OperationName represents the name of operation.
@@ -37,6 +37,8 @@ type AsyncRequestMessage struct {
 	// ClientObjectID represents the client object id of caller.
 	ClientObjectID string `json:"clientObjectID,omitempty"`
 
+	// AsyncOperationBeginAt represents the start time of async operation.
+	AsyncOperationBeginAt time.Time `json:"asyncOperationBeginAt"`
 	// AsyncOperationTimeout represents the timeout duration of async operation.
 	AsyncOperationTimeout time.Duration `json:"asyncOperationTimeout"`
 }
