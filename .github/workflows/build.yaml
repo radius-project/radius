@@ -26,6 +26,7 @@ env:
   GOVER: '^1.17'
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
   DOCKER_REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
+  INTEGRATION_TEST_SUBSCRIPTION_ID: 85716382-7362-45c3-ae03-2126e459a123
 
 jobs:
   build:
@@ -269,9 +270,16 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env init dev --environment dev --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-rp --tag ${{ env.REL_VERSION }}
-        # Print config for sanity check
-        cat ~/.rad/config.yaml
+        dist/rad env init dev --environment dev \
+          --chart ${{ env.RADIUS_CHART_LOCATION }} \
+          --image ${{ env.DOCKER_REGISTRY }}/radius-rp \
+          --tag ${{ env.REL_VERSION }} \
+          --provider-azure \
+          --provider-azure-client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+          --provider-azure-client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+          --provider-azure-tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }} \
+          --provider-azure-resource-group ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}\
+          --provider-azure-subscription "rad-$(date +%s%N)"
     - name: Wait for control-plane ready
       run: |
         kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
