@@ -43,7 +43,7 @@ func (e *GetOperationStatus) Run(ctx context.Context, req *http.Request) (rest.R
 	// TODO: Add additional validation
 
 	os := &asyncoperation.AsyncOperationStatus{}
-	_, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, os)
+	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), os)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}

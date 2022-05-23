@@ -51,14 +51,14 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.MongoDatabase{}
-	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
 	}
 
 	err = base_ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.ID, err.Error()), nil
+		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
 	// Add system metadata to requested resource
@@ -69,7 +69,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 	newResource.TenantID = serviceCtx.HomeTenantID
 
 	// Add/update resource in the data store
-	savedResource, err := mongo.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
+	savedResource, err := mongo.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Validate(ctx context.Context, req *htt
 		return nil, err
 	}
 
-	dm.ID = serviceCtx.ResourceID.ID
+	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = base_ctrl.BuildTrackedResource(ctx)
 	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
 

@@ -40,7 +40,7 @@ func (mongo *GetMongoDatabase) Run(ctx context.Context, req *http.Request) (rest
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	existingResource := &datamodel.MongoDatabase{}
-	_, err := mongo.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	_, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
