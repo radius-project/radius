@@ -10,13 +10,12 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.ControllerInterface = (*GetOperationStatus)(nil)
@@ -42,7 +41,7 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	os := &asyncoperation.AsyncOperationStatus{}
-	_, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, os)
+	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), os)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
@@ -52,13 +51,8 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 			"Location":    req.URL.String(),
 			"Retry-After": asyncoperation.DefaultRetryAfter,
 		}
-		resp := rest.NewAsyncOperationResultResponse(headers)
-		return resp, nil
+		return rest.NewAsyncOperationResultResponse(headers), nil
 	}
 
-	if os.Status == basedatamodel.ProvisioningStateSucceeded && os.OperationType == basedatamodel.AsyncOperationTypeDelete {
-		return rest.NewNoContentResponse(), nil
-	}
-
-	return rest.NewOKResponse(nil), nil
+	return rest.NewNoContentResponse(), nil
 }

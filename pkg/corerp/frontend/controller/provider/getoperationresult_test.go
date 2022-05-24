@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,43 +60,37 @@ func TestGetOperationResultRun(t *testing.T) {
 	opResTestCases := []struct {
 		desc              string
 		provisioningState basedatamodel.ProvisioningStates
-		opType            basedatamodel.AsyncOperationType
 		respCode          int
 		headersCheck      bool
 	}{
 		{
 			"not-in-terminal-state",
 			basedatamodel.ProvisioningStateAccepted,
-			basedatamodel.AsyncOperationTypePut,
 			http.StatusAccepted,
 			true,
 		},
 		{
 			"put-succeeded-state",
 			basedatamodel.ProvisioningStateSucceeded,
-			basedatamodel.AsyncOperationTypePut,
-			http.StatusOK,
+			http.StatusNoContent,
 			false,
 		},
 		{
 			"delete-succeeded-state",
 			basedatamodel.ProvisioningStateSucceeded,
-			basedatamodel.AsyncOperationTypeDelete,
 			http.StatusNoContent,
 			false,
 		},
 		{
 			"put-failed-state",
 			basedatamodel.ProvisioningStateFailed,
-			basedatamodel.AsyncOperationTypePut,
-			http.StatusOK,
+			http.StatusNoContent,
 			false,
 		},
 		{
 			"delete-failed-state",
 			basedatamodel.ProvisioningStateFailed,
-			basedatamodel.AsyncOperationTypeDelete,
-			http.StatusOK,
+			http.StatusNoContent,
 			false,
 		},
 	}
@@ -108,7 +102,6 @@ func TestGetOperationResultRun(t *testing.T) {
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
 			osDataModel.Status = tt.provisioningState
-			osDataModel.OperationType = tt.opType
 
 			mStorageClient.
 				EXPECT().

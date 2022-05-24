@@ -58,14 +58,14 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 			Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
 		// OperationStatus resource paths
-		locationLevelPath := pathBase + "/subscriptions/{subscriptionID}/providers/Applications.Core/locations/{location}"
+		locationLevelPath := pathBase + "/subscriptions/{subscriptionID}/providers/applications.core/locations/{location}"
 		locationsRouter := router.PathPrefix(locationLevelPath).
 			Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
-		operationStatusRouter := locationsRouter.Path("/operationStatuses/{operationId}").Subrouter()
+		operationStatusRouter := locationsRouter.Path("/operationstatuses/{operationId}").Subrouter()
 
 		// OperationResult resource paths
-		operationResultRouter := locationsRouter.Path("/operationResults/{operationId}").Subrouter()
+		operationResultRouter := locationsRouter.Path("/operationresults/{operationId}").Subrouter()
 
 		// Resource Group level API routes.
 		resourceGroupLevelPath = pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"

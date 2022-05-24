@@ -19,15 +19,6 @@ const (
 	ProvisioningStateCanceled     ProvisioningStates = "Canceled"
 )
 
-// AsyncOperationType is the type of the ongoing operation
-type AsyncOperationType string
-
-const (
-	AsyncOperationTypePut    AsyncOperationType = "PUT"
-	AsyncOperationTypePatch  AsyncOperationType = "PATCH"
-	AsyncOperationTypeDelete AsyncOperationType = "DELETE"
-)
-
 // TrackedResource represents the common tracked resource.
 type TrackedResource struct {
 	// ID is the fully qualified resource ID for the resource.
