@@ -6,7 +6,6 @@
 package helm
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"strings"
