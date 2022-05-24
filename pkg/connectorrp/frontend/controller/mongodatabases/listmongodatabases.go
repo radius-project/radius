@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ base_ctrl.ControllerInterface = (*ListMongoDatabases)(nil)

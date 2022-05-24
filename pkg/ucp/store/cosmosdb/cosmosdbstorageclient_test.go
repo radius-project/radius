@@ -14,7 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
@@ -216,12 +216,12 @@ func TestSave(t *testing.T) {
 			},
 			Data: env,
 		}
-		obj, err := client.Save(ctx, r)
+		err := client.Save(ctx, r)
 		require.NoError(t, err)
-		require.NotEmpty(t, obj.ETag)
+		require.NotEmpty(t, r.ETag)
 
 		r.ETag = ""
-		_, err = client.Save(ctx, r)
+		err = client.Save(ctx, r)
 		require.NoError(t, err)
 	})
 
@@ -233,11 +233,11 @@ func TestSave(t *testing.T) {
 			},
 			Data: env,
 		}
-		obj, err := client.Save(ctx, r)
+		err := client.Save(ctx, r)
 		require.NoError(t, err)
-		require.NotEmpty(t, obj.ETag)
+		require.NotEmpty(t, r.ETag)
 
-		_, err = client.Save(ctx, r)
+		err = client.Save(ctx, r)
 		require.NoError(t, err)
 	})
 
@@ -249,14 +249,14 @@ func TestSave(t *testing.T) {
 			},
 			Data: env,
 		}
-		obj, err := client.Save(ctx, r)
+		err := client.Save(ctx, r)
 		require.NoError(t, err)
-		require.NotEmpty(t, obj.ETag)
+		require.NotEmpty(t, r.ETag)
 
-		validEtag := obj.ETag
-		obj.ETag = ""
+		validEtag := r.ETag
+		r.ETag = ""
 
-		_, err = client.Save(ctx, r, store.WithETag(validEtag))
+		err = client.Save(ctx, r, store.WithETag(validEtag))
 		require.NoError(t, err)
 	})
 
@@ -268,13 +268,13 @@ func TestSave(t *testing.T) {
 			},
 			Data: env,
 		}
-		obj, err := client.Save(ctx, r)
+		err := client.Save(ctx, r)
 		require.NoError(t, err)
-		require.NotEmpty(t, obj.ETag)
+		require.NotEmpty(t, r.ETag)
 
 		r.ETag = "invalid_etag"
-		_, err = client.Save(ctx, r)
-		require.ErrorIs(t, &store.ErrConflict{Message: "ETag is not matched."}, err)
+		err = client.Save(ctx, r)
+		require.ErrorIs(t, &store.ErrConcurrency{}, err)
 	})
 }
 
@@ -303,7 +303,7 @@ func TestQuery(t *testing.T) {
 				},
 				Data: env,
 			}
-			_, err := client.Save(ctx, r)
+			err := client.Save(ctx, r)
 			require.NoError(t, err)
 			testIDs = append(testIDs, env.ID)
 		}
@@ -416,7 +416,7 @@ func TestPaginationContinuationToken(t *testing.T) {
 			},
 			Data: env,
 		}
-		_, err := client.Save(ctx, r)
+		err := client.Save(ctx, r)
 		require.NoError(t, err)
 		testIDs = append(testIDs, env.ID)
 	}

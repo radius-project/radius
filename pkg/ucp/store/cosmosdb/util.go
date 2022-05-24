@@ -12,7 +12,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/spaolacci/murmur3"
 )
 

@@ -11,7 +11,7 @@ import (
 
 	asyncctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 type ControllerFactoryFunc func(store.StorageClient) (asyncctrl.AsyncController, error)
