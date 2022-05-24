@@ -9,25 +9,23 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/discovery"
 	memory "k8s.io/client-go/discovery/cached"
-	"k8s.io/client-go/dynamic"
-	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/restmapper"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/executor"
+	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/testcontext"
+	"github.com/project-radius/radius/test/validation"
 )
 
 var radiusControllerLogSync sync.Once
@@ -37,7 +35,7 @@ const (
 )
 
 type Step struct {
-	Executor               StepExecutor
+	Executor               executor.StepExecutor
 	RadiusResources        *validation.ResourceSet
 	K8sOutputResources     []unstructured.Unstructured
 	K8sObjects             *validation.K8sObjectSet
@@ -48,11 +46,11 @@ type Step struct {
 
 type StepExecutor interface {
 	GetDescription() string
-	Execute(ctx context.Context, t *testing.T, options TestOptions)
+	Execute(ctx context.Context, t *testing.T, options K8sTestOptions)
 }
 
 type ApplicationTest struct {
-	Options          TestOptions
+	Options          K8sTestOptions
 	Application      string
 	Description      string
 	InitialResources []unstructured.Unstructured
@@ -60,36 +58,13 @@ type ApplicationTest struct {
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
 }
 
-type TestOptions struct {
-	ConfigFilePath  string
-	K8sClient       *k8s.Clientset
-	DynamicClient   dynamic.Interface
+type K8sTestOptions struct {
+	test.TestOptions
 	DiscoveryClient discovery.DiscoveryInterface
-	Client          client.Client
 }
 
-func NewTestOptions(t *testing.T) TestOptions {
-	config, err := cli.LoadConfig("")
-	require.NoError(t, err, "failed to read radius config")
-
-	k8sconfig, err := kubernetes.ReadKubeConfig()
-	require.NoError(t, err, "failed to read k8s config")
-
-	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
-	require.NoError(t, err, "failed to create kubernetes client")
-
-	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
-	require.NoError(t, err, "failed to create kubernetes dyamic client")
-
-	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
-	require.NoError(t, err, "failed to create runtime client")
-
-	return TestOptions{
-		ConfigFilePath: config.ConfigFileUsed(),
-		K8sClient:      k8s,
-		DynamicClient:  dynamicClient,
-		Client:         client,
-	}
+func NewTestOptions(t *testing.T) K8sTestOptions {
+	return K8sTestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
 func (at ApplicationTest) CollectAllNamespaces() []string {
@@ -108,38 +83,6 @@ func (at ApplicationTest) CollectAllNamespaces() []string {
 	}
 
 	return results
-}
-
-var _ StepExecutor = (*DeployStepExecutor)(nil)
-
-type DeployStepExecutor struct {
-	Description string
-	Template    string
-	Parameters  []string
-}
-
-func NewDeployStepExecutor(template string, parameters ...string) *DeployStepExecutor {
-	return &DeployStepExecutor{
-		Description: fmt.Sprintf("deploy %s", template),
-		Template:    template,
-		Parameters:  parameters,
-	}
-}
-
-func (d *DeployStepExecutor) GetDescription() string {
-	return d.Description
-}
-
-func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options TestOptions) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-
-	templateFilePath := filepath.Join(cwd, d.Template)
-	t.Logf("deploying %s from file %s", d.Description, d.Template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
-	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
-	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
 
 func NewApplicationTest(t *testing.T, application string, steps []Step, initialResources ...unstructured.Unstructured) ApplicationTest {
@@ -242,7 +185,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			}
 
 			t.Logf("running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
-			step.Executor.Execute(ctx, t, at.Options)
+			step.Executor.Execute(ctx, t, at.Options.TestOptions)
 			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 
 			if step.RadiusResources == nil && step.SkipOutputResources {

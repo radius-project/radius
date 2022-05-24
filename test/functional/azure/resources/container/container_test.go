@@ -9,6 +9,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
+
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -18,13 +24,9 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func Test_ContainerHttpBinding(t *testing.T) {
@@ -33,7 +35,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor:       azuretest.NewDeployStepExecutor(template),
+			Executor:       executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{},
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
@@ -106,7 +108,7 @@ func Test_ContainerGateway(t *testing.T) {
 	template := "testdata/azure-resources-container-httproute-gateway.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// Intentionally Empty
@@ -181,7 +183,7 @@ func Test_ContainerManualScale(t *testing.T) {
 	template := "testdata/azure-resources-container-manualscale.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template),
+			Executor: executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// Intentionally Empty
@@ -235,7 +237,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/azure-resources-container-readiness-liveness.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// Intentionally Empty

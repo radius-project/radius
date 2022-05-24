@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/kubernetestest"
 	"github.com/project-radius/radius/test/validation"
@@ -23,7 +24,7 @@ func Test_DaprPubSub_Generic(t *testing.T) {
 
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

@@ -11,19 +11,16 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/stretchr/testify/require"
+
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/dynamic"
-	k8s "k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/project-radius/radius/test"
 )
 
-func NewTestOptions(t *testing.T) TestOptions {
-	config, err := cli.LoadConfig("")
-	require.NoError(t, err, "failed to read radius config")
+func NewTestOptions(t *testing.T) AzureTestOptions {
 
 	auth, err := armauth.GetArmAuthorizer()
 	require.NoError(t, err, "failed to authenticate with azure")
@@ -31,23 +28,14 @@ func NewTestOptions(t *testing.T) TestOptions {
 	azcred, err := azidentity.NewDefaultAzureCredential(nil)
 	require.NoErrorf(t, err, "failed to obtain Azure credentials")
 
+	config, err := cli.LoadConfig("")
+	require.NoError(t, err, "failed to read radius config")
+
 	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
 
 	az, err := environments.RequireAzureCloud(env)
 	require.NoError(t, err, "environment was not azure cloud")
-
-	k8sconfig, err := kubernetes.ReadKubeConfig()
-	require.NoError(t, err, "failed to read k8s config")
-
-	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
-	require.NoError(t, err, "failed to create kubernetes client")
-
-	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
-	require.NoError(t, err, "failed to create kubernetes dyamic client")
-
-	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
-	require.NoError(t, err, "failed to create runtime client")
 
 	_, radiusConnection, err := kubernetes.CreateAPIServerConnection(az.Context, az.APIServerBaseURL)
 	require.NoError(t, err, "failed to create API Server connection")
@@ -55,29 +43,23 @@ func NewTestOptions(t *testing.T) TestOptions {
 	radiusBaseURL, radiusRoundTripper, err := kubernetes.GetBaseUrlAndRoundTripper(az.APIServerBaseURL, "api.radius.dev", az.Context)
 	require.NoError(t, err, "failed to create API Server round-tripper")
 
-	return TestOptions{
-		ConfigFilePath:   config.ConfigFileUsed(),
+	return AzureTestOptions{
+		TestOptions:      test.NewTestOptions(t),
 		ARMAuthorizer:    auth,
 		ARMConnection:    arm.NewDefaultConnection(azcred, nil),
 		RadiusBaseURL:    radiusBaseURL,
 		RadiusConnection: radiusConnection,
 		RadiusSender:     autorest.SenderFunc(radiusRoundTripper.RoundTrip),
 		Environment:      az,
-		K8sClient:        k8s,
-		Client:           client,
-		DynamicClient:    dynamicClient,
 	}
 }
 
-type TestOptions struct {
-	ConfigFilePath   string
+type AzureTestOptions struct {
+	test.TestOptions
 	ARMAuthorizer    autorest.Authorizer
 	ARMConnection    *arm.Connection
 	RadiusBaseURL    string
 	RadiusConnection *arm.Connection
 	RadiusSender     autorest.Sender
 	Environment      *environments.AzureCloudEnvironment
-	K8sClient        *k8s.Clientset
-	Client           client.Client
-	DynamicClient    dynamic.Interface
 }

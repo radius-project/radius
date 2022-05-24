@@ -9,14 +9,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
-	"github.com/stretchr/testify/require"
 )
 
 type Step struct {
-	Executor               StepExecutor
+	Executor               executor.StepExecutor
 	AzureResources         *validation.AzureResourceSet
 	RadiusResources        *validation.ResourceSet
 	Objects                *validation.K8sObjectSet
@@ -26,13 +28,8 @@ type Step struct {
 	SkipResourceValidation bool
 }
 
-type StepExecutor interface {
-	GetDescription() string
-	Execute(ctx context.Context, t *testing.T, options TestOptions)
-}
-
 type ApplicationTest struct {
-	Options          TestOptions
+	Options          AzureTestOptions
 	Application      string
 	Description      string
 	SkipDeletion     bool
@@ -93,7 +90,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			}
 
 			t.Logf("running step %d of %d: %s", i+1, len(at.Steps), step.Executor.GetDescription())
-			step.Executor.Execute(ctx, t, at.Options)
+			step.Executor.Execute(ctx, t, at.Options.TestOptions)
 			t.Logf("finished running step %d of %d: %s", i+1, len(at.Steps), step.Executor.GetDescription())
 
 			if step.AzureResources == nil && step.SkipAzureResources {

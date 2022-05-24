@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/kubernetestest"
 	"github.com/project-radius/radius/test/validation"
@@ -32,7 +33,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -54,7 +55,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -95,7 +96,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -117,7 +118,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -162,7 +163,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -184,7 +185,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

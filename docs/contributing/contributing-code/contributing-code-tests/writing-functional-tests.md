@@ -22,7 +22,7 @@ func Test_DescriptiveTestName(t *testing.T) {
 	template := "testdata/unique-application-name.bicep"
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template, ""),
+			Executor: executor.NewDeployStepExecutor(template, ""),
             Components: &validation.ComponentSet{
                 // Set of components to validate
             },
@@ -45,7 +45,7 @@ When adding a new functional test:
 - Avoid skipping any verifications (other than `SkipARMResources`)
 - Avoid using `PostStepVerify` and `PostDeleteVerify` if you can add new capabilities to the test system
 - For the tests to verify that the containers are actually started and in Ready state, you can add a readiness probe to the bicep file as below. 
-	```
+	```bicep
 	resource a 'Container' = {
 		name: 'a'
 		properties: {

@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/microsoftsqlv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/azuretest"
+	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
 )
@@ -26,7 +27,7 @@ func Test_MicrosoftSQL_WithoutResourceID(t *testing.T) {
 
 	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{

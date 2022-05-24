@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/kubernetestest"
 	"github.com/project-radius/radius/test/validation"
 	"gopkg.in/yaml.v3"
@@ -23,7 +24,7 @@ func TestK8sExtension(t *testing.T) {
 	application := "k8s-extension"
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor:           kubernetestest.NewDeployStepExecutor(template),
+			Executor:           executor.NewDeployStepExecutor(template),
 			RadiusResources:    &validation.ResourceSet{},
 			K8sOutputResources: loadResources("testdata/k8s-extension", ".output.yaml"),
 		},

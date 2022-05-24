@@ -12,15 +12,17 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/kubernetestest"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/validation"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_CLI_DeploymentParameters(t *testing.T) {
@@ -34,7 +36,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag()),
+			Executor: executor.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -79,7 +81,7 @@ func Test_CLI(t *testing.T) {
 
 	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

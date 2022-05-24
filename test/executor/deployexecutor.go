@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azuretest
+package executor
 
 import (
 	"context"
@@ -12,8 +12,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/radcli"
 )
 
 var _ StepExecutor = (*DeployStepExecutor)(nil)
@@ -36,7 +38,7 @@ func (d *DeployStepExecutor) GetDescription() string {
 	return d.Description
 }
 
-func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options TestOptions) {
+func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
