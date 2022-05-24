@@ -17,8 +17,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
-	"github.com/project-radius/radius/pkg/hosting"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
 )
 
 func main() {
@@ -54,34 +54,30 @@ func main() {
 		LoggerValues: loggerValues,
 	}
 
-	// Create a channel to handle the shutdown
-	exitCh := make(chan os.Signal, 1)
-	signal.Notify(exitCh, syscall.SIGINT, syscall.SIGTERM)
-
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 	stopped, serviceErrors := host.RunAsync(ctx)
 
-	for {
-		select {
+	exitCh := make(chan os.Signal, 2)
+	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM)
 
-		// Shutdown triggered
-		case <-exitCh:
-			fmt.Println("Shutting down....")
-			cancel()
+	select {
+	// Shutdown triggered
+	case <-exitCh:
+		logger.Info("Shutting down....")
+		cancel()
 
-		// A service terminated with a failure. Shut down
-		case <-serviceErrors:
-			fmt.Println("Shutting down....")
-			cancel()
+	// A service terminated with a failure. Shut down
+	case <-serviceErrors:
+		logger.Info("Error occurred - shutting down....")
+		cancel()
+	}
 
-		// Finished shutting down. An error returned here is a failure to terminate
-		// gracefully, so just crash if that happens.
-		case err := <-stopped:
-			if err == nil {
-				os.Exit(0)
-			} else {
-				panic(err)
-			}
-		}
+	// Finished shutting down. An error returned here is a failure to terminate
+	// gracefully, so just crash if that happens.
+	err = <-stopped
+	if err == nil {
+		os.Exit(0)
+	} else {
+		panic(err)
 	}
 }

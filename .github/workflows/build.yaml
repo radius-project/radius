@@ -278,8 +278,8 @@ jobs:
           --provider-azure-client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
           --provider-azure-client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
           --provider-azure-tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }} \
-          --provider-azure-resource-group ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}\
-          --provider-azure-subscription "rad-$(date +%s%N)"
+          --provider-azure-subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \ 
+          --provider-azure-resource-group "rad-$(date +%s%N)"
     - name: Wait for control-plane ready
       run: |
         kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m

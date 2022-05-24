@@ -7,7 +7,6 @@ package environments
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
@@ -18,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.ControllerInterface = (*ListEnvironments)(nil)
@@ -42,8 +41,7 @@ func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Res
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{
-		RootScope: fmt.Sprintf("/subscriptions/%s/resourceGroup/%s",
-			serviceCtx.ResourceID.SubscriptionID, serviceCtx.ResourceID.ResourceGroup),
+		RootScope:    serviceCtx.ResourceID.RootScope(),
 		ResourceType: serviceCtx.ResourceID.Type(),
 	}
 

@@ -86,7 +86,7 @@ type APIServerClient struct {
 	waitChan <-chan struct{}
 }
 
-func (c *APIServerClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) ([]store.Object, error) {
+func (c *APIServerClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
@@ -108,7 +108,7 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 		return nil, err
 	}
 
-	results := []store.Object{}
+	results := store.ObjectQueryResult{}
 	for _, resource := range rs.Items {
 		for _, entry := range resource.Entries {
 			id, err := resources.Parse(entry.ID)
@@ -133,36 +133,40 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 					continue
 				}
 
-				results = append(results, *converted)
+				results.Items = append(results.Items, *converted)
 			}
 		}
 	}
 
-	return results, nil
+	return &results, nil
 }
 
-func (c *APIServerClient) Get(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
+func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
-	if id.IsEmpty() {
+	parsed, err := resources.Parse(id)
+	if err != nil {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must be a valid resource id"}
+	}
+	if parsed.IsEmpty() {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must not be empty"}
 	}
-	if id.IsCollection() {
+	if parsed.IsCollection() {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
-	resourceName := resourceName(id)
+	resourceName := resourceName(parsed)
 
 	resource := ucpv1alpha1.Resource{}
-	err := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
+	err = c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
 	if err != nil && apierrors.IsNotFound(err) {
 		return nil, &store.ErrNotFound{}
 	} else if err != nil {
 		return nil, err
 	}
 
-	obj, err := read(&resource, id)
+	obj, err := read(&resource, parsed)
 	if err != nil {
 		return nil, err
 	} else if obj == nil {
@@ -172,22 +176,26 @@ func (c *APIServerClient) Get(ctx context.Context, id resources.ID, options ...s
 	return obj, nil
 }
 
-func (c *APIServerClient) Delete(ctx context.Context, id resources.ID, options ...store.DeleteOptions) error {
+func (c *APIServerClient) Delete(ctx context.Context, id string, options ...store.DeleteOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
-	if id.IsEmpty() {
+	parsed, err := resources.Parse(id)
+	if err != nil {
+		return &store.ErrInvalid{Message: "invalid argument. 'id' must be a valid resource id"}
+	}
+	if parsed.IsEmpty() {
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must not be empty"}
 	}
-	if id.IsCollection() {
+	if parsed.IsCollection() {
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
-	resourceName := resourceName(id)
+	resourceName := resourceName(parsed)
 
 	config := store.NewDeleteConfig(options...)
 
-	err := c.doWithRetry(ctx, func() (bool, error) {
+	err = c.doWithRetry(ctx, func() (bool, error) {
 		resource := ucpv1alpha1.Resource{}
 		err := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
 		if err != nil && apierrors.IsNotFound(err) && config.ETag != "" {
@@ -198,7 +206,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id resources.ID, options .
 			return false, err
 		}
 
-		index := findIndex(&resource, id)
+		index := findIndex(&resource, parsed)
 		if index == nil {
 			return false, &store.ErrNotFound{}
 		}

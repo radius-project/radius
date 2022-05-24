@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // AsyncController is an interface to implement async operation controller. This is to implement request-reply pattern using messaging queue.

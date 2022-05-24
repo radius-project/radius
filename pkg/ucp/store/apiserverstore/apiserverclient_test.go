@@ -182,7 +182,7 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// Now we should be able to get resource 1 directly. We can't get resource 2 directly because we stored it
 		// with the wrong name on purpose.
-		obj, err := client.Get(ctx, shared.Resource1ID)
+		obj, err := client.Get(ctx, shared.Resource1ID.String())
 		require.NoError(t, err)
 		require.Equal(t, shared.Resource1ID.String(), obj.ID)
 		require.Equal(t, shared.Data1, obj.Data)
@@ -200,7 +200,7 @@ func Test_APIServer_Client(t *testing.T) {
 				Data: shared.Data2,
 			},
 		}
-		require.ElementsMatch(t, expected, objs)
+		shared.CompareObjectLists(t, expected, objs.Items)
 	})
 
 	t.Run("save_with_create_conflict", func(t *testing.T) {
@@ -426,7 +426,7 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// Start an operation to "delete" resource 1
 		go func() {
-			err = client.Delete(ctx, shared.Resource1ID)
+			err = client.Delete(ctx, shared.Resource1ID.String())
 			errChan <- err
 		}()
 
@@ -511,7 +511,7 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// Start an operation to "delete" resource 1
 		go func() {
-			err = client.Delete(ctx, shared.Resource1ID)
+			err = client.Delete(ctx, shared.Resource1ID.String())
 			errChan <- err
 		}()
 

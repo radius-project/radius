@@ -14,15 +14,14 @@ import (
 
 // Used to get all the matching "Scopes", such as planes, planes of a specific type , resourceGroups ...
 func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (rest.PlaneList, error) {
-	listOfPlanes := rest.PlaneList{
-		Value: []rest.Plane{},
-	}
-	resp, err := db.Query(ctx, query)
+	result, err := db.Query(ctx, query)
 	if err != nil {
-		return listOfPlanes, err
+		return rest.PlaneList{}, err
 	}
-	if len(resp) > 0 {
-		for _, item := range resp {
+
+	listOfPlanes := rest.PlaneList{}
+	if len(result.Items) > 0 {
+		for _, item := range result.Items {
 			var plane rest.Plane
 			err = item.As(&plane)
 			if err != nil {
@@ -36,7 +35,7 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 
 func GetByID(ctx context.Context, db store.StorageClient, ID resources.ID) (rest.Plane, error) {
 	var plane rest.Plane
-	resp, err := db.Get(ctx, ID)
+	resp, err := db.Get(ctx, ID.String())
 	if err != nil {
 		return plane, err
 	}
@@ -63,6 +62,6 @@ func Save(ctx context.Context, db store.StorageClient, plane rest.Plane) (rest.P
 }
 
 func DeleteByID(ctx context.Context, db store.StorageClient, ID resources.ID) error {
-	err := db.Delete(ctx, ID)
+	err := db.Delete(ctx, ID.String())
 	return err
 }

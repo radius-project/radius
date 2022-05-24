@@ -80,11 +80,13 @@ func Test_ListResourceGroups(t *testing.T) {
 		Name: testResourceGroupName,
 	}
 
-	mockStorageClient.EXPECT().Query(gomock.Any(), query).DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) ([]store.Object, error) {
-		return []store.Object{
-			{
-				Metadata: store.Metadata{},
-				Data:     &rg,
+	mockStorageClient.EXPECT().Query(gomock.Any(), query).DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+		return &store.ObjectQueryResult{
+			Items: []store.Object{
+				{
+					Metadata: store.Metadata{},
+					Data:     &rg,
+				},
 			},
 		}, nil
 	})
@@ -110,7 +112,7 @@ func Test_GetResourceGroupByID(t *testing.T) {
 		Name: testResourceGroupName,
 	}
 
-	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
+	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return &store.Object{
 			Metadata: store.Metadata{},
 			Data:     &rg,
@@ -126,7 +128,6 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	}
 	expectedResponse := rest.NewOKResponse(expectedResourceGroup)
 	assert.DeepEqual(t, expectedResponse, actualResponse)
-
 }
 
 func Test_DeleteResourceGroupByID(t *testing.T) {

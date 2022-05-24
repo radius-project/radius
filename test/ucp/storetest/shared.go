@@ -116,7 +116,7 @@ func compareObjects(t *testing.T, expected *store.Object, actual *store.Object) 
 	require.Equal(t, expectedCopy, actualCopy)
 }
 
-func compareObjectLists(t *testing.T, expected []store.Object, actual []store.Object) {
+func CompareObjectLists(t *testing.T, expected []store.Object, actual []store.Object) {
 	t.Helper()
 
 	expectedCopy := []store.Object{}
@@ -144,7 +144,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("get_not_found", func(t *testing.T) {
 		clear(t)
 
-		obj, err := client.Get(ctx, Resource1ID)
+		obj, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 		require.Nil(t, obj)
 	})
@@ -152,7 +152,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("delete_not_found", func(t *testing.T) {
 		clear(t)
 
-		err := client.Delete(ctx, Resource1ID)
+		err := client.Delete(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 	})
 
@@ -165,7 +165,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		require.NoError(t, err)
 		require.NotEmpty(t, obj1.ETag)
 
-		obj1Get, err := client.Get(ctx, ARMResource)
+		obj1Get, err := client.Get(ctx, ARMResource.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 		require.Equal(t, obj1Get.ETag, obj1.ETag)
@@ -179,7 +179,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, Resource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -192,7 +192,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, ResourceGroup1ID)
+		obj1Get, err := client.Get(ctx, ResourceGroup1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -208,7 +208,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err = client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, Resource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -225,7 +225,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err = client.Save(ctx, &obj1, store.WithETag(obj1.ETag))
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, Resource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -242,7 +242,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 
 		obj1.Data = Data1
-		obj1Get, err := client.Get(ctx, Resource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -255,7 +255,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err := client.Save(ctx, &obj1, store.WithETag(etag.New(MarshalOrPanic(Data1))))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 
-		obj1Get, err := client.Get(ctx, Resource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 		require.Nil(t, obj1Get)
 	})
@@ -267,7 +267,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, parseOrPanic(ResourceGroup1Scope))
+		obj1Get, err := client.Get(ctx, ResourceGroup1Scope)
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -279,10 +279,10 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		err = client.Delete(ctx, Resource1ID)
+		err = client.Delete(ctx, Resource1ID.String())
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, Resource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 		require.Nil(t, obj1Get)
 	})
@@ -294,10 +294,10 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		err = client.Delete(ctx, Resource1ID, store.WithETag(obj1.ETag))
+		err = client.Delete(ctx, Resource1ID.String(), store.WithETag(obj1.ETag))
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, Resource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 		require.Nil(t, obj1Get)
 	})
@@ -309,10 +309,10 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		err = client.Delete(ctx, Resource1ID, store.WithETag(etag.New(MarshalOrPanic(Data2))))
+		err = client.Delete(ctx, Resource1ID.String(), store.WithETag(etag.New(MarshalOrPanic(Data2))))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 
-		obj1Get, err := client.Get(ctx, Resource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		require.NotNil(t, obj1Get)
 	})
@@ -320,7 +320,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("delete_cannot_delete_missing_resource_with_not_matching_etag", func(t *testing.T) {
 		clear(t)
 
-		err := client.Delete(ctx, Resource1ID, store.WithETag(etag.New(MarshalOrPanic(Data1))))
+		err := client.Delete(ctx, Resource1ID.String(), store.WithETag(etag.New(MarshalOrPanic(Data1))))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 	})
 
@@ -362,7 +362,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 				obj1,
 				nested1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_resource_group_scope_with_field_filter", func(t *testing.T) {
@@ -372,7 +372,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				obj1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_resource_group_scope_with_prefix", func(t *testing.T) {
@@ -382,7 +382,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 				obj1,
 				nested1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_resource_group_scope_with_type_filter", func(t *testing.T) {
@@ -391,7 +391,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				nested1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_resource_group_scope_with_prefix_and_type_filter", func(t *testing.T) {
@@ -400,7 +400,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				nested1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_scopes_at_resource_group_scope", func(t *testing.T) {
@@ -409,7 +409,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				group1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_scopes_at_resource_group_scope_with_type_filter", func(t *testing.T) {
@@ -418,7 +418,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				group1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_plane_scope", func(t *testing.T) {
@@ -435,7 +435,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 				obj2,
 				nested1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_plane_scope_recursive_with_field_filter", func(t *testing.T) {
@@ -445,7 +445,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				obj1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_plane_scope_recursive_with_prefix", func(t *testing.T) {
@@ -455,7 +455,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 				obj1,
 				nested1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_plane_scope_recursive_and_type_filter", func(t *testing.T) {
@@ -464,7 +464,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				nested1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_resources_at_plane_scope_recursive_with_prefix_and_type_filter", func(t *testing.T) {
@@ -473,7 +473,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				nested1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_scopes_at_plane_scope_recursive", func(t *testing.T) {
@@ -483,7 +483,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 				group1,
 				group2,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_scopes_at_plane_scope_recursive_with_field_filter", func(t *testing.T) {
@@ -493,7 +493,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				group1,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_scopes_at_plane_scope_recursive_with_type_filter", func(t *testing.T) {
@@ -503,7 +503,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 				group1,
 				group2,
 			}
-			compareObjectLists(t, expected, objs)
+			CompareObjectLists(t, expected, objs.Items)
 		})
 	})
 }
