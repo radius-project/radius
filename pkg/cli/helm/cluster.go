@@ -18,6 +18,7 @@ import (
 const (
 	ContourChartDefaultVersion = "7.4.6"
 	DaprDefaultVersion         = "1.6.0"
+	OSMDefaultVersion          = "0.11.1"
 )
 
 type CLIClusterOptions struct {
@@ -25,9 +26,11 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
-	Dapr    DaprOptions
-	Contour ContourOptions
-	Radius  RadiusOptions
+	Namespace string
+	Dapr      DaprOptions
+	Contour   ContourOptions
+	Radius    RadiusOptions
+	OSM       OSMOptions
 }
 
 func NewDefaultClusterOptions() ClusterOptions {
@@ -56,6 +59,9 @@ func NewDefaultClusterOptions() ClusterOptions {
 			AppCoreTag:   tag,
 			UCPTag:       tag,
 			DETag:        tag,
+		},
+		OSM: OSMOptions{
+			ChartVersion: OSMDefaultVersion,
 		},
 	}
 }
@@ -128,7 +134,21 @@ func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext s
 		return false, err
 	}
 
+<<<<<<< HEAD
 	return foundExisting, err
+=======
+	err = ApplyDaprHelmChart(options.Dapr.Version)
+	if err != nil {
+		return err
+	}
+
+	err = ApplyOSMHelmChart(options.OSM)
+	if err != nil {
+		return err
+	}
+
+	return err
+>>>>>>> 5ee26425 (Install Open Service Mesh as part of rad env init kubernetes (#2364))
 }
 
 func UninstallOnCluster(kubeContext string) error {
@@ -156,6 +176,11 @@ func UninstallOnCluster(kubeContext string) error {
 	}
 
 	err = RunRadiusHelmUninstall(helmConf)
+	if err != nil {
+		return err
+	}
+
+	err = RunOSMHelmUninstall(helmConf)
 	if err != nil {
 		return err
 	}
