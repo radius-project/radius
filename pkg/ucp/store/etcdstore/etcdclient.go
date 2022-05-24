@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-// Package etcdstore stores resources using ETCd. Our usage for ETCd is optimized for the kinds
+// Package etcdstore stores resources using etcd. Our usage for etcd is optimized for the kinds
 // of hierarchical and type-based queries common in a resource provider.
 //
 // Our key prefix scheme builds a hierarchy using '|' as a separator as '|' is illegal in an
@@ -260,7 +260,7 @@ func idFromKey(key []byte) (resources.ID, error) {
 	// sample valid key:
 	// scope|ucp:/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 	if len(parts) != 3 {
-		return resources.ID{}, errors.New("the ETCd key '%q' is invalid because it does not have 3 sections")
+		return resources.ID{}, errors.New("the etcd key '%q' is invalid because it does not have 3 sections")
 	}
 
 	if parts[2] == "" {

@@ -81,7 +81,7 @@ func (s *Service) Run(ctx context.Context) error {
 		s.Options.Config.MetricsProvider,
 	)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	// Handle shutdown based on the context
