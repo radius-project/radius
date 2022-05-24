@@ -18,8 +18,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
-	"github.com/project-radius/radius/pkg/hosting"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
 )
 
 func main() {
