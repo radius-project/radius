@@ -137,6 +137,7 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
 	mongoResourceRouter := mongoResourceTypeSubrouter.Path("/{mongoDatabases}").Subrouter()
+	mongoListSecretsRouter := mongoResourceRouter.Path("/listSecrets").Subrouter()
 
 	h := []handlerParam{
 		// MongoDatabases operations
@@ -144,6 +145,7 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongoDatabaseRouteName, mongo_ctrl.NewGetMongoDatabase},
 		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, mongoDatabaseRouteName, mongo_ctrl.NewCreateOrUpdateMongoDatabase},
 		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, mongoDatabaseRouteName, mongo_ctrl.NewDeleteMongoDatabase},
+		{mongoListSecretsRouter, mongo_ctrl.ResourceTypeName, http.MethodPost, mongoDatabaseRouteName, mongo_ctrl.NewListSecretsMongoDatabase},
 	}
 	handlers = append(handlers, h...)
 
