@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azuretest
+package step
 
 import (
 	"context"
@@ -12,31 +12,33 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/radcli"
 )
 
-var _ StepExecutor = (*DeployStepExecutor)(nil)
+var _ Executor = (*DeployExecutor)(nil)
 
-type DeployStepExecutor struct {
+type DeployExecutor struct {
 	Description string
 	Template    string
 	Parameters  []string
 }
 
-func NewDeployStepExecutor(template string, parameters ...string) *DeployStepExecutor {
-	return &DeployStepExecutor{
+func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
+	return &DeployExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
 		Template:    template,
 		Parameters:  parameters,
 	}
 }
 
-func (d *DeployStepExecutor) GetDescription() string {
+func (d *DeployExecutor) GetDescription() string {
 	return d.Description
 }
 
-func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options TestOptions) {
+func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
