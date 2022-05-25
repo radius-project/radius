@@ -8,6 +8,8 @@ package hostoptions
 type EnvironmentType string
 
 const (
+	Development       EnvironmentType = "Dev"
+	Standalone        EnvironmentType = "Standalone"
 	AzureDogfood      EnvironmentType = "Dogfood"
 	AzureCloud        EnvironmentType = "AzureCloud"
 	AzureChinaCloud   EnvironmentType = "AzureChinaCloud"
