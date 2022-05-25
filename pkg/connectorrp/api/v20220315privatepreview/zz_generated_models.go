@@ -21,6 +21,83 @@ type BasicResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty"`
 }
 
+// DaprInvokeHTTPRouteList - Object that includes an array of DaprInvokeHttpRoute and a possible link for next set
+type DaprInvokeHTTPRouteList struct {
+	// The link used to fetch the next page of DaprInvokeHttpRoute list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of DaprInvokeHttpRoute resources
+	Value []*DaprInvokeHTTPRouteResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprInvokeHTTPRouteList.
+func (d DaprInvokeHTTPRouteList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", d.NextLink)
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
+// DaprInvokeHTTPRouteProperties - DaprInvokeHttpRoute connector properties
+type DaprInvokeHTTPRouteProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The Dapr appId used for the route
+	AppID *string `json:"appId,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// DaprInvokeHTTPRouteResource - DaprInvokeHttpRoute connector
+type DaprInvokeHTTPRouteResource struct {
+	TrackedResource
+	// REQUIRED; DaprInvokeHttpRoute connector properties
+	Properties *DaprInvokeHTTPRouteProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprInvokeHTTPRouteResource.
+func (d DaprInvokeHTTPRouteResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", d.Properties)
+	populate(objectMap, "systemData", d.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// DaprInvokeHTTPRoutesCreateOrUpdateOptions contains the optional parameters for the DaprInvokeHTTPRoutes.CreateOrUpdate method.
+type DaprInvokeHTTPRoutesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprInvokeHTTPRoutesDeleteOptions contains the optional parameters for the DaprInvokeHTTPRoutes.Delete method.
+type DaprInvokeHTTPRoutesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprInvokeHTTPRoutesGetOptions contains the optional parameters for the DaprInvokeHTTPRoutes.Get method.
+type DaprInvokeHTTPRoutesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprInvokeHTTPRoutesListBySubscriptionOptions contains the optional parameters for the DaprInvokeHTTPRoutes.ListBySubscription method.
+type DaprInvokeHTTPRoutesListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprInvokeHTTPRoutesListOptions contains the optional parameters for the DaprInvokeHTTPRoutes.List method.
+type DaprInvokeHTTPRoutesListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // DaprSecretStoreList - Object that includes an array of DaprSecretStore and a possible link for next set
 type DaprSecretStoreList struct {
 	// The link used to fetch the next page of DaprSecretStore list.
