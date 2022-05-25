@@ -1,14 +1,6 @@
 # This is an example of configuration file.
 environment:
   name: Standalone
-  roleLocation:
-identity:
-  clientId:
-  instance:
-  tenantId:
-  armEndpoint:
-  audience:
-  pemCertPath:
 storageProvider:
   # Kubernetes APIServer store. 
   # This supports two modes:
@@ -20,15 +12,6 @@ storageProvider:
     incluster: false 
     context: ''
     namespace: 'default'
-server:
-  host:
-  port:
-  authType:
-  enableArmAuth:
-  armMetadataEndpoint:
 metricsProvider:
   prometheus:
     endpoint: "/metrics"
-featureFlags:
-  - "PLACEHOLDER"
-  
