@@ -12,7 +12,7 @@ import (
 
 // ProviderConfig includes the resource provider configuration.
 type ProviderConfig struct {
-	CloudEnv        CloudEnvironmentOptions             `yaml:"cloudEnvironment"`
+	Env             EnvironmentOptions                  `yaml:"environment"`
 	Identity        IdentityOptions                     `yaml:"identity"`
 	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
 	Server          *ServerOptions                      `yaml:"server,omitempty"`
