@@ -20,7 +20,7 @@ import (
 func Test_Gateway(t *testing.T) {
 	template := "testdata/kubernetes-resources-gateway.bicep"
 	application := "kubernetes-resources-gateway"
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			RadiusResources: &validation.ResourceSet{

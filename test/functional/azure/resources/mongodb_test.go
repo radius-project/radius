@@ -27,7 +27,7 @@ func Test_MongoDB(t *testing.T) {
 	application := "azure-resources-mongodb"
 	template := "testdata/azure-resources-mongodb.bicep"
 
-	test := azure.NewApplicationTest(t, application, []azure.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
@@ -87,7 +87,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 	application := "azure-resources-mongodb-user-secrets"
 	template := "testdata/azure-resources-mongodb-user-secrets.bicep"
 
-	test := azure.NewApplicationTest(t, application, []azure.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{

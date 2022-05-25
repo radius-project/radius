@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-type Step struct {
+type TestStep struct {
 	Executor               executor.StepExecutor
 	AzureResources         *validation.AzureResourceSet
 	RadiusResources        *validation.ResourceSet
@@ -29,15 +29,15 @@ type Step struct {
 }
 
 type ApplicationTest struct {
-	Options          Options
+	Options          TestOptions
 	Application      string
 	Description      string
 	SkipDeletion     bool
-	Steps            []Step
+	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
 }
 
-func NewApplicationTest(t *testing.T, application string, steps []Step) ApplicationTest {
+func NewApplicationTest(t *testing.T, application string, steps []TestStep) ApplicationTest {
 	return ApplicationTest{
 		Options:     NewTestOptions(t),
 		Application: application,

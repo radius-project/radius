@@ -24,7 +24,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 	application := "azure-resources-dapr-pubsub-generic"
 	template := "testdata/azure-resources-dapr-pubsub-generic.bicep"
 
-	test := azure.NewApplicationTest(t, application, []azure.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
 			Executor:           executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources:     &validation.AzureResourceSet{},

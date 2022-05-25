@@ -20,7 +20,7 @@ import (
 func Test_ContainerHttpBinding(t *testing.T) {
 	template := "testdata/kubernetes-resources-container-httpbinding.bicep"
 	application := "kubernetes-resources-container-httpbinding"
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			RadiusResources: &validation.ResourceSet{
@@ -63,7 +63,7 @@ func Test_ContainerManualScale(t *testing.T) {
 
 	template := "testdata/kubernetes-resources-container-manualscale.bicep"
 	application := "kubernetes-resources-container-manualscale"
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			RadiusResources: &validation.ResourceSet{

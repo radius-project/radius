@@ -22,7 +22,7 @@ func TestRedis(t *testing.T) {
 	template := "testdata/kubernetes-resources-redis/kubernetes-resources-redis.bicep"
 	application := "kubernetes-resources-redis"
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

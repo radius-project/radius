@@ -22,7 +22,7 @@ func Test_DaprStateStore_Generic(t *testing.T) {
 	template := "testdata/kubernetes-resources-daprstatestore-generic.bicep"
 	application := "kubernetes-resources-daprstatestore-generic"
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

@@ -18,7 +18,7 @@ func TestK8sModule(t *testing.T) {
 	template := "testdata/kubernetes-module/main.bicep"
 	application := "kubernetes-module"
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

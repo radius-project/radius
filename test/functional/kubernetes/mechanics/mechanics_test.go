@@ -32,7 +32,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 	application := "kubernetes-mechanics-redeploy-withanotherresource"
 	templateFmt := "testdata/kubernetes-mechanics-redeploy-withanotherresource.step%d.bicep"
 
-	test := ktest.NewApplicationTest(t, application, []ktest.Step{
+	test := ktest.NewApplicationTest(t, application, []ktest.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
@@ -95,7 +95,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	application := "kubernetes-mechanics-redeploy-withupdatedresource"
 	templateFmt := "testdata/kubernetes-mechanics-redeploy-withupdatedresource.step%d.bicep"
 
-	test := ktest.NewApplicationTest(t, application, []ktest.Step{
+	test := ktest.NewApplicationTest(t, application, []ktest.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
@@ -162,7 +162,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 	application := "kubernetes-mechanics-redeploy-withtwoseparateresource"
 	templateFmt := "testdata/kubernetes-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
 
-	test := ktest.NewApplicationTest(t, application, []ktest.Step{
+	test := ktest.NewApplicationTest(t, application, []ktest.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

@@ -26,7 +26,7 @@ func Test_AzureConnections(t *testing.T) {
 	containerResourceName := "db-service"
 	template := "testdata/azure-connection-database-service.bicep"
 
-	test := azure.NewApplicationTest(t, applicationName, []azure.Step{
+	test := azure.NewApplicationTest(t, applicationName, []azure.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{

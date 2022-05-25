@@ -24,7 +24,7 @@ func TestMongo(t *testing.T) {
 	template := "testdata/kubernetes-resources-mongo/kubernetes-resources-mongo.bicep"
 	application := "kubernetes-resources-mongo"
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

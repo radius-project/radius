@@ -22,7 +22,7 @@ func Test_DaprPubSub_Generic(t *testing.T) {
 	template := "testdata/kubernetes-resources-daprpubsub-generic.bicep"
 	application := "kubernetes-resources-daprpubsub-generic"
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

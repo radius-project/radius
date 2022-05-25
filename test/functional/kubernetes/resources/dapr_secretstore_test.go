@@ -22,7 +22,7 @@ func Test_DaprSecretStore_Generic(t *testing.T) {
 	template := "testdata/kubernetes-resources-daprsecretstore-generic.bicep"
 	application := "kubernetes-resources-daprsecretstore-generic"
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

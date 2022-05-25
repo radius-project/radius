@@ -34,7 +34,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	parameterFile := "testdata/kubernetes-cli-parameters.parameters.json"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag()),
 			RadiusResources: &validation.ResourceSet{
@@ -79,7 +79,7 @@ func Test_CLI(t *testing.T) {
 	application := "kubernetes-cli"
 	template := "testdata/kubernetes-cli.bicep"
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

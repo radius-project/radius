@@ -22,7 +22,7 @@ import (
 func TestK8sExtension(t *testing.T) {
 	template := "testdata/k8s-extension/connection-string.bicep"
 	application := "k8s-extension"
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor:           executor.NewDeployStepExecutor(template),
 			RadiusResources:    &validation.ResourceSet{},

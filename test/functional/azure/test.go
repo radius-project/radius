@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/test"
 )
 
-func NewTestOptions(t *testing.T) Options {
+func NewTestOptions(t *testing.T) TestOptions {
 
 	auth, err := armauth.GetArmAuthorizer()
 	require.NoError(t, err, "failed to authenticate with azure")
@@ -43,7 +43,7 @@ func NewTestOptions(t *testing.T) Options {
 	radiusBaseURL, radiusRoundTripper, err := kubernetes.GetBaseUrlAndRoundTripper(az.APIServerBaseURL, "api.radius.dev", az.Context)
 	require.NoError(t, err, "failed to create API Server round-tripper")
 
-	return Options{
+	return TestOptions{
 		TestOptions:      test.NewTestOptions(t),
 		ARMAuthorizer:    auth,
 		ARMConnection:    arm.NewDefaultConnection(azcred, nil),
@@ -54,7 +54,7 @@ func NewTestOptions(t *testing.T) Options {
 	}
 }
 
-type Options struct {
+type TestOptions struct {
 	test.TestOptions
 	ARMAuthorizer    autorest.Authorizer
 	ARMConnection    *arm.Connection

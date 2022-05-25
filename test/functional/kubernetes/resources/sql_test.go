@@ -24,7 +24,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 	application := "kubernetes-resources-sql"
 	template := "testdata/kubernetes-resources-sql.bicep"
 
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

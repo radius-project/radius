@@ -34,7 +34,7 @@ const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 )
 
-type Step struct {
+type TestStep struct {
 	Executor               executor.StepExecutor
 	RadiusResources        *validation.ResourceSet
 	K8sOutputResources     []unstructured.Unstructured
@@ -44,27 +44,22 @@ type Step struct {
 	SkipResourceValidation bool
 }
 
-type StepExecutor interface {
-	GetDescription() string
-	Execute(ctx context.Context, t *testing.T, options K8sTestOptions)
-}
-
 type ApplicationTest struct {
-	Options          K8sTestOptions
+	Options          TestOptions
 	Application      string
 	Description      string
 	InitialResources []unstructured.Unstructured
-	Steps            []Step
+	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
 }
 
-type K8sTestOptions struct {
+type TestOptions struct {
 	test.TestOptions
 	DiscoveryClient discovery.DiscoveryInterface
 }
 
-func NewTestOptions(t *testing.T) K8sTestOptions {
-	return K8sTestOptions{TestOptions: test.NewTestOptions(t)}
+func NewTestOptions(t *testing.T) TestOptions {
+	return TestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
 func (at ApplicationTest) CollectAllNamespaces() []string {
@@ -85,7 +80,7 @@ func (at ApplicationTest) CollectAllNamespaces() []string {
 	return results
 }
 
-func NewApplicationTest(t *testing.T, application string, steps []Step, initialResources ...unstructured.Unstructured) ApplicationTest {
+func NewApplicationTest(t *testing.T, application string, steps []TestStep, initialResources ...unstructured.Unstructured) ApplicationTest {
 	return ApplicationTest{
 		Options:          NewTestOptions(t),
 		Application:      application,

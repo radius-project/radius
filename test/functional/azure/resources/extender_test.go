@@ -24,7 +24,7 @@ func Test_ExtenderResource(t *testing.T) {
 	application := "azure-resources-extender"
 	template := "testdata/azure-resources-extender.bicep"
 
-	test := azure.NewApplicationTest(t, application, []azure.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
 			Executor:       executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{},

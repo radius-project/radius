@@ -33,7 +33,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	application := "azure-resources-container-httproute"
 	template := "testdata/azure-resources-container-httproute.bicep"
 
-	test := azure.NewApplicationTest(t, application, []azure.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
 			Executor:       executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{},
@@ -106,7 +106,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 func Test_ContainerGateway(t *testing.T) {
 	application := "azure-resources-container-httproute-gateway"
 	template := "testdata/azure-resources-container-httproute-gateway.bicep"
-	test := azure.NewApplicationTest(t, application, []azure.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
@@ -181,7 +181,7 @@ func Test_ContainerGateway(t *testing.T) {
 func Test_ContainerManualScale(t *testing.T) {
 	application := "azure-resources-container-manualscale"
 	template := "testdata/azure-resources-container-manualscale.bicep"
-	test := azure.NewApplicationTest(t, application, []azure.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
@@ -235,7 +235,7 @@ func Test_ContainerManualScale(t *testing.T) {
 func Test_ContainerReadinessLiveness(t *testing.T) {
 	application := "azure-resources-container-readiness-liveness"
 	template := "testdata/azure-resources-container-readiness-liveness.bicep"
-	test := azure.NewApplicationTest(t, application, []azure.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
