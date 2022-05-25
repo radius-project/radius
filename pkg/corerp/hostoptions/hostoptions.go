@@ -8,6 +8,7 @@
 package hostoptions
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -48,9 +49,12 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 	}
 
 	conf := &ProviderConfig{}
-	err = yaml.Unmarshal(buf, conf)
+	decoder := yaml.NewDecoder(bytes.NewBuffer(buf))
+	decoder.KnownFields(true)
+
+	err = decoder.Decode(conf)
 	if err != nil {
-		return nil, fmt.Errorf("fails to load yaml: %w", err)
+		return nil, fmt.Errorf("failed to load yaml: %w", err)
 	}
 
 	// TODO: improve the way to override the configration via env var.
