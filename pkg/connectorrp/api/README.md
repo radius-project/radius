@@ -38,6 +38,7 @@ input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprSecretStores.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/sqlDatabases.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/redisCaches.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
 ```
 
 ### Common
