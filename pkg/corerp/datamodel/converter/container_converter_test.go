@@ -42,7 +42,7 @@ func TestContainerDataModelToVersioned(t *testing.T) {
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
-			dm := &datamodel.Container{}
+			dm := &datamodel.ContainerResource{}
 			_ = json.Unmarshal(c, dm)
 			am, err := ContainerDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {

@@ -26,7 +26,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	ct := dm.(*datamodel.Container)
+	ct := dm.(*datamodel.ContainerResource)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0", ct.ID)
 	require.Equal(t, "container0", ct.Name)
 	require.Equal(t, "Applications.Core/containers", ct.Type)
@@ -37,7 +37,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	// arrange
 	rawPayload := loadTestData("containerresourcedatamodel.json")
-	r := &datamodel.Container{}
+	r := &datamodel.ContainerResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
 

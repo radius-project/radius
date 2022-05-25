@@ -16,7 +16,7 @@ import (
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
 func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-	converted := &datamodel.Container{
+	converted := &datamodel.ContainerResource{
 		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
@@ -37,20 +37,20 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Container resource.
 func (dst *ContainerResource) ConvertFrom(src api.DataModelInterface) error {
-	route, ok := src.(*datamodel.Container)
+	c, ok := src.(*datamodel.ContainerResource)
 	if !ok {
 		return api.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(route.ID)
-	dst.Name = to.StringPtr(route.Name)
-	dst.Type = to.StringPtr(route.Type)
-	dst.SystemData = fromSystemDataModel(route.SystemData)
-	dst.Location = to.StringPtr(route.Location)
-	dst.Tags = *to.StringMapPtr(route.Tags)
+	dst.ID = to.StringPtr(c.ID)
+	dst.Name = to.StringPtr(c.Name)
+	dst.Type = to.StringPtr(c.Type)
+	dst.SystemData = fromSystemDataModel(c.SystemData)
+	dst.Location = to.StringPtr(c.Location)
+	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
-		ProvisioningState: fromProvisioningStateDataModel(route.Properties.ProvisioningState),
-		Application:       to.StringPtr(route.Properties.Application),
+		ProvisioningState: fromProvisioningStateDataModel(c.Properties.ProvisioningState),
+		Application:       to.StringPtr(c.Properties.Application),
 	}
 
 	return nil

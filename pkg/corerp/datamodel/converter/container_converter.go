@@ -15,7 +15,7 @@ import (
 )
 
 // ContainerDataModelToVersioned converts version agnostic Container datamodel to versioned model.
-func ContainerDataModelToVersioned(model *datamodel.Container, version string) (api.VersionedModelInterface, error) {
+func ContainerDataModelToVersioned(model *datamodel.ContainerResource, version string) (api.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.ContainerResource{}
@@ -28,7 +28,7 @@ func ContainerDataModelToVersioned(model *datamodel.Container, version string) (
 }
 
 // ContainerDataModelFromVersioned converts versioned Container model to datamodel.
-func ContainerDataModelFromVersioned(content []byte, version string) (*datamodel.Container, error) {
+func ContainerDataModelFromVersioned(content []byte, version string) (*datamodel.ContainerResource, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		am := &v20220315privatepreview.ContainerResource{}
@@ -36,7 +36,7 @@ func ContainerDataModelFromVersioned(content []byte, version string) (*datamodel
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
-		return dm.(*datamodel.Container), err
+		return dm.(*datamodel.ContainerResource), err
 
 	default:
 		return nil, basedatamodel.ErrUnsupportedAPIVersion

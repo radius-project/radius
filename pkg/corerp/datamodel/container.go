@@ -10,8 +10,8 @@ import (
 	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
-// Container represents Container resource.
-type Container struct {
+// ContainerResource represents Container resource.
+type ContainerResource struct {
 	basedatamodel.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
@@ -24,7 +24,7 @@ type Container struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (c Container) ResourceTypeName() string {
+func (c ContainerResource) ResourceTypeName() string {
 	return "Applications.Core/containers"
 }
 
@@ -33,7 +33,7 @@ type ContainerProperties struct {
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Application       string                           `json:"application,omitempty"`
 	Connections       map[string]ConnectionProperties  `json:"connections,omitempty"`
-	Container         *Container                       `json:"container,omitempty"`
+	Container         Container                        `json:"container,omitempty"`
 	Extensions        []ExtensionClassification        `json:"extensions,omitempty"`
 }
 
@@ -42,6 +42,56 @@ type ConnectionProperties struct {
 	Source                string        `json:"source,omitempty"`
 	DisableDefaultEnvVars bool          `json:"disableDefaultEnvVars,omitempty"`
 	Iam                   IamProperties `json:"iam,omitempty"`
+}
+
+// Container - Definition of a container.
+type Container struct {
+	Image          *string                             `json:"image,omitempty"`
+	Env            map[string]*string                  `json:"env,omitempty"`
+	LivenessProbe  HealthProbePropertiesClassification `json:"livenessProbe,omitempty"`
+	Ports          map[string]ContainerPort            `json:"ports,omitempty"`
+	ReadinessProbe HealthProbePropertiesClassification `json:"readinessProbe,omitempty"`
+	Volumes        map[string]VolumeClassification     `json:"volumes,omitempty"`
+}
+
+// ContainerPort - Specifies a listening port for the container
+type ContainerPort struct {
+	ContainerPort int32    `json:"containerPort,omitempty"`
+	Protocol      Protocol `json:"protocol,omitempty"`
+	Provides      string   `json:"provides,omitempty"`
+}
+
+// Protocol - Protocol in use by the port
+type Protocol string
+
+const (
+	ProtocolGrpc Protocol = "grpc"
+	ProtocolHTTP Protocol = "http"
+	ProtocolTCP  Protocol = "TCP"
+	ProtocolUDP  Protocol = "UDP"
+)
+
+// VolumeClassification provides polymorphic access to related types.
+type VolumeClassification interface {
+	GetVolume() Volume
+}
+
+// Volume - Specifies a volume for a container
+type Volume struct {
+	Kind      string `json:"kind,omitempty"`
+	MountPath string `json:"mountPath,omitempty"`
+}
+
+type HealthProbePropertiesClassification interface {
+	GetHealthProbeProperties() *HealthProbeProperties
+}
+
+// HealthProbeProperties - Properties for readiness/liveness probe
+type HealthProbeProperties struct {
+	Kind                *string  `json:"kind,omitempty"`
+	FailureThreshold    *float32 `json:"failureThreshold,omitempty"`
+	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       *float32 `json:"periodSeconds,omitempty"`
 }
 
 // ExtensionClassification provides polymorphic access to related types.
