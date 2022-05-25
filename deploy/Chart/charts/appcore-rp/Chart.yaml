@@ -1,6 +1,6 @@
 apiVersion: v2
 name: appcore-rp
-description: Universal Control Plane
+description: Applications.Core Radius service
 type: application
 # We automate versioning of the chart during publishing.
 # The value here is only used for a dev build.

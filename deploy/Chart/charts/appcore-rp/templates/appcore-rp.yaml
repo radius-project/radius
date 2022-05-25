@@ -20,7 +20,9 @@ spec:
     spec:
       serviceAccountName: appcore-rp
       containers:
-      - image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
+      - args:
+        - --config-file=/etc/config/radius-standalone.yaml
+        image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         env:
         - name: DEFAULT_PLANES_CONFIG
           value: /etc/config/appcore-rp-config.json
@@ -30,6 +32,8 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '5443'
+        - name: RADIUS_ENV
+          value: 'standalone'
         name: appcore-rp
         ports:
         - containerPort: 5443
@@ -38,6 +42,8 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
         - name: cert
           mountPath: '/var/tls/cert'
           readOnly: true
@@ -47,6 +53,11 @@ spec:
         - name: cert
           secret:
             secretName: appcore-rp-cert
+        - name: config-volume
+          configMap:
+            # Provide the name of the ConfigMap containing the files you want
+            # to add to the container
+            name: radius-config
 ---
 apiVersion: v1
 kind: Service
@@ -61,3 +72,16 @@ spec:
       targetPort: 5443
   selector:
     control-plane: appcore-rp
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: radius-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: "{{ .Release.Service }}"
+    release: "{{ .Release.Name }}"
+data:
+  radius-standalone.yaml: |-
+{{ .Files.Get "radius-standalone.yaml" | indent 4}}
