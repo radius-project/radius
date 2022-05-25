@@ -163,10 +163,9 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 
 func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
 	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
-		planeBytes, _ := json.Marshal(testPlane)
 		data := store.Object{
 			Metadata: store.Metadata{},
-			Data:     planeBytes,
+			Data:     testPlane,
 		}
 		return &data, nil
 	})
@@ -176,7 +175,7 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
-	assert.Equal(t, "http://"+"localhost:9000"+testPlaneID+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
+	assert.Equal(t, "http://"+proxyRequest.Host+testPlaneID+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
 	proxyRequestResponseBody, err := ioutil.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)

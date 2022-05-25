@@ -14,9 +14,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +30,7 @@ func TestGetOperationStatusRun(t *testing.T) {
 	ctx := context.Background()
 
 	rawDataModel := radiustesting.ReadFixture("operationstatus_datamodel.json")
-	osDataModel := &datamodel.AsyncOperationStatus{}
+	osDataModel := &asyncoperation.AsyncOperationStatus{}
 	_ = json.Unmarshal(rawDataModel, osDataModel)
 
 	rawExpectedOutput := radiustesting.ReadFixture("operationstatus_output.json")

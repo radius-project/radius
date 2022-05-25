@@ -7,7 +7,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"net/http"
 
@@ -29,15 +28,18 @@ type ServerOptions struct {
 	Address       string
 	PathBase      string
 	EnableArmAuth bool
-	Configure     func(*mux.Router)
+	Configure     func(*mux.Router) error
 	ArmCertMgr    *authentication.ArmCertManager
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
-func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig mp.MetricsOptions) *http.Server {
+func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig mp.MetricsOptions) (*http.Server, error) {
 	r := mux.NewRouter()
 	if options.Configure != nil {
-		options.Configure(r)
+		err := options.Configure(r)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	r.Use(middleware.Recoverer)
@@ -48,8 +50,8 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 	}
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
 
-	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(versionAPIName)
-	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(reportVersion).Name(healthzAPIName)
+	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
+	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
 
 	//setup metrics handler
 	metricsProvider, _ := mp.NewPrometheusMetricsClient()
@@ -65,18 +67,5 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 		},
 	}
 
-	return server
-}
-
-func reportVersion(w http.ResponseWriter, req *http.Request) {
-	info := version.NewVersionInfo()
-
-	b, err := json.MarshalIndent(&info, "", "  ")
-
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	w.Header().Add("Content-Type", "application/json")
-	_, _ = w.Write(b)
+	return server, nil
 }

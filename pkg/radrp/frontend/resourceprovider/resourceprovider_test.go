@@ -319,7 +319,7 @@ func Test_AllEndpoints_AllEndpoints_ReadonlyEndpoints_HandleDBNotFound(t *testin
 			response, err := testcase.invoke(test.rp, ctx, testcase.id)
 			require.NoError(t, err)
 
-			require.Equal(t, rest.NewNotFoundResponse(testcase.id), response)
+			require.Equal(t, rest.NewLegacyNotFoundResponse(testcase.id), response)
 		})
 	}
 }

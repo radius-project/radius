@@ -12,6 +12,11 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Connector/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
 
+## Function listSecrets (Applications.Connector/mongoDatabases@2022-03-15-privatepreview)
+* **Resource**: Applications.Connector/mongoDatabases
+* **ApiVersion**: 2022-03-15-privatepreview
+* **Output**: [MongoDatabaseSecrets](#mongodatabasesecrets)
+
 ## MongoDatabaseProperties
 ### Properties
 * **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
@@ -20,10 +25,10 @@
 * **port**: int: Port value of the target Mongo database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this connector
-* **secrets**: [MongoDatabasePropertiesSecrets](#mongodatabasepropertiessecrets): Secrets values provided for the resource
+* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
-## MongoDatabasePropertiesSecrets
+## MongoDatabaseSecrets
 ### Properties
 * **connectionString**: string: Connection string used to connect to the target Mongo database
 * **password**: string: Password to use when connecting to the target Mongo database
@@ -46,4 +51,10 @@
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: string
+
+## MongoDatabaseSecrets
+### Properties
+* **connectionString**: string: Connection string used to connect to the target Mongo database
+* **password**: string: Password to use when connecting to the target Mongo database
+* **username**: string: Username to use when connecting to the target Mongo database
 

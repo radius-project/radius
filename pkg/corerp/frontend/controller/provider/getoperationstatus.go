@@ -10,12 +10,12 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.ControllerInterface = (*GetOperationStatus)(nil)
@@ -42,8 +42,8 @@ func (e *GetOperationStatus) Run(ctx context.Context, req *http.Request) (rest.R
 
 	// TODO: Add additional validation
 
-	os := &datamodel.AsyncOperationStatus{}
-	_, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, os)
+	os := &asyncoperation.AsyncOperationStatus{}
+	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), os)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}

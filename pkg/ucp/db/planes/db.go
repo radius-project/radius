@@ -6,7 +6,6 @@ package planes
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -15,19 +14,18 @@ import (
 
 // Used to get all the matching "Scopes", such as planes, planes of a specific type , resourceGroups ...
 func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (rest.PlaneList, error) {
-	listOfPlanes := rest.PlaneList{
-		Value: []rest.Plane{},
-	}
-	resp, err := db.Query(ctx, query)
+	result, err := db.Query(ctx, query)
 	if err != nil {
-		return listOfPlanes, err
+		return rest.PlaneList{}, err
 	}
-	if len(resp) > 0 {
-		for _, item := range resp {
+
+	listOfPlanes := rest.PlaneList{}
+	if len(result.Items) > 0 {
+		for _, item := range result.Items {
 			var plane rest.Plane
-			err = json.Unmarshal(item.Data, &plane)
+			err = item.As(&plane)
 			if err != nil {
-				return listOfPlanes, err
+				return rest.PlaneList{}, err
 			}
 			listOfPlanes.Value = append(listOfPlanes.Value, plane)
 		}
@@ -37,12 +35,13 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 
 func GetByID(ctx context.Context, db store.StorageClient, ID resources.ID) (rest.Plane, error) {
 	var plane rest.Plane
-	resp, err := db.Get(ctx, ID)
+	resp, err := db.Get(ctx, ID.String())
 	if err != nil {
 		return plane, err
 	}
+
 	if resp != nil {
-		err = json.Unmarshal(resp.Data, &plane)
+		err = resp.As(&plane)
 	}
 	return plane, err
 }
@@ -54,12 +53,8 @@ func Save(ctx context.Context, db store.StorageClient, plane rest.Plane) (rest.P
 	o.Metadata.ContentType = "application/json"
 	id := resources.UCPPrefix + plane.ID
 	o.Metadata.ID = id
-	bytes, err := json.Marshal(plane)
-	if err != nil {
-		return rest.Plane{}, err
-	}
-	o.Data = bytes
-	err = db.Save(ctx, &o)
+	o.Data = &plane
+	err := db.Save(ctx, &o)
 	if err == nil {
 		storedPlane = plane
 	}
@@ -67,6 +62,6 @@ func Save(ctx context.Context, db store.StorageClient, plane rest.Plane) (rest.P
 }
 
 func DeleteByID(ctx context.Context, db store.StorageClient, ID resources.ID) error {
-	err := db.Delete(ctx, ID)
+	err := db.Delete(ctx, ID.String())
 	return err
 }

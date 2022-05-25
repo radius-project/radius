@@ -6,7 +6,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -15,12 +14,12 @@ import (
 
 func GetByID(ctx context.Context, db store.StorageClient, ID resources.ID) (rest.ResourceGroup, error) {
 	var rg rest.ResourceGroup
-	resp, err := db.Get(ctx, ID)
+	resp, err := db.Get(ctx, ID.String())
 	if err != nil {
 		return rg, err
 	}
 	if resp != nil {
-		err = json.Unmarshal(resp.Data, &rg)
+		err = resp.As(&rg)
 	}
 	return rg, err
 }
@@ -32,12 +31,8 @@ func Save(ctx context.Context, db store.StorageClient, rg rest.ResourceGroup) (r
 	o.Metadata.ContentType = "application/json"
 	id := resources.UCPPrefix + rg.ID
 	o.Metadata.ID = id
-	bytes, err := json.Marshal(rg)
-	if err != nil {
-		return rest.ResourceGroup{}, err
-	}
-	o.Data = bytes
-	err = db.Save(ctx, &o)
+	o.Data = &rg
+	err := db.Save(ctx, &o)
 	if err == nil {
 		storedResourceGroup = rg
 	}
@@ -45,17 +40,16 @@ func Save(ctx context.Context, db store.StorageClient, rg rest.ResourceGroup) (r
 }
 
 func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (rest.ResourceGroupList, error) {
-	listOfResourceGroups := rest.ResourceGroupList{
-		Value: []rest.ResourceGroup{},
-	}
-	resp, err := db.Query(ctx, query)
+	result, err := db.Query(ctx, query)
 	if err != nil {
-		return listOfResourceGroups, err
+		return rest.ResourceGroupList{}, err
 	}
-	if len(resp) > 0 {
-		for _, item := range resp {
+
+	listOfResourceGroups := rest.ResourceGroupList{}
+	if len(result.Items) > 0 {
+		for _, item := range result.Items {
 			var rg rest.ResourceGroup
-			err = json.Unmarshal(item.Data, &rg)
+			err = item.As(&rg)
 			if err != nil {
 				return listOfResourceGroups, err
 			}
@@ -66,6 +60,6 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 }
 
 func DeleteByID(ctx context.Context, db store.StorageClient, ID resources.ID) error {
-	err := db.Delete(ctx, ID)
+	err := db.Delete(ctx, ID.String())
 	return err
 }

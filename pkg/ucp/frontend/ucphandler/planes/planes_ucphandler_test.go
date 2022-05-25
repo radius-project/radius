@@ -5,7 +5,6 @@
 package planes
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -52,7 +51,7 @@ func Test_CreatePlane(t *testing.T) {
 	o.Metadata.ContentType = "application/json"
 	id := resources.UCPPrefix + plane.ID
 	o.Metadata.ID = id
-	o.Data, _ = json.Marshal(plane)
+	o.Data = &plane
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
 	mockStorageClient.EXPECT().Save(gomock.Any(), &o)
@@ -72,15 +71,13 @@ func Test_ListPlane(t *testing.T) {
 	query.ScopeRecursive = true
 	query.IsScopeQuery = true
 
-	expectedPlaneList := rest.PlaneList{
-		Value: []rest.Plane{},
-	}
+	expectedPlaneList := rest.PlaneList{}
 	expectedResponse := rest.NewOKResponse(expectedPlaneList)
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
-	mockStorageClient.EXPECT().Query(gomock.Any(), query)
+	mockStorageClient.EXPECT().Query(gomock.Any(), query).Return(&store.ObjectQueryResult{}, nil)
 	actualResponse, err := testHandler.List(ctx, mockStorageClient, path)
 	assert.Equal(t, nil, err)
 	assert.DeepEqual(t, expectedResponse, actualResponse)
