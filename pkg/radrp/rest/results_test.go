@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test"
 )
 
 func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T) {
@@ -493,13 +493,10 @@ func Test_AggregateApplicationProvisioningState_NotProvisionedAndProvisionedIsPr
 func Test_OKResponse_Empty(t *testing.T) {
 	response := NewOKResponse(nil)
 
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
-
 	req := httptest.NewRequest("GET", "http://example.com", nil)
 	w := httptest.NewRecorder()
 
-	err := response.Apply(ctx, w, req)
+	err := response.Apply(context.TODO(), w, req)
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, w.Code)
@@ -513,13 +510,10 @@ func Test_OKResponse_WithBody(t *testing.T) {
 	}
 	response := NewOKResponse(payload)
 
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
-
 	req := httptest.NewRequest("GET", "http://example.com", nil)
 	w := httptest.NewRecorder()
 
-	err := response.Apply(ctx, w, req)
+	err := response.Apply(context.TODO(), w, req)
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, w.Code)
