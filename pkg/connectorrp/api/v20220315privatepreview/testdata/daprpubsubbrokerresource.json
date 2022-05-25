@@ -7,14 +7,18 @@
             "outputResources": [{
               "LocalID": "Deployment",
               "ResourceType": {
-                "Type": "azure.cosmosdb.mongo",
-                "Provider": "azure"
+                "Type": "DaprPubSubProvider",
+                "Provider": "kubernetes"
               }
             }]
         },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue",
-        "kind": "pubsub.azure.servicebus"
+        "kind": "generic",
+        "type": "pubsub.kafka",
+        "version": "v1",
+        "metadata": {
+            "foo": "bar"
+        }
     }
 }

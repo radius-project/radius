@@ -3,6 +3,6 @@
     "name": "daprPubSub0",
     "type": "Applications.Connector/daprPubSubBrokers",
     "properties": {
-        "resource": 12345
+        "kind": 12345
     }
 }
