@@ -31,4 +31,5 @@ const (
 type DataStorageProvider interface {
 	// GetStorageClient creates or gets storage client.
 	GetStorageClient(context.Context, string) (store.StorageClient, error)
+	GetStorageClientFromEnv(context.Context, string) (store.StorageClient, error)
 }

@@ -12,17 +12,17 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/middleware"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler/planes"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/store/etcdstore"
-	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 const (
@@ -59,21 +59,37 @@ func (s *Service) Name() string {
 
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
-	if s.options.DBClient == nil {
-		// Initialize the storage client once the storage service has started
-		obj, err := s.options.ClientConfigSource.Get(ctx)
+
+	// Initialize the storage client based on environment once the storage service has started. development env
+	// uses etcd, while kubernetes production clusters use apiserver.
+	env := os.Getenv("HOSTING_PLATFORM")
+	var opts dataprovider.StorageProviderOptions
+	var storageClient store.StorageClient
+	var err error
+	if env == "kubernetes" {
+
+		storageProvider := dataprovider.NewStorageProvider(opts)
+		storageClient, err = storageProvider.GetStorageClientFromEnv(ctx, "etcd")
+
 		if err != nil {
 			return nil, err
 		}
 
-		clientconfig := obj.(*etcdclient.Config)
-		client, err := etcdclient.New(*clientconfig)
+	} else {
+
+		opts.ETCD.InMemory = true
+		opts.ETCD.Client = s.options.ClientConfigSource
+		storageProvider := dataprovider.NewStorageProvider(opts)
+		storageClient, err = storageProvider.GetStorageClientFromEnv(ctx, "etcd")
+
 		if err != nil {
 			return nil, err
 		}
-		etcdClient := etcdstore.NewETCDClient(client)
-		s.options.DBClient = etcdClient
+
 	}
+
+	s.options.DBClient = storageClient
+
 	Register(r, s.options.DBClient, s.options.UcpHandler)
 	if s.options.Configure != nil {
 		s.options.Configure(r)

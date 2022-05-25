@@ -74,6 +74,43 @@ func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType str
 	return c, err
 }
 
+func (p *storageProvider) GetStorageClientFromEnv(ctx context.Context, resourceType string) (store.StorageClient, error) {
+	cn := normalizeResourceType(resourceType)
+
+	p.clientsMu.RLock()
+	c, ok := p.clients[cn]
+	p.clientsMu.RUnlock()
+	if ok {
+		return c, nil
+	}
+
+	var err error
+	if fn, ok := storageClientFactory[StorageProviderType(cn)]; ok {
+		// This write lock ensure that storage init function executes one by one and write client
+		// to map safely.
+		// CosmosDBStorageClient Init() calls database and collection creation control plane APIs.
+		// Ideally, such control plane APIs must be idempotent, but we could see unexpected failures
+		// by calling control plane API concurrently. Even if such issue rarely happens during release
+		// time, it could make the short-term downtime of the service.
+		// We expect that GetStorageClient() will be called during the start time. Thus, having a lock won't
+		// hurt any runtime performance.
+		p.clientsMu.Lock()
+		defer p.clientsMu.Unlock()
+
+		if c, ok := p.clients[cn]; ok {
+			return c, nil
+		}
+
+		if c, err = fn(ctx, p.options, cn); err == nil {
+			p.clients[cn] = c
+		}
+	} else {
+		err = ErrUnsupportedStorageProvider
+	}
+
+	return c, err
+}
+
 // normalizeResourceType converts resourcetype to safe string by removing non digit and non letter and replace '/' with '-'
 func normalizeResourceType(s string) string {
 	if s == "" {
