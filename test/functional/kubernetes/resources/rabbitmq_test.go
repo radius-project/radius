@@ -14,7 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/functional/kubernetes"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -24,7 +24,7 @@ func TestRabbitMQ(t *testing.T) {
 	template := "testdata/kubernetes-resources-rabbitmq/kubernetes-resources-rabbitmq.bicep"
 	application := "kubernetes-resources-rabbitmq"
 
-	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{

@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/functional/kubernetes"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/validation"
 )
@@ -34,7 +34,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	parameterFile := "testdata/kubernetes-cli-parameters.parameters.json"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 
-	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
 		{
 			Executor: executor.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag()),
 			RadiusResources: &validation.ResourceSet{
@@ -70,7 +70,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 }
 
 func Test_CLI(t *testing.T) {
-	options := kubernetestest.NewTestOptions(t)
+	options := kubernetes.NewTestOptions(t)
 
 	// We deploy a simple app and then run a variety of different CLI commands on it. Emphasis here
 	// is on the commands that aren't tested as part of our main flow.
@@ -79,7 +79,7 @@ func Test_CLI(t *testing.T) {
 	application := "kubernetes-cli"
 	template := "testdata/kubernetes-cli.bicep"
 
-	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
@@ -108,7 +108,7 @@ func Test_CLI(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetestest.ApplicationTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetes.ApplicationTest) {
 				// Test all management commands
 				// Delete application is implicitly tested by all application tests
 				// as it is how we cleanup.

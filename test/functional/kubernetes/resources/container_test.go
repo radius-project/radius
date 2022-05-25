@@ -13,14 +13,14 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/test/executor"
-	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/functional/kubernetes"
 	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_ContainerHttpBinding(t *testing.T) {
 	template := "testdata/kubernetes-resources-container-httpbinding.bicep"
 	application := "kubernetes-resources-container-httpbinding"
-	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			RadiusResources: &validation.ResourceSet{
@@ -63,7 +63,7 @@ func Test_ContainerManualScale(t *testing.T) {
 
 	template := "testdata/kubernetes-resources-container-manualscale.bicep"
 	application := "kubernetes-resources-container-manualscale"
-	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.Step{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			RadiusResources: &validation.ResourceSet{

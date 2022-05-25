@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/functional/kubernetes"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ func Test_CLI(t *testing.T) {
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
-	options := kubernetestest.NewTestOptions(t)
+	options := kubernetes.NewTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	t.Run("rad env status", func(t *testing.T) {
