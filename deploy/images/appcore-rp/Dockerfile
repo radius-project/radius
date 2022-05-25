@@ -1,8 +1,5 @@
 FROM mcr.microsoft.com/cbl-mariner/base/core:1.0
 
-# default environment setting
-ENV RADIUS_ENV=standalone
-
 # Install libifxaudit
 RUN wget https://packages.microsoft.com/centos/7/prod/libifxaudit-1.0-1525.x86_64.rpm && rpm -i libifxaudit-1.0-1525.x86_64.rpm
 
