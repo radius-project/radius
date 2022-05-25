@@ -24,7 +24,7 @@ func Test_DescriptiveTestName(t *testing.T) {
     template := "testdata/unique-application-name.bicep"
     test := azure.NewApplicationTest(t, application, []azure.Step{
         {
-            Executor: step.NewDeployStepExecutor(template, ""),
+            Executor: step.NewDeployExecutor(template, ""),
             Components: &validation.ComponentSet{
             // Set of components to validate
         },
