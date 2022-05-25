@@ -1,0 +1,193 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package hosting
+
+import (
+	"context"
+	"errors"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+)
+
+const TestTimeout = time.Minute * 5
+
+type testValue struct{}
+
+type testResult struct {
+	Value interface{}
+	Err   error
+}
+
+// Used to synchronize the test "workers" for our tests.
+type synchronizer struct {
+	Value *AsyncValue
+
+	WorkerCount      int
+	workersStarted   *sync.WaitGroup
+	workersCompleted *sync.WaitGroup
+
+	Done    chan error
+	results chan testResult
+}
+
+func NewSynchronizer(workerCount int) *synchronizer {
+	s := &synchronizer{
+		Value:            NewAsyncValue(),
+		WorkerCount:      workerCount,
+		workersStarted:   &sync.WaitGroup{},
+		workersCompleted: &sync.WaitGroup{},
+		results:          make(chan testResult, workerCount),
+	}
+
+	s.workersStarted.Add(workerCount)
+	s.workersCompleted.Add(workerCount)
+
+	return s
+}
+
+func (s *synchronizer) Start(ctx context.Context, t *testing.T) {
+	for i := 0; i < s.WorkerCount; i++ {
+		go func() {
+			s.workersStarted.Done()
+
+			value, err := s.Value.Get(ctx)
+			s.results <- testResult{Value: value, Err: err}
+			s.workersCompleted.Done()
+		}()
+	}
+
+	started := make(chan struct{})
+
+	go func() {
+		s.workersStarted.Wait()
+		started <- struct{}{}
+		close(started)
+	}()
+
+	select {
+	case <-started:
+		return
+	case <-ctx.Done():
+		require.Fail(t, "test timed out without completing")
+		return
+	}
+}
+
+func (s *synchronizer) WaitForWorkersCompleted(ctx context.Context, t *testing.T) <-chan testResult {
+	completed := make(chan struct{})
+
+	go func() {
+		s.workersCompleted.Wait()
+		completed <- struct{}{}
+		close(completed)
+
+		// TRICKY: this is the best place to close the results channel.
+		close(s.results)
+	}()
+
+	select {
+	case <-completed:
+		return s.results
+	case <-ctx.Done():
+		require.Fail(t, "test timed out without completing")
+		return nil
+	}
+}
+
+func Test_Get_NoBlockingWhenValueSet_Value(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
+	defer cancel()
+
+	asyncValue := NewAsyncValue()
+
+	value := &testValue{}
+	asyncValue.Put(value)
+
+	got, err := asyncValue.Get(ctx)
+	require.Equal(t, value, got)
+	require.NoError(t, err)
+}
+
+func Test_Get_NoBlockingWhenValueSet_Err(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
+	defer cancel()
+
+	asyncValue := NewAsyncValue()
+
+	err := errors.New("OH noes...")
+	asyncValue.PutErr(err)
+
+	got, goterr := asyncValue.Get(ctx)
+	require.Nil(t, got)
+	require.ErrorIs(t, err, goterr)
+}
+
+func Test_Get_BlocksUntil_ValueSet(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
+	defer cancel()
+
+	s := NewSynchronizer(10)
+	s.Start(ctx, t)
+
+	value := &testValue{}
+	s.Value.Put(value)
+
+	results := s.WaitForWorkersCompleted(ctx, t)
+
+	// Verify results
+	count := 0
+	for result := range results {
+		count++
+		require.Equal(t, testResult{Value: value}, result)
+	}
+	require.Equal(t, s.WorkerCount, count)
+}
+
+func Test_Get_BlocksUntil_ErrSet(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
+	defer cancel()
+
+	s := NewSynchronizer(10)
+	s.Start(ctx, t)
+
+	err := errors.New("OH noes...")
+	s.Value.PutErr(err)
+
+	results := s.WaitForWorkersCompleted(ctx, t)
+
+	// Verify results
+	count := 0
+	for result := range results {
+		count++
+		require.Equal(t, testResult{Err: err}, result)
+	}
+	require.Equal(t, s.WorkerCount, count)
+}
+
+func Test_Get_BlocksUntil_Canceled(t *testing.T) {
+	// We need two contexts. We want to cancel the work done by the workers.
+	workerContext, workerCancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
+	defer cancel()
+
+	s := NewSynchronizer(10)
+	s.Start(workerContext, t)
+
+	workerCancel()
+
+	results := s.WaitForWorkersCompleted(ctx, t)
+
+	// Verify results
+	count := 0
+	for result := range results {
+		count++
+		require.Error(t, result.Err) // Workers see a wrapped error, not the exact error from the context.
+	}
+	require.Equal(t, s.WorkerCount, count)
+}

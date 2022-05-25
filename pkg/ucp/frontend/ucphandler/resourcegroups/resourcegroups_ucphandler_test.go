@@ -6,7 +6,6 @@ package resourcegroups
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -14,7 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
-	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
@@ -41,7 +39,7 @@ func Test_CreateResourceGroup(t *testing.T) {
 	o.Metadata.ContentType = "application/json"
 	id := resources.UCPPrefix + resourceGroup.ID
 	o.Metadata.ID = id
-	o.Data, _ = json.Marshal(resourceGroup)
+	o.Data = &resourceGroup
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
 	mockStorageClient.EXPECT().Save(gomock.Any(), &o)
@@ -81,13 +79,14 @@ func Test_ListResourceGroups(t *testing.T) {
 		ID:   testResourceGroupID,
 		Name: testResourceGroupName,
 	}
-	bytes, err := json.Marshal(rg)
-	require.NoError(t, err)
-	mockStorageClient.EXPECT().Query(gomock.Any(), query).DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) ([]store.Object, error) {
-		return []store.Object{
-			{
-				Metadata: store.Metadata{},
-				Data:     bytes,
+
+	mockStorageClient.EXPECT().Query(gomock.Any(), query).DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+		return &store.ObjectQueryResult{
+			Items: []store.Object{
+				{
+					Metadata: store.Metadata{},
+					Data:     &rg,
+				},
 			},
 		}, nil
 	})
@@ -112,12 +111,11 @@ func Test_GetResourceGroupByID(t *testing.T) {
 		ID:   testResourceGroupID,
 		Name: testResourceGroupName,
 	}
-	bytes, err := json.Marshal(rg)
-	require.NoError(t, err)
-	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
+
+	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return &store.Object{
 			Metadata: store.Metadata{},
-			Data:     bytes,
+			Data:     &rg,
 		}, nil
 	})
 
@@ -130,7 +128,6 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	}
 	expectedResponse := rest.NewOKResponse(expectedResourceGroup)
 	assert.DeepEqual(t, expectedResponse, actualResponse)
-
 }
 
 func Test_DeleteResourceGroupByID(t *testing.T) {

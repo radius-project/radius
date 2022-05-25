@@ -32,7 +32,7 @@ func Test_ETCDClient(t *testing.T) {
 		// https://github.com/golang/go/issues/40343
 		//
 		// If you need to see the logging output while you are testing, then comment out the next line
-		// and you'll be able to see the spam from ETCd.
+		// and you'll be able to see the spam from etcd.
 		//
 		// This is caught by the race checker and will fail your pr if you do it.
 		ctx := context.Background()

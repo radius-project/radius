@@ -31,12 +31,25 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.MongoDatabase, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.MongoDatabaseResource{}
-		if err := json.Unmarshal(content, am); err != nil {
+		versioned := &v20220315privatepreview.MongoDatabaseResource{}
+		if err := json.Unmarshal(content, versioned); err != nil {
 			return nil, err
 		}
-		dm, err := am.ConvertTo()
+		dm, err := versioned.ConvertTo()
 		return dm.(*datamodel.MongoDatabase), err
+
+	default:
+		return nil, basedatamodel.ErrUnsupportedAPIVersion
+	}
+}
+
+// MongoDatabaseSecretsDataModelFromVersioned converts version agnostic MongoDatabaseSecrets datamodel to versioned model.
+func MongoDatabaseSecretsDataModelToVersioned(model *datamodel.MongoDatabaseSecrets, version string) (api.VersionedModelInterface, error) {
+	switch version {
+	case v20220315privatepreview.Version:
+		versioned := &v20220315privatepreview.MongoDatabaseSecrets{}
+		err := versioned.ConvertFrom(model)
+		return versioned, err
 
 	default:
 		return nil, basedatamodel.ErrUnsupportedAPIVersion

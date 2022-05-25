@@ -432,6 +432,159 @@ func (d *DaprPubSubGenericResourceProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// DaprSecretStoreList - Object that includes an array of DaprSecretStore and a possible link for next set
+type DaprSecretStoreList struct {
+	// The link used to fetch the next page of DaprSecretStore list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of DaprSecretStore resources
+	Value []*DaprSecretStoreResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreList.
+func (d DaprSecretStoreList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", d.NextLink)
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
+// DaprSecretStoreProperties - DaprSecretStore connector properties
+type DaprSecretStoreProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; Radius kind for Dapr Secret Store
+	Kind *DaprSecretStorePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// REQUIRED; Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+	Type *string `json:"type,omitempty"`
+
+	// REQUIRED; Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprSecretStoreProperties.
+func (d *DaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &d.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &d.Environment)
+				delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, &d.Kind)
+				delete(rawMsg, key)
+		case "metadata":
+				err = unpopulate(val, &d.Metadata)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "type":
+				err = unpopulate(val, &d.Type)
+				delete(rawMsg, key)
+		case "version":
+				err = unpopulate(val, &d.Version)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DaprSecretStoreResource - DaprSecretStore connector
+type DaprSecretStoreResource struct {
+	TrackedResource
+	// REQUIRED; DaprSecretStore connector properties
+	Properties *DaprSecretStoreProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreResource.
+func (d DaprSecretStoreResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", d.Properties)
+	populate(objectMap, "systemData", d.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprSecretStoreResource.
+func (d *DaprSecretStoreResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &d.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &d.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DaprSecretStoresCreateOrUpdateOptions contains the optional parameters for the DaprSecretStores.CreateOrUpdate method.
+type DaprSecretStoresCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresDeleteOptions contains the optional parameters for the DaprSecretStores.Delete method.
+type DaprSecretStoresDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresGetOptions contains the optional parameters for the DaprSecretStores.Get method.
+type DaprSecretStoresGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresListBySubscriptionOptions contains the optional parameters for the DaprSecretStores.ListBySubscription method.
+type DaprSecretStoresListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresListOptions contains the optional parameters for the DaprSecretStores.List method.
+type DaprSecretStoresListOptions struct {
+	// placeholder for future optional parameters
+}
+
 type DaprStateStoreAzureTableStorageResourceProperties struct {
 	DaprStateStoreProperties
 	// REQUIRED; The resource id of the Azure Storage Table the daprStateStore resource is connected to.
@@ -804,7 +957,7 @@ type MongoDatabaseProperties struct {
 	Resource *string `json:"resource,omitempty"`
 
 	// Secrets values provided for the resource
-	Secrets *MongoDatabasePropertiesSecrets `json:"secrets,omitempty"`
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -854,18 +1007,6 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MongoDatabasePropertiesSecrets - Secrets values provided for the resource
-type MongoDatabasePropertiesSecrets struct {
-	// Connection string used to connect to the target Mongo database
-	ConnectionString *string `json:"connectionString,omitempty"`
-
-	// Password to use when connecting to the target Mongo database
-	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target Mongo database
-	Username *string `json:"username,omitempty"`
-}
-
 // MongoDatabaseResource - MongoDatabse connector
 type MongoDatabaseResource struct {
 	TrackedResource
@@ -911,6 +1052,18 @@ func (m *MongoDatabaseResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
+type MongoDatabaseSecrets struct {
+	// Connection string used to connect to the target Mongo database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Mongo database
+	Password *string `json:"password,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
+}
+
 // MongoDatabasesCreateOrUpdateOptions contains the optional parameters for the MongoDatabases.CreateOrUpdate method.
 type MongoDatabasesCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -933,6 +1086,11 @@ type MongoDatabasesListBySubscriptionOptions struct {
 
 // MongoDatabasesListOptions contains the optional parameters for the MongoDatabases.List method.
 type MongoDatabasesListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// MongoDatabasesListSecretsOptions contains the optional parameters for the MongoDatabases.ListSecrets method.
+type MongoDatabasesListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 

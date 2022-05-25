@@ -57,7 +57,6 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
 	require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
-
 }
 
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
@@ -100,6 +99,58 @@ func TestMongoDatabase_ConvertFromValidation(t *testing.T) {
 
 	for _, tc := range validationTests {
 		versioned := &MongoDatabaseResource{}
+		err := versioned.ConvertFrom(tc.src)
+		require.ErrorAs(t, tc.err, &err)
+	}
+}
+
+func TestMongoDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
+	// arrange
+	rawPayload := loadTestData("mongodatabasesecrets.json")
+	versioned := &MongoDatabaseSecrets{}
+	err := json.Unmarshal(rawPayload, versioned)
+	require.NoError(t, err)
+
+	// act
+	dm, err := versioned.ConvertTo()
+
+	// assert
+	require.NoError(t, err)
+	converted := dm.(*datamodel.MongoDatabaseSecrets)
+	require.Equal(t, "test-connection-string", converted.ConnectionString)
+	require.Equal(t, "testUser", converted.Username)
+	require.Equal(t, "testPassword", converted.Password)
+}
+
+func TestMongoDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
+	// arrange
+	rawPayload := loadTestData("mongodatabasesecretsdatamodel.json")
+	secrets := &datamodel.MongoDatabaseSecrets{}
+	err := json.Unmarshal(rawPayload, secrets)
+	require.NoError(t, err)
+
+	// act
+	versionedResource := &MongoDatabaseSecrets{}
+	err = versionedResource.ConvertFrom(secrets)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "test-connection-string", secrets.ConnectionString)
+	require.Equal(t, "testUser", secrets.Username)
+	require.Equal(t, "testPassword", secrets.Password)
+}
+
+func TestMongoDatabaseSecrets_ConvertFromValidation(t *testing.T) {
+	validationTests := []struct {
+		src api.DataModelInterface
+		err error
+	}{
+		{&fakeResource{}, api.ErrInvalidModelConversion},
+		{nil, api.ErrInvalidModelConversion},
+	}
+
+	for _, tc := range validationTests {
+		versioned := &MongoDatabaseSecrets{}
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}

@@ -33,20 +33,49 @@ const (
 	APIVersion          = "test-api-version"
 )
 
-var BasicResource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + ResourcePath1)
-var BasicResource2ID = parseOrPanic(ResourceGroup2Scope + "/providers/" + ResourcePath2)
-var BasicNestedResource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + NestedResourcePath1)
-var BasicARMResource = parseOrPanic(ARMResourceScope + "/providers/" + ResourcePath1)
+var ResourceGroup1ID = parseOrPanic(ResourceGroup1Scope)
+var ResourceGroup2ID = parseOrPanic(ResourceGroup2Scope)
+var Resource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + ResourcePath1)
+var Resource2ID = parseOrPanic(ResourceGroup2Scope + "/providers/" + ResourcePath2)
+var NestedResource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + NestedResourcePath1)
+var ARMResource = parseOrPanic(ARMResourceScope + "/providers/" + ResourcePath1)
 
-var Data1 = marshalOrPanic(map[string]interface{}{
-	"resource": "1",
-})
-var Data2 = marshalOrPanic(map[string]interface{}{
-	"resource": "2",
-})
+var ResourceGroup1Data = map[string]interface{}{
+	"value": "1",
+	"properties": map[string]interface{}{
+		"group": "1",
+	},
+}
 
-func marshalOrPanic(obj interface{}) []byte {
-	b, err := json.Marshal(obj)
+var ResourceGroup2Data = map[string]interface{}{
+	"value": "2",
+	"properties": map[string]interface{}{
+		"group": "2",
+	},
+}
+
+var Data1 = map[string]interface{}{
+	"value": "1",
+	"properties": map[string]interface{}{
+		"resource": "1",
+	},
+}
+var Data2 = map[string]interface{}{
+	"value": "2",
+	"properties": map[string]interface{}{
+		"resource": "2",
+	},
+}
+
+var NestedData1 = map[string]interface{}{
+	"value": "3",
+	"properties": map[string]interface{}{
+		"resource": "3",
+	},
+}
+
+func MarshalOrPanic(in interface{}) []byte {
+	b, err := json.Marshal(in)
 	if err != nil {
 		panic(err)
 	}
@@ -63,18 +92,20 @@ func parseOrPanic(id string) resources.ID {
 	return parsed
 }
 
-func createObject(id resources.ID, data []byte) store.Object {
+func createObject(id resources.ID, data interface{}) store.Object {
 	return store.Object{
 		Metadata: store.Metadata{
 			ID:          id.String(),
 			APIVersion:  APIVersion,
 			ContentType: "application/json",
 		},
-		Data: Data1,
+		Data: data,
 	}
 }
 
 func compareObjects(t *testing.T, expected *store.Object, actual *store.Object) {
+	t.Helper()
+
 	// Compare everything except ETags
 	expectedCopy := *expected
 	expectedCopy.ETag = ""
@@ -85,12 +116,14 @@ func compareObjects(t *testing.T, expected *store.Object, actual *store.Object) 
 	require.Equal(t, expectedCopy, actualCopy)
 }
 
-func compareObjectLists(t *testing.T, expected []store.Object, actual []store.Object) {
+func CompareObjectLists(t *testing.T, expected []store.Object, actual []store.Object) {
+	t.Helper()
+
 	expectedCopy := []store.Object{}
-	copy(expectedCopy, expected)
+	expectedCopy = append(expectedCopy, expected...)
 
 	actualCopy := []store.Object{}
-	copy(actualCopy, actual)
+	actualCopy = append(actualCopy, actual...)
 
 	// Compare everything except ETags
 	for i := range expectedCopy {
@@ -111,7 +144,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("get_not_found", func(t *testing.T) {
 		clear(t)
 
-		obj, err := client.Get(ctx, BasicResource1ID)
+		obj, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 		require.Nil(t, obj)
 	})
@@ -119,19 +152,20 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("delete_not_found", func(t *testing.T) {
 		clear(t)
 
-		err := client.Delete(ctx, BasicResource1ID)
+		err := client.Delete(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 	})
 
 	t.Run("save_and_get_arm", func(t *testing.T) {
 		clear(t)
+		// Testing that we can work with both UCP and ARM IDs.
 
-		obj1 := createObject(BasicARMResource, Data1)
+		obj1 := createObject(ARMResource, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 		require.NotEmpty(t, obj1.ETag)
 
-		obj1Get, err := client.Get(ctx, BasicARMResource)
+		obj1Get, err := client.Get(ctx, ARMResource.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 		require.Equal(t, obj1Get.ETag, obj1.ETag)
@@ -139,12 +173,26 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 
 	t.Run("save_and_get_ucp", func(t *testing.T) {
 		clear(t)
+		// Testing that we can work with both UCP and ARM IDs.
 
-		obj1 := createObject(BasicResource1ID, Data1)
+		obj1 := createObject(Resource1ID, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, BasicResource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
+		require.NoError(t, err)
+		compareObjects(t, &obj1, obj1Get)
+	})
+
+	t.Run("save_and_get_scope", func(t *testing.T) {
+		clear(t)
+		// Testing that we can work with a scope like any other resource
+
+		obj1 := createObject(ResourceGroup1ID, ResourceGroup1Data)
+		err := client.Save(ctx, &obj1)
+		require.NoError(t, err)
+
+		obj1Get, err := client.Get(ctx, ResourceGroup1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -152,7 +200,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("save_can_update", func(t *testing.T) {
 		clear(t)
 
-		obj1 := createObject(BasicResource1ID, Data1)
+		obj1 := createObject(Resource1ID, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
@@ -160,7 +208,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err = client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, BasicResource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -168,7 +216,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("save_can_update_matching_etag", func(t *testing.T) {
 		clear(t)
 
-		obj1 := createObject(BasicResource1ID, Data1)
+		obj1 := createObject(Resource1ID, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 		require.NotEmpty(t, obj1.ETag)
@@ -177,7 +225,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err = client.Save(ctx, &obj1, store.WithETag(obj1.ETag))
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, BasicResource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -185,16 +233,16 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("save_cannot_update_not_matching_etag", func(t *testing.T) {
 		clear(t)
 
-		obj1 := createObject(BasicResource1ID, Data1)
+		obj1 := createObject(Resource1ID, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
 		obj1.Data = Data2
-		err = client.Save(ctx, &obj1, store.WithETag(etag.New(Data2)))
+		err = client.Save(ctx, &obj1, store.WithETag(etag.New(MarshalOrPanic(Data2))))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 
 		obj1.Data = Data1
-		obj1Get, err := client.Get(ctx, BasicResource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -202,12 +250,12 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("save_cannot_update_missing_resource_with_not_matching_etag", func(t *testing.T) {
 		clear(t)
 
-		obj1 := createObject(BasicResource1ID, Data1)
+		obj1 := createObject(Resource1ID, Data1)
 
-		err := client.Save(ctx, &obj1, store.WithETag(etag.New(Data1)))
+		err := client.Save(ctx, &obj1, store.WithETag(etag.New(MarshalOrPanic(Data1))))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 
-		obj1Get, err := client.Get(ctx, BasicResource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 		require.Nil(t, obj1Get)
 	})
@@ -219,7 +267,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, parseOrPanic(ResourceGroup1Scope))
+		obj1Get, err := client.Get(ctx, ResourceGroup1Scope)
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 	})
@@ -227,14 +275,14 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("save_and_delete", func(t *testing.T) {
 		clear(t)
 
-		obj1 := createObject(BasicResource1ID, Data1)
+		obj1 := createObject(Resource1ID, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		err = client.Delete(ctx, BasicResource1ID)
+		err = client.Delete(ctx, Resource1ID.String())
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, BasicResource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 		require.Nil(t, obj1Get)
 	})
@@ -242,14 +290,14 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("save_and_delete_can_delete_with_matching_etag", func(t *testing.T) {
 		clear(t)
 
-		obj1 := createObject(BasicResource1ID, Data1)
+		obj1 := createObject(Resource1ID, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		err = client.Delete(ctx, BasicResource1ID, store.WithETag(obj1.ETag))
+		err = client.Delete(ctx, Resource1ID.String(), store.WithETag(obj1.ETag))
 		require.NoError(t, err)
 
-		obj1Get, err := client.Get(ctx, BasicResource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &store.ErrNotFound{})
 		require.Nil(t, obj1Get)
 	})
@@ -257,14 +305,14 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("save_and_delete_cannot_delete_with_non_matching_etag", func(t *testing.T) {
 		clear(t)
 
-		obj1 := createObject(BasicResource1ID, Data1)
+		obj1 := createObject(Resource1ID, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 
-		err = client.Delete(ctx, BasicResource1ID, store.WithETag(etag.New(Data2)))
+		err = client.Delete(ctx, Resource1ID.String(), store.WithETag(etag.New(MarshalOrPanic(Data2))))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 
-		obj1Get, err := client.Get(ctx, BasicResource1ID)
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		require.NotNil(t, obj1Get)
 	})
@@ -272,7 +320,7 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("delete_cannot_delete_missing_resource_with_not_matching_etag", func(t *testing.T) {
 		clear(t)
 
-		err := client.Delete(ctx, BasicResource1ID, store.WithETag(etag.New(Data1)))
+		err := client.Delete(ctx, Resource1ID.String(), store.WithETag(etag.New(MarshalOrPanic(Data1))))
 		require.ErrorIs(t, err, &store.ErrConcurrency{})
 	})
 
@@ -287,90 +335,175 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 	t.Run("query", func(t *testing.T) {
 		clear(t)
 
-		obj1 := createObject(BasicResource1ID, Data1)
-		err := client.Save(ctx, &obj1)
+		group1 := createObject(ResourceGroup1ID, ResourceGroup1Data)
+		err := client.Save(ctx, &group1)
 		require.NoError(t, err)
 
-		nested1 := createObject(BasicNestedResource1ID, Data1)
+		group2 := createObject(ResourceGroup2ID, ResourceGroup2Data)
+		err = client.Save(ctx, &group2)
+		require.NoError(t, err)
+
+		obj1 := createObject(Resource1ID, Data1)
+		err = client.Save(ctx, &obj1)
+		require.NoError(t, err)
+
+		nested1 := createObject(NestedResource1ID, NestedData1)
 		err = client.Save(ctx, &nested1)
 		require.NoError(t, err)
 
-		obj2 := createObject(BasicResource2ID, Data1)
+		obj2 := createObject(Resource2ID, Data2)
 		err = client.Save(ctx, &obj2)
 		require.NoError(t, err)
 
-		// Query resources at resource group scope
-		objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope})
-		require.NoError(t, err)
-		expected := []store.Object{
-			obj1,
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_resources_at_resource_group_scope", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+				nested1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
 
-		// Query all resources at resource group scope with a prefix
-		objs, err = client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, RoutingScopePrefix: ResourcePath1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			obj1,
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_resources_at_resource_group_scope_with_field_filter", func(t *testing.T) {
+			filters := []store.QueryFilter{{Field: "value", Value: "1"}}
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, Filters: filters})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
 
-		// Query all resources at resource group scope with a type filter
-		objs, err = client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, ResourceType: NestedResourceType1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			nested1,
-		}
-		require.ElementsMatch(t, expected, objs)
+		t.Run("query_resources_at_resource_group_scope_with_prefix", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, RoutingScopePrefix: ResourcePath1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+				nested1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
 
-		// Query all resources at resource group scope with a prefix and type filter
-		objs, err = client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, RoutingScopePrefix: ResourcePath1, ResourceType: NestedResourceType1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_resources_at_resource_group_scope_with_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, ResourceType: NestedResourceType1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				nested1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
 
-		// Query all resources at exactly plane scope
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope})
-		require.NoError(t, err)
-		require.Empty(t, objs)
+		t.Run("query_resources_at_resource_group_scope_with_prefix_and_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, RoutingScopePrefix: ResourcePath1, ResourceType: NestedResourceType1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				nested1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
 
-		// Query all resources recursively at plane scope
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true})
-		require.NoError(t, err)
-		expected = []store.Object{
-			obj1,
-			obj2,
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_scopes_at_resource_group_scope", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, IsScopeQuery: true})
+			require.NoError(t, err)
+			expected := []store.Object{
+				group1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
 
-		// Query all resources recursively at plane scope with a prefix
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, RoutingScopePrefix: ResourcePath1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			obj1,
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_scopes_at_resource_group_scope_with_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, IsScopeQuery: true, ResourceType: "resourceGroups"})
+			require.NoError(t, err)
+			expected := []store.Object{
+				group1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
 
-		// Query all resources recursively at plane scope with a prefix and type filter
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, RoutingScopePrefix: ResourcePath1, ResourceType: NestedResourceType1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_resources_at_plane_scope", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope})
+			require.NoError(t, err)
+			require.Empty(t, objs)
+		})
 
-		// Query all resources recursively at plane scope with a type filter
-		objs, err = client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, ResourceType: NestedResourceType1})
-		require.NoError(t, err)
-		expected = []store.Object{
-			nested1,
-		}
-		compareObjectLists(t, expected, objs)
+		t.Run("query_resources_at_plane_scope_recursive", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+				obj2,
+				nested1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_resources_at_plane_scope_recursive_with_field_filter", func(t *testing.T) {
+			filters := []store.QueryFilter{{Field: "value", Value: "1"}}
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, Filters: filters})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_resources_at_plane_scope_recursive_with_prefix", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, RoutingScopePrefix: ResourcePath1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				obj1,
+				nested1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_resources_at_plane_scope_recursive_and_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, ResourceType: NestedResourceType1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				nested1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_resources_at_plane_scope_recursive_with_prefix_and_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, RoutingScopePrefix: ResourcePath1, ResourceType: NestedResourceType1})
+			require.NoError(t, err)
+			expected := []store.Object{
+				nested1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_scopes_at_plane_scope_recursive", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, IsScopeQuery: true})
+			require.NoError(t, err)
+			expected := []store.Object{
+				group1,
+				group2,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_scopes_at_plane_scope_recursive_with_field_filter", func(t *testing.T) {
+			filters := []store.QueryFilter{{Field: "value", Value: "1"}}
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, IsScopeQuery: true, Filters: filters})
+			require.NoError(t, err)
+			expected := []store.Object{
+				group1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_scopes_at_plane_scope_recursive_with_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, IsScopeQuery: true, ResourceType: "resourceGroups"})
+			require.NoError(t, err)
+			expected := []store.Object{
+				group1,
+				group2,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
 	})
 }

@@ -38,6 +38,25 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
+// DaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
+type DaprSecretStorePropertiesKind string
+
+const (
+	DaprSecretStorePropertiesKindGeneric DaprSecretStorePropertiesKind = "generic"
+)
+
+// PossibleDaprSecretStorePropertiesKindValues returns the possible values for the DaprSecretStorePropertiesKind const type.
+func PossibleDaprSecretStorePropertiesKindValues() []DaprSecretStorePropertiesKind {
+	return []DaprSecretStorePropertiesKind{	
+		DaprSecretStorePropertiesKindGeneric,
+	}
+}
+
+// ToPtr returns a *DaprSecretStorePropertiesKind pointing to the current value.
+func (c DaprSecretStorePropertiesKind) ToPtr() *DaprSecretStorePropertiesKind {
+	return &c
+}
+
 // ProvisioningState - Provisioning state of the connector at the time the operation was called
 type ProvisioningState string
 

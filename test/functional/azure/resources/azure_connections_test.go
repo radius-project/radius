@@ -15,8 +15,9 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/functional"
+	"github.com/project-radius/radius/test/functional/azure"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -25,9 +26,9 @@ func Test_AzureConnections(t *testing.T) {
 	containerResourceName := "db-service"
 	template := "testdata/azure-connection-database-service.bicep"
 
-	test := azuretest.NewApplicationTest(t, applicationName, []azuretest.Step{
+	test := azure.NewApplicationTest(t, applicationName, []azure.TestStep{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{
