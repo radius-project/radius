@@ -29,7 +29,7 @@ type Step struct {
 }
 
 type ApplicationTest struct {
-	Options          AzureTestOptions
+	Options          Options
 	Application      string
 	Description      string
 	SkipDeletion     bool
