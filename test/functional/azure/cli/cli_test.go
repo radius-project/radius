@@ -16,13 +16,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/test/azuretest"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
+
 	"github.com/project-radius/radius/test/functional"
+	"github.com/project-radius/radius/test/functional/azure"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 const (
@@ -33,7 +34,7 @@ func Test_CLI(t *testing.T) {
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
-	options := azuretest.NewTestOptions(t)
+	options := azure.NewTestOptions(t)
 
 	// We deploy a simple app and then run a variety of different CLI commands on it. Emphasis here
 	// is on the commands that aren't tested as part of our main flow.
@@ -175,7 +176,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	ctx, cancel := testcontext.GetContext(t)
 	defer cancel()
 
-	options := azuretest.NewTestOptions(t)
+	options := azure.NewTestOptions(t)
 
 	application := "azure-cli-parameters"
 	template := "testdata/azure-cli-parameters.bicep"

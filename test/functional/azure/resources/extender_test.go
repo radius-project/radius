@@ -14,7 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/extenderv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/azuretest"
+	""github.com/project-radius/radius/test/functional/azure""
 	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/validation"
@@ -24,7 +24,7 @@ func Test_ExtenderResource(t *testing.T) {
 	application := "azure-resources-extender"
 	template := "testdata/azure-resources-extender.bicep"
 
-	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+	test := azure.NewApplicationTest(t, application, []azure.Step{
 		{
 			Executor:       executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{},

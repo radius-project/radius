@@ -23,9 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/gateway"
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
+	"github.com/project-radius/radius/test/functional/azure"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -33,7 +33,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 	application := "azure-resources-container-httproute"
 	template := "testdata/azure-resources-container-httproute.bicep"
 
-	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+	test := azure.NewApplicationTest(t, application, []azure.Step{
 		{
 			Executor:       executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{},
@@ -74,7 +74,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, at azure.ApplicationTest) {
 				labelset := kubernetes.MakeSelectorLabels(application, "backend")
 
 				matches, err := at.Options.K8sClient.CoreV1().Pods(application).List(context.Background(), metav1.ListOptions{
@@ -106,7 +106,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 func Test_ContainerGateway(t *testing.T) {
 	application := "azure-resources-container-httproute-gateway"
 	template := "testdata/azure-resources-container-httproute-gateway.bicep"
-	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+	test := azure.NewApplicationTest(t, application, []azure.Step{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
@@ -181,7 +181,7 @@ func Test_ContainerGateway(t *testing.T) {
 func Test_ContainerManualScale(t *testing.T) {
 	application := "azure-resources-container-manualscale"
 	template := "testdata/azure-resources-container-manualscale.bicep"
-	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+	test := azure.NewApplicationTest(t, application, []azure.Step{
 		{
 			Executor: executor.NewDeployStepExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
@@ -235,7 +235,7 @@ func Test_ContainerManualScale(t *testing.T) {
 func Test_ContainerReadinessLiveness(t *testing.T) {
 	application := "azure-resources-container-readiness-liveness"
 	template := "testdata/azure-resources-container-readiness-liveness.bicep"
-	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+	test := azure.NewApplicationTest(t, application, []azure.Step{
 		{
 			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
@@ -262,7 +262,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, at azuretest.ApplicationTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, at azure.ApplicationTest) {
 				// Verify there are two pods created for backend.
 				labelset := kubernetes.MakeSelectorLabels(application, "backend")
 
