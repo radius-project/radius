@@ -12,9 +12,9 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/kubernetes"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -24,7 +24,7 @@ func Test_DaprStateStore_Generic(t *testing.T) {
 
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
-			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

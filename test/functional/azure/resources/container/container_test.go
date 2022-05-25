@@ -23,9 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/gateway"
 	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/azure"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -35,7 +35,7 @@ func Test_ContainerHttpBinding(t *testing.T) {
 
 	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
-			Executor:       executor.NewDeployStepExecutor(template),
+			Executor:       step.NewDeployExecutor(template),
 			AzureResources: &validation.AzureResourceSet{},
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
@@ -108,7 +108,7 @@ func Test_ContainerGateway(t *testing.T) {
 	template := "testdata/azure-resources-container-httproute-gateway.bicep"
 	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
-			Executor: executor.NewDeployStepExecutor(template),
+			Executor: step.NewDeployExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// Intentionally Empty
@@ -183,7 +183,7 @@ func Test_ContainerManualScale(t *testing.T) {
 	template := "testdata/azure-resources-container-manualscale.bicep"
 	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
-			Executor: executor.NewDeployStepExecutor(template),
+			Executor: step.NewDeployExecutor(template),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// Intentionally Empty
@@ -237,7 +237,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/azure-resources-container-readiness-liveness.bicep"
 	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
-			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					// Intentionally Empty

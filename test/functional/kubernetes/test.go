@@ -22,8 +22,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 )
@@ -35,7 +35,7 @@ const (
 )
 
 type TestStep struct {
-	Executor               executor.StepExecutor
+	Executor               step.Executor
 	RadiusResources        *validation.ResourceSet
 	K8sOutputResources     []unstructured.Unstructured
 	K8sObjects             *validation.K8sObjectSet

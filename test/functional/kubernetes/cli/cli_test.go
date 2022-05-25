@@ -18,10 +18,10 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/kubernetes"
 	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -36,7 +36,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
-			Executor: executor.NewDeployStepExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag()),
+			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, "env=COOL_VALUE", functional.GetMagpieTag()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -81,7 +81,7 @@ func Test_CLI(t *testing.T) {
 
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
-			Executor: executor.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{

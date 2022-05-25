@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package executor
+package step
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/project-radius/radius/test"
 )
 
-type StepExecutor interface {
+type Executor interface {
 	GetDescription() string
 	Execute(ctx context.Context, t *testing.T, options test.TestOptions)
 }

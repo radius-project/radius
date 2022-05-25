@@ -11,14 +11,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/test/executor"
 	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 )
 
 type TestStep struct {
-	Executor               executor.StepExecutor
+	Executor               step.Executor
 	AzureResources         *validation.AzureResourceSet
 	RadiusResources        *validation.ResourceSet
 	Objects                *validation.K8sObjectSet
