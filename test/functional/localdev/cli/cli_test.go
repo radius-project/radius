@@ -10,15 +10,15 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli/objectformats"
+	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional/kubernetes"
 	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 // These tests just verify our commands for interacting with the local dev environment
 func Test_CLI(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	options := kubernetes.NewTestOptions(t)

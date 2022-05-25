@@ -24,7 +24,6 @@ import (
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -133,7 +132,7 @@ func (at ApplicationTest) CleanUpExtensionResources(resources []unstructured.Uns
 }
 
 func (at ApplicationTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	// Capture all logs from all pods (only run one of these as it will monitor everything)

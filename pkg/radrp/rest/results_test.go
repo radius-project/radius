@@ -6,11 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/stretchr/testify/require"
+	"github.com/project-radius/radius/test"
 )
 
 func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T) {
@@ -492,7 +493,7 @@ func Test_AggregateApplicationProvisioningState_NotProvisionedAndProvisionedIsPr
 func Test_OKResponse_Empty(t *testing.T) {
 	response := NewOKResponse(nil)
 
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	req := httptest.NewRequest("GET", "http://example.com", nil)
@@ -512,7 +513,7 @@ func Test_OKResponse_WithBody(t *testing.T) {
 	}
 	response := NewOKResponse(payload)
 
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	req := httptest.NewRequest("GET", "http://example.com", nil)

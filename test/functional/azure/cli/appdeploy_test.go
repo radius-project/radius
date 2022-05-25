@@ -10,14 +10,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional/azure"
 	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_AppDeploy_ScaffoldedApp(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	options := azure.NewTestOptions(t)

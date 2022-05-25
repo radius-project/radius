@@ -19,10 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 
+	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/azure"
 	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -31,7 +31,7 @@ const (
 )
 
 func Test_CLI(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	options := azure.NewTestOptions(t)
@@ -173,7 +173,7 @@ func GetAvailablePort() (int, error) {
 }
 
 func Test_CLI_DeploymentParameters(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	options := azure.NewTestOptions(t)

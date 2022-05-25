@@ -11,9 +11,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -65,7 +65,7 @@ func (at ApplicationTest) CollectAllNamespaces() []string {
 }
 
 func (at ApplicationTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
