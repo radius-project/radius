@@ -15,7 +15,7 @@
     },
     "properties": {
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "hostName": "localhost",
+        "hostname": "localhost",
         "port":8080,
         "scheme": "http",
         "url": "http://testapplications.com/httproute/"
