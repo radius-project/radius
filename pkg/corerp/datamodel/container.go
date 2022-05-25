@@ -46,8 +46,8 @@ type ConnectionProperties struct {
 
 // Container - Definition of a container.
 type Container struct {
-	Image          *string                             `json:"image,omitempty"`
-	Env            map[string]*string                  `json:"env,omitempty"`
+	Image          string                              `json:"image,omitempty"`
+	Env            map[string]string                   `json:"env,omitempty"`
 	LivenessProbe  HealthProbePropertiesClassification `json:"livenessProbe,omitempty"`
 	Ports          map[string]ContainerPort            `json:"ports,omitempty"`
 	ReadinessProbe HealthProbePropertiesClassification `json:"readinessProbe,omitempty"`
@@ -82,16 +82,65 @@ type Volume struct {
 	MountPath string `json:"mountPath,omitempty"`
 }
 
+// EphemeralVolume - Specifies an ephemeral volume for a container
+type EphemeralVolume struct {
+	Volume
+	ManagedStore ManagedStore `json:"managedStore,omitempty"`
+}
+
+// PersistentVolume - Specifies a persistent volume for a container
+type PersistentVolume struct {
+	Volume
+	Source string     `json:"source,omitempty"`
+	Rbac   VolumeRbac `json:"rbac,omitempty"`
+}
+
+// ManagedStore - Backing store for the ephemeral volume
+type ManagedStore string
+
+const (
+	ManagedStoreDisk   ManagedStore = "disk"
+	ManagedStoreMemory ManagedStore = "memory"
+)
+
+// VolumeRbac - Container read/write access to the volume
+type VolumeRbac string
+
+const (
+	VolumeRbacRead  VolumeRbac = "read"
+	VolumeRbacWrite VolumeRbac = "write"
+)
+
 type HealthProbePropertiesClassification interface {
 	GetHealthProbeProperties() *HealthProbeProperties
 }
 
 // HealthProbeProperties - Properties for readiness/liveness probe
 type HealthProbeProperties struct {
-	Kind                *string  `json:"kind,omitempty"`
-	FailureThreshold    *float32 `json:"failureThreshold,omitempty"`
-	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
-	PeriodSeconds       *float32 `json:"periodSeconds,omitempty"`
+	Kind                string  `json:"kind,omitempty"`
+	FailureThreshold    float32 `json:"failureThreshold,omitempty"`
+	InitialDelaySeconds float32 `json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       float32 `json:"periodSeconds,omitempty"`
+}
+
+// ExecHealthProbeProperties - Specifies the properties for readiness/liveness probe using an executable
+type ExecHealthProbeProperties struct {
+	HealthProbeProperties
+	Command string `json:"command,omitempty"`
+}
+
+// HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
+type HTTPGetHealthProbeProperties struct {
+	HealthProbeProperties
+	ContainerPort int32             `json:"containerPort,omitempty"`
+	Path          string            `json:"path,omitempty"`
+	Headers       map[string]string `json:"headers,omitempty"`
+}
+
+// TCPHealthProbeProperties - Specifies the properties for readiness/liveness probe using TCP
+type TCPHealthProbeProperties struct {
+	HealthProbeProperties
+	ContainerPort int32 `json:"containerPort,omitempty"`
 }
 
 // ExtensionClassification provides polymorphic access to related types.
@@ -100,6 +149,22 @@ type HealthProbeProperties struct {
 // - DaprSidecarExtension, Extension, ManualScalingExtension
 type ExtensionClassification interface {
 	GetExtension() Extension
+}
+
+// ManualScalingExtension - ManualScaling Extension
+type ManualScalingExtension struct {
+	Extension
+	Replicas int32 `json:"replicas,omitempty"`
+}
+
+// DaprSidecarExtension - Specifies the resource should have a Dapr sidecar injected
+type DaprSidecarExtension struct {
+	Extension
+	AppID    string   `json:"appId,omitempty"`
+	AppPort  int32    `json:"appPort,omitempty"`
+	Config   string   `json:"config,omitempty"`
+	Protocol Protocol `json:"protocol,omitempty"`
+	Provides string   `json:"provides,omitempty"`
 }
 
 // Extension of a resource.
