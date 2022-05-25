@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"sort"
 	"strings"
@@ -76,6 +77,10 @@ func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient
 	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.List(ctx, dm.ResourceGroup, nil)
 	if err != nil {
+		if isEnvNotFound(err) {
+			errorMessage := fmt.Sprintf("Environment '%s' not found ", dm.EnvironmentName)
+			return nil, radclient.NewRadiusError("EnvironmentNotFound", errorMessage)
+		}
 		if isNotFound(err) {
 			errorMessage := fmt.Sprintf("Applications not found in environment '%s'", dm.EnvironmentName)
 			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
@@ -186,6 +191,15 @@ func isNotFound(err error) bool {
 	var httpresp azcore.HTTPResponse
 	ok := errors.As(err, &httpresp)
 	return ok && httpresp.RawResponse().StatusCode == http.StatusNotFound
+}
+
+func isEnvNotFound(err error) bool {
+	if errOp, okOpErr := err.(*net.OpError); okOpErr {
+		if errDns, okDnsErr := errOp.Err.(*net.DNSError); okDnsErr && errDns.IsNotFound {
+			return true
+		}
+	}
+	return false
 }
 
 func KnownAzureResourceType(resourceType string) bool {

@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -75,6 +76,15 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		// 2. Delete all radius resources in the customer/user resource group (ex custom resource provider)
 		// 3. Delete control plane resource group
 		if err = deleteAllApplications(cmd.Context(), az); err != nil {
+			if errEnvNotFound, okEnvErr := err.(*radclient.RadiusError); okEnvErr && errEnvNotFound.Code == "EnvironmentNotFound" {
+				output.LogInfo("Environment '%s' not found", az.Name)
+
+				errDelConfig := deleteEnvFromConfig(cmd.Context(), config, env.GetName())
+				if errDelConfig != nil {
+					return errDelConfig
+				}
+				return nil
+			}
 			return err
 		}
 
