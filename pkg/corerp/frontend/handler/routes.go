@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
+	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
@@ -37,13 +38,14 @@ const (
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
 // TODO: Enable api spec validator.
-func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string, standaloneMode bool) error {
+func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
 	var resourceGroupLevelPath string
 	var providerRouter *mux.Router
 	var operationsRouter *mux.Router
 	handlers := []handlerParam{}
+	selfhosted := hostoptions.IsSelfHosted()
 
-	if !standaloneMode {
+	if !selfhosted {
 		// Provider system notification.
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 		providerRouter = router.Path(pathBase+"/subscriptions/{subscriptionID}").
@@ -103,7 +105,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 }
 
 // AddConnectorRoutes adds routes and handlers for connector RP APIs.
-func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string, standaloneMode bool) error {
+func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
 	// Provider system notification.
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 	// providerRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}").
@@ -111,7 +113,8 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 
 	handlers := []handlerParam{}
 	var resourceGroupLevelPath string
-	if !standaloneMode {
+	selfhosted := hostoptions.IsSelfHosted()
+	if !selfhosted {
 		// Tenant level API routes.
 		tenantLevelPath := pathBase + "/providers/applications.connector"
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
