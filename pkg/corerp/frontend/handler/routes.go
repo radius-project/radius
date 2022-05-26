@@ -43,9 +43,8 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 	var providerRouter *mux.Router
 	var operationsRouter *mux.Router
 	handlers := []handlerParam{}
-	selfhosted := hostoptions.IsSelfHosted()
 
-	if !selfhosted {
+	if !hostoptions.IsSelfHosted() {
 		// Provider system notification.
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 		providerRouter = router.Path(pathBase+"/subscriptions/{subscriptionID}").
@@ -113,8 +112,8 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 
 	handlers := []handlerParam{}
 	var resourceGroupLevelPath string
-	selfhosted := hostoptions.IsSelfHosted()
-	if !selfhosted {
+
+	if !hostoptions.IsSelfHosted() {
 		// Tenant level API routes.
 		tenantLevelPath := pathBase + "/providers/applications.connector"
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
