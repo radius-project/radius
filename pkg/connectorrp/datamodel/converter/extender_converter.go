@@ -31,25 +31,12 @@ func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (ap
 func ExtenderDataModelFromVersioned(content []byte, version string) (*datamodel.Extender, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.ExtenderResource{}
-		if err := json.Unmarshal(content, versioned); err != nil {
+		am := &v20220315privatepreview.ExtenderResource{}
+		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}
-		dm, err := versioned.ConvertTo()
+		dm, err := am.ConvertTo()
 		return dm.(*datamodel.Extender), err
-
-	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
-	}
-}
-
-// ExtenderSecretsDataModelFromVersioned converts version agnostic ExtenderSecrets datamodel to versioned model.
-func ExtenderSecretsDataModelToVersioned(model *datamodel.ExtenderSecrets, version string) (api.VersionedModelInterface, error) {
-	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.ExtenderSecrets{}
-		err := versioned.ConvertFrom(model)
-		return versioned, err
 
 	default:
 		return nil, basedatamodel.ErrUnsupportedAPIVersion
