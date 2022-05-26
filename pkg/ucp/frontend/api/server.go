@@ -68,9 +68,12 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	var err error
 	if env == "kubernetes" {
 
-		storageProvider := dataprovider.NewStorageProvider(opts)
-		storageClient, err = storageProvider.GetStorageClientFromEnv(ctx, "etcd")
+		opts.APIServer.Context = os.Getenv("CONTEXT")
+		opts.APIServer.InCluster = os.Getenv("INCLUSTER") == "true"
+		opts.APIServer.Namespace = os.Getenv("NAMESPACE")
 
+		storageProvider := dataprovider.NewStorageProvider(opts)
+		storageClient, err = storageProvider.GetStorageClientFromEnv(ctx, "apiserver")
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +84,6 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		opts.ETCD.Client = s.options.ClientConfigSource
 		storageProvider := dataprovider.NewStorageProvider(opts)
 		storageClient, err = storageProvider.GetStorageClientFromEnv(ctx, "etcd")
-
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +97,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.Configure(r)
 	}
 
-	err := s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.UcpHandler.Planes)
+	err = s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.UcpHandler.Planes)
 	if err != nil {
 		return nil, err
 	}
