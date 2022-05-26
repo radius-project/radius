@@ -7,4 +7,7 @@ storageProvider:
     inmemory: true
 metricsProvider:
   prometheus:
+    port: 2222
     endpoint: "/metrics"
+featureFlags:
+  - "PLACEHOLDER"

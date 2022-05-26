@@ -74,7 +74,6 @@ func (s *Service) Run(ctx context.Context) error {
 
 			return nil
 		}},
-		s.Options.Config.MetricsProvider,
 	)
 	if err != nil {
 		return err
