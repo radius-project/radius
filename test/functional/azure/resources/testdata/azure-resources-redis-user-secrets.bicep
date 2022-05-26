@@ -44,7 +44,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource redisRoute 'HttpRoute' = {
     name: 'redis-route'
     properties: {
-      port: 6379
+      port: 80
     }
   }
 
