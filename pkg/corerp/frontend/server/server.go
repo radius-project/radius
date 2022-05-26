@@ -52,7 +52,7 @@ func NewServer(ctx context.Context, options ServerOptions) (*http.Server, error)
 
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
-	//setup metrics object
+	// setup metrics object
 	httpMetrics := metrics.NewHTTPMetrics()
 	r.Use(middleware.MetricsRecorder(httpMetrics))
 

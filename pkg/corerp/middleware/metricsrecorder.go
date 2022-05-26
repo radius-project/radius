@@ -31,7 +31,7 @@ func MetricsRecorder(p *metrics.HTTPMetrics) func(h http.Handler) http.Handler {
 			resourceType, _ := azresources.Parse(r.URL.Path)
 			elapsedTime := time.Since(requestStartTime).Microseconds()
 			labels := []attribute.KeyValue{attribute.String("Path", r.URL.Path), attribute.String("Method", r.Method), attribute.String("statusCode", strconv.Itoa(wi.statusCode)),
-				attribute.String("responseCode", http.StatusText(wi.statusCode)), attribute.String("resourceType", resourceType.ID)}
+				attribute.String("resourceType", resourceType.ID)}
 			p.IncrementRequestCount(r.Context(), 1, labels...)
 			p.RecordLatency(r.Context(), elapsedTime, labels...)
 		}
