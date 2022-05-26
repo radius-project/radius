@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// 
+// MetricsRecorder is the middleware which collects metrics for incoming server requests.
 func MetricsRecorder(p *metrics.HTTPMetrics) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -30,8 +30,8 @@ func MetricsRecorder(p *metrics.HTTPMetrics) func(h http.Handler) http.Handler {
 			// ignore errors as we don't want to fail a request because of parsing failures for resource type on a request
 			resourceType, _ := azresources.Parse(r.URL.Path)
 			elapsedTime := time.Since(requestStartTime).Microseconds()
-			labels := []attribute.KeyValue{attribute.String("Path", r.URL.Path), attribute.String("Method", r.Method), attribute.String("StatusCode", strconv.Itoa(wi.statusCode)),
-				attribute.String("ResourceType", resourceType.ID)}
+			labels := []attribute.KeyValue{attribute.String("path", r.URL.Path), attribute.String("method", r.Method), attribute.String("statusCode", strconv.Itoa(wi.statusCode)),
+				attribute.String("resourceType", resourceType.ID)}
 			p.IncrementRequestCount(r.Context(), 1, labels...)
 			p.RecordLatency(r.Context(), elapsedTime, labels...)
 		}

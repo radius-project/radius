@@ -44,6 +44,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	promConfig := prometheus.Config{
 		// buckets distribution used for histogram_quantile to calculate p50, p75, p95, p99 values
+		// TODO: Move the distribution configuration to metrics instrument level
 		DefaultHistogramBoundaries: latencyHistogramBoundaries,
 	}
 	exporter, err := provider.NewPrometheusMetricsExporter(promConfig)
