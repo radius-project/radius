@@ -12,5 +12,5 @@
         "provisioningState": "Succeeded"
     },
     "error": {},
-    "resourceId": "op0"
+    "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/westus/operationsStatuses/00000000-0000-0000-0000-000000000000"
 }

@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
@@ -41,7 +42,7 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	os := &asyncoperation.AsyncOperationStatus{}
-	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), os)
+	_, err := e.GetResource(ctx, getOperationStatusResourceID(serviceCtx.ResourceID.String()), os)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
@@ -55,4 +56,11 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 	}
 
 	return rest.NewNoContentResponse(), nil
+}
+
+func getOperationStatusResourceID(resourceID string) string {
+	// Resource is OperationStatus so we should change OperationResults
+	// string coming from the URL to OperationStatuses
+	replacer := strings.NewReplacer("results", "statuses")
+	return replacer.Replace(resourceID)
 }
