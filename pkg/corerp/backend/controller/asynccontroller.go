@@ -13,12 +13,12 @@ import (
 )
 
 // AsyncController is an interface to implement async operation controller. This is to implement request-reply pattern using messaging queue.
-// Frontend Controller enqueues AsyncOperationRequestMessage and creates OperationStatuses. AsyncRequestProcessWorker consumes this async request
+// Frontend Controller enqueues AsyncRequestMessage and creates OperationStatuses. AsyncRequestProcessWorker consumes this async request
 // message and executes this AsyncController. To implement "Reply" pattern, it uses go channel and Worker listens to this reply go channel to
 // update OperationStatuses record. AsyncController can use Reply() to send the response to worker over go channel.
 type AsyncController interface {
 	// Run runs async request operation.
-	Run(ctx context.Context, message *asyncoperation.AsyncOperationRequestMessage) error
+	Run(ctx context.Context, message *asyncoperation.AsyncRequestMessage) error
 	// Reply stores async request result.
 	Reply(resp *asyncoperation.AsyncOperationResult)
 

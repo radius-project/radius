@@ -87,7 +87,7 @@ func (aom *asyncOperationsManager) Create(ctx context.Context, rootScope string,
 		return err
 	}
 
-	msg := &AsyncOperationRequestMessage{
+	msg := &AsyncRequestMessage{
 		OperationID:           sCtx.OperationID,
 		OperationName:         sCtx.OperationName,
 		ResourceID:            aos.LinkedResourceID,
@@ -96,7 +96,6 @@ func (aom *asyncOperationsManager) Create(ctx context.Context, rootScope string,
 		AcceptLanguage:        sCtx.AcceptLanguage,
 		HomeTenantID:          sCtx.HomeTenantID,
 		ClientObjectID:        sCtx.ClientObjectID,
-		AsyncOperationBeginAt: time.Now().UTC(),
 		AsyncOperationTimeout: operationTimeout,
 	}
 
