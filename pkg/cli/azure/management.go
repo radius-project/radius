@@ -194,8 +194,8 @@ func isNotFound(err error) bool {
 }
 
 func isEnvNotFound(err error) bool {
-	if errOp, okOpErr := err.(*net.OpError); okOpErr {
-		if errDns, okDnsErr := errOp.Err.(*net.DNSError); okDnsErr && errDns.IsNotFound {
+	if err, ok := err.(*net.OpError); ok {
+		if err, ok := err.Err.(*net.DNSError); ok && err.IsNotFound {
 			return true
 		}
 	}
