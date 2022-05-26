@@ -76,7 +76,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		// 2. Delete all radius resources in the customer/user resource group (ex custom resource provider)
 		// 3. Delete control plane resource group
 		if err = deleteAllApplications(cmd.Context(), az); err != nil {
-			if errEnvNotFound, okEnvErr := err.(*radclient.RadiusError); okEnvErr && errEnvNotFound.Code == "EnvironmentNotFound" {
+			if envErr, ok := err.(*radclient.RadiusError); ok && envErr.Code == "EnvironmentNotFound" {
 				output.LogInfo("Environment '%s' not found", az.Name)
 
 				errDelConfig := deleteEnvFromConfig(cmd.Context(), config, env.GetName())
