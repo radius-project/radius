@@ -9,7 +9,7 @@ type EnvironmentType string
 
 const (
 	Development       EnvironmentType = "Dev"
-	Standalone        EnvironmentType = "Standalone"
+	SelfHosted        EnvironmentType = "Self-Hosted"
 	AzureDogfood      EnvironmentType = "Dogfood"
 	AzureCloud        EnvironmentType = "AzureCloud"
 	AzureChinaCloud   EnvironmentType = "AzureChinaCloud"

@@ -1,6 +1,6 @@
 # This is an example of configuration file.
 environment:
-  name: Standalone
+  name: Self-Hosted
 storageProvider:
   # Kubernetes APIServer store. 
   # This supports two modes:
@@ -9,7 +9,7 @@ storageProvider:
   #
   provider: "apiserver"
   apiserver:
-    incluster: false 
+    incluster: true 
     context: ''
     namespace: 'default'
 metricsProvider:
