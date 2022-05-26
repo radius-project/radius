@@ -45,7 +45,6 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 				handleErr(r.Context(), w, r)
 				return
 			}
-			authentication.RetrievePOPToken(r)
 			next.ServeHTTP(w, r)
 		})
 	}
