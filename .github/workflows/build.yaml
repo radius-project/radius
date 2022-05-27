@@ -266,21 +266,37 @@ jobs:
       uses: ./.github/actions/setup-rad-cli
     - name: Install k3d
       run: curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
+    - name: Define a resource group name
+      run:  echo "INTEGRATION_TEST_RESOURCE_GROUP_NAME=radius-$(date +%s%N)" >> $GITHUB_ENV
+    - name: az CLI login
+      run: |
+        az login --service-principal \
+          --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+          --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+          --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+    - name: az account set
+      run: az account set --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+    - name: Create the resource group
+      run: |
+        az group create \
+          --location westus \
+          --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
+          --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+        while [ $(az group exists --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }}) = false ]; do sleep 2; done
     - name: Run 'rad env init dev'
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        echo "RAD_RESOURCE_GROUP=$(date +%s%N)" >> $GITHUB_ENV
-        dist/rad env init dev --environment dev \
-          --chart ${{ env.RADIUS_CHART_LOCATION }} \
-          --image ${{ env.DOCKER_REGISTRY }}/radius-rp \
+        dist/rad env init dev \
+          --chart=${{ env.RADIUS_CHART_LOCATION }} \
+          --image=${{ env.DOCKER_REGISTRY }}/radius-rp \
           --tag ${{ env.REL_VERSION }} \
           --provider-azure \
-          --provider-azure-client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
-          --provider-azure-client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-          --provider-azure-tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }} \
-          --provider-azure-subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \ 
-          --provider-azure-resource-group ${{ env.RAD_RESOURCE_GROUP }} 
+          --provider-azure-resource-group=${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
+          --provider-azure-client-id=${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+          --provider-azure-client-secret=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+          --provider-azure-tenant-id=${{ secrets.INTEGRATION_TEST_TENANT_ID }} \
+          --provider-azure-subscription=${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }}      
     - name: Wait for control-plane ready
       run: |
         kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
@@ -310,6 +326,15 @@ jobs:
         dist/rad env delete dev --yes
         # Print config for sanity check
         cat ~/.rad/config.yaml
+    - if: always()
+      name: Delete resource group created for environment
+      run: | 
+         az group delete \
+          --subscription ${{ env.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --resource-group ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
+          --yes \
+          --verbose \
+          --no-wait
     - name: Upload container logs
       if: always()
       uses: actions/upload-artifact@master
