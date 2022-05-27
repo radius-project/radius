@@ -9,13 +9,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -41,10 +41,15 @@ func NewGetOperationResult(storageClient store.StorageClient, jobEngine deployme
 func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
+	id, err := getOperationStatusResourceID(serviceCtx.ResourceID.String())
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
+
 	os := &asyncoperation.AsyncOperationStatus{}
-	_, err := e.GetResource(ctx, getOperationStatusResourceID(serviceCtx.ResourceID.String()), os)
+	_, err = e.GetResource(ctx, id.String(), os)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+		return rest.NewNotFoundResponse(id), nil
 	}
 
 	if !os.InTerminalState() {
@@ -58,9 +63,23 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 	return rest.NewNoContentResponse(), nil
 }
 
-func getOperationStatusResourceID(resourceID string) string {
-	// Resource is OperationStatus so we should change OperationResults
-	// string coming from the URL to OperationStatuses
-	replacer := strings.NewReplacer("results", "statuses")
-	return replacer.Replace(resourceID)
+// getOperationStatusResourceID function gets the operationResults resourceID
+// and converts it to an operationStatuses resourceID.
+func getOperationStatusResourceID(resourceID string) (resources.ID, error) {
+	id, err := resources.Parse(resourceID)
+	if err != nil {
+		return id, err
+	}
+
+	typeSegments := id.TypeSegments()
+	lastSegment := typeSegments[len(typeSegments)-1]
+	osTypeSegment := resources.TypeSegment{
+		Type: "operationstatuses",
+		Name: lastSegment.Name,
+	}
+
+	id = id.Truncate().
+		Append(osTypeSegment)
+
+	return id, nil
 }
