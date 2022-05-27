@@ -41,14 +41,21 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource redis 'redislabs.com.RedisCache' = {
+  resource redisRoute 'HttpRoute' = {
+    name: 'redis-route'
+    properties: {
+      port: 80
+    }
+  }
+
+  resource redis 'redislabs.com.RedisCache@v1alpha3' = {
     name: 'redis'
     properties: {
-      host: '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local'
-      port: redisService.spec.ports[0].port
+      host: redisRoute.properties.host
+      port: redisRoute.properties.port
       secrets: {
-        connectionString: '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local:${redisService.spec.ports[0].port},password=${base64ToString(redisSecret.data['redis-password'])}'
-        password: base64ToString(redisSecret.data['redis-password'])
+        connectionString: '${redisRoute.properties.host}:${redisRoute.properties.port}'
+        password: ''
       }
     }
   }
