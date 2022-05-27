@@ -1,6 +1,6 @@
 # This is an example of configuration file.
 environment:
-  name: Self-Hosted
+  name: self-hosted
 storageProvider:
   # Kubernetes APIServer store. 
   # This supports two modes:
@@ -15,3 +15,7 @@ storageProvider:
 metricsProvider:
   prometheus:
     endpoint: "/metrics"
+server:
+  host: "0.0.0.0"
+  port: 5443
+  # pathBase: '/apis/api.appcore-rp.dev/v1alpha3'

@@ -60,7 +60,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    acm,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, "")
+			err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, s.Options.Config.Server.PathBase)
 			if err != nil {
 				return err
 			}
@@ -87,7 +87,13 @@ func (s *Service) Run(ctx context.Context) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", address))
-	err = server.ListenAndServe()
+	if s.Options.TLSCertDir == "" {
+		fmt.Printf("@@@@@ listening http: %s\n", s.Options.TLSCertDir)
+		err = server.ListenAndServe()
+	} else {
+		fmt.Printf("@@@@@ listening https: %s\n", s.Options.TLSCertDir)
+		err = server.ListenAndServeTLS(s.Options.TLSCertDir+"/tls.crt", s.Options.TLSCertDir+"/tls.key")
+	}
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

@@ -21,19 +21,20 @@ spec:
       serviceAccountName: appcore-rp
       containers:
       - args:
-        - --config-file=/etc/config/radius-standalone.yaml
-        image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
+        - --config-file=/etc/config/radius-self-host.yaml
+        image: vinayada/appcore-rp:latest
+        # image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         env:
         - name: DEFAULT_PLANES_CONFIG
           value: /etc/config/appcore-rp-config.json
-        - name: BASE_PATH
-          value: '/apis/api.appcore-rp.dev/v1alpha3' # listen for APIService URLs
-        - name: TLS_CERT_DIR
-          value: '/var/tls/cert'
+        # - name: BASE_PATH
+        #   value: '/apis/api.appcore-rp.dev/v1alpha3' # listen for APIService URLs
+        # - name: TLS_CERT_DIR
+        #   value: '/var/tls/cert'
         - name: PORT
           value: '5443'
         - name: RADIUS_ENV
-          value: 'standalone'
+          value: 'self-hosted'
         name: appcore-rp
         ports:
         - containerPort: 5443
@@ -66,8 +67,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
-    - port: 443
-      name: https
+    - port: 5443
+      name: http
       protocol: TCP
       targetPort: 5443
   selector:
@@ -83,5 +84,5 @@ metadata:
     heritage: "{{ .Release.Service }}"
     release: "{{ .Release.Name }}"
 data:
-  radius-standalone.yaml: |-
-{{ .Files.Get "radius-standalone.yaml" | indent 4}}
+  radius-self-host.yaml: |-
+{{ .Files.Get "radius-self-host.yaml" | indent 4}}

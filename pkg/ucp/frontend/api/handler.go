@@ -36,6 +36,7 @@ func (h *Handler) GetSwaggerDoc(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handler) getRelativePath(path string) string {
+	h.ucp.Options.BasePath = "/apis/api.ucp.dev/v1alpha3"
 	trimmedPath := strings.TrimPrefix(path, h.ucp.Options.BasePath)
 	return trimmedPath
 }
@@ -104,12 +105,17 @@ func (h *Handler) ProxyPlaneRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := ucplog.GetLogger(ctx)
 
+	fmt.Printf("@@@@@ incoming proxy req: %s\n", r.URL.String())
 	logger.V(3).Info("starting proxy request", "url", r.URL.String(), "method", r.Method)
 	for key, value := range r.Header {
 		logger.V(4).Info("incoming request header", "key", key, "value", value)
 	}
-
-	response, err := h.ucp.Planes.ProxyRequest(ctx, h.db, w, r, h.getRelativePath(r.URL.Path))
+	newURL := *r.URL
+	newURL.Path = h.getRelativePath(r.URL.Path)
+	fmt.Printf("@@@@@ trimmed path: %s\n", newURL.Path)
+	// Trim resouregroup
+	fmt.Printf("@@@@@ path: %s\n", newURL.Path)
+	response, err := h.ucp.Planes.ProxyRequest(ctx, h.db, w, r, &newURL)
 	if err != nil {
 		err := response.Apply(ctx, w, r)
 		if err != nil {

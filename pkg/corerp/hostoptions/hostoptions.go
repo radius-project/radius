@@ -21,7 +21,8 @@ import (
 // HostOptions defines all of the settings that our RP's execution environment provides.
 type HostOptions struct {
 	// Config is the bootstrap configuration loaded from config file.
-	Config *ProviderConfig
+	Config     *ProviderConfig
+	TLSCertDir string
 
 	// DBClientFactory func(ctx context.Context) (*mongo.Database, error)
 
@@ -37,8 +38,12 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
+	tlsCertDir := os.Getenv("TLS_CERT_DIR")
+	fmt.Printf("@@@@@ tlsdir: %s\n", tlsCertDir)
+
 	return HostOptions{
-		Config: conf,
+		Config:     conf,
+		TLSCertDir: tlsCertDir,
 	}, nil
 }
 

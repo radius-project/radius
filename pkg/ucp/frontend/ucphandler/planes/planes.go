@@ -31,7 +31,7 @@ type PlanesUCPHandler interface {
 	List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error)
 	GetByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error)
 	DeleteByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error)
-	ProxyRequest(ctx context.Context, db store.StorageClient, w http.ResponseWriter, r *http.Request, path string) (rest.Response, error)
+	ProxyRequest(ctx context.Context, db store.StorageClient, w http.ResponseWriter, r *http.Request, incomingURL *url.URL) (rest.Response, error)
 }
 
 type Options struct {
@@ -150,8 +150,9 @@ func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, p
 	return restResponse, nil
 }
 
-func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient, w http.ResponseWriter, r *http.Request, path string) (rest.Response, error) {
-	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
+func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient, w http.ResponseWriter, r *http.Request, incomingURL *url.URL) (rest.Response, error) {
+	fmt.Printf("@@@@ in planes proxyrequest path: %s\n", incomingURL.String())
+	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(incomingURL.Path)
 	if err != nil {
 		return rest.InternalServerError(err), err
 	}
@@ -173,7 +174,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	// Get the resource provider
-	resourceID, err := resources.Parse(resources.UCPPrefix + path)
+	resourceID, err := resources.Parse(resources.UCPPrefix + incomingURL.Path)
 	if err != nil {
 		return rest.InternalServerError(err), err
 	}
@@ -194,6 +195,8 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 			break
 		}
 	}
+
+	fmt.Printf("@@@@ proxyURL: %s\n", proxyURL)
 	downstream, err := url.Parse(proxyURL)
 	if err != nil {
 		return rest.InternalServerError(err), err
@@ -219,6 +222,18 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		// That address will be used to construct the URL for reverse proxying
 		UCPHost: r.Host,
 	}
+
+	segments := strings.Split(incomingURL.Path, "/")
+	fmt.Printf("@@@@@ proxying req path segments: %v\n", segments)
+
+	p := strings.Join(segments[4:], "/")
+	url, err := url.Parse(p)
+	if err != nil {
+		return nil, err
+	}
+	url.RawQuery = incomingURL.Query().Encode()
+	r.URL = url
+	fmt.Printf("@@@@@ modified url: %s\n", r.URL.Path)
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 	sender.ServeHTTP(w, r.WithContext(ctx))
