@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // AsyncOperationResult is the response of async operation controller.
@@ -22,7 +22,7 @@ type AsyncOperationResult struct {
 	OperationName string
 
 	// ResourceID represents the linked resource.
-	ResourceID azresources.ResourceID
+	ResourceID resources.ID
 
 	// Status represents the provisioning status.
 	Status basedatamodel.ProvisioningStates
@@ -39,7 +39,7 @@ type AsyncOperationResult struct {
 // NewAsyncOperationResult creates NewAsyncOperationResult object.
 func NewAsyncOperationResult(
 	operationID uuid.UUID, operationName string,
-	resourceID azresources.ResourceID,
+	resourceID resources.ID,
 	status basedatamodel.ProvisioningStates) *AsyncOperationResult {
 	now := time.Now().UTC()
 	return &AsyncOperationResult{
