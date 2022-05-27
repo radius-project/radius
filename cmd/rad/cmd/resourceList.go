@@ -65,10 +65,6 @@ var listResources = func(cmd *cobra.Command, args []string) error {
 }
 
 var listResourcesv20220315privatepreview = func(cmd *cobra.Command, args []string) error {
-	config := ConfigFromContext(cmd.Context())
-	_, err := cli.RequireEnvironment(cmd, config)
-	if err != nil {
-		return err
-	}
+	//TODO: Write out the resource list logic
 	return nil
 }
