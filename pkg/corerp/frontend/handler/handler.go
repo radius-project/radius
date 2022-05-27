@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 type ControllerFunc func(store.StorageClient, deployment.DeploymentProcessor) (controller.ControllerInterface, error)

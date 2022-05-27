@@ -33,7 +33,7 @@ type RabbitMQMessageQueueProperties struct {
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Environment       string                           `json:"environment"`
 	Application       string                           `json:"application,omitempty"`
-	Queue             string                           `json:"queue,omitempty"`
+	Queue             string                           `json:"queue"`
 	Secrets           RabbitMQSecrets                  `json:"secrets,omitempty"`
 }
 

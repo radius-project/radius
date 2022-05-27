@@ -15,8 +15,9 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/daprpubsubv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/functional"
+	"github.com/project-radius/radius/test/functional/azure"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -24,9 +25,9 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 	application := "azure-resources-dapr-pubsub-servicebus"
 	template := "testdata/azure-resources-dapr-pubsub-servicebus.bicep"
 
-	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
-			Executor: azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			AzureResources: &validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
 					{

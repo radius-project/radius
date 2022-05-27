@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-// Package etcdstore stores resources using ETCd. Our usage for ETCd is optimized for the kinds
+// Package etcdstore stores resources using etcd. Our usage for etcd is optimized for the kinds
 // of hierarchical and type-based queries common in a resource provider.
 //
 // Our key prefix scheme builds a hierarchy using '|' as a separator as '|' is illegal in an
@@ -57,12 +57,15 @@ type ETCDClient struct {
 	client *etcdclient.Client
 }
 
-func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) ([]store.Object, error) {
+func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
 	if query.RootScope == "" {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RootScope' is required"}
+	}
+	if query.IsScopeQuery && query.RoutingScopePrefix != "" {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RoutingScopePrefix' is not supported for scope queries"}
 	}
 
 	key := keyFromQuery(query)
@@ -76,7 +79,7 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 		return nil, err
 	}
 
-	values := []store.Object{}
+	results := store.ObjectQueryResult{}
 	for _, kv := range response.Kvs {
 		if keyMatchesQuery(kv.Key, query) {
 			value := store.Object{}
@@ -85,26 +88,37 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 				return nil, err
 			}
 
+			match, err := value.MatchesFilters(query.Filters)
+			if err != nil {
+				return nil, err
+			} else if !match {
+				continue
+			}
+
 			value.ETag = etag.NewFromRevision(kv.ModRevision)
-			values = append(values, value)
+			results.Items = append(results.Items, value)
 		}
 	}
 
-	return values, nil
+	return &results, nil
 }
 
-func (c *ETCDClient) Get(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
+func (c *ETCDClient) Get(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
-	if id.IsEmpty() {
+	parsed, err := resources.Parse(id)
+	if err != nil {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must be a valid resource id"}
+	}
+	if parsed.IsEmpty() {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must not be empty"}
 	}
-	if id.IsCollection() {
+	if parsed.IsCollection() {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
-	key := keyFromID(id)
+	key := keyFromID(parsed)
 	response, err := c.client.Get(ctx, key)
 	if err != nil {
 		return nil, err
@@ -125,18 +139,22 @@ func (c *ETCDClient) Get(ctx context.Context, id resources.ID, options ...store.
 	return &value, nil
 }
 
-func (c *ETCDClient) Delete(ctx context.Context, id resources.ID, options ...store.DeleteOptions) error {
+func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.DeleteOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
-	if id.IsEmpty() {
+	parsed, err := resources.Parse(id)
+	if err != nil {
+		return &store.ErrInvalid{Message: "invalid argument. 'id' must be a valid resource id"}
+	}
+	if parsed.IsEmpty() {
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must not be empty"}
 	}
-	if id.IsCollection() {
+	if parsed.IsCollection() {
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
-	key := keyFromID(id)
+	key := keyFromID(parsed)
 	config := store.NewDeleteConfig(options...)
 
 	// If we have an ETag then we do to execute a transaction.
@@ -242,7 +260,7 @@ func idFromKey(key []byte) (resources.ID, error) {
 	// sample valid key:
 	// scope|ucp:/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 	if len(parts) != 3 {
-		return resources.ID{}, errors.New("the ETCd key '%q' is invalid because it does not have 3 sections")
+		return resources.ID{}, errors.New("the etcd key '%q' is invalid because it does not have 3 sections")
 	}
 
 	if parts[2] == "" {
@@ -323,7 +341,11 @@ func keyMatchesQuery(key []byte, query store.Query) bool {
 		return false // Not a match for the routing scope.
 	}
 
-	if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
+	if query.ResourceType != "" && query.IsScopeQuery {
+		scopes := id.ScopeSegments()
+		resourceType := scopes[len(scopes)-1].Type
+		return strings.EqualFold(resourceType, query.ResourceType)
+	} else if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
 		return false // Not a match for the resource type
 	}
 

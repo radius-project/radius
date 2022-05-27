@@ -13,7 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/authentication"
 	"github.com/project-radius/radius/pkg/corerp/middleware"
-	mp "github.com/project-radius/radius/pkg/telemetry/metrics"
+	"github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -28,15 +28,18 @@ type ServerOptions struct {
 	Address       string
 	PathBase      string
 	EnableArmAuth bool
-	Configure     func(*mux.Router)
+	Configure     func(*mux.Router) error
 	ArmCertMgr    *authentication.ArmCertManager
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
-func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig mp.MetricsOptions) *http.Server {
+func NewServer(ctx context.Context, options ServerOptions) (*http.Server, error) {
 	r := mux.NewRouter()
 	if options.Configure != nil {
-		options.Configure(r)
+		err := options.Configure(r)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	r.Use(middleware.Recoverer)
@@ -49,12 +52,9 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
-
-	//setup metrics handler
-	metricsProvider, _ := mp.NewPrometheusMetricsClient()
-	promExporter := metricsProvider.GetExporter()
-	r.Use(middleware.MetricsInterceptor)
-	r.Path(metricsProviderConfig.MetricsOptions.Endpoint).HandlerFunc(promExporter.ServeHTTP)
+	// setup metrics object
+	httpMetrics := metrics.NewHTTPMetrics()
+	r.Use(middleware.MetricsRecorder(httpMetrics))
 
 	server := &http.Server{
 		Addr:    options.Address,
@@ -64,5 +64,5 @@ func NewServer(ctx context.Context, options ServerOptions, metricsProviderConfig
 		},
 	}
 
-	return server
+	return server, nil
 }

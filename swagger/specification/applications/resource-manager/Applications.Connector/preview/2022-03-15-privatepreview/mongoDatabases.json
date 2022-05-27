@@ -271,6 +271,51 @@
           }
         }
       }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}/listSecrets": {
+      "post": {
+        "description": "Lists secrets values for the specified MongoDatabase resource",
+        "operationId": "MongoDatabases_listSecrets",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "MongoDatabasesGet": {
+            "$ref": "./examples/MongoDatabasesListSecrets.json"
+          }
+        },
+        "tags": [
+          "MongoDatabases"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "#/parameters/MongoDatabaseNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MongoDatabase resource",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -357,20 +402,28 @@
         "secrets": {
           "type": "object",
           "description": "Secrets values provided for the resource",
-          "properties": {
-            "username": {
-              "description": "Username to use when connecting to the target Mongo database",
-              "type": "string"
-            },
-            "password": {
-              "description": "Password to use when connecting to the target Mongo database",
-              "type": "string"
-            },
-            "connectionString": {
-              "description": "Connection string used to connect to the target Mongo database",
-              "type": "string"
-            }
-          }
+          "$ref": "#/definitions/MongoDatabaseSecrets"
+        }
+      }
+    },
+    "MongoDatabaseListSecretsResult": {
+      "description": "The secret values for the given MongoDatabase resource",
+      "$ref": "#/definitions/MongoDatabaseSecrets"
+    },
+    "MongoDatabaseSecrets": {
+      "description": "The secret values for the given MongoDatabase resource",
+      "properties": {
+        "username": {
+          "description": "Username to use when connecting to the target Mongo database",
+          "type": "string"
+        },
+        "password": {
+          "description": "Password to use when connecting to the target Mongo database",
+          "type": "string"
+        },
+        "connectionString": {
+          "description": "Connection string used to connect to the target Mongo database",
+          "type": "string"
         }
       }
     }

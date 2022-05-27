@@ -5,14 +5,16 @@
 
 package hostoptions
 
-type CloudEnvironmentType string
+type EnvironmentType string
 
 const (
-	AzureDogfood      CloudEnvironmentType = "Dogfood"
-	AzureCloud        CloudEnvironmentType = "AzureCloud"
-	AzureChinaCloud   CloudEnvironmentType = "AzureChinaCloud"
-	AzureUSGovernment CloudEnvironmentType = "AzureUSGovernment"
-	AzureGermanCloud  CloudEnvironmentType = "AzureGermanCloud"
+	Development       EnvironmentType = "Dev"
+	SelfHosted        EnvironmentType = "Self-Hosted"
+	AzureDogfood      EnvironmentType = "Dogfood"
+	AzureCloud        EnvironmentType = "AzureCloud"
+	AzureChinaCloud   EnvironmentType = "AzureChinaCloud"
+	AzureUSGovernment EnvironmentType = "AzureUSGovernment"
+	AzureGermanCloud  EnvironmentType = "AzureGermanCloud"
 )
 
 type AuthentificationType string
@@ -22,10 +24,10 @@ const (
 	AADPoPAuthType            AuthentificationType = "PoP"
 )
 
-// CloudEnvironmentOptions represents the cloud environment.
-type CloudEnvironmentOptions struct {
-	Name         CloudEnvironmentType `yaml:"name"`
-	RoleLocation string               `yaml:"roleLocation"`
+// EnvironmentOptions represents the environment.
+type EnvironmentOptions struct {
+	Name         EnvironmentType `yaml:"name"`
+	RoleLocation string          `yaml:"roleLocation"`
 }
 
 // IdentityOptions includes authentication options to issue JWT from Azure AD.

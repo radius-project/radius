@@ -16,10 +16,14 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/corerp/backend"
+	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
-	"github.com/project-radius/radius/pkg/hosting"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
+	mh "github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
+	"github.com/project-radius/radius/pkg/ucp/data"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
 )
 
 func main() {
@@ -37,6 +41,7 @@ func main() {
 	flag.Parse()
 
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
+	metricOptions := mh.NewHostOptionsFromEnvironment(*options.Config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,11 +52,22 @@ func main() {
 	}
 	defer flush()
 
-	hostingSvc := []hosting.Service{frontend.NewService(options)}
+	hostingSvc := []hosting.Service{frontend.NewService(options), metricsservice.NewService(metricOptions)}
 
 	if enableAsyncWorker {
 		logger.Info("Enable AsyncRequestProcessWorker.")
 		hostingSvc = append(hostingSvc, backend.NewService(options))
+	}
+
+	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
+		options.Config.StorageProvider.ETCD.InMemory {
+		// For in-memory etcd we need to register another service to manage its lifecycle.
+		//
+		// The client will be initialized asynchronously.
+		logger.Info("Enabled in-memory etcd")
+		client := hosting.NewAsyncValue()
+		options.Config.StorageProvider.ETCD.Client = client
+		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
 
 	loggerValues := []interface{}{}
@@ -62,34 +78,30 @@ func main() {
 		LoggerValues: loggerValues,
 	}
 
-	// Create a channel to handle the shutdown
-	exitCh := make(chan os.Signal, 1)
-	signal.Notify(exitCh, syscall.SIGINT, syscall.SIGTERM)
-
 	ctx, cancel := context.WithCancel(logr.NewContext(context.Background(), logger))
 	stopped, serviceErrors := host.RunAsync(ctx)
 
-	for {
-		select {
+	exitCh := make(chan os.Signal, 2)
+	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM)
 
-		// Shutdown triggered
-		case <-exitCh:
-			fmt.Println("Shutting down....")
-			cancel()
+	select {
+	// Shutdown triggered
+	case <-exitCh:
+		logger.Info("Shutting down....")
+		cancel()
 
-		// A service terminated with a failure. Shut down
-		case <-serviceErrors:
-			fmt.Println("Shutting down....")
-			cancel()
+	// A service terminated with a failure. Shut down
+	case <-serviceErrors:
+		logger.Info("Error occurred - shutting down....")
+		cancel()
+	}
 
-		// Finished shutting down. An error returned here is a failure to terminate
-		// gracefully, so just crash if that happens.
-		case err := <-stopped:
-			if err == nil {
-				os.Exit(0)
-			} else {
-				panic(err)
-			}
-		}
+	// Finished shutting down. An error returned here is a failure to terminate
+	// gracefully, so just crash if that happens.
+	err = <-stopped
+	if err == nil {
+		os.Exit(0)
+	} else {
+		panic(err)
 	}
 }

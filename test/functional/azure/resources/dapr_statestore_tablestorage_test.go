@@ -14,8 +14,9 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/azuretest"
 	"github.com/project-radius/radius/test/functional"
+	"github.com/project-radius/radius/test/functional/azure"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
@@ -23,9 +24,9 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 	application := "azure-resources-dapr-statestore-tablestorage"
 	template := "testdata/azure-resources-dapr-statestore-tablestorage.bicep"
 
-	test := azuretest.NewApplicationTest(t, application, []azuretest.Step{
+	test := azure.NewApplicationTest(t, application, []azure.TestStep{
 		{
-			Executor:           azuretest.NewDeployStepExecutor(template, functional.GetMagpieImage()),
+			Executor:           step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			AzureResources:     &validation.AzureResourceSet{},
 			SkipAzureResources: true,
 			RadiusResources: &validation.ResourceSet{

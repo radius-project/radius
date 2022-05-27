@@ -8,15 +8,21 @@ package dataprovider
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // StorageProviderType represents types of storage provider.
 type StorageProviderType string
 
 const (
-	// CosmosDBProvider represents CosmosDB provider.
-	CosmosDBProvider StorageProviderType = "cosmosdb"
+	// TypeAPIServer represents the Kubernetes APIServer provider.
+	TypeAPIServer StorageProviderType = "apiserver"
+
+	// TypeCosmosDB represents CosmosDB provider.
+	TypeCosmosDB StorageProviderType = "cosmosdb"
+
+	// TypeETCD represents the etcd provider.
+	TypeETCD StorageProviderType = "etcd"
 )
 
 //go:generate mockgen -destination=./mock_datastorage_provider.go -package=dataprovider -self_package github.com/project-radius/radius/pkg/corerp/dataprovider github.com/project-radius/radius/pkg/corerp/dataprovider DataStorageProvider
