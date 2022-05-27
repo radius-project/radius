@@ -24,8 +24,6 @@ spec:
         - --config-file=/etc/config/radius-self-host.yaml
         image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         env:
-        - name: DEFAULT_PLANES_CONFIG
-          value: /etc/config/appcore-rp-config.json
         - name: PORT
           value: '5443'
         - name: RADIUS_ENV
@@ -48,8 +46,6 @@ spec:
             secretName: appcore-rp-cert
         - name: config-volume
           configMap:
-            # Provide the name of the ConfigMap containing the files you want
-            # to add to the container
             name: radius-config
 ---
 apiVersion: v1
