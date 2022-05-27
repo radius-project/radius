@@ -11,7 +11,7 @@ storageProvider:
   apiserver:
     incluster: true 
     context: ''
-    namespace: 'default'
+    namespace: 'radius-system'
 metricsProvider:
   prometheus:
     endpoint: "/metrics"

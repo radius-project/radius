@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
 	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
@@ -37,19 +36,6 @@ const (
 	mongoDatabaseRouteName       = connectorRPPrefix + "mongodatabase"
 )
 
-func defaultRouteHandler(w http.ResponseWriter, req *http.Request) {
-	// Required for the K8s scenario, we are required to respond to a request
-	// to /apis/api.appcore-rp.dev/v1alpha3 with a 200 OK response.
-	ctx := req.Context()
-	response := rest.NewOKResponse([]byte{})
-
-	err := response.Apply(ctx, w, req)
-	if err != nil {
-		internalServerError(ctx, w, req, err)
-		return
-	}
-}
-
 // AddRoutes adds the routes and handlers for each resource provider APIs.
 // TODO: Enable api spec validator.
 func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
@@ -59,9 +45,6 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 	handlers := []handlerParam{}
 
 	if !hostoptions.IsSelfHosted() {
-		if pathBase != "" {
-			router.Path(pathBase).Methods("GET").HandlerFunc(defaultRouteHandler)
-		}
 		// Provider system notification.
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 		providerRouter = router.Path(pathBase+"/subscriptions/{subscriptionID}").

@@ -10,7 +10,6 @@ global:
     tag: latest # Tag for appcore-rp image.
     provider:
       azure: {}
-    publicEndpointOverride: ''
   ucp:
     image: radius.azurecr.io/ucpd
     tag: latest # Tag for ucp image.

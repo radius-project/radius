@@ -41,12 +41,9 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
       volumes:
-        - name: cert
-          secret:
-            secretName: appcore-rp-cert
         - name: config-volume
           configMap:
-            name: radius-config
+            name: appcore-rp-config
 ---
 apiVersion: v1
 kind: Service
@@ -65,7 +62,7 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: radius-config
+  name: appcore-rp-config
   namespace: {{ .Release.Namespace }}
   labels:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
