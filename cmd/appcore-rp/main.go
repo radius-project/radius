@@ -16,9 +16,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/corerp/backend"
+	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 )
 
@@ -52,6 +54,17 @@ func main() {
 	if enableAsyncWorker {
 		logger.Info("Enable AsyncRequestProcessWorker.")
 		hostingSvc = append(hostingSvc, backend.NewService(options))
+	}
+
+	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
+		options.Config.StorageProvider.ETCD.InMemory {
+		// For in-memory etcd we need to register another service to manage its lifecycle.
+		//
+		// The client will be initialized asynchronously.
+		logger.Info("Enabled in-memory etcd")
+		client := hosting.NewAsyncValue()
+		options.Config.StorageProvider.ETCD.Client = client
+		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
 
 	loggerValues := []interface{}{}

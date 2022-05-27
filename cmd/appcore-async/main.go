@@ -16,8 +16,10 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/corerp/backend"
+	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 )
 
@@ -43,12 +45,25 @@ func main() {
 	}
 	defer flush()
 
+	services := []hosting.Service{
+		backend.NewSystemService(options),
+		backend.NewService(options),
+	}
+
+	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
+		options.Config.StorageProvider.ETCD.InMemory {
+		// For in-memory etcd we need to register another service to manage its lifecycle.
+		//
+		// The client will be initialized asynchronously.
+		logger.Info("Enabled in-memory etcd")
+		client := hosting.NewAsyncValue()
+		options.Config.StorageProvider.ETCD.Client = client
+		services = append(services, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
+	}
+
 	loggerValues := []interface{}{}
 	host := &hosting.Host{
-		Services: []hosting.Service{
-			backend.NewSystemService(options),
-			backend.NewService(options),
-		},
+		Services: services,
 
 		// Values that will be propagated to all loggers
 		LoggerValues: loggerValues,
