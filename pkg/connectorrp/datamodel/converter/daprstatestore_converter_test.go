@@ -25,7 +25,19 @@ func TestDaprStateStoreDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoreresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/daprstatestoresqlserverresourcedatamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.DaprStateStoreResource{},
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprstatestoreazuretablestorageresourcedatamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.DaprStateStoreResource{},
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprstatestogenericreresourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.DaprStateStoreResource{},
 			nil,
@@ -61,7 +73,17 @@ func TestDaprStateStoreDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprstatestoreresource.json",
+			"../../api/v20220315privatepreview/testdata/daprstatestoresqlserverresource.json",
+			"2022-03-15-privatepreview",
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprstatestoreazuretablestorageresource.json",
+			"2022-03-15-privatepreview",
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprstatestogenericreresource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
