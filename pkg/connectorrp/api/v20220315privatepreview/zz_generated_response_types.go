@@ -10,6 +10,60 @@ package v20220315privatepreview
 
 import "net/http"
 
+// DaprInvokeHTTPRoutesCreateOrUpdateResponse contains the response from method DaprInvokeHTTPRoutes.CreateOrUpdate.
+type DaprInvokeHTTPRoutesCreateOrUpdateResponse struct {
+	DaprInvokeHTTPRoutesCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesCreateOrUpdateResult contains the result from method DaprInvokeHTTPRoutes.CreateOrUpdate.
+type DaprInvokeHTTPRoutesCreateOrUpdateResult struct {
+	DaprInvokeHTTPRouteResource
+}
+
+// DaprInvokeHTTPRoutesDeleteResponse contains the response from method DaprInvokeHTTPRoutes.Delete.
+type DaprInvokeHTTPRoutesDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesGetResponse contains the response from method DaprInvokeHTTPRoutes.Get.
+type DaprInvokeHTTPRoutesGetResponse struct {
+	DaprInvokeHTTPRoutesGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesGetResult contains the result from method DaprInvokeHTTPRoutes.Get.
+type DaprInvokeHTTPRoutesGetResult struct {
+	DaprInvokeHTTPRouteResource
+}
+
+// DaprInvokeHTTPRoutesListBySubscriptionResponse contains the response from method DaprInvokeHTTPRoutes.ListBySubscription.
+type DaprInvokeHTTPRoutesListBySubscriptionResponse struct {
+	DaprInvokeHTTPRoutesListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesListBySubscriptionResult contains the result from method DaprInvokeHTTPRoutes.ListBySubscription.
+type DaprInvokeHTTPRoutesListBySubscriptionResult struct {
+	DaprInvokeHTTPRouteList
+}
+
+// DaprInvokeHTTPRoutesListResponse contains the response from method DaprInvokeHTTPRoutes.List.
+type DaprInvokeHTTPRoutesListResponse struct {
+	DaprInvokeHTTPRoutesListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesListResult contains the result from method DaprInvokeHTTPRoutes.List.
+type DaprInvokeHTTPRoutesListResult struct {
+	DaprInvokeHTTPRouteList
+}
+
 // DaprSecretStoresCreateOrUpdateResponse contains the response from method DaprSecretStores.CreateOrUpdate.
 type DaprSecretStoresCreateOrUpdateResponse struct {
 	DaprSecretStoresCreateOrUpdateResult
