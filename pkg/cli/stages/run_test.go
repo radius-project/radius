@@ -14,12 +14,13 @@ import (
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/stretchr/testify/require"
+
 	"github.com/project-radius/radius/pkg/cli/builders"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/radyaml"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/stretchr/testify/require"
+	"github.com/project-radius/radius/test"
 )
 
 func SkipBicepBuild(ctx context.Context, deployFile string) (string, error) {
@@ -36,7 +37,7 @@ func MockBicepBuild(ctx context.Context, deployFile string, template string) (st
 }
 
 func Test_EmptyRadYaml_DoesNotCrash(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -59,7 +60,7 @@ func Test_EmptyRadYaml_DoesNotCrash(t *testing.T) {
 }
 
 func Test_MissingStage_ReturnsError(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -83,7 +84,7 @@ func Test_MissingStage_ReturnsError(t *testing.T) {
 }
 
 func Test_CanSkipStageWithNothingToDo(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -118,7 +119,7 @@ func Test_CanSkipStageWithNothingToDo(t *testing.T) {
 }
 
 func Test_CanRunAllStages(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -169,7 +170,7 @@ func Test_CanRunAllStages(t *testing.T) {
 }
 
 func Test_CanSpecifyLastStage(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -220,7 +221,7 @@ func Test_CanSpecifyLastStage(t *testing.T) {
 }
 
 func Test_CanSpecifyStage(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -266,7 +267,7 @@ func Test_CanSpecifyStage(t *testing.T) {
 }
 
 func Test_CanPropagateParameters(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -378,7 +379,7 @@ func Test_CanPropagateParameters(t *testing.T) {
 }
 
 func Test_CanUsePerStageParameters(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -497,7 +498,7 @@ func Test_CanUsePerStageParameters(t *testing.T) {
 }
 
 func Test_CanOverrideStage(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -563,7 +564,7 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 	// (mocked) deployment JSON template to get parameters.
 	// There will not be a difference in the output because it only
 	// tracks the processor-level parameters
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -646,7 +647,7 @@ func Test_CanUseParameterFileParameters(t *testing.T) {
 	// when provided. Output will not change for different
 	// parameters provided in the file since output is only
 	// tied to processor-level parameters
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{
@@ -783,7 +784,7 @@ func (mb *MockBuilder) Build(ctx context.Context, options builders.Options) (bui
 }
 
 func Test_CanUseBuildResults(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	manifest := radyaml.Manifest{

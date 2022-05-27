@@ -59,6 +59,7 @@ input-file:
   - Applications.Connector/preview/2022-03-15-privatepreview/global.json
   - Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
   - Applications.Connector/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
 ```
 
 # Code Generation

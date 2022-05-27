@@ -118,6 +118,60 @@ type DaprSecretStoresListResult struct {
 	DaprSecretStoreList
 }
 
+// DaprStateStoresCreateOrUpdateResponse contains the response from method DaprStateStores.CreateOrUpdate.
+type DaprStateStoresCreateOrUpdateResponse struct {
+	DaprStateStoresCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresCreateOrUpdateResult contains the result from method DaprStateStores.CreateOrUpdate.
+type DaprStateStoresCreateOrUpdateResult struct {
+	DaprStateStoreResource
+}
+
+// DaprStateStoresDeleteResponse contains the response from method DaprStateStores.Delete.
+type DaprStateStoresDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresGetResponse contains the response from method DaprStateStores.Get.
+type DaprStateStoresGetResponse struct {
+	DaprStateStoresGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresGetResult contains the result from method DaprStateStores.Get.
+type DaprStateStoresGetResult struct {
+	DaprStateStoreResource
+}
+
+// DaprStateStoresListBySubscriptionResponse contains the response from method DaprStateStores.ListBySubscription.
+type DaprStateStoresListBySubscriptionResponse struct {
+	DaprStateStoresListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresListBySubscriptionResult contains the result from method DaprStateStores.ListBySubscription.
+type DaprStateStoresListBySubscriptionResult struct {
+	DaprStateStoreList
+}
+
+// DaprStateStoresListResponse contains the response from method DaprStateStores.List.
+type DaprStateStoresListResponse struct {
+	DaprStateStoresListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresListResult contains the result from method DaprStateStores.List.
+type DaprStateStoresListResult struct {
+	DaprStateStoreList
+}
+
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
 type MongoDatabasesCreateOrUpdateResponse struct {
 	MongoDatabasesCreateOrUpdateResult

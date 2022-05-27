@@ -3,31 +3,28 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package kubernetestest
+package kubernetes
 
 import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/discovery"
 	memory "k8s.io/client-go/discovery/cached"
-	"k8s.io/client-go/dynamic"
-	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/restmapper"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/step"
+	"github.com/project-radius/radius/test/validation"
 )
 
 var radiusControllerLogSync sync.Once
@@ -36,8 +33,8 @@ const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 )
 
-type Step struct {
-	Executor               StepExecutor
+type TestStep struct {
+	Executor               step.Executor
 	RadiusResources        *validation.ResourceSet
 	K8sOutputResources     []unstructured.Unstructured
 	K8sObjects             *validation.K8sObjectSet
@@ -46,50 +43,22 @@ type Step struct {
 	SkipResourceValidation bool
 }
 
-type StepExecutor interface {
-	GetDescription() string
-	Execute(ctx context.Context, t *testing.T, options TestOptions)
-}
-
 type ApplicationTest struct {
 	Options          TestOptions
 	Application      string
 	Description      string
 	InitialResources []unstructured.Unstructured
-	Steps            []Step
+	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
 }
 
 type TestOptions struct {
-	ConfigFilePath  string
-	K8sClient       *k8s.Clientset
-	DynamicClient   dynamic.Interface
+	test.TestOptions
 	DiscoveryClient discovery.DiscoveryInterface
-	Client          client.Client
 }
 
 func NewTestOptions(t *testing.T) TestOptions {
-	config, err := cli.LoadConfig("")
-	require.NoError(t, err, "failed to read radius config")
-
-	k8sconfig, err := kubernetes.ReadKubeConfig()
-	require.NoError(t, err, "failed to read k8s config")
-
-	k8s, _, err := kubernetes.CreateTypedClient(k8sconfig.CurrentContext)
-	require.NoError(t, err, "failed to create kubernetes client")
-
-	dynamicClient, err := kubernetes.CreateDynamicClient(k8sconfig.CurrentContext)
-	require.NoError(t, err, "failed to create kubernetes dyamic client")
-
-	client, err := kubernetes.CreateRuntimeClient(k8sconfig.CurrentContext, kubernetes.Scheme)
-	require.NoError(t, err, "failed to create runtime client")
-
-	return TestOptions{
-		ConfigFilePath: config.ConfigFileUsed(),
-		K8sClient:      k8s,
-		DynamicClient:  dynamicClient,
-		Client:         client,
-	}
+	return TestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
 func (at ApplicationTest) CollectAllNamespaces() []string {
@@ -110,39 +79,7 @@ func (at ApplicationTest) CollectAllNamespaces() []string {
 	return results
 }
 
-var _ StepExecutor = (*DeployStepExecutor)(nil)
-
-type DeployStepExecutor struct {
-	Description string
-	Template    string
-	Parameters  []string
-}
-
-func NewDeployStepExecutor(template string, parameters ...string) *DeployStepExecutor {
-	return &DeployStepExecutor{
-		Description: fmt.Sprintf("deploy %s", template),
-		Template:    template,
-		Parameters:  parameters,
-	}
-}
-
-func (d *DeployStepExecutor) GetDescription() string {
-	return d.Description
-}
-
-func (d *DeployStepExecutor) Execute(ctx context.Context, t *testing.T, options TestOptions) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-
-	templateFilePath := filepath.Join(cwd, d.Template)
-	t.Logf("deploying %s from file %s", d.Description, d.Template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
-	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
-	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
-}
-
-func NewApplicationTest(t *testing.T, application string, steps []Step, initialResources ...unstructured.Unstructured) ApplicationTest {
+func NewApplicationTest(t *testing.T, application string, steps []TestStep, initialResources ...unstructured.Unstructured) ApplicationTest {
 	return ApplicationTest{
 		Options:          NewTestOptions(t),
 		Application:      application,
@@ -195,7 +132,7 @@ func (at ApplicationTest) CleanUpExtensionResources(resources []unstructured.Uns
 }
 
 func (at ApplicationTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	// Capture all logs from all pods (only run one of these as it will monitor everything)
@@ -242,7 +179,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			}
 
 			t.Logf("running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
-			step.Executor.Execute(ctx, t, at.Options)
+			step.Executor.Execute(ctx, t, at.Options.TestOptions)
 			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
 
 			if step.RadiusResources == nil && step.SkipOutputResources {

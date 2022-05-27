@@ -3,20 +3,22 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azuretest
+package azure
 
 import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/radcli"
+	"github.com/project-radius/radius/test/step"
+	"github.com/project-radius/radius/test/validation"
 )
 
-type Step struct {
-	Executor               StepExecutor
+type TestStep struct {
+	Executor               step.Executor
 	AzureResources         *validation.AzureResourceSet
 	RadiusResources        *validation.ResourceSet
 	Objects                *validation.K8sObjectSet
@@ -26,21 +28,16 @@ type Step struct {
 	SkipResourceValidation bool
 }
 
-type StepExecutor interface {
-	GetDescription() string
-	Execute(ctx context.Context, t *testing.T, options TestOptions)
-}
-
 type ApplicationTest struct {
 	Options          TestOptions
 	Application      string
 	Description      string
 	SkipDeletion     bool
-	Steps            []Step
+	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
 }
 
-func NewApplicationTest(t *testing.T, application string, steps []Step) ApplicationTest {
+func NewApplicationTest(t *testing.T, application string, steps []TestStep) ApplicationTest {
 	return ApplicationTest{
 		Options:     NewTestOptions(t),
 		Application: application,
@@ -68,7 +65,7 @@ func (at ApplicationTest) CollectAllNamespaces() []string {
 }
 
 func (at ApplicationTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.GetContext(t)
+	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
 	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
@@ -93,7 +90,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 			}
 
 			t.Logf("running step %d of %d: %s", i+1, len(at.Steps), step.Executor.GetDescription())
-			step.Executor.Execute(ctx, t, at.Options)
+			step.Executor.Execute(ctx, t, at.Options.TestOptions)
 			t.Logf("finished running step %d of %d: %s", i+1, len(at.Steps), step.Executor.GetDescription())
 
 			if step.AzureResources == nil && step.SkipAzureResources {

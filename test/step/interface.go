@@ -3,12 +3,16 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package metrics
+package step
 
 import (
-	"go.opentelemetry.io/otel/exporters/metric/prometheus"
+	"context"
+	"testing"
+
+	"github.com/project-radius/radius/test"
 )
 
-type MetricsProvider interface{
-	GetExporter()(*prometheus.Exporter)
+type Executor interface {
+	GetDescription() string
+	Execute(ctx context.Context, t *testing.T, options test.TestOptions)
 }

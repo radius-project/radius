@@ -2,7 +2,7 @@ package bindings
 
 import (
 	"context"
-	"crypto/tls"
+	"fmt"
 	"log"
 	"time"
 
@@ -18,13 +18,13 @@ func RedisBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "Redis HOST and PORT are required"}
 	}
 	redisPassword := envParams["PASSWORD"]
-	op := &redis.Options{Addr: redisHost, Password: redisPassword, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12}, WriteTimeout: 5 * time.Second}
+	op := &redis.Options{Addr: redisHost, Password: redisPassword, WriteTimeout: 5 * time.Second}
 	client := redis.NewClient(op)
 
 	ctx := context.Background()
 	err = client.Ping(ctx).Err()
 	if err != nil {
-		log.Println("failed to connect with redis instance at %s - %v", redisHost, err.Error())
+		log.Println(fmt.Sprintf("failed to connect with redis instance at %s - %v", redisHost, err.Error()))
 		return BindingStatus{false, "not connected"}
 	}
 	return BindingStatus{true, "connected"}
