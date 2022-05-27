@@ -36,7 +36,6 @@ func NewClient(queue *inmemQueue) *Client {
 // Enqueue enqueues message to the in-memory queue.
 func (c *Client) Enqueue(ctx context.Context, msg *queue.Message, options ...queue.EnqueueOptions) error {
 	c.queue.Enqueue(msg)
-	// TODO: If there is an error, it should be handled.
 	return nil
 }
 

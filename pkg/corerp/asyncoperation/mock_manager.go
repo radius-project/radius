@@ -11,8 +11,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
-	basedatamodel "github.com/project-radius/radius/pkg/basedatamodel"
-	armerrors "github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
 // MockAsyncOperationsManager is a mock of AsyncOperationsManager interface.
@@ -82,15 +80,15 @@ func (mr *MockAsyncOperationsManagerMockRecorder) Get(arg0, arg1, arg2 interface
 }
 
 // Update mocks base method.
-func (m *MockAsyncOperationsManager) Update(arg0 context.Context, arg1 string, arg2 uuid.UUID, arg3 basedatamodel.ProvisioningStates, arg4 *time.Time, arg5 *armerrors.ErrorDetails) error {
+func (m *MockAsyncOperationsManager) Update(arg0 context.Context, arg1 string, arg2 uuid.UUID, arg3 *AsyncOperationStatus) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockAsyncOperationsManagerMockRecorder) Update(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+func (mr *MockAsyncOperationsManagerMockRecorder) Update(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockAsyncOperationsManager)(nil).Update), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockAsyncOperationsManager)(nil).Update), arg0, arg1, arg2, arg3)
 }
