@@ -151,7 +151,6 @@ func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, p
 }
 
 func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient, w http.ResponseWriter, r *http.Request, incomingURL *url.URL) (rest.Response, error) {
-	fmt.Printf("@@@@ in planes proxyrequest path: %s\n", incomingURL.String())
 	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(incomingURL.Path)
 	if err != nil {
 		return rest.InternalServerError(err), err
@@ -196,7 +195,6 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		}
 	}
 
-	fmt.Printf("@@@@ proxyURL: %s\n", proxyURL)
 	downstream, err := url.Parse(proxyURL)
 	if err != nil {
 		return rest.InternalServerError(err), err
@@ -225,8 +223,6 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 
 	// Remove the /planes/<plane-type>/<plane-name> prefix
 	segments := strings.Split(incomingURL.Path, "/")
-	fmt.Printf("@@@@@ proxying req path segments: %v\n", segments)
-
 	p := strings.Join(segments[4:], "/")
 	url, err := url.Parse(p)
 	if err != nil {
@@ -236,7 +232,6 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	// Preserving the query strings on the incoming url on the newly constructed url
 	url.RawQuery = incomingURL.Query().Encode()
 	r.URL = url
-	fmt.Printf("@@@@@ modified url: %s\n", r.URL.Path)
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 	sender.ServeHTTP(w, r.WithContext(ctx))

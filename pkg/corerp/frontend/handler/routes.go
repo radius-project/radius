@@ -58,9 +58,6 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 	var operationsRouter *mux.Router
 	handlers := []handlerParam{}
 
-	fmt.Printf("@@@@@ pathbase: %s\n", pathBase)
-
-	fmt.Printf("@@@@@ env: %v", hostoptions.Environment())
 	if !hostoptions.IsSelfHosted() {
 		if pathBase != "" {
 			router.Path(pathBase).Methods("GET").HandlerFunc(defaultRouteHandler)
@@ -95,7 +92,6 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 		handlers = append(handlers, h...)
 
 	} else {
-		fmt.Println("@@@@ Routes for selfhosted")
 		resourceGroupLevelPath = pathBase + "/resourcegroups/{resourceGroup}/providers/applications.core"
 	}
 
@@ -120,14 +116,6 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 			return err
 		}
 	}
-
-	fmt.Println("@@@@")
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		tpl, err1 := route.GetPathTemplate()
-		met, err2 := route.GetMethods()
-		fmt.Println(tpl, err1, met, err2)
-		return nil
-	})
 
 	return nil
 }

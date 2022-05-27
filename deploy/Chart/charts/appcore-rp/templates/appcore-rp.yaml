@@ -22,8 +22,7 @@ spec:
       containers:
       - args:
         - --config-file=/etc/config/radius-self-host.yaml
-        image: vinayada/appcore-rp:latest
-        # image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
+        image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         env:
         - name: DEFAULT_PLANES_CONFIG
           value: /etc/config/appcore-rp-config.json
