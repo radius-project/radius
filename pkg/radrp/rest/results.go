@@ -176,6 +176,7 @@ type AcceptedAsyncResponse struct {
 	Scheme   string
 }
 
+// NewAcceptedAsyncResponse creates an AcceptedAsyncResponse
 func NewAcceptedAsyncResponse(body interface{}, location string, scheme string) Response {
 	return &AcceptedAsyncResponse{Body: body, Location: location, Scheme: scheme}
 }
@@ -640,5 +641,31 @@ func (r *ClientAuthenticationFailed) Apply(ctx context.Context, w http.ResponseW
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
 	}
+	return nil
+}
+
+// AsyncOperationResultResponse
+type AsyncOperationResultResponse struct {
+	Headers map[string]string
+}
+
+func NewAsyncOperationResultResponse(headers map[string]string) Response {
+	return &AsyncOperationResultResponse{
+		Headers: headers,
+	}
+}
+
+func (r *AsyncOperationResultResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), radlogger.LogHTTPStatusCode, http.StatusAccepted)
+
+	w.Header().Add("Content-Type", "application/json")
+
+	for key, element := range r.Headers {
+		w.Header().Add(key, element)
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+
 	return nil
 }
