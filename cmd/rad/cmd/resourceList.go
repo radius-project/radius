@@ -18,14 +18,18 @@ var resourceListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists application resources",
 	Long:  "List all the resources in the specified application",
-	RunE:  listResources,
 }
 
 func init() {
+	if CLIVERSION == "v20220315privatepreview" {
+		resourceListCmd.RunE = listResourcesv20220315privatepreview
+	} else {
+		resourceListCmd.RunE = listResources
+	}
 	resourceCmd.AddCommand(resourceListCmd)
 }
 
-func listResources(cmd *cobra.Command, args []string) error {
+var listResources = func(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
@@ -57,5 +61,14 @@ func listResources(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	return nil
+}
+
+var listResourcesv20220315privatepreview = func(cmd *cobra.Command, args []string) error {
+	config := ConfigFromContext(cmd.Context())
+	_, err := cli.RequireEnvironment(cmd, config)
+	if err != nil {
+		return err
+	}
 	return nil
 }
