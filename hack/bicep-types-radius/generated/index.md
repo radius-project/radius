@@ -1,5 +1,11 @@
 # Bicep Types
 ## applications.connector
+### applications.connector/daprinvokehttproutes
+* [2022-03-15-privatepreview](applications/applications.connector/2022-03-15-privatepreview/types.md#resource-applicationsconnectordaprinvokehttproutes2022-03-15-privatepreview)
+
+### applications.connector/daprstatestores
+* [2022-03-15-privatepreview](applications/applications.connector/2022-03-15-privatepreview/types.md#resource-applicationsconnectordaprstatestores2022-03-15-privatepreview)
+
 ### applications.connector/mongodatabases
 * [2022-03-15-privatepreview](applications/applications.connector/2022-03-15-privatepreview/types.md#resource-applicationsconnectormongodatabases2022-03-15-privatepreview)
 

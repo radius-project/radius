@@ -3,9 +3,9 @@
         "ID": "/planes/radius/local",
         "properties": {
              "resourceProviders": {
-                 "Applications.Core": "http://localhost:7443"
+                 "Applications.Core": "http://appcore-rp.radius-system:5443"
              }
-         }
+        }
     },
     {
         "ID": "/planes/deployments/local",
