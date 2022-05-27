@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const CLIVERSION = "v20220315privatepreview"
+const CLIVERSION = "v0"
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
 var RootCmd = &cobra.Command{
