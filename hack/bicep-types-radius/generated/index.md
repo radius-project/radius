@@ -1,5 +1,8 @@
 # Bicep Types
 ## applications.connector
+### applications.connector/daprpubsubbrokers
+* [2022-03-15-privatepreview](applications/applications.connector/2022-03-15-privatepreview/types.md#resource-applicationsconnectordaprpubsubbrokers2022-03-15-privatepreview)
+
 ### applications.connector/mongodatabases
 * [2022-03-15-privatepreview](applications/applications.connector/2022-03-15-privatepreview/types.md#resource-applicationsconnectormongodatabases2022-03-15-privatepreview)
 

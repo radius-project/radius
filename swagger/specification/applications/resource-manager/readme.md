@@ -58,6 +58,7 @@ These settings apply only when `--tag=package-connector-2022-03-15-privateprevie
 input-file:
   - Applications.Connector/preview/2022-03-15-privatepreview/global.json
   - Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/daprPubSubBrokers.json
 ```
 
 # Code Generation
