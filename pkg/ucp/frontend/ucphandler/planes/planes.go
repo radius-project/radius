@@ -223,6 +223,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		UCPHost: r.Host,
 	}
 
+	// Remove the /planes/<plane-type>/<plane-name> prefix
 	segments := strings.Split(incomingURL.Path, "/")
 	fmt.Printf("@@@@@ proxying req path segments: %v\n", segments)
 
@@ -231,6 +232,8 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	if err != nil {
 		return nil, err
 	}
+
+	// Preserving the query strings on the incoming url on the newly constructed url
 	url.RawQuery = incomingURL.Query().Encode()
 	r.URL = url
 	fmt.Printf("@@@@@ modified url: %s\n", r.URL.Path)

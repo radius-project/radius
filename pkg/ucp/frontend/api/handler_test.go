@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const baseURI = "/apis/api.ucp.dev/v1alpha3/planes"
+const baseURI = "/planes"
 
 func initializeTestEnv(t *testing.T, ucp ucphandler.UCPHandler, dbClient store.StorageClient) http.Handler {
 	ctx, cancel := testcontext.New(t)

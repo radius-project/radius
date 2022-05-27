@@ -36,7 +36,6 @@ func (h *Handler) GetSwaggerDoc(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handler) getRelativePath(path string) string {
-	h.ucp.Options.BasePath = "/apis/api.ucp.dev/v1alpha3"
 	trimmedPath := strings.TrimPrefix(path, h.ucp.Options.BasePath)
 	return trimmedPath
 }

@@ -87,13 +87,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", address))
-	if s.Options.TLSCertDir == "" {
-		fmt.Printf("@@@@@ listening http: %s\n", s.Options.TLSCertDir)
-		err = server.ListenAndServe()
-	} else {
-		fmt.Printf("@@@@@ listening https: %s\n", s.Options.TLSCertDir)
-		err = server.ListenAndServeTLS(s.Options.TLSCertDir+"/tls.crt", s.Options.TLSCertDir+"/tls.key")
-	}
+	err = server.ListenAndServe()
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

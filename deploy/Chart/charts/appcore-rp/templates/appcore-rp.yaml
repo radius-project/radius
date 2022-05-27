@@ -27,10 +27,6 @@ spec:
         env:
         - name: DEFAULT_PLANES_CONFIG
           value: /etc/config/appcore-rp-config.json
-        # - name: BASE_PATH
-        #   value: '/apis/api.appcore-rp.dev/v1alpha3' # listen for APIService URLs
-        # - name: TLS_CERT_DIR
-        #   value: '/var/tls/cert'
         - name: PORT
           value: '5443'
         - name: RADIUS_ENV
@@ -45,9 +41,6 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
-        - name: cert
-          mountPath: '/var/tls/cert'
-          readOnly: true
         securityContext:
           allowPrivilegeEscalation: false
       volumes:
