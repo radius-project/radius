@@ -25,7 +25,13 @@ func TestDaprPubSubBrokerDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerazureresourcedatamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.DaprPubSubBrokerResource{},
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprpubsubbrokergenericresourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.DaprPubSubBrokerResource{},
 			nil,
@@ -61,7 +67,12 @@ func TestDaprPubSubBrokerDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerresource.json",
+			"../../api/v20220315privatepreview/testdata/daprpubsubbrokerazureresource.json",
+			"2022-03-15-privatepreview",
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/daprpubsubbrokergenericresource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
