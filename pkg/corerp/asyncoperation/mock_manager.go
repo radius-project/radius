@@ -65,10 +65,10 @@ func (mr *MockAsyncOperationsManagerMockRecorder) Delete(arg0, arg1, arg2 interf
 }
 
 // Get mocks base method.
-func (m *MockAsyncOperationsManager) Get(arg0 context.Context, arg1 string, arg2 uuid.UUID) (*AsyncOperationStatus, error) {
+func (m *MockAsyncOperationsManager) Get(arg0 context.Context, arg1 string, arg2 uuid.UUID) (*Status, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*AsyncOperationStatus)
+	ret0, _ := ret[0].(*Status)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -80,7 +80,7 @@ func (mr *MockAsyncOperationsManagerMockRecorder) Get(arg0, arg1, arg2 interface
 }
 
 // Update mocks base method.
-func (m *MockAsyncOperationsManager) Update(arg0 context.Context, arg1 string, arg2 uuid.UUID, arg3 *AsyncOperationStatus) error {
+func (m *MockAsyncOperationsManager) Update(arg0 context.Context, arg1 string, arg2 uuid.UUID, arg3 *Status) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)

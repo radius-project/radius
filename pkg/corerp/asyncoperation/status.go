@@ -10,8 +10,8 @@ import (
 	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
-// AsyncOperationStatus is the datamodel for Async operation statuses.
-type AsyncOperationStatus struct {
+// Status is the datamodel for Async operation statuses.
+type Status struct {
 	armrpcv1.AsyncOperationStatus
 
 	// LinkedResourceID is the resource id associated with operation status.
@@ -30,7 +30,7 @@ type AsyncOperationStatus struct {
 	ClientObjectID string `json:"clientObjectID,omitempty"`
 }
 
-func (aos *AsyncOperationStatus) InTerminalState() bool {
+func (aos *Status) InTerminalState() bool {
 	return aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateSucceeded ||
 		aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateFailed ||
 		aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateCanceled

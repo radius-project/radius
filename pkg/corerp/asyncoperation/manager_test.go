@@ -22,7 +22,7 @@ import (
 )
 
 type asyncOperationsManagerTest struct {
-	manager     AsyncOperationsManager
+	manager     Manager
 	storeClient *store.MockStorageClient
 	enqueuer    *queue.MockEnqueuer
 }
@@ -40,7 +40,7 @@ func setup(tb testing.TB) asyncOperationsManagerTest {
 	ctrl := gomock.NewController(tb)
 	sc := store.NewMockStorageClient(ctrl)
 	enq := queue.NewMockEnqueuer(ctrl)
-	aom := NewAsyncOperationsManager(sc, enq, "Test-AsyncOperationsManager", "test-location")
+	aom := NewManager(sc, enq, "Test-AsyncOperationsManager", "test-location")
 	return asyncOperationsManagerTest{manager: aom, storeClient: sc, enqueuer: enq}
 }
 
@@ -55,7 +55,7 @@ var ctx = servicecontext.WithARMRequestContext(context.Background(), &servicecon
 
 var opID = uuid.New()
 
-var testAos = &AsyncOperationStatus{
+var testAos = &Status{
 	AsyncOperationStatus: armrpcv1.AsyncOperationStatus{
 		ID:        opID.String(),
 		Name:      opID.String(),
@@ -227,7 +227,7 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 
 			if tt.GetErr == nil {
 				require.NoError(t, err)
-				expected := &AsyncOperationStatus{}
+				expected := &Status{}
 				_ = tt.Obj.As(&expected)
 				require.Equal(t, expected, aos)
 			}

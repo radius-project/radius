@@ -11,13 +11,12 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-// Controller is an interface to implement async operation controller. This is to implement request-reply pattern using messaging queue.
-// Frontend Controller enqueues AsyncRequestMessage and creates OperationStatuses. AsyncRequestProcessWorker consumes this async request
-// message and executes this AsyncController. To implement "Reply" pattern, it uses go channel and Worker listens to this reply go channel to
-// update OperationStatuses record. AsyncController can use Reply() to send the response to worker over go channel.
+// Controller is an interface to implement async operation controller.
 type Controller interface {
 	// Run runs async request operation.
-	Run(ctx context.Context, request *AsyncRequestMessage) (Result, error)
+	Run(ctx context.Context, request *RequestMessage) (Result, error)
+
+	// StorageClient gets the storage client for resource type.
 	StorageClient() store.StorageClient
 }
 

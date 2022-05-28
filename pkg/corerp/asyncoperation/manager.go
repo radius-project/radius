@@ -21,8 +21,8 @@ import (
 
 const ResourceType = "Applications.Core/operationStatuses"
 
-// asyncOperationsManager includes the necessary functions to manage asynchronous operations.
-type asyncOperationsManager struct {
+// manager includes the necessary functions to manage asynchronous operations.
+type manager struct {
 	storeClient  store.StorageClient
 	enqueuer     queue.Enqueuer
 	providerName string
@@ -31,17 +31,17 @@ type asyncOperationsManager struct {
 
 //go:generate mockgen -destination=./mock_manager.go -package=asyncoperation -self_package github.com/project-radius/radius/pkg/corerp/asyncoperation github.com/project-radius/radius/pkg/corerp/asyncoperation AsyncOperationsManager
 
-// AsyncOperationsManager is the database interface for AsyncOperationStatus
-type AsyncOperationsManager interface {
+// Manager is the database interface for AsyncOperationStatus
+type Manager interface {
 	Create(ctx context.Context, rootScope string, linkedResourceID string, operationName string, operationTimeout time.Duration) error
 	Delete(ctx context.Context, rootScope string, operationID uuid.UUID) error
-	Get(ctx context.Context, rootScope string, operationID uuid.UUID) (*AsyncOperationStatus, error)
-	Update(ctx context.Context, rootScope string, operationID uuid.UUID, aos *AsyncOperationStatus) error
+	Get(ctx context.Context, rootScope string, operationID uuid.UUID) (*Status, error)
+	Update(ctx context.Context, rootScope string, operationID uuid.UUID, aos *Status) error
 }
 
-// NewAsyncOperationsManager creates AsyncOperationsManagerInterface instance.
-func NewAsyncOperationsManager(storeClient store.StorageClient, enqueuer queue.Enqueuer, providerName, location string) AsyncOperationsManager {
-	return &asyncOperationsManager{
+// NewManager creates manager instance.
+func NewManager(storeClient store.StorageClient, enqueuer queue.Enqueuer, providerName, location string) Manager {
+	return &manager{
 		storeClient:  storeClient,
 		enqueuer:     enqueuer,
 		providerName: providerName,
@@ -50,12 +50,12 @@ func NewAsyncOperationsManager(storeClient store.StorageClient, enqueuer queue.E
 }
 
 // operationStatusResourceID function is to build the operationStatus resourceID.
-func (aom *asyncOperationsManager) operationStatusResourceID(rootScope string, operationID uuid.UUID) string {
+func (aom *manager) operationStatusResourceID(rootScope string, operationID uuid.UUID) string {
 	return fmt.Sprintf("%s/providers/%s/locations/%s/operationStatuses/%s", rootScope, aom.providerName, aom.location, operationID)
 }
 
 // Create function is to create an async operation status.
-func (aom *asyncOperationsManager) Create(ctx context.Context, rootScope string, linkedResourceID string, operationName string, operationTimeout time.Duration) error {
+func (aom *manager) Create(ctx context.Context, rootScope string, linkedResourceID string, operationName string, operationTimeout time.Duration) error {
 	if aom.enqueuer == nil {
 		return errors.New("enqueuer client is not set")
 	}
@@ -64,7 +64,7 @@ func (aom *asyncOperationsManager) Create(ctx context.Context, rootScope string,
 
 	opID := aom.operationStatusResourceID(rootScope, sCtx.OperationID)
 
-	aos := &AsyncOperationStatus{
+	aos := &Status{
 		AsyncOperationStatus: armrpcv1.AsyncOperationStatus{
 			ID:        opID,
 			Name:      sCtx.OperationID.String(),
@@ -87,7 +87,7 @@ func (aom *asyncOperationsManager) Create(ctx context.Context, rootScope string,
 		return err
 	}
 
-	err = aom.queueAsyncOperationRequestMessage(ctx, aos, operationTimeout)
+	err = aom.queueRequestMessage(ctx, aos, operationTimeout)
 	if err != nil {
 		delErr := aom.storeClient.Delete(ctx, opID)
 		if delErr != nil {
@@ -100,13 +100,13 @@ func (aom *asyncOperationsManager) Create(ctx context.Context, rootScope string,
 }
 
 // Get function is to get the requested async operation if it exists.
-func (aom *asyncOperationsManager) Get(ctx context.Context, rootScope string, operationID uuid.UUID) (*AsyncOperationStatus, error) {
+func (aom *manager) Get(ctx context.Context, rootScope string, operationID uuid.UUID) (*Status, error) {
 	obj, err := aom.storeClient.Get(ctx, aom.operationStatusResourceID(rootScope, operationID))
 	if err != nil {
 		return nil, err
 	}
 
-	aos := &AsyncOperationStatus{}
+	aos := &Status{}
 	if err := obj.As(&aos); err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (aom *asyncOperationsManager) Get(ctx context.Context, rootScope string, op
 }
 
 // Update function is to update the existing async operation status.
-func (aom *asyncOperationsManager) Update(ctx context.Context, rootScope string, operationID uuid.UUID, aos *AsyncOperationStatus) error {
+func (aom *manager) Update(ctx context.Context, rootScope string, operationID uuid.UUID, aos *Status) error {
 	opID := aom.operationStatusResourceID(rootScope, operationID)
 
 	obj, err := aom.storeClient.Get(ctx, opID)
@@ -129,24 +129,24 @@ func (aom *asyncOperationsManager) Update(ctx context.Context, rootScope string,
 }
 
 // Delete function is to delete the async operation status.
-func (aom *asyncOperationsManager) Delete(ctx context.Context, rootScope string, operationID uuid.UUID) error {
+func (aom *manager) Delete(ctx context.Context, rootScope string, operationID uuid.UUID) error {
 	return aom.storeClient.Delete(ctx, aom.operationStatusResourceID(rootScope, operationID))
 }
 
-// queueAsyncOperationRequestMessage function is to put the async operation message to the queue to be worked on.
-func (aom *asyncOperationsManager) queueAsyncOperationRequestMessage(ctx context.Context, aos *AsyncOperationStatus, operationTimeout time.Duration) error {
+// queueRequestMessage function is to put the async operation message to the queue to be worked on.
+func (aom *manager) queueRequestMessage(ctx context.Context, aos *Status, operationTimeout time.Duration) error {
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	msg := &AsyncRequestMessage{
-		OperationID:           sCtx.OperationID,
-		OperationName:         sCtx.OperationName,
-		ResourceID:            aos.LinkedResourceID,
-		CorrelationID:         sCtx.CorrelationID,
-		TraceparentID:         sCtx.Traceparent,
-		AcceptLanguage:        sCtx.AcceptLanguage,
-		HomeTenantID:          sCtx.HomeTenantID,
-		ClientObjectID:        sCtx.ClientObjectID,
-		AsyncOperationTimeout: operationTimeout,
+	msg := &RequestMessage{
+		OperationID:      sCtx.OperationID,
+		OperationName:    sCtx.OperationName,
+		ResourceID:       aos.LinkedResourceID,
+		CorrelationID:    sCtx.CorrelationID,
+		TraceparentID:    sCtx.Traceparent,
+		AcceptLanguage:   sCtx.AcceptLanguage,
+		HomeTenantID:     sCtx.HomeTenantID,
+		ClientObjectID:   sCtx.ClientObjectID,
+		OperationTimeout: operationTimeout,
 	}
 
 	return aom.enqueuer.Enqueue(ctx, queue.NewMessage(msg))
