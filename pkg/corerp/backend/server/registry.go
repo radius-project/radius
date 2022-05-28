@@ -9,16 +9,16 @@ import (
 	"context"
 	"sync"
 
-	asyncctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-type ControllerFactoryFunc func(store.StorageClient) (asyncctrl.AsyncController, error)
+type ControllerFactoryFunc func(store.StorageClient) (asyncoperation.Controller, error)
 
 // ControllerRegistry is an registry to register async controllers.
 type ControllerRegistry struct {
-	ctrlMap   map[string]asyncctrl.AsyncController
+	ctrlMap   map[string]asyncoperation.Controller
 	ctrlMapMu sync.RWMutex
 	sp        dataprovider.DataStorageProvider
 }
@@ -26,7 +26,7 @@ type ControllerRegistry struct {
 // NewControllerRegistry creates an ControllerRegistry instance.
 func NewControllerRegistry(sp dataprovider.DataStorageProvider) *ControllerRegistry {
 	return &ControllerRegistry{
-		ctrlMap: map[string]asyncctrl.AsyncController{},
+		ctrlMap: map[string]asyncoperation.Controller{},
 		sp:      sp,
 	}
 }
@@ -51,7 +51,7 @@ func (h *ControllerRegistry) Register(ctx context.Context, operationName, resour
 }
 
 // Get gets the registered async controller instance.
-func (h *ControllerRegistry) Get(operationName string) asyncctrl.AsyncController {
+func (h *ControllerRegistry) Get(operationName string) asyncoperation.Controller {
 	h.ctrlMapMu.RLock()
 	defer h.ctrlMapMu.RUnlock()
 
