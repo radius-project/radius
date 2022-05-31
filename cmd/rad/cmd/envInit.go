@@ -92,27 +92,15 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 		return nil, err
 	}
 
-	subscription, err := selectSubscription(cmd.Context(), authorizer)
-	if err != nil {
-		return nil, err
-	}
-	resourceGroup, err := selectResourceGroup(cmd.Context(), authorizer, subscription)
-	if err != nil {
-		return nil, err
-	}
-
 	addAzureSPN, err := prompt.ConfirmWithDefault("Add Azure provider for cloud resources [y/N]?", prompt.No)
 	if err != nil {
 		return nil, err
 	}
 	if !addAzureSPN {
-		return &azure.Provider{
-			SubscriptionID: subscription.SubscriptionID,
-			ResourceGroup:  resourceGroup,
-		}, nil
+		return &azure.Provider{}, nil
 	}
 
-	clientID, err := prompt.Text("Enter the `appId` of the service principal used to create Azure resources:\nFor example, by using:\n`az ad sp create-for-rbac --role Owner`\nFor more information, see: https://docs.microsoft.com/en-us/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac", prompt.UUIDv4Validator)
+	clientID, err := prompt.Text("To create Azure cloud resources a Service Principal Name (SPN) with a corresponding role assignment for your resource group is required. You can create one using the following azure cli command:\n`az ad sp create-for-rbac --role Owner`\nFor more information, see: https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac\n\nEnter the `appId` of the service principal used to create Azure resources:", prompt.UUIDv4Validator)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +114,16 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	subscription, err := selectSubscription(cmd.Context(), authorizer)
+	if err != nil {
+		return nil, err
+	}
+	resourceGroup, err := selectResourceGroup(cmd.Context(), authorizer, subscription)
+	if err != nil {
+		return nil, err
+	}
+
 	return &azure.Provider{
 		SubscriptionID: subscription.SubscriptionID,
 		ResourceGroup:  resourceGroup,

@@ -44,17 +44,18 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	
 	sharedArgs, err := parseArgs(cmd)
 	if err != nil {
 		return err
 	}
 
-	azureProvider, err := parseAzureProviderFromArgs(cmd, sharedArgs.Interactive)
+	envName, err := selectEnvironment(cmd, "dev", sharedArgs.Interactive)
 	if err != nil {
 		return err
 	}
-	envName, err := selectEnvironment(cmd, "dev", sharedArgs.Interactive)
+
+	azureProvider, err := parseAzureProviderFromArgs(cmd, sharedArgs.Interactive)
 	if err != nil {
 		return err
 	}
