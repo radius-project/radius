@@ -37,6 +37,11 @@ func (src *GatewayResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.GatewayProperties{
+			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+				Status: basedatamodel.ResourceStatus{
+					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+				},
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Application:       to.String(src.Properties.Application),
 			Hostname: datamodel.GatewayPropertiesHostname{
@@ -79,6 +84,11 @@ func (dst *GatewayResource) ConvertFrom(src api.DataModelInterface) error {
 	dst.Location = to.StringPtr(g.Location)
 	dst.Tags = *to.StringMapPtr(g.Tags)
 	dst.Properties = &GatewayProperties{
+		BasicResourceProperties: BasicResourceProperties{
+			Status: &ResourceStatus{
+				OutputResources: g.Properties.BasicResourceProperties.Status.OutputResources,
+			},
+		},
 		ProvisioningState: fromProvisioningStateDataModel(g.Properties.ProvisioningState),
 		Application:       to.StringPtr(g.Properties.Application),
 		Hostname: &GatewayPropertiesHostname{
