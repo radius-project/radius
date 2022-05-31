@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // SQLDatabasesClient contains the methods for the SQLDatabases group.
 // Don't use this type directly, use NewSQLDatabasesClient() instead.
 type SQLDatabasesClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewSQLDatabasesClient creates a new instance of SQLDatabasesClient with the specified values.
-func NewSQLDatabasesClient(con *connection, subscriptionID string) *SQLDatabasesClient {
-	return &SQLDatabasesClient{con: con, subscriptionID: subscriptionID}
+func NewSQLDatabasesClient(con *arm.Connection, subscriptionID string) *SQLDatabasesClient {
+	return &SQLDatabasesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a SQLDatabase resource
@@ -38,7 +40,7 @@ func (client *SQLDatabasesClient) CreateOrUpdate(ctx context.Context, resourceGr
 	if err != nil {
 		return SQLDatabasesCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return SQLDatabasesCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Contex
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{sqlDatabaseName}", url.PathEscape(sqlDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *SQLDatabasesClient) Delete(ctx context.Context, resourceGroupName 
 	if err != nil {
 		return SQLDatabasesDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return SQLDatabasesDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, resou
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{sqlDatabaseName}", url.PathEscape(sqlDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *SQLDatabasesClient) Get(ctx context.Context, resourceGroupName str
 	if err != nil {
 		return SQLDatabasesGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return SQLDatabasesGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *SQLDatabasesClient) getCreateRequest(ctx context.Context, resource
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{sqlDatabaseName}", url.PathEscape(sqlDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *SQLDatabasesClient) listCreateRequest(ctx context.Context, resourc
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *SQLDatabasesClient) listBySubscriptionCreateRequest(ctx context.Co
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

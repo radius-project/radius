@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // MongoDatabasesClient contains the methods for the MongoDatabases group.
 // Don't use this type directly, use NewMongoDatabasesClient() instead.
 type MongoDatabasesClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewMongoDatabasesClient creates a new instance of MongoDatabasesClient with the specified values.
-func NewMongoDatabasesClient(con *connection, subscriptionID string) *MongoDatabasesClient {
-	return &MongoDatabasesClient{con: con, subscriptionID: subscriptionID}
+func NewMongoDatabasesClient(con *arm.Connection, subscriptionID string) *MongoDatabasesClient {
+	return &MongoDatabasesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a MongoDatabase resource
@@ -38,7 +40,7 @@ func (client *MongoDatabasesClient) CreateOrUpdate(ctx context.Context, resource
 	if err != nil {
 		return MongoDatabasesCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return MongoDatabasesCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Cont
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDatabaseName}", url.PathEscape(mongoDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *MongoDatabasesClient) Delete(ctx context.Context, resourceGroupNam
 	if err != nil {
 		return MongoDatabasesDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return MongoDatabasesDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, res
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDatabaseName}", url.PathEscape(mongoDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *MongoDatabasesClient) Get(ctx context.Context, resourceGroupName s
 	if err != nil {
 		return MongoDatabasesGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return MongoDatabasesGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *MongoDatabasesClient) getCreateRequest(ctx context.Context, resour
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDatabaseName}", url.PathEscape(mongoDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *MongoDatabasesClient) listCreateRequest(ctx context.Context, resou
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *MongoDatabasesClient) listBySubscriptionCreateRequest(ctx context.
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +338,7 @@ func (client *MongoDatabasesClient) ListSecrets(ctx context.Context, resourceGro
 	if err != nil {
 		return MongoDatabasesListSecretsResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return MongoDatabasesListSecretsResponse{}, err
 	}
@@ -361,7 +363,7 @@ func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDatabaseName}", url.PathEscape(mongoDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // DaprStateStoresClient contains the methods for the DaprStateStores group.
 // Don't use this type directly, use NewDaprStateStoresClient() instead.
 type DaprStateStoresClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewDaprStateStoresClient creates a new instance of DaprStateStoresClient with the specified values.
-func NewDaprStateStoresClient(con *connection, subscriptionID string) *DaprStateStoresClient {
-	return &DaprStateStoresClient{con: con, subscriptionID: subscriptionID}
+func NewDaprStateStoresClient(con *arm.Connection, subscriptionID string) *DaprStateStoresClient {
+	return &DaprStateStoresClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a DaprStateStore resource
@@ -38,7 +40,7 @@ func (client *DaprStateStoresClient) CreateOrUpdate(ctx context.Context, resourc
 	if err != nil {
 		return DaprStateStoresCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprStateStoresCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *DaprStateStoresClient) createOrUpdateCreateRequest(ctx context.Con
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprStateStoreName}", url.PathEscape(daprStateStoreName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *DaprStateStoresClient) Delete(ctx context.Context, resourceGroupNa
 	if err != nil {
 		return DaprStateStoresDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprStateStoresDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *DaprStateStoresClient) deleteCreateRequest(ctx context.Context, re
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprStateStoreName}", url.PathEscape(daprStateStoreName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *DaprStateStoresClient) Get(ctx context.Context, resourceGroupName 
 	if err != nil {
 		return DaprStateStoresGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprStateStoresGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *DaprStateStoresClient) getCreateRequest(ctx context.Context, resou
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprStateStoreName}", url.PathEscape(daprStateStoreName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *DaprStateStoresClient) listCreateRequest(ctx context.Context, reso
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *DaprStateStoresClient) listBySubscriptionCreateRequest(ctx context
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

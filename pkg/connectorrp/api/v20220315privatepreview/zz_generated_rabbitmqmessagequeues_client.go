@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // RabbitMQMessageQueuesClient contains the methods for the RabbitMQMessageQueues group.
 // Don't use this type directly, use NewRabbitMQMessageQueuesClient() instead.
 type RabbitMQMessageQueuesClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewRabbitMQMessageQueuesClient creates a new instance of RabbitMQMessageQueuesClient with the specified values.
-func NewRabbitMQMessageQueuesClient(con *connection, subscriptionID string) *RabbitMQMessageQueuesClient {
-	return &RabbitMQMessageQueuesClient{con: con, subscriptionID: subscriptionID}
+func NewRabbitMQMessageQueuesClient(con *arm.Connection, subscriptionID string) *RabbitMQMessageQueuesClient {
+	return &RabbitMQMessageQueuesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a RabbitMQMessageQueue resource
@@ -38,7 +40,7 @@ func (client *RabbitMQMessageQueuesClient) CreateOrUpdate(ctx context.Context, r
 	if err != nil {
 		return RabbitMQMessageQueuesCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return RabbitMQMessageQueuesCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx conte
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *RabbitMQMessageQueuesClient) Delete(ctx context.Context, resourceG
 	if err != nil {
 		return RabbitMQMessageQueuesDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return RabbitMQMessageQueuesDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *RabbitMQMessageQueuesClient) deleteCreateRequest(ctx context.Conte
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *RabbitMQMessageQueuesClient) Get(ctx context.Context, resourceGrou
 	if err != nil {
 		return RabbitMQMessageQueuesGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return RabbitMQMessageQueuesGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context,
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *RabbitMQMessageQueuesClient) listCreateRequest(ctx context.Context
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *RabbitMQMessageQueuesClient) listBySubscriptionCreateRequest(ctx c
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // DaprInvokeHTTPRoutesClient contains the methods for the DaprInvokeHTTPRoutes group.
 // Don't use this type directly, use NewDaprInvokeHTTPRoutesClient() instead.
 type DaprInvokeHTTPRoutesClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewDaprInvokeHTTPRoutesClient creates a new instance of DaprInvokeHTTPRoutesClient with the specified values.
-func NewDaprInvokeHTTPRoutesClient(con *connection, subscriptionID string) *DaprInvokeHTTPRoutesClient {
-	return &DaprInvokeHTTPRoutesClient{con: con, subscriptionID: subscriptionID}
+func NewDaprInvokeHTTPRoutesClient(con *arm.Connection, subscriptionID string) *DaprInvokeHTTPRoutesClient {
+	return &DaprInvokeHTTPRoutesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a DaprInvokeHttpRoute resource
@@ -38,7 +40,7 @@ func (client *DaprInvokeHTTPRoutesClient) CreateOrUpdate(ctx context.Context, re
 	if err != nil {
 		return DaprInvokeHTTPRoutesCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprInvokeHTTPRoutesCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *DaprInvokeHTTPRoutesClient) createOrUpdateCreateRequest(ctx contex
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprInvokeHttpRouteName}", url.PathEscape(daprInvokeHTTPRouteName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *DaprInvokeHTTPRoutesClient) Delete(ctx context.Context, resourceGr
 	if err != nil {
 		return DaprInvokeHTTPRoutesDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprInvokeHTTPRoutesDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *DaprInvokeHTTPRoutesClient) deleteCreateRequest(ctx context.Contex
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprInvokeHttpRouteName}", url.PathEscape(daprInvokeHTTPRouteName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *DaprInvokeHTTPRoutesClient) Get(ctx context.Context, resourceGroup
 	if err != nil {
 		return DaprInvokeHTTPRoutesGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprInvokeHTTPRoutesGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *DaprInvokeHTTPRoutesClient) getCreateRequest(ctx context.Context, 
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprInvokeHttpRouteName}", url.PathEscape(daprInvokeHTTPRouteName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *DaprInvokeHTTPRoutesClient) listCreateRequest(ctx context.Context,
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *DaprInvokeHTTPRoutesClient) listBySubscriptionCreateRequest(ctx co
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
