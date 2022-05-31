@@ -1,5 +1,5 @@
 # This is an example of configuration file.
-cloudEnvironment:
+environment:
   name: AzureCloud
   roleLocation: West US
 identity: # 1P AAD APP authentication
@@ -17,27 +17,15 @@ storageProvider:
     database: applicationscore
     # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
     masterKey: set-me-in-a-different-way
-
-  # Uncomment to use the Kubernetes APIServer store. 
-  # This supports two modes:
-  # - incluster = true => uses the credentials/service-account of a pod. FOR PRODUCTION USE.
-  # - incluster = false => uses your LOCAL kubernetes context. For TESTING
-
-  # provider: "apiserver"
-  # apiserver:
-  #   incluster: true
-  #   context: <specify your kubernetes context name when incluster = false - leave blank to use default>
-  #   namespace: 'default'
-
-  # Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
-  # provider: "etcd"
-  # etcd:
-  #   inmemory: true
-
-workerServer:
-  port: 2222
+server:
+  host: "0.0.0.0"
+  port: 8080
+  authType: "ClientCertificate"
+  enableArmAuth: true
+  armMetadataEndpoint: "https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01"
 metricsProvider:
   prometheus:
     endpoint: "/metrics"
 featureFlags:
   - "PLACEHOLDER"
+  

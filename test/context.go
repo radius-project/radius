@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package testcontext
+package test
 
 import (
 	"context"

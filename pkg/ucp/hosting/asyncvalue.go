@@ -35,22 +35,35 @@ func NewAsyncValue() *AsyncValue {
 }
 
 func (a *AsyncValue) Get(ctx context.Context) (interface{}, error) {
-	for {
+	type result struct {
+		Value interface{}
+		Err   error
+	}
+
+	initialized := make(chan result, 1)
+	go func() {
 		a.Cond.L.Lock()
-		if a.Value != nil {
-			return a.Value, nil
+
+		for {
+			if a.Value != nil || a.Err != nil {
+				break
+			}
+
+			// Not ready to proceed, wait to be woken up
+			a.Cond.Wait()
 		}
 
-		if a.Err != nil {
-			return nil, fmt.Errorf("failed to retrieve value: %w", a.Err)
-		}
-
-		if ctx.Err() != nil {
-			return nil, fmt.Errorf("failed to retrieve value: %w", ctx.Err())
-		}
-
-		a.Cond.Wait()
 		a.Cond.L.Unlock()
+		initialized <- result{Value: a.Value, Err: a.Err}
+		close(initialized)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("failed to retrieve value: %w", ctx.Err())
+
+	case result := <-initialized:
+		return result.Value, result.Err
 	}
 }
 

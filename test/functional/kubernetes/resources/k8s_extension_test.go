@@ -12,7 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/functional/kubernetes"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -21,9 +22,9 @@ import (
 func TestK8sExtension(t *testing.T) {
 	template := "testdata/k8s-extension/connection-string.bicep"
 	application := "k8s-extension"
-	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
-			Executor:           kubernetestest.NewDeployStepExecutor(template),
+			Executor:           step.NewDeployExecutor(template),
 			RadiusResources:    &validation.ResourceSet{},
 			K8sOutputResources: loadResources("testdata/k8s-extension", ".output.yaml"),
 		},
