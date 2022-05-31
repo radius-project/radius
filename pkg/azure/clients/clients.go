@@ -125,7 +125,7 @@ func NewDeploymentsClient(subscriptionID string, authorizer autorest.Authorizer)
 	return dc
 }
 
-func newResourceDeploymentClientWithBaseURI(uri string, subscriptionID string) resources.DeploymentsClient {
+func NewDeploymentsClientWithBaseURI(uri string, subscriptionID string) resources.DeploymentsClient {
 	dc := resources.NewDeploymentsClientWithBaseURI(uri, subscriptionID)
 	// Don't set a timeout, the user can cancel the command if they want a timeout.
 	dc.PollingDuration = 0

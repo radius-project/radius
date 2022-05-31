@@ -236,8 +236,7 @@ func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name stri
 	// No providers section, hence all segments are part of scopes
 	if dc.EnableUCP {
 		scopes := []ucpresources.ScopeSegment{
-			{Type: "planes", Name: "deployments"},
-			{Type: "local", Name: ""},
+			{Type: "planes", Name: "deployments/local"},
 			{Type: "resourcegroups", Name: dc.ResourceGroup},
 			{Type: "deployments", Name: name},
 			{Type: "operations"},

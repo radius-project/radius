@@ -24,7 +24,7 @@ type ResourceDeploymentClient struct {
 // NewDeploymentsClientWithBaseURI creates an instance of the UCPDeploymentsClient client using a custom endpoint.  Use
 // this when interacting with UCP or Azure resources that uses a non-standard base URI
 func NewResourceDeploymentClientWithBaseURI(baseURI string) ResourceDeploymentClient {
-	return ResourceDeploymentClient{newResourceDeploymentClientWithBaseURI(baseURI, "")}
+	return ResourceDeploymentClient{NewDeploymentsClientWithBaseURI(baseURI, "")}
 }
 
 // CreateOrUpdate creates a deployment
