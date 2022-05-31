@@ -358,6 +358,17 @@ type BasicRouteProperties struct {
 	Status *RouteStatus `json:"status,omitempty"`
 }
 
+// MarshalJSON implements the json.Marshaller interface for type BasicRouteProperties.
+func (b BasicRouteProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	b.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+func (b BasicRouteProperties) marshalInternal(objectMap map[string]interface{}) {
+	populate(objectMap, "status", b.Status)
+}
+
 type CertificateObjectProperties struct {
 	// REQUIRED; The name of the certificate
 	Name *string `json:"name,omitempty"`
@@ -626,6 +637,14 @@ type DaprHTTPRouteProperties struct {
 	BasicRouteProperties
 	// REQUIRED; The Dapr appId used for the route
 	AppID *string `json:"appId,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprHTTPRouteProperties.
+func (d DaprHTTPRouteProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.BasicRouteProperties.marshalInternal(objectMap)
+	populate(objectMap, "appId", d.AppID)
+	return json.Marshal(objectMap)
 }
 
 // DaprInvokeHTTPRouteList - List of dapr.io.InvokeHttpRoute resources.
@@ -1876,11 +1895,34 @@ type HTTPRouteProperties struct {
 	// The port number for the route. Defaults to 80. Readonly.
 	Port *int32 `json:"port,omitempty"`
 
+	// Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of json obects that each only have two keys: desination and weight
+	Routes []*HTTPRoutePropertiesRoutesItem `json:"routes,omitempty"`
+
 	// The scheme used for traffic. Readonly.
 	Scheme *string `json:"scheme,omitempty"`
 
 	// A stable URL that that can be used to route traffic to a resource. Readonly.
 	URL *string `json:"url,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type HTTPRouteProperties.
+func (h HTTPRouteProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	h.BasicRouteProperties.marshalInternal(objectMap)
+	populate(objectMap, "hostname", h.Hostname)
+	populate(objectMap, "port", h.Port)
+	populate(objectMap, "routes", h.Routes)
+	populate(objectMap, "scheme", h.Scheme)
+	populate(objectMap, "url", h.URL)
+	return json.Marshal(objectMap)
+}
+
+type HTTPRoutePropertiesRoutesItem struct {
+	// REQUIRED
+	Destination *string `json:"destination,omitempty"`
+
+	// REQUIRED
+	Weight *int32 `json:"weight,omitempty"`
 }
 
 // HTTPRouteResource - Resource that specifies an HTTP Route. An HTTP Route resource provides a stable URL that can be used to route internal or extrnal
