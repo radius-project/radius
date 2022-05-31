@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
@@ -284,16 +284,16 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 
 // Get gets the resource data using id.
 func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...store.GetOptions) (*store.Object, error) {
-	azID, err := azresources.Parse(id)
+	parsedID, err := resources.Parse(id)
 	if err != nil {
 		return nil, err
 	}
 
 	ops := cosmosapi.GetDocumentOptions{
-		PartitionKeyValue: NormalizeSubscriptionID(azID.SubscriptionID),
+		PartitionKeyValue: NormalizeSubscriptionID(parsedID.SubscriptionID()),
 	}
 
-	docID, err := GenerateCosmosDBKey(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
+	docID, err := GenerateCosmosDBKey(parsedID.SubscriptionID(), parsedID.ResourceGroup(), parsedID.Type(), parsedID.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -317,15 +317,15 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 
 // Delete deletes the resource using id.
 func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...store.DeleteOptions) error {
-	azID, err := azresources.Parse(id)
+	parsedID, err := resources.Parse(id)
 	if err != nil {
 		return err
 	}
 
 	ops := cosmosapi.DeleteDocumentOptions{
-		PartitionKeyValue: NormalizeSubscriptionID(azID.SubscriptionID),
+		PartitionKeyValue: NormalizeSubscriptionID(parsedID.SubscriptionID()),
 	}
-	docID, err := GenerateCosmosDBKey(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
+	docID, err := GenerateCosmosDBKey(parsedID.SubscriptionID(), parsedID.ResourceGroup(), parsedID.Type(), parsedID.Name())
 	if err != nil {
 		return err
 	}
@@ -341,27 +341,27 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 // Save upserts the resource.
 func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 	cfg := store.NewSaveConfig(opts...)
-	azID, err := azresources.Parse(obj.ID)
+	parsedID, err := resources.Parse(obj.ID)
 	if err != nil {
 		return err
 	}
 
-	docID, err := GenerateCosmosDBKey(azID.SubscriptionID, azID.ResourceGroup, azID.Type(), azID.Name())
+	docID, err := GenerateCosmosDBKey(parsedID.SubscriptionID(), parsedID.ResourceGroup(), parsedID.Type(), parsedID.Name())
 	if err != nil {
 		return err
 	}
 
-	rs, err := NewResourceScope(azID.ID)
+	rs, err := NewResourceScope(parsedID.RootScope())
 	if err != nil {
 		return err
 	}
 
 	entity := &ResourceEntity{
 		ID:            docID,
-		ResourceID:    azID.ID,
+		ResourceID:    parsedID.String(),
 		RootScope:     rs.fullyQualifiedSubscriptionScope(),
 		ResourceGroup: rs.ResourceGroup,
-		PartitionKey:  NormalizeSubscriptionID(azID.SubscriptionID),
+		PartitionKey:  NormalizeSubscriptionID(parsedID.SubscriptionID()),
 		Entity:        obj.Data,
 	}
 
@@ -370,7 +370,7 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		ifMatch = obj.ETag
 	}
 
-	partitionKey := NormalizeSubscriptionID(azID.SubscriptionID)
+	partitionKey := NormalizeSubscriptionID(parsedID.SubscriptionID())
 
 	var resp *cosmosapi.Resource
 	if ifMatch == "" {

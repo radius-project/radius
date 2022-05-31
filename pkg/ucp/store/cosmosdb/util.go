@@ -117,15 +117,24 @@ func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
 
 // GenerateCosmosDBKey generates the unqiue key the length of which must be less than 255.
 func GenerateCosmosDBKey(subsID, resourceGroup, fullyQualifiedType, fullyQualifiedName string) (string, error) {
-	unqiueResourceGroup, err := NormalizeStorageKey(resourceGroup, ResourceGroupNameMaxStorageKeyLen)
-	if err != nil {
-		return "", err
+	storageKeys := []string{NormalizeSubscriptionID(subsID)}
+
+	if resourceGroup != "" {
+		uniqueResourceGroup, err := NormalizeStorageKey(resourceGroup, ResourceGroupNameMaxStorageKeyLen)
+		if err != nil {
+			return "", err
+		}
+		storageKeys = append(storageKeys, uniqueResourceGroup)
 	}
+
 	resourceTypeAndName, err := NormalizeStorageKey(fullyQualifiedType+fullyQualifiedName, ResourceIdMaxStorageKeyLen)
 	if err != nil {
 		return "", err
 	}
-	return CombineStorageKeys(NormalizeSubscriptionID(subsID), unqiueResourceGroup, resourceTypeAndName)
+
+	storageKeys = append(storageKeys, resourceTypeAndName)
+
+	return CombineStorageKeys(storageKeys...)
 }
 
 const (

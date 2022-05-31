@@ -88,6 +88,26 @@ func (ri ID) String() string {
 	return ri.id
 }
 
+func (ri ID) SubscriptionID() string {
+	subscriptionID := ""
+	for _, t := range ri.scopeSegments {
+		if t.Type == "subscription" {
+			return t.Name
+		}
+	}
+	return subscriptionID
+}
+
+func (ri ID) ResourceGroup() string {
+	resourceGroup := ""
+	for _, t := range ri.scopeSegments {
+		if t.Type == "resourceGroup" {
+			return t.Name
+		}
+	}
+	return resourceGroup
+}
+
 // RootScope returns the root-scope (the part before 'providers'). This includes 'ucp:' prefix.
 //
 // Examples:
