@@ -1,4 +1,16 @@
 {
   "id": "id", 
-  "name": "name"
+  "name": "name",
+  "properties" : {
+    "routes": [
+      {
+        "destination":"random_dest.id",
+        "weight":30
+      },
+      {
+        "destination":"random_dest_2.id",
+        "weight":70
+      }
+    ]
+  }
 }

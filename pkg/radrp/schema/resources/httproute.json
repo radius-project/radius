@@ -33,6 +33,23 @@
           "description": "The port number for the route. Defaults to 80. Readonly.",
           "type": "integer"
         },
+        "routes": {
+          "description": "Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of JSON objects that each only have two keys: destination and weight",
+          "type": "array",
+          "items": {
+            "type":"object",
+            "properties": {
+              "destination": {
+                "type":"string"
+              },
+              "weight": {
+                "type":"integer"
+              }
+            },
+            "required": ["destination", "weight"],
+            "additionalProperties": false
+          }
+        },
         "scheme": {
           "description": "The scheme used for traffic. Readonly.",
           "type": "string"

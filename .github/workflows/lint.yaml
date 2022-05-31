@@ -10,6 +10,7 @@ on:
     branches:
       - main
       - release/*
+      - features/*
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
