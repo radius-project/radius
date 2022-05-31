@@ -62,6 +62,8 @@ input-file:
   - Applications.Connector/preview/2022-03-15-privatepreview/redisCaches.json
   - Applications.Connector/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
   - Applications.Connector/preview/2022-03-15-privatepreview/daprSecretStores.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
 ```
 
 # Code Generation

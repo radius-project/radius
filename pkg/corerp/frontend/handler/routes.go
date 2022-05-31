@@ -29,6 +29,7 @@ const (
 	operationsRouteName      = serviceNamePrefix + "operationsAPI"
 	environmentRouteName     = serviceNamePrefix + "environmentAPI"
 	operationStatusRouteName = serviceNamePrefix + "operationStatusAPI"
+	operationResultRouteName = serviceNamePrefix + "operationResultAPI"
 
 	// Connector RP
 	connectorRPPrefix            = "connectorrp_"
@@ -57,11 +58,14 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 			Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
 		// OperationStatus resource paths
-		locationLevelPath := pathBase + "/subscriptions/{subscriptionID}/providers/Applications.Core/locations/{location}"
+		locationLevelPath := pathBase + "/subscriptions/{subscriptionID}/providers/applications.core/locations/{location}"
 		locationsRouter := router.PathPrefix(locationLevelPath).
 			Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
-		operationStatusRouter := locationsRouter.Path("/operationStatuses/{operationId}").Subrouter()
+		operationStatusRouter := locationsRouter.Path("/operationstatuses/{operationId}").Subrouter()
+
+		// OperationResult resource paths
+		operationResultRouter := locationsRouter.Path("/operationresults/{operationId}").Subrouter()
 
 		// Resource Group level API routes.
 		resourceGroupLevelPath = pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
@@ -71,6 +75,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 			{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, subscriptionRouteName, provider_ctrl.NewCreateOrUpdateSubscription},
 			{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, operationsRouteName, provider_ctrl.NewGetOperations},
 			{operationStatusRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, operationStatusRouteName, provider_ctrl.NewGetOperationStatus},
+			{operationResultRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, operationResultRouteName, provider_ctrl.NewGetOperationResult},
 		}
 		handlers = append(handlers, h...)
 
