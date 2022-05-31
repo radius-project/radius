@@ -9,8 +9,10 @@ const (
 	ResourceTypeName                = "Applications.Core/provider"
 	OperationStatusResourceTypeName = "Applications.Core/operationStatuses"
 
-	ProviderOperationsGetName        = "APPLICATIONSCORE.OPERATIONS.GET"
-	ProviderOperationStatusesGetName = "APPLICATIONSCORE.OPERATIONSTATUSES.GET"
-	ProviderOperationResultGetName   = "APPLICATIONSCORE.OPERATIONRESULT.PUT"
-	ProviderSubscriptionsPutName     = "APPLICATIONSCORE.SUBSCRIPTIONS.PUT"
+	// Supported operation names which are the unique names to process the operation request
+	// in frontend API server and backend async operation process worker.
+	OperationsGet        = "APPLICATIONSCORE.OPERATIONS.GET"
+	OperationStatusesGet = "APPLICATIONSCORE.OPERATIONSTATUSES.GET"
+	OperationResultGet   = "APPLICATIONSCORE.OPERATIONRESULT.PUT"
+	SubscriptionsPut     = "APPLICATIONSCORE.SUBSCRIPTIONS.PUT"
 )

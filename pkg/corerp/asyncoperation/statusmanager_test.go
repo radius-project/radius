@@ -22,7 +22,7 @@ import (
 )
 
 type asyncOperationsManagerTest struct {
-	manager     Manager
+	manager     StatusManager
 	storeClient *store.MockStorageClient
 	enqueuer    *queue.MockEnqueuer
 }
@@ -36,22 +36,22 @@ const (
 	getErr                   = "get error"
 )
 
-func setup(tb testing.TB) asyncOperationsManagerTest {
+func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 	ctrl := gomock.NewController(tb)
 	sc := store.NewMockStorageClient(ctrl)
 	enq := queue.NewMockEnqueuer(ctrl)
-	aom := NewManager(sc, enq, "Test-AsyncOperationsManager", "test-location")
-	return asyncOperationsManagerTest{manager: aom, storeClient: sc, enqueuer: enq}
+	aom := NewStatusManager(sc, enq, "Test-AsyncOperationsManager", "test-location")
+	return asyncOperationsManagerTest{manager: aom, storeClient: sc, enqueuer: enq}, ctrl
 }
 
-var ctx = servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
+var reqCtx = &servicecontext.ARMRequestContext{
 	OperationID:    uuid.Must(uuid.NewRandom()),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",
 	OperationName:  "op-name",
 	Traceparent:    "trace",
 	AcceptLanguage: "lang",
-})
+}
 
 var opID = uuid.New()
 
@@ -104,36 +104,22 @@ func TestCreateAsyncOperationStatus(t *testing.T) {
 
 	for _, tt := range createCases {
 		t.Run(fmt.Sprint(tt.Desc), func(t *testing.T) {
-			aomTest := setup(t)
+			aomTest, mctrl := setup(t)
+			defer mctrl.Finish()
 
-			aomTest.storeClient.
-				EXPECT().
-				Save(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-					return tt.SaveErr
-				})
+			aomTest.storeClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.SaveErr)
 
 			// We can't expect an async operation to be queued if it is not saved to the DB.
 			if tt.SaveErr == nil {
-				aomTest.enqueuer.
-					EXPECT().
-					Enqueue(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, msg *queue.Message, options ...queue.EnqueueOptions) error {
-						return tt.EnqueueErr
-					})
+				aomTest.enqueuer.EXPECT().Enqueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.EnqueueErr)
 			}
 
 			// If there is an error when enqueuing the message, the async operation should be deleted.
 			if tt.EnqueueErr != nil {
-				aomTest.storeClient.
-					EXPECT().
-					Delete(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, id string, opts ...store.DeleteOptions) error {
-						return tt.DeleteErr
-					})
+				aomTest.storeClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
 			}
 
-			err := aomTest.manager.Create(ctx, testRootScope, "linked-resource-id", "operation-name", operationTimeoutDuration)
+			err := aomTest.manager.Create(context.TODO(), testRootScope, opID, reqCtx, "linked-resource-id", "operation-name", operationTimeoutDuration)
 
 			if tt.SaveErr == nil && tt.EnqueueErr == nil && tt.DeleteErr == nil {
 				require.NoError(t, err)
@@ -171,16 +157,12 @@ func TestDeleteAsyncOperationStatus(t *testing.T) {
 
 	for _, tt := range deleteCases {
 		t.Run(fmt.Sprint(tt.Desc), func(t *testing.T) {
-			aomTest := setup(t)
+			aomTest, mctrl := setup(t)
+			defer mctrl.Finish()
 
-			aomTest.storeClient.
-				EXPECT().
-				Delete(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, opts ...store.DeleteOptions) error {
-					return tt.DeleteErr
-				})
+			aomTest.storeClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
 
-			err := aomTest.manager.Delete(ctx, testRootScope, uuid.New())
+			err := aomTest.manager.Delete(context.TODO(), testRootScope, uuid.New())
 
 			if tt.DeleteErr != nil {
 				require.Error(t, err, deleteErr)
@@ -214,16 +196,15 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 
 	for _, tt := range getCases {
 		t.Run(fmt.Sprint(tt.Desc), func(t *testing.T) {
-			aomTest := setup(t)
+			aomTest, mctrl := setup(t)
+			defer mctrl.Finish()
 
 			aomTest.storeClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-					return tt.Obj, tt.GetErr
-				})
+				Return(tt.Obj, tt.GetErr)
 
-			aos, err := aomTest.manager.Get(ctx, testRootScope, uuid.New())
+			aos, err := aomTest.manager.Get(context.TODO(), testRootScope, uuid.New())
 
 			if tt.GetErr == nil {
 				require.NoError(t, err)
@@ -259,27 +240,24 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 
 	for _, tt := range updateCases {
 		t.Run(fmt.Sprint(tt.Desc), func(t *testing.T) {
-			aomTest := setup(t)
+			aomTest, mctrl := setup(t)
+			defer mctrl.Finish()
 
 			aomTest.storeClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-					return tt.Obj, tt.GetErr
-				})
+				Return(tt.Obj, tt.GetErr)
 
 			if tt.GetErr == nil {
 				aomTest.storeClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-						return tt.SaveErr
-					})
+					Return(tt.SaveErr)
 			}
 
 			testAos.Status = basedatamodel.ProvisioningStateSucceeded
 
-			err := aomTest.manager.Update(ctx, testRootScope, opID, testAos)
+			err := aomTest.manager.Update(context.TODO(), testRootScope, opID, basedatamodel.ProvisioningStateAccepted, nil, nil)
 
 			if tt.GetErr == nil && tt.SaveErr == nil {
 				require.NoError(t, err)

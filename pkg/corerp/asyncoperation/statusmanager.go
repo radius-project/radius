@@ -16,30 +16,35 @@ import (
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/queue"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-// manager includes the necessary functions to manage asynchronous operations.
-type manager struct {
+// statusManager includes the necessary functions to manage asynchronous operations.
+type statusManager struct {
 	storeClient  store.StorageClient
 	enqueuer     queue.Enqueuer
 	providerName string
 	location     string
 }
 
-//go:generate mockgen -destination=./mock_manager.go -package=asyncoperation -self_package github.com/project-radius/radius/pkg/corerp/asyncoperation github.com/project-radius/radius/pkg/corerp/asyncoperation AsyncOperationsManager
+//go:generate mockgen -destination=./mock_statusmanager.go -package=asyncoperation -self_package github.com/project-radius/radius/pkg/corerp/asyncoperation github.com/project-radius/radius/pkg/corerp/asyncoperation StatusManager
 
-// Manager is the database interface for AsyncOperationStatus
-type Manager interface {
-	Create(ctx context.Context, rootScope string, linkedResourceID string, operationName string, operationTimeout time.Duration) error
-	Delete(ctx context.Context, rootScope string, operationID uuid.UUID) error
+// StatusManager is an interface to manage async operation status.
+type StatusManager interface {
+	// Get gets an async operation status object.
 	Get(ctx context.Context, rootScope string, operationID uuid.UUID) (*Status, error)
-	Update(ctx context.Context, rootScope string, operationID uuid.UUID, aos *Status) error
+	// Create creates an async operation status object and queue async operation.
+	Create(ctx context.Context, rootScope string, operationID uuid.UUID, sCtx *servicecontext.ARMRequestContext, resourceID string, operationName string, operationTimeout time.Duration) error
+	// Update updates an async operation status.
+	Update(ctx context.Context, rootScope string, operationID uuid.UUID, state basedatamodel.ProvisioningStates, endTime *time.Time, opError *armerrors.ErrorDetails) error
+	// Delete deletes an async operation status.
+	Delete(ctx context.Context, rootScope string, operationID uuid.UUID) error
 }
 
-// NewManager creates manager instance.
-func NewManager(storeClient store.StorageClient, enqueuer queue.Enqueuer, providerName, location string) Manager {
-	return &manager{
+// NewStatusManager creates manager instance.
+func NewStatusManager(storeClient store.StorageClient, enqueuer queue.Enqueuer, providerName, location string) StatusManager {
+	return &statusManager{
 		storeClient:  storeClient,
 		enqueuer:     enqueuer,
 		providerName: providerName,
@@ -48,28 +53,28 @@ func NewManager(storeClient store.StorageClient, enqueuer queue.Enqueuer, provid
 }
 
 // operationStatusResourceID function is to build the operationStatus resourceID.
-func (aom *manager) operationStatusResourceID(rootScope string, operationID uuid.UUID) string {
+func (aom *statusManager) operationStatusResourceID(rootScope string, operationID uuid.UUID) string {
 	return fmt.Sprintf("%s/providers/%s/locations/%s/operationStatuses/%s", rootScope, aom.providerName, aom.location, operationID)
 }
 
-// Create function is to create an async operation status.
-func (aom *manager) Create(ctx context.Context, rootScope string, linkedResourceID string, operationName string, operationTimeout time.Duration) error {
+func (aom *statusManager) Create(ctx context.Context, rootScope string, operationID uuid.UUID, sCtx *servicecontext.ARMRequestContext, resourceID string, operationName string, operationTimeout time.Duration) error {
 	if aom.enqueuer == nil {
-		return errors.New("enqueuer client is not set")
+		return errors.New("enqueuer client is unset")
 	}
 
-	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	if sCtx == nil {
+		return errors.New("*servicecontext.ARMRequestContext is unset")
+	}
 
-	opID := aom.operationStatusResourceID(rootScope, sCtx.OperationID)
-
+	opID := aom.operationStatusResourceID(rootScope, operationID)
 	aos := &Status{
 		AsyncOperationStatus: armrpcv1.AsyncOperationStatus{
 			ID:        opID,
-			Name:      sCtx.OperationID.String(),
+			Name:      operationID.String(),
 			Status:    basedatamodel.ProvisioningStateUpdating,
 			StartTime: time.Now().UTC(),
 		},
-		LinkedResourceID: linkedResourceID,
+		LinkedResourceID: resourceID,
 		OperationName:    operationName,
 		Location:         aom.location,
 		HomeTenantID:     sCtx.HomeTenantID,
@@ -85,8 +90,7 @@ func (aom *manager) Create(ctx context.Context, rootScope string, linkedResource
 		return err
 	}
 
-	err = aom.queueRequestMessage(ctx, aos, operationTimeout)
-	if err != nil {
+	if err = aom.queueRequestMessage(ctx, sCtx, aos, operationTimeout); err != nil {
 		delErr := aom.storeClient.Delete(ctx, opID)
 		if delErr != nil {
 			return delErr
@@ -97,8 +101,7 @@ func (aom *manager) Create(ctx context.Context, rootScope string, linkedResource
 	return nil
 }
 
-// Get function is to get the requested async operation if it exists.
-func (aom *manager) Get(ctx context.Context, rootScope string, operationID uuid.UUID) (*Status, error) {
+func (aom *statusManager) Get(ctx context.Context, rootScope string, operationID uuid.UUID) (*Status, error) {
 	obj, err := aom.storeClient.Get(ctx, aom.operationStatusResourceID(rootScope, operationID))
 	if err != nil {
 		return nil, err
@@ -112,8 +115,7 @@ func (aom *manager) Get(ctx context.Context, rootScope string, operationID uuid.
 	return aos, nil
 }
 
-// Update function is to update the existing async operation status.
-func (aom *manager) Update(ctx context.Context, rootScope string, operationID uuid.UUID, aos *Status) error {
+func (aom *statusManager) Update(ctx context.Context, rootScope string, operationID uuid.UUID, state basedatamodel.ProvisioningStates, endTime *time.Time, opError *armerrors.ErrorDetails) error {
 	opID := aom.operationStatusResourceID(rootScope, operationID)
 
 	obj, err := aom.storeClient.Get(ctx, opID)
@@ -126,24 +128,24 @@ func (aom *manager) Update(ctx context.Context, rootScope string, operationID uu
 		return err
 	}
 
-	s.Status = aos.Status
-	s.EndTime = aos.EndTime
-	if aos.Error != nil {
-		s.Error = aos.Error
+	s.Status = state
+	if endTime != nil {
+		s.EndTime = endTime
+	}
+
+	if opError != nil {
+		s.Error = opError
 	}
 
 	return aom.storeClient.Save(ctx, obj, store.WithETag(obj.ETag))
 }
 
-// Delete function is to delete the async operation status.
-func (aom *manager) Delete(ctx context.Context, rootScope string, operationID uuid.UUID) error {
+func (aom *statusManager) Delete(ctx context.Context, rootScope string, operationID uuid.UUID) error {
 	return aom.storeClient.Delete(ctx, aom.operationStatusResourceID(rootScope, operationID))
 }
 
 // queueRequestMessage function is to put the async operation message to the queue to be worked on.
-func (aom *manager) queueRequestMessage(ctx context.Context, aos *Status, operationTimeout time.Duration) error {
-	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
-
+func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *servicecontext.ARMRequestContext, aos *Status, operationTimeout time.Duration) error {
 	msg := &Request{
 		OperationID:      sCtx.OperationID,
 		OperationName:    sCtx.OperationName,

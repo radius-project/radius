@@ -46,7 +46,7 @@ func (w *Service) Run(ctx context.Context) error {
 
 	// Register async operation controllers.
 	controllers := server.NewControllerRegistry(sp)
-	controllers.Register(ctx, containers_ctrl.EnvironmentPutName, containers_ctrl.ResourceTypeName, containers.NewCreateContainerController)
+	controllers.Register(ctx, containers_ctrl.EnvironmentPut, containers_ctrl.ResourceTypeName, containers.NewCreateContainerController)
 
 	// Create Async operation manager.
 	sc, err := sp.GetStorageClient(ctx, provider_ctrl.OperationStatusResourceTypeName)

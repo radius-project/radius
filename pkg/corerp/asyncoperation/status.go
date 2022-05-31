@@ -30,6 +30,7 @@ type Status struct {
 	ClientObjectID string `json:"clientObjectID,omitempty"`
 }
 
+// InTerminalState returns true if asynchronous operation status is the terminated state.
 func (aos *Status) InTerminalState() bool {
 	return aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateSucceeded ||
 		aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateFailed ||
