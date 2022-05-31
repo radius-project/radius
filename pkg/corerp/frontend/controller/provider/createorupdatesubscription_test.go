@@ -12,7 +12,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"

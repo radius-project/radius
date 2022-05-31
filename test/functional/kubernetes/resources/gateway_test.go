@@ -12,16 +12,17 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/kubernetestest"
+	"github.com/project-radius/radius/test/functional/kubernetes"
+	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
 func Test_Gateway(t *testing.T) {
 	template := "testdata/kubernetes-resources-gateway.bicep"
 	application := "kubernetes-resources-gateway"
-	test := kubernetestest.NewApplicationTest(t, application, []kubernetestest.Step{
+	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
-			Executor: kubernetestest.NewDeployStepExecutor(template),
+			Executor: step.NewDeployExecutor(template),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
@@ -38,10 +39,10 @@ func Test_Gateway(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
 						validation.NewK8sPodForResource(application, "backend"),
-						validation.NewK8sGatewayForResource(application, "backendgateway"),
-						validation.NewK8sHttpRouteForResource(application, "frontendhttp"),
+						validation.NewK8sHTTPProxyForResource(application, "backendgateway"),
+						validation.NewK8sHTTPProxyForResource(application, "frontendhttp"),
 						validation.NewK8sServiceForResource(application, "frontendhttp"),
-						validation.NewK8sHttpRouteForResource(application, "backendhttp"),
+						validation.NewK8sHTTPProxyForResource(application, "backendhttp"),
 						validation.NewK8sServiceForResource(application, "backendhttp"),
 					},
 				},

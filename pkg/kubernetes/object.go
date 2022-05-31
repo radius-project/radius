@@ -12,11 +12,11 @@ import (
 
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 )
 
 // FindDeployment finds deployment in a list of output resources
@@ -73,33 +73,20 @@ func FindSecret(resources []outputresource.OutputResource) (*corev1.Secret, outp
 	return nil, outputresource.OutputResource{}
 }
 
-// FindHttpRoute finds an HttpRoute in a list of output resources
-func FindHttpRoute(resources []outputresource.OutputResource) (*gatewayv1alpha1.HTTPRoute, outputresource.OutputResource) {
-	for _, r := range resources {
-		if r.ResourceType.Type != resourcekinds.KubernetesHTTPRoute {
-			continue
-		}
-
-		httpRoute, ok := r.Resource.(*gatewayv1alpha1.HTTPRoute)
-		if !ok {
-			continue
-		}
-
-		return httpRoute, r
-	}
-
-	return nil, outputresource.OutputResource{}
-}
-
-// FindHttpRouteByLocalID finds an HttpRoute in a list of output resources, keyed by its localID
-func FindHttpRouteByLocalID(resources []outputresource.OutputResource, localID string) (*gatewayv1alpha1.HTTPRoute, outputresource.OutputResource) {
+// FindHttpRouteByLocalID finds a (non-root) HTTPProxy in a list of output resources, keyed by its localID
+func FindHttpRouteByLocalID(resources []outputresource.OutputResource, localID string) (*contourv1.HTTPProxy, outputresource.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.KubernetesHTTPRoute || r.LocalID != localID {
 			continue
 		}
 
-		httpRoute, ok := r.Resource.(*gatewayv1alpha1.HTTPRoute)
+		httpRoute, ok := r.Resource.(*contourv1.HTTPProxy)
 		if !ok {
+			continue
+		}
+
+		// If VirtualHost exists, then this is a root HTTPProxy (gateway)
+		if httpRoute.Spec.VirtualHost != nil {
 			continue
 		}
 
@@ -109,15 +96,20 @@ func FindHttpRouteByLocalID(resources []outputresource.OutputResource, localID s
 	return nil, outputresource.OutputResource{}
 }
 
-// FindHttpRoute finds an HttpRoute in a list of output resources
-func FindGateway(resources []outputresource.OutputResource) (*gatewayv1alpha1.Gateway, outputresource.OutputResource) {
+// FindGateway finds a root HTTPProxy in a list of output resources
+func FindGateway(resources []outputresource.OutputResource) (*contourv1.HTTPProxy, outputresource.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Gateway {
 			continue
 		}
 
-		gateway, ok := r.Resource.(*gatewayv1alpha1.Gateway)
+		gateway, ok := r.Resource.(*contourv1.HTTPProxy)
 		if !ok {
+			continue
+		}
+
+		// If VirtualHost exists, then this is a root HTTPProxy (gateway)
+		if gateway.Spec.VirtualHost == nil {
 			continue
 		}
 

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var (

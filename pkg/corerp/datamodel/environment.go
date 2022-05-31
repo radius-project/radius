@@ -6,7 +6,8 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
 // EnvironmentComputeKind is the type of compute resource.
@@ -21,7 +22,7 @@ const (
 
 // Environment represents Application environment resource.
 type Environment struct {
-	TrackedResource
+	basedatamodel.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
@@ -29,7 +30,7 @@ type Environment struct {
 	Properties EnvironmentProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	InternalMetadata
+	basedatamodel.InternalMetadata
 }
 
 func (e Environment) ResourceTypeName() string {
@@ -38,8 +39,8 @@ func (e Environment) ResourceTypeName() string {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	ProvisioningState ProvisioningStates `json:"provisioningState,omitempty"`
-	Compute           EnvironmentCompute `json:"compute,omitempty"`
+	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
+	Compute           EnvironmentCompute               `json:"compute,omitempty"`
 }
 
 // EnvironmentCompute represents the compute resource of Environment.

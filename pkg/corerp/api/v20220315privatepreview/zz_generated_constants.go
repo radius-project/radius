@@ -57,7 +57,7 @@ func (c EnvironmentComputeKind) ToPtr() *EnvironmentComputeKind {
 	return &c
 }
 
-// ProvisioningState - Gets the status of the environment at the time the operation was called.
+// ProvisioningState - Provisioning state of the resource at the time the operation was called.
 type ProvisioningState string
 
 const (

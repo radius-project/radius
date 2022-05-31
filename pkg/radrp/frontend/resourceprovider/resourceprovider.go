@@ -106,7 +106,7 @@ func (r *rp) GetApplication(ctx context.Context, id azresources.ResourceID) (res
 
 	item, err := r.db.GetV3Application(ctx, id)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id), nil
+		return rest.NewLegacyNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func (r *rp) ListAllV3ResourcesByApplication(ctx context.Context, id azresources
 	_, err = r.db.GetV3Application(ctx, applicationID)
 	if err != nil {
 		if err == db.ErrNotFound {
-			return rest.NewNotFoundResponse(id), nil
+			return rest.NewLegacyNotFoundResponse(id), nil
 		}
 		return nil, err
 	}
@@ -265,7 +265,7 @@ func (r *rp) ListResources(ctx context.Context, id azresources.ResourceID) (rest
 
 	if err == db.ErrNotFound {
 		// It's possible that the application does not exist.
-		return rest.NewNotFoundResponse(id), nil
+		return rest.NewLegacyNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -299,7 +299,7 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID, azureCo
 			*azureConnectionResourceProperties.ResourceSubscriptionID, *azureConnectionResourceProperties.ResourceGroup)
 		outputResource = NewRestRadiusResourceFromAzureResource(dbResource)
 		if err == db.ErrNotFound {
-			return rest.NewNotFoundResponse(id), nil
+			return rest.NewLegacyNotFoundResponse(id), nil
 		} else if err != nil {
 			return nil, err
 		}
@@ -311,7 +311,7 @@ func (r *rp) GetResource(ctx context.Context, id azresources.ResourceID, azureCo
 
 		dbResource, err := r.db.GetV3Resource(ctx, id)
 		if err == db.ErrNotFound {
-			return rest.NewNotFoundResponse(id), nil
+			return rest.NewLegacyNotFoundResponse(id), nil
 		} else if err != nil {
 			return nil, err
 		}
@@ -342,7 +342,7 @@ func (r *rp) UpdateResource(ctx context.Context, id azresources.ResourceID, body
 	item.ProvisioningState = string(rest.DeployingStatus)
 	_, err = r.db.UpdateV3ResourceDefinition(ctx, id, item)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id), nil
+		return rest.NewLegacyNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -459,7 +459,7 @@ func (r *rp) GetOperation(ctx context.Context, id azresources.ResourceID) (rest.
 
 	operation, err := r.db.GetOperationByID(ctx, id)
 	if err == db.ErrNotFound {
-		return rest.NewNotFoundResponse(id), nil
+		return rest.NewLegacyNotFoundResponse(id), nil
 	} else if err != nil {
 		return nil, err
 	}

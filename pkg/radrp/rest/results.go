@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // Translation of internal representation of health state to user facing values
@@ -175,6 +176,7 @@ type AcceptedAsyncResponse struct {
 	Scheme   string
 }
 
+// NewAcceptedAsyncResponse creates an AcceptedAsyncResponse
 func NewAcceptedAsyncResponse(body interface{}, location string, scheme string) Response {
 	return &AcceptedAsyncResponse{Body: body, Location: location, Scheme: scheme}
 }
@@ -327,13 +329,25 @@ type NotFoundResponse struct {
 	Body armerrors.ErrorResponse
 }
 
-func NewNotFoundResponse(id azresources.ResourceID) Response {
+func NewLegacyNotFoundResponse(id azresources.ResourceID) Response {
 	return &NotFoundResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.NotFound,
 				Message: fmt.Sprintf("the resource with id '%s' was not found", id.ID),
 				Target:  id.ID,
+			},
+		},
+	}
+}
+
+func NewNotFoundResponse(id resources.ID) Response {
+	return &NotFoundResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.NotFound,
+				Message: fmt.Sprintf("the resource with id '%s' was not found", id.String()),
+				Target:  id.String(),
 			},
 		},
 	}
@@ -593,6 +607,65 @@ func (r *PreconditionFailedResponse) Apply(ctx context.Context, w http.ResponseW
 	if err != nil {
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
 	}
+
+	return nil
+}
+
+// ClientAuthenticationFailed represents an HTTP 401 with an ARM error payload.
+type ClientAuthenticationFailed struct {
+	Body armerrors.ErrorResponse
+}
+
+func NewClientAuthenticationFailedARMResponse() Response {
+	return &ClientAuthenticationFailed{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.InvalidAuthenticationInfo,
+				Message: "Server failed to authenticate the request",
+			},
+		},
+	}
+}
+func (r *ClientAuthenticationFailed) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusUnauthorized), radlogger.LogHTTPStatusCode, http.StatusUnauthorized)
+
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
+	return nil
+}
+
+// AsyncOperationResultResponse
+type AsyncOperationResultResponse struct {
+	Headers map[string]string
+}
+
+func NewAsyncOperationResultResponse(headers map[string]string) Response {
+	return &AsyncOperationResultResponse{
+		Headers: headers,
+	}
+}
+
+func (r *AsyncOperationResultResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), radlogger.LogHTTPStatusCode, http.StatusAccepted)
+
+	w.Header().Add("Content-Type", "application/json")
+
+	for key, element := range r.Headers {
+		w.Header().Add(key, element)
+	}
+
+	w.WriteHeader(http.StatusAccepted)
 
 	return nil
 }

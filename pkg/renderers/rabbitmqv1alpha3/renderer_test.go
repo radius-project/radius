@@ -52,11 +52,9 @@ func Test_Render_User_Secrets(t *testing.T) {
 
 	require.Len(t, output.Resources, 0)
 
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"connectionString": {
-			Value: to.StringPtr("admin:deadbeef@localhost:42"),
-		},
+	expectedSecretValues := map[string]renderers.SecretValueReference{
+		renderers.ConnectionStringValue: {Value: *to.StringPtr("admin:deadbeef@localhost:42")},
 	}
-	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, 0, len(output.SecretValues))
+	require.Equal(t, expectedSecretValues, output.SecretValues)
+	require.Equal(t, 0, len(output.ComputedValues))
 }

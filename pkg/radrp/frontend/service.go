@@ -20,10 +20,10 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/frontend/resourceprovider"
 	"github.com/project-radius/radius/pkg/radrp/frontend/server"
 	"github.com/project-radius/radius/pkg/renderers"
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1alpha1 "sigs.k8s.io/gateway-api/apis/v1alpha1"
 	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
 )
 
@@ -46,8 +46,8 @@ func (s *Service) Run(ctx context.Context) error {
 
 	scheme := clientgoscheme.Scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(gatewayv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(csidriver.AddToScheme(scheme))
+	utilruntime.Must(contourv1.AddToScheme(scheme))
 
 	k8s, err := controller_runtime.New(s.Options.K8sConfig, controller_runtime.Options{Scheme: scheme})
 	if err != nil {

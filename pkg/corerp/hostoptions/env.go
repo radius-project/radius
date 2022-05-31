@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	RadiusDevEnvironment       = "dev"
-	RadiusDogfood              = "df-westus3"
-	RadiusCanaryEastUS2EUAP    = "prod-eastus2euap"
-	RadiusCanaryCentralUS2EUAP = "prod-centralus2euap"
-	RadiusProdPrefix           = "prod"
+	RadiusDevEnvironment        = "dev"
+	RadiusSelfHostedEnvironment = "self-hosted"
+	RadiusDogfood               = "df-westus3"
+	RadiusCanaryEastUS2EUAP     = "prod-eastus2euap"
+	RadiusCanaryCentralUS2EUAP  = "prod-centralus2euap"
+	RadiusProdPrefix            = "prod"
 )
 
 var currentEnv = RadiusDevEnvironment
@@ -28,6 +29,11 @@ func Environment() string {
 // IsDevelopment returns true if the current environment is development environment.
 func IsDevelopment() bool {
 	return strings.HasPrefix(Environment(), RadiusDevEnvironment)
+}
+
+// IsSelfHosted returns true if the current environment is self-hosted environment.
+func IsSelfHosted() bool {
+	return strings.HasPrefix(Environment(), RadiusSelfHostedEnvironment)
 }
 
 // IsDogfood returns true if the current environment is dogfood environment.

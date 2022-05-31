@@ -57,7 +57,7 @@ func ApplyDaprHelmChart(version string) error {
 
 		err = runDaprHelmInstall(helmConf, helmChart)
 		if err != nil {
-			return fmt.Errorf("failed to run helm install, err: %w, helm output: %s", err, helmOutput.String())
+			return fmt.Errorf("failed to run dapr helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	}
 

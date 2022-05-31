@@ -10,7 +10,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/corerp/api"
+	"github.com/project-radius/radius/pkg/api"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )

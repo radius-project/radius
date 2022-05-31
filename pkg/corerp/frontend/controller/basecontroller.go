@@ -9,10 +9,13 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/corerp/hostoptions"
+	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // ControllerInterface is an interface of each operation controller.
@@ -49,7 +52,7 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in interfa
 		},
 		Data: in,
 	}
-	nr, err := c.DBClient.Save(ctx, nr, store.WithETag(etag))
+	err := c.DBClient.Save(ctx, nr, store.WithETag(etag))
 	if err != nil {
 		return nil, err
 	}
@@ -80,4 +83,19 @@ func UpdateSystemData(old armrpcv1.SystemData, new armrpcv1.SystemData) armrpcv1
 	}
 
 	return newSystemData
+}
+
+// BuildTrackedResource create TrackedResource instance from request context
+func BuildTrackedResource(ctx context.Context) basedatamodel.TrackedResource {
+	requestCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceOpt := hostoptions.FromContext(ctx)
+
+	trackedResource := basedatamodel.TrackedResource{
+		ID:       requestCtx.ResourceID.String(),
+		Name:     requestCtx.ResourceID.Name(),
+		Type:     requestCtx.ResourceID.Type(),
+		Location: serviceOpt.Env.RoleLocation,
+	}
+
+	return trackedResource
 }

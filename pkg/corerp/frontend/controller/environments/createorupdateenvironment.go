@@ -10,13 +10,13 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 
 	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 )
@@ -47,7 +47,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	}
 
 	existingResource := &datamodel.Environment{}
-	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if req.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
@@ -57,12 +57,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.ID, err.Error()), nil
+		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
 	UpdateExistingResourceData(ctx, existingResource, newResource)
 
-	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.ID, newResource, etag)
+	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,6 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 // Validate extracts versioned resource from request and validate the properties.
 func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Environment, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	serviceOpt := hostoptions.FromContext(ctx)
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err
@@ -95,14 +94,10 @@ func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Requ
 
 	// TODO: Add more validation e.g. schema, identity, etc.
 
-	dm.ID = serviceCtx.ResourceID.ID
-	dm.TrackedResource.ID = serviceCtx.ResourceID.ID
-	dm.TrackedResource.Name = serviceCtx.ResourceID.Name()
-	dm.TrackedResource.Type = serviceCtx.ResourceID.Type()
-	dm.TrackedResource.Location = serviceOpt.CloudEnv.RoleLocation
-
+	dm.ID = serviceCtx.ResourceID.String()
+	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	// TODO: Update the state.
-	dm.Properties.ProvisioningState = datamodel.ProvisioningStateSucceeded
+	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
 
 	return dm, err
 }
