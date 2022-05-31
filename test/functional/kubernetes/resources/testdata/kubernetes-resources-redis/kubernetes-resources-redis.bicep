@@ -1,6 +1,6 @@
 import kubernetes from kubernetes
 
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
 
 resource redisService 'kubernetes.core/Service@v1' existing = {
   metadata: {
@@ -26,11 +26,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
         image: magpieimage
         env: {
         }
-        readinessProbe:{
-          kind:'httpGet'
-          containerPort:3000
-          path: '/healthz'
-        }
       }
       connections: {
         redis: {
@@ -41,21 +36,14 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  resource redisRoute 'HttpRoute' = {
-    name: 'redis-route'
-    properties: {
-      port: 80
-    }
-  }
-
-  resource redis 'redislabs.com.RedisCache@v1alpha3' = {
+  resource redis 'redislabs.com.RedisCache' = {
     name: 'redis'
     properties: {
-      host: redisRoute.properties.host
-      port: redisRoute.properties.port
+      host: '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local'
+      port: redisService.spec.ports[0].port
       secrets: {
-        connectionString: '${redisRoute.properties.host}:${redisRoute.properties.port}'
-        password: ''
+        connectionString: '${redisService.metadata.name}.${redisService.metadata.namespace}.svc.cluster.local:${redisService.spec.ports[0].port},password=${base64ToString(redisSecret.data['redis-password'])}'
+        password: base64ToString(redisSecret.data['redis-password'])
       }
     }
   }
