@@ -8,9 +8,9 @@ package environments
 const (
 	ResourceTypeName = "Applications.Core/environments"
 
-	EnvironmentListName   = "APPLOCATIONSCORE.ENVIRONMENT.LIST"
-	EnvironmentGetName    = "APPLOCATIONSCORE.ENVIRONMENT.GET"
-	EnvironmentPutName    = "APPLOCATIONSCORE.ENVIRONMENT.PUT"
-	EnvironmentPatchName  = "APPLOCATIONSCORE.ENVIRONMENT.PATCH"
-	EnvironmentDeleteName = "APPLOCATIONSCORE.ENVIRONMENT.DELETE"
+	EnvironmentListName   = "APPLICATIONSCORE.ENVIRONMENT.LIST"
+	EnvironmentGetName    = "APPLICATIONSCORE.ENVIRONMENT.GET"
+	EnvironmentPutName    = "APPLICATIONSCORE.ENVIRONMENT.PUT"
+	EnvironmentPatchName  = "APPLICATIONSCORE.ENVIRONMENT.PATCH"
+	EnvironmentDeleteName = "APPLICATIONSCORE.ENVIRONMENT.DELETE"
 )

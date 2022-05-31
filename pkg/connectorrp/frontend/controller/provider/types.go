@@ -9,6 +9,6 @@ const (
 	Namespace        = "Applications.Connector"
 	ResourceTypeName = Namespace + "/provider"
 
-	ProviderOperationsGetName    = "APPLOCATIONSCONNECTOR.OPERATIONS.GET"
-	ProviderSubscriptionsPutName = "APPLOCATIONSCONNECTOR.SUBSCRIPTIONS.PUT"
+	ProviderOperationsGetName    = "APPLICATIONSCONNECTOR.OPERATIONS.GET"
+	ProviderSubscriptionsPutName = "APPLICATIONSCONNECTOR.SUBSCRIPTIONS.PUT"
 )

@@ -9,8 +9,8 @@ const (
 	ResourceTypeName                = "Applications.Core/provider"
 	OperationStatusResourceTypeName = "Applications.Core/operationStatuses"
 
-	ProviderOperationsGetName        = "APPLOCATIONSCORE.OPERATIONS.GET"
-	ProviderOperationStatusesGetName = "APPLOCATIONSCORE.OPERATIONSTATUSES.GET"
-	ProviderOperationResultGetName   = "APPLOCATIONSCORE.OPERATIONRESULT.PUT"
-	ProviderSubscriptionsPutName     = "APPLOCATIONSCORE.SUBSCRIPTIONS.PUT"
+	ProviderOperationsGetName        = "APPLICATIONSCORE.OPERATIONS.GET"
+	ProviderOperationStatusesGetName = "APPLICATIONSCORE.OPERATIONSTATUSES.GET"
+	ProviderOperationResultGetName   = "APPLICATIONSCORE.OPERATIONRESULT.PUT"
+	ProviderSubscriptionsPutName     = "APPLICATIONSCORE.SUBSCRIPTIONS.PUT"
 )

@@ -8,7 +8,7 @@ package environments
 const (
 	ResourceTypeName = "Applications.Core/containers"
 
-	EnvironmentListName = "APPLOCATIONSCORE.CONTAINERS.LIST"
-	EnvironmentGetName  = "APPLOCATIONSCORE.CONTAINERS.GET"
-	EnvironmentPutName  = "APPLOCATIONSCORE.CONTAINERS.PUT"
+	EnvironmentListName = "APPLICATIONSCORE.CONTAINERS.LIST"
+	EnvironmentGetName  = "APPLICATIONSCORE.CONTAINERS.GET"
+	EnvironmentPutName  = "APPLICATIONSCORE.CONTAINERS.PUT"
 )
