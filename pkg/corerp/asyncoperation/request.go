@@ -13,11 +13,11 @@ import (
 
 var (
 	// DefaultAsyncOperationTimeout is the default timeout duration of async operation.
-	DefaultAsyncOperationTimeout = 1 * time.Hour
+	DefaultAsyncOperationTimeout = time.Duration(120) * time.Second
 )
 
-// RequestMessage is a message used for async request queue message broker.
-type RequestMessage struct {
+// Request is a message used for async request queue message broker.
+type Request struct {
 	// OperationID represents the unique id of the async operation.
 	OperationID uuid.UUID `json:"asyncOperationID"`
 	// OperationName represents the name of operation.
@@ -39,4 +39,12 @@ type RequestMessage struct {
 
 	// OperationTimeout represents the timeout duration of async operation.
 	OperationTimeout time.Duration `json:"asyncOperationTimeout"`
+}
+
+// Timeout gets the async operation timeout duration.
+func (r Request) Timeout() time.Duration {
+	if r.OperationTimeout <= 0 {
+		return DefaultAsyncOperationTimeout
+	}
+	return r.OperationTimeout
 }

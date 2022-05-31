@@ -19,8 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-const ResourceType = "Applications.Core/operationStatuses"
-
 // manager includes the necessary functions to manage asynchronous operations.
 type manager struct {
 	storeClient  store.StorageClient
@@ -123,7 +121,16 @@ func (aom *manager) Update(ctx context.Context, rootScope string, operationID uu
 		return err
 	}
 
-	obj.Data = aos
+	s := &Status{}
+	if err := obj.As(s); err != nil {
+		return err
+	}
+
+	s.Status = aos.Status
+	s.EndTime = aos.EndTime
+	if aos.Error != nil {
+		s.Error = aos.Error
+	}
 
 	return aom.storeClient.Save(ctx, obj, store.WithETag(obj.ETag))
 }
@@ -137,7 +144,7 @@ func (aom *manager) Delete(ctx context.Context, rootScope string, operationID uu
 func (aom *manager) queueRequestMessage(ctx context.Context, aos *Status, operationTimeout time.Duration) error {
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	msg := &RequestMessage{
+	msg := &Request{
 		OperationID:      sCtx.OperationID,
 		OperationName:    sCtx.OperationName,
 		ResourceID:       aos.LinkedResourceID,

@@ -9,9 +9,15 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
+	"github.com/project-radius/radius/pkg/corerp/backend/controller/containers"
 	"github.com/project-radius/radius/pkg/corerp/backend/server"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
+	"github.com/project-radius/radius/pkg/queue/inmemory"
+
+	containers_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
+	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
 )
 
 // Service is a service to run AsyncReqeustProcessWorker.
@@ -38,12 +44,22 @@ func (w *Service) Run(ctx context.Context) error {
 	sp := dataprovider.NewStorageProvider(w.options.Config.StorageProvider)
 	ctx = hostoptions.WithContext(ctx, w.options.Config)
 
+	// Register async operation controllers.
 	controllers := server.NewControllerRegistry(sp)
+	controllers.Register(ctx, containers_ctrl.EnvironmentPutName, containers_ctrl.ResourceTypeName, containers.NewCreateContainerController)
 
-	// TODO: register async operation controllers.
-	// controllers.Register(ctx, "APPLICATIONSCORE.ENVIRONMENTS.PUT", "Applications.Core/environments", NewAsyncCreateOrUpdateEnvironment)
+	// Create Async operation manager.
+	sc, err := sp.GetStorageClient(ctx, provider_ctrl.OperationStatusResourceTypeName)
+	if err != nil {
+		panic(err)
+	}
+	asyncOpManager := asyncoperation.NewManager(sc, nil, "applications.core", w.options.Config.Env.RoleLocation)
 
-	worker := server.NewAsyncRequestProcessWorker(w.options, sp, controllers)
+	// TODO: Make it configurable.
+	queue := inmemory.NewClient(nil)
+
+	// Create and start worker.
+	worker := server.NewAsyncRequestProcessWorker(w.options, asyncOpManager, queue, controllers)
 
 	logger.Info("Start AsyncRequestProcessWorker...")
 	if err := worker.Start(ctx); err != nil {

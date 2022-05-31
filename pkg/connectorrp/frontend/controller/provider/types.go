@@ -8,4 +8,7 @@ package provider
 const (
 	Namespace        = "Applications.Connector"
 	ResourceTypeName = Namespace + "/provider"
+
+	ProviderOperationsGetName    = "APPLOCATIONSCONNECTOR.OPERATIONS.GET"
+	ProviderSubscriptionsPutName = "APPLOCATIONSCONNECTOR.SUBSCRIPTIONS.PUT"
 )

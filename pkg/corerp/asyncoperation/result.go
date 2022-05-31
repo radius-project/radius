@@ -10,39 +10,39 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
-const (
-	// DefaultRetryAfter is the default value in seconds for the Retry-After header.
-	DefaultRetryAfter = "60"
-)
-
 // Result is the response of async operation controller.
 type Result struct {
 	// Requeue tells the Controller to requeue the reconcile key. Defaults to false.
 	Requeue bool
 
-	// Status represents the provisioning status.
-	Status basedatamodel.ProvisioningStates
-
 	// Error represents the error when status is Cancelled or Failed.
 	Error *armerrors.ErrorDetails
+
+	// state represents the provisioning status.
+	state *basedatamodel.ProvisioningStates
 }
 
-// SetSucceeded sets the response status to Succeeded.
-func (r *Result) SetSucceeded() {
-	if r == nil {
-		r = &Result{}
-	}
-	r.Requeue = false
-	r.Status = basedatamodel.ProvisioningStateSucceeded
+// NewCanceledResult creates the canceled asynchronous operation result.
+func NewCanceledResult(message string) Result {
+	r := Result{}
+	r.SetCanceled(message)
+	return r
+}
+
+// NewFailedResult creates the failed asynchronous operation result.
+func NewFailedResult(err armerrors.ErrorDetails) Result {
+	r := Result{}
+	r.SetFailed(err, false)
+	return r
 }
 
 // SetFailed sets the error response with Failed status.
-func (r *Result) SetFailed(err armerrors.ErrorDetails) {
+func (r *Result) SetFailed(err armerrors.ErrorDetails, requeue bool) {
 	if r == nil {
 		r = &Result{}
 	}
-	r.Requeue = true
-	r.Status = basedatamodel.ProvisioningStateFailed
+	r.Requeue = requeue
+	r.SetProvisioningState(basedatamodel.ProvisioningStateFailed)
 	r.Error = &armerrors.ErrorDetails{
 		Code:    err.Code,
 		Message: err.Message,
@@ -55,9 +55,22 @@ func (r *Result) SetCanceled(message string) {
 		r = &Result{}
 	}
 	r.Requeue = false
-	r.Status = basedatamodel.ProvisioningStateCanceled
+	r.SetProvisioningState(basedatamodel.ProvisioningStateCanceled)
 	r.Error = &armerrors.ErrorDetails{
 		Code:    armerrors.OperationCanceled,
 		Message: message,
 	}
+}
+
+// SetProvisioningState sets provisioning state.
+func (r *Result) SetProvisioningState(s basedatamodel.ProvisioningStates) {
+	r.state = &s
+}
+
+// ProvisioningState gets the provisioning state of the result.
+func (r *Result) ProvisioningState() basedatamodel.ProvisioningStates {
+	if r.state == nil {
+		return basedatamodel.ProvisioningStateSucceeded
+	}
+	return *r.state
 }

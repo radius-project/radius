@@ -13,15 +13,20 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
-	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/queue"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
 	"golang.org/x/sync/semaphore"
+)
+
+var (
+	errPropertiesNotFound        = errors.New("properties object not found")
+	errProvisioningStateNotFound = errors.New("provisioningState property not found")
 )
 
 const (
@@ -29,14 +34,20 @@ const (
 	MaxOperationConcurrency = 3
 
 	// MaxDequeueCount is the maximum dequeue count which will be retried.
-	MaxDequeueCount = 10
+	MaxDequeueCount = 5
+
+	// messageExtendMargin is the margin duration before extending message lock.
+	messageExtendMargin = time.Duration(30) * time.Second
+
+	// minMessageLockDuration is the minimum duration of message lock duration.
+	minMessageLockDuration = time.Duration(5) * time.Second
 )
 
 // AsyncRequestProcessWorker is the worker to process async requests.
 type AsyncRequestProcessWorker struct {
 	options      hostoptions.HostOptions
-	sp           dataprovider.DataStorageProvider
-	controllers  *ControllerRegistry
+	operationMgr asyncoperation.Manager
+	registry     *ControllerRegistry
 	requestQueue queue.Dequeuer
 
 	sem *semaphore.Weighted
@@ -45,12 +56,14 @@ type AsyncRequestProcessWorker struct {
 // NewAsyncRequestProcessWorker creates AsyncRequestProcessWorker server instance.
 func NewAsyncRequestProcessWorker(
 	options hostoptions.HostOptions,
-	sp dataprovider.DataStorageProvider,
+	om asyncoperation.Manager,
+	qu queue.Dequeuer,
 	ctrlRegistry *ControllerRegistry) *AsyncRequestProcessWorker {
 	return &AsyncRequestProcessWorker{
-		options:     options,
-		sp:          sp,
-		controllers: ctrlRegistry,
+		options:      options,
+		operationMgr: om,
+		registry:     ctrlRegistry,
+		requestQueue: qu,
 
 		sem: semaphore.NewWeighted(MaxOperationConcurrency),
 	}
@@ -74,22 +87,34 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 		go func(jobm *queue.Message) {
 			defer w.sem.Release(1)
 
-			op := jobm.Data.(*asyncoperation.AsyncRequestMessage)
+			op := jobm.Data.(*asyncoperation.Request)
+			ctrl := w.registry.Get(op.OperationName)
 
-			ctrl := w.controllers.Get(op.OperationName)
+			dims := []interface{}{
+				"OperationID", op.OperationID.String(),
+				"OperationName", op.OperationName,
+				"ResourceID", op.ResourceID,
+				"CorrleationID", op.CorrelationID,
+				"W3CTraceID", op.TraceparentID,
+			}
+
 			if ctrl == nil {
-				jobm.Finish(errors.New("unknown operation"))
+				logger.V(radlogger.Error).Info("Unknown operation: "+op.OperationName, dims...)
+				if err := jobm.Finish(nil); err != nil {
+					logger.V(radlogger.Error).Info("failed to finish the message which includes unknown operation.")
+				}
 				return
 			}
-
-			// TODO: validate all failed conditions.
 			if jobm.DequeueCount >= MaxDequeueCount {
-				jobm.Finish(errors.New("too many retries"))
+				logger.V(radlogger.Error).Info(fmt.Sprintf("Exceed max retrycount: %d", jobm.DequeueCount), dims...)
+				if err := jobm.Finish(nil); err != nil {
+					logger.V(radlogger.Error).Info("failed to finish the message which exceeds the max retry count.")
+				}
 				return
 			}
 
-			// TODO: convert op to armservicecontext and inject to ctx
-			w.runOperation(ctx, jobm, ctrl)
+			opCtx := logr.NewContext(ctx, logger.WithValues(dims...))
+			w.runOperation(opCtx, jobm, ctrl)
 		}(job)
 	}
 
@@ -99,71 +124,130 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, ctrl asyncoperation.Controller) {
 	logger := logr.FromContextOrDiscard(ctx)
-	asyncReq := message.Data.(*asyncoperation.AsyncRequestMessage)
-	//rID, err := resources.Parse(asyncReq.ResourceID)
-	//if err != nil {
-	//	logger.Error(err, "failed to parse resource ID", "resourceID", asyncReq.ResourceID)
-	//}
 
+	asyncReq := message.Data.(*asyncoperation.Request)
 	asyncReqCtx, opCancel := context.WithCancel(context.TODO())
 	defer opCancel()
 
+	opDone := make(chan struct{}, 1)
+
+	opStartAt := time.Now()
 	go func() {
-		defer func() {
+		defer func(done chan struct{}) {
+			opEndAt := time.Now()
+			logger.Info("End processing operation.", "StartAt", opStartAt.UTC(), "EndAt", opEndAt.UTC(), "Duration", opEndAt.Sub(opStartAt))
+			close(done)
 			if err := recover(); err != nil {
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
 				logger.V(radlogger.Fatal).Info(msg)
-
-				result := asyncoperation.Result{}
-				result.SetFailed(armerrors.ErrorDetails{Code: armerrors.Internal, Message: "unexpected error."})
-
-				w.completeOperation(ctx, asyncReq, &result, ctrl.StorageClient())
 			}
-		}()
+		}(opDone)
 
+		logger.Info("Start processing operation.")
 		result, err := ctrl.Run(asyncReqCtx, asyncReq)
-		if err != nil {
-			result.SetFailed(armerrors.ErrorDetails{Code: armerrors.Internal, Message: err.Error()})
+		// Do not update status if context is canceled already.
+		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
+			if err != nil {
+				result.SetFailed(armerrors.ErrorDetails{Code: armerrors.Internal, Message: err.Error()}, false)
+			}
+			w.completeOperation(ctx, message, result, ctrl.StorageClient())
 		}
-		w.completeOperation(ctx, asyncReq, &result, ctrl.StorageClient())
 	}()
+
+	operationTimeoutAfter := time.After(asyncReq.Timeout())
+	messageExtendAfter := getMessageExtendDuration(message.NextVisibleAt)
 
 	for {
 		select {
-		case <-time.After(message.NextVisibleAt.Sub(time.Now())):
-			logger.Info("Extending message lock if operation is still in progress")
+		case <-time.After(messageExtendAfter):
+			logger.Info("Extending message lock duration if operation is still in progress.")
 			if err := message.Extend(); err != nil {
-				logger.Error(err, "fails to extend message lock", "OperationID", asyncReq.OperationID.String())
+				logger.Error(err, "fails to extend message lock")
 			}
+			messageExtendAfter = getMessageExtendDuration(message.NextVisibleAt)
 
-		case <-time.After(asyncReq.AsyncOperationTimeout):
-			logger.Info("Timed out async request operation.")
+		case <-operationTimeoutAfter:
+			logger.Info("Cancelling async operation.")
 
 			opCancel()
-
-			result := &asyncoperation.Result{}
-			result.SetCanceled("request operation timed out")
-
-			w.completeOperation(ctx, asyncReq, result, ctrl.StorageClient())
+			w.completeOperation(ctx, message, asyncoperation.NewCanceledResult("async operation timeout"), ctrl.StorageClient())
 			return
 
 		case <-ctx.Done():
-			opCancel()
+			logger.Info("Stopping processing async operation. This operation will be reprocessed.")
+			return
 
-			result := &asyncoperation.Result{}
-			result.SetCanceled("request operation timed out")
-
-			w.completeOperation(ctx, asyncReq, result, ctrl.StorageClient())
+		case <-opDone:
 			return
 		}
 	}
 }
 
-func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, req *asyncoperation.AsyncRequestMessage, result *asyncoperation.Result, store store.StorageClient) {
-	if result.Error != nil {
-		// TODO: Update OperationStatuses with
+func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result asyncoperation.Result, sc store.StorageClient) {
+	logger := logr.FromContextOrDiscard(ctx)
+	req := message.Data.(*asyncoperation.Request)
+
+	rID, err := resources.Parse(req.ResourceID)
+	if err != nil {
+		logger.Error(err, "failed to parse resource ID")
+		return
 	}
 
-	// update resource provisioning state
-	// finish message
+	if err = updateResourceState(ctx, sc, rID.String(), result.ProvisioningState()); err != nil {
+		logger.Error(err, "failed to update the provisioningState in resource.")
+		return
+	}
+
+	s := &asyncoperation.Status{}
+	s.Status = result.ProvisioningState()
+	now := time.Now().UTC()
+	s.EndTime = &now
+
+	err = w.operationMgr.Update(ctx, rID.RootScope(), req.OperationID, s)
+	if err != nil {
+		logger.Error(err, "failed to update operationstatus", "OperationID", req.OperationID.String())
+	}
+
+	// Finish the message only if Requeue is false. Otherwise, AsyncRequestProcessWorker will requeue the message and process it again.
+	if !result.Requeue {
+		if err := message.Finish(nil); err != nil {
+			logger.V(radlogger.Error).Info("failed to finish the message")
+		}
+	}
+}
+
+func getMessageExtendDuration(visibleAt time.Time) time.Duration {
+	d := visibleAt.Add(-messageExtendMargin).Sub(time.Now())
+	if d <= 0 {
+		return minMessageLockDuration
+	}
+	return d
+}
+
+func updateResourceState(ctx context.Context, sc store.StorageClient, id string, state basedatamodel.ProvisioningStates) error {
+	obj, err := sc.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	objmap := obj.Data.(map[string]interface{})
+	objmap, ok := objmap["properties"].(map[string]interface{})
+	if !ok {
+		return errPropertiesNotFound
+	}
+
+	if status, ok := objmap["provisioningState"].(string); !ok {
+		return errProvisioningStateNotFound
+	} else if status == string(state) {
+		return nil
+	}
+
+	objmap["provisioningState"] = string(state)
+
+	err = sc.Save(ctx, obj, store.WithETag(obj.ETag))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

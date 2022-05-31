@@ -14,7 +14,7 @@ import (
 // Controller is an interface to implement async operation controller.
 type Controller interface {
 	// Run runs async request operation.
-	Run(ctx context.Context, request *RequestMessage) (Result, error)
+	Run(ctx context.Context, request *Request) (Result, error)
 
 	// StorageClient gets the storage client for resource type.
 	StorageClient() store.StorageClient
