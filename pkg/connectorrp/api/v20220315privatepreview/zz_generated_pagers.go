@@ -47,7 +47,7 @@ func (p *DaprInvokeHTTPRoutesListBySubscriptionPager) NextPage(ctx context.Conte
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -101,7 +101,7 @@ func (p *DaprInvokeHTTPRoutesListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -155,7 +155,7 @@ func (p *DaprSecretStoresListBySubscriptionPager) NextPage(ctx context.Context) 
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -209,7 +209,7 @@ func (p *DaprSecretStoresListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -263,7 +263,7 @@ func (p *DaprStateStoresListBySubscriptionPager) NextPage(ctx context.Context) b
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -317,7 +317,7 @@ func (p *DaprStateStoresListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -371,7 +371,7 @@ func (p *MongoDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bo
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -425,7 +425,7 @@ func (p *MongoDatabasesListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -479,7 +479,7 @@ func (p *RabbitMQMessageQueuesListBySubscriptionPager) NextPage(ctx context.Cont
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -533,7 +533,7 @@ func (p *RabbitMQMessageQueuesListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -587,7 +587,7 @@ func (p *RedisCachesListBySubscriptionPager) NextPage(ctx context.Context) bool 
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -641,7 +641,7 @@ func (p *RedisCachesListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -695,7 +695,7 @@ func (p *SQLDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bool
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -749,7 +749,7 @@ func (p *SQLDatabasesListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false

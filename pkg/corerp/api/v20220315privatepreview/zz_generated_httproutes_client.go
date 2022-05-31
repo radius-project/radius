@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // HTTPRoutesClient contains the methods for the HTTPRoutes group.
 // Don't use this type directly, use NewHTTPRoutesClient() instead.
 type HTTPRoutesClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewHTTPRoutesClient creates a new instance of HTTPRoutesClient with the specified values.
-func NewHTTPRoutesClient(con *connection, subscriptionID string) *HTTPRoutesClient {
-	return &HTTPRoutesClient{con: con, subscriptionID: subscriptionID}
+func NewHTTPRoutesClient(con *arm.Connection, subscriptionID string) *HTTPRoutesClient {
+	return &HTTPRoutesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Create or update an HTTP Route.
@@ -38,7 +40,7 @@ func (client *HTTPRoutesClient) CreateOrUpdate(ctx context.Context, resourceGrou
 	if err != nil {
 		return HTTPRoutesCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return HTTPRoutesCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *HTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context,
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{httpRouteName}", url.PathEscape(httpRouteName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *HTTPRoutesClient) Delete(ctx context.Context, resourceGroupName st
 	if err != nil {
 		return HTTPRoutesDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return HTTPRoutesDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, resourc
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{httpRouteName}", url.PathEscape(httpRouteName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *HTTPRoutesClient) Get(ctx context.Context, resourceGroupName strin
 	if err != nil {
 		return HTTPRoutesGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return HTTPRoutesGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *HTTPRoutesClient) getCreateRequest(ctx context.Context, resourceGr
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{httpRouteName}", url.PathEscape(httpRouteName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *HTTPRoutesClient) listCreateRequest(ctx context.Context, resourceG
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *HTTPRoutesClient) listBySubscriptionCreateRequest(ctx context.Cont
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +338,7 @@ func (client *HTTPRoutesClient) Update(ctx context.Context, resourceGroupName st
 	if err != nil {
 		return HTTPRoutesUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return HTTPRoutesUpdateResponse{}, err
 	}
@@ -361,7 +363,7 @@ func (client *HTTPRoutesClient) updateCreateRequest(ctx context.Context, resourc
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{httpRouteName}", url.PathEscape(httpRouteName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

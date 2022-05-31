@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // ApplicationsClient contains the methods for the Applications group.
 // Don't use this type directly, use NewApplicationsClient() instead.
 type ApplicationsClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewApplicationsClient creates a new instance of ApplicationsClient with the specified values.
-func NewApplicationsClient(con *connection, subscriptionID string) *ApplicationsClient {
-	return &ApplicationsClient{con: con, subscriptionID: subscriptionID}
+func NewApplicationsClient(con *arm.Connection, subscriptionID string) *ApplicationsClient {
+	return &ApplicationsClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Create or update an Application.
@@ -38,7 +40,7 @@ func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, resourceGr
 	if err != nil {
 		return ApplicationsCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ApplicationsCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Contex
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *ApplicationsClient) Delete(ctx context.Context, resourceGroupName 
 	if err != nil {
 		return ApplicationsDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ApplicationsDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, resou
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *ApplicationsClient) Get(ctx context.Context, resourceGroupName str
 	if err != nil {
 		return ApplicationsGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ApplicationsGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *ApplicationsClient) getCreateRequest(ctx context.Context, resource
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *ApplicationsClient) listCreateRequest(ctx context.Context, resourc
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *ApplicationsClient) listBySubscriptionCreateRequest(ctx context.Co
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +338,7 @@ func (client *ApplicationsClient) Update(ctx context.Context, resourceGroupName 
 	if err != nil {
 		return ApplicationsUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ApplicationsUpdateResponse{}, err
 	}
@@ -361,7 +363,7 @@ func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, resou
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
