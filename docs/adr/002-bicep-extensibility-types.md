@@ -1,4 +1,8 @@
-# Bicep Extensibility Types for Radius
+# 002 ADR: Bicep Extensibility Types for Radius
+
+## Stakeholders
+
+* Radius Core Team
 
 ## Status
 
