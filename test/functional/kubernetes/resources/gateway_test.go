@@ -98,19 +98,19 @@ func Test_Gateway(t *testing.T) {
 					Timeout: time.Second * 10,
 				}
 
-				testRequest(t, client, hostname, baseURL+"/healthz", 200)
+				testGatewayAvailability(t, client, hostname, baseURL+"/healthz", 200)
 
 				// Both of these URLs route to the same backend service,
 				// but /backend2 maps to / which allows it to access /healthz
-				testRequest(t, client, hostname, baseURL+"/backend2/healthz", 200)
-				testRequest(t, client, hostname, baseURL+"/backend1/healthz", 404)
+				testGatewayAvailability(t, client, hostname, baseURL+"/backend2/healthz", 200)
+				testGatewayAvailability(t, client, hostname, baseURL+"/backend1/healthz", 404)
 			},
 		},
 	})
 	test.Test(t)
 }
 
-func testRequest(t *testing.T, client *http.Client, hostname, url string, expectedStatusCode int) {
+func testGatewayAvailability(t *testing.T, client *http.Client, hostname, url string, expectedStatusCode int) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 

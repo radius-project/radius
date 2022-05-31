@@ -149,7 +149,7 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 		routeResourceName := kubernetes.MakeResourceName(resource.ApplicationName, routeName)
 		port := kubernetes.GetDefaultPort()
 
-		var pathRewritePolicy *contourv1.PathRewritePolicy = nil
+		var pathRewritePolicy *contourv1.PathRewritePolicy
 		if route.ReplacePrefix != nil {
 			pathRewritePolicy = &contourv1.PathRewritePolicy{
 				ReplacePrefix: []contourv1.ReplacePrefix{
