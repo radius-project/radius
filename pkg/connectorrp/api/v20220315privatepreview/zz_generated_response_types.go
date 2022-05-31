@@ -238,6 +238,60 @@ type MongoDatabasesListSecretsResult struct {
 	MongoDatabaseSecrets
 }
 
+// RabbitMQMessageQueuesCreateOrUpdateResponse contains the response from method RabbitMQMessageQueues.CreateOrUpdate.
+type RabbitMQMessageQueuesCreateOrUpdateResponse struct {
+	RabbitMQMessageQueuesCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesCreateOrUpdateResult contains the result from method RabbitMQMessageQueues.CreateOrUpdate.
+type RabbitMQMessageQueuesCreateOrUpdateResult struct {
+	RabbitMQMessageQueueResource
+}
+
+// RabbitMQMessageQueuesDeleteResponse contains the response from method RabbitMQMessageQueues.Delete.
+type RabbitMQMessageQueuesDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesGetResponse contains the response from method RabbitMQMessageQueues.Get.
+type RabbitMQMessageQueuesGetResponse struct {
+	RabbitMQMessageQueuesGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesGetResult contains the result from method RabbitMQMessageQueues.Get.
+type RabbitMQMessageQueuesGetResult struct {
+	RabbitMQMessageQueueResource
+}
+
+// RabbitMQMessageQueuesListBySubscriptionResponse contains the response from method RabbitMQMessageQueues.ListBySubscription.
+type RabbitMQMessageQueuesListBySubscriptionResponse struct {
+	RabbitMQMessageQueuesListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesListBySubscriptionResult contains the result from method RabbitMQMessageQueues.ListBySubscription.
+type RabbitMQMessageQueuesListBySubscriptionResult struct {
+	RabbitMQMessageQueueList
+}
+
+// RabbitMQMessageQueuesListResponse contains the response from method RabbitMQMessageQueues.List.
+type RabbitMQMessageQueuesListResponse struct {
+	RabbitMQMessageQueuesListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesListResult contains the result from method RabbitMQMessageQueues.List.
+type RabbitMQMessageQueuesListResult struct {
+	RabbitMQMessageQueueList
+}
+
 // RedisCachesCreateOrUpdateResponse contains the response from method RedisCaches.CreateOrUpdate.
 type RedisCachesCreateOrUpdateResponse struct {
 	RedisCachesCreateOrUpdateResult
