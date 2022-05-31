@@ -16,10 +16,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 )
 
 func TestListMongoDatabasesRun_20220315PrivatePreview(t *testing.T) {
@@ -66,8 +66,8 @@ func TestListMongoDatabasesRun_20220315PrivatePreview(t *testing.T) {
 		max         string
 		skipToken   bool
 	}{
-		{"list-mongodb-more-items-than-max", 5, 2, "2", true},
-		{"list-mongodb-less-items-than-max", 2, 2, "5", false},
+		{"list-mongodb-more-items-than-max", 10, 5, "5", true},
+		{"list-mongodb-less-items-than-max", 5, 5, "10", false},
 		{"list-mongodb-no-max", 5, 5, "", false},
 	}
 

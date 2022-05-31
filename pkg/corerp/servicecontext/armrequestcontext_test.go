@@ -23,11 +23,11 @@ func TestFromARMRequest(t *testing.T) {
 	require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
 	require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
 	require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", serviceCtx.ResourceID.ID)
-	require.Equal(t, "00000000-0000-0000-0000-000000000000", serviceCtx.ResourceID.SubscriptionID)
-	require.Equal(t, "radius-test-rg", serviceCtx.ResourceID.ResourceGroup)
-	require.Equal(t, "Applications.Core/environments", serviceCtx.ResourceID.Types[0].Type)
-	require.Equal(t, "env0", serviceCtx.ResourceID.Types[0].Name)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", serviceCtx.ResourceID.String())
+	require.Equal(t, "00000000-0000-0000-0000-000000000000", serviceCtx.ResourceID.ScopeSegments()[0].Name)
+	require.Equal(t, "radius-test-rg", serviceCtx.ResourceID.ScopeSegments()[1].Name)
+	require.Equal(t, "Applications.Core/environments", serviceCtx.ResourceID.Type())
+	require.Equal(t, "env0", serviceCtx.ResourceID.Name())
 	require.True(t, len(serviceCtx.OperationID) > 0)
 }
 
@@ -57,6 +57,43 @@ func TestFromContext(t *testing.T) {
 	sCtx := ARMRequestContextFromContext(newCtx)
 	require.NotNil(t, sCtx)
 	require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
+}
+
+func TestTopQueryParam(t *testing.T) {
+	topQueryParamCases := []struct {
+		desc        string
+		qpKey       string
+		qpValue     string
+		expectedTop int
+		shouldFail  bool
+	}{
+		{"no-top-query-param", "top", "", DefaultQueryItemCount, false},
+		{"invalid-top-query-param", "top", "xyz", 0, true},
+		{"out-of-bounds-top-query-param", "top", "100000", 0, true},
+		{"out-of-bounds-top-query-param", "top", "-100", 0, true},
+	}
+
+	for _, tt := range topQueryParamCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			req, err := getTestHTTPRequest()
+
+			q := req.URL.Query()
+			q.Add(tt.qpKey, tt.qpValue)
+			req.URL.RawQuery = q.Encode()
+
+			require.NoError(t, err)
+			serviceCtx, err := FromARMRequest(req, "")
+
+			if tt.shouldFail {
+				require.NotNil(t, err)
+				require.Nil(t, serviceCtx)
+			} else {
+				require.Nil(t, err)
+				require.NotNil(t, serviceCtx)
+				require.Equal(t, tt.expectedTop, serviceCtx.Top)
+			}
+		})
+	}
 }
 
 func getTestHTTPRequest() (*http.Request, error) {

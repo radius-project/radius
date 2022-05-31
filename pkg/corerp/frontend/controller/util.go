@@ -6,11 +6,13 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -126,4 +128,20 @@ func GetURLFromReqWithQueryParameters(req *http.Request, qps url.Values) *url.UR
 	}
 
 	return &url
+}
+
+// GetNextLinkUrl function returns the URL string by building a URL from the request and the pagination token.
+func GetNextLinkURL(ctx context.Context, req *http.Request, paginationToken string) string {
+	if paginationToken == "" {
+		return ""
+	}
+
+	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+
+	qps := url.Values{}
+	qps.Add("api-version", serviceCtx.APIVersion)
+	qps.Add("skipToken", paginationToken)
+	qps.Add("top", strconv.Itoa(serviceCtx.Top))
+
+	return GetURLFromReqWithQueryParameters(req, qps).String()
 }

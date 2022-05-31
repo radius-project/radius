@@ -31,7 +31,7 @@
         },
         "port": {
           "description": "The port number for the route. Defaults to 80. Readonly.",
-          "type": "number"
+          "type": "integer"
         },
         "scheme": {
           "description": "The scheme used for traffic. Readonly.",

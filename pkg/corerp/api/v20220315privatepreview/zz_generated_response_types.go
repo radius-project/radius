@@ -142,57 +142,135 @@ type EnvironmentsUpdateResult struct {
 	EnvironmentResource
 }
 
-// MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
-type MongoDatabasesCreateOrUpdateResponse struct {
-	MongoDatabasesCreateOrUpdateResult
+// GatewaysCreateOrUpdateResponse contains the response from method Gateways.CreateOrUpdate.
+type GatewaysCreateOrUpdateResponse struct {
+	GatewaysCreateOrUpdateResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesCreateOrUpdateResult contains the result from method MongoDatabases.CreateOrUpdate.
-type MongoDatabasesCreateOrUpdateResult struct {
-	MongoDatabaseResource
+// GatewaysCreateOrUpdateResult contains the result from method Gateways.CreateOrUpdate.
+type GatewaysCreateOrUpdateResult struct {
+	GatewayResource
 }
 
-// MongoDatabasesDeleteResponse contains the response from method MongoDatabases.Delete.
-type MongoDatabasesDeleteResponse struct {
+// GatewaysDeleteResponse contains the response from method Gateways.Delete.
+type GatewaysDeleteResponse struct {
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesGetResponse contains the response from method MongoDatabases.Get.
-type MongoDatabasesGetResponse struct {
-	MongoDatabasesGetResult
+// GatewaysGetResponse contains the response from method Gateways.Get.
+type GatewaysGetResponse struct {
+	GatewaysGetResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesGetResult contains the result from method MongoDatabases.Get.
-type MongoDatabasesGetResult struct {
-	MongoDatabaseResource
+// GatewaysGetResult contains the result from method Gateways.Get.
+type GatewaysGetResult struct {
+	GatewayResource
 }
 
-// MongoDatabasesListBySubscriptionResponse contains the response from method MongoDatabases.ListBySubscription.
-type MongoDatabasesListBySubscriptionResponse struct {
-	MongoDatabasesListBySubscriptionResult
+// GatewaysListBySubscriptionResponse contains the response from method Gateways.ListBySubscription.
+type GatewaysListBySubscriptionResponse struct {
+	GatewaysListBySubscriptionResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesListBySubscriptionResult contains the result from method MongoDatabases.ListBySubscription.
-type MongoDatabasesListBySubscriptionResult struct {
-	MongoDatabaseList
+// GatewaysListBySubscriptionResult contains the result from method Gateways.ListBySubscription.
+type GatewaysListBySubscriptionResult struct {
+	GatewayResourceList
 }
 
-// MongoDatabasesListResponse contains the response from method MongoDatabases.List.
-type MongoDatabasesListResponse struct {
-	MongoDatabasesListResult
+// GatewaysListResponse contains the response from method Gateways.List.
+type GatewaysListResponse struct {
+	GatewaysListResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesListResult contains the result from method MongoDatabases.List.
-type MongoDatabasesListResult struct {
-	MongoDatabaseList
+// GatewaysListResult contains the result from method Gateways.List.
+type GatewaysListResult struct {
+	GatewayResourceList
+}
+
+// GatewaysUpdateResponse contains the response from method Gateways.Update.
+type GatewaysUpdateResponse struct {
+	GatewaysUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysUpdateResult contains the result from method Gateways.Update.
+type GatewaysUpdateResult struct {
+	GatewayResource
+}
+
+// HTTPRoutesCreateOrUpdateResponse contains the response from method HTTPRoutes.CreateOrUpdate.
+type HTTPRoutesCreateOrUpdateResponse struct {
+	HTTPRoutesCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesCreateOrUpdateResult contains the result from method HTTPRoutes.CreateOrUpdate.
+type HTTPRoutesCreateOrUpdateResult struct {
+	HTTPRouteResource
+}
+
+// HTTPRoutesDeleteResponse contains the response from method HTTPRoutes.Delete.
+type HTTPRoutesDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesGetResponse contains the response from method HTTPRoutes.Get.
+type HTTPRoutesGetResponse struct {
+	HTTPRoutesGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesGetResult contains the result from method HTTPRoutes.Get.
+type HTTPRoutesGetResult struct {
+	HTTPRouteResource
+}
+
+// HTTPRoutesListBySubscriptionResponse contains the response from method HTTPRoutes.ListBySubscription.
+type HTTPRoutesListBySubscriptionResponse struct {
+	HTTPRoutesListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesListBySubscriptionResult contains the result from method HTTPRoutes.ListBySubscription.
+type HTTPRoutesListBySubscriptionResult struct {
+	HTTPRouteResourceList
+}
+
+// HTTPRoutesListResponse contains the response from method HTTPRoutes.List.
+type HTTPRoutesListResponse struct {
+	HTTPRoutesListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesListResult contains the result from method HTTPRoutes.List.
+type HTTPRoutesListResult struct {
+	HTTPRouteResourceList
+}
+
+// HTTPRoutesUpdateResponse contains the response from method HTTPRoutes.Update.
+type HTTPRoutesUpdateResponse struct {
+	HTTPRoutesUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesUpdateResult contains the result from method HTTPRoutes.Update.
+type HTTPRoutesUpdateResult struct {
+	HTTPRouteResource
 }
 

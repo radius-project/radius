@@ -8,8 +8,8 @@ package mongodatabases
 import (
 	"encoding/json"
 
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 )
 

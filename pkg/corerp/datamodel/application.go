@@ -6,12 +6,13 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
 // Application represents Application resource.
 type Application struct {
-	TrackedResource
+	basedatamodel.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
@@ -19,7 +20,7 @@ type Application struct {
 	Properties ApplicationProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	InternalMetadata InternalMetadata `json:"internalMetadata"`
+	InternalMetadata basedatamodel.InternalMetadata `json:"internalMetadata"`
 }
 
 func (e Application) ResourceTypeName() string {
@@ -28,6 +29,6 @@ func (e Application) ResourceTypeName() string {
 
 // ApplicationProperties represents the properties of Application.
 type ApplicationProperties struct {
-	ProvisioningState ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string             `json:"environment"`
+	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
+	Environment       string                           `json:"environment"`
 }

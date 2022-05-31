@@ -9,47 +9,47 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
-func toProvisioningStateDataModel(state *ProvisioningState) datamodel.ProvisioningStates {
+func toProvisioningStateDataModel(state *ProvisioningState) basedatamodel.ProvisioningStates {
 	if state == nil {
-		return datamodel.ProvisioningStateAccepted
+		return basedatamodel.ProvisioningStateAccepted
 	}
 
 	switch *state {
 	case ProvisioningStateUpdating:
-		return datamodel.ProvisioningStateUpdating
+		return basedatamodel.ProvisioningStateUpdating
 	case ProvisioningStateDeleting:
-		return datamodel.ProvisioningStateDeleting
+		return basedatamodel.ProvisioningStateDeleting
 	case ProvisioningStateAccepted:
-		return datamodel.ProvisioningStateAccepted
+		return basedatamodel.ProvisioningStateAccepted
 	case ProvisioningStateSucceeded:
-		return datamodel.ProvisioningStateSucceeded
+		return basedatamodel.ProvisioningStateSucceeded
 	case ProvisioningStateFailed:
-		return datamodel.ProvisioningStateFailed
+		return basedatamodel.ProvisioningStateFailed
 	case ProvisioningStateCanceled:
-		return datamodel.ProvisioningStateCanceled
+		return basedatamodel.ProvisioningStateCanceled
 	default:
-		return datamodel.ProvisioningStateAccepted
+		return basedatamodel.ProvisioningStateAccepted
 	}
 }
 
-func fromProvisioningStateDataModel(state datamodel.ProvisioningStates) *ProvisioningState {
+func fromProvisioningStateDataModel(state basedatamodel.ProvisioningStates) *ProvisioningState {
 	var converted ProvisioningState
 	switch state {
-	case datamodel.ProvisioningStateUpdating:
+	case basedatamodel.ProvisioningStateUpdating:
 		converted = ProvisioningStateUpdating
-	case datamodel.ProvisioningStateDeleting:
+	case basedatamodel.ProvisioningStateDeleting:
 		converted = ProvisioningStateDeleting
-	case datamodel.ProvisioningStateAccepted:
+	case basedatamodel.ProvisioningStateAccepted:
 		converted = ProvisioningStateAccepted
-	case datamodel.ProvisioningStateSucceeded:
+	case basedatamodel.ProvisioningStateSucceeded:
 		converted = ProvisioningStateSucceeded
-	case datamodel.ProvisioningStateFailed:
+	case basedatamodel.ProvisioningStateFailed:
 		converted = ProvisioningStateFailed
-	case datamodel.ProvisioningStateCanceled:
+	case basedatamodel.ProvisioningStateCanceled:
 		converted = ProvisioningStateCanceled
 	default:
 		converted = ProvisioningStateAccepted // should we return error ?

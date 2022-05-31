@@ -8,12 +8,15 @@ package servicecontext
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/ucp/resources"
+
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/project-radius/radius/pkg/radlogger"
 )
 
@@ -23,11 +26,23 @@ const (
 	// APIVersionParameterName is the query string parameter for the api version.
 	APIVersionParameterName = "api-version"
 
-	// SkipTokenQueryParameter
-	SkipTokenQueryParameter = "skipToken"
+	// SkipTokenParameterName is the query string parameter for the skip token which is used for pagination purposes.
+	SkipTokenParameterName = "skipToken"
 
-	// Top is an optional query parameter that defines the maximum number of records to be returned by the server.
-	TopParameter = "top"
+	// TopParameterName is an optional query parameter that defines the number of records requested by the client.
+	TopParameterName = "top"
+)
+
+// The constants below define the default, max, and min values for the number of records to be returned by the server.
+const (
+	// MaxQueryItemCount represents the default value for the maximum number of records to be returned by the server.
+	MaxQueryItemCount = 20
+
+	// DefaultQueryItemCount represents the default value for the number of records to be returned by the server.
+	DefaultQueryItemCount = 10
+
+	// MinQueryItemCount represents the default value for the minimum number of records to be returned by the server.
+	MinQueryItemCount = 5
 )
 
 var (
@@ -90,17 +105,24 @@ var (
 	IfNoneMatch = http.CanonicalHeaderKey("If-None-Match")
 )
 
+var (
+	// ErrTopQueryParamOutOfBounds represents the error of top query parameter being out of defined bounds.
+	ErrTopQueryParamOutOfBounds = errors.New("top query parameter is not within the limits")
+)
+
 // ARMRequestContext represents the service context including proxy request header values.
 type ARMRequestContext struct {
 	// ResourceID represents arm resource ID extracted from resource id.
-	ResourceID azresources.ResourceID
+	ResourceID resources.ID
 
 	// ClientRequestID represents the client request id from arm request.
 	ClientRequestID string
 	// CorrelationID represents the request corrleation id from arm request.
 	CorrelationID string
 	// OperationID represents the unique id per operation, which will be used as async operation id later.
-	OperationID string
+	OperationID uuid.UUID
+	// OperationName represents the name of the operation.
+	OperationName string
 	// Traceparent represents W3C trace prarent header for distributed tracing.
 	Traceparent string
 
@@ -130,27 +152,34 @@ type ARMRequestContext struct {
 	IfMatch string
 	// IfNoneMatch receives "*" or an ETag - No support for multiple ETags for now
 	IfNoneMatch string
+
 	// SkipToken
 	SkipToken string
 	// Top is the maximum number of records to be returned by the server. The validation will be handled downstream.
-	Top string
+	Top int
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
 	path := strings.TrimPrefix(r.URL.Path, pathBase)
-	azID, err := azresources.Parse(path)
+	azID, err := resources.Parse(path)
 	if err != nil {
 		log.V(radlogger.Debug).Info("URL was not a valid resource id: %v", r.URL.Path)
 		// do not stop extracting headers. handler needs to care invalid resource id.
+	}
+
+	queryItemCount, err := getQueryItemCount(r.URL.Query().Get(TopParameterName))
+	if err != nil {
+		log.V(radlogger.Debug).Info("Error parsing top query parameter: %v", r.URL.Query())
+		return nil, err
 	}
 
 	rpcCtx := &ARMRequestContext{
 		ResourceID:      azID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
-		OperationID:     uuid.NewString(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
+		OperationID:     uuid.New(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
 		Traceparent:     r.Header.Get(TraceparentHeader),
 
 		HomeTenantID:        r.Header.Get(HomeTenantIDHeader),
@@ -169,8 +198,8 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		IfMatch:     r.Header.Get(IfMatch),
 		IfNoneMatch: r.Header.Get(IfNoneMatch),
 
-		SkipToken: r.URL.Query().Get(SkipTokenQueryParameter),
-		Top:       r.URL.Query().Get(TopParameter),
+		SkipToken: r.URL.Query().Get(SkipTokenParameterName),
+		Top:       queryItemCount,
 	}
 
 	return rpcCtx, nil
@@ -188,6 +217,28 @@ func (rc ARMRequestContext) SystemData() *armrpcv1.SystemData {
 	}
 
 	return systemDataProp
+}
+
+// getQueryItemCount function returns the number of records requested.
+// The default value is defined above.
+// If there is a top query parameter, we use that instead of the default one.
+// This function also checks if the top parameter is within the defined limits.
+func getQueryItemCount(topQueryParam string) (int, error) {
+	if topQueryParam == "" {
+		return DefaultQueryItemCount, nil
+	}
+
+	topParam, err := strconv.Atoi(topQueryParam)
+
+	if err != nil {
+		return topParam, err
+	}
+
+	if topParam > MaxQueryItemCount || topParam < MinQueryItemCount {
+		return topParam, ErrTopQueryParamOutOfBounds
+	}
+
+	return topParam, err
 }
 
 // ARMRequestContextFromContext extracts ARMRPContext from http context.

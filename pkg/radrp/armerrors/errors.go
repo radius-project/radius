@@ -24,8 +24,14 @@ const (
 	// Used for InvalidResourceType.
 	InvalidResourceType = "InvalidResourceType"
 
-	// PreconditionFailed is used for cases when the precondition of a request fails.
+	// Used for InvalidResourceType.
+	InvalidAuthenticationInfo = "InvalidAuthenticationInfo"
+
+	// Used for the cases when the precondition of a request fails.
 	PreconditionFailed = "PreconditionFailed"
+
+	// Used for OperationCanceled.
+	OperationCanceled = "OperationCanceled"
 )
 
 // see : https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#error-response-content

@@ -41,6 +41,7 @@ import (
 const (
 	APIServerBasePath        = "/apis/api.radius.dev/v1alpha3"
 	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
+	DeploymentsUCPPath       = "/apis/api.ucp.dev/v1alpha3/planes/deployments/local"
 	Location                 = "Location"
 	AzureAsyncOperation      = "Azure-AsyncOperation"
 	IngressServiceName       = "contour-envoy"
@@ -129,11 +130,17 @@ func GetBaseUrlForDeploymentEngine(overrideURL string) string {
 	return strings.TrimSuffix(overrideURL, "/") + DeploymentEngineBasePath
 }
 
-func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string) (string, http.RoundTripper, error) {
+func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string, enableUCP bool) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
+	var basePath string
+	if enableUCP {
+		basePath = DeploymentsUCPPath
+	} else {
+		basePath = DeploymentEngineBasePath
+	}
 	if overrideURL != "" {
-		baseURL = strings.TrimSuffix(overrideURL, "/") + DeploymentEngineBasePath
+		baseURL = strings.TrimSuffix(overrideURL, "/") + basePath
 		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
 	} else {
 		restConfig, err := GetConfig(context)
@@ -146,7 +153,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 			return "", nil, err
 		}
 
-		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + DeploymentEngineBasePath
+		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + basePath
 		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
 	return baseURL, roundTripper, nil

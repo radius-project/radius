@@ -8,7 +8,7 @@ package controller
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
 	"github.com/stretchr/testify/require"
 )
 

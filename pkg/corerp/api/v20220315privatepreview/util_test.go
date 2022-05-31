@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/corerp/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 
 	"github.com/stretchr/testify/require"
 )
@@ -18,15 +18,15 @@ import (
 func TestToProvisioningStateDataModel(t *testing.T) {
 	stateTests := []struct {
 		versioned ProvisioningState
-		datamodel datamodel.ProvisioningStates
+		datamodel basedatamodel.ProvisioningStates
 	}{
-		{ProvisioningStateUpdating, datamodel.ProvisioningStateUpdating},
-		{ProvisioningStateDeleting, datamodel.ProvisioningStateDeleting},
-		{ProvisioningStateAccepted, datamodel.ProvisioningStateAccepted},
-		{ProvisioningStateSucceeded, datamodel.ProvisioningStateSucceeded},
-		{ProvisioningStateFailed, datamodel.ProvisioningStateFailed},
-		{ProvisioningStateCanceled, datamodel.ProvisioningStateCanceled},
-		{"", datamodel.ProvisioningStateAccepted},
+		{ProvisioningStateUpdating, basedatamodel.ProvisioningStateUpdating},
+		{ProvisioningStateDeleting, basedatamodel.ProvisioningStateDeleting},
+		{ProvisioningStateAccepted, basedatamodel.ProvisioningStateAccepted},
+		{ProvisioningStateSucceeded, basedatamodel.ProvisioningStateSucceeded},
+		{ProvisioningStateFailed, basedatamodel.ProvisioningStateFailed},
+		{ProvisioningStateCanceled, basedatamodel.ProvisioningStateCanceled},
+		{"", basedatamodel.ProvisioningStateAccepted},
 	}
 
 	for _, tt := range stateTests {
@@ -37,15 +37,15 @@ func TestToProvisioningStateDataModel(t *testing.T) {
 
 func TestFromProvisioningStateDataModel(t *testing.T) {
 	stateTests := []struct {
-		datamodel datamodel.ProvisioningStates
+		datamodel basedatamodel.ProvisioningStates
 		versioned ProvisioningState
 	}{
-		{datamodel.ProvisioningStateUpdating, ProvisioningStateUpdating},
-		{datamodel.ProvisioningStateDeleting, ProvisioningStateDeleting},
-		{datamodel.ProvisioningStateAccepted, ProvisioningStateAccepted},
-		{datamodel.ProvisioningStateSucceeded, ProvisioningStateSucceeded},
-		{datamodel.ProvisioningStateFailed, ProvisioningStateFailed},
-		{datamodel.ProvisioningStateCanceled, ProvisioningStateCanceled},
+		{basedatamodel.ProvisioningStateUpdating, ProvisioningStateUpdating},
+		{basedatamodel.ProvisioningStateDeleting, ProvisioningStateDeleting},
+		{basedatamodel.ProvisioningStateAccepted, ProvisioningStateAccepted},
+		{basedatamodel.ProvisioningStateSucceeded, ProvisioningStateSucceeded},
+		{basedatamodel.ProvisioningStateFailed, ProvisioningStateFailed},
+		{basedatamodel.ProvisioningStateCanceled, ProvisioningStateCanceled},
 		{"", ProvisioningStateAccepted},
 	}
 

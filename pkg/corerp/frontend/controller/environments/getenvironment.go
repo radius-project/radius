@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.ControllerInterface = (*GetEnvironment)(nil)
@@ -40,7 +40,7 @@ func (e *GetEnvironment) Run(ctx context.Context, req *http.Request) (rest.Respo
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	existingResource := &datamodel.Environment{}
-	_, err := e.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}

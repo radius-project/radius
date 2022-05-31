@@ -16,7 +16,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,11 +64,10 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				mStorageClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) (*store.Object, error) {
-						return &store.Object{
-							Metadata: store.Metadata{ID: obj.ID, ETag: "new-resource-etag"},
-							Data:     envDataModel,
-						}, nil
+					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+						obj.ETag = "new-resource-etag"
+						obj.Data = envDataModel
+						return nil
 					})
 			}
 
@@ -126,11 +125,10 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				mStorageClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) (*store.Object, error) {
-						return &store.Object{
-							Metadata: store.Metadata{ID: obj.ID, ETag: "updated-resource-etag"},
-							Data:     envDataModel,
-						}, nil
+					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+						obj.ETag = "updated-resource-etag"
+						obj.Data = envDataModel
+						return nil
 					})
 			}
 
@@ -224,12 +222,11 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				mStorageClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) (*store.Object, error) {
+					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 						cfg := store.NewSaveConfig(opts...)
-						return &store.Object{
-							Metadata: store.Metadata{ID: obj.ID, ETag: cfg.ETag},
-							Data:     envDataModel,
-						}, nil
+						obj.ETag = cfg.ETag
+						obj.Data = envDataModel
+						return nil
 					})
 			}
 

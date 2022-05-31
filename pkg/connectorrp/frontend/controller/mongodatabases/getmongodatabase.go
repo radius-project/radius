@@ -10,13 +10,13 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/servicecontext"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ base_ctrl.ControllerInterface = (*GetMongoDatabase)(nil)
@@ -40,7 +40,7 @@ func (mongo *GetMongoDatabase) Run(ctx context.Context, req *http.Request) (rest
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	existingResource := &datamodel.MongoDatabase{}
-	_, err := mongo.GetResource(ctx, serviceCtx.ResourceID.ID, existingResource)
+	_, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil

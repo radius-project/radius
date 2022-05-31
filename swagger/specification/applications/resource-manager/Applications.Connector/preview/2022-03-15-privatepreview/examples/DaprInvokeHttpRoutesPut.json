@@ -1,0 +1,32 @@
+{
+    "parameters": {
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
+      "resourceGroupName": "testGroup",
+      "daprInvokeHttpRouteName": "daprHttpRoute0",
+      "api-version": "2022-03-15-privatepreview",
+      "DaprInvokeHttpRouteResource": {
+        "location": "West US",
+        "properties": {
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "appId": "daprAppId"
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/daprInvokeHttpRoutes/daprHttpRoute0",
+          "name": "daprHttpRoute0",
+          "type": "Applications.Connector/daprInvokeHttpRoutes",
+          "properties": {
+            "provisioningState": "Succeeded",
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "appId": "daprAppId"
+          }
+        }
+      }
+    }
+  }
+  

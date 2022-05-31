@@ -14,10 +14,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/store"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 )
 
 func TestGetMongoDatabase_20220315PrivatePreview(t *testing.T) {

@@ -2,6 +2,7 @@ var adminUsername = 'cooluser'
 var adminPassword = 'p@ssw0rd'
 
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param location string = resourceGroup().location
 
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-microsoft-sql'
@@ -20,9 +21,9 @@ resource app 'radius.dev/Application@v1alpha3' = {
         env: {
           CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},1433;Initial Catalog=${db.properties.database};User Id=${adminUsername}@${db.properties.server};Password=${adminPassword};Encrypt=true'
         }
-        readinessProbe:{
-          kind:'httpGet'
-          containerPort:3000
+        readinessProbe: {
+          kind: 'httpGet'
+          containerPort: 3000
           path: '/healthz'
         }
       }
@@ -39,7 +40,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
 resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: 'sql-${uniqueString(resourceGroup().id)}'
-  location: resourceGroup().location
+  location: location
   tags: {
     radiustest: 'azure-resources-microsoft-sql'
   }
@@ -50,7 +51,7 @@ resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
 
   resource dbinner 'databases' = {
     name: 'cool-database'
-    location: resourceGroup().location
+    location: location
   }
 
   resource firewall 'firewallRules' = {
