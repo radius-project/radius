@@ -46,7 +46,8 @@
                 "type":"integer"
               }
             },
-            "required": ["destination", "weight"]
+            "required": ["destination", "weight"],
+            "additionalProperties": false
           }
         },
         "scheme": {
