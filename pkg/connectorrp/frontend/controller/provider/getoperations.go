@@ -111,6 +111,36 @@ func (a *GetOperations) availableOperationsV1() *armrpcv1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&armrpcv1.Operation{
+				Name: "Applications.Connector/sqlDatabases/read",
+				Display: &armrpcv1.OperationDisplayProperties{
+					Provider:    Namespace,
+					Resource:    "sqlDatabases",
+					Operation:   "Get/List sqlDatabases",
+					Description: "Gets/Lists sqlDatabase connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&armrpcv1.Operation{
+				Name: "Applications.Connector/sqlDatabases/write",
+				Display: &armrpcv1.OperationDisplayProperties{
+					Provider:    Namespace,
+					Resource:    "sqlDatabases",
+					Operation:   "Create/Update sqlDatabases",
+					Description: "Creates or updates a sql database connector.",
+				},
+				IsDataAction: false,
+			},
+			&armrpcv1.Operation{
+				Name: "Applications.Connector/sqlDatabases/delete",
+				Display: &armrpcv1.OperationDisplayProperties{
+					Provider:    Namespace,
+					Resource:    "sqlDatabases",
+					Operation:   "Delete sqlDatabase",
+					Description: "Deletes a sqlDatabase connector.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }

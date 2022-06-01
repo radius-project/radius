@@ -20,6 +20,7 @@ import (
 
 	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	connector_provider "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/provider"
+	sql_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/sqldatabases"
 )
 
 const (
@@ -35,6 +36,7 @@ const (
 	connectorRPPrefix            = "connectorrp_"
 	connectorOperationsRouteName = connectorRPPrefix + "operations"
 	mongoDatabaseRouteName       = connectorRPPrefix + "mongodatabase"
+	sqlDatabaseRouteName         = connectorRPPrefix + "sqldatabase"
 )
 
 // AddRoutes adds the routes and handlers for each resource provider APIs.
@@ -146,6 +148,12 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 	mongoResourceRouter := mongoResourceTypeSubrouter.Path("/{mongoDatabases}").Subrouter()
 	mongoListSecretsRouter := mongoResourceRouter.Path("/listSecrets").Subrouter()
 
+	// Adds sql connector resource type routes
+	sqlResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/sqlDatabases").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+
+	sqlResourceRouter := mongoResourceTypeSubrouter.Path("/{sqlDatabases}").Subrouter()
+
 	h := []handlerParam{
 		// MongoDatabases operations
 		{mongoResourceTypeSubrouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongoDatabaseRouteName, mongo_ctrl.NewListMongoDatabases},
@@ -153,6 +161,12 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, mongoDatabaseRouteName, mongo_ctrl.NewCreateOrUpdateMongoDatabase},
 		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, mongoDatabaseRouteName, mongo_ctrl.NewDeleteMongoDatabase},
 		{mongoListSecretsRouter, mongo_ctrl.ResourceTypeName, http.MethodPost, mongoDatabaseRouteName, mongo_ctrl.NewListSecretsMongoDatabase},
+
+		// SqlDatabases operations
+		{sqlResourceTypeSubrouter, sql_ctrl.ResourceTypeName, http.MethodGet, sqlDatabaseRouteName, sql_ctrl.NewListSqlDatabases},
+		{sqlResourceRouter, sql_ctrl.ResourceTypeName, http.MethodGet, sqlDatabaseRouteName, sql_ctrl.NewGetSqlDatabase},
+		{sqlResourceRouter, sql_ctrl.ResourceTypeName, http.MethodPut, sqlDatabaseRouteName, sql_ctrl.NewCreateOrUpdateSqlDatabase},
+		{sqlResourceRouter, sql_ctrl.ResourceTypeName, http.MethodDelete, sqlDatabaseRouteName, sql_ctrl.NewDeleteSqlDatabase},
 	}
 	handlers = append(handlers, h...)
 
