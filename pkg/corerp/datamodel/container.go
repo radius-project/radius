@@ -30,6 +30,7 @@ func (c ContainerResource) ResourceTypeName() string {
 
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
+	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Application       string                           `json:"application,omitempty"`
 	Connections       map[string]ConnectionProperties  `json:"connections,omitempty"`
@@ -95,6 +96,9 @@ type PersistentVolume struct {
 	Rbac   VolumeRbac `json:"rbac,omitempty"`
 }
 
+// GetVolume implements the VolumeClassification interface for type Volume.
+func (v Volume) GetVolume() Volume { return v }
+
 // ManagedStore - Backing store for the ephemeral volume
 type ManagedStore string
 
@@ -143,6 +147,10 @@ type TCPHealthProbeProperties struct {
 	ContainerPort int32 `json:"containerPort,omitempty"`
 }
 
+func (h *HealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties {
+	return h
+}
+
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
@@ -171,6 +179,9 @@ type DaprSidecarExtension struct {
 type Extension struct {
 	Kind string `json:"kind,omitempty"`
 }
+
+// GetExtension implements the ExtensionClassification interface for type Extension.
+func (e Extension) GetExtension() Extension { return e }
 
 // Kind - The kind of IAM provider to configure
 type Kind string

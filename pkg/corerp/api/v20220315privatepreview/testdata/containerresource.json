@@ -3,12 +3,26 @@
     "name": "container0",
     "type": "Applications.Core/containers",
     "properties": {
+        "status": {
+          "outputResources": [{
+            "LocalID": "Deployment",
+            "ResourceType": {
+              "Type": "containers",
+              "Provider": "aks"
+            }
+          }]
+        },
         "provisioningState": "Succeeded",
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
         "connections": { 
             "inventory": { 
-              "kind": "dapr.io/InvokeHttp",
-              "source": "inventory_route_id" 
+              "source": "inventory_route_id", 
+              "iam": {
+                "kind": "azure",
+                "roles": [
+                  "read"
+                ]
+              }
             } 
           },
         "container": { 

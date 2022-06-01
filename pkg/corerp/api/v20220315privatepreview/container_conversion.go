@@ -40,16 +40,27 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 			}
 		}
 	}
-	/*
-		probe := ConvertToHealthProbePropertiesClassification(src.Properties.Container.LivenessProbe)
 
-		converted_probe := datamodel.HealthProbeProperties{
-			Kind:                to.String(probe.Kind),
-			FailureThreshold:    to.Float32(probe.FailureThreshold),
-			InitialDelaySeconds: to.Float32(probe.InitialDelaySeconds),
-			PeriodSeconds:       to.Float32(probe.PeriodSeconds),
+	livenessProbe := toHealthProbePropertiesClassificationDataModel(src.Properties.Container.LivenessProbe)
+	readinessProbe := toHealthProbePropertiesClassificationDataModel(src.Properties.Container.ReadinessProbe)
+	ports := make(map[string]datamodel.ContainerPort)
+	for key, val := range src.Properties.Container.Ports {
+		ports[key] = datamodel.ContainerPort{
+			ContainerPort: to.Int32(val.ContainerPort),
+			Protocol:      toProtocolDataModel(val.Protocol),
+			Provides:      to.String(val.Provides),
 		}
-	*/
+	}
+
+	volumes := make(map[string]datamodel.VolumeClassification)
+	for key, val := range src.Properties.Container.Volumes {
+		volumes[key] = toVolumeClassificationDataModel(val)
+	}
+
+	extensions := []datamodel.ExtensionClassification{}
+	for _, e := range src.Properties.Extensions {
+		extensions = append(extensions, toExtensionClassificationDataModel(e))
+	}
 
 	converted := &datamodel.ContainerResource{
 		TrackedResource: basedatamodel.TrackedResource{
@@ -60,13 +71,23 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.ContainerProperties{
+			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+				Status: basedatamodel.ResourceStatus{
+					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+				},
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Application:       to.String(src.Properties.Application),
 			Connections:       connections,
 			Container: datamodel.Container{
-				Image: to.String(src.Properties.Container.Image),
-				Env:   to.StringMap(src.Properties.Container.Env),
+				Image:          to.String(src.Properties.Container.Image),
+				Env:            to.StringMap(src.Properties.Container.Env),
+				LivenessProbe:  livenessProbe,
+				Ports:          ports,
+				ReadinessProbe: readinessProbe,
+				Volumes:        volumes,
 			},
+			Extensions: extensions,
 		},
 		InternalMetadata: basedatamodel.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -82,6 +103,48 @@ func (dst *ContainerResource) ConvertFrom(src api.DataModelInterface) error {
 		return api.ErrInvalidModelConversion
 	}
 
+	connections := make(map[string]*ConnectionProperties)
+	for key, val := range c.Properties.Connections {
+		roles := []*string{}
+		var kind *Kind
+
+		for _, r := range val.Iam.Roles {
+			roles = append(roles, to.StringPtr(r))
+		}
+
+		kind = fromKindDataModel(val.Iam.Kind)
+
+		connections[key] = &ConnectionProperties{
+			Source:                to.StringPtr(val.Source),
+			DisableDefaultEnvVars: to.BoolPtr(val.DisableDefaultEnvVars),
+			Iam: &IamProperties{
+				Kind:  kind,
+				Roles: roles,
+			},
+		}
+	}
+
+	livenessProbe := fromHealthProbePropertiesClassificationDataModel(c.Properties.Container.LivenessProbe)
+	readinessProbe := fromHealthProbePropertiesClassificationDataModel(c.Properties.Container.ReadinessProbe)
+	ports := make(map[string]*ContainerPort)
+	for key, val := range c.Properties.Container.Ports {
+		ports[key] = &ContainerPort{
+			ContainerPort: to.Int32Ptr(val.ContainerPort),
+			Protocol:      fromProtocolDataModel(val.Protocol),
+			Provides:      to.StringPtr(val.Provides),
+		}
+	}
+
+	volumes := make(map[string]VolumeClassification)
+	for key, val := range c.Properties.Container.Volumes {
+		volumes[key] = fromVolumeClassificationDataModel(val)
+	}
+
+	extensions := []ExtensionClassification{}
+	for _, e := range c.Properties.Extensions {
+		extensions = append(extensions, fromExtensionClassificationDataModel(e))
+	}
+
 	dst.ID = to.StringPtr(c.ID)
 	dst.Name = to.StringPtr(c.Name)
 	dst.Type = to.StringPtr(c.Type)
@@ -89,35 +152,348 @@ func (dst *ContainerResource) ConvertFrom(src api.DataModelInterface) error {
 	dst.Location = to.StringPtr(c.Location)
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
+		BasicResourceProperties: BasicResourceProperties{
+			Status: &ResourceStatus{
+				OutputResources: c.Properties.BasicResourceProperties.Status.OutputResources,
+			},
+		},
 		ProvisioningState: fromProvisioningStateDataModel(c.Properties.ProvisioningState),
 		Application:       to.StringPtr(c.Properties.Application),
+		Connections:       connections,
+		Container: &Container{
+			Image:          to.StringPtr(c.Properties.Container.Image),
+			Env:            *to.StringMapPtr(c.Properties.Container.Env),
+			LivenessProbe:  livenessProbe,
+			Ports:          ports,
+			ReadinessProbe: readinessProbe,
+			Volumes:        volumes,
+		},
+		Extensions: extensions,
 	}
 
 	return nil
 }
 
-/*
-func ConvertToHealthProbePropertiesClassification(i interface{}) datamodel.HealthProbePropertiesClassification {
-	var p datamodel.HealthProbePropertiesClassification
-	switch i.(type) {
-	case ExecHealthProbeProperties:
-	case HTTPGetHealthProbeProperties:
-	case TCPHealthProbeProperties:
-	default:
+func toHealthProbePropertiesClassificationDataModel(h HealthProbePropertiesClassification) datamodel.HealthProbePropertiesClassification {
+	switch c := h.(type) {
+	case *ExecHealthProbeProperties:
+		converted := &datamodel.ExecHealthProbeProperties{
+			HealthProbeProperties: datamodel.HealthProbeProperties{
+				Kind:                to.String(c.HealthProbeProperties.Kind),
+				FailureThreshold:    to.Float32(c.HealthProbeProperties.FailureThreshold),
+				InitialDelaySeconds: to.Float32(c.HealthProbeProperties.InitialDelaySeconds),
+				PeriodSeconds:       to.Float32(c.HealthProbeProperties.PeriodSeconds),
+			},
+			Command: to.String(c.Command),
+		}
+		return converted
+	case *HealthProbeProperties:
+		converted := &datamodel.HealthProbeProperties{
+			Kind:                to.String(c.Kind),
+			FailureThreshold:    to.Float32(c.FailureThreshold),
+			InitialDelaySeconds: to.Float32(c.InitialDelaySeconds),
+			PeriodSeconds:       to.Float32(c.PeriodSeconds),
+		}
+		return converted
+	case *HTTPGetHealthProbeProperties:
+		converted := &datamodel.HTTPGetHealthProbeProperties{
+			HealthProbeProperties: datamodel.HealthProbeProperties{
+				Kind:                to.String(c.Kind),
+				FailureThreshold:    to.Float32(c.FailureThreshold),
+				InitialDelaySeconds: to.Float32(c.InitialDelaySeconds),
+				PeriodSeconds:       to.Float32(c.PeriodSeconds),
+			},
+			ContainerPort: to.Int32(c.ContainerPort),
+			Path:          to.String(c.Path),
+			Headers:       to.StringMap(c.Headers),
+		}
+		return converted
+
+	case *TCPHealthProbeProperties:
+		converted := &datamodel.TCPHealthProbeProperties{
+			HealthProbeProperties: datamodel.HealthProbeProperties{
+				Kind:                to.String(c.Kind),
+				FailureThreshold:    to.Float32(c.FailureThreshold),
+				InitialDelaySeconds: to.Float32(c.InitialDelaySeconds),
+				PeriodSeconds:       to.Float32(c.PeriodSeconds),
+			},
+			ContainerPort: to.Int32(c.ContainerPort),
+		}
+		return converted
 	}
-	return p
+	return nil
 }
-*/
+
+func fromHealthProbePropertiesClassificationDataModel(h datamodel.HealthProbePropertiesClassification) HealthProbePropertiesClassification {
+	switch c := h.(type) {
+	case *datamodel.ExecHealthProbeProperties:
+		converted := ExecHealthProbeProperties{
+			HealthProbeProperties: HealthProbeProperties{
+				Kind:                to.StringPtr(c.HealthProbeProperties.Kind),
+				FailureThreshold:    to.Float32Ptr(c.HealthProbeProperties.FailureThreshold),
+				InitialDelaySeconds: to.Float32Ptr(c.HealthProbeProperties.InitialDelaySeconds),
+				PeriodSeconds:       to.Float32Ptr(c.HealthProbeProperties.PeriodSeconds),
+			},
+			Command: to.StringPtr(c.Command),
+		}
+		return &converted
+	case *datamodel.HealthProbeProperties:
+		converted := HealthProbeProperties{
+			Kind:                to.StringPtr(c.Kind),
+			FailureThreshold:    to.Float32Ptr(c.FailureThreshold),
+			InitialDelaySeconds: to.Float32Ptr(c.InitialDelaySeconds),
+			PeriodSeconds:       to.Float32Ptr(c.PeriodSeconds),
+		}
+		return &converted
+	case *datamodel.HTTPGetHealthProbeProperties:
+		converted := HTTPGetHealthProbeProperties{
+			HealthProbeProperties: HealthProbeProperties{
+				Kind:                to.StringPtr(c.HealthProbeProperties.Kind),
+				FailureThreshold:    to.Float32Ptr(c.HealthProbeProperties.FailureThreshold),
+				InitialDelaySeconds: to.Float32Ptr(c.HealthProbeProperties.InitialDelaySeconds),
+				PeriodSeconds:       to.Float32Ptr(c.HealthProbeProperties.PeriodSeconds),
+			},
+			ContainerPort: to.Int32Ptr(c.ContainerPort),
+			Path:          to.StringPtr(c.Path),
+			Headers:       *to.StringMapPtr(c.Headers),
+		}
+		return &converted
+
+	case *datamodel.TCPHealthProbeProperties:
+		converted := TCPHealthProbeProperties{
+			HealthProbeProperties: HealthProbeProperties{
+				Kind:                to.StringPtr(c.HealthProbeProperties.Kind),
+				FailureThreshold:    to.Float32Ptr(c.HealthProbeProperties.FailureThreshold),
+				InitialDelaySeconds: to.Float32Ptr(c.HealthProbeProperties.InitialDelaySeconds),
+				PeriodSeconds:       to.Float32Ptr(c.HealthProbeProperties.PeriodSeconds),
+			},
+			ContainerPort: to.Int32Ptr(c.ContainerPort),
+		}
+		return &converted
+	}
+	return nil
+}
 
 func toKindDataModel(kind *Kind) datamodel.Kind {
-	if kind == nil {
-		return datamodel.KindAzure // TODO: need to define default kind
-	}
-
 	switch *kind {
 	case KindAzure:
 		return datamodel.KindAzure
 	default:
 		return datamodel.KindAzure
 	}
+}
+
+func fromKindDataModel(kind datamodel.Kind) *Kind {
+	var k Kind
+	switch kind {
+	case datamodel.KindAzure:
+		k = KindAzure
+	default:
+		k = KindAzure
+	}
+	return &k
+}
+
+func toProtocolDataModel(protocol *Protocol) datamodel.Protocol {
+	switch *protocol {
+	case ProtocolHTTP:
+		return datamodel.ProtocolHTTP
+	case ProtocolGrpc:
+		return datamodel.ProtocolGrpc
+	case ProtocolTCP:
+		return datamodel.ProtocolTCP
+	case ProtocolUDP:
+		return datamodel.ProtocolUDP
+	default:
+		return datamodel.ProtocolHTTP
+	}
+}
+
+func fromProtocolDataModel(protocol datamodel.Protocol) *Protocol {
+	var p Protocol
+	switch protocol {
+	case datamodel.ProtocolHTTP:
+		p = ProtocolHTTP
+	case datamodel.ProtocolGrpc:
+		p = ProtocolGrpc
+	case datamodel.ProtocolTCP:
+		p = ProtocolTCP
+	case datamodel.ProtocolUDP:
+		p = ProtocolUDP
+	default:
+		p = ProtocolHTTP
+	}
+	return &p
+}
+
+func toVolumeClassificationDataModel(h VolumeClassification) datamodel.VolumeClassification {
+	switch c := h.(type) {
+	case *EphemeralVolume:
+		converted := datamodel.EphemeralVolume{
+			Volume: datamodel.Volume{
+				Kind:      to.String(c.Kind),
+				MountPath: to.String(c.MountPath),
+			},
+			ManagedStore: toManagedStoreDataModel(c.ManagedStore),
+		}
+		return converted
+	case *Volume:
+		converted := datamodel.Volume{
+			Kind:      to.String(c.Kind),
+			MountPath: to.String(c.MountPath),
+		}
+		return converted
+	case *PersistentVolume:
+		converted := datamodel.PersistentVolume{
+			Volume: datamodel.Volume{
+				Kind:      to.String(c.Kind),
+				MountPath: to.String(c.MountPath),
+			},
+			Source: to.String(c.Source),
+			Rbac:   toRbacDataModel(c.Rbac),
+		}
+		return converted
+	}
+	return nil
+}
+
+func fromVolumeClassificationDataModel(h datamodel.VolumeClassification) VolumeClassification {
+	switch c := h.(type) {
+	case datamodel.EphemeralVolume:
+		converted := EphemeralVolume{
+			Volume: Volume{
+				Kind:      to.StringPtr(c.Kind),
+				MountPath: to.StringPtr(c.MountPath),
+			},
+			ManagedStore: fromManagedStoreDataModel(c.ManagedStore),
+		}
+		return converted.GetVolume()
+	case datamodel.Volume:
+		converted := Volume{
+			Kind:      to.StringPtr(c.Kind),
+			MountPath: to.StringPtr(c.MountPath),
+		}
+		return converted.GetVolume()
+	case datamodel.PersistentVolume:
+		converted := PersistentVolume{
+			Volume: Volume{
+				Kind:      to.StringPtr(c.Kind),
+				MountPath: to.StringPtr(c.MountPath),
+			},
+			Source: to.StringPtr(c.Source),
+			Rbac:   fromRbacDataModel(c.Rbac),
+		}
+		return converted.GetVolume()
+	}
+	return nil
+}
+
+func toManagedStoreDataModel(managedStore *ManagedStore) datamodel.ManagedStore {
+	switch *managedStore {
+	case ManagedStoreDisk:
+		return datamodel.ManagedStoreDisk
+	case ManagedStoreMemory:
+		return datamodel.ManagedStoreMemory
+	default:
+		return datamodel.ManagedStoreDisk
+	}
+}
+
+func fromManagedStoreDataModel(managedStore datamodel.ManagedStore) *ManagedStore {
+	var m ManagedStore
+	switch managedStore {
+	case datamodel.ManagedStoreDisk:
+		m = ManagedStoreDisk
+	case datamodel.ManagedStoreMemory:
+		m = ManagedStoreMemory
+	default:
+		m = ManagedStoreDisk
+	}
+	return &m
+}
+
+func toRbacDataModel(rbac *VolumeRbac) datamodel.VolumeRbac {
+	switch *rbac {
+	case VolumeRbacRead:
+		return datamodel.VolumeRbacRead
+	case VolumeRbacWrite:
+		return datamodel.VolumeRbacWrite
+	default:
+		return datamodel.VolumeRbacRead
+	}
+}
+
+func fromRbacDataModel(rbac datamodel.VolumeRbac) *VolumeRbac {
+	var r VolumeRbac
+	switch rbac {
+	case datamodel.VolumeRbacRead:
+		r = VolumeRbacRead
+	case datamodel.VolumeRbacWrite:
+		r = VolumeRbacWrite
+	default:
+		r = VolumeRbacRead
+	}
+	return &r
+}
+
+func toExtensionClassificationDataModel(e ExtensionClassification) datamodel.ExtensionClassification {
+	switch c := e.(type) {
+	case *ManualScalingExtension:
+		converted := datamodel.ManualScalingExtension{
+			Extension: datamodel.Extension{
+				Kind: to.String(c.Extension.Kind),
+			},
+			Replicas: to.Int32(c.Replicas),
+		}
+		return converted
+	case *DaprSidecarExtension:
+		converted := datamodel.DaprSidecarExtension{
+			Extension: datamodel.Extension{
+				Kind: to.String(c.Extension.Kind),
+			},
+			AppID:    to.String(c.AppID),
+			AppPort:  to.Int32(c.AppPort),
+			Config:   to.String(c.Config),
+			Protocol: toProtocolDataModel(c.Protocol),
+			Provides: to.String(c.Provides),
+		}
+		return converted
+	case *Extension:
+		converted := datamodel.Extension{
+			Kind: to.String(c.Kind),
+		}
+		return converted
+	}
+	return nil
+}
+
+func fromExtensionClassificationDataModel(e datamodel.ExtensionClassification) ExtensionClassification {
+	switch c := e.(type) {
+	case datamodel.ManualScalingExtension:
+		converted := ManualScalingExtension{
+			Extension: Extension{
+				Kind: to.StringPtr(c.Extension.Kind),
+			},
+			Replicas: to.Int32Ptr(c.Replicas),
+		}
+		return converted.GetExtension()
+	case datamodel.DaprSidecarExtension:
+		converted := DaprSidecarExtension{
+			Extension: Extension{
+				Kind: to.StringPtr(c.Extension.Kind),
+			},
+			AppID:    to.StringPtr(c.AppID),
+			AppPort:  to.Int32Ptr(c.AppPort),
+			Config:   to.StringPtr(c.Config),
+			Protocol: fromProtocolDataModel(c.Protocol),
+			Provides: to.StringPtr(c.Provides),
+		}
+		return converted.GetExtension()
+	case datamodel.Extension:
+		converted := Extension{
+			Kind: to.StringPtr(c.Kind),
+		}
+		return converted.GetExtension()
+	}
+	return nil
 }
