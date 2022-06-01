@@ -359,7 +359,7 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		ResourceID:    parsedID.String(),
 		RootScope:     parsedID.RootScope(),
 		ResourceGroup: resourceGroup,
-		PartitionKey:  NormalizeSubscriptionID(subscriptionID),
+		PartitionKey:  GetPartitionKey(parsedID),
 		Entity:        obj.Data,
 	}
 

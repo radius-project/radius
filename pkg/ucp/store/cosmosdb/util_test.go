@@ -114,7 +114,7 @@ func TestNormalizeStorageKey(t *testing.T) {
 
 // TestGenerateCosmosDBKey creates compliant cosmosdb id using arm id. The length of the generated id must be less than 256.
 func TestGenerateCosmosDBKey(t *testing.T) {
-	trimTests := []struct {
+	cases := []struct {
 		desc   string
 		fullID string
 		out    string
@@ -168,9 +168,15 @@ func TestGenerateCosmosDBKey(t *testing.T) {
 			"7826D962510F407A92A25AEB37AA7B6E-LONGRESOURCEGROUP0LONGRESOURCEGROUP0LONGRESOURC|EF662FD5E8286859-APPLICATIONS:2ECORE:2FLONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME|8C5656AB3F61108E",
 			nil,
 		},
+		{
+			"ucp-success",
+			"ucp:/planes/radius/local/resourcegroups/radius-westus/providers/Applications.Core/applications/todoapp",
+			"-RADIUS:2DWESTUS-APPLICATIONS:2ECORE:2FAPPLICATIONSTODOAPP",
+			nil,
+		},
 	}
 
-	for _, tc := range trimTests {
+	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			testID, err := resources.Parse(tc.fullID)
 			require.NoError(t, err)

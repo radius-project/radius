@@ -14,6 +14,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
@@ -462,4 +463,33 @@ func TestPaginationContinuationToken(t *testing.T) {
 		err := client.Delete(ctx, id)
 		require.NoError(t, err)
 	}
+}
+
+func TestGetPartitionKey(t *testing.T) {
+	cases := []struct {
+		desc   string
+		fullID string
+		out    string
+	}{
+		{
+			"env-partition-key",
+			"subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"00000000000000001000000000000001",
+		},
+		{
+			"env-no-subscription-partition-key",
+			"resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			testID, err := resources.Parse(tc.fullID)
+			require.NoError(t, err)
+			key := GetPartitionKey(testID)
+			require.Equal(t, tc.out, key)
+		})
+	}
+
 }
