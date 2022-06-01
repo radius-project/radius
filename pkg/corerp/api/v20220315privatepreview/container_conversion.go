@@ -178,46 +178,26 @@ func toHealthProbePropertiesClassificationDataModel(h HealthProbePropertiesClass
 	switch c := h.(type) {
 	case *ExecHealthProbeProperties:
 		converted := &datamodel.ExecHealthProbeProperties{
-			HealthProbeProperties: datamodel.HealthProbeProperties{
-				Kind:                to.String(c.HealthProbeProperties.Kind),
-				FailureThreshold:    to.Float32(c.HealthProbeProperties.FailureThreshold),
-				InitialDelaySeconds: to.Float32(c.HealthProbeProperties.InitialDelaySeconds),
-				PeriodSeconds:       to.Float32(c.HealthProbeProperties.PeriodSeconds),
-			},
-			Command: to.String(c.Command),
+			HealthProbeProperties: toHealthProbeDataModelProperties(c.HealthProbeProperties),
+			Command:               to.String(c.Command),
 		}
 		return converted
 	case *HealthProbeProperties:
-		converted := &datamodel.HealthProbeProperties{
-			Kind:                to.String(c.Kind),
-			FailureThreshold:    to.Float32(c.FailureThreshold),
-			InitialDelaySeconds: to.Float32(c.InitialDelaySeconds),
-			PeriodSeconds:       to.Float32(c.PeriodSeconds),
-		}
-		return converted
+		converted := toHealthProbeDataModelProperties(*c)
+		return &converted
 	case *HTTPGetHealthProbeProperties:
 		converted := &datamodel.HTTPGetHealthProbeProperties{
-			HealthProbeProperties: datamodel.HealthProbeProperties{
-				Kind:                to.String(c.Kind),
-				FailureThreshold:    to.Float32(c.FailureThreshold),
-				InitialDelaySeconds: to.Float32(c.InitialDelaySeconds),
-				PeriodSeconds:       to.Float32(c.PeriodSeconds),
-			},
-			ContainerPort: to.Int32(c.ContainerPort),
-			Path:          to.String(c.Path),
-			Headers:       to.StringMap(c.Headers),
+			HealthProbeProperties: toHealthProbeDataModelProperties(c.HealthProbeProperties),
+			ContainerPort:         to.Int32(c.ContainerPort),
+			Path:                  to.String(c.Path),
+			Headers:               to.StringMap(c.Headers),
 		}
 		return converted
 
 	case *TCPHealthProbeProperties:
 		converted := &datamodel.TCPHealthProbeProperties{
-			HealthProbeProperties: datamodel.HealthProbeProperties{
-				Kind:                to.String(c.Kind),
-				FailureThreshold:    to.Float32(c.FailureThreshold),
-				InitialDelaySeconds: to.Float32(c.InitialDelaySeconds),
-				PeriodSeconds:       to.Float32(c.PeriodSeconds),
-			},
-			ContainerPort: to.Int32(c.ContainerPort),
+			HealthProbeProperties: toHealthProbeDataModelProperties(c.HealthProbeProperties),
+			ContainerPort:         to.Int32(c.ContainerPort),
 		}
 		return converted
 	}
@@ -228,46 +208,26 @@ func fromHealthProbePropertiesClassificationDataModel(h datamodel.HealthProbePro
 	switch c := h.(type) {
 	case *datamodel.ExecHealthProbeProperties:
 		converted := ExecHealthProbeProperties{
-			HealthProbeProperties: HealthProbeProperties{
-				Kind:                to.StringPtr(c.HealthProbeProperties.Kind),
-				FailureThreshold:    to.Float32Ptr(c.HealthProbeProperties.FailureThreshold),
-				InitialDelaySeconds: to.Float32Ptr(c.HealthProbeProperties.InitialDelaySeconds),
-				PeriodSeconds:       to.Float32Ptr(c.HealthProbeProperties.PeriodSeconds),
-			},
-			Command: to.StringPtr(c.Command),
+			HealthProbeProperties: fromHealthProbeDataModelProperties(c.HealthProbeProperties),
+			Command:               to.StringPtr(c.Command),
 		}
 		return &converted
 	case *datamodel.HealthProbeProperties:
-		converted := HealthProbeProperties{
-			Kind:                to.StringPtr(c.Kind),
-			FailureThreshold:    to.Float32Ptr(c.FailureThreshold),
-			InitialDelaySeconds: to.Float32Ptr(c.InitialDelaySeconds),
-			PeriodSeconds:       to.Float32Ptr(c.PeriodSeconds),
-		}
+		converted := fromHealthProbeDataModelProperties(*c)
 		return &converted
 	case *datamodel.HTTPGetHealthProbeProperties:
 		converted := HTTPGetHealthProbeProperties{
-			HealthProbeProperties: HealthProbeProperties{
-				Kind:                to.StringPtr(c.HealthProbeProperties.Kind),
-				FailureThreshold:    to.Float32Ptr(c.HealthProbeProperties.FailureThreshold),
-				InitialDelaySeconds: to.Float32Ptr(c.HealthProbeProperties.InitialDelaySeconds),
-				PeriodSeconds:       to.Float32Ptr(c.HealthProbeProperties.PeriodSeconds),
-			},
-			ContainerPort: to.Int32Ptr(c.ContainerPort),
-			Path:          to.StringPtr(c.Path),
-			Headers:       *to.StringMapPtr(c.Headers),
+			HealthProbeProperties: fromHealthProbeDataModelProperties(c.HealthProbeProperties),
+			ContainerPort:         to.Int32Ptr(c.ContainerPort),
+			Path:                  to.StringPtr(c.Path),
+			Headers:               *to.StringMapPtr(c.Headers),
 		}
 		return &converted
 
 	case *datamodel.TCPHealthProbeProperties:
 		converted := TCPHealthProbeProperties{
-			HealthProbeProperties: HealthProbeProperties{
-				Kind:                to.StringPtr(c.HealthProbeProperties.Kind),
-				FailureThreshold:    to.Float32Ptr(c.HealthProbeProperties.FailureThreshold),
-				InitialDelaySeconds: to.Float32Ptr(c.HealthProbeProperties.InitialDelaySeconds),
-				PeriodSeconds:       to.Float32Ptr(c.HealthProbeProperties.PeriodSeconds),
-			},
-			ContainerPort: to.Int32Ptr(c.ContainerPort),
+			HealthProbeProperties: fromHealthProbeDataModelProperties(c.HealthProbeProperties),
+			ContainerPort:         to.Int32Ptr(c.ContainerPort),
 		}
 		return &converted
 	}
@@ -330,25 +290,16 @@ func toVolumeClassificationDataModel(h VolumeClassification) datamodel.VolumeCla
 	switch c := h.(type) {
 	case *EphemeralVolume:
 		converted := datamodel.EphemeralVolume{
-			Volume: datamodel.Volume{
-				Kind:      to.String(c.Kind),
-				MountPath: to.String(c.MountPath),
-			},
+			Volume:       toVolumeDataModel(c.Volume),
 			ManagedStore: toManagedStoreDataModel(c.ManagedStore),
 		}
 		return converted
 	case *Volume:
-		converted := datamodel.Volume{
-			Kind:      to.String(c.Kind),
-			MountPath: to.String(c.MountPath),
-		}
+		converted := toVolumeDataModel(*c)
 		return converted
 	case *PersistentVolume:
 		converted := datamodel.PersistentVolume{
-			Volume: datamodel.Volume{
-				Kind:      to.String(c.Kind),
-				MountPath: to.String(c.MountPath),
-			},
+			Volume: toVolumeDataModel(c.Volume),
 			Source: to.String(c.Source),
 			Rbac:   toRbacDataModel(c.Rbac),
 		}
@@ -361,25 +312,16 @@ func fromVolumeClassificationDataModel(h datamodel.VolumeClassification) VolumeC
 	switch c := h.(type) {
 	case datamodel.EphemeralVolume:
 		converted := EphemeralVolume{
-			Volume: Volume{
-				Kind:      to.StringPtr(c.Kind),
-				MountPath: to.StringPtr(c.MountPath),
-			},
+			Volume:       fromVolumeDataModel(c.Volume),
 			ManagedStore: fromManagedStoreDataModel(c.ManagedStore),
 		}
 		return converted.GetVolume()
 	case datamodel.Volume:
-		converted := Volume{
-			Kind:      to.StringPtr(c.Kind),
-			MountPath: to.StringPtr(c.MountPath),
-		}
+		converted := fromVolumeDataModel(c)
 		return converted.GetVolume()
 	case datamodel.PersistentVolume:
 		converted := PersistentVolume{
-			Volume: Volume{
-				Kind:      to.StringPtr(c.Kind),
-				MountPath: to.StringPtr(c.MountPath),
-			},
+			Volume: fromVolumeDataModel(c.Volume),
 			Source: to.StringPtr(c.Source),
 			Rbac:   fromRbacDataModel(c.Rbac),
 		}
@@ -496,4 +438,36 @@ func fromExtensionClassificationDataModel(e datamodel.ExtensionClassification) E
 		return converted.GetExtension()
 	}
 	return nil
+}
+
+func toHealthProbeDataModelProperties(h HealthProbeProperties) datamodel.HealthProbeProperties {
+	return datamodel.HealthProbeProperties{
+		Kind:                to.String(h.Kind),
+		FailureThreshold:    to.Float32(h.FailureThreshold),
+		InitialDelaySeconds: to.Float32(h.InitialDelaySeconds),
+		PeriodSeconds:       to.Float32(h.PeriodSeconds),
+	}
+}
+
+func fromHealthProbeDataModelProperties(h datamodel.HealthProbeProperties) HealthProbeProperties {
+	return HealthProbeProperties{
+		Kind:                to.StringPtr(h.Kind),
+		FailureThreshold:    to.Float32Ptr(h.FailureThreshold),
+		InitialDelaySeconds: to.Float32Ptr(h.InitialDelaySeconds),
+		PeriodSeconds:       to.Float32Ptr(h.PeriodSeconds),
+	}
+}
+
+func toVolumeDataModel(c Volume) datamodel.Volume {
+	return datamodel.Volume{
+		Kind:      to.String(c.Kind),
+		MountPath: to.String(c.MountPath),
+	}
+}
+
+func fromVolumeDataModel(c datamodel.Volume) Volume {
+	return Volume{
+		Kind:      to.StringPtr(c.Kind),
+		MountPath: to.StringPtr(c.MountPath),
+	}
 }
