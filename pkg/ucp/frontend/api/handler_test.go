@@ -15,9 +15,11 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler/planes"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler/resourcegroups"
+	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -27,17 +29,29 @@ import (
 const baseURI = "/planes"
 
 func initializeTestEnv(t *testing.T, ucp ucphandler.UCPHandler, dbClient store.StorageClient) http.Handler {
+
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
+	clientconfigSource := hosting.NewAsyncValue()
+	var storageoptions dataprovider.StorageProviderOptions
+
+	storageoptions.Provider = dataprovider.TypeETCD
+	//storageoptions.ETCD.Client = clientconfigSource
+	storageoptions.ETCD.InMemory = true
+
+	//.StorageProviderOptions.Provider
 	options := ServiceOptions{
 		DBClient: dbClient,
 		UcpHandler: ucphandler.UCPHandler{
 			Planes:         ucp.Planes,
 			ResourceGroups: ucp.ResourceGroups,
 		},
+		StorageProviderOptions: storageoptions,
+		ClientConfigSource:     clientconfigSource,
 	}
 	service := NewService(options)
 	s, err := service.Initialize(ctx)
+	service.Run(ctx)
 	require.NoError(t, err)
 	server := httptest.NewServer(s.Handler)
 	t.Cleanup(server.Close)

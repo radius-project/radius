@@ -8,6 +8,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -66,6 +67,9 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	s.options.DBClient = s.InitializeStorageClient(ctx)
 	if s.options.DBClient == nil {
 		// Initialize the storage client to in memory etcd if there was no storage information in config file.
+		if s.options.ClientConfigSource == nil {
+			return nil, errors.New("cannot init etcd store")
+		}
 		obj, err := s.options.ClientConfigSource.Get(ctx)
 		if err != nil {
 			return nil, err
@@ -104,13 +108,10 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 func (s *Service) InitializeStorageClient(ctx context.Context) store.StorageClient {
 	var storageClient store.StorageClient
-	if s.options.UCPConfigFile == "" {
-		return nil
-	}
 
-	if s.options.StorageProviderOptions.Provider == dataprovider.TypeETCD {
-		s.options.StorageProviderOptions.ETCD.Client = s.options.ClientConfigSource
-	}
+	//if s.options.StorageProviderOptions.Provider == dataprovider.TypeETCD {
+	//	s.options.StorageProviderOptions.ETCD.Client = s.options.ClientConfigSource
+	//}
 
 	storageProvider := dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
 	storageClient, err := storageProvider.GetStorageClient(ctx, string(s.options.StorageProviderOptions.Provider))
