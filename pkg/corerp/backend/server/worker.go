@@ -74,20 +74,22 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	ctx = hostoptions.WithContext(ctx, w.options.Config)
-	jobs, err := w.requestQueue.Dequeue(ctx)
+	msgCh, err := w.requestQueue.Dequeue(ctx)
 	if err != nil {
-		return errors.New("fails to initialize job queue")
+		return err
 	}
 
-	for job := range jobs {
+	// this loop will run until msgCh is closed (or when ctx is canceled)
+	for msg := range msgCh {
+		// This semaphore will maintain the number of go routines to process the messages concurrently.
 		if err := w.sem.Acquire(ctx, 1); err != nil {
 			break
 		}
 
-		go func(jobm *queue.Message) {
+		go func(msgreq *queue.Message) {
 			defer w.sem.Release(1)
 
-			op := jobm.Data.(*asyncoperation.Request)
+			op := msgreq.Data.(*asyncoperation.Request)
 			opLogger := logger.WithValues([]interface{}{
 				"OperationID", op.OperationID.String(),
 				"OperationType", op.OperationType,
@@ -106,22 +108,22 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			if ctrl == nil {
 				opLogger.V(radlogger.Error).Info("Unknown operation")
-				if err := jobm.Finish(nil); err != nil {
-					logger.V(radlogger.Error).Info("failed to finish the message which includes unknown operation.")
+				if err := msgreq.Finish(nil); err != nil {
+					logger.Error(err, "failed to finish the message which includes unknown operation.")
 				}
 				return
 			}
-			if jobm.DequeueCount >= MaxDequeueCount {
+			if msgreq.DequeueCount >= MaxDequeueCount {
 				opLogger.V(radlogger.Error).Info(fmt.Sprintf("Exceed max retrycount: %d", jobm.DequeueCount))
-				if err := jobm.Finish(nil); err != nil {
-					logger.V(radlogger.Error).Info("failed to finish the message which exceeds the max retry count.")
+				if err := msg.Finish(nil); err != nil {
+					logger.Error(err, "failed to finish the message which exceeds the max retry count.")
 				}
 				return
 			}
 
 			opCtx := logr.NewContext(ctx, opLogger)
-			w.runOperation(opCtx, jobm, ctrl)
-		}(job)
+			w.runOperation(opCtx, msgreq, ctrl)
+		}(msg)
 	}
 
 	logger.Info("Message loop stopped...")
@@ -136,8 +138,9 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	defer opCancel()
 
 	opDone := make(chan struct{}, 1)
-
 	opStartAt := time.Now()
+
+	// Start new go routine to cancel and timeout async operation.
 	go func() {
 		defer func(done chan struct{}) {
 			opEndAt := time.Now()
@@ -184,6 +187,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			return
 
 		case <-opDone:
+			logger.V(radlogger.Debug).Info("exiting the goroutine for async operation execution.")
 			return
 		}
 	}
