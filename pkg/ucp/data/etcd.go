@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"time"
 
@@ -28,6 +29,8 @@ var _ hosting.Service = (*EmbeddedETCDService)(nil)
 
 type EmbeddedETCDServiceOptions struct {
 	ClientConfigSink *hosting.AsyncValue
+	ListenPeerUrls   []string
+	ListenClientUrls []string
 }
 
 type EmbeddedETCDService struct {
@@ -79,6 +82,28 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 	config.ClientAutoTLS = true
 	config.PeerAutoTLS = true
 	config.SelfSignedCertValidity = 1 // One year
+
+	var lpUrls []url.URL
+	for _, lpUrl := range s.options.ListenPeerUrls {
+		tempUrl, err := url.Parse(lpUrl)
+		if err != nil {
+			return err
+		}
+		lpUrls = append(lpUrls, *tempUrl)
+	}
+
+	config.LPUrls = lpUrls
+
+	var lcUrls []url.URL
+	for _, lcUrl := range s.options.ListenClientUrls {
+		tempUrl, err := url.Parse(lcUrl)
+		if err != nil {
+			return err
+		}
+		lcUrls = append(lcUrls, *tempUrl)
+	}
+
+	config.LCUrls = lcUrls
 
 	server, err := embed.StartEtcd(config)
 	if err != nil {

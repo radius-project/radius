@@ -58,6 +58,8 @@ func NewServer(options Options) (*hosting.Host, error) {
 		Services: []hosting.Service{
 			data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{
 				ClientConfigSink: clientconfigSource,
+				ListenPeerUrls:   []string{"http://localhost:2380"},
+				ListenClientUrls:   []string{"http://localhost:2379"},
 			}),
 			api.NewService(api.ServiceOptions{
 				Address: ":" + options.Port,

@@ -67,7 +67,7 @@ func main() {
 		logger.Info("Enabled in-memory etcd")
 		client := hosting.NewAsyncValue()
 		options.Config.StorageProvider.ETCD.Client = client
-		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
+		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client, ListenPeerUrls: []string{"http://localhost:2381"}, ListenClientUrls: []string{"http://localhost:2378"}}))
 	}
 
 	loggerValues := []interface{}{}

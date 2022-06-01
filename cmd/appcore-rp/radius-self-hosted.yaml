@@ -1,0 +1,17 @@
+# This is an example of configuration file.
+environment:
+  name: self-hosted
+metricsProvider:
+  prometheus:
+    endpoint: "/metrics"
+storageProvider:
+  provider: "etcd"
+  etcd:
+    inmemory: true
+featureFlags:
+  - "PLACEHOLDER"
+server:
+  host: "0.0.0.0"
+  port: 8080
+  authType: "ClientCertificate"
+  enableArmAuth: false
