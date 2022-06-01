@@ -182,7 +182,6 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
 		OperationID:     uuid.New(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
-		OperationType:   mux.CurrentRoute(r).GetName(),
 		Traceparent:     r.Header.Get(TraceparentHeader),
 
 		HomeTenantID:        r.Header.Get(HomeTenantIDHeader),
@@ -203,6 +202,10 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 
 		SkipToken: r.URL.Query().Get(SkipTokenParameterName),
 		Top:       queryItemCount,
+	}
+
+	if route := mux.CurrentRoute(r); route != nil {
+		rpcCtx.OperationType = route.GetName()
 	}
 
 	return rpcCtx, nil

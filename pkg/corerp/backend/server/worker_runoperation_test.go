@@ -111,7 +111,7 @@ func TestStart_UnknownOperation(t *testing.T) {
 	err = testQueue.Enqueue(ctx, testMessage)
 	require.NoError(t, err)
 
-	for inmemQ.List().Len() > 0 {
+	for inmemQ.Len() > 0 {
 		// Wait until queue is empty
 	}
 
@@ -152,7 +152,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	require.NoError(t, err)
 	testMessage.DequeueCount = MaxDequeueCount + 1
 
-	for inmemQ.List().Len() > 0 {
+	for inmemQ.Len() > 0 {
 		// Wait until queue is empty.
 	}
 
@@ -210,7 +210,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	for inmemQ.List().Len() > 0 {
+	for inmemQ.Len() > 0 {
 		// Wait until queue is empty.
 	}
 

@@ -45,8 +45,10 @@ func NewInMemQueue(lockDuration time.Duration) *InmemQueue {
 	}
 }
 
-func (q *InmemQueue) List() *list.List {
-	return q.v
+func (q *InmemQueue) Len() int {
+	q.vMu.Lock()
+	defer q.vMu.Unlock()
+	return q.v.Len()
 }
 
 func (q *InmemQueue) Enqueue(msg *queue.Message) {
