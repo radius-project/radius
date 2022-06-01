@@ -12,9 +12,6 @@ dependencies:
   - name: deployment-engine
     version: '42.42.42-dev'
     repository: "file://deployment-engine"
-  - name: deployment-engine-old
-    version: '42.42.42-dev'
-    repository: "file://deployment-engine-old"
   - name: de
     version: '42.42.42-dev'
     repository: "file://de"
