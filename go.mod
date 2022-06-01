@@ -15,7 +15,6 @@ require (
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/dnaeon/go-vcr v1.1.0 // indirect
-	github.com/fatih/structs v1.1.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/gibson042/canonicaljson-go v1.0.3
 	github.com/go-logr/logr v0.4.0
