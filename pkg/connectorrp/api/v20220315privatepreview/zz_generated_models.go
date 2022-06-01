@@ -846,6 +846,153 @@ type MongoDatabasesListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
+// RabbitMQMessageQueueList - Object that includes an array of RabbitMQMessageQueue and a possible link for next set
+type RabbitMQMessageQueueList struct {
+	// The link used to fetch the next page of RabbitMQMessageQueue list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of RabbitMQMessageQueue resources
+	Value []*RabbitMQMessageQueueResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueList.
+func (r RabbitMQMessageQueueList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", r.NextLink)
+	populate(objectMap, "value", r.Value)
+	return json.Marshal(objectMap)
+}
+
+// RabbitMQMessageQueueProperties - RabbitMQMessageQueue connector properties
+type RabbitMQMessageQueueProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// Secrets provided by resources,
+	Secrets *RabbitMQMessageQueuePropertiesSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueProperties.
+func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &r.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &r.Environment)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "queue":
+				err = unpopulate(val, &r.Queue)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, &r.Secrets)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RabbitMQMessageQueuePropertiesSecrets - Secrets provided by resources,
+type RabbitMQMessageQueuePropertiesSecrets struct {
+	// The connection string used to connect to this RabbitMQ instance
+	ConnectionString *string `json:"connectionString,omitempty"`
+}
+
+// RabbitMQMessageQueueResource - RabbitMQMessageQueue connector
+type RabbitMQMessageQueueResource struct {
+	TrackedResource
+	// REQUIRED; RabbitMQMessageQueue connector properties
+	Properties *RabbitMQMessageQueueProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResource.
+func (r RabbitMQMessageQueueResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", r.Properties)
+	populate(objectMap, "systemData", r.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResource.
+func (r *RabbitMQMessageQueueResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &r.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RabbitMQMessageQueuesCreateOrUpdateOptions contains the optional parameters for the RabbitMQMessageQueues.CreateOrUpdate method.
+type RabbitMQMessageQueuesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQMessageQueuesDeleteOptions contains the optional parameters for the RabbitMQMessageQueues.Delete method.
+type RabbitMQMessageQueuesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQMessageQueuesGetOptions contains the optional parameters for the RabbitMQMessageQueues.Get method.
+type RabbitMQMessageQueuesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQMessageQueuesListBySubscriptionOptions contains the optional parameters for the RabbitMQMessageQueues.ListBySubscription method.
+type RabbitMQMessageQueuesListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQMessageQueuesListOptions contains the optional parameters for the RabbitMQMessageQueues.List method.
+type RabbitMQMessageQueuesListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // RedisCacheList - Object that includes an array of RedisCache and a possible link for next set
 type RedisCacheList struct {
 	// The link used to fetch the next page of RedisCache list.

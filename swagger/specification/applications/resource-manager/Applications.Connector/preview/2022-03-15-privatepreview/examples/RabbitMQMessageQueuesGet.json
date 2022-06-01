@@ -1,0 +1,27 @@
+{
+    "parameters": {
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
+      "resourceGroupName": "testGroup",
+      "api-version": "2022-03-15-privatepreview",
+      "rabbitMQMessageQueueName": "rabbitmq0"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/rabbitMQMessageQueues/rabbitmq0",
+          "name": "rabbitmq0",
+          "type": "Applications.Connector/rabbitMQMessageQueues",
+          "properties": {
+            "provisioningState": "Succeeded",
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "queue": "rabbitmq0",
+            "secrets": {
+              "connectionString": "connection://string"
+            }
+          }
+        }
+      }
+    }
+  }
+  

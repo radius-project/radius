@@ -12,6 +12,18 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Connector/daprInvokeHttpRoutes' (ReadOnly, DeployTimeConstant): The resource type
 
+## Resource Applications.Connector/daprSecretStores@2022-03-15-privatepreview
+* **Valid Scope(s)**: ResourceGroup
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties) (Required): DaprSecretStore connector properties
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Connector/daprSecretStores' (ReadOnly, DeployTimeConstant): The resource type
+
 ## Resource Applications.Connector/daprStateStores@2022-03-15-privatepreview
 * **Valid Scope(s)**: ResourceGroup
 ### Properties
@@ -35,6 +47,42 @@
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Connector/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
+
+## Resource Applications.Connector/rabbitMQMessageQueues@2022-03-15-privatepreview
+* **Valid Scope(s)**: ResourceGroup
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [RabbitMQMessageQueueProperties](#rabbitmqmessagequeueproperties) (Required): RabbitMQMessageQueue connector properties
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Connector/rabbitMQMessageQueues' (ReadOnly, DeployTimeConstant): The resource type
+
+## Resource Applications.Connector/redisCaches@2022-03-15-privatepreview
+* **Valid Scope(s)**: ResourceGroup
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [RedisCacheProperties](#rediscacheproperties) (Required): RedisCache connector properties
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Connector/redisCaches' (ReadOnly, DeployTimeConstant): The resource type
+
+## Resource Applications.Connector/sqlDatabases@2022-03-15-privatepreview
+* **Valid Scope(s)**: ResourceGroup
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [SQLDatabaseProperties](#sqldatabaseproperties) (Required): SQLDatabse connector properties
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Connector/sqlDatabases' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Function listSecrets (Applications.Connector/mongoDatabases@2022-03-15-privatepreview)
 * **Resource**: Applications.Connector/mongoDatabases
@@ -61,6 +109,22 @@
 * **lastModifiedAt**: string: The timestamp of resource last modification (UTC)
 * **lastModifiedBy**: string: The identity that last modified the resource.
 * **lastModifiedByType**: 'Application' | 'Key' | 'ManagedIdentity' | 'User': The type of identity that created the resource.
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## DaprSecretStoreProperties
+### Properties
+* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
+* **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
+* **metadata**: any (Required): Any object
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+* **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+* **version**: string (Required): Dapr component version
 
 ## TrackedResourceTags
 ### Properties
@@ -114,6 +178,60 @@
 * **connectionString**: string: Connection string used to connect to the target Mongo database
 * **password**: string: Password to use when connecting to the target Mongo database
 * **username**: string: Username to use when connecting to the target Mongo database
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## RabbitMQMessageQueueProperties
+### Properties
+* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **queue**: string (Required): The name of the queue
+* **secrets**: [RabbitMQMessageQueuePropertiesSecrets](#rabbitmqmessagequeuepropertiessecrets): Secrets provided by resources,
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+
+## RabbitMQMessageQueuePropertiesSecrets
+### Properties
+* **connectionString**: string: The connection string used to connect to this RabbitMQ instance
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## RedisCacheProperties
+### Properties
+* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
+* **host**: string: The host name of the target redis cache
+* **port**: int: The port value of the target redis cache
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **resource**: string: Fully qualified resource ID of a supported resource with Redis API to use for this connector
+* **secrets**: [RedisCachePropertiesSecrets](#rediscachepropertiessecrets)
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+
+## RedisCachePropertiesSecrets
+### Properties
+* **connectionString**: string: The Redis connection string used to connect to the redis cache
+* **password**: string: The password for this Redis instance
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## SQLDatabaseProperties
+### Properties
+* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **database**: string: The name of the SQL database.
+* **environment**: string (Required): The resource id of the environment linked to the sqlDatabase connector
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **resource**: string: Fully qualified resource ID of a supported resource with SQL API to use for this connector
+* **server**: string: The fully qualified domain name of the SQL database.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
 ## TrackedResourceTags
 ### Properties

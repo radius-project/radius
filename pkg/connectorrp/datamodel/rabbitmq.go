@@ -10,31 +10,34 @@ import (
 	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
-// HTTPRoute represents HTTPRoute resource.
-type HTTPRoute struct {
+// RabbitMQMessageQueue represents RabbitMQMessageQueue connector resource.
+type RabbitMQMessageQueue struct {
 	basedatamodel.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
-	Properties HTTPRouteProperties `json:"properties"`
+	Properties RabbitMQMessageQueueProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	basedatamodel.InternalMetadata
 }
 
-// ResourceTypeName returns the qualified name of the resource
-func (h HTTPRoute) ResourceTypeName() string {
-	return "Applications.Core/httpRoutes"
+func (rabbitmq RabbitMQMessageQueue) ResourceTypeName() string {
+	return "Applications.Connector/rabbitMQMessageQueues"
 }
 
-// HTTPRouteProperties represents the properties of HTTPRoute.
-type HTTPRouteProperties struct {
+// RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue resource.
+type RabbitMQMessageQueueProperties struct {
 	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
+	Environment       string                           `json:"environment"`
 	Application       string                           `json:"application,omitempty"`
-	Hostname          string                           `json:"hostname,omitempty"`
-	Port              int32                            `json:"port,omitempty"`
-	Scheme            string                           `json:"scheme,omitempty"`
-	URL               string                           `json:"url,omitempty"`
+	Queue             string                           `json:"queue"`
+	Secrets           RabbitMQSecrets                  `json:"secrets,omitempty"`
+}
+
+// Secrets values consisting of secrets provided for the resource
+type RabbitMQSecrets struct {
+	ConnectionString string `json:"connectionString"`
 }
