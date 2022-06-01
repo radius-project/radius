@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	tsv1 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha4"
 )
 
 type Renderer struct {
@@ -58,7 +59,9 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	outputs := []outputresource.OutputResource{}
 
 	service := r.makeService(resource, route)
+	trafficsplit := r.makeTrafficSplit(resource, route, service)
 	outputs = append(outputs, service)
+	outputs = append(outputs, trafficsplit)
 
 	return renderers.RendererOutput{
 		Resources:      outputs,
@@ -94,4 +97,35 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 	}
 
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
+}
+
+func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route radclient.HTTPRouteProperties, service outputresource.OutputResource) outputresource.OutputResource {
+	trafficsplit := &tsv1.TrafficSplit{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "traffic-split",
+			APIVersion: "split.smi-spec.io/v1alpha4",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), //"osm-traffic-split",
+			Namespace: resource.ApplicationName,
+			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+		},
+		//Double check
+		Spec: tsv1.TrafficSplitSpec{
+			// default? Maybe something like {namespace}.default.svc.cluster.local
+			Service: "bookstore.default.svc.cluster.local",
+			Backends: []tsv1.TrafficSplitBackend{
+				{
+					Service: "bookstore-v1",
+					Weight:  90, //input
+				},
+				{
+					Service: "bookstore-v2",
+					Weight:  10,
+				},
+			},
+		},
+	}
+
+	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, trafficsplit, trafficsplit.ObjectMeta)
 }
