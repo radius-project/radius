@@ -548,7 +548,7 @@ func startEnvironment() (runtimeclient.Client, *envtest.Environment, error) {
 	}
 
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "..", "deploy", "crds", "ucpd")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "..", "deploy", "Chart", "crds", "ucpd")},
 		ErrorIfCRDPathMissing: true,
 		BinaryAssetsDirectory: assetDir,
 	}

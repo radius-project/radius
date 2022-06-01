@@ -115,7 +115,7 @@ go run cmd/rp/main.go
 
 Launch VSCode from the same terminal where you configurred the environment variables.
 
-Open `cmd/rp/main.go` and then launch the debugger from VSCode.
+Open `cmd/radius-rp/main.go` and then launch the debugger from VSCode.
 
 ## Next: Testing locally
 

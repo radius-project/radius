@@ -3,6 +3,15 @@
     "name": "route0",
     "type": "Applications.Core/httpRoutes",
     "properties": {
+        "status": {
+            "outputResources": [{
+              "LocalID": "Deployment",
+              "ResourceType": {
+                "Type": "HttpRoute",
+                "Provider": "kubernetes"
+              }
+            }]
+        },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
         "hostname": "localhost",
         "port":8080,

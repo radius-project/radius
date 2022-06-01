@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // RedisCachesClient contains the methods for the RedisCaches group.
 // Don't use this type directly, use NewRedisCachesClient() instead.
 type RedisCachesClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewRedisCachesClient creates a new instance of RedisCachesClient with the specified values.
-func NewRedisCachesClient(con *connection, subscriptionID string) *RedisCachesClient {
-	return &RedisCachesClient{con: con, subscriptionID: subscriptionID}
+func NewRedisCachesClient(con *arm.Connection, subscriptionID string) *RedisCachesClient {
+	return &RedisCachesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a RedisCache resource
@@ -38,7 +40,7 @@ func (client *RedisCachesClient) CreateOrUpdate(ctx context.Context, resourceGro
 	if err != nil {
 		return RedisCachesCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return RedisCachesCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *RedisCachesClient) Delete(ctx context.Context, resourceGroupName s
 	if err != nil {
 		return RedisCachesDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return RedisCachesDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, resour
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *RedisCachesClient) Get(ctx context.Context, resourceGroupName stri
 	if err != nil {
 		return RedisCachesGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return RedisCachesGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *RedisCachesClient) getCreateRequest(ctx context.Context, resourceG
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *RedisCachesClient) listCreateRequest(ctx context.Context, resource
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *RedisCachesClient) listBySubscriptionCreateRequest(ctx context.Con
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,11 @@ resource app 'radius.dev/Application@v1alpha3' = {
         env: {
           DBCONNECTION: redis.connectionString()
         }
+        readinessProbe:{
+          kind:'httpGet'
+          containerPort:3000
+          path: '/healthz'
+        }
       }
       connections: {
         redis: {
@@ -39,7 +44,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource redisRoute 'HttpRoute' = {
     name: 'redis-route'
     properties: {
-      port: 6379
+      port: 80
     }
   }
 

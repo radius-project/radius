@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -620,7 +621,7 @@ func convertSecretValues(input map[string]renderers.SecretValueReference) map[st
 			LocalID:       v.LocalID,
 			Action:        v.Action,
 			ValueSelector: v.ValueSelector,
-			Value:         &v.Value,
+			Value:         to.StringPtr(v.Value),
 			Transformer:   v.Transformer,
 		}
 	}
