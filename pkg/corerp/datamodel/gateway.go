@@ -30,6 +30,7 @@ func (g Gateway) ResourceTypeName() string {
 
 // GatewayProperties represents the properties of Gateway.
 type GatewayProperties struct {
+	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Application       string                           `json:"application,omitempty"`
 	Internal          bool                             `json:"internal,omitempty"`

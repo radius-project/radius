@@ -10,6 +10,60 @@ package v20220315privatepreview
 
 import "net/http"
 
+// DaprInvokeHTTPRoutesCreateOrUpdateResponse contains the response from method DaprInvokeHTTPRoutes.CreateOrUpdate.
+type DaprInvokeHTTPRoutesCreateOrUpdateResponse struct {
+	DaprInvokeHTTPRoutesCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesCreateOrUpdateResult contains the result from method DaprInvokeHTTPRoutes.CreateOrUpdate.
+type DaprInvokeHTTPRoutesCreateOrUpdateResult struct {
+	DaprInvokeHTTPRouteResource
+}
+
+// DaprInvokeHTTPRoutesDeleteResponse contains the response from method DaprInvokeHTTPRoutes.Delete.
+type DaprInvokeHTTPRoutesDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesGetResponse contains the response from method DaprInvokeHTTPRoutes.Get.
+type DaprInvokeHTTPRoutesGetResponse struct {
+	DaprInvokeHTTPRoutesGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesGetResult contains the result from method DaprInvokeHTTPRoutes.Get.
+type DaprInvokeHTTPRoutesGetResult struct {
+	DaprInvokeHTTPRouteResource
+}
+
+// DaprInvokeHTTPRoutesListBySubscriptionResponse contains the response from method DaprInvokeHTTPRoutes.ListBySubscription.
+type DaprInvokeHTTPRoutesListBySubscriptionResponse struct {
+	DaprInvokeHTTPRoutesListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesListBySubscriptionResult contains the result from method DaprInvokeHTTPRoutes.ListBySubscription.
+type DaprInvokeHTTPRoutesListBySubscriptionResult struct {
+	DaprInvokeHTTPRouteList
+}
+
+// DaprInvokeHTTPRoutesListResponse contains the response from method DaprInvokeHTTPRoutes.List.
+type DaprInvokeHTTPRoutesListResponse struct {
+	DaprInvokeHTTPRoutesListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprInvokeHTTPRoutesListResult contains the result from method DaprInvokeHTTPRoutes.List.
+type DaprInvokeHTTPRoutesListResult struct {
+	DaprInvokeHTTPRouteList
+}
+
 // DaprSecretStoresCreateOrUpdateResponse contains the response from method DaprSecretStores.CreateOrUpdate.
 type DaprSecretStoresCreateOrUpdateResponse struct {
 	DaprSecretStoresCreateOrUpdateResult
@@ -62,6 +116,60 @@ type DaprSecretStoresListResponse struct {
 // DaprSecretStoresListResult contains the result from method DaprSecretStores.List.
 type DaprSecretStoresListResult struct {
 	DaprSecretStoreList
+}
+
+// DaprStateStoresCreateOrUpdateResponse contains the response from method DaprStateStores.CreateOrUpdate.
+type DaprStateStoresCreateOrUpdateResponse struct {
+	DaprStateStoresCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresCreateOrUpdateResult contains the result from method DaprStateStores.CreateOrUpdate.
+type DaprStateStoresCreateOrUpdateResult struct {
+	DaprStateStoreResource
+}
+
+// DaprStateStoresDeleteResponse contains the response from method DaprStateStores.Delete.
+type DaprStateStoresDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresGetResponse contains the response from method DaprStateStores.Get.
+type DaprStateStoresGetResponse struct {
+	DaprStateStoresGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresGetResult contains the result from method DaprStateStores.Get.
+type DaprStateStoresGetResult struct {
+	DaprStateStoreResource
+}
+
+// DaprStateStoresListBySubscriptionResponse contains the response from method DaprStateStores.ListBySubscription.
+type DaprStateStoresListBySubscriptionResponse struct {
+	DaprStateStoresListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresListBySubscriptionResult contains the result from method DaprStateStores.ListBySubscription.
+type DaprStateStoresListBySubscriptionResult struct {
+	DaprStateStoreList
+}
+
+// DaprStateStoresListResponse contains the response from method DaprStateStores.List.
+type DaprStateStoresListResponse struct {
+	DaprStateStoresListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprStateStoresListResult contains the result from method DaprStateStores.List.
+type DaprStateStoresListResult struct {
+	DaprStateStoreList
 }
 
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
@@ -128,6 +236,60 @@ type MongoDatabasesListSecretsResponse struct {
 // MongoDatabasesListSecretsResult contains the result from method MongoDatabases.ListSecrets.
 type MongoDatabasesListSecretsResult struct {
 	MongoDatabaseSecrets
+}
+
+// RabbitMQMessageQueuesCreateOrUpdateResponse contains the response from method RabbitMQMessageQueues.CreateOrUpdate.
+type RabbitMQMessageQueuesCreateOrUpdateResponse struct {
+	RabbitMQMessageQueuesCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesCreateOrUpdateResult contains the result from method RabbitMQMessageQueues.CreateOrUpdate.
+type RabbitMQMessageQueuesCreateOrUpdateResult struct {
+	RabbitMQMessageQueueResource
+}
+
+// RabbitMQMessageQueuesDeleteResponse contains the response from method RabbitMQMessageQueues.Delete.
+type RabbitMQMessageQueuesDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesGetResponse contains the response from method RabbitMQMessageQueues.Get.
+type RabbitMQMessageQueuesGetResponse struct {
+	RabbitMQMessageQueuesGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesGetResult contains the result from method RabbitMQMessageQueues.Get.
+type RabbitMQMessageQueuesGetResult struct {
+	RabbitMQMessageQueueResource
+}
+
+// RabbitMQMessageQueuesListBySubscriptionResponse contains the response from method RabbitMQMessageQueues.ListBySubscription.
+type RabbitMQMessageQueuesListBySubscriptionResponse struct {
+	RabbitMQMessageQueuesListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesListBySubscriptionResult contains the result from method RabbitMQMessageQueues.ListBySubscription.
+type RabbitMQMessageQueuesListBySubscriptionResult struct {
+	RabbitMQMessageQueueList
+}
+
+// RabbitMQMessageQueuesListResponse contains the response from method RabbitMQMessageQueues.List.
+type RabbitMQMessageQueuesListResponse struct {
+	RabbitMQMessageQueuesListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesListResult contains the result from method RabbitMQMessageQueues.List.
+type RabbitMQMessageQueuesListResult struct {
+	RabbitMQMessageQueueList
 }
 
 // RedisCachesCreateOrUpdateResponse contains the response from method RedisCaches.CreateOrUpdate.

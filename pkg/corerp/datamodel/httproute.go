@@ -30,6 +30,7 @@ func (h HTTPRoute) ResourceTypeName() string {
 
 // HTTPRouteProperties represents the properties of HTTPRoute.
 type HTTPRouteProperties struct {
+	basedatamodel.BasicResourceProperties
 	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
 	Application       string                           `json:"application,omitempty"`
 	Hostname          string                           `json:"hostname,omitempty"`

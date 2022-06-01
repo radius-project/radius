@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // DaprSecretStoresClient contains the methods for the DaprSecretStores group.
 // Don't use this type directly, use NewDaprSecretStoresClient() instead.
 type DaprSecretStoresClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewDaprSecretStoresClient creates a new instance of DaprSecretStoresClient with the specified values.
-func NewDaprSecretStoresClient(con *connection, subscriptionID string) *DaprSecretStoresClient {
-	return &DaprSecretStoresClient{con: con, subscriptionID: subscriptionID}
+func NewDaprSecretStoresClient(con *arm.Connection, subscriptionID string) *DaprSecretStoresClient {
+	return &DaprSecretStoresClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a DaprSecretStore resource
@@ -38,7 +40,7 @@ func (client *DaprSecretStoresClient) CreateOrUpdate(ctx context.Context, resour
 	if err != nil {
 		return DaprSecretStoresCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprSecretStoresCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *DaprSecretStoresClient) createOrUpdateCreateRequest(ctx context.Co
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprSecretStoreName}", url.PathEscape(daprSecretStoreName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *DaprSecretStoresClient) Delete(ctx context.Context, resourceGroupN
 	if err != nil {
 		return DaprSecretStoresDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprSecretStoresDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *DaprSecretStoresClient) deleteCreateRequest(ctx context.Context, r
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprSecretStoreName}", url.PathEscape(daprSecretStoreName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *DaprSecretStoresClient) Get(ctx context.Context, resourceGroupName
 	if err != nil {
 		return DaprSecretStoresGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprSecretStoresGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *DaprSecretStoresClient) getCreateRequest(ctx context.Context, reso
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprSecretStoreName}", url.PathEscape(daprSecretStoreName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *DaprSecretStoresClient) listCreateRequest(ctx context.Context, res
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *DaprSecretStoresClient) listBySubscriptionCreateRequest(ctx contex
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

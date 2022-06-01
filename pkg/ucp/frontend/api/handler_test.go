@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -161,7 +162,7 @@ func Test_Handler_ProxyPlaneRequest(t *testing.T) {
 	dbClient := store.NewMockStorageClient(ctrl)
 	handler := initializeTestEnv(t, ucp, dbClient)
 
-	planesUCP.EXPECT().ProxyRequest(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, db store.StorageClient, w http.ResponseWriter, r *http.Request, path string) (rest.Response, error) {
+	planesUCP.EXPECT().ProxyRequest(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, db store.StorageClient, w http.ResponseWriter, r *http.Request, incomingURL *url.URL) (rest.Response, error) {
 		return rest.NewOKResponse(map[string]interface{}{}), nil // Empty JSON
 	})
 
