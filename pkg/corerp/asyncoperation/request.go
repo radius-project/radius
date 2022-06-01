@@ -18,11 +18,13 @@ var (
 
 // Request is a message used for async request queue message broker.
 type Request struct {
+	// APIVersion represents the api-version of operation request.
+	APIVersion string `json:"apiVersion"`
+
 	// OperationID represents the unique id of the async operation.
 	OperationID uuid.UUID `json:"asyncOperationID"`
 	// OperationType represents the type of operation.
 	OperationType string `json:"operationType"`
-
 	// ResourceID represents the id of the resource which requires async operation.
 	ResourceID string `json:"resourceID"`
 
