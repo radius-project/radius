@@ -132,7 +132,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	logger := logr.FromContextOrDiscard(ctx)
 
 	asyncReq := message.Data.(*asyncoperation.Request)
-	asyncReqCtx, opCancel := context.WithCancel(context.TODO())
+	asyncReqCtx, opCancel := context.WithCancel(ctx)
 	defer opCancel()
 
 	opDone := make(chan struct{}, 1)
