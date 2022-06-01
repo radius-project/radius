@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -120,6 +121,10 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				}
 				return
 			}
+
+			// TODO: Handle the edge cases:
+			// 1. The same message is delivered twice in multiple instances.
+			// 2. provisioningState is not matched between resource and operationStatuses
 
 			opCtx := logr.NewContext(ctx, opLogger)
 			w.runOperation(opCtx, msgreq, ctrl)
@@ -242,9 +247,12 @@ func updateResourceState(ctx context.Context, sc store.StorageClient, id string,
 		return errPropertiesNotFound
 	}
 
-	if status, ok := objmap["provisioningState"].(string); !ok {
+	if pState, ok := objmap["provisioningState"].(string); !ok {
 		return errProvisioningStateNotFound
-	} else if status == string(state) {
+	} else if strings.EqualFold(pState, string(state)) {
+		// Do not update it if provisioning state is already the target state.
+		// This happens when redeploying worker can stop completing message.
+		// So, provisioningState in Resource is updated but not in operationStatus record.
 		return nil
 	}
 
