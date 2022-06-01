@@ -12,16 +12,22 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-type CreateContainerController struct {
+var _ asyncoperation.Controller = (*UpdateContainer)(nil)
+
+// UpdateContainer is the async operation controller to create or update Applications.Core/Containers resource.
+type UpdateContainer struct {
 	asyncoperation.BaseController
 }
 
-func NewCreateContainerController(store store.StorageClient) (asyncoperation.Controller, error) {
-	return &CreateContainerController{
+// NewUpdateContainer creates the UpdateContainer controller instance.
+func NewUpdateContainer(store store.StorageClient) (asyncoperation.Controller, error) {
+	return &UpdateContainer{
 		BaseController: asyncoperation.NewBaseAsyncController(store),
 	}, nil
 }
 
-func (ctrl *CreateContainerController) Run(ctx context.Context, request *asyncoperation.Request) (asyncoperation.Result, error) {
+func (ctrl *UpdateContainer) Run(ctx context.Context, request *asyncoperation.Request) (asyncoperation.Result, error) {
+	// TODO: Implement Create or Update Container async operation.
+
 	return asyncoperation.Result{}, nil
 }
