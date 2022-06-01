@@ -12,13 +12,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/Azure/radius/pkg/azure/clients"
 	"github.com/Azure/radius/pkg/cli"
 	"github.com/Azure/radius/pkg/cli/bicep"
 	"github.com/Azure/radius/pkg/cli/output"
 	"github.com/Azure/radius/pkg/version"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -81,6 +82,10 @@ func init() {
 
 	outputDescription := fmt.Sprintf("output format (default is %s, supported formats are %s)", output.DefaultFormat, strings.Join(output.SupportedFormats(), ", "))
 	RootCmd.PersistentFlags().StringP("output", "o", "table", outputDescription)
+
+	// Get Feature Flags
+	viper.SetEnvPrefix("rad") // Becomes "RAD_"
+	viper.AutomaticEnv()
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

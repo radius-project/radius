@@ -13,14 +13,16 @@ import (
 	"path"
 	"runtime"
 
-	"github.com/Azure/radius/pkg/version"
 	"github.com/mitchellh/go-homedir"
+	"github.com/spf13/viper"
+
+	"github.com/Azure/radius/pkg/version"
 )
 
 const radBicepEnvVar = "RAD_BICEP"
 
 // Placeholders are for: channel, platform, filename
-const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/bicep/%s/%s/%s"
+const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/%s/%s/%s/%s"
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
 func IsBicepInstalled() (bool, error) {
@@ -134,32 +136,34 @@ func GetLocalBicepFilepath() (string, error) {
 }
 
 func getBicepFilename() (string, error) {
-	if runtime.GOOS == "darwin" {
+	switch runtime.GOOS {
+	case "darwin", "linux":
 		return "rad-bicep", nil
-	} else if runtime.GOOS == "linux" {
-		return "rad-bicep", nil
-	} else if runtime.GOOS == "windows" {
+	case "windows":
 		return "rad-bicep.exe", nil
-	} else {
+	default:
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 }
 
 func getDownloadURI() (string, error) {
+	dirPrefix := "bicep"
+	if viper.GetBool("bicep-extensibility-enabled") {
+		dirPrefix = "bicep-extensibility"
+	}
+
 	filename, err := getBicepFilename()
 	if err != nil {
 		return "", err
 	}
 
-	if runtime.GOOS == "darwin" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "macos-x64", filename), nil
-	} else if runtime.GOOS == "linux" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "linux-x64", filename), nil
-	} else if runtime.GOOS == "windows" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "windows-x64", filename), nil
-	} else {
-		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
+	if runtime.GOOS == "darwin" ||
+		runtime.GOOS == "linux" ||
+		runtime.GOOS == "windows" {
+		uri := fmt.Sprintf(downloadURIFmt, dirPrefix, version.Channel(), fmt.Sprint(runtime.GOOS, "-x64"), filename)
+		return uri, nil
 	}
+	return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
 func getBicepOverridePath() (string, error) {
