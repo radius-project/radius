@@ -117,13 +117,13 @@ func TestGetMessageExtendDuration(t *testing.T) {
 			in:  time.Now().Add(-messageExtendMargin),
 			out: minMessageLockDuration,
 		}, {
-			in:  time.Now().Add(time.Duration(200) * time.Second),
-			out: time.Duration(170)*time.Second - messageExtendMargin,
+			in:  time.Now().Add(time.Duration(180) * time.Second),
+			out: time.Duration(180)*time.Second - messageExtendMargin,
 		},
 	}
 
 	for _, tt := range tests {
 		d := getMessageExtendDuration(tt.in)
-		require.Equal(t, tt.out, d)
+		require.Equal(t, tt.out, d.Round(time.Second))
 	}
 }
