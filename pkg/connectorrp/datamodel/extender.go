@@ -85,12 +85,6 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
-func unpopulate(data json.RawMessage, v interface{}) error {
-	if data == nil {
-		return nil
-	}
-	return json.Unmarshal(data, v)
-}
 
 func unmarshalInternal(b *basedatamodel.BasicResourceProperties, rawMsg map[string]json.RawMessage) error {
 	for key, val := range rawMsg {
