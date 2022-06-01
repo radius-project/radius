@@ -45,7 +45,7 @@ func ARMTestContextFromRequest(req *http.Request) context.Context {
 	armctx, _ := servicecontext.FromARMRequest(req, "")
 	ctx = servicecontext.WithARMRequestContext(ctx, armctx)
 	ctx = hostoptions.WithContext(ctx, &hostoptions.ProviderConfig{
-		CloudEnv: hostoptions.CloudEnvironmentOptions{RoleLocation: "West US"},
+		Env: hostoptions.EnvironmentOptions{RoleLocation: "West US"},
 	})
 	return ctx
 }

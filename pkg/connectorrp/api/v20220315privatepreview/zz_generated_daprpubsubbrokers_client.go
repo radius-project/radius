@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 // DaprPubSubBrokersClient contains the methods for the DaprPubSubBrokers group.
 // Don't use this type directly, use NewDaprPubSubBrokersClient() instead.
 type DaprPubSubBrokersClient struct {
-	con *connection
+	ep string
+	pl runtime.Pipeline
 	subscriptionID string
 }
 
 // NewDaprPubSubBrokersClient creates a new instance of DaprPubSubBrokersClient with the specified values.
-func NewDaprPubSubBrokersClient(con *connection, subscriptionID string) *DaprPubSubBrokersClient {
-	return &DaprPubSubBrokersClient{con: con, subscriptionID: subscriptionID}
+func NewDaprPubSubBrokersClient(con *arm.Connection, subscriptionID string) *DaprPubSubBrokersClient {
+	return &DaprPubSubBrokersClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a DaprPubSubBroker resource
@@ -38,7 +40,7 @@ func (client *DaprPubSubBrokersClient) CreateOrUpdate(ctx context.Context, resou
 	if err != nil {
 		return DaprPubSubBrokersCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprPubSubBrokersCreateOrUpdateResponse{}, err
 	}
@@ -63,7 +65,7 @@ func (client *DaprPubSubBrokersClient) createOrUpdateCreateRequest(ctx context.C
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubBrokerName}", url.PathEscape(daprPubSubBrokerName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (client *DaprPubSubBrokersClient) Delete(ctx context.Context, resourceGroup
 	if err != nil {
 		return DaprPubSubBrokersDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprPubSubBrokersDeleteResponse{}, err
 	}
@@ -128,7 +130,7 @@ func (client *DaprPubSubBrokersClient) deleteCreateRequest(ctx context.Context, 
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubBrokerName}", url.PathEscape(daprPubSubBrokerName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +161,7 @@ func (client *DaprPubSubBrokersClient) Get(ctx context.Context, resourceGroupNam
 	if err != nil {
 		return DaprPubSubBrokersGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return DaprPubSubBrokersGetResponse{}, err
 	}
@@ -184,7 +186,7 @@ func (client *DaprPubSubBrokersClient) getCreateRequest(ctx context.Context, res
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{daprPubSubBrokerName}", url.PathEscape(daprPubSubBrokerName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (client *DaprPubSubBrokersClient) listCreateRequest(ctx context.Context, re
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func (client *DaprPubSubBrokersClient) listBySubscriptionCreateRequest(ctx conte
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

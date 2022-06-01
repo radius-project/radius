@@ -14,6 +14,11 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
+const (
+	// DefaultRetryAfter is the default value in seconds for the Retry-After header.
+	DefaultRetryAfter = "60"
+)
+
 // AsyncOperationResult is the response of async operation controller.
 type AsyncOperationResult struct {
 	// OperationID represents the async operation id.

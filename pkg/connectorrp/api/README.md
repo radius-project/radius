@@ -35,10 +35,13 @@ These settings apply only when `--tag=connector-2022-03-15-privatepreview` is sp
 ```yaml $(tag) == 'connector-2022-03-15-privatepreview'
 input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprSecretStores.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/sqlDatabases.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/redisCaches.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprPubSubBrokers.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
 ```
 
 ### Common
@@ -51,6 +54,7 @@ use: "@autorest/go@4.0.0-preview.29"
 module-version: 0.0.1
 file-prefix: zz_generated_
 license-header: MICROSOFT_MIT_NO_VERSION
+azure-arm: true
 ```
 
 ### Output

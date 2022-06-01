@@ -131,7 +131,6 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 		return fmt.Errorf("Could not find ucp request data in %s header", headerName)
 	}
 	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
-	fmt.Println(requestInfo)
 	// Doing a reverse lookup of the URL of the responding server to find the corresponding plane ID
 	if requestInfo.PlaneURL == "" {
 		return fmt.Errorf("Could not find plane URL data in %s header", headerName)

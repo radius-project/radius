@@ -47,7 +47,7 @@ func (p *ApplicationsListBySubscriptionPager) NextPage(ctx context.Context) bool
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -101,7 +101,7 @@ func (p *ApplicationsListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -155,7 +155,7 @@ func (p *EnvironmentsListBySubscriptionPager) NextPage(ctx context.Context) bool
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -209,7 +209,7 @@ func (p *EnvironmentsListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -263,7 +263,7 @@ func (p *GatewaysListBySubscriptionPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -317,7 +317,7 @@ func (p *GatewaysListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -371,7 +371,7 @@ func (p *HTTPRoutesListBySubscriptionPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false
@@ -425,7 +425,7 @@ func (p *HTTPRoutesListPager) NextPage(ctx context.Context) bool {
 		p.err = err
 		return false
 	}
-	resp, err := p.	client.con.Pipeline().Do(req)
+	resp, err := p.	client.pl.Do(req)
 	if err != nil {
 		p.err = err
 		return false

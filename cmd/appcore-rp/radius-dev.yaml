@@ -1,47 +1,19 @@
 # This is an example of configuration file.
-cloudEnvironment:
-  name: AzureCloud
-  roleLocation: West US
-identity: # 1P AAD APP authentication
-  clientId: "PLACEHOLDER"
-  instance: "https://login.windows.net"
-  tenantId: "common"
-  armEndpoint: "https://management.azure.com:443"
-  audience: "https://management.core.windows.net"
-  pemCertPath: "/var/certs/rp-aad-app.pem"
+environment:
+  name: Dev
 storageProvider:
-  provider: "cosmosdb"
-  cosmosdb:
-    # Create your own SQL API Cosmos DB account and set url in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_URL environment variable
-    url: https://radius-eastus-test.documents.azure.com:443/
-    database: applicationscore
-    # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
-    masterKey: set-me-in-a-different-way
-  
-  # Uncomment to use the Kubernetes APIServer store. 
-  # This supports two modes:
-  # - incluster = true => uses the credentials/service-account of a pod. FOR PRODUCTION USE.
-  # - incluster = false => uses your LOCAL kubernetes context. For TESTING
-  #
-  # provider: "apiserver"
-  # apiserver:
-  #   incluster: false
-  #   context: ''
-  #   namespace: 'default'
-
-  # Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
-  # provider: "etcd"
-  # etcd:
-  #   inmemory: true
+  provider: "etcd"
+  etcd:
+    inmemory: true
+metricsProvider:
+  prometheus:
+    port: 2222
+    endpoint: "/metrics"
+featureFlags:
+  - "PLACEHOLDER"
 server:
   host: "0.0.0.0"
   port: 8080
   authType: "ClientCertificate"
-  enableArmAuth: true
+  enableArmAuth: false
   armMetadataEndpoint: "https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01"
-metricsProvider:
-  prometheus:
-    endpoint: "/metrics"
-featureFlags:
-  - "PLACEHOLDER"
-  

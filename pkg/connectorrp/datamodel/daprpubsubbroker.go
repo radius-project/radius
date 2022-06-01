@@ -118,10 +118,3 @@ func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }
-
-func unpopulate(data json.RawMessage, v interface{}) error {
-	if data == nil {
-		return nil
-	}
-	return json.Unmarshal(data, v)
-}

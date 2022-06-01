@@ -7,6 +7,7 @@ package asyncoperation
 
 import (
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
 // AsyncOperationStatus is the datamodel for Async operation statuses.
@@ -27,4 +28,10 @@ type AsyncOperationStatus struct {
 
 	// ClientObjectID is async operation caller's client id such as the value from x-ms-client-object-id header.
 	ClientObjectID string `json:"clientObjectID,omitempty"`
+}
+
+func (aos *AsyncOperationStatus) InTerminalState() bool {
+	return aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateSucceeded ||
+		aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateFailed ||
+		aos.AsyncOperationStatus.Status == basedatamodel.ProvisioningStateCanceled
 }

@@ -26,6 +26,11 @@ func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.HTTPRouteProperties{
+			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+				Status: basedatamodel.ResourceStatus{
+					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+				},
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Application:       to.String(src.Properties.Application),
 			Hostname:          to.String(src.Properties.Hostname),
@@ -55,6 +60,11 @@ func (dst *HTTPRouteResource) ConvertFrom(src api.DataModelInterface) error {
 	dst.Location = to.StringPtr(route.Location)
 	dst.Tags = *to.StringMapPtr(route.Tags)
 	dst.Properties = &HTTPRouteProperties{
+		BasicResourceProperties: BasicResourceProperties{
+			Status: &ResourceStatus{
+				OutputResources: route.Properties.BasicResourceProperties.Status.OutputResources,
+			},
+		},
 		ProvisioningState: fromProvisioningStateDataModel(route.Properties.ProvisioningState),
 		Application:       to.StringPtr(route.Properties.Application),
 		Hostname:          to.StringPtr(route.Properties.Hostname),
