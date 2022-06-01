@@ -32,11 +32,11 @@ func NewControllerRegistry(sp dataprovider.DataStorageProvider) *ControllerRegis
 }
 
 // Register registers controller.
-func (h *ControllerRegistry) Register(ctx context.Context, operationName, resourceTypeName string, factoryFn ControllerFactoryFunc) error {
+func (h *ControllerRegistry) Register(ctx context.Context, operationType asyncoperation.OperationType, factoryFn ControllerFactoryFunc) error {
 	h.ctrlMapMu.Lock()
 	defer h.ctrlMapMu.Unlock()
 
-	sc, err := h.sp.GetStorageClient(ctx, resourceTypeName)
+	sc, err := h.sp.GetStorageClient(ctx, operationType.TypeName)
 	if err != nil {
 		return err
 	}
@@ -46,16 +46,16 @@ func (h *ControllerRegistry) Register(ctx context.Context, operationName, resour
 		return err
 	}
 
-	h.ctrlMap[operationName] = ctrl
+	h.ctrlMap[operationType.String()] = ctrl
 	return nil
 }
 
 // Get gets the registered async controller instance.
-func (h *ControllerRegistry) Get(operationName string) asyncoperation.Controller {
+func (h *ControllerRegistry) Get(operationType asyncoperation.OperationType) asyncoperation.Controller {
 	h.ctrlMapMu.RLock()
 	defer h.ctrlMapMu.RUnlock()
 
-	if h, ok := h.ctrlMap[operationName]; ok {
+	if h, ok := h.ctrlMap[operationType.String()]; ok {
 		return h
 	}
 

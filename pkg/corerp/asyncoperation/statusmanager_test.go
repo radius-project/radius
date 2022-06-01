@@ -48,7 +48,7 @@ var reqCtx = &servicecontext.ARMRequestContext{
 	OperationID:    uuid.Must(uuid.NewRandom()),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",
-	OperationName:  "op-name",
+	OperationType:  "APPLICATIONS.CORE/ENVRIONMENTS|PUT",
 	Traceparent:    "trace",
 	AcceptLanguage: "lang",
 }
@@ -63,7 +63,6 @@ var testAos = &Status{
 		StartTime: time.Now().UTC(),
 	},
 	LinkedResourceID: uuid.New().String(),
-	OperationName:    "test-operation",
 	Location:         "test-location",
 	HomeTenantID:     "test-home-tenant-id",
 	ClientObjectID:   "test-client-object-id",
@@ -119,7 +118,7 @@ func TestCreateAsyncOperationStatus(t *testing.T) {
 				aomTest.storeClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
 			}
 
-			err := aomTest.manager.Create(context.TODO(), testRootScope, opID, reqCtx, "linked-resource-id", "operation-name", operationTimeoutDuration)
+			err := aomTest.manager.QueueAsyncOperation(context.TODO(), reqCtx, operationTimeoutDuration)
 
 			if tt.SaveErr == nil && tt.EnqueueErr == nil && tt.DeleteErr == nil {
 				require.NoError(t, err)

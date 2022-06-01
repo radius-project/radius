@@ -44,7 +44,7 @@ func getTestMessage() (*queue.Message, *atomic.Int32, *atomic.Int32) {
 		},
 		Data: &asyncoperation.Request{
 			OperationID:      uuid.New(),
-			OperationName:    "APPLICATIONSCORE.ENVIRONMENTS.PUT",
+			OperationType:    "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
 			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 			CorrelationID:    uuid.NewString(),
 			OperationTimeout: asyncoperation.DefaultAsyncOperationTimeout,
@@ -62,7 +62,7 @@ func getTestMessage() (*queue.Message, *atomic.Int32, *atomic.Int32) {
 	return testMessage, finished, extended
 }
 
-func getTestMocks(mctrl *gomock.Controller) (*store.MockStorageClient, *asyncoperation.MockAsyncOperationsManager) {
+func getTestMocks(mctrl *gomock.Controller) (*store.MockStorageClient, *asyncoperation.MockStatusManager) {
 	mockSC := store.NewMockStorageClient(mctrl)
 	mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&store.Object{
@@ -75,8 +75,8 @@ func getTestMocks(mctrl *gomock.Controller) (*store.MockStorageClient, *asyncope
 		}, nil).AnyTimes()
 	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	mockOpManager := asyncoperation.NewMockAsyncOperationsManager(mctrl)
-	mockOpManager.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockOpManager := asyncoperation.NewMockStatusManager(mctrl)
+	mockOpManager.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	return mockSC, mockOpManager
 }
@@ -95,7 +95,7 @@ func TestStart_UnknownOperation(t *testing.T) {
 	testMessage, _, _ := getTestMessage()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	err := registry.Register(ctx, "UNDEFINED", "Applications.Core/environments", func(s store.StorageClient) (asyncoperation.Controller, error) {
+	err := registry.Register(ctx, asyncoperation.OperationType{TypeName: "Applications.Core/environments", Method: "UNDEFINED"}, func(s store.StorageClient) (asyncoperation.Controller, error) {
 		return nil, nil
 	})
 	require.NoError(t, err)
@@ -134,7 +134,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	testMessage, _, _ := getTestMessage()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	err := registry.Register(ctx, "APPLICATIONSCORE.ENVIRONMENTS.PUT", "Applications.Core/environments",
+	err := registry.Register(ctx, asyncoperation.OperationType{TypeName: "Applications.Core/environments", Method: "PUT"},
 		func(s store.StorageClient) (asyncoperation.Controller, error) {
 			return nil, nil
 		})
@@ -184,13 +184,13 @@ func TestStart_MaxConcurrency(t *testing.T) {
 			if maxConcurrency < cnt.Load() {
 				maxConcurrency = cnt.Load()
 			}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			cnt.Dec()
 			return asyncoperation.Result{}, nil
 		},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	err := registry.Register(ctx, "APPLICATIONSCORE.ENVIRONMENTS.PUT", "Applications.Core/environments",
+	err := registry.Register(ctx, asyncoperation.OperationType{TypeName: "Applications.Core/environments", Method: "PUT"},
 		func(s store.StorageClient) (asyncoperation.Controller, error) {
 			return testCtrl, nil
 		})
@@ -246,7 +246,7 @@ func TestStart_RunOperation(t *testing.T) {
 		},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	err := registry.Register(ctx, "APPLICATIONSCORE.ENVIRONMENTS.PUT", "Applications.Core/environments",
+	err := registry.Register(ctx, asyncoperation.OperationType{TypeName: "Applications.Core/environments", Method: "PUT"},
 		func(s store.StorageClient) (asyncoperation.Controller, error) {
 			return testCtrl, nil
 		})

@@ -17,9 +17,6 @@ type Status struct {
 	// LinkedResourceID is the resource id associated with operation status.
 	LinkedResourceID string `json:"resourceID"`
 
-	// OperationName is the async operation name.
-	OperationName string `json:"operationName"`
-
 	// Location represents the location of operationstatus.
 	Location string `json:"location"`
 

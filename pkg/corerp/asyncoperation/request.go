@@ -20,8 +20,9 @@ var (
 type Request struct {
 	// OperationID represents the unique id of the async operation.
 	OperationID uuid.UUID `json:"asyncOperationID"`
-	// OperationName represents the name of operation.
-	OperationName string `json:"operationName"`
+	// OperationType represents the type of operation.
+	OperationType string `json:"operationType"`
+
 	// ResourceID represents the id of the resource which requires async operation.
 	ResourceID string `json:"resourceID"`
 

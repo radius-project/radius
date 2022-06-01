@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
@@ -61,10 +62,10 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 
 		h := []handlerParam{
 			// Provider handler registration.
-			{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, provider_ctrl.SubscriptionsPut, provider_ctrl.NewCreateOrUpdateSubscription},
-			{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, provider_ctrl.OperationsGet, provider_ctrl.NewGetOperations},
-			{operationStatusRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, provider_ctrl.OperationStatusesGet, provider_ctrl.NewGetOperationStatus},
-			{operationResultRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, provider_ctrl.OperationResultGet, provider_ctrl.NewGetOperationResult},
+			{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPutSubscriptions, provider_ctrl.NewCreateOrUpdateSubscription},
+			{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGetOperations, provider_ctrl.NewGetOperations},
+			{operationStatusRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, asyncoperation.OperationGetOperationStatuses, provider_ctrl.NewGetOperationStatus},
+			{operationResultRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, asyncoperation.OperationGetOperationResult, provider_ctrl.NewGetOperationResult},
 		}
 		handlers = append(handlers, h...)
 
@@ -79,11 +80,11 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngi
 
 	h := []handlerParam{
 		// Environments resource handler registration.
-		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.EnvironmentList, env_ctrl.NewListEnvironments},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, env_ctrl.EnvironmentGet, env_ctrl.NewGetEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, env_ctrl.EnvironmentPut, env_ctrl.NewCreateOrUpdateEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, env_ctrl.EnvironmentPatch, env_ctrl.NewCreateOrUpdateEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, env_ctrl.EnvironmentDelete, env_ctrl.NewDeleteEnvironment},
+		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, env_ctrl.NewListEnvironments},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGet, env_ctrl.NewGetEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, asyncoperation.OperationPatch, env_ctrl.NewCreateOrUpdateEnvironment},
+		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, env_ctrl.NewDeleteEnvironment},
 	}
 	handlers = append(handlers, h...)
 
@@ -118,7 +119,7 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 			// Provider handler registration.
 			// {providerRouter, connector_provider.ResourceTypeName, http.MethodPut, connectorRPPrefix + "subscription", connector_provider.NewCreateOrUpdateSubscription},
 			// Provider operations.
-			{operationsRouter, connector_provider.ResourceTypeName, http.MethodGet, connector_provider.OperationsGet, connector_provider.NewGetOperations},
+			{operationsRouter, connector_provider.ResourceTypeName, http.MethodGet, asyncoperation.OperationGetOperations, connector_provider.NewGetOperations},
 		}
 		handlers = append(handlers, h...)
 		// Resource Group level API routes.
@@ -137,11 +138,11 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 
 	h := []handlerParam{
 		// MongoDatabases operations
-		{mongoResourceTypeSubrouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongo_ctrl.MongoDatabasesList, mongo_ctrl.NewListMongoDatabases},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodGet, mongo_ctrl.MongoDatabasesGet, mongo_ctrl.NewGetMongoDatabase},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, mongo_ctrl.MongoDatabasesPut, mongo_ctrl.NewCreateOrUpdateMongoDatabase},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, mongo_ctrl.MongoDatabasesDelete, mongo_ctrl.NewDeleteMongoDatabase},
-		{mongoListSecretsRouter, mongo_ctrl.ResourceTypeName, http.MethodPost, mongo_ctrl.MongoDatabasesListSecret, mongo_ctrl.NewListSecretsMongoDatabase},
+		{mongoResourceTypeSubrouter, mongo_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, mongo_ctrl.NewListMongoDatabases},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGet, mongo_ctrl.NewGetMongoDatabase},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, mongo_ctrl.NewCreateOrUpdateMongoDatabase},
+		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, mongo_ctrl.NewDeleteMongoDatabase},
+		{mongoListSecretsRouter, mongo_ctrl.ResourceTypeName, http.MethodPost, mongo_ctrl.OperationListSecret, mongo_ctrl.NewListSecretsMongoDatabase},
 	}
 	handlers = append(handlers, h...)
 

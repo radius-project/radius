@@ -39,20 +39,6 @@ func (m *MockStatusManager) EXPECT() *MockStatusManagerMockRecorder {
 	return m.recorder
 }
 
-// Create mocks base method.
-func (m *MockStatusManager) Create(arg0 context.Context, arg1 string, arg2 uuid.UUID, arg3 *servicecontext.ARMRequestContext, arg4, arg5 string, arg6 time.Duration) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Create indicates an expected call of Create.
-func (mr *MockStatusManagerMockRecorder) Create(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockStatusManager)(nil).Create), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-}
-
 // Delete mocks base method.
 func (m *MockStatusManager) Delete(arg0 context.Context, arg1 string, arg2 uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -80,6 +66,20 @@ func (m *MockStatusManager) Get(arg0 context.Context, arg1 string, arg2 uuid.UUI
 func (mr *MockStatusManagerMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockStatusManager)(nil).Get), arg0, arg1, arg2)
+}
+
+// QueueAsyncOperation mocks base method.
+func (m *MockStatusManager) QueueAsyncOperation(arg0 context.Context, arg1 *servicecontext.ARMRequestContext, arg2 time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueueAsyncOperation", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// QueueAsyncOperation indicates an expected call of QueueAsyncOperation.
+func (mr *MockStatusManagerMockRecorder) QueueAsyncOperation(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueAsyncOperation", reflect.TypeOf((*MockStatusManager)(nil).QueueAsyncOperation), arg0, arg1, arg2)
 }
 
 // Update mocks base method.

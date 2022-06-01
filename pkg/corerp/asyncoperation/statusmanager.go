@@ -34,8 +34,8 @@ type statusManager struct {
 type StatusManager interface {
 	// Get gets an async operation status object.
 	Get(ctx context.Context, rootScope string, operationID uuid.UUID) (*Status, error)
-	// Create creates an async operation status object and queue async operation.
-	Create(ctx context.Context, rootScope string, operationID uuid.UUID, sCtx *servicecontext.ARMRequestContext, resourceID string, operationName string, operationTimeout time.Duration) error
+	// QueueAsyncOperation creates an async operation status object and queue async operation.
+	QueueAsyncOperation(ctx context.Context, sCtx *servicecontext.ARMRequestContext, operationTimeout time.Duration) error
 	// Update updates an async operation status.
 	Update(ctx context.Context, rootScope string, operationID uuid.UUID, state basedatamodel.ProvisioningStates, endTime *time.Time, opError *armerrors.ErrorDetails) error
 	// Delete deletes an async operation status.
@@ -57,7 +57,7 @@ func (aom *statusManager) operationStatusResourceID(rootScope string, operationI
 	return fmt.Sprintf("%s/providers/%s/locations/%s/operationStatuses/%s", rootScope, aom.providerName, aom.location, operationID)
 }
 
-func (aom *statusManager) Create(ctx context.Context, rootScope string, operationID uuid.UUID, sCtx *servicecontext.ARMRequestContext, resourceID string, operationName string, operationTimeout time.Duration) error {
+func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *servicecontext.ARMRequestContext, operationTimeout time.Duration) error {
 	if aom.enqueuer == nil {
 		return errors.New("enqueuer client is unset")
 	}
@@ -66,16 +66,15 @@ func (aom *statusManager) Create(ctx context.Context, rootScope string, operatio
 		return errors.New("*servicecontext.ARMRequestContext is unset")
 	}
 
-	opID := aom.operationStatusResourceID(rootScope, operationID)
+	opID := aom.operationStatusResourceID(sCtx.ResourceID.RootScope(), sCtx.OperationID)
 	aos := &Status{
 		AsyncOperationStatus: armrpcv1.AsyncOperationStatus{
 			ID:        opID,
-			Name:      operationID.String(),
+			Name:      sCtx.OperationID.String(),
 			Status:    basedatamodel.ProvisioningStateUpdating,
 			StartTime: time.Now().UTC(),
 		},
-		LinkedResourceID: resourceID,
-		OperationName:    operationName,
+		LinkedResourceID: sCtx.ResourceID.String(),
 		Location:         aom.location,
 		HomeTenantID:     sCtx.HomeTenantID,
 		ClientObjectID:   sCtx.ClientObjectID,
@@ -147,8 +146,9 @@ func (aom *statusManager) Delete(ctx context.Context, rootScope string, operatio
 // queueRequestMessage function is to put the async operation message to the queue to be worked on.
 func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *servicecontext.ARMRequestContext, aos *Status, operationTimeout time.Duration) error {
 	msg := &Request{
-		OperationID:      sCtx.OperationID,
-		OperationName:    sCtx.OperationName,
+		OperationID:   sCtx.OperationID,
+		OperationType: sCtx.OperationType,
+
 		ResourceID:       aos.LinkedResourceID,
 		CorrelationID:    sCtx.CorrelationID,
 		TraceparentID:    sCtx.Traceparent,

@@ -46,7 +46,7 @@ const (
 // AsyncRequestProcessWorker is the worker to process async requests.
 type AsyncRequestProcessWorker struct {
 	options      hostoptions.HostOptions
-	operationMgr asyncoperation.Manager
+	operationMgr asyncoperation.StatusManager
 	registry     *ControllerRegistry
 	requestQueue queue.Dequeuer
 
@@ -56,7 +56,7 @@ type AsyncRequestProcessWorker struct {
 // NewAsyncRequestProcessWorker creates AsyncRequestProcessWorker server instance.
 func NewAsyncRequestProcessWorker(
 	options hostoptions.HostOptions,
-	om asyncoperation.Manager,
+	om asyncoperation.StatusManager,
 	qu queue.Dequeuer,
 	ctrlRegistry *ControllerRegistry) *AsyncRequestProcessWorker {
 	return &AsyncRequestProcessWorker{
@@ -88,32 +88,38 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			defer w.sem.Release(1)
 
 			op := jobm.Data.(*asyncoperation.Request)
-			ctrl := w.registry.Get(op.OperationName)
-
-			dims := []interface{}{
+			opLogger := logger.WithValues([]interface{}{
 				"OperationID", op.OperationID.String(),
-				"OperationName", op.OperationName,
+				"OperationType", op.OperationType,
 				"ResourceID", op.ResourceID,
 				"CorrleationID", op.CorrelationID,
 				"W3CTraceID", op.TraceparentID,
+			})
+
+			opType, ok := asyncoperation.ParseOperationTypeFromString(op.OperationType)
+			if !ok {
+				opLogger.V(radlogger.Error).Info("failed to parse operation type.")
+				return
 			}
 
+			ctrl := w.registry.Get(opType)
+
 			if ctrl == nil {
-				logger.V(radlogger.Error).Info("Unknown operation: "+op.OperationName, dims...)
+				opLogger.V(radlogger.Error).Info("Unknown operation")
 				if err := jobm.Finish(nil); err != nil {
 					logger.V(radlogger.Error).Info("failed to finish the message which includes unknown operation.")
 				}
 				return
 			}
 			if jobm.DequeueCount >= MaxDequeueCount {
-				logger.V(radlogger.Error).Info(fmt.Sprintf("Exceed max retrycount: %d", jobm.DequeueCount), dims...)
+				opLogger.V(radlogger.Error).Info(fmt.Sprintf("Exceed max retrycount: %d", jobm.DequeueCount))
 				if err := jobm.Finish(nil); err != nil {
 					logger.V(radlogger.Error).Info("failed to finish the message which exceeds the max retry count.")
 				}
 				return
 			}
 
-			opCtx := logr.NewContext(ctx, logger.WithValues(dims...))
+			opCtx := logr.NewContext(ctx, opLogger)
 			w.runOperation(opCtx, jobm, ctrl)
 		}(job)
 	}
@@ -198,12 +204,8 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 		return
 	}
 
-	s := &asyncoperation.Status{}
-	s.Status = result.ProvisioningState()
 	now := time.Now().UTC()
-	s.EndTime = &now
-
-	err = w.operationMgr.Update(ctx, rID.RootScope(), req.OperationID, s)
+	err = w.operationMgr.Update(ctx, rID.RootScope(), req.OperationID, result.ProvisioningState(), &now, result.Error)
 	if err != nil {
 		logger.Error(err, "failed to update operationstatus", "OperationID", req.OperationID.String())
 	}
