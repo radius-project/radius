@@ -13,6 +13,7 @@ const (
 )
 
 const (
+	// Predefined Operation methodss.
 	OperationList                 = "LIST"
 	OperationPut                  = "PUT"
 	OperationPatch                = "PATCH"
@@ -26,15 +27,22 @@ const (
 	Seperator = "|"
 )
 
+// OperationType represents the operation type which includes resource type name and its method.
+// OperationType is used as a route name in the frontend API server router. Each valid ARM RPC call should have
+// its own operation type name. For Asynchronous API, the frontend API server queues the async operation
+// request with this operation type. AsyncRequestProcessWorker parses the operation type from the message
+// and run the corresponding async operation controller.
 type OperationType struct {
 	TypeName string
 	Method   string
 }
 
+// String returns the operation type string.
 func (o OperationType) String() string {
 	return strings.ToUpper(o.TypeName + Seperator + o.Method)
 }
 
+// ParseOperationTypeFromString parses operation type from string.
 func ParseOperationTypeFromString(s string) (OperationType, bool) {
 	p := strings.Split(s, Seperator)
 	if len(p) >= 2 {
