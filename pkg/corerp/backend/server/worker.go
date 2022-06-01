@@ -116,7 +116,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 			if msgreq.DequeueCount >= MaxDequeueCount {
 				opLogger.V(radlogger.Error).Info(fmt.Sprintf("Exceed max retrycount: %d", msgreq.DequeueCount))
-				if err := msg.Finish(nil); err != nil {
+				if err := msgreq.Finish(nil); err != nil {
 					logger.Error(err, "failed to finish the message which exceeds the max retry count.")
 				}
 				return
