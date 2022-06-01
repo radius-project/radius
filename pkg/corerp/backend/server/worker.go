@@ -219,7 +219,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 }
 
 func getMessageExtendDuration(visibleAt time.Time) time.Duration {
-	d := visibleAt.Add(-messageExtendMargin).Sub(time.Now())
+	d := time.Until(visibleAt.Add(-messageExtendMargin))
 	if d <= 0 {
 		return minMessageLockDuration
 	}
