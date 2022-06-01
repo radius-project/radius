@@ -155,7 +155,7 @@ func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *service
 		AcceptLanguage:   sCtx.AcceptLanguage,
 		HomeTenantID:     sCtx.HomeTenantID,
 		ClientObjectID:   sCtx.ClientObjectID,
-		OperationTimeout: operationTimeout,
+		OperationTimeout: &operationTimeout,
 	}
 
 	return aom.enqueuer.Enqueue(ctx, queue.NewMessage(msg))

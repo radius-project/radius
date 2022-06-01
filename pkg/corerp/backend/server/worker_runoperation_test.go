@@ -47,7 +47,7 @@ func getTestMessage() (*queue.Message, *atomic.Int32, *atomic.Int32) {
 			OperationType:    "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
 			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 			CorrelationID:    uuid.NewString(),
-			OperationTimeout: asyncoperation.DefaultAsyncOperationTimeout,
+			OperationTimeout: &asyncoperation.DefaultAsyncOperationTimeout,
 		},
 	}
 	testMessage.WithExtend(func() error {
@@ -355,7 +355,8 @@ func TestRunOperation_Timeout(t *testing.T) {
 
 	testMessage, finished, extended := getTestMessage()
 	req := testMessage.Data.(*asyncoperation.Request)
-	req.OperationTimeout = 10 * time.Millisecond
+	opTimeout := 10 * time.Millisecond
+	req.OperationTimeout = &opTimeout
 
 	done := make(chan bool, 1)
 	testCtrl := &testAsyncController{

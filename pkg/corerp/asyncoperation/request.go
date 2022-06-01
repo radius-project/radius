@@ -39,13 +39,13 @@ type Request struct {
 	ClientObjectID string `json:"clientObjectID,omitempty"`
 
 	// OperationTimeout represents the timeout duration of async operation.
-	OperationTimeout time.Duration `json:"asyncOperationTimeout"`
+	OperationTimeout *time.Duration `json:"asyncOperationTimeout"`
 }
 
 // Timeout gets the async operation timeout duration.
 func (r Request) Timeout() time.Duration {
-	if r.OperationTimeout <= 0 {
+	if r.OperationTimeout == nil {
 		return DefaultAsyncOperationTimeout
 	}
-	return r.OperationTimeout
+	return *r.OperationTimeout
 }
