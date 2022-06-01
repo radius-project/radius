@@ -260,25 +260,11 @@ func Parse(id string) (ID, error) {
 		return ID{}, invalid(id)
 	}
 
-	locSegmentIdx := -1
-
 	// Check up front for empty segments
-	for idx, segment := range segments {
-		if segment == "" {
+	for _, s := range segments {
+		if s == "" {
 			return ID{}, invalid(id)
 		}
-
-		// TODO: This is a workaround for Locations segment.
-		// TODO: Fix this in this PR
-		if segment == LocationsSegment {
-			locSegmentIdx = idx
-		}
-	}
-
-	// TODO: This is a workaround for Locations segment.
-	// TODO: Fix this in this PR
-	if locSegmentIdx != -1 {
-		segments = append(segments[:locSegmentIdx], segments[locSegmentIdx+2:]...)
 	}
 
 	// Parse scopes - iterate until we get to "providers"

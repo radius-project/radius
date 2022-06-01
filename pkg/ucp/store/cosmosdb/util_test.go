@@ -112,7 +112,6 @@ func TestNormalizeStorageKey(t *testing.T) {
 	}
 }
 
-// TestGenerateCosmosDBKey creates compliant cosmosdb id using arm id. The length of the generated id must be less than 256.
 func TestGenerateCosmosDBKey(t *testing.T) {
 	cases := []struct {
 		desc   string
@@ -141,7 +140,7 @@ func TestGenerateCosmosDBKey(t *testing.T) {
 		{
 			"os-success",
 			"subscriptions/00000000-0000-0000-1000-000000000001/providers/Applications.Core/locations/westus/operationStatuses/os1",
-			"00000000000000001000000000000001-APPLICATIONS:2ECORE:2FOPERATIONSTATUSESOS1",
+			"00000000000000001000000000000001-APPLICATIONS:2ECORE:2FLOCATIONS:2FOPERATIONSTATUSESOS1",
 			nil,
 		},
 		{
@@ -183,7 +182,7 @@ func TestGenerateCosmosDBKey(t *testing.T) {
 			key, err := GenerateCosmosDBKey(testID)
 			require.ErrorIs(t, err, tc.err)
 			require.Equal(t, tc.out, key)
-			require.LessOrEqual(t, len(key), 255) // Max cosmosdb id length
+			require.LessOrEqual(t, len(key), 255)
 		})
 	}
 }
