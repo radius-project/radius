@@ -64,8 +64,9 @@ func (s *Service) Name() string {
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
 
-	s.options.DBClient = s.InitializeStorageClient(ctx)
 	if s.options.DBClient == nil {
+		s.options.DBClient = s.InitializeStorageClient(ctx)
+
 		// Initialize the storage client to in memory etcd if there was no storage information in config file.
 		if s.options.ClientConfigSource == nil {
 			return nil, errors.New("cannot init etcd store")
