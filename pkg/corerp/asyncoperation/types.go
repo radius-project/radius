@@ -42,8 +42,8 @@ func (o OperationType) String() string {
 	return strings.ToUpper(o.TypeName + Seperator + o.Method)
 }
 
-// ParseOperationTypeFromString parses operation type from string.
-func ParseOperationTypeFromString(s string) (OperationType, bool) {
+// ParseOperationType parses operation type from string.
+func ParseOperationType(s string) (OperationType, bool) {
 	p := strings.Split(s, Seperator)
 	if len(p) >= 2 {
 		return OperationType{TypeName: strings.ToUpper(p[0]), Method: strings.ToUpper(p[1])}, true

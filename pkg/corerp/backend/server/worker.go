@@ -98,7 +98,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				"W3CTraceID", op.TraceparentID,
 			})
 
-			opType, ok := asyncoperation.ParseOperationTypeFromString(op.OperationType)
+			opType, ok := asyncoperation.ParseOperationType(op.OperationType)
 			if !ok {
 				opLogger.V(radlogger.Error).Info("failed to parse operation type.")
 				return
