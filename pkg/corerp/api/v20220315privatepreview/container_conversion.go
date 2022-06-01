@@ -62,6 +62,13 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 		extensions = append(extensions, toExtensionClassificationDataModel(e))
 	}
 
+	resourceStatus := basedatamodel.ResourceStatus{}
+	if src.Properties.BasicResourceProperties.Status != nil {
+		resourceStatus = basedatamodel.ResourceStatus{
+			OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+		}
+	}
+
 	converted := &datamodel.ContainerResource{
 		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
@@ -72,9 +79,7 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 		},
 		Properties: datamodel.ContainerProperties{
 			BasicResourceProperties: basedatamodel.BasicResourceProperties{
-				Status: basedatamodel.ResourceStatus{
-					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
-				},
+				Status: resourceStatus,
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Application:       to.String(src.Properties.Application),
