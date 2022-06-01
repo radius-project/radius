@@ -238,16 +238,14 @@ func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name stri
 		scopes := []ucpresources.ScopeSegment{
 			{Type: "planes", Name: "deployments/local"},
 			{Type: "resourcegroups", Name: dc.ResourceGroup},
-			{Type: "deployments", Name: name},
-			{Type: "operations"},
+			{Type: "deployments", Name: name + "/operations"},
 		}
 		resourceId = ucpresources.MakeRelativeID(scopes)
 	} else {
 		scopes := []ucpresources.ScopeSegment{
 			{Type: "subscriptions", Name: dc.SubscriptionID},
 			{Type: "resourcegroups", Name: dc.ResourceGroup},
-			{Type: "deployments", Name: name},
-			{Type: "operations"},
+			{Type: "deployments", Name: name + "/operations"},
 		}
 		resourceId = ucpresources.MakeRelativeID(scopes)
 	}

@@ -219,7 +219,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		HTTPScheme: httpScheme,
 		// The Host field in the request that the client makes to UCP contains the UCP Host address
 		// That address will be used to construct the URL for reverse proxying
-		UCPHost: r.Host,
+		UCPHost: r.Host + ucp.options.BasePath,
 	}
 
 	// Remove the /planes/<plane-type>/<plane-name> prefix
