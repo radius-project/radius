@@ -290,10 +290,10 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 	}
 
 	ops := cosmosapi.GetDocumentOptions{
-		PartitionKeyValue: NormalizeSubscriptionID(parsedID.SubscriptionID()),
+		PartitionKeyValue: GetPartitionKey(parsedID),
 	}
 
-	docID, err := GenerateCosmosDBKey(parsedID.SubscriptionID(), parsedID.ResourceGroup(), parsedID.Type(), parsedID.Name())
+	docID, err := GenerateCosmosDBKey(parsedID)
 	if err != nil {
 		return nil, err
 	}
@@ -323,9 +323,9 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 	}
 
 	ops := cosmosapi.DeleteDocumentOptions{
-		PartitionKeyValue: NormalizeSubscriptionID(parsedID.SubscriptionID()),
+		PartitionKeyValue: GetPartitionKey(parsedID),
 	}
-	docID, err := GenerateCosmosDBKey(parsedID.SubscriptionID(), parsedID.ResourceGroup(), parsedID.Type(), parsedID.Name())
+	docID, err := GenerateCosmosDBKey(parsedID)
 	if err != nil {
 		return err
 	}
@@ -346,22 +346,20 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		return err
 	}
 
-	docID, err := GenerateCosmosDBKey(parsedID.SubscriptionID(), parsedID.ResourceGroup(), parsedID.Type(), parsedID.Name())
+	docID, err := GenerateCosmosDBKey(parsedID)
 	if err != nil {
 		return err
 	}
 
-	rs, err := NewResourceScope(parsedID.RootScope())
-	if err != nil {
-		return err
-	}
+	subscriptionID := parsedID.FindScope(resources.SubscriptionsSegment)
+	resourceGroup := parsedID.FindScope(resources.ResourceGroupsSegment)
 
 	entity := &ResourceEntity{
 		ID:            docID,
 		ResourceID:    parsedID.String(),
-		RootScope:     rs.fullyQualifiedSubscriptionScope(),
-		ResourceGroup: rs.ResourceGroup,
-		PartitionKey:  NormalizeSubscriptionID(parsedID.SubscriptionID()),
+		RootScope:     parsedID.RootScope(),
+		ResourceGroup: resourceGroup,
+		PartitionKey:  NormalizeSubscriptionID(subscriptionID),
 		Entity:        obj.Data,
 	}
 
@@ -370,7 +368,7 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		ifMatch = obj.ETag
 	}
 
-	partitionKey := NormalizeSubscriptionID(parsedID.SubscriptionID())
+	partitionKey := NormalizeSubscriptionID(subscriptionID)
 
 	var resp *cosmosapi.Resource
 	if ifMatch == "" {
@@ -400,4 +398,8 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 	obj.ETag = resp.Etag
 
 	return nil
+}
+
+func GetPartitionKey(id resources.ID) string {
+	return NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))
 }

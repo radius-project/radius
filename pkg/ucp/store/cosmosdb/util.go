@@ -12,6 +12,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/spaolacci/murmur3"
 )
@@ -116,8 +117,10 @@ func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
 }
 
 // GenerateCosmosDBKey generates the unqiue key the length of which must be less than 255.
-func GenerateCosmosDBKey(subsID, resourceGroup, fullyQualifiedType, fullyQualifiedName string) (string, error) {
-	storageKeys := []string{NormalizeSubscriptionID(subsID)}
+func GenerateCosmosDBKey(id resources.ID) (string, error) {
+	storageKeys := []string{NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))}
+
+	resourceGroup := id.FindScope(resources.ResourceGroupsSegment)
 
 	if resourceGroup != "" {
 		uniqueResourceGroup, err := NormalizeStorageKey(resourceGroup, ResourceGroupNameMaxStorageKeyLen)
@@ -127,7 +130,7 @@ func GenerateCosmosDBKey(subsID, resourceGroup, fullyQualifiedType, fullyQualifi
 		storageKeys = append(storageKeys, uniqueResourceGroup)
 	}
 
-	resourceTypeAndName, err := NormalizeStorageKey(fullyQualifiedType+fullyQualifiedName, ResourceIdMaxStorageKeyLen)
+	resourceTypeAndName, err := NormalizeStorageKey(id.Type()+id.Name(), ResourceIdMaxStorageKeyLen)
 	if err != nil {
 		return "", err
 	}

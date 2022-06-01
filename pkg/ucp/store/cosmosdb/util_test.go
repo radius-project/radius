@@ -8,6 +8,7 @@ package cosmosdb
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -114,91 +115,66 @@ func TestNormalizeStorageKey(t *testing.T) {
 // TestGenerateCosmosDBKey creates compliant cosmosdb id using arm id. The length of the generated id must be less than 256.
 func TestGenerateCosmosDBKey(t *testing.T) {
 	trimTests := []struct {
-		subID  string
-		rgName string
-		fqType string
-		fqName string
+		desc   string
+		fullID string
 		out    string
 		err    error
 	}{
 		{
-			"00000000-0000-0000-1000-000000000001",
-			"testGroup",
-			"applications.core/environments",
-			"env0",
+			"env-success-1",
+			"subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testGroup/providers/applications.core/environments/env0",
 			"00000000000000001000000000000001-TESTGROUP-APPLICATIONS:2ECORE:2FENVIRONMENTSENV0",
 			nil,
 		},
 		{
-			"eaf9116d-84e7-4720-a841-67ca2b67f888",
-			"testGroup",
-			"applications.core/environments",
-			"appenv",
+			"env-success-2",
+			"subscriptions/eaf9116d-84e7-4720-a841-67ca2b67f888/resourcegroups/testGroup/providers/Applications.Core/environments/appenv",
 			"EAF9116D84E74720A84167CA2B67F888-TESTGROUP-APPLICATIONS:2ECORE:2FENVIRONMENTSAPPENV",
 			nil,
 		},
 		{
-			"00000000-0000-0000-1000-000000000001",
-			"",
-			"applications.core/environments",
-			"env0",
+			"env-no-rg-success",
+			"subscriptions/00000000-0000-0000-1000-000000000001/providers/Applications.Core/environments/env0",
 			"00000000000000001000000000000001-APPLICATIONS:2ECORE:2FENVIRONMENTSENV0",
 			nil,
 		},
 		{
-			"00000000-0000-0000-1000-000000000001",
-			"",
-			"applications.core/operationStatuses",
-			"op0",
-			"00000000000000001000000000000001-APPLICATIONS:2ECORE:2FOPERATIONSTATUSESOP0",
-			nil,
-		},
-		// this has to go through the controller to get the operationStatuses resource type
-		{
-			"00000000-0000-0000-1000-000000000001",
-			"",
-			"applications.core/operationResults",
-			"op0",
-			"00000000000000001000000000000001-APPLICATIONS:2ECORE:2FOPERATIONRESULTSOP0",
+			"os-success",
+			"subscriptions/00000000-0000-0000-1000-000000000001/providers/Applications.Core/locations/westus/operationStatuses/os1",
+			"00000000000000001000000000000001-APPLICATIONS:2ECORE:2FOPERATIONSTATUSESOS1",
 			nil,
 		},
 		{
-			"7826d962-510f-407a-92a2-5aeb37aa7b6e",
-			"radius-westus",
-			"applications.core/applications",
-			"todoapp",
+			"app-success",
+			"subscriptions/7826d962-510f-407a-92a2-5aeb37aa7b6e/resourcegroups/radius-westus/providers/Applications.Core/applications/todoapp",
 			"7826D962510F407A92A25AEB37AA7B6E-RADIUS:2DWESTUS-APPLICATIONS:2ECORE:2FAPPLICATIONSTODOAPP",
 			nil,
 		},
 		{
-			"7826d962-510f-407a-92a2-5aeb37aa7b6e",
-			"radius-westus",
-			"applications.core/applications",
-			"longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1",
+			"app-long-name-success",
+			"subscriptions/7826d962-510f-407a-92a2-5aeb37aa7b6e/resourcegroups/radius-westus/providers/Applications.Core/applications/longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1",
 			"7826D962510F407A92A25AEB37AA7B6E-RADIUS:2DWESTUS-APPLICATIONS:2ECORE:2FAPPLICATIONSLONGAPPLICATIONNAME1LONGAPPLICATIONNAME1LONGAPPLICATIONNAME1LONGAPPLICATIONNAME1LONGAPPLICATIONNAME1LONGAP|F1FC9C622C380B24",
 			nil,
 		},
 		{
-			"7826d962-510f-407a-92a2-5aeb37aa7b6e",
-			"radius-westus",
-			"applications.core/longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0",
-			"longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1",
+			"app-long-resource-name-success",
+			"subscriptions/7826d962-510f-407a-92a2-5aeb37aa7b6e/resourcegroups/radius-westus/providers/Applications.Core/longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0/longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1",
 			"7826D962510F407A92A25AEB37AA7B6E-RADIUS:2DWESTUS-APPLICATIONS:2ECORE:2FLONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME|8C5656AB3F61108E",
 			nil,
 		},
 		{
-			"7826d962-510f-407a-92a2-5aeb37aa7b6e",
-			"longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0",
-			"applications.core/longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0",
-			"longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1",
+			"app-long-rg-app-names-success",
+			"subscriptions/7826d962-510f-407a-92a2-5aeb37aa7b6e/resourcegroups/longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0longresourcegroup0/providers/Applications.Core/longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0longresourcename0/longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1longapplicationname1",
 			"7826D962510F407A92A25AEB37AA7B6E-LONGRESOURCEGROUP0LONGRESOURCEGROUP0LONGRESOURC|EF662FD5E8286859-APPLICATIONS:2ECORE:2FLONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME0LONGRESOURCENAME|8C5656AB3F61108E",
 			nil,
 		},
 	}
 
 	for _, tc := range trimTests {
-		t.Run(tc.subID+tc.rgName+tc.fqType+tc.fqName, func(t *testing.T) {
-			key, err := GenerateCosmosDBKey(tc.subID, tc.rgName, tc.fqType, tc.fqName)
+		t.Run(tc.desc, func(t *testing.T) {
+			testID, err := resources.Parse(tc.fullID)
+			require.NoError(t, err)
+			key, err := GenerateCosmosDBKey(testID)
 			require.ErrorIs(t, err, tc.err)
 			require.Equal(t, tc.out, key)
 			require.LessOrEqual(t, len(key), 255) // Max cosmosdb id length

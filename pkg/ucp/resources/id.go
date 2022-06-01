@@ -11,10 +11,13 @@ import (
 )
 
 const (
-	SegmentSeparator = "/"
-	PlanesSegment    = "planes"
-	ProvidersSegment = "providers"
-	UCPPrefix        = "ucp:"
+	SegmentSeparator      = "/"
+	PlanesSegment         = "planes"
+	ProvidersSegment      = "providers"
+	UCPPrefix             = "ucp:"
+	ResourceGroupsSegment = "resourcegroups"
+	SubscriptionsSegment  = "subscriptions"
+	LocationsSegment      = "locations"
 )
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() to create IDs and use
@@ -88,24 +91,13 @@ func (ri ID) String() string {
 	return ri.id
 }
 
-func (ri ID) SubscriptionID() string {
-	subscriptionID := ""
+func (ri ID) FindScope(scopeType string) string {
 	for _, t := range ri.scopeSegments {
-		if t.Type == "subscription" {
+		if t.Type == scopeType {
 			return t.Name
 		}
 	}
-	return subscriptionID
-}
-
-func (ri ID) ResourceGroup() string {
-	resourceGroup := ""
-	for _, t := range ri.scopeSegments {
-		if t.Type == "resourceGroup" {
-			return t.Name
-		}
-	}
-	return resourceGroup
+	return ""
 }
 
 // RootScope returns the root-scope (the part before 'providers'). This includes 'ucp:' prefix.
@@ -268,11 +260,25 @@ func Parse(id string) (ID, error) {
 		return ID{}, invalid(id)
 	}
 
+	locSegmentIdx := -1
+
 	// Check up front for empty segments
-	for _, s := range segments {
-		if s == "" {
+	for idx, segment := range segments {
+		if segment == "" {
 			return ID{}, invalid(id)
 		}
+
+		// TODO: This is a workaround for Locations segment.
+		// TODO: Fix this in this PR
+		if segment == LocationsSegment {
+			locSegmentIdx = idx
+		}
+	}
+
+	// TODO: This is a workaround for Locations segment.
+	// TODO: Fix this in this PR
+	if locSegmentIdx != -1 {
+		segments = append(segments[:locSegmentIdx], segments[locSegmentIdx+2:]...)
 	}
 
 	// Parse scopes - iterate until we get to "providers"
