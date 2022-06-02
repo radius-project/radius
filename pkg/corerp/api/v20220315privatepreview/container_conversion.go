@@ -42,6 +42,7 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 	}
 
 	livenessProbe := toHealthProbePropertiesClassificationDataModel(src.Properties.Container.LivenessProbe)
+
 	readinessProbe := toHealthProbePropertiesClassificationDataModel(src.Properties.Container.ReadinessProbe)
 
 	ports := make(map[string]datamodel.ContainerPort)
@@ -131,6 +132,7 @@ func (dst *ContainerResource) ConvertFrom(src api.DataModelInterface) error {
 	}
 
 	livenessProbe := fromHealthProbePropertiesClassificationDataModel(c.Properties.Container.LivenessProbe)
+
 	readinessProbe := fromHealthProbePropertiesClassificationDataModel(c.Properties.Container.ReadinessProbe)
 
 	ports := make(map[string]*ContainerPort)

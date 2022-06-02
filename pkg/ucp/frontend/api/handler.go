@@ -108,6 +108,7 @@ func (h *Handler) ProxyPlaneRequest(w http.ResponseWriter, r *http.Request) {
 	for key, value := range r.Header {
 		logger.V(4).Info("incoming request header", "key", key, "value", value)
 	}
+	r.URL.Path = h.getRelativePath(r.URL.Path)
 
 	// Make a copy of the incoming URL and trim the base path
 	newURL := *r.URL
