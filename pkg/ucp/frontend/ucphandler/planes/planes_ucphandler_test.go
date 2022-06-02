@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
-	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
@@ -98,14 +97,6 @@ func Test_GetPlaneByID(t *testing.T) {
 
 	assert.Equal(t, nil, err)
 
-}
-
-func Test_ResourceIDParsing_WithNoTypeSegment(t *testing.T) {
-	url := "ucp:/planes/radius/local/"
-	id, err := resources.Parse(url)
-	require.NoError(t, err, "URL parsing failed")
-	provider := id.ProviderNamespace()
-	assert.Equal(t, "", provider)
 }
 
 func Test_DeletePlaneByID(t *testing.T) {
