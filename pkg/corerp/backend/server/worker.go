@@ -32,6 +32,7 @@ var (
 
 const (
 	// MaxOperationConcurrency is the maximum concurrency to process async request operation.
+	// TOOD: make this concurrency configurable.
 	MaxOperationConcurrency = 3
 
 	// MaxDequeueCount is the maximum dequeue count which will be retried.
