@@ -6,6 +6,9 @@
 package v20220315privatepreview
 
 import (
+	"errors"
+	"reflect"
+
 	"github.com/project-radius/radius/pkg/api"
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -15,11 +18,14 @@ import (
 
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
 func (src *DaprPubSubBrokerResource) ConvertTo() (api.DataModelInterface, error) {
-	var converted *datamodel.DaprPubSubBroker
+	outputResources := basedatamodel.ResourceStatus{}.OutputResources
+	if src.Properties.GetDaprPubSubBrokerProperties().Status != nil {
+		outputResources = src.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources
+	}
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: basedatamodel.BasicResourceProperties{
 			Status: basedatamodel.ResourceStatus{
-				OutputResources: src.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources,
+				OutputResources: outputResources,
 			},
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),
@@ -27,57 +33,34 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (api.DataModelInterface, error)
 		Application:       to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
 		Kind:              to.String(src.Properties.GetDaprPubSubBrokerProperties().Kind),
 	}
+	trackedResource := basedatamodel.TrackedResource{
+		ID:       to.String(src.ID),
+		Name:     to.String(src.Name),
+		Type:     to.String(src.Type),
+		Location: to.String(src.Location),
+		Tags:     to.StringMap(src.Tags),
+	}
+	internalMetadata := basedatamodel.InternalMetadata{
+		UpdatedAPIVersion: Version,
+	}
+	converted := &datamodel.DaprPubSubBroker{}
+	converted.TrackedResource = trackedResource
+	converted.InternalMetadata = internalMetadata
 	switch v := src.Properties.(type) {
 	case *DaprPubSubAzureServiceBusResourceProperties:
-		converted = &datamodel.DaprPubSubBroker{
-			TrackedResource: basedatamodel.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			Properties: &datamodel.DaprPubSubAzureServiceBusResourceProperties{
-				DaprPubSubBrokerProperties: daprPubSubproperties,
-				Resource:                   to.String(v.Resource),
-			},
-			InternalMetadata: basedatamodel.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+		converted.Properties = &datamodel.DaprPubSubAzureServiceBusResourceProperties{
+			DaprPubSubBrokerProperties: daprPubSubproperties,
+			Resource:                   to.String(v.Resource),
 		}
 	case *DaprPubSubGenericResourceProperties:
-		converted = &datamodel.DaprPubSubBroker{
-			TrackedResource: basedatamodel.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			Properties: &datamodel.DaprPubSubGenericResourceProperties{
-				DaprPubSubBrokerProperties: daprPubSubproperties,
-				Type:                       to.String(v.Type),
-				Version:                    to.String(v.Version),
-				Metadata:                   v.Metadata,
-			},
-			InternalMetadata: basedatamodel.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+		converted.Properties = &datamodel.DaprPubSubGenericResourceProperties{
+			DaprPubSubBrokerProperties: daprPubSubproperties,
+			Type:                       to.String(v.Type),
+			Version:                    to.String(v.Version),
+			Metadata:                   v.Metadata,
 		}
 	default:
-		converted = &datamodel.DaprPubSubBroker{
-			TrackedResource: basedatamodel.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			Properties: &daprPubSubproperties,
-			InternalMetadata: basedatamodel.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
-		}
+		return nil, errors.New("Kind of DaprPubSubBroker is not specified.")
 	}
 	return converted, nil
 }
@@ -95,10 +78,14 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src api.DataModelInterface) err
 	dst.SystemData = fromSystemDataModel(daprPubSub.SystemData)
 	dst.Location = to.StringPtr(daprPubSub.Location)
 	dst.Tags = *to.StringMapPtr(daprPubSub.Tags)
+	var outputresources []map[string]interface{}
+	if !(reflect.DeepEqual(daprPubSub.Properties.GetDaprPubSubBrokerProperties().Status, basedatamodel.ResourceStatus{})) {
+		outputresources = daprPubSub.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources
+	}
 	props := &DaprPubSubBrokerProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: daprPubSub.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources,
+				OutputResources: outputresources,
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),
@@ -119,7 +106,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src api.DataModelInterface) err
 			Metadata:                   v.Metadata,
 		}
 	default:
-		dst.Properties = props
+		return errors.New("Kind of DaprPubSubBroker is not specified.")
 	}
 
 	return nil

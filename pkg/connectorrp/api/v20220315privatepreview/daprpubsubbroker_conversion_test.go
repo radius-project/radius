@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/api"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,8 +43,6 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", v.Environment)
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", v.Resource)
 			require.Equal(t, "pubsub.azure.servicebus", v.Kind)
-			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, v.Status.OutputResources[0]["ResourceType"])
 
 		case *datamodel.DaprPubSubGenericResourceProperties:
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", v.Application)
@@ -55,10 +54,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, resourceType, v.Status.OutputResources[0]["ResourceType"])
 		default:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.GetDaprPubSubBrokerProperties().Application)
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.GetDaprPubSubBrokerProperties().Environment)
-			require.Equal(t, "Deployment", convertedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, convertedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["ResourceType"])
+			assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
 		}
 	}
 
@@ -99,13 +95,8 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "pubsub.kafka", v.Type)
 			require.Equal(t, "v1", v.Version)
 			require.Equal(t, "bar", v.Metadata["foo"])
-			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, v.Status.OutputResources[0]["ResourceType"])
 		default:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.GetDaprPubSubBrokerProperties().Application)
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.GetDaprPubSubBrokerProperties().Environment)
-			require.Equal(t, "Deployment", resource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, resource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["ResourceType"])
+			assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
 		}
 	}
 }
