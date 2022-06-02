@@ -1,55 +1,81 @@
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieport int = 3000
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'kubernetes-resources-gateway'
 
-  resource backendgateway 'Gateway' = {
-    name: 'backendgateway'
+  resource gateway 'Gateway' = {
+    name: 'gateway'
     properties: {
       routes: [
         {
-          path: '/frontend'
-          destination: frontendhttp.id
+          path: '/'
+          destination: frontendroute.id
         }
         {
-          path: '/backend'
-          destination: backendhttp.id
+          path: '/backend1'
+          destination: backendroute.id
+        }
+        {
+          // Route /backend2 requests to the backend, and
+          // transform the request to /
+          path: '/backend2'
+          destination: backendroute.id
+          replacePrefix: '/'
         }
       ]
     }
   }
 
-  resource backendhttp 'HttpRoute' = {
-    name: 'backendhttp'
+  resource frontendroute 'HttpRoute' = {
+    name: 'frontendroute'
   }
-  
-  resource backend 'Container' = {
-    name: 'backend'
+
+  resource frontend 'Container' = {
+    name: 'frontend'
     properties: {
       container: {
-        image: 'rynowak/backend:0.5.0-dev'
+        image: magpieimage
         ports: {
           web: {
-            containerPort: 80
-            provides: backendhttp.id
+            containerPort: magpieport
+            provides: frontendroute.id
           }
+        }
+        readinessProbe: {
+          kind: 'httpGet'
+          containerPort: magpieport
+          path: '/healthz'
+        }
+      }
+      connections: {
+        backend: {
+          kind: 'Http'
+          source: backendroute.id
         }
       }
     }
   }
 
-  resource frontendhttp 'HttpRoute' = {
-    name: 'frontendhttp'
+  resource backendroute 'HttpRoute' = {
+    name: 'backendroute'
   }
-  
-  resource frontend 'Container' = {
-    name: 'frontend'
+
+  resource backend 'Container' = {
+    name: 'backend'
     properties: {
       container: {
-        image: 'rynowak/frontend:0.5.0-dev'
+        image: magpieimage
         ports: {
           web: {
-            containerPort: 80
-            provides: frontendhttp.id
+            containerPort: magpieport
+            provides: backendroute.id
           }
+        }
+        readinessProbe: {
+          kind: 'httpGet'
+          containerPort: magpieport
+          path: '/healthz'
         }
       }
     }

@@ -274,21 +274,21 @@ func Test_Render_Single_Route(t *testing.T) {
 	}
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
-	validateHttpRoute(t, output.Resources, routeName, path)
+	validateHttpRoute(t, output.Resources, routeName, nil)
 }
 
 func Test_Render_Multiple_Routes(t *testing.T) {
 	r := &Renderer{}
 
 	var routes []*radclient.GatewayRoute
-	routeAName := "routename"
+	routeAName := "routeaname"
 	routeADestination := makeRouteResourceID(routeAName)
 	routeAPath := "/routea"
 	routeA := radclient.GatewayRoute{
 		Destination: &routeADestination,
 		Path:        &routeAPath,
 	}
-	routeBName := "routename"
+	routeBName := "routenbname"
 	routeBDestination := makeRouteResourceID(routeBName)
 	routeBPath := "/routeb"
 	routeB := radclient.GatewayRoute{
@@ -332,8 +332,163 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	}
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
-	validateHttpRoute(t, output.Resources, routeAName, routeAPath)
-	validateHttpRoute(t, output.Resources, routeBName, routeBPath)
+	validateHttpRoute(t, output.Resources, routeAName, nil)
+	validateHttpRoute(t, output.Resources, routeBName, nil)
+}
+
+func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
+	r := &Renderer{}
+
+	var routes []*radclient.GatewayRoute
+	routeName := "routename"
+	destination := makeRouteResourceID(routeName)
+	path := "/backend"
+	rewrite := "/rewrite"
+	route := radclient.GatewayRoute{
+		Destination:   &destination,
+		Path:          &path,
+		ReplacePrefix: &rewrite,
+	}
+	routes = append(routes, &route)
+	properties := radclient.GatewayProperties{
+		Routes: routes,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	additionalProperties := GetRuntimeOptions()
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
+	expectedURL := "http://" + expectedHostname
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+
+	expectedIncludes := []contourv1.Include{
+		{
+			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: path,
+				},
+			},
+		},
+	}
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+
+	expectedPathRewritePolicy := &contourv1.PathRewritePolicy{
+		ReplacePrefix: []contourv1.ReplacePrefix{
+			{
+				Prefix:      path,
+				Replacement: rewrite,
+			},
+		},
+	}
+	validateHttpRoute(t, output.Resources, routeName, expectedPathRewritePolicy)
+}
+
+func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
+	r := &Renderer{}
+
+	var routes []*radclient.GatewayRoute
+	routeAName := "routeaname"
+	routeBName := "routebname"
+	destinationA := makeRouteResourceID(routeAName)
+	destinationB := makeRouteResourceID(routeBName)
+	routeAPath := "/routea"
+	routeA := radclient.GatewayRoute{
+		Destination: &destinationA,
+		Path:        &routeAPath,
+	}
+	routeBPath := "/routeb"
+	routeBRewrite := "routebrewrite"
+	routeB := radclient.GatewayRoute{
+		Destination:   &destinationB,
+		Path:          &routeBPath,
+		ReplacePrefix: &routeBRewrite,
+	}
+	routeCPath := "/routec"
+	routeCRewrite := "routecrewrite"
+	routeC := radclient.GatewayRoute{
+		Destination:   &destinationB,
+		Path:          &routeCPath,
+		ReplacePrefix: &routeCRewrite,
+	}
+	routeDPath := "/routed"
+	routeD := radclient.GatewayRoute{
+		Destination: &destinationB,
+		Path:        &routeDPath,
+	}
+	routes = append(routes, &routeA)
+	routes = append(routes, &routeB)
+	routes = append(routes, &routeC)
+	routes = append(routes, &routeD)
+	properties := radclient.GatewayProperties{
+		Routes: routes,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	additionalProperties := GetRuntimeOptions()
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
+	expectedURL := "http://" + expectedHostname
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 3)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+
+	expectedIncludes := []contourv1.Include{
+		{
+			Name: kubernetes.MakeResourceName(applicationName, routeAName),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: routeAPath,
+				},
+			},
+		},
+		{
+			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: routeBPath,
+				},
+			},
+		},
+		{
+			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: routeCPath,
+				},
+			},
+		},
+		{
+			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: routeDPath,
+				},
+			},
+		},
+	}
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+
+	expectedPathRewritePolicy := &contourv1.PathRewritePolicy{
+		ReplacePrefix: []contourv1.ReplacePrefix{
+			{
+				Prefix:      routeBPath,
+				Replacement: routeBRewrite,
+			},
+			{
+				Prefix:      routeCPath,
+				Replacement: routeCRewrite,
+			},
+		},
+	}
+	validateHttpRoute(t, output.Resources, routeAName, nil)
+	validateHttpRoute(t, output.Resources, routeBName, expectedPathRewritePolicy)
 }
 
 func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include) {
@@ -365,7 +520,7 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 	require.Equal(t, expectedGatewaySpec, gateway.Spec)
 }
 
-func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputResource, expectedRouteName, expectedMatchPath string) {
+func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputResource, expectedRouteName string, expectedRewrite *contourv1.PathRewritePolicy) {
 	expectedLocalID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, expectedRouteName)
 	httpRoute, httpRouteOutputResource := kubernetes.FindHttpRouteByLocalID(outputResources, expectedLocalID)
 	expectedHttpRouteOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
@@ -389,6 +544,7 @@ func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputReso
 						Port: expectedPort,
 					},
 				},
+				PathRewritePolicy: expectedRewrite,
 			},
 		},
 	}
