@@ -176,13 +176,13 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	worker := NewAsyncRequestProcessWorker(hostoptions.HostOptions{}, mockOpManager, testQueue, registry)
 
 	cnt := atomic.NewInt32(0)
-	maxConcurrency := int32(0)
+	maxConcurrency := atomic.NewInt32(0)
 	testCtrl := &testAsyncController{
 		BaseController: asyncoperation.NewBaseAsyncController(mockSC),
 		fn: func(ctx context.Context) (asyncoperation.Result, error) {
 			cnt.Inc()
-			if maxConcurrency < cnt.Load() {
-				maxConcurrency = cnt.Load()
+			if maxConcurrency.Load() < cnt.Load() {
+				maxConcurrency.Store(cnt.Load())
 			}
 			time.Sleep(100 * time.Millisecond)
 			cnt.Dec()
@@ -218,7 +218,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	cancel()
 	<-done
 
-	require.Equal(t, MaxOperationConcurrency, int(maxConcurrency))
+	require.Equal(t, int32(MaxOperationConcurrency), maxConcurrency.Load())
 }
 
 func TestStart_RunOperation(t *testing.T) {
