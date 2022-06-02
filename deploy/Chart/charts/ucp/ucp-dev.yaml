@@ -12,17 +12,17 @@ storageProvider:
   # This supports two modes:
   # - incluster = true => uses the credentials/service-account of a pod. FOR PRODUCTION USE.
   # - incluster = false => uses your LOCAL kubernetes context. For TESTING
-  #
-  # provider: "apiserver"
-  # apiserver:
-  #  incluster: false
-  #  context: ''
-  #  namespace: 'default'
+  
+  provider: "apiserver"
+  apiserver:
+    incluster: false
+    context: ''
+    namespace: 'default'
 
   #Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
-  provider: "etcd"
-  etcd:
-    inmemory: true
+  #provider: "etcd"
+  #etcd:
+  #  inmemory: true
 
 #Default planes configuration with which ucp starts
 planes:

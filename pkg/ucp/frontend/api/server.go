@@ -8,7 +8,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -22,8 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/store/etcdstore"
-	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 const (
@@ -65,23 +62,11 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
 
 	if s.options.DBClient == nil {
-		s.options.DBClient = s.InitializeStorageClient(ctx)
-
-		// Initialize the storage client to in memory etcd if there was no storage information in config file.
-		if s.options.ClientConfigSource == nil {
-			return nil, errors.New("cannot init etcd store")
-		}
-		obj, err := s.options.ClientConfigSource.Get(ctx)
+		dbClient, err := s.InitializeStorageClient(ctx)
 		if err != nil {
 			return nil, err
 		}
-		clientconfig := obj.(*etcdclient.Config)
-		client, err := etcdclient.New(*clientconfig)
-		if err != nil {
-			return nil, err
-		}
-		etcdClient := etcdstore.NewETCDClient(client)
-		s.options.DBClient = etcdClient
+		s.options.DBClient = dbClient
 	}
 
 	Register(r, s.options.DBClient, s.options.UcpHandler)
@@ -107,21 +92,21 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	return server, nil
 }
 
-func (s *Service) InitializeStorageClient(ctx context.Context) store.StorageClient {
+func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageClient, error) {
 	var storageClient store.StorageClient
 
-	//if s.options.StorageProviderOptions.Provider == dataprovider.TypeETCD {
-	//	s.options.StorageProviderOptions.ETCD.Client = s.options.ClientConfigSource
-	//}
+	if s.options.StorageProviderOptions.Provider == dataprovider.TypeETCD {
+		s.options.StorageProviderOptions.ETCD.Client = s.options.ClientConfigSource
+	}
 
 	storageProvider := dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
 	storageClient, err := storageProvider.GetStorageClient(ctx, string(s.options.StorageProviderOptions.Provider))
 
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	return storageClient
+	return storageClient, nil
 }
 
 // ConfigureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
