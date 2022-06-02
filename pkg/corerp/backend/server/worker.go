@@ -174,9 +174,10 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	for {
 		select {
 		case <-time.After(messageExtendAfter):
-			logger.Info("Extending message lock duration if operation is still in progress.")
 			if err := message.Extend(); err != nil {
 				logger.Error(err, "fails to extend message lock")
+			} else {
+				logger.Info("Extended message lock duration.", "NextVisibleTime", message.NextVisibleAt.UTC().String())
 			}
 			messageExtendAfter = getMessageExtendDuration(message.NextVisibleAt)
 
