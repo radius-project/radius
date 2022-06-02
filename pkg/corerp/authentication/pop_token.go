@@ -1,32 +1,39 @@
 package authentication
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 )
 
-type POPToken struct {
-	token interface{}
+type publicKey struct {
+	kty string `json:"kty"`
+	use string `json:"use"`
+	kid string `json:"kid"`
+	x5t string `json:"x5t"`
+	n   string `json:"n"`
+	e   string `json:"e"`
+	x5c string `json;"x5c"`
 }
 
-func RetrievePOPToken(req *http.Request) {
-	fmt.Println("retrieve token from header")
-	auth := strings.TrimSpace(req.Header.Get("Authorization"))
-	if auth == "" {
-		fmt.Println("Authorization header is empty. Bad request")
-	}
-	parts := strings.Split(auth, " ")
-	if len(parts) < 2 || strings.ToLower(parts[0]) != "bearer" {
-		fmt.Println("Bearer token not found. Bad request")
-	}
+const AADPublicKeyURL = "https://login.microsoftonline.com/common/discovery/keys"
 
-	token := parts[1]
-
-	// Empty bearer tokens aren't valid
-	if len(token) == 0 {
-		fmt.Println("Bearer token not found. Bad request")
+// fetchAADPublicKey fetches the common public keys from the AADPublicKeyURL
+func fetchAADPublicKey() ([]publicKey, error) {
+	client := http.Client{}
+	resp, err := client.Get(AADPublicKeyURL)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return nil, err
+	} else if resp.StatusCode != http.StatusOK {
+		msg := fmt.Sprintf("Response code - %d", resp.StatusCode)
+		return nil, errors.New(msg)
 	}
-
-	fmt.Println(fmt.Sprintf("POP token retrieved is - %v", token))
+	defer resp.Body.Close()
+	var keys []publicKey
+	err = json.NewDecoder(resp.Body).Decode(&keys)
+	if err != nil {
+		return nil, err
+	}
+	return keys, nil
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/corerp/authentication"
+	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/middleware"
 	"github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/version"
@@ -33,7 +34,7 @@ type ServerOptions struct {
 }
 
 // NewServer will create a server that can listen on the provided address and serve requests.
-func NewServer(ctx context.Context, options ServerOptions) (*http.Server, error) {
+func NewServer(ctx context.Context, options ServerOptions, identityProviderConfig hostoptions.IdentityOptions) (*http.Server, error) {
 	r := mux.NewRouter()
 	if options.Configure != nil {
 		err := options.Configure(r)
@@ -44,9 +45,10 @@ func NewServer(ctx context.Context, options ServerOptions) (*http.Server, error)
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues)
-	// add the arm cert validation if EnableAuth is true
+
+	// add the arm validation if EnableAuth is true
 	if options.EnableArmAuth {
-		r.Use(middleware.ClientCertValidator(options.ArmCertMgr))
+		r.Use(middleware.ClientValidator(identityProviderConfig, options.ArmCertMgr))
 	}
 	r.Use(middleware.ARMRequestCtx(options.PathBase))
 

@@ -74,6 +74,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 			return nil
 		}},
+		s.Options.Config.Identity,
 	)
 	if err != nil {
 		return err

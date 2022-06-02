@@ -38,4 +38,5 @@ type IdentityOptions struct {
 	ArmEndpoint string `yaml:"armEndpoint"`
 	Audience    string `yaml:"audience"`
 	PemCertPath string `yaml:"pemCertPath"`
+	HostName    string `yaml:"hostname"`
 }

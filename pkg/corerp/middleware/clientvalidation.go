@@ -6,12 +6,14 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/project-radius/radius/pkg/corerp/authentication"
 	armAuthenticator "github.com/project-radius/radius/pkg/corerp/authentication"
+	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -22,9 +24,8 @@ const (
 	ArmCertificateRefreshRate   = 1 * time.Hour
 )
 
-// ClientCertValidator validates the thumbprint received in the request header with
-// the active thumbprints fetched from ARM Metadata endpoint
-func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.Handler) http.Handler {
+//ClientValidator validates the PoP token and if the auth header is not present then it falls back to the cert validation
+func ClientValidator(identityOptions hostoptions.IdentityOptions, armCertMgr *armAuthenticator.ArmCertManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			//skip cert validation for health and version endpoint
@@ -33,22 +34,39 @@ func ClientCertValidator(armCertMgr *armAuthenticator.ArmCertManager) func(http.
 				next.ServeHTTP(w, r)
 				return
 			}
-			clientRequestThumbprint := r.Header.Get(IngressCertThumbprintHeader)
-			if clientRequestThumbprint == "" {
-				log.V(radlogger.Error).Info("X-SSL-Client-Thumbprint header is missing")
-				handleErr(r.Context(), w, r)
-				return
+			token, isAuthPresent, err := authentication.ValidateAuthHeader(r, log)
+			if !isAuthPresent {
+				err := clientCertValidator(r, armCertMgr)
+				if err != nil {
+					log.V(radlogger.Error).Info(err.Error())
+					handleErr(r.Context(), w, r)
+					return
+				}
+			} else {
+				err = authentication.Validate(token, identityOptions, log)
+				if err != nil {
+					handleErr(r.Context(), w, r)
+					return
+				}
 			}
-			isValid := authentication.IsValidThumbprint(clientRequestThumbprint)
-			if !isValid {
-				log.V(radlogger.Error).Info("Thumbprint validating failed")
-				handleErr(r.Context(), w, r)
-				return
-			}
-			authentication.RetrievePOPToken(r)
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// clientCertValidator validates the thumbprint received in the request header with
+// the active thumbprints fetched from ARM Metadata endpoint
+func clientCertValidator(r *http.Request, armCertMgr *armAuthenticator.ArmCertManager) error {
+	//skip cert validation for health and version endpoint
+	clientRequestThumbprint := r.Header.Get(IngressCertThumbprintHeader)
+	if clientRequestThumbprint == "" {
+		return errors.New("X-SSL-Client-Thumbprint header is missing")
+	}
+	isValid := authentication.IsValidThumbprint(clientRequestThumbprint)
+	if !isValid {
+		return errors.New("Thumbprint validating failed")
+	}
+	return nil
 }
 
 func handleErr(ctx context.Context, w http.ResponseWriter, req *http.Request) {

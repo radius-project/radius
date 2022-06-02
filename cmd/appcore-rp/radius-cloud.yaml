@@ -3,12 +3,13 @@ environment:
   name: AzureCloud
   roleLocation: West US
 identity: # 1P AAD APP authentication
-  clientId: "PLACEHOLDER"
+  clientId: "046d8e1a-a7fc-4718-b963-3daaa29fe25e"
   instance: "https://login.windows.net"
   tenantId: "common"
-  armEndpoint: "https://management.azure.com:443"
+  armEndpoint: "https://management.azure.com"
   audience: "https://management.core.windows.net"
   pemCertPath: "/var/certs/rp-aad-app.pem"
+  hostname: "westus3.rp.radius-dogfood.azure.com"
 storageProvider:
   provider: "cosmosdb"
   cosmosdb:

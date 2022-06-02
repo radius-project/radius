@@ -20,6 +20,7 @@ import (
 
 	"github.com/gorilla/mux"
 	armAuthenticator "github.com/project-radius/radius/pkg/corerp/authentication"
+	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,9 +55,13 @@ func TestCertValidationUnauthorized(t *testing.T) {
 		}
 		ctx := context.Background()
 		log := radlogger.GetLogger(ctx)
+		identityOptions := hostoptions.IdentityOptions{
+			Audience: "https://management.azure.com",
+			ClientID: "046d8e1a-a7fc-4718-b963-3daaa29fe25e",
+		}
 		armCertMgr := armAuthenticator.NewArmCertManager("https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01", log)
 		armAuthenticator.ArmCertStore.Store("934367bf1c97033f877db0f15cb1b586957d313", cert)
-		r.Use(ClientCertValidator(armCertMgr))
+		r.Use(ClientValidator(identityOptions, armCertMgr))
 		handler := LowercaseURLPath(r)
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
 		req.Header.Set(IngressCertThumbprintHeader, "934367bf1c97033f877db0f15cb1b586957d312")
@@ -94,9 +99,13 @@ func TestCertValidationAuthorized(t *testing.T) {
 		}
 		ctx := context.Background()
 		log := radlogger.GetLogger(ctx)
+		identityOptions := hostoptions.IdentityOptions{
+			Audience: "https://management.azure.com",
+			ClientID: "046d8e1a-a7fc-4718-b963-3daaa29fe25e",
+		}
 		armCertMgr := armAuthenticator.NewArmCertManager("https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01", log)
 		armAuthenticator.ArmCertStore.Store("934367bf1c97033f877db0f15cb1b586957d313", cert)
-		r.Use(ClientCertValidator(armCertMgr))
+		r.Use(ClientValidator(identityOptions, armCertMgr))
 		handler := LowercaseURLPath(r)
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
 		req.Header.Set(IngressCertThumbprintHeader, "934367bf1c97033f877db0f15cb1b586957d313")
