@@ -48,7 +48,7 @@ func (w *Service) Run(ctx context.Context) error {
 	controllers := server.NewControllerRegistry(sp)
 	err := controllers.Register(
 		ctx,
-		asyncoperation.OperationType{TypeName: containers_ctrl.ResourceTypeName, Method: asyncoperation.OperationGet},
+		asyncoperation.OperationType{Type: containers_ctrl.ResourceTypeName, Method: asyncoperation.OperationGet},
 		containers.NewUpdateContainer)
 	if err != nil {
 		panic(err)

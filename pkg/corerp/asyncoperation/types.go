@@ -13,7 +13,7 @@ const (
 )
 
 const (
-	// Predefined Operation methodss.
+	// Predefined Operation methods.
 	OperationList                 = "LIST"
 	OperationPut                  = "PUT"
 	OperationPatch                = "PATCH"
@@ -33,20 +33,20 @@ const (
 // request with this operation type. AsyncRequestProcessWorker parses the operation type from the message
 // and run the corresponding async operation controller.
 type OperationType struct {
-	TypeName string
-	Method   string
+	Type   string
+	Method string
 }
 
 // String returns the operation type string.
 func (o OperationType) String() string {
-	return strings.ToUpper(o.TypeName + Seperator + o.Method)
+	return strings.ToUpper(o.Type + Seperator + o.Method)
 }
 
-// ParseOperationType parses operation type from string.
+// ParseOperationType parses OperationType from string.
 func ParseOperationType(s string) (OperationType, bool) {
 	p := strings.Split(s, Seperator)
 	if len(p) == 2 {
-		return OperationType{TypeName: strings.ToUpper(p[0]), Method: strings.ToUpper(p[1])}, true
+		return OperationType{Type: strings.ToUpper(p[0]), Method: strings.ToUpper(p[1])}, true
 	}
 	return OperationType{}, false
 }

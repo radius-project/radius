@@ -95,7 +95,7 @@ func TestStart_UnknownOperation(t *testing.T) {
 	testMessage, _, _ := getTestMessage()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	err := registry.Register(ctx, asyncoperation.OperationType{TypeName: "Applications.Core/environments", Method: "UNDEFINED"}, func(s store.StorageClient) (asyncoperation.Controller, error) {
+	err := registry.Register(ctx, asyncoperation.OperationType{Type: "Applications.Core/environments", Method: "UNDEFINED"}, func(s store.StorageClient) (asyncoperation.Controller, error) {
 		return nil, nil
 	})
 	require.NoError(t, err)
@@ -134,7 +134,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	testMessage, _, _ := getTestMessage()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	err := registry.Register(ctx, asyncoperation.OperationType{TypeName: "Applications.Core/environments", Method: "PUT"},
+	err := registry.Register(ctx, asyncoperation.OperationType{Type: "Applications.Core/environments", Method: "PUT"},
 		func(s store.StorageClient) (asyncoperation.Controller, error) {
 			return nil, nil
 		})
@@ -190,7 +190,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 		},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	err := registry.Register(ctx, asyncoperation.OperationType{TypeName: "Applications.Core/environments", Method: "PUT"},
+	err := registry.Register(ctx, asyncoperation.OperationType{Type: "Applications.Core/environments", Method: "PUT"},
 		func(s store.StorageClient) (asyncoperation.Controller, error) {
 			return testCtrl, nil
 		})
@@ -246,7 +246,7 @@ func TestStart_RunOperation(t *testing.T) {
 		},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	err := registry.Register(ctx, asyncoperation.OperationType{TypeName: "Applications.Core/environments", Method: "PUT"},
+	err := registry.Register(ctx, asyncoperation.OperationType{Type: "Applications.Core/environments", Method: "PUT"},
 		func(s store.StorageClient) (asyncoperation.Controller, error) {
 			return testCtrl, nil
 		})

@@ -57,7 +57,7 @@ func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, p
 		}
 	}
 
-	ot := asyncoperation.OperationType{TypeName: resourcetype, Method: operationMethod}
+	ot := asyncoperation.OperationType{Type: resourcetype, Method: operationMethod}
 	parent.Methods(method).HandlerFunc(fn).Name(ot.String())
 	return nil
 }

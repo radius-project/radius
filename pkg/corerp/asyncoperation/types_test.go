@@ -17,11 +17,11 @@ func TestOperationType_String(t *testing.T) {
 		out string
 	}{
 		{
-			in:  OperationType{TypeName: "applications.core/environments", Method: OperationPut},
+			in:  OperationType{Type: "applications.core/environments", Method: OperationPut},
 			out: "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
 		},
 		{
-			in:  OperationType{TypeName: "applications.core/environments", Method: "ListSecret"},
+			in:  OperationType{Type: "applications.core/environments", Method: "ListSecret"},
 			out: "APPLICATIONS.CORE/ENVIRONMENTS|LISTSECRET",
 		},
 	}
@@ -39,12 +39,12 @@ func TestOperationType_ParseOperationType(t *testing.T) {
 	}{
 		{
 			in:     "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
-			out:    OperationType{TypeName: "APPLICATIONS.CORE/ENVIRONMENTS", Method: OperationPut},
+			out:    OperationType{Type: "APPLICATIONS.CORE/ENVIRONMENTS", Method: OperationPut},
 			parsed: true,
 		},
 		{
 			in:     "APPLICATIONS.CORE/ENVIRONMENTS|LISTSECRET",
-			out:    OperationType{TypeName: "APPLICATIONS.CORE/ENVIRONMENTS", Method: "LISTSECRET"},
+			out:    OperationType{Type: "APPLICATIONS.CORE/ENVIRONMENTS", Method: "LISTSECRET"},
 			parsed: true,
 		},
 		{

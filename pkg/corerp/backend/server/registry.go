@@ -36,7 +36,7 @@ func (h *ControllerRegistry) Register(ctx context.Context, operationType asyncop
 	h.ctrlMapMu.Lock()
 	defer h.ctrlMapMu.Unlock()
 
-	sc, err := h.sp.GetStorageClient(ctx, operationType.TypeName)
+	sc, err := h.sp.GetStorageClient(ctx, operationType.Type)
 	if err != nil {
 		return err
 	}
