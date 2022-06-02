@@ -146,10 +146,9 @@ func (aom *statusManager) Delete(ctx context.Context, rootScope string, operatio
 // queueRequestMessage function is to put the async operation message to the queue to be worked on.
 func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *servicecontext.ARMRequestContext, aos *Status, operationTimeout time.Duration) error {
 	msg := &Request{
-		APIVersion:    sCtx.APIVersion,
-		OperationID:   sCtx.OperationID,
-		OperationType: sCtx.OperationType,
-
+		APIVersion:       sCtx.APIVersion,
+		OperationID:      sCtx.OperationID,
+		OperationType:    sCtx.OperationType,
 		ResourceID:       aos.LinkedResourceID,
 		CorrelationID:    sCtx.CorrelationID,
 		TraceparentID:    sCtx.Traceparent,
