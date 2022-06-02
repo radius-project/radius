@@ -140,6 +140,9 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 	asyncReq := message.Data.(*asyncoperation.Request)
 	asyncReqCtx, opCancel := context.WithCancel(ctx)
+	// Ensure that asyncReqCtx context is cancelled when runOperation returns.
+	// That is, cancelling asyncReqCtx signals to ctrl.Run() to cancel the execution,
+	// resulting in completing the go-routine calling ctrl.Run() when runOperation returns.
 	defer opCancel()
 
 	opDone := make(chan struct{}, 1)
