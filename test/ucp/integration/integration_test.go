@@ -42,7 +42,7 @@ func NewClient(httpClient *http.Client, baseURL string) Client {
 const (
 	rpURL                = "127.0.0.1:7443"
 	testProxyRequestPath = "/resourceGroups/rg1/providers/Applications.Core/applications"
-	queryParameter       = "api-version=2022-03-15-privatepreview"
+	apiVersionQueyParam  = "api-version=2022-03-15-privatepreview"
 	testPlaneID          = "/planes/radius/local"
 	basePath             = "/apis/api.ucp.dev/v1alpha3"
 )
@@ -172,12 +172,12 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 		return &data, nil
 	})
 
-	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+"/planes/radius/local"+testProxyRequestPath+"?"+queryParameter, nil)
+	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+"/planes/radius/local"+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
-	assert.Equal(t, queryParameter, proxyRequestResponse.Request.URL.RawQuery)
+	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
 	assert.Equal(t, "http://"+proxyRequest.Host+testPlaneID+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
 	proxyRequestResponseBody, err := ioutil.ReadAll(proxyRequestResponse.Body)
