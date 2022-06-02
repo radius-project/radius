@@ -186,9 +186,9 @@ jobs:
       - name: az CLI login
         run: |
           az login --service-principal \
-            --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
-            --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-            --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+            --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
+            --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
+            --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - name: Push helm chart to ACR
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz --force
@@ -270,17 +270,17 @@ jobs:
     - name: az CLI login
       run: |
         az login --service-principal \
-          --username ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
-          --password ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-          --tenant ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+          --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
+          --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
+          --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
     - name: az account set
-      run: az account set --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+      run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
     - name: Create the resource group
       run: |
         az group create \
           --location westus \
           --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
-          --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
         while [ $(az group exists --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }}) = false ]; do sleep 2; done
     - name: Run 'rad env init dev'
       run: |
@@ -292,10 +292,10 @@ jobs:
           --tag ${{ env.REL_VERSION }} \
           --provider-azure \
           --provider-azure-resource-group=${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
-          --provider-azure-client-id=${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
-          --provider-azure-client-secret=${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-          --provider-azure-tenant-id=${{ secrets.INTEGRATION_TEST_TENANT_ID }} \
-          --provider-azure-subscription=${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}      
+          --provider-azure-client-id=${{ secrets.AZURE_SP_TESTS_APPID }} \
+          --provider-azure-client-secret=${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
+          --provider-azure-tenant-id=${{ secrets.AZURE_SP_TESTS_TENANTID }} \
+          --provider-azure-subscription=${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}      
     - name: Wait for control-plane ready
       run: |
         kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
@@ -329,7 +329,7 @@ jobs:
       name: Delete resource group created for environment
       run: | 
          az group delete \
-          --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
           --resource-group ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
           --yes \
           --verbose \
