@@ -28,6 +28,8 @@ variables:
   value: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourcegroups/radiusrplogs/providers/microsoft.operationalinsights/workspaces/rplogs"
 - name: INTEGRATION_TEST_SUBSCRIPTION_ID
   value: "85716382-7362-45c3-ae03-2126e459a123"
+- name: DisableDockerDetector
+  value: 'true'
 
 stages:
 - stage: ImageBuild
@@ -143,8 +145,8 @@ stages:
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
     - bash: |
         export RANID=$(date +%s%N)
-        arr=("westeurope" "westus2")
-        index=$(expr $RANID % 2)
+        arr=("westeurope" "northeurope" "australiaeast")
+        index=$(expr $RANID % 3)
         export LOCATION=${arr[$index]}
         echo "##vso[task.setvariable variable=RADENVIRONMENT]rad-$RANID"
         go run cmd/rad/main.go \
