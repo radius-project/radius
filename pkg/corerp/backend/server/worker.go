@@ -148,8 +148,6 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	// Start new go routine to cancel and timeout async operation.
 	go func() {
 		defer func(done chan struct{}) {
-			opEndAt := time.Now()
-			logger.Info("End processing operation.", "StartAt", opStartAt.UTC(), "EndAt", opEndAt.UTC(), "Duration", opEndAt.Sub(opStartAt))
 			close(done)
 			if err := recover(); err != nil {
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
@@ -159,7 +157,10 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 		logger.Info("Start processing operation.")
 		result, err := ctrl.Run(asyncReqCtx, asyncReq)
-		// Do not update status if context is canceled already.
+		// There are two cases when asyncReqCtx is canceled.
+		// 1. When the operation is timed out, w.completeOperation will be called in L186
+		// 2. When parent context is canceled or done, we need to requeue the operation to reprocess the request.
+		// Such cases should not call w.completeOperation.
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
 			if err != nil {
 				result.SetFailed(armerrors.ErrorDetails{Code: armerrors.Internal, Message: err.Error()}, false)
@@ -193,7 +194,8 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			return
 
 		case <-opDone:
-			logger.V(radlogger.Debug).Info("exiting the goroutine for async operation execution.")
+			opEndAt := time.Now()
+			logger.Info("End processing operation.", "StartAt", opStartAt.UTC(), "EndAt", opEndAt.UTC(), "Duration", opEndAt.Sub(opStartAt))
 			return
 		}
 	}
