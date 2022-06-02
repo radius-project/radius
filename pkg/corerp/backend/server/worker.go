@@ -218,12 +218,13 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	err = w.operationMgr.Update(ctx, rID.RootScope(), req.OperationID, result.ProvisioningState(), &now, result.Error)
 	if err != nil {
 		logger.Error(err, "failed to update operationstatus", "OperationID", req.OperationID.String())
+		return
 	}
 
 	// Finish the message only if Requeue is false. Otherwise, AsyncRequestProcessWorker will requeue the message and process it again.
 	if !result.Requeue {
 		if err := message.Finish(nil); err != nil {
-			logger.V(radlogger.Error).Info("failed to finish the message")
+			logger.Error(err, "failed to finish the message")
 		}
 	}
 }
