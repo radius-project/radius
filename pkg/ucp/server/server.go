@@ -42,8 +42,8 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	}
 
 	tlsCertDir := os.Getenv("TLS_CERT_DIR")
-	ucpConfigFile := "/Users/nithya/radius/radius/deploy/Chart/charts/ucp/ucp-dev.yaml" //os.Getenv("UCP_CONFIG")
-	port := "5005"                                                                      //os.Getenv("PORT")
+	ucpConfigFile := os.Getenv("UCP_CONFIG")
+	port := os.Getenv("PORT")
 
 	opts, err := hostoptions.NewHostOptionsFromEnvironment(ucpConfigFile)
 	if err != nil {
