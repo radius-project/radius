@@ -64,28 +64,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 
 func NewServer(options Options) (*hosting.Host, error) {
 	clientconfigSource := hosting.NewAsyncValue()
-
-	/*return &hosting.Host{
-		Services: []hosting.Service{
-			data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{
-				ClientConfigSink: clientconfigSource,
-			}),
-			api.NewService(api.ServiceOptions{
-				Address: ":" + options.Port,
-				UcpHandler: ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
-					BasePath: options.BasePath,
-				}),
-				DBClient:               options.DBClient,
-				ClientConfigSource:     clientconfigSource,
-				TLSCertDir:             options.TLSCertDir,
-				BasePath:               options.BasePath,
-				StorageProviderOptions: options.StorageProviderOptions,
-				InitialPlanes:          options.InitialPlanes,
-			}),
-		},
-	}, nil */
-
-	hostingSvc := []hosting.Service{
+	hostingServices := []hosting.Service{
 		api.NewService(api.ServiceOptions{
 			Address: ":" + options.Port,
 			UcpHandler: ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
@@ -107,11 +86,11 @@ func NewServer(options Options) (*hosting.Host, error) {
 		// The client will be initialized asynchronously.
 
 		options.StorageProviderOptions.ETCD.Client = clientconfigSource
-		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: clientconfigSource}))
+		hostingServices = append(hostingServices, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: clientconfigSource}))
 	}
 
 	return &hosting.Host{
-		Services: hostingSvc,
+		Services: hostingServices,
 	}, nil
 
 }
