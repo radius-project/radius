@@ -57,11 +57,12 @@ type testContext struct {
 }
 
 func (c *testContext) drainQueueOrAssert(t *testing.T) {
+	startAt := time.Now()
 	for c.internalQ.Len() > 0 {
-		select {
-		case <-time.After(20 * time.Second):
+		if time.Until(startAt) > 20*time.Second {
 			require.Fail(t, "failed to drain queue by worker")
 		}
+		time.Sleep(time.Millisecond)
 	}
 }
 
