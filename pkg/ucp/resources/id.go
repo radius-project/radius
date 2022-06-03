@@ -103,7 +103,7 @@ func (ri ID) FindScope(scopeType string) string {
 // RootScope returns the root-scope (the part before 'providers'). This includes 'ucp:' prefix.
 //
 // Examples:
-//	/subscriptions{guid}/resourceGroups/cool-group
+//	/subscriptions/{guid}/resourceGroups/cool-group
 //	/planes/radius/local/resourceGroups/cool-group
 func (ri ID) RootScope() string {
 	segments := []string{}

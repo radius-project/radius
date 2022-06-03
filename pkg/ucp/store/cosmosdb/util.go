@@ -11,7 +11,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/spaolacci/murmur3"
@@ -138,43 +137,4 @@ func GenerateCosmosDBKey(id resources.ID) (string, error) {
 	storageKeys = append(storageKeys, resourceTypeAndName)
 
 	return CombineStorageKeys(storageKeys...)
-}
-
-const (
-	subscriptionType  = "subscriptions"
-	resourceGroupType = "resourceGroups"
-)
-
-// TODO: replace ResourceScope with UCP resource id when we merge it to ucp repo - https://github.com/project-radius/radius/issues/2224
-type ResourceScope struct {
-	SubscriptionID string
-	ResourceGroup  string
-}
-
-func NewResourceScope(rootScope string) (*ResourceScope, error) {
-	rScope := &ResourceScope{}
-	scope := strings.TrimPrefix(rootScope, "/")
-	scope = strings.TrimSuffix(scope, "/")
-	s := strings.Split(scope, "/")
-	if len(s) >= 2 && strings.EqualFold(s[0], subscriptionType) {
-		if _, err := uuid.Parse(s[1]); err != nil {
-			return nil, err
-		}
-		rScope.SubscriptionID = strings.ToLower(s[1])
-	}
-	if len(s) >= 4 && strings.EqualFold(s[2], resourceGroupType) {
-		rScope.ResourceGroup = strings.ToLower(s[3])
-	}
-	return rScope, nil
-}
-
-func (r ResourceScope) fullyQualifiedSubscriptionScope() string {
-	sb := strings.Builder{}
-	if r.SubscriptionID != "" {
-		sb.WriteString("/")
-		sb.WriteString(subscriptionType)
-		sb.WriteString("/")
-		sb.WriteString(r.SubscriptionID)
-	}
-	return strings.ToLower(sb.String())
 }

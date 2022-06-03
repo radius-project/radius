@@ -159,38 +159,20 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 	return err
 }
 
-func constructCosmosDBQuery(query store.Query) (*ResourceScope, *cosmosapi.Query, error) {
-	// Validate query request.
-	resourceScope, err := NewResourceScope(query.RootScope)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// TODO: Support ScopeRecursive and RoutingScopePrefix later for UCP - https://github.com/project-radius/radius/issues/2224
+func constructCosmosDBQuery(query store.Query) (*cosmosapi.Query, error) {
 	if query.ScopeRecursive || query.RoutingScopePrefix != "" {
-		return nil, nil, &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."}
+		return nil, &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."}
 	}
 
-	// Construct SQL query
 	queryString := "SELECT * FROM c WHERE "
 	whereParam := ""
 	queryParams := []cosmosapi.QueryParam{}
-	if resourceScope.SubscriptionID != "" {
+
+	if query.RootScope != "" {
 		whereParam = whereParam + "c.rootScope = @rootScope"
 		queryParams = append(queryParams, cosmosapi.QueryParam{
 			Name:  "@rootScope",
-			Value: resourceScope.fullyQualifiedSubscriptionScope(),
-		})
-	}
-
-	if resourceScope.ResourceGroup != "" {
-		if whereParam != "" {
-			whereParam += " and "
-		}
-		whereParam += "c.resourceGroup = @rgName"
-		queryParams = append(queryParams, cosmosapi.QueryParam{
-			Name:  "@rgName",
-			Value: resourceScope.ResourceGroup,
+			Value: query.RootScope,
 		})
 	}
 
@@ -218,18 +200,26 @@ func constructCosmosDBQuery(query store.Query) (*ResourceScope, *cosmosapi.Query
 	}
 
 	if whereParam == "" {
-		return nil, nil, &store.ErrInvalid{Message: "invalid Query parameters"}
+		return nil, &store.ErrInvalid{Message: "invalid Query parameters"}
 	}
 
-	return resourceScope, &cosmosapi.Query{Query: queryString + whereParam, Params: queryParams}, nil
+	return &cosmosapi.Query{Query: queryString + whereParam, Params: queryParams}, nil
 }
 
 // Query queries the data resource
 func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, opts ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 	cfg := store.NewQueryConfig(opts...)
 
-	// Prepare document query.
-	resourceScope, qry, err := constructCosmosDBQuery(query)
+	if query.RootScope == "" {
+		return nil, &store.ErrInvalid{Message: "RootScope cannot be empty"}
+	}
+
+	resourceID, err := resources.Parse(query.RootScope)
+	if err != nil {
+		return nil, err
+	}
+
+	qry, err := constructCosmosDBQuery(query)
 	if err != nil {
 		return nil, err
 	}
@@ -249,9 +239,8 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 		ConsistencyLevel:     cosmosapi.ConsistencyLevelEventual,
 	}
 
-	// if subscriptionid is given, then use partition key.
-	if resourceScope.SubscriptionID != "" {
-		qops.PartitionKeyValue = NormalizeSubscriptionID(resourceScope.SubscriptionID)
+	if resourceID.FindScope(resources.SubscriptionsSegment) != "" {
+		qops.PartitionKeyValue = GetPartitionKey(resourceID)
 		qops.EnableCrossPartition = false
 	}
 
@@ -264,7 +253,6 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 		return nil, err
 	}
 
-	// Prepare response
 	output := []store.Object{}
 	for _, entity := range entities {
 		output = append(output, store.Object{
@@ -297,6 +285,7 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 	if err != nil {
 		return nil, err
 	}
+
 	entity := &ResourceEntity{}
 	_, err = c.client.GetDocument(ctx, c.options.DatabaseName, c.options.CollectionName, docID, ops, entity)
 
@@ -325,6 +314,7 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 	ops := cosmosapi.DeleteDocumentOptions{
 		PartitionKeyValue: GetPartitionKey(parsedID),
 	}
+
 	docID, err := GenerateCosmosDBKey(parsedID)
 	if err != nil {
 		return err
@@ -351,16 +341,12 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		return err
 	}
 
-	subscriptionID := parsedID.FindScope(resources.SubscriptionsSegment)
-	resourceGroup := parsedID.FindScope(resources.ResourceGroupsSegment)
-
 	entity := &ResourceEntity{
-		ID:            docID,
-		ResourceID:    parsedID.String(),
-		RootScope:     parsedID.RootScope(),
-		ResourceGroup: resourceGroup,
-		PartitionKey:  GetPartitionKey(parsedID),
-		Entity:        obj.Data,
+		ID:           docID,
+		ResourceID:   parsedID.String(),
+		RootScope:    parsedID.RootScope(),
+		PartitionKey: GetPartitionKey(parsedID),
+		Entity:       obj.Data,
 	}
 
 	ifMatch := cfg.ETag
@@ -368,23 +354,23 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 		ifMatch = obj.ETag
 	}
 
-	partitionKey := NormalizeSubscriptionID(subscriptionID)
+	// What should the Partition Key be for a UCP resource?
+	partitionKey := GetPartitionKey(parsedID)
 
 	var resp *cosmosapi.Resource
 	if ifMatch == "" {
-		// Use CreateDocument to create new document or upsert document if etag is not given
 		op := cosmosapi.CreateDocumentOptions{
 			PartitionKeyValue: partitionKey,
 			IsUpsert:          true,
 		}
 		resp, _, err = c.client.CreateDocument(ctx, c.options.DatabaseName, c.options.CollectionName, entity, op)
 	} else {
-		// Use ReplaceDocument to update doc if etag is given.
 		op := cosmosapi.ReplaceDocumentOptions{
 			PartitionKeyValue: partitionKey,
 			IfMatch:           ifMatch,
 		}
 		resp, _, err = c.client.ReplaceDocument(ctx, c.options.DatabaseName, c.options.CollectionName, entity.ID, entity, op)
+
 		// TODO: use the response code when switching to official SDK.
 		if err != nil && strings.HasPrefix(err.Error(), errEtagPreconditionMsgPrefix) {
 			return &store.ErrConcurrency{}
@@ -400,6 +386,13 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 	return nil
 }
 
+// GetPartitionKey function returns the partition key for a resource
 func GetPartitionKey(id resources.ID) string {
+	// As of now, Partition Key for a UCP resource is an empty string
+	// Should we change this behavior?
+	// if id.IsUCPQualfied() {
+	// 	return NormalizeLetterOrDigitToUpper(id.FindScope(resources.PlanesSegment))
+	// }
+
 	return NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))
 }
