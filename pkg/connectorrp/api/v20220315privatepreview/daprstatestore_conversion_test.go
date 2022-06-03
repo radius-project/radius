@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/api"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,8 +43,6 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", v.Environment)
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", v.Resource)
 			require.Equal(t, "state.azure.tablestorage", v.Kind)
-			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, v.Status.OutputResources[0]["ResourceType"])
 
 		case *datamodel.DaprStateStoreSQLServerResourceProperties:
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", v.Application)
@@ -63,10 +62,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, resourceType, v.Status.OutputResources[0]["ResourceType"])
 		default:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.GetDaprStateStoreProperties().Application)
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.GetDaprStateStoreProperties().Environment)
-			require.Equal(t, "Deployment", convertedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, convertedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["ResourceType"])
+			assert.Fail(t, "Kind of DaprStateStore is specified.")
 		}
 	}
 
@@ -105,8 +101,6 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", v.Environment)
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", v.Resource)
 			require.Equal(t, "state.sqlserver", v.Kind)
-			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, v.Status.OutputResources[0]["ResourceType"])
 		case *datamodel.DaprStateStoreGenericResourceProperties:
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", v.Application)
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", v.Environment)
@@ -117,10 +111,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, resourceType, v.Status.OutputResources[0]["ResourceType"])
 		default:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.GetDaprStateStoreProperties().Application)
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.GetDaprStateStoreProperties().Environment)
-			require.Equal(t, "Deployment", resource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, resource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["ResourceType"])
+			assert.Fail(t, "Kind of DaprStateStore is specified.")
 		}
 	}
 

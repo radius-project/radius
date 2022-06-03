@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"reflect"
+
 	"github.com/project-radius/radius/pkg/api"
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -21,7 +23,10 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (api.DataModelInterface, er
 			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
 		}
 	}
-
+	outputResources := basedatamodel.ResourceStatus{}.OutputResources
+	if src.Properties.Status != nil {
+		outputResources = src.Properties.Status.OutputResources
+	}
 	converted := &datamodel.RabbitMQMessageQueue{
 		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
@@ -33,7 +38,7 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (api.DataModelInterface, er
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			BasicResourceProperties: basedatamodel.BasicResourceProperties{
 				Status: basedatamodel.ResourceStatus{
-					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+					OutputResources: outputResources,
 				},
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -62,10 +67,14 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src api.DataModelInterface)
 	dst.SystemData = fromSystemDataModel(rabbitmq.SystemData)
 	dst.Location = to.StringPtr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
+	var outputresources []map[string]interface{}
+	if !(reflect.DeepEqual(rabbitmq.Properties.Status, basedatamodel.ResourceStatus{})) {
+		outputresources = rabbitmq.Properties.Status.OutputResources
+	}
 	dst.Properties = &RabbitMQMessageQueueProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: rabbitmq.Properties.BasicResourceProperties.Status.OutputResources,
+				OutputResources: outputresources,
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),

@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"reflect"
+
 	"github.com/project-radius/radius/pkg/api"
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -15,6 +17,10 @@ import (
 
 // ConvertTo converts from the versioned DaprInvokeHttpRoute resource to version-agnostic datamodel.
 func (src *DaprInvokeHTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
+	outputResources := basedatamodel.ResourceStatus{}.OutputResources
+	if src.Properties.Status != nil {
+		outputResources = src.Properties.Status.OutputResources
+	}
 	converted := &datamodel.DaprInvokeHttpRoute{
 		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
@@ -26,7 +32,7 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (api.DataModelInterface, err
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			BasicResourceProperties: basedatamodel.BasicResourceProperties{
 				Status: basedatamodel.ResourceStatus{
-					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+					OutputResources: outputResources,
 				},
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -54,10 +60,14 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src api.DataModelInterface) 
 	dst.SystemData = fromSystemDataModel(daprHttpRoute.SystemData)
 	dst.Location = to.StringPtr(daprHttpRoute.Location)
 	dst.Tags = *to.StringMapPtr(daprHttpRoute.Tags)
+	var outputresources []map[string]interface{}
+	if !(reflect.DeepEqual(daprHttpRoute.Properties.Status, basedatamodel.ResourceStatus{})) {
+		outputresources = daprHttpRoute.Properties.Status.OutputResources
+	}
 	dst.Properties = &DaprInvokeHTTPRouteProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: daprHttpRoute.Properties.BasicResourceProperties.Status.OutputResources,
+				OutputResources: outputresources,
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),

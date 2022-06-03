@@ -15,53 +15,63 @@ import (
 )
 
 func TestDaprInvokeHttpRoute_ConvertVersionedToDataModel(t *testing.T) {
-	// arrange
-	rawPayload := loadTestData("daprinvokehttprouteresource.json")
-	versionedResource := &DaprInvokeHTTPRouteResource{}
-	err := json.Unmarshal(rawPayload, versionedResource)
-	require.NoError(t, err)
+	testset := []string{"daprinvokehttprouteresource.json", "daprinvokehttprouteresource2.json"}
+	for _, payload := range testset {
+		// arrange
+		rawPayload := loadTestData(payload)
+		versionedResource := &DaprInvokeHTTPRouteResource{}
+		err := json.Unmarshal(rawPayload, versionedResource)
+		require.NoError(t, err)
 
-	// act
-	dm, err := versionedResource.ConvertTo()
+		// act
+		dm, err := versionedResource.ConvertTo()
 
-	resourceType := map[string]interface{}{"Provider": "DaprInvokeHttpRouteProvider", "Type": "HttpRoute"}
-	// assert
-	require.NoError(t, err)
-	convertedResource := dm.(*datamodel.DaprInvokeHttpRoute)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprInvokeHttpRoutes/daprHttpRoute0", convertedResource.ID)
-	require.Equal(t, "daprHttpRoute0", convertedResource.Name)
-	require.Equal(t, "Applications.Connector/daprInvokeHttpRoutes", convertedResource.Type)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-	require.Equal(t, "daprAppId", string(convertedResource.Properties.AppId))
-	require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
-	require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+		resourceType := map[string]interface{}{"Provider": "DaprInvokeHttpRouteProvider", "Type": "HttpRoute"}
+		// assert
+		require.NoError(t, err)
+		convertedResource := dm.(*datamodel.DaprInvokeHttpRoute)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprInvokeHttpRoutes/daprHttpRoute0", convertedResource.ID)
+		require.Equal(t, "daprHttpRoute0", convertedResource.Name)
+		require.Equal(t, "Applications.Connector/daprInvokeHttpRoutes", convertedResource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
+		require.Equal(t, "daprAppId", string(convertedResource.Properties.AppId))
+		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+		if payload == "daprinvokehttprouteresource.json" {
+			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+		}
+	}
 }
 
 func TestDaprInvokeHttpRoute_ConvertDataModelToVersioned(t *testing.T) {
-	// arrange
-	rawPayload := loadTestData("daprinvokehttprouteresourcedatamodel.json")
-	resource := &datamodel.DaprInvokeHttpRoute{}
-	err := json.Unmarshal(rawPayload, resource)
-	require.NoError(t, err)
+	testset := []string{"daprinvokehttprouteresourcedatamodel.json", "daprinvokehttprouteresourcedatamodel2.json"}
+	for _, payload := range testset {
+		// arrange
+		rawPayload := loadTestData(payload)
+		resource := &datamodel.DaprInvokeHttpRoute{}
+		err := json.Unmarshal(rawPayload, resource)
+		require.NoError(t, err)
 
-	// act
-	versionedResource := &DaprInvokeHTTPRouteResource{}
-	err = versionedResource.ConvertFrom(resource)
+		// act
+		versionedResource := &DaprInvokeHTTPRouteResource{}
+		err = versionedResource.ConvertFrom(resource)
 
-	resourceType := map[string]interface{}{"Provider": "DaprInvokeHttpRouteProvider", "Type": "HttpRoute"}
+		resourceType := map[string]interface{}{"Provider": "DaprInvokeHttpRouteProvider", "Type": "HttpRoute"}
 
-	// assert
-	require.NoError(t, err)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprInvokeHttpRoutes/daprHttpRoute0", resource.ID)
-	require.Equal(t, "daprHttpRoute0", resource.Name)
-	require.Equal(t, "Applications.Connector/daprInvokeHttpRoutes", resource.Type)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
-	require.Equal(t, "daprAppId", string(resource.Properties.AppId))
-	require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+		// assert
+		require.NoError(t, err)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprInvokeHttpRoutes/daprHttpRoute0", resource.ID)
+		require.Equal(t, "daprHttpRoute0", resource.Name)
+		require.Equal(t, "Applications.Connector/daprInvokeHttpRoutes", resource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
+		require.Equal(t, "daprAppId", string(resource.Properties.AppId))
+		if payload == "daprinvokehttprouteresource.json" {
+			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+		}
+	}
 }
 
 func TestDaprInvokeHttpRoute_ConvertFromValidation(t *testing.T) {

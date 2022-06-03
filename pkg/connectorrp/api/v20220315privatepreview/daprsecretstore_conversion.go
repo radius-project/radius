@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"reflect"
+
 	"github.com/project-radius/radius/pkg/api"
 	"github.com/project-radius/radius/pkg/basedatamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -15,6 +17,10 @@ import (
 
 // ConvertTo converts from the versioned DaprSecretStore resource to version-agnostic datamodel.
 func (src *DaprSecretStoreResource) ConvertTo() (api.DataModelInterface, error) {
+	outputResources := basedatamodel.ResourceStatus{}.OutputResources
+	if src.Properties.Status != nil {
+		outputResources = src.Properties.Status.OutputResources
+	}
 	converted := &datamodel.DaprSecretStore{
 		TrackedResource: basedatamodel.TrackedResource{
 			ID:       to.String(src.ID),
@@ -26,7 +32,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (api.DataModelInterface, error) 
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: basedatamodel.BasicResourceProperties{
 				Status: basedatamodel.ResourceStatus{
-					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+					OutputResources: outputResources,
 				},
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -57,10 +63,14 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src api.DataModelInterface) erro
 	dst.SystemData = fromSystemDataModel(daprSecretStore.SystemData)
 	dst.Location = to.StringPtr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
+	var outputresources []map[string]interface{}
+	if !(reflect.DeepEqual(daprSecretStore.Properties.Status, basedatamodel.ResourceStatus{})) {
+		outputresources = daprSecretStore.Properties.Status.OutputResources
+	}
 	dst.Properties = &DaprSecretStoreProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: daprSecretStore.Properties.BasicResourceProperties.Status.OutputResources,
+				OutputResources: outputresources,
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),
