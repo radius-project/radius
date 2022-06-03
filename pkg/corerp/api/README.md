@@ -34,10 +34,10 @@ These settings apply only when `--tag=2022-03-15-privatepreview` is specified on
 
 ```yaml $(tag) == '2022-03-15-privatepreview'
 input-file:
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environments.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/httpRoutes.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/gateways.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environmentsv2.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applicationsv2.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/httpRoutesv2.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/gatewaysv2.json
 ```
 
 ### Common
