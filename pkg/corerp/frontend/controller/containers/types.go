@@ -3,11 +3,8 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package mongodatabases
+package containers
 
 const (
-	ResourceTypeName = "Applications.Connector/mongoDatabases"
-
-	// User defined operation names
-	OperationListSecret = "LISTSECRET"
+	ResourceTypeName = "Applications.Core/containers"
 )

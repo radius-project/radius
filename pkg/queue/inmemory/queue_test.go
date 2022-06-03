@@ -16,7 +16,7 @@ import (
 )
 
 func TestEnqueueDequeueMulti(t *testing.T) {
-	q := newInMemQueue(messageLockDuration)
+	q := NewInMemQueue(messageLockDuration)
 	for i := 0; i < 10; i++ {
 		q.Enqueue(&queue.Message{
 			Data: fmt.Sprintf("test%d", i),
@@ -35,7 +35,7 @@ func TestEnqueueDequeueMulti(t *testing.T) {
 }
 
 func TestMessageLock(t *testing.T) {
-	q := newInMemQueue(2 * time.Millisecond)
+	q := NewInMemQueue(2 * time.Millisecond)
 
 	q.Enqueue(&queue.Message{
 		Data: "test",
@@ -54,7 +54,7 @@ func TestMessageLock(t *testing.T) {
 }
 
 func TestExpiry(t *testing.T) {
-	q := newInMemQueue(messageLockDuration)
+	q := NewInMemQueue(messageLockDuration)
 
 	q.Enqueue(&queue.Message{
 		Data: "test",
@@ -73,7 +73,7 @@ func TestExpiry(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
-	q := newInMemQueue(messageLockDuration)
+	q := NewInMemQueue(messageLockDuration)
 
 	q.Enqueue(&queue.Message{
 		Data: "test",
