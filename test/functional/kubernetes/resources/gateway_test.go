@@ -28,6 +28,9 @@ const (
 )
 
 func Test_Gateway(t *testing.T) {
+	// Will re-enable after https://github.com/project-radius/radius/issues/2483
+	t.Skip()
+
 	template := "testdata/kubernetes-resources-gateway.bicep"
 	application := "kubernetes-resources-gateway"
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
