@@ -126,7 +126,7 @@ func testGetEnvironment(t *testing.T, client *http.Client, hostname, url string,
 
 	req.Host = hostname
 
-	retries := 5
+	retries := 60
 	for i := 0; i < retries; i++ {
 		t.Logf("making request to %s", url)
 		response, err := client.Do(req)
