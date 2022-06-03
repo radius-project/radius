@@ -21,7 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	tsv1 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha4"
+	tsv1 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha2"
 )
 
 type Renderer struct {
@@ -102,30 +102,30 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route radclient.HTTPRouteProperties, service outputresource.OutputResource) outputresource.OutputResource {
 	trafficsplit := &tsv1.TrafficSplit{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "traffic-split",
-			APIVersion: "split.smi-spec.io/v1alpha4",
+			Kind:       "TrafficSplit",
+			APIVersion: "split.smi-spec.io/v1alpha2",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), //"osm-traffic-split",
-			Namespace: resource.ApplicationName,
-			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+			Name:      "bookstore-split", //kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), //"osm-traffic-split",
+			Namespace: "bookstore",       //resource.ApplicationName,
+			// abels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		//Double check
 		Spec: tsv1.TrafficSplitSpec{
 			// default? Maybe something like {namespace}.default.svc.cluster.local
-			Service: "bookstore.default.svc.cluster.local",
+			//<root-service>.<namespace>  //"bookstore.default.svc.cluster.local",
+			Service: "bookstore.bookstore",
 			Backends: []tsv1.TrafficSplitBackend{
 				{
-					Service: "bookstore-v1",
-					Weight:  90, //input
+					Service: "bookstore",
+					Weight:  50,
 				},
 				{
 					Service: "bookstore-v2",
-					Weight:  10,
+					Weight:  50,
 				},
 			},
 		},
 	}
-
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, trafficsplit, trafficsplit.ObjectMeta)
 }
