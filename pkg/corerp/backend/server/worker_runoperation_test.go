@@ -56,9 +56,12 @@ type testContext struct {
 	internalQ *inmemory.InmemQueue
 }
 
-func (c *testContext) drainQueue() {
+func (c *testContext) drainQueueOrAssert(t *testing.T) {
 	for c.internalQ.Len() > 0 {
-		// Wait until queue is empty
+		select {
+		case <-time.After(20 * time.Second):
+			require.Fail(t, "failed to drain queue by worker")
+		}
 	}
 }
 
@@ -121,12 +124,21 @@ func TestStart_UnknownOperation(t *testing.T) {
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := NewAsyncRequestProcessWorker(hostoptions.HostOptions{}, nil, tCtx.testQueue, registry)
 
+	called := false
+	testCtrl := &testAsyncController{
+		BaseController: asyncoperation.NewBaseAsyncController(tCtx.mockSC),
+		fn: func(ctx context.Context) (asyncoperation.Result, error) {
+			called = true
+			return asyncoperation.Result{}, nil
+		},
+	}
+
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
 		ctx,
 		asyncoperation.OperationType{Type: testResourceType, Method: "UNDEFINED"},
 		func(s store.StorageClient) (asyncoperation.Controller, error) {
-			return nil, nil
+			return testCtrl, nil
 		})
 
 	require.NoError(t, err)
@@ -143,11 +155,14 @@ func TestStart_UnknownOperation(t *testing.T) {
 	err = tCtx.testQueue.Enqueue(ctx, testMessage)
 	require.NoError(t, err)
 
-	tCtx.drainQueue()
+	tCtx.drainQueueOrAssert(t)
 
 	// Cancelling worker loop
 	cancel()
 	<-done
+
+	require.Equal(t, 1, testMessage.DequeueCount)
+	require.False(t, called)
 }
 
 func TestStart_MaxDequeueCount(t *testing.T) {
@@ -181,11 +196,13 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 		close(done)
 	}()
 
-	tCtx.drainQueue()
+	tCtx.drainQueueOrAssert(t)
 
 	// Cancelling worker loop
 	cancel()
 	<-done
+
+	require.Equal(t, MaxDequeueCount+1, testMessage.DequeueCount)
 }
 
 func TestStart_MaxConcurrency(t *testing.T) {
@@ -232,19 +249,25 @@ func TestStart_MaxConcurrency(t *testing.T) {
 		close(done)
 	}()
 
+	testMessageCnt := 10
+	testMessages := []*queue.Message{}
 	// queue asyncoperation messages.
-	for i := 0; i < 10; i++ {
+	for i := 0; i < testMessageCnt; i++ {
 		testMessage, _, _ := genTestMessage(uuid.New(), asyncoperation.DefaultAsyncOperationTimeout)
+		testMessages = append(testMessages, testMessage)
 		err = tCtx.testQueue.Enqueue(ctx, testMessage)
 		require.NoError(t, err)
 	}
 
-	tCtx.drainQueue()
+	tCtx.drainQueueOrAssert(t)
 
 	// Cancelling worker loop.
 	cancel()
 	<-done
 
+	for i := 0; i < testMessageCnt; i++ {
+		require.Equal(t, 1, testMessages[i].DequeueCount)
+	}
 	require.Equal(t, int32(MaxOperationConcurrency), maxConcurrency.Load())
 }
 
@@ -298,9 +321,14 @@ func TestStart_RunOperation(t *testing.T) {
 	// Wait until operation context is done.
 	<-opCtx.Done()
 
+	tCtx.drainQueueOrAssert(t)
+
 	// Cancelling worker loop
 	cancel()
 	<-done
+
+	require.Equal(t, 0, tCtx.internalQ.Len())
+	require.Equal(t, 1, testMessage.DequeueCount)
 }
 
 func TestRunOperation_Successfully(t *testing.T) {
@@ -372,11 +400,10 @@ func TestRunOperation_CancelContext(t *testing.T) {
 	worker.runOperation(ctx, testMessage, testCtrl)
 
 	<-done
+	cancel()
 
 	require.Equal(t, int32(0), finished.Load())
 	require.Equal(t, int32(0), extended.Load())
-
-	cancel()
 }
 
 func TestRunOperation_Timeout(t *testing.T) {
@@ -420,7 +447,9 @@ func TestRunOperation_PanicController(t *testing.T) {
 	}
 
 	testMessage, finished, extended := genTestMessage(uuid.New(), asyncoperation.DefaultAsyncOperationTimeout)
-	worker.runOperation(context.Background(), testMessage, testCtrl)
+	require.NotPanics(t, func() {
+		worker.runOperation(tCtx.ctx, testMessage, testCtrl)
+	})
 
 	require.Equal(t, int32(0), finished.Load())
 	require.Equal(t, int32(0), extended.Load())
