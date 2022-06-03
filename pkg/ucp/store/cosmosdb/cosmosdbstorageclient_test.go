@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -30,17 +31,27 @@ var randomResourceGroups = []string{
 	"blue-group",
 	"radius-lala",
 }
+var randomPlanes = []string{
+	"local",
+	"k8s",
+	"azure",
+}
 
 var (
 	// To run this test, you need to specify the below environment variable before running the test.
+	// TODO: Make sure all tests are passing
 	// TODO: Create an issue to change CI/CD pipeline
 	dBUrl     = os.Getenv("TEST_COSMOSDB_URL")
 	masterKey = os.Getenv("TEST_COSMOSDB_MASTERKEY")
+	// dBUrl     = "https://radius-eastus-test.documents.azure.com:443/"
+	// masterKey = "pulSdF9Zi87pwDz6NGbHSGuTg0kCdp7gerB8Ih7ZVP2l9WU7Ube2CA6Qg65puGfq3Wyo6bkbsMekWWxsqd9GrA=="
 
 	testLocation     = "test-location"
 	dbName           = "applicationscore"
 	dbCollectionName = "functional-test-environments"
+)
 
+const (
 	environmentResourceType = "applications.core/environments"
 )
 
@@ -108,20 +119,20 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 		params      []cosmosapi.QueryParam
 		err         error
 	}{
-		{
-			desc:       "invalid-query-parameters",
-			storeQuery: store.Query{},
-			err:        &store.ErrInvalid{Message: "invalid Query parameters"},
-		},
-		{
-			desc:       "scope-recursive-and-routing-scope-prefix",
-			storeQuery: store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", RoutingScopePrefix: "prefix"},
-			err:        &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."},
-		},
+		// {
+		// 	desc:       "invalid-query-parameters",
+		// 	storeQuery: store.Query{},
+		// 	err:        &store.ErrInvalid{Message: "invalid Query parameters"},
+		// },
+		// {
+		// 	desc:       "scope-recursive-and-routing-scope-prefix",
+		// 	storeQuery: store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", RoutingScopePrefix: "prefix"},
+		// 	err:        &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."},
+		// },
 		{
 			desc:        "root-scope-subscription-id",
-			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001"},
-			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
+			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", ScopeRecursive: true},
+			queryString: "SELECT * FROM c WHERE STARTSWITH(c.rootScope, @rootScope, true)",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
 				Value: "/subscriptions/00000000-0000-0000-1000-000000000001",
@@ -130,7 +141,7 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 		},
 		{
 			desc:        "root-scope-subscription-id-and-resource-group",
-			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup"},
+			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup", ScopeRecursive: false},
 			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
@@ -185,7 +196,6 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 			err: nil,
 		},
 	}
-
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
 			qry, err := constructCosmosDBQuery(tc.storeQuery)
@@ -222,8 +232,8 @@ func TestSave(t *testing.T) {
 	ucpRootScope := fmt.Sprintf("ucp:/planes/radius/local/resourcegroups/%s", randomResourceGroups[0])
 	ucpResource := getTestEnvironmentModel(ucpRootScope, "test-ucp-resource")
 
-	regularResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", randomSubscriptionIDs[0], randomResourceGroups[0])
-	regularResource := getTestEnvironmentModel(regularResourceRootScope, "test-resource")
+	armResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", randomSubscriptionIDs[0], randomResourceGroups[0])
+	armResource := getTestEnvironmentModel(armResourceRootScope, "test-resource")
 
 	setupTest := func(tb testing.TB, resource *datamodel.Environment) (func(tb testing.TB), *store.Object) {
 		// Prepare DB object
@@ -262,8 +272,8 @@ func TestSave(t *testing.T) {
 			useOpts:    false,
 			err:        false,
 		},
-		"upsert-regular-resource-without-etag": {
-			resource:   regularResource,
+		"upsert-arm-resource-without-etag": {
+			resource:   armResource,
 			useObjEtag: false,
 			etag:       "",
 			useOpts:    false,
@@ -276,8 +286,8 @@ func TestSave(t *testing.T) {
 			useOpts:    false,
 			err:        false,
 		},
-		"upsert-regular-resource-with-valid-etag": {
-			resource:   regularResource,
+		"upsert-arm-resource-with-valid-etag": {
+			resource:   armResource,
 			useObjEtag: true,
 			etag:       "",
 			useOpts:    false,
@@ -290,8 +300,8 @@ func TestSave(t *testing.T) {
 			useOpts:    true,
 			err:        false,
 		},
-		"upsert-regular-resource-with-options": {
-			resource:   regularResource,
+		"upsert-arm-resource-with-options": {
+			resource:   armResource,
 			useObjEtag: false,
 			etag:       "",
 			useOpts:    true,
@@ -304,15 +314,14 @@ func TestSave(t *testing.T) {
 			useOpts:    false,
 			err:        true,
 		},
-		"upsert-regular-resource-with-invalid-etag": {
-			resource:   regularResource,
+		"upsert-arm-resource-with-invalid-etag": {
+			resource:   armResource,
 			useObjEtag: false,
 			etag:       "invalid-etag",
 			useOpts:    false,
 			err:        true,
 		},
 	}
-
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			teardownTest, obj := setupTest(t, tc.resource)
@@ -353,23 +362,55 @@ func TestQuery(t *testing.T) {
 	ctx := context.Background()
 	client := mustGetTestClient(t)
 
-	length := len(randomResourceGroups)
 	ucpResources := []string{}
-	regularResources := []string{}
+	armResources := []string{}
 
-	for _, randomSubscriptionID := range randomSubscriptionIDs {
-		for _, randomResourceGroup := range randomResourceGroups {
-			// Create and Save a UCP Resource
-			ucpRootScope := fmt.Sprintf("ucp:/planes/radius/local/resourcegroups/%s",
-				randomResourceGroup)
-			ucpEnv := buildAndSaveTestModel(ctx, t, ucpRootScope, "ucp-env")
-			ucpResources = append(ucpResources, ucpEnv.ID)
+	// TODO: UCP doesn't check for the plane type
+	// Ex: ucp:/planes/radius/azure/resourcegroups/rg/.../environments/env
+	// is equal to ucp:/planes/radius/local/resourcegroups/rg/.../environments/env
 
-			// Create and Save a Regular/Non-UCP Resource
-			regularResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s",
-				randomSubscriptionID, randomResourceGroup)
-			regularEnv := buildAndSaveTestModel(ctx, t, regularResourceRootScope, "test-env")
-			regularResources = append(regularResources, regularEnv.ID)
+	setupTest := func(tb testing.TB) func(tb testing.TB) {
+		// Reset arrays each time
+		ucpResources = []string{}
+		armResources = []string{}
+
+		// Creates ucp resources under 3 different planes and 3 different resource groups.
+		// Total makes 9 ucp resources
+		for _, plane := range randomPlanes {
+			for _, resourceGroup := range randomResourceGroups {
+				// Create and Save a UCP Resource
+				ucpRootScope := fmt.Sprintf("ucp:/planes/radius/%s/resourcegroups/%s", plane, resourceGroup)
+				ucpEnv := buildAndSaveTestModel(ctx, t, ucpRootScope, uuid.New().String())
+				ucpResources = append(ucpResources, ucpEnv.ID)
+			}
+		}
+
+		// Creates ARM resources under 3 different subscriptions and 3 different resource groups.
+		// Total makes 9 ARM resources
+		for _, subscriptionID := range randomSubscriptionIDs {
+			for idx, resourceGroup := range randomResourceGroups {
+				// Create and Save an ARM Resource
+				armResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", subscriptionID, resourceGroup)
+				armEnv := buildAndSaveTestModel(ctx, t, armResourceRootScope, fmt.Sprintf("test-env-%d", idx))
+				armResources = append(armResources, armEnv.ID)
+			}
+		}
+
+		// Return teardown
+		return func(tb testing.TB) {
+			// Delete all UCP resources after each test
+			for i := 0; i < len(ucpResources); i++ {
+				ucpResourceID := ucpResources[i]
+				err := client.Delete(ctx, ucpResourceID)
+				require.NoError(tb, err)
+			}
+
+			// Delete all ARM resources after each test
+			for i := 0; i < len(armResources); i++ {
+				armResourceID := armResources[i]
+				err := client.Delete(ctx, armResourceID)
+				require.NoError(tb, err)
+			}
 		}
 	}
 
@@ -395,6 +436,7 @@ func TestQuery(t *testing.T) {
 		require.Equal(t, itemsLen, len(results.Items))
 	}
 
+	// Query with subscriptionID + resourceGroup
 	tests := map[string]struct {
 		resourceType string
 		filters      []store.QueryFilter
@@ -431,63 +473,125 @@ func TestQuery(t *testing.T) {
 			expected: 0,
 		},
 	}
-
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			for idx := 0; idx < length; idx++ {
-				ucpResource := ucpResources[idx]
-				queryTest(ucpResource, tc.resourceType, tc.filters, tc.expected)
+			teardownTest := setupTest(t)
+			defer teardownTest(t)
 
-				regularResource := regularResources[idx]
-				queryTest(regularResource, tc.resourceType, tc.filters, tc.expected)
+			// Query each ucp resource
+			for i := 0; i < len(ucpResources); i++ {
+				ucpResource := ucpResources[i]
+				queryTest(ucpResource, tc.resourceType, tc.filters, tc.expected)
+			}
+
+			// Query each ARM resource
+			for i := 0; i < len(armResources); i++ {
+				armResource := armResources[i]
+				queryTest(armResource, tc.resourceType, tc.filters, tc.expected)
 			}
 		})
 	}
 
-	// We have to delete everything here
+	// Query with subscriptionID
+	subscriptionIDCases := map[string]struct {
+		subscriptionID string
+		resourceType   string
+		filters        []store.QueryFilter
+		expected       int
+	}{
+		"arm-resource-subscription-id": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   "",
+			filters:        []store.QueryFilter{},
+			expected:       3,
+		},
+		"ucp-resource-subscription-id": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   "",
+			filters:        []store.QueryFilter{},
+			expected:       3,
+		},
+		"arm-resource-subscription-id-with-resource-type": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters:        []store.QueryFilter{},
+			expected:       3,
+		},
+		"ucp-resource-subscription-idd-with-resource-type": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters:        []store.QueryFilter{},
+			expected:       3,
+		},
+		"arm-resource-subscription-id-with-resource-type-with-filter": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: testLocation,
+				},
+			},
+			expected: 3,
+		},
+		"ucp-resource-subscription-idd-with-resource-type-with-filter": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: testLocation,
+				},
+			},
+			expected: 3,
+		},
+		"arm-resource-subscription-id-with-resource-type-with-invalid-filter": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: "wrong-location",
+				},
+			},
+			expected: 0,
+		},
+		"ucp-resource-subscription-idd-with-resource-type-with-invalid-filter": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: "wrong-location",
+				},
+			},
+			expected: 0,
+		},
+	}
+	for name, tc := range subscriptionIDCases {
+		t.Run(name, func(t *testing.T) {
+			teardownTest := setupTest(t)
+			defer teardownTest(t)
 
-	// TODO: Are we going to be able to query all resources with just a subscription id?
-	// Because if the resource was saved by the RootScope, then it will not be available
-	// by querying with subscription id?
+			// Build the query for testing
+			query := store.Query{
+				RootScope:      fmt.Sprintf("/subscriptions/%s", tc.subscriptionID),
+				ScopeRecursive: true,
+			}
+			if tc.resourceType != "" {
+				query.ResourceType = tc.resourceType
+			}
+			if len(tc.filters) > 0 {
+				query.Filters = tc.filters
+			}
 
-	// t.Run("Query all resources at subscription level using RootScope", func(t *testing.T) {
-	// 	for _, id := range testIDs {
-	// 		parsedID, _ := resources.Parse(id)
-	// 		rootScope := fmt.Sprintf("/subscriptions/%s", parsedID.FindScope(resources.SubscriptionsSegment))
-	// 		results, err := client.Query(ctx, store.Query{RootScope: rootScope})
-	// 		require.NoError(t, err)
-	// 		require.NotNil(t, results)
-	// 		require.NotNil(t, results.Items)
-	// 		require.Equal(t, len(fakeResourceGroups), len(results.Items))
-	// 	}
-	// })
-
-	// t.Run("Query all resources at subscription level and at type using RootScope, ResourceType.", func(t *testing.T) {
-	// 	azID, _ := azresources.Parse(testIDs[0])
-	// 	query := store.Query{
-	// 		RootScope:    fmt.Sprintf("/subscriptions/%s", azID.SubscriptionID),
-	// 		ResourceType: "Applications.Core/environments",
-	// 	}
-
-	// 	results, err := client.Query(ctx, query)
-	// 	require.NoError(t, err)
-	// 	require.NotNil(t, results)
-	// 	require.NotNil(t, results.Items)
-	// 	require.Equal(t, len(fakeResourceGroups), len(results.Items))
-	// })
-
-	// t.Run("Query all resources at resourcegroup level and at type using RootScope, ResourceType with filter.", func(t *testing.T) {
-	// 	query := store.Query{
-	// 		RootScope:    "/",
-	// 		ResourceType: "applications.core/environments",
-	// 	}
-
-	// 	results, err := client.Query(ctx, query)
-	// 	require.NoError(t, err)
-	// 	require.NotNil(t, results)
-	// 	require.NotNil(t, results.Items)
-	// 	require.Equal(t, 9, len(results.Items))
-	// })
+			results, err := client.Query(ctx, query)
+			require.NoError(t, err)
+			require.NotNil(t, results)
+			require.NotNil(t, results.Items)
+			require.Equal(t, tc.expected, len(results.Items))
+		})
+	}
 }
 
 // TestPaginationTokenAndQueryItemCount tests the pagination scenario using continuation token and query item count.
@@ -496,19 +600,19 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 	client := mustGetTestClient(t)
 
 	ucpResources := []string{}
-	regularResources := []string{}
+	armResources := []string{}
 
 	ucpRootScope := "ucp:/planes/radius/local/resourcegroups/test-rg"
-	regularResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-rg"
+	armResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-rg"
 
 	setupTest := func(tb testing.TB) func(tb testing.TB) {
-		// 50 UCP - 50 Regular
+		// 50 UCP - 50 ARM
 		for i := 0; i < 50; i++ {
 			ucpEnv := buildAndSaveTestModel(ctx, t, ucpRootScope, fmt.Sprintf("ucp-env-%d", i))
 			ucpResources = append(ucpResources, ucpEnv.ID)
 
-			regularEnv := buildAndSaveTestModel(ctx, t, regularResourceRootScope, fmt.Sprintf("test-env-%d", i))
-			regularResources = append(regularResources, regularEnv.ID)
+			armEnv := buildAndSaveTestModel(ctx, t, armResourceRootScope, fmt.Sprintf("test-env-%d", i))
+			armResources = append(armResources, armEnv.ID)
 		}
 
 		// Return teardown
@@ -518,8 +622,8 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 				err := client.Delete(ctx, ucpResourceID)
 				require.NoError(tb, err)
 
-				regularResourceID := regularResources[i]
-				err = client.Delete(ctx, regularResourceID)
+				armResourceID := armResources[i]
+				err = client.Delete(ctx, armResourceID)
 				require.NoError(tb, err)
 			}
 		}
@@ -533,20 +637,19 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 			rootScope: ucpRootScope,
 			itemCount: "",
 		},
-		"regular-resource-default-query-item-count": {
-			rootScope: regularResourceRootScope,
+		"arm-resource-default-query-item-count": {
+			rootScope: armResourceRootScope,
 			itemCount: "",
 		},
 		"ucp-resource-10-query-item-count": {
 			rootScope: ucpRootScope,
 			itemCount: "10",
 		},
-		"regular-resource-10-query-item-count": {
-			rootScope: regularResourceRootScope,
+		"arm-resource-10-query-item-count": {
+			rootScope: armResourceRootScope,
 			itemCount: "10",
 		},
 	}
-
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			teardownTest := setupTest(t)
@@ -607,17 +710,22 @@ func TestGetPartitionKey(t *testing.T) {
 			"",
 		},
 		{
-			"ucp-resource-partition-key",
+			"ucp-resource-partition-key-radius-local",
 			"ucp:/planes/radius/local/resourcegroups/testGroup/providers/applications.core/environments/env0",
-			"",
+			"RADIUSLOCAL",
+		},
+		{
+			"ucp-resource-partition-key-radius-k8s",
+			"ucp:/planes/radius/k8s/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"RADIUSK8S",
 		},
 	}
-
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
 			testID, err := resources.Parse(tc.fullID)
 			require.NoError(t, err)
-			key := GetPartitionKey(testID)
+			key, err := GetPartitionKey(testID)
+			require.NoError(t, err)
 			require.Equal(t, tc.out, key)
 		})
 	}

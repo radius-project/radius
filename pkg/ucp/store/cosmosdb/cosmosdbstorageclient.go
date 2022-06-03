@@ -7,6 +7,7 @@ package cosmosdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -160,15 +161,21 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 }
 
 func constructCosmosDBQuery(query store.Query) (*cosmosapi.Query, error) {
-	if query.ScopeRecursive || query.RoutingScopePrefix != "" {
-		return nil, &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."}
+	if query.RootScope == "" {
+		return nil, &store.ErrInvalid{Message: "RootScope can not be empty."}
 	}
 
 	queryString := "SELECT * FROM c WHERE "
 	whereParam := ""
 	queryParams := []cosmosapi.QueryParam{}
 
-	if query.RootScope != "" {
+	if query.ScopeRecursive {
+		whereParam = whereParam + "STARTSWITH(c.rootScope, @rootScope, true)"
+		queryParams = append(queryParams, cosmosapi.QueryParam{
+			Name:  "@rootScope",
+			Value: query.RootScope,
+		})
+	} else {
 		whereParam = whereParam + "c.rootScope = @rootScope"
 		queryParams = append(queryParams, cosmosapi.QueryParam{
 			Name:  "@rootScope",
@@ -208,11 +215,17 @@ func constructCosmosDBQuery(query store.Query) (*cosmosapi.Query, error) {
 
 // Query queries the data resource
 func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, opts ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-	cfg := store.NewQueryConfig(opts...)
-
-	if query.RootScope == "" {
-		return nil, &store.ErrInvalid{Message: "RootScope cannot be empty"}
+	if ctx == nil {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
 	}
+	if query.RootScope == "" {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RootScope' is required"}
+	}
+	if query.IsScopeQuery && query.RoutingScopePrefix != "" {
+		return nil, &store.ErrInvalid{Message: "invalid argument. 'query.RoutingScopePrefix' is not supported for scope queries"}
+	}
+
+	cfg := store.NewQueryConfig(opts...)
 
 	resourceID, err := resources.Parse(query.RootScope)
 	if err != nil {
@@ -239,8 +252,13 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 		ConsistencyLevel:     cosmosapi.ConsistencyLevelEventual,
 	}
 
-	if resourceID.FindScope(resources.SubscriptionsSegment) != "" {
-		qops.PartitionKeyValue = GetPartitionKey(resourceID)
+	partitionKey, err := GetPartitionKey(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if partitionKey != "" {
+		qops.PartitionKeyValue = partitionKey
 		qops.EnableCrossPartition = false
 	}
 
@@ -277,8 +295,13 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 		return nil, err
 	}
 
+	partitionKey, err := GetPartitionKey(parsedID)
+	if err != nil {
+		return nil, err
+	}
+
 	ops := cosmosapi.GetDocumentOptions{
-		PartitionKeyValue: GetPartitionKey(parsedID),
+		PartitionKeyValue: partitionKey,
 	}
 
 	docID, err := GenerateCosmosDBKey(parsedID)
@@ -311,8 +334,13 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 		return err
 	}
 
+	partitionKey, err := GetPartitionKey(parsedID)
+	if err != nil {
+		return err
+	}
+
 	ops := cosmosapi.DeleteDocumentOptions{
-		PartitionKeyValue: GetPartitionKey(parsedID),
+		PartitionKeyValue: partitionKey,
 	}
 
 	docID, err := GenerateCosmosDBKey(parsedID)
@@ -330,22 +358,35 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 
 // Save upserts the resource.
 func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+	if ctx == nil {
+		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
+	}
+	if obj == nil {
+		return &store.ErrInvalid{Message: "invalid argument. 'obj' is required"}
+	}
+
 	cfg := store.NewSaveConfig(opts...)
-	parsedID, err := resources.Parse(obj.ID)
+
+	parsed, err := resources.Parse(obj.ID)
 	if err != nil {
 		return err
 	}
 
-	docID, err := GenerateCosmosDBKey(parsedID)
+	docID, err := GenerateCosmosDBKey(parsed)
+	if err != nil {
+		return err
+	}
+
+	partitionKey, err := GetPartitionKey(parsed)
 	if err != nil {
 		return err
 	}
 
 	entity := &ResourceEntity{
 		ID:           docID,
-		ResourceID:   parsedID.String(),
-		RootScope:    parsedID.RootScope(),
-		PartitionKey: GetPartitionKey(parsedID),
+		ResourceID:   parsed.String(),
+		RootScope:    parsed.RootScope(),
+		PartitionKey: partitionKey,
 		Entity:       obj.Data,
 	}
 
@@ -353,9 +394,6 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 	if ifMatch == "" && obj.ETag != "" {
 		ifMatch = obj.ETag
 	}
-
-	// What should the Partition Key be for a UCP resource?
-	partitionKey := GetPartitionKey(parsedID)
 
 	var resp *cosmosapi.Resource
 	if ifMatch == "" {
@@ -387,12 +425,19 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 }
 
 // GetPartitionKey function returns the partition key for a resource
-func GetPartitionKey(id resources.ID) string {
-	// As of now, Partition Key for a UCP resource is an empty string
-	// Should we change this behavior?
-	// if id.IsUCPQualfied() {
-	// 	return NormalizeLetterOrDigitToUpper(id.FindScope(resources.PlanesSegment))
-	// }
+// Examples:
+// ucp:/planes/radius/local/... - Partition Key: radius/local
+// subscriptions/{guid}/... - Partition Key: {guid}
+func GetPartitionKey(id resources.ID) (string, error) {
+	partitionKey := NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))
 
-	return NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))
+	if id.IsUCPQualfied() {
+		if len(id.ScopeSegments()) < 1 {
+			return "", errors.New("invalid UCP resource id")
+		}
+		scopeSegment := id.ScopeSegments()[0]
+		partitionKey = NormalizeLetterOrDigitToUpper(fmt.Sprintf("%s/%s", scopeSegment.Type, scopeSegment.Name))
+	}
+
+	return partitionKey, nil
 }
