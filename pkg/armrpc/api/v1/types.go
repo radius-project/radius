@@ -1,0 +1,100 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package v1
+
+import "strings"
+
+const (
+	// DefaultRetryAfter is the default value in seconds for the Retry-After header.
+	DefaultRetryAfter = "60"
+)
+
+const (
+	// Predefined Operation methods.
+	OperationList                 = "LIST"
+	OperationPut                  = "PUT"
+	OperationPatch                = "PATCH"
+	OperationGet                  = "GET"
+	OperationDelete               = "DELETE"
+	OperationGetOperations        = "GETOPERATIONS"
+	OperationGetOperationStatuses = "GETOPERATIONSTATUSES"
+	OperationGetOperationResult   = "GETOPERATIONRESULT"
+	OperationPutSubscriptions     = "PUTSUBSCRIPTIONS"
+
+	Seperator = "|"
+)
+
+// OperationType represents the operation type which includes resource type name and its method.
+// OperationType is used as a route name in the frontend API server router. Each valid ARM RPC call should have
+// its own operation type name. For Asynchronous API, the frontend API server queues the async operation
+// request with this operation type. AsyncRequestProcessWorker parses the operation type from the message
+// and run the corresponding async operation controller.
+type OperationType struct {
+	Type   string
+	Method string
+}
+
+// String returns the operation type string.
+func (o OperationType) String() string {
+	return strings.ToUpper(o.Type + Seperator + o.Method)
+}
+
+// ParseOperationType parses OperationType from string.
+func ParseOperationType(s string) (OperationType, bool) {
+	p := strings.Split(s, Seperator)
+	if len(p) == 2 {
+		return OperationType{Type: strings.ToUpper(p[0]), Method: strings.ToUpper(p[1])}, true
+	}
+	return OperationType{}, false
+}
+
+// ProvisioningStates is the state of resource.
+type ProvisioningStates string
+
+const (
+	ProvisioningStateNone         ProvisioningStates = "None"
+	ProvisioningStateUpdating     ProvisioningStates = "Updating"
+	ProvisioningStateDeleting     ProvisioningStates = "Deleting"
+	ProvisioningStateAccepted     ProvisioningStates = "Accepted"
+	ProvisioningStateSucceeded    ProvisioningStates = "Succeeded"
+	ProvisioningStateProvisioning ProvisioningStates = "Provisioning"
+	ProvisioningStateFailed       ProvisioningStates = "Failed"
+	ProvisioningStateCanceled     ProvisioningStates = "Canceled"
+)
+
+// TrackedResource represents the common tracked resource.
+type TrackedResource struct {
+	// ID is the fully qualified resource ID for the resource.
+	ID string `json:"id"`
+	// Name is the resource name.
+	Name string `json:"name"`
+	// Type is the resource type.
+	Type string `json:"type"`
+	// Location is the geo-location where resource is located.
+	Location string `json:"location"`
+	// Tags is the resource tags.
+	Tags map[string]string `json:"tags,omitempty"`
+}
+
+// InternalMetadata represents internal DataModel specific metadata.
+type InternalMetadata struct {
+	// TenantID is the tenant id of the resource.
+	TenantID string `json:"tenantId"`
+	// CreatedAPIVersion is an api-version used when creating this model.
+	CreatedAPIVersion string `json:"createdApiVersion"`
+	// UpdatedAPIVersion is an api-version used when updating this model.
+	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
+
+	// TODO: will add more properties.
+}
+
+type BasicResourceProperties struct {
+	Status ResourceStatus `json:"status,omitempty"`
+}
+
+type ResourceStatus struct {
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
