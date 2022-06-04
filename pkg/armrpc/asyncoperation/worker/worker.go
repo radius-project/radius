@@ -45,12 +45,12 @@ const (
 	minMessageLockDuration = time.Duration(5) * time.Second
 )
 
-type WorkerOptions struct {
+type Options struct {
 }
 
 // AsyncRequestProcessWorker is the worker to process async requests.
 type AsyncRequestProcessWorker struct {
-	options      WorkerOptions
+	options      Options
 	sm           manager.StatusManager
 	registry     *ControllerRegistry
 	requestQueue queue.Dequeuer
@@ -60,7 +60,7 @@ type AsyncRequestProcessWorker struct {
 
 // New creates AsyncRequestProcessWorker server instance.
 func New(
-	options WorkerOptions,
+	options Options,
 	sm manager.StatusManager,
 	qu queue.Dequeuer,
 	ctrlRegistry *ControllerRegistry) *AsyncRequestProcessWorker {

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package frontend
+package server
 
 import (
 	"context"
@@ -24,7 +24,7 @@ const (
 	healthzAPIName  = "heathzAPI"
 )
 
-type ServerOptions struct {
+type Options struct {
 	Address       string
 	PathBase      string
 	EnableArmAuth bool
@@ -33,7 +33,7 @@ type ServerOptions struct {
 }
 
 // New creates a frontend server that can listen on the provided address and serve requests.
-func New(ctx context.Context, options ServerOptions) (*http.Server, error) {
+func New(ctx context.Context, options Options) (*http.Server, error) {
 	r := mux.NewRouter()
 	if options.Configure != nil {
 		err := options.Configure(r)

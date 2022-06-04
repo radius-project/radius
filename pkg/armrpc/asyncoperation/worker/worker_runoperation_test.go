@@ -124,7 +124,7 @@ func TestStart_UnknownOperation(t *testing.T) {
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 	registry := NewControllerRegistry(tCtx.mockSP)
-	worker := New(WorkerOptions{}, nil, tCtx.testQueue, registry)
+	worker := New(Options{}, nil, tCtx.testQueue, registry)
 
 	called := false
 	testCtrl := &testAsyncController{
@@ -174,7 +174,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 	registry := NewControllerRegistry(tCtx.mockSP)
-	worker := New(WorkerOptions{}, nil, tCtx.testQueue, registry)
+	worker := New(Options{}, nil, tCtx.testQueue, registry)
 
 	ctx, cancel := tCtx.cancellable(0)
 	err := registry.Register(
@@ -218,7 +218,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
 	registry := NewControllerRegistry(tCtx.mockSP)
-	worker := New(WorkerOptions{}, tCtx.mockSM, tCtx.testQueue, registry)
+	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
 	// register test controller.
 	cnt := atomic.NewInt32(0)
@@ -284,7 +284,7 @@ func TestStart_RunOperation(t *testing.T) {
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
 	registry := NewControllerRegistry(tCtx.mockSP)
-	worker := New(WorkerOptions{}, tCtx.mockSM, tCtx.testQueue, registry)
+	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
 	called := make(chan bool, 1)
 	var opCtx context.Context
@@ -342,7 +342,7 @@ func TestRunOperation_Successfully(t *testing.T) {
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	worker := New(WorkerOptions{}, tCtx.mockSM, tCtx.testQueue, nil)
+	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
 	testCtrl := &testAsyncController{
 		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
@@ -364,7 +364,7 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	worker := New(WorkerOptions{}, tCtx.mockSM, tCtx.testQueue, nil)
+	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
 	testCtrl := &testAsyncController{
 		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
@@ -385,7 +385,7 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 
 func TestRunOperation_CancelContext(t *testing.T) {
 	tCtx, _ := newTestContext(t)
-	worker := New(WorkerOptions{}, nil, tCtx.testQueue, nil)
+	worker := New(Options{}, nil, tCtx.testQueue, nil)
 
 	done := make(chan struct{}, 1)
 	testCtrl := &testAsyncController{
@@ -417,7 +417,7 @@ func TestRunOperation_Timeout(t *testing.T) {
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-	worker := New(WorkerOptions{}, tCtx.mockSM, tCtx.testQueue, nil)
+	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
 	done := make(chan struct{}, 1)
 	testCtrl := &testAsyncController{
@@ -439,7 +439,7 @@ func TestRunOperation_Timeout(t *testing.T) {
 
 func TestRunOperation_PanicController(t *testing.T) {
 	tCtx, _ := newTestContext(t)
-	worker := New(WorkerOptions{}, nil, tCtx.testQueue, nil)
+	worker := New(Options{}, nil, tCtx.testQueue, nil)
 
 	testCtrl := &testAsyncController{
 		BaseController: ctrl.NewBaseAsyncController(nil),
