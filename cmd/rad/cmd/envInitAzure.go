@@ -323,7 +323,7 @@ func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, 
 	}
 	sort.Strings(names)
 
-	index, err := prompt.Select("Select a location:", names)
+	index, err := prompt.SelectWithDefault("Select a location:", &names[0], names)
 	if err != nil {
 		return subscription.Location{}, err
 	}
