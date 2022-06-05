@@ -14,7 +14,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
+	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
@@ -80,7 +80,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationGet,
-		HandlerFactory: defaultoperation.NewGetOperations,
+		HandlerFactory: default_ctrl.NewGetOperations,
 	})
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   subscriptionRouter.Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationPut,
-		HandlerFactory: defaultoperation.NewCreateOrUpdateSubscription,
+		HandlerFactory: default_ctrl.NewCreateOrUpdateSubscription,
 	})
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   subscriptionRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationGetOperationStatuses,
-		HandlerFactory: defaultoperation.NewGetOperationStatus,
+		HandlerFactory: default_ctrl.NewGetOperationStatus,
 	})
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   subscriptionRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationGetOperationResult,
-		HandlerFactory: defaultoperation.NewGetOperationResult,
+		HandlerFactory: default_ctrl.NewGetOperationResult,
 	})
 	if err != nil {
 		return err

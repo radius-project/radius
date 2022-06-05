@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/middleware"
 	"github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/version"
@@ -49,7 +50,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	if options.EnableArmAuth {
 		r.Use(authentication.ClientCertValidator(options.ArmCertMgr))
 	}
-	r.Use(middleware.ARMRequestCtx(options.PathBase))
+	r.Use(servicecontext.ARMRequestCtx(options.PathBase))
 
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
