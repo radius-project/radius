@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 
 	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
@@ -23,7 +23,7 @@ func ContainerDataModelToVersioned(model *datamodel.ContainerResource, version s
 		return versioned, err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -39,6 +39,6 @@ func ContainerDataModelFromVersioned(content []byte, version string) (*datamodel
 		return dm.(*datamodel.ContainerResource), err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }

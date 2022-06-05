@@ -7,7 +7,7 @@ package v20220315privatepreview
 
 import (
 	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -29,7 +29,7 @@ func (src *GatewayResource) ConvertTo() (api.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.Gateway{
-		TrackedResource: basedatamodel.TrackedResource{
+		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
 			Type:     to.String(src.Type),
@@ -37,8 +37,8 @@ func (src *GatewayResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.GatewayProperties{
-			BasicResourceProperties: basedatamodel.BasicResourceProperties{
-				Status: basedatamodel.ResourceStatus{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Status: v1.ResourceStatus{
 					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
 				},
 			},
@@ -50,7 +50,7 @@ func (src *GatewayResource) ConvertTo() (api.DataModelInterface, error) {
 			},
 			Routes: routes,
 		},
-		InternalMetadata: basedatamodel.InternalMetadata{
+		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}

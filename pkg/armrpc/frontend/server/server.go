@@ -25,11 +25,12 @@ const (
 )
 
 type Options struct {
-	Address       string
-	PathBase      string
-	EnableArmAuth bool
-	Configure     func(*mux.Router) error
-	ArmCertMgr    *authentication.ArmCertManager
+	ProviderNamespace string
+	Address           string
+	PathBase          string
+	EnableArmAuth     bool
+	Configure         func(*mux.Router) error
+	ArmCertMgr        *authentication.ArmCertManager
 }
 
 // New creates a frontend server that can listen on the provided address and serve requests.

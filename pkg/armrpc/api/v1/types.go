@@ -5,24 +5,49 @@
 
 package v1
 
-import "strings"
+import (
+	"net/http"
+	"strings"
+)
 
 const (
 	// DefaultRetryAfter is the default value in seconds for the Retry-After header.
 	DefaultRetryAfter = "60"
 )
 
+type OperationMethod string
+
+var operationMethodToHTTPMethod = map[OperationMethod]string{
+	OperationList:                 http.MethodGet,
+	OperationGet:                  http.MethodGet,
+	OperationPut:                  http.MethodPut,
+	OperationPatch:                http.MethodPatch,
+	OperationDelete:               http.MethodDelete,
+	OperationGetOperations:        http.MethodGet,
+	OperationGetOperationStatuses: http.MethodGet,
+	OperationGetOperationResult:   http.MethodGet,
+	OperationPutSubscriptions:     http.MethodPut,
+}
+
+func (o OperationMethod) HTTPMethod() string {
+	m, ok := operationMethodToHTTPMethod[o]
+	if !ok {
+		return http.MethodPost
+	}
+	return m
+}
+
 const (
 	// Predefined Operation methods.
-	OperationList                 = "LIST"
-	OperationPut                  = "PUT"
-	OperationPatch                = "PATCH"
-	OperationGet                  = "GET"
-	OperationDelete               = "DELETE"
-	OperationGetOperations        = "GETOPERATIONS"
-	OperationGetOperationStatuses = "GETOPERATIONSTATUSES"
-	OperationGetOperationResult   = "GETOPERATIONRESULT"
-	OperationPutSubscriptions     = "PUTSUBSCRIPTIONS"
+	OperationList                 OperationMethod = "LIST"
+	OperationGet                  OperationMethod = "GET"
+	OperationPut                  OperationMethod = "PUT"
+	OperationPatch                OperationMethod = "PATCH"
+	OperationDelete               OperationMethod = "DELETE"
+	OperationGetOperations        OperationMethod = "GETOPERATIONS"
+	OperationGetOperationStatuses OperationMethod = "GETOPERATIONSTATUSES"
+	OperationGetOperationResult   OperationMethod = "GETOPERATIONRESULT"
+	OperationPutSubscriptions     OperationMethod = "PUTSUBSCRIPTIONS"
 
 	Seperator = "|"
 )
@@ -34,19 +59,22 @@ const (
 // and run the corresponding async operation controller.
 type OperationType struct {
 	Type   string
-	Method string
+	Method OperationMethod
 }
 
 // String returns the operation type string.
 func (o OperationType) String() string {
-	return strings.ToUpper(o.Type + Seperator + o.Method)
+	return strings.ToUpper(o.Type + Seperator + string(o.Method))
 }
 
 // ParseOperationType parses OperationType from string.
 func ParseOperationType(s string) (OperationType, bool) {
 	p := strings.Split(s, Seperator)
 	if len(p) == 2 {
-		return OperationType{Type: strings.ToUpper(p[0]), Method: strings.ToUpper(p[1])}, true
+		return OperationType{
+			Type:   strings.ToUpper(p[0]),
+			Method: OperationMethod(strings.ToUpper(p[1])),
+		}, true
 	}
 	return OperationType{}, false
 }

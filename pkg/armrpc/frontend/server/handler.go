@@ -14,6 +14,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
@@ -21,23 +22,26 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
+const (
+	APIVersionParam = "api-version"
+)
+
 type ControllerFunc func(store.StorageClient, manager.StatusManager) (ctrl.Controller, error)
 
-type handlerParam struct {
-	parent       *mux.Router
-	resourcetype string
-	method       string
-	routeName    string
-	fn           ControllerFunc
+type HandlerOptions struct {
+	ParentRouter   *mux.Router
+	ResourceType   string
+	Method         v1.OperationMethod
+	HandlerFactory ControllerFunc
 }
 
-func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, parent *mux.Router, resourcetype string, method string, operationMethod string, createControllerFn ControllerFunc) error {
-	sc, err := sp.GetStorageClient(ctx, resourcetype)
+func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, opts HandlerOptions) error {
+	sc, err := sp.GetStorageClient(ctx, opts.ResourceType)
 	if err != nil {
 		return err
 	}
 
-	ctrl, err := createControllerFn(sc, nil)
+	ctrl, err := opts.HandlerFactory(sc, nil)
 	if err != nil {
 		return err
 	}
@@ -57,8 +61,64 @@ func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, p
 		}
 	}
 
-	ot := v1.OperationType{Type: resourcetype, Method: operationMethod}
-	parent.Methods(method).HandlerFunc(fn).Name(ot.String())
+	ot := v1.OperationType{Type: opts.ResourceType, Method: opts.Method}
+	opts.ParentRouter.Methods(opts.Method.HTTPMethod()).HandlerFunc(fn).Name(ot.String())
+	return nil
+}
+
+func ConfigureDefaultHandlers(
+	ctx context.Context,
+	sp dataprovider.DataStorageProvider,
+	rootRouter *mux.Router,
+	subscriptionRouter *mux.Router,
+	providerNamespace string,
+	availableOperations []*v1.Operation) error {
+	rt := fmt.Sprintf("%s/provider", providerNamespace)
+
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
+	err := RegisterHandler(ctx, sp, HandlerOptions{
+		ParentRouter:   rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ResourceType:   rt,
+		Method:         v1.OperationGet,
+		HandlerFactory: defaultoperation.NewGetOperations,
+	})
+	if err != nil {
+		return err
+	}
+
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
+	err = RegisterHandler(ctx, sp, HandlerOptions{
+		ParentRouter:   subscriptionRouter.Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ResourceType:   rt,
+		Method:         v1.OperationPut,
+		HandlerFactory: defaultoperation.NewCreateOrUpdateSubscription,
+	})
+	if err != nil {
+		return err
+	}
+
+	opStatus := fmt.Sprintf("/providers/%s/locations/{location}/operationstatuses/{operationId}", providerNamespace)
+	err = RegisterHandler(ctx, sp, HandlerOptions{
+		ParentRouter:   subscriptionRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ResourceType:   rt,
+		Method:         v1.OperationGetOperationStatuses,
+		HandlerFactory: defaultoperation.NewGetOperationStatus,
+	})
+	if err != nil {
+		return err
+	}
+
+	opResult := fmt.Sprintf("/providers/%s/locations/{location}/operationresults/{operationId}", providerNamespace)
+	err = RegisterHandler(ctx, sp, HandlerOptions{
+		ParentRouter:   subscriptionRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ResourceType:   rt,
+		Method:         v1.OperationGetOperationResult,
+		HandlerFactory: defaultoperation.NewGetOperationResult,
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

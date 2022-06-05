@@ -7,7 +7,7 @@ package v20220315privatepreview
 
 import (
 	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -18,7 +18,7 @@ func (src *ApplicationResource) ConvertTo() (api.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
 	converted := &datamodel.Application{
-		TrackedResource: basedatamodel.TrackedResource{
+		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
 			Type:     to.String(src.Type),
@@ -29,7 +29,7 @@ func (src *ApplicationResource) ConvertTo() (api.DataModelInterface, error) {
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 		},
-		InternalMetadata: basedatamodel.InternalMetadata{
+		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}

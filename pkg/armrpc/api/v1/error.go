@@ -3,9 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package provider
+package v1
 
-const (
-	ResourceTypeName                = "Applications.Core/provider"
-	OperationStatusResourceTypeName = "Applications.Core/operationStatuses"
+import "errors"
+
+var (
+	ErrUnsupportedAPIVersion = errors.New("unsupported api-version")
 )

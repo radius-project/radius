@@ -6,21 +6,20 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 // ContainerResource represents Container resource.
 type ContainerResource struct {
-	basedatamodel.TrackedResource
+	v1.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
+	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties ContainerProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	basedatamodel.InternalMetadata
+	v1.InternalMetadata
 }
 
 // ResourceTypeName returns the qualified name of the resource
@@ -30,12 +29,12 @@ func (c ContainerResource) ResourceTypeName() string {
 
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
-	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Application       string                           `json:"application,omitempty"`
-	Connections       map[string]ConnectionProperties  `json:"connections,omitempty"`
-	Container         Container                        `json:"container,omitempty"`
-	Extensions        []ExtensionClassification        `json:"extensions,omitempty"`
+	v1.BasicResourceProperties
+	ProvisioningState v1.ProvisioningStates           `json:"provisioningState,omitempty"`
+	Application       string                          `json:"application,omitempty"`
+	Connections       map[string]ConnectionProperties `json:"connections,omitempty"`
+	Container         Container                       `json:"container,omitempty"`
+	Extensions        []ExtensionClassification       `json:"extensions,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.
