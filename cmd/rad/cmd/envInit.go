@@ -100,7 +100,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 		return &azure.Provider{}, nil
 	}
 
-	clientID, err := prompt.Text("To create Azure cloud resources a Service Principal Name (SPN) with a corresponding role assignment for your resource group is required. You can create one using the following azure cli command:\n`az ad sp create-for-rbac --role Owner`\nFor more information, see: https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac\n\nEnter the `appId` of the service principal used to create Azure resources:", prompt.UUIDv4Validator)
+	clientID, err := prompt.Text("To create Azure cloud resources a Service Principal Name (SPN) with a corresponding role assignment and scope for your resource group is required. For example you can create one using the following  command:\n`az ad sp create-for-rbac --role Owner --scope /subscriptions/<<subscription_id>>/resourceGroups/<<resource_group_name>>`\nYou can list the SPN roles using the following command:\n`az role assignment list --assignee <<client_id>>`\nFor more information, see: https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac,https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-list-cli\n\nEnter the `appId` of the service principal used to create Azure resources:", prompt.UUIDv4Validator)
 	if err != nil {
 		return nil, err
 	}
