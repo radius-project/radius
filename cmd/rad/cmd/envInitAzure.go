@@ -107,6 +107,8 @@ func initAzureRadEnvironment(cmd *cobra.Command, args []string) error {
 			ChartPath: a.ChartPath,
 			Image:     a.Image,
 			Tag:       a.Tag,
+			UCPImage:  a.UCPImage,
+			UCPTag:    a.UCPTag,
 		},
 	}
 	clusterOptions := helm.NewClusterOptions(cliOptions)
@@ -141,6 +143,8 @@ func init() {
 	envInitAzureCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
 	envInitAzureCmd.Flags().String("image", "", "Specify the radius controller image to use")
 	envInitAzureCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
+	envInitAzureCmd.Flags().String("ucp-image", "", "specify the UCP image to use")
+	envInitAzureCmd.Flags().String("ucp-tag", "", "specify the UCP tag to use")
 
 	// development support
 	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
@@ -159,6 +163,8 @@ type arguments struct {
 	Namespace               string
 	Image                   string
 	Tag                     string
+	UCPImage                string
+	UCPTag                  string
 }
 
 func validate(cmd *cobra.Command, args []string) (arguments, error) {
@@ -243,6 +249,16 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		return arguments{}, err
 	}
 
+	ucpImage, err := cmd.Flags().GetString("ucp-image")
+	if err != nil {
+		return arguments{}, err
+	}
+
+	ucpTag, err := cmd.Flags().GetString("ucp-tag")
+	if err != nil {
+		return arguments{}, err
+	}
+
 	if location != "" && !isSupportedLocation(location) {
 		return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
 	}
@@ -260,6 +276,8 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 		ChartPath:               chartPath,
 		Image:                   image,
 		Tag:                     tag,
+		UCPImage:                ucpImage,
+		UCPTag:                  ucpTag,
 	}, nil
 }
 
