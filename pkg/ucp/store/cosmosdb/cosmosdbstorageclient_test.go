@@ -39,8 +39,9 @@ var randomPlanes = []string{
 
 var (
 	// To run this test, you need to specify the below environment variable before running the test.
-	dBUrl            = os.Getenv("TEST_COSMOSDB_URL")
-	masterKey        = os.Getenv("TEST_COSMOSDB_MASTERKEY")
+	dBUrl     = os.Getenv("TEST_COSMOSDB_URL")
+	masterKey = os.Getenv("TEST_COSMOSDB_MASTERKEY")
+
 	dbName           = "applicationscore"
 	dbCollectionName = "functional-test-environments"
 
@@ -80,7 +81,6 @@ func mustGetTestClient(t *testing.T) *CosmosDBStorageClient {
 		t.Skip("TEST_COSMOSDB_URL and TEST_COSMOSDB_MASTERKEY are not set.")
 	}
 
-	// Singleton
 	if dbClient != nil {
 		return dbClient
 	}
@@ -112,16 +112,16 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 		params      []cosmosapi.QueryParam
 		err         error
 	}{
-		// {
-		// 	desc:       "invalid-query-parameters",
-		// 	storeQuery: store.Query{},
-		// 	err:        &store.ErrInvalid{Message: "invalid Query parameters"},
-		// },
-		// {
-		// 	desc:       "scope-recursive-and-routing-scope-prefix",
-		// 	storeQuery: store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", RoutingScopePrefix: "prefix"},
-		// 	err:        &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."},
-		// },
+		{
+			desc:       "invalid-query-parameters",
+			storeQuery: store.Query{},
+			err:        &store.ErrInvalid{Message: "RootScope can not be empty."},
+		},
+		{
+			desc:       "scope-recursive-and-routing-scope-prefix",
+			storeQuery: store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", RoutingScopePrefix: "prefix"},
+			err:        &store.ErrInvalid{Message: "RoutingScopePrefix is not supported."},
+		},
 		{
 			desc:        "root-scope-subscription-id",
 			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", ScopeRecursive: true},
@@ -256,63 +256,63 @@ func TestSave(t *testing.T) {
 		useObjEtag bool
 		etag       string
 		useOpts    bool
-		err        bool
+		err        error
 	}{
 		"upsert-ucp-resource-without-etag": {
 			resource:   ucpResource,
 			useObjEtag: false,
 			etag:       "",
 			useOpts:    false,
-			err:        false,
+			err:        nil,
 		},
 		"upsert-arm-resource-without-etag": {
 			resource:   armResource,
 			useObjEtag: false,
 			etag:       "",
 			useOpts:    false,
-			err:        false,
+			err:        nil,
 		},
 		"upsert-ucp-resource-with-valid-etag": {
 			resource:   ucpResource,
 			useObjEtag: true,
 			etag:       "",
 			useOpts:    false,
-			err:        false,
+			err:        nil,
 		},
 		"upsert-arm-resource-with-valid-etag": {
 			resource:   armResource,
 			useObjEtag: true,
 			etag:       "",
 			useOpts:    false,
-			err:        false,
+			err:        nil,
 		},
 		"upsert-ucp-resource-with-options": {
 			resource:   ucpResource,
 			useObjEtag: false,
 			etag:       "",
 			useOpts:    true,
-			err:        false,
+			err:        nil,
 		},
 		"upsert-arm-resource-with-options": {
 			resource:   armResource,
 			useObjEtag: false,
 			etag:       "",
 			useOpts:    true,
-			err:        false,
+			err:        nil,
 		},
 		"upsert-ucp-resource-with-invalid-etag": {
 			resource:   ucpResource,
 			useObjEtag: false,
 			etag:       "invalid-etag",
 			useOpts:    false,
-			err:        true,
+			err:        &store.ErrConcurrency{},
 		},
 		"upsert-arm-resource-with-invalid-etag": {
 			resource:   armResource,
 			useObjEtag: false,
 			etag:       "invalid-etag",
 			useOpts:    false,
-			err:        true,
+			err:        &store.ErrConcurrency{},
 		},
 	}
 	for name, tc := range tests {
@@ -334,8 +334,8 @@ func TestSave(t *testing.T) {
 			}
 
 			// Error checking
-			if tc.err {
-				require.Error(t, err)
+			if tc.err != nil {
+				require.ErrorIs(t, err, tc.err)
 			} else {
 				require.NoError(t, err)
 			}

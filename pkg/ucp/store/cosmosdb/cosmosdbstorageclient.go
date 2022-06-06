@@ -440,7 +440,11 @@ func GetPartitionKey(id resources.ID) (string, error) {
 			return "", errors.New("invalid UCP resource id")
 		}
 		scopeSegment := id.ScopeSegments()[0]
-		partitionKey = NormalizeLetterOrDigitToUpper(fmt.Sprintf("%s/%s", scopeSegment.Type, scopeSegment.Name))
+		storageKeys, err := CombineStorageKeys(scopeSegment.Type, scopeSegment.Name)
+		if err != nil {
+			return "", err
+		}
+		partitionKey = NormalizeLetterOrDigitToUpper(storageKeys)
 	}
 
 	return partitionKey, nil

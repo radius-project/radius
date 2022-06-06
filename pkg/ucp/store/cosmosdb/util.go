@@ -129,7 +129,7 @@ func GenerateCosmosDBKey(id resources.ID) (string, error) {
 		storageKeys = append(storageKeys, uniqueResourceGroup)
 	}
 
-	resourceTypeAndName, err := NormalizeStorageKey(id.Type()+id.Name(), ResourceIdMaxStorageKeyLen)
+	resourceTypeAndName, err := NormalizeStorageKey(id.RoutingScope(), ResourceIdMaxStorageKeyLen)
 	if err != nil {
 		return "", err
 	}
