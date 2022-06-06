@@ -23,8 +23,7 @@ func Test_ParseInvalidIDs(t *testing.T) {
 		"/subscriptions/{%s}/resourceGroups//providers/Microsoft.CustomProviders/resourceProviders",
 		"/subscriptions/{%s}/resourceGroups/providers/Microsoft.CustomProviders/resourceProviders",
 		"ucp:/",
-		"ucp:/planes",
-		"ucp:/planes/radius/",
+		"ucp:/planes/radius",
 		"ucp:/planes/radius/local/resourceGroups//providers/Microsoft.CustomProviders/resourceProviders",
 	}
 
@@ -56,6 +55,14 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
 		},
+		{
+			id:       "ucp:/planes",
+			expected: "ucp:/planes",
+			scopes:   []ScopeSegment{},
+			types:    []TypeSegment{},
+			provider: "",
+		},
+
 		{
 			id:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/",
 			expected: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders",

@@ -19,11 +19,11 @@ var _ queue.Dequeuer = (*Client)(nil)
 
 // Client is the queue client used for dev and test purpose.
 type Client struct {
-	queue *inmemQueue
+	queue *InmemQueue
 }
 
 // NewClient creates the in-memory queue Client instance. Client will use the default global queue if queue is not given.
-func NewClient(queue *inmemQueue) *Client {
+func NewClient(queue *InmemQueue) *Client {
 	if queue == nil {
 		queue = defaultQueue
 	}

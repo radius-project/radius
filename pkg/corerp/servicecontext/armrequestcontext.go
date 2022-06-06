@@ -9,11 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"github.com/project-radius/radius/pkg/api/armrpcv1"
@@ -121,8 +123,8 @@ type ARMRequestContext struct {
 	CorrelationID string
 	// OperationID represents the unique id per operation, which will be used as async operation id later.
 	OperationID uuid.UUID
-	// OperationName represents the name of the operation.
-	OperationName string
+	// OperationType represents the type of the operation.
+	OperationType string
 	// Traceparent represents W3C trace prarent header for distributed tracing.
 	Traceparent string
 
@@ -165,13 +167,13 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 	path := strings.TrimPrefix(r.URL.Path, pathBase)
 	azID, err := resources.Parse(path)
 	if err != nil {
-		log.V(radlogger.Debug).Info("URL was not a valid resource id: %v", r.URL.Path)
+		log.V(radlogger.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", r.URL.Path))
 		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
 	queryItemCount, err := getQueryItemCount(r.URL.Query().Get(TopParameterName))
 	if err != nil {
-		log.V(radlogger.Debug).Info("Error parsing top query parameter: %v", r.URL.Query())
+		log.V(radlogger.Debug).Info(fmt.Sprintf("Error parsing top query parameter: %v", r.URL.Query()))
 		return nil, err
 	}
 
@@ -200,6 +202,10 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 
 		SkipToken: r.URL.Query().Get(SkipTokenParameterName),
 		Top:       queryItemCount,
+	}
+
+	if route := mux.CurrentRoute(r); route != nil {
+		rpcCtx.OperationType = route.GetName()
 	}
 
 	return rpcCtx, nil

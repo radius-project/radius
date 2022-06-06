@@ -38,6 +38,7 @@ input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/httpRoutes.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/gateways.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/containers.json
 ```
 
 ### Common
@@ -50,6 +51,7 @@ use: "@autorest/go@4.0.0-preview.29"
 module-version: 0.0.1
 file-prefix: zz_generated_
 license-header: MICROSOFT_MIT_NO_VERSION
+azure-arm: true
 ```
 
 ### Output

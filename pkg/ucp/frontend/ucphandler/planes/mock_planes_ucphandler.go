@@ -7,6 +7,7 @@ package planes
 import (
 	context "context"
 	http "net/http"
+	url "net/url"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -98,7 +99,7 @@ func (mr *MockPlanesUCPHandlerMockRecorder) List(arg0, arg1, arg2 interface{}) *
 }
 
 // ProxyRequest mocks base method.
-func (m *MockPlanesUCPHandler) ProxyRequest(arg0 context.Context, arg1 store.StorageClient, arg2 http.ResponseWriter, arg3 *http.Request, arg4 string) (rest.Response, error) {
+func (m *MockPlanesUCPHandler) ProxyRequest(arg0 context.Context, arg1 store.StorageClient, arg2 http.ResponseWriter, arg3 *http.Request, arg4 *url.URL) (rest.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ProxyRequest", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(rest.Response)

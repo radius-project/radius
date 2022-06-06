@@ -48,6 +48,7 @@ input-file:
   - Applications.Core/preview/2022-03-15-privatepreview/applications.json
   - Applications.Core/preview/2022-03-15-privatepreview/httpRoutes.json
   - Applications.Core/preview/2022-03-15-privatepreview/gateways.json
+  - Applications.Core/preview/2022-03-15-privatepreview/containers.json
 ```
 
 ### Tag: package-connector-2022-03-15-privatepreview
@@ -58,6 +59,12 @@ These settings apply only when `--tag=package-connector-2022-03-15-privateprevie
 input-file:
   - Applications.Connector/preview/2022-03-15-privatepreview/global.json
   - Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/sqlDatabases.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/redisCaches.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/daprSecretStores.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
 ```
 
 # Code Generation

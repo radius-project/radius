@@ -14,8 +14,17 @@
         "env": "dev"
     },
     "properties": {
+        "status": {
+            "outputResources": [{
+              "LocalID": "Deployment",
+              "ResourceType": {
+                "Type": "Gateway",
+                "Provider": "kubernetes"
+              }
+            }]
+        },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "hostName": {
+        "hostname": {
             "fullyQualifiedHostname": "myapp.mydomain.com",
             "prefix":"myprefix"
         },

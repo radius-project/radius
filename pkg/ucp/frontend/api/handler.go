@@ -104,12 +104,16 @@ func (h *Handler) ProxyPlaneRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := ucplog.GetLogger(ctx)
 
-	logger.V(3).Info("starting proxy request", "url", r.URL.String(), "method", r.Method)
+	logger.Info("starting proxy request", "url", r.URL.String(), "method", r.Method)
 	for key, value := range r.Header {
 		logger.V(4).Info("incoming request header", "key", key, "value", value)
 	}
+	r.URL.Path = h.getRelativePath(r.URL.Path)
 
-	response, err := h.ucp.Planes.ProxyRequest(ctx, h.db, w, r, h.getRelativePath(r.URL.Path))
+	// Make a copy of the incoming URL and trim the base path
+	newURL := *r.URL
+	newURL.Path = h.getRelativePath(r.URL.Path)
+	response, err := h.ucp.Planes.ProxyRequest(ctx, h.db, w, r, &newURL)
 	if err != nil {
 		err := response.Apply(ctx, w, r)
 		if err != nil {
