@@ -72,7 +72,7 @@ func ConfigureDefaultHandlers(
 	rootRouter *mux.Router,
 	subscriptionRouter *mux.Router,
 	providerNamespace string,
-	availableOperations []*v1.Operation) error {
+	operationCtrlFactory ControllerFunc) error {
 	rt := fmt.Sprintf("%s/provider", providerNamespace)
 
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
@@ -80,7 +80,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationGet,
-		HandlerFactory: default_ctrl.NewGetOperations,
+		HandlerFactory: operationCtrlFactory,
 	})
 	if err != nil {
 		return err

@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	ProviderName = "Applications.Connector"
+	ProviderNamespaceName = "Applications.Connector"
 )
 
 func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router *mux.Router, pathBase string) error {
@@ -32,7 +32,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 	}
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, sp, root, subscriptionRt, ProviderName, nil)
+	err := server.ConfigureDefaultHandlers(ctx, sp, root, subscriptionRt, ProviderNamespaceName, NewGetOperations)
 	if err != nil {
 		return err
 	}
