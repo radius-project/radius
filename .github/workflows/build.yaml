@@ -354,6 +354,7 @@ jobs:
         dist/rad env delete dev --yes
         # Print config for sanity check
         cat ~/.rad/config.yaml
+        k3d cluster delete radius-dev
     - name: Upload container logs
       if: always()
       uses: actions/upload-artifact@master
