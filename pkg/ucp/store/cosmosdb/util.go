@@ -117,32 +117,23 @@ func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
 
 // GenerateCosmosDBKey generates the unqiue key the length of which must be less than 255.
 func GenerateCosmosDBKey(id resources.ID) (string, error) {
-	storageKeys := []string{}
+	storageKeys := []string{NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))}
 
-	// Is the ID Scope or a Resource?
-	scopeOrResource := store.UCPResourcePrefix
-	if id.IsScope() {
-		scopeOrResource = store.UCPScopePrefix
-	}
-	scopeOrResource, err := NormalizeStorageKey(scopeOrResource, ResourceGroupNameMaxStorageKeyLen)
-	if err != nil {
-		return "", nil
-	}
-	storageKeys = append(storageKeys, scopeOrResource)
+	resourceGroup := id.FindScope(resources.ResourceGroupsSegment)
 
-	// Add RootScope
-	normalizedRootScope, err := NormalizeStorageKey(id.RootScope(), ResourceGroupNameMaxStorageKeyLen)
+	if resourceGroup != "" {
+		uniqueResourceGroup, err := NormalizeStorageKey(resourceGroup, ResourceGroupNameMaxStorageKeyLen)
+		if err != nil {
+			return "", err
+		}
+		storageKeys = append(storageKeys, uniqueResourceGroup)
+	}
+
+	resourceTypeAndName, err := NormalizeStorageKey(id.Type()+id.Name(), ResourceIdMaxStorageKeyLen)
 	if err != nil {
 		return "", err
 	}
-	storageKeys = append(storageKeys, normalizedRootScope)
-
-	// Add RoutingScope
-	normalizedRoutingScope, err := NormalizeStorageKey(id.RoutingScope(), ResourceIdMaxStorageKeyLen)
-	if err != nil {
-		return "", err
-	}
-	storageKeys = append(storageKeys, normalizedRoutingScope)
+	storageKeys = append(storageKeys, resourceTypeAndName)
 
 	return CombineStorageKeys(storageKeys...)
 }

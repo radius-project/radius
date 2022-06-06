@@ -161,6 +161,10 @@ func (c *CosmosDBStorageClient) createCollectionIfNotExists(ctx context.Context)
 }
 
 func constructCosmosDBQuery(query store.Query) (*cosmosapi.Query, error) {
+	if query.RoutingScopePrefix != "" {
+		return nil, &store.ErrInvalid{Message: "RoutingScopePrefix is not supported."}
+	}
+
 	if query.RootScope == "" {
 		return nil, &store.ErrInvalid{Message: "RootScope can not be empty."}
 	}

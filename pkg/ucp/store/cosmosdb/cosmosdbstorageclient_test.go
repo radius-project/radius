@@ -39,19 +39,12 @@ var randomPlanes = []string{
 
 var (
 	// To run this test, you need to specify the below environment variable before running the test.
-	// TODO: Make sure all tests are passing
-	// TODO: Create an issue to change CI/CD pipeline
-	dBUrl     = os.Getenv("TEST_COSMOSDB_URL")
-	masterKey = os.Getenv("TEST_COSMOSDB_MASTERKEY")
-	// dBUrl     = "https://radius-eastus-test.documents.azure.com:443/"
-	// masterKey = "pulSdF9Zi87pwDz6NGbHSGuTg0kCdp7gerB8Ih7ZVP2l9WU7Ube2CA6Qg65puGfq3Wyo6bkbsMekWWxsqd9GrA=="
-
-	testLocation     = "test-location"
+	dBUrl            = os.Getenv("TEST_COSMOSDB_URL")
+	masterKey        = os.Getenv("TEST_COSMOSDB_MASTERKEY")
 	dbName           = "applicationscore"
 	dbCollectionName = "functional-test-environments"
-)
 
-const (
+	testLocation            = "test-location"
 	environmentResourceType = "applications.core/environments"
 )
 
