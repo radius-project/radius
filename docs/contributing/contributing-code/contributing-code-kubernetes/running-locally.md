@@ -75,7 +75,7 @@ You can also specify these in your launch.json settings:
 
 ```json
 {
-  "name": "Run rp",
+  "name": "Run Radius rp",
   "type": "go",
   "request": "launch",
   "mode": "debug",
@@ -133,7 +133,7 @@ We optionally require configuration for managing Azure resources:
 
 The simplest is to use your local configuration for Kubernetes (assuming it's already set up) and some defaults for Azure
 
-### Step 3: Running the RP
+### Step 2: Running the RP
 
 Use `go run` to launch the RP from the same terminal where you configured the environment variables.
 
@@ -141,35 +141,54 @@ Use `go run` to launch the RP from the same terminal where you configured the en
 go run cmd/rp/main.go
 ```
 
-### Step 4: Running the Deployment Engine
+Or you can also run the RP from VSCode:
+- With the `Run Radius RP` configuration in the launch.json file.
+- Launch VSCode from the same terminal where you configurred the environment variables. Open `cmd/radius-rp/main.go` and then launch the debugger from VSCode.
 
+### Step 3: Running the Deployment Engine
 
+Next, run the Deployment Engine from a different terminal than the RP.
 
-## Optional: Debugging the RP
+1. Install .NET 6: https://dotnet.microsoft.com/en-us/download/dotnet/6.0
+1. Clone the Deployment Engine Repo: `git clone https://github.com/project-radius/deployment-engine`
+1. Either run or Debug the Deployment Engine via:
+```sh
+# Set the backend URL that the Radius RP is currently running on, by default this will be what is below
+export RADIUSBACKENDURL="http://localhost:5000/apis/api.radius.dev/v1alpha3"
+dotnet run --project src/DeploymentEngine/DeploymentEngine.csproj
+```
 
-Launch VSCode from the same terminal where you configurred the environment variables.
+OR opening VSCode and adding the following configuration and run it:
+```json
+    "configurations": [
+        {
+            "name": ".NET Core Launch (web)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/DeploymentEngine/bin/Debug/net6.0/arm-de.dll",
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console":"integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "uriFormat": "http://localhost:%s/swagger/index.html",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "RADIUSBACKENDURL": "http://localhost:5000/apis/api.radius.dev/v1alpha3" // Make sure this is the right URL for your RP
+            },
+            "sourceFileMap": {
+                "/Views": "${workspaceFolder}/Views"
+            }
+        }
+    ]
+```
 
-Open `cmd/rp/main.go` and then launch the debugger from VSCode.
+By default, the Deployment Engine will run on port 5017 for http
 
-## New world - Application.Core RP, Deployment Engine, UCP
-
-
-
-# Test Radius locally
-
-Testing the RP locally can be challenging because the Radius RP is just one part of a distributed system. The actual processing of ARM templates (the output of a `.bicep file`) is handled by the ARM deployment engine, not us.
-
-
-## Pattern for integration testing
-
-As a general pattern, you can find example applications in the `/examples` folder. Each folder has a `template.bicep` file which contains a deployable application.
-
-If you are building new features, or want to test deployment interactions the best way is to either:
-
-- Make a series of deploy and delete operations with one of these example applications
-- Write a new example application
-
-## Local testing with rad
+### Step 4: Modifying the config.yaml to point to your local RP
 
 You can use your build of `rad` (or build from source) to test against a local copy of the RP by creating a special environment.
 
@@ -177,10 +196,44 @@ To do this, open your environment file (`$HOME/.rad/config.yaml`) and edit it ma
 
 You'll need to:
 
-- Duplicate the contents of an Azure Cloud environment
+- Duplicate the contents of an Kubernetes Environment
 - Give the new environment a memorable name like `test` or `local`
-- Change the environment kind from `azure` to `localrp`
-- Add a `url` property with the URL of your local RP
+- Add `radiusrplocalurl` and `deploymentenginelocalurl` to point to the URLs of your local RP and DE
+
+**Example**
+
+```yaml
+environment:
+  default: local
+  items:
+    local:
+      context: justin-d
+      kind: kubernetes
+      namespace: default
+      radiusrplocalurl: http://localhost:5000
+      deploymentenginelocalurl: http://localhost:5017
+```
+
+### Step 5: Run rad deploy
+
+You can now run `rad deploy <bicep>` to deploy your BICEP to the local RP. You can also configure a launch.json file to debug the execution of `rad deploy`.
+
+```json
+{
+    "name": "Launch rad deploy",
+    "type": "go",
+    "request": "launch",
+    "mode": "debug",
+    "program": "${workspaceFolder}/cmd/rad/main.go",
+    "args": ["deploy", "<bicep>"]
+},
+```
+
+## New world - Application.Core RP, Deployment Engine, UCP
+
+
+## Local testing with rad
+
 
 **Before**
 
