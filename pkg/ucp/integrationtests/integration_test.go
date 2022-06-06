@@ -178,7 +178,7 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
 	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
-	assert.Equal(t, "http://"+proxyRequest.Host+testPlaneID+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
+	assert.Equal(t, "http://"+proxyRequest.Host+basePath+testPlaneID+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
 	proxyRequestResponseBody, err := ioutil.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
