@@ -9,7 +9,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
@@ -50,7 +50,7 @@ func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Res
 }
 
 // TODO: make this pagination logic generic function.
-func (e *ListEnvironments) createPaginationResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*armrpcv1.PaginatedList, error) {
+func (e *ListEnvironments) createPaginationResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	items := []interface{}{}
@@ -67,7 +67,7 @@ func (e *ListEnvironments) createPaginationResponse(ctx context.Context, req *ht
 		items = append(items, versioned)
 	}
 
-	return &armrpcv1.PaginatedList{
+	return &v1.PaginatedList{
 		Value:    items,
 		NextLink: ctrl.GetNextLinkURL(ctx, req, result.PaginationToken),
 	}, nil

@@ -6,7 +6,7 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
@@ -14,7 +14,7 @@ import (
 )
 
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
-func (src *GatewayResource) ConvertTo() (api.DataModelInterface, error) {
+func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	routes := []datamodel.GatewayRoute{}
 	if src.Properties.Routes != nil {
@@ -59,10 +59,10 @@ func (src *GatewayResource) ConvertTo() (api.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Gateway resource.
-func (dst *GatewayResource) ConvertFrom(src api.DataModelInterface) error {
+func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 	g, ok := src.(*datamodel.Gateway)
 	if !ok {
-		return api.ErrInvalidModelConversion
+		return conv.ErrInvalidModelConversion
 	}
 
 	routes := []*GatewayRoute{}

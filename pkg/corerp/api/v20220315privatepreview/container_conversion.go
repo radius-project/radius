@@ -6,7 +6,7 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
@@ -14,7 +14,7 @@ import (
 )
 
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
-func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
+func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
 	connections := make(map[string]datamodel.ConnectionProperties)
@@ -104,10 +104,10 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Container resource.
-func (dst *ContainerResource) ConvertFrom(src api.DataModelInterface) error {
+func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 	c, ok := src.(*datamodel.ContainerResource)
 	if !ok {
-		return api.ErrInvalidModelConversion
+		return conv.ErrInvalidModelConversion
 	}
 
 	connections := make(map[string]*ConnectionProperties)

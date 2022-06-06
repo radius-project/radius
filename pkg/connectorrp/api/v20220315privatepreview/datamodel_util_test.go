@@ -9,8 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
 	"github.com/stretchr/testify/require"
 )
@@ -18,15 +17,15 @@ import (
 func TestToProvisioningStateDataModel(t *testing.T) {
 	stateTests := []struct {
 		versioned ProvisioningState
-		datamodel basedatamodel.ProvisioningState
+		datamodel v1.ProvisioningState
 	}{
-		{ProvisioningStateUpdating, basedatamodel.ProvisioningStateUpdating},
-		{ProvisioningStateDeleting, basedatamodel.ProvisioningStateDeleting},
-		{ProvisioningStateAccepted, basedatamodel.ProvisioningStateAccepted},
-		{ProvisioningStateSucceeded, basedatamodel.ProvisioningStateSucceeded},
-		{ProvisioningStateFailed, basedatamodel.ProvisioningStateFailed},
-		{ProvisioningStateCanceled, basedatamodel.ProvisioningStateCanceled},
-		{"", basedatamodel.ProvisioningStateAccepted},
+		{ProvisioningStateUpdating, v1.ProvisioningStateUpdating},
+		{ProvisioningStateDeleting, v1.ProvisioningStateDeleting},
+		{ProvisioningStateAccepted, v1.ProvisioningStateAccepted},
+		{ProvisioningStateSucceeded, v1.ProvisioningStateSucceeded},
+		{ProvisioningStateFailed, v1.ProvisioningStateFailed},
+		{ProvisioningStateCanceled, v1.ProvisioningStateCanceled},
+		{"", v1.ProvisioningStateAccepted},
 	}
 
 	for _, tt := range stateTests {
@@ -37,15 +36,15 @@ func TestToProvisioningStateDataModel(t *testing.T) {
 
 func TestFromProvisioningStateDataModel(t *testing.T) {
 	testCases := []struct {
-		datamodel basedatamodel.ProvisioningState
+		datamodel v1.ProvisioningState
 		versioned ProvisioningState
 	}{
-		{basedatamodel.ProvisioningStateUpdating, ProvisioningStateUpdating},
-		{basedatamodel.ProvisioningStateDeleting, ProvisioningStateDeleting},
-		{basedatamodel.ProvisioningStateAccepted, ProvisioningStateAccepted},
-		{basedatamodel.ProvisioningStateSucceeded, ProvisioningStateSucceeded},
-		{basedatamodel.ProvisioningStateFailed, ProvisioningStateFailed},
-		{basedatamodel.ProvisioningStateCanceled, ProvisioningStateCanceled},
+		{v1.ProvisioningStateUpdating, ProvisioningStateUpdating},
+		{v1.ProvisioningStateDeleting, ProvisioningStateDeleting},
+		{v1.ProvisioningStateAccepted, ProvisioningStateAccepted},
+		{v1.ProvisioningStateSucceeded, ProvisioningStateSucceeded},
+		{v1.ProvisioningStateFailed, ProvisioningStateFailed},
+		{v1.ProvisioningStateCanceled, ProvisioningStateCanceled},
 		{"", ProvisioningStateAccepted},
 	}
 
@@ -69,7 +68,7 @@ func TestUnmarshalTimeString(t *testing.T) {
 }
 
 func TestFromSystemDataModel(t *testing.T) {
-	systemDataTests := []armrpcv1.SystemData{
+	systemDataTests := []v1.SystemData{
 		{
 			CreatedBy:          "",
 			CreatedByType:      "",
