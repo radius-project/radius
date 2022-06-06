@@ -233,7 +233,22 @@ The new world consists of a few more operations and processes that are unique. T
 UCP - Universal Control Plane, we need to run this and register planes with the RP.
 Application.Core - The new RP that we're building.
 
-### Step 1: Running UCP
+### Step 1: Running Applications.Core RP
+
+Running the Applications requires the following configuration before running
+
+```sh
+
+```
+
+Or in VSCode:
+
+```json
+```
+
+
+
+### Step 3: Running UCP
 
 UCP is a part of the Radius repo. To run it, you can either execute:
 
