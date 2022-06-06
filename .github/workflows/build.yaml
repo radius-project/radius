@@ -320,6 +320,7 @@ jobs:
         export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-kubernetes
     - name: Run 'rad env delete'
+      if: always()
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         dist/rad env delete dev --yes
