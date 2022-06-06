@@ -149,10 +149,10 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 	mongoListSecretsRouter := mongoResourceRouter.Path("/listSecrets").Subrouter()
 
 	// Adds sql connector resource type routes
-	sqlResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/sqlDatabases").
+	sqlResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/sqldatabases").
 		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
 
-	sqlResourceRouter := mongoResourceTypeSubrouter.Path("/{sqlDatabases}").Subrouter()
+	sqlResourceRouter := sqlResourceTypeSubrouter.Path("/{sqlDatabases}").Subrouter()
 
 	h := []handlerParam{
 		// MongoDatabases operations
