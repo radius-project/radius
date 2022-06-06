@@ -22,13 +22,13 @@ const (
 )
 
 func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router *mux.Router, pathBase string) error {
-	root := router.Path(pathBase).Subrouter()
+	root := router.PathPrefix(pathBase).Subrouter()
 	var subscriptionRt *mux.Router
 
 	if !hostoptions.IsSelfHosted() {
-		subscriptionRt = router.Path(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
+		subscriptionRt = router.PathPrefix(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
 	} else {
-		subscriptionRt = router.Path(pathBase + "/planes/radius/{radiusTenant}").Subrouter()
+		subscriptionRt = router.PathPrefix(pathBase + "/planes/radius/{radiusTenant}").Subrouter()
 	}
 
 	// Configure the default ARM handlers.
@@ -39,7 +39,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 
 	mongoRTSubrouter := subscriptionRt.PathPrefix("/resourcegroups/{resourceGroup}/providers/applications.connector/mongodatabases").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	mongoResourceRouter := mongoRTSubrouter.Path("/{mongoDatabases}").Subrouter()
+	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabases}").Subrouter()
 
 	handerOptions := []server.HandlerOptions{
 		{

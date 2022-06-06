@@ -22,13 +22,16 @@ const (
 )
 
 func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router *mux.Router, pathBase string) error {
-	root := router.Path(pathBase).Subrouter()
+	root := router
+	if pathBase != "" {
+		root = router.PathPrefix(pathBase).Subrouter()
+	}
 	var subscriptionRt *mux.Router
 
 	if !hostoptions.IsSelfHosted() {
-		subscriptionRt = router.Path(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
+		subscriptionRt = router.PathPrefix(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
 	} else {
-		subscriptionRt = router.Path(pathBase + "/planes/radius/{radiusTenant}").Subrouter()
+		subscriptionRt = router.PathPrefix(pathBase + "/planes/radius/{radiusTenant}").Subrouter()
 	}
 
 	// Configure the default ARM handlers.
@@ -39,7 +42,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 
 	envRTSubrouter := subscriptionRt.PathPrefix("/resourcegroups/{resourceGroup}/providers/applications.core/environments").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
+	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
 
 	handerOptions := []server.HandlerOptions{
 		{
