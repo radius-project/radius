@@ -28,7 +28,7 @@ type statusManager struct {
 	location     string
 }
 
-//go:generate mockgen -destination=./mock_statusmanager.go -package=asyncoperation -self_package github.com/project-radius/radius/pkg/arm/asyncoperation github.com/project-radius/radius/pkg/arm/asyncoperation StatusManager
+//go:generate mockgen -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
 
 // StatusManager is an interface to manage async operation status.
 type StatusManager interface {
