@@ -115,6 +115,9 @@ func (ri ID) RootScope() string {
 // Examples:
 //	Applications.Core
 func (ri ID) ProviderNamespace() string {
+	if len(ri.typeSegments) == 0 {
+		return ""
+	}
 	segments := strings.Split(ri.typeSegments[0].Type, SegmentSeparator)
 	return segments[0]
 }
