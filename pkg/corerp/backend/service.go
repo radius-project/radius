@@ -13,8 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/queue/inmemory"
 
 	containers_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller/containers"

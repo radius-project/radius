@@ -15,10 +15,10 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
 	mh "github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"

@@ -11,8 +11,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )

@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/corerp/middleware"
+	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

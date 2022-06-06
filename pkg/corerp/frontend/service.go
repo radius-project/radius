@@ -14,9 +14,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 )
 
 type Service struct {

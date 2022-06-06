@@ -13,7 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/corerp/middleware"
+	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/telemetry/metrics"
 	"github.com/project-radius/radius/pkg/version"
 )

@@ -11,8 +11,8 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 
 	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 )
