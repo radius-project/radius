@@ -88,10 +88,7 @@ You can also specify these in your launch.json settings:
       "K8S_LOCAL": "true",
       "ARM_RESOURCE_GROUP": "my-rg",
       "ARM_SUBSCRIPTION_ID": "66d1209e-1382-45d3-99bb-650e6bf63fc0",
-      // "K8S_CLUSTER_NAME": "radius-aks-ya7cxvgdeh6su",
-      // "K8S_RESOURCE_GROUP": "justin-validation-011",
-      // "K8S_SUBSCRIPTION_ID": "66d1209e-1382-45d3-99bb-650e6bf63fc0",
-      // "BASE_PATH": "/apis/api.radius.dev/v1alpha3"
+      "BASE_PATH": "/apis/api.radius.dev/v1alpha3"
   }
 },
 ```
@@ -158,7 +155,7 @@ export RADIUSBACKENDURL="http://localhost:5000/apis/api.radius.dev/v1alpha3"
 dotnet run --project src/DeploymentEngine/DeploymentEngine.csproj
 ```
 
-OR opening VSCode and adding the following configuration and run it:
+OR opening VSCode inside of the DeploymentEngine repo and adding the following configuration and run it:
 ```json
     "configurations": [
         {
@@ -231,50 +228,20 @@ You can now run `rad deploy <bicep>` to deploy your BICEP to the local RP. You c
 
 ## New world - Application.Core RP, Deployment Engine, UCP
 
+The new world consists of a few more operations and processes that are unique. This includes:
 
-## Local testing with rad
+UCP - Universal Control Plane, we need to run this and register planes with the RP.
+Application.Core - The new RP that we're building.
 
+### Step 1: Running UCP
 
-**Before**
+UCP is a part of the Radius repo. To run it, you can either execute:
 
-```yaml
-environment:
-  default: my-cool-env
-  items:
-    my-cool-env:
-      clustername: radius-aks-j5oqzddqmf36s
-      kind: azure
-      resourcegroup: my-cool-env
-      controlplaneresourcegroup: RE-my-cool-env
-      subscriptionid: 66d1209e-1382-45d3-99bb-650e6bf63fc0
+```sh
+export BASE_PATH="/apis/api.ucp.dev/v1alpha3"
+export PORT="9000"
+export UCP_CONFIG=
+go run cmd/ucp/main.go
 ```
 
-**After**
-
-```yaml
-environment:
-  default: my-cool-env
-  items:
-    local:
-      clustername: radius-aks-j5oqzddqmf36s
-      context: radius-aks-j5oqzddqmf36s
-      namespace: default
-      kind: localrp # remember to set the kind
-      url: http://localhost:5000 # use whatever port you prefer when running the RP locally
-      resourcegroup: my-cool-env
-      controlplaneresourcegroup: RE-my-cool-env
-      subscriptionid: 66d1209e-1382-45d3-99bb-650e6bf63fc0
-    my-cool-env:
-      clustername: radius-aks-j5oqzddqmf36s
-      context: radius-aks-j5oqzddqmf36s
-      namespace: default
-      kind: azure
-      resourcegroup: my-cool-env
-      subscriptionid: 66d1209e-1382-45d3-99bb-650e6bf63fc0
-```
-
-Now you can run `rad env switch local` and use this environment just like you'd use any other.
-
-To run a local RP deployment, a Deployment Engine will run either:
-- Automatically on a random port for the duration of the deployment
-- Specifying a URL that the Deployment Engine will connect to with `apideploymentenginebaseurl` in the localrp environment section.
+Or having the following VSCode configuration:
