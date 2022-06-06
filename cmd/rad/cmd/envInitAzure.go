@@ -263,7 +263,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 		names = append(names, s.DisplayName)
 	}
 
-	index, err := prompt.Select("Select Subscription:", names)
+	index, err := prompt.SelectWithDefault("Select Subscription:", &names[0], names)
 	if err != nil {
 		return radazure.Subscription{}, err
 	}

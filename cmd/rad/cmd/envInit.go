@@ -110,7 +110,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 	}
 
 	fmt.Printf(
-		"A Service Principal Name (SPN) with a corresponding role assignment and scope for your resource group is required to create Azure resources. For example, you can create one using the following  command:\n`az ad sp create-for-rbac --role Owner --scope /subscriptions/%s/resourceGroups/%s`\nFor more information, see: https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac and https://aka.ms/azadsp-more",
+		"\nA Service Principal Name (SPN) with a corresponding role assignment and scope for your resource group is required to create Azure resources.\n\nFor example, you can create one using the following command:\n\033[36maz ad sp create-for-rbac --role Owner --scope /subscriptions/%s/resourceGroups/%s\033[0m\n\nFor more information, see: https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac and https://aka.ms/azadsp-more\n\n",
 		subscription.SubscriptionID,
 		resourceGroup,
 	)

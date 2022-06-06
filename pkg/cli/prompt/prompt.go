@@ -124,7 +124,3 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 	return selected, nil
 }
 
-// Select prompts the user to choose from the possible options
-func Select(prompt string, choices []string) (int, error) {
-	return SelectWithDefault(prompt, nil, choices)
-}
