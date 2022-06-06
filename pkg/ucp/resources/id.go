@@ -218,6 +218,21 @@ func Parse(id string) (ID, error) {
 		id = strings.TrimPrefix(id, UCPPrefix+SegmentSeparator+PlanesSegment)
 	}
 
+	scopes := []ScopeSegment{}
+	if id == "" && isUCPQualified {
+		normalized := ""
+		if isUCPQualified {
+			normalized = MakeUCPID(scopes, []TypeSegment{}...)
+		} else {
+			normalized = MakeRelativeID(scopes, []TypeSegment{}...)
+		}
+		return ID{
+			id:            normalized,
+			scopeSegments: scopes,
+			typeSegments:  []TypeSegment{},
+		}, nil
+	}
+
 	// trim the leading and ending / so we don't end up with an empty segment - we disallow
 	// empty segments in the middle of the string
 	id = strings.TrimPrefix(id, SegmentSeparator)
@@ -225,6 +240,7 @@ func Parse(id string) (ID, error) {
 
 	// The minimum segment count is 2 since we can parse "root scope only" ids.
 	segments := strings.Split(id, SegmentSeparator)
+
 	if len(segments) < 2 {
 		return ID{}, invalid(id)
 	}
@@ -237,7 +253,7 @@ func Parse(id string) (ID, error) {
 	}
 
 	// Parse scopes - iterate until we get to "providers"
-	scopes := []ScopeSegment{}
+
 	i := 0
 	for i < len(segments) {
 		if len(segments)-i < 2 {

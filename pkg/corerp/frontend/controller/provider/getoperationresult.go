@@ -46,7 +46,7 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	os := &asyncoperation.AsyncOperationStatus{}
+	os := &asyncoperation.Status{}
 	_, err = e.GetResource(ctx, id.String(), os)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(id), nil

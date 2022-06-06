@@ -30,7 +30,7 @@ func TestGetOperationStatusRun(t *testing.T) {
 	ctx := context.Background()
 
 	rawDataModel := radiustesting.ReadFixture("operationstatus_datamodel.json")
-	osDataModel := &asyncoperation.AsyncOperationStatus{}
+	osDataModel := &asyncoperation.Status{}
 	_ = json.Unmarshal(rawDataModel, osDataModel)
 
 	rawExpectedOutput := radiustesting.ReadFixture("operationstatus_output.json")

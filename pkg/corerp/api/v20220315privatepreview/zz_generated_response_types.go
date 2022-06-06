@@ -76,6 +76,72 @@ type ApplicationsUpdateResult struct {
 	ApplicationResource
 }
 
+// ContainersCreateOrUpdateResponse contains the response from method Containers.CreateOrUpdate.
+type ContainersCreateOrUpdateResponse struct {
+	ContainersCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersCreateOrUpdateResult contains the result from method Containers.CreateOrUpdate.
+type ContainersCreateOrUpdateResult struct {
+	ContainerResource
+}
+
+// ContainersDeleteResponse contains the response from method Containers.Delete.
+type ContainersDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersGetResponse contains the response from method Containers.Get.
+type ContainersGetResponse struct {
+	ContainersGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersGetResult contains the result from method Containers.Get.
+type ContainersGetResult struct {
+	ContainerResource
+}
+
+// ContainersListBySubscriptionResponse contains the response from method Containers.ListBySubscription.
+type ContainersListBySubscriptionResponse struct {
+	ContainersListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersListBySubscriptionResult contains the result from method Containers.ListBySubscription.
+type ContainersListBySubscriptionResult struct {
+	ContainerResourceList
+}
+
+// ContainersListResponse contains the response from method Containers.List.
+type ContainersListResponse struct {
+	ContainersListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersListResult contains the result from method Containers.List.
+type ContainersListResult struct {
+	ContainerResourceList
+}
+
+// ContainersUpdateResponse contains the response from method Containers.Update.
+type ContainersUpdateResponse struct {
+	ContainersUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersUpdateResult contains the result from method Containers.Update.
+type ContainersUpdateResult struct {
+	ContainerResource
+}
+
 // EnvironmentsCreateOrUpdateResponse contains the response from method Environments.CreateOrUpdate.
 type EnvironmentsCreateOrUpdateResponse struct {
 	EnvironmentsCreateOrUpdateResult

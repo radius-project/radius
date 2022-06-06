@@ -22,8 +22,8 @@ spec:
       containers:
       - image: {{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}
         env:
-        - name: DEFAULT_PLANES_CONFIG
-          value: /etc/config/ucp-config.json
+        - name: UCP_CONFIG
+          value: /etc/config/ucp-dev.yaml
         - name: BASE_PATH
           value: '/apis/api.ucp.dev/v1alpha3' # listen for APIService URLs
         - name: TLS_CERT_DIR
@@ -81,5 +81,5 @@ metadata:
     heritage: "{{ .Release.Service }}"
     release: "{{ .Release.Name }}"
 data:
-  ucp-config.json: |-
-{{ .Files.Get "ucp-config.json" | indent 4}}
+  ucp-dev.yaml: |-
+{{ .Files.Get "ucp-dev.yaml" | indent 4}}
