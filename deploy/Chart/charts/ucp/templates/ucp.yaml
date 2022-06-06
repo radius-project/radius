@@ -23,7 +23,7 @@ spec:
       - image: {{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}
         env:
         - name: UCP_CONFIG
-          value: /etc/config/ucp-dev.yaml
+          value: /etc/config/ucp-config.yaml
         - name: BASE_PATH
           value: '/apis/api.ucp.dev/v1alpha3' # listen for APIService URLs
         - name: TLS_CERT_DIR
@@ -81,5 +81,5 @@ metadata:
     heritage: "{{ .Release.Service }}"
     release: "{{ .Release.Name }}"
 data:
-  ucp-dev.yaml: |-
-{{ .Files.Get "ucp-dev.yaml" | indent 4}}
+  ucp-config.yaml: |-
+{{ .Files.Get "ucp-config.yaml" | indent 4}}
