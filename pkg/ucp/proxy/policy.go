@@ -44,25 +44,16 @@ func noopResponder(r *http.Response) error {
 func logUpstreamRequest(r *http.Request) {
 	logger := logr.FromContextOrDiscard(r.Context())
 	logger.Info("preparing proxy request for", "url", r.URL.String(), "method", r.Method)
-	for key, value := range r.Header {
-		logger.Info("incoming request header", "key", key, "value", value)
-	}
 }
 
 func logDownstreamRequest(r *http.Request) {
 	logger := logr.FromContextOrDiscard(r.Context())
 	logger.Info("sending proxy request to downstream", "url", r.URL.String(), "method", r.Method)
-	for key, value := range r.Header {
-		logger.Info("outgoing request header", "key", key, "value", value)
-	}
 }
 
 func logDownstreamResponse(r *http.Response) error {
 	logger := logr.FromContextOrDiscard(r.Request.Context())
 	logger.Info("received proxy response from downstream", "status", r.Status)
-	for key, value := range r.Request.Header {
-		logger.Info("incoming response header", "key", key, "value", value)
-	}
 
 	return nil
 }
@@ -70,9 +61,6 @@ func logDownstreamResponse(r *http.Response) error {
 func logUpstreamResponse(r *http.Response) error {
 	logger := logr.FromContextOrDiscard(r.Request.Context())
 	logger.Info("sending proxy response to upstream", "status", r.Status)
-	for key, value := range r.Request.Header {
-		logger.Info("outgoing response header", "key", key, "value", value)
-	}
 
 	return nil
 }
