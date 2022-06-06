@@ -30,8 +30,8 @@ func (httpRoute DaprInvokeHttpRoute) ResourceTypeName() string {
 // DaprInvokeHttpRouteProperties represents the properties of DaprInvokeHttpRoute resource.
 type DaprInvokeHttpRouteProperties struct {
 	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string                           `json:"environment"`
-	Application       string                           `json:"application,omitempty"`
-	AppId             string                           `json:"appId"`
+	ProvisioningState basedatamodel.ProvisioningState `json:"provisioningState,omitempty"`
+	Environment       string                          `json:"environment"`
+	Application       string                          `json:"application,omitempty"`
+	AppId             string                          `json:"appId"`
 }

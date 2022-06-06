@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/basedatamodel"
 )
 
-func toProvisioningStateDataModel(state *ProvisioningState) basedatamodel.ProvisioningStates {
+func toProvisioningStateDataModel(state *ProvisioningState) basedatamodel.ProvisioningState {
 	if state == nil {
 		return basedatamodel.ProvisioningStateAccepted
 	}
@@ -38,7 +38,7 @@ func toProvisioningStateDataModel(state *ProvisioningState) basedatamodel.Provis
 	}
 }
 
-func fromProvisioningStateDataModel(state basedatamodel.ProvisioningStates) *ProvisioningState {
+func fromProvisioningStateDataModel(state basedatamodel.ProvisioningState) *ProvisioningState {
 	var converted ProvisioningState
 	switch state {
 	case basedatamodel.ProvisioningStateUpdating:

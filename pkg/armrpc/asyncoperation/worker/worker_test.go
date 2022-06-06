@@ -20,7 +20,7 @@ func TestUpdateResourceState(t *testing.T) {
 	updateStates := []struct {
 		tc          string
 		in          map[string]interface{}
-		updateState v1.ProvisioningStates
+		updateState v1.ProvisioningState
 		outErr      error
 		callSave    bool
 	}{

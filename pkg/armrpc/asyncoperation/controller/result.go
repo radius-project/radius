@@ -20,7 +20,7 @@ type Result struct {
 	Error *armerrors.ErrorDetails
 
 	// state represents the provisioning status.
-	state *v1.ProvisioningStates
+	state *v1.ProvisioningState
 }
 
 // NewCanceledResult creates the canceled asynchronous operation result.
@@ -64,12 +64,12 @@ func (r *Result) SetCanceled(message string) {
 }
 
 // SetProvisioningState sets provisioning state.
-func (r *Result) SetProvisioningState(s v1.ProvisioningStates) {
+func (r *Result) SetProvisioningState(s v1.ProvisioningState) {
 	r.state = &s
 }
 
 // ProvisioningState gets the provisioning state of the result.
-func (r *Result) ProvisioningState() v1.ProvisioningStates {
+func (r *Result) ProvisioningState() v1.ProvisioningState {
 	if r.state == nil {
 		return v1.ProvisioningStateSucceeded
 	}

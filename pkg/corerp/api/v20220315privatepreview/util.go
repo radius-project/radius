@@ -12,7 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
-func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningStates {
+func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
 	if state == nil {
 		return v1.ProvisioningStateAccepted
 	}
@@ -35,7 +35,7 @@ func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState
 	}
 }
 
-func fromProvisioningStateDataModel(state v1.ProvisioningStates) *ProvisioningState {
+func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningState {
 	var converted ProvisioningState
 	switch state {
 	case v1.ProvisioningStateUpdating:

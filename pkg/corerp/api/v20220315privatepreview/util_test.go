@@ -17,7 +17,7 @@ import (
 func TestToProvisioningStateDataModel(t *testing.T) {
 	stateTests := []struct {
 		versioned ProvisioningState
-		datamodel v1.ProvisioningStates
+		datamodel v1.ProvisioningState
 	}{
 		{ProvisioningStateUpdating, v1.ProvisioningStateUpdating},
 		{ProvisioningStateDeleting, v1.ProvisioningStateDeleting},
@@ -36,7 +36,7 @@ func TestToProvisioningStateDataModel(t *testing.T) {
 
 func TestFromProvisioningStateDataModel(t *testing.T) {
 	stateTests := []struct {
-		datamodel v1.ProvisioningStates
+		datamodel v1.ProvisioningState
 		versioned ProvisioningState
 	}{
 		{v1.ProvisioningStateUpdating, ProvisioningStateUpdating},

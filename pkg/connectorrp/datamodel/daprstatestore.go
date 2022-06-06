@@ -40,10 +40,10 @@ func (daprStateStore DaprStateStore) ResourceTypeName() string {
 // DaprStateStoreProperties represents the properties of DaprStateStore resource.
 type DaprStateStoreProperties struct {
 	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string                           `json:"environment"`
-	Application       string                           `json:"application,omitempty"`
-	Kind              string                           `json:"kind"`
+	ProvisioningState basedatamodel.ProvisioningState `json:"provisioningState,omitempty"`
+	Environment       string                          `json:"environment"`
+	Application       string                          `json:"application,omitempty"`
+	Kind              string                          `json:"kind"`
 }
 
 type DaprStateStoreGenericResourceProperties struct {

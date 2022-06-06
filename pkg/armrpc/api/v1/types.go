@@ -79,18 +79,18 @@ func ParseOperationType(s string) (OperationType, bool) {
 	return OperationType{}, false
 }
 
-// ProvisioningStates is the state of resource.
-type ProvisioningStates string
+// ProvisioningState is the state of resource.
+type ProvisioningState string
 
 const (
-	ProvisioningStateNone         ProvisioningStates = "None"
-	ProvisioningStateUpdating     ProvisioningStates = "Updating"
-	ProvisioningStateDeleting     ProvisioningStates = "Deleting"
-	ProvisioningStateAccepted     ProvisioningStates = "Accepted"
-	ProvisioningStateSucceeded    ProvisioningStates = "Succeeded"
-	ProvisioningStateProvisioning ProvisioningStates = "Provisioning"
-	ProvisioningStateFailed       ProvisioningStates = "Failed"
-	ProvisioningStateCanceled     ProvisioningStates = "Canceled"
+	ProvisioningStateNone         ProvisioningState = "None"
+	ProvisioningStateUpdating     ProvisioningState = "Updating"
+	ProvisioningStateDeleting     ProvisioningState = "Deleting"
+	ProvisioningStateAccepted     ProvisioningState = "Accepted"
+	ProvisioningStateSucceeded    ProvisioningState = "Succeeded"
+	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	ProvisioningStateFailed       ProvisioningState = "Failed"
+	ProvisioningStateCanceled     ProvisioningState = "Canceled"
 )
 
 // TrackedResource represents the common tracked resource.

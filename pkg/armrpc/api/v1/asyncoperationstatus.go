@@ -20,7 +20,7 @@ type AsyncOperationStatus struct {
 	Name string `json:"name,omitempty"`
 
 	// Status represents the provisioning state of the resource.
-	Status ProvisioningStates `json:"status,omitempty"`
+	Status ProvisioningState `json:"status,omitempty"`
 
 	// StartTime represents the async operation start time.
 	StartTime time.Time `json:"startTime,omitempty"`

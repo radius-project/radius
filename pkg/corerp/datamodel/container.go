@@ -30,7 +30,7 @@ func (c ContainerResource) ResourceTypeName() string {
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
 	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningStates           `json:"provisioningState,omitempty"`
+	ProvisioningState v1.ProvisioningState            `json:"provisioningState,omitempty"`
 	Application       string                          `json:"application,omitempty"`
 	Connections       map[string]ConnectionProperties `json:"connections,omitempty"`
 	Container         Container                       `json:"container,omitempty"`

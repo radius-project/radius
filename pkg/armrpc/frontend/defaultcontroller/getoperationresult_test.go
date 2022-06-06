@@ -58,7 +58,7 @@ func TestGetOperationResultRun(t *testing.T) {
 
 	opResTestCases := []struct {
 		desc              string
-		provisioningState v1.ProvisioningStates
+		provisioningState v1.ProvisioningState
 		respCode          int
 		headersCheck      bool
 	}{

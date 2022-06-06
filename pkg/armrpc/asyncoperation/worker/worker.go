@@ -245,7 +245,7 @@ func getMessageExtendDuration(visibleAt time.Time) time.Duration {
 	return d
 }
 
-func updateResourceState(ctx context.Context, sc store.StorageClient, id string, state v1.ProvisioningStates) error {
+func updateResourceState(ctx context.Context, sc store.StorageClient, id string, state v1.ProvisioningState) error {
 	obj, err := sc.Get(ctx, id)
 	if err != nil {
 		return err

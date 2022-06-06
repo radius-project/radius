@@ -30,13 +30,13 @@ func (mongo MongoDatabase) ResourceTypeName() string {
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
 	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string                           `json:"environment"`
-	Application       string                           `json:"application,omitempty"`
-	Resource          string                           `json:"resource,omitempty"`
-	Host              string                           `json:"host,omitempty"`
-	Port              int32                            `json:"port,omitempty"`
-	Secrets           MongoDatabaseSecrets             `json:"secrets,omitempty"`
+	ProvisioningState basedatamodel.ProvisioningState `json:"provisioningState,omitempty"`
+	Environment       string                          `json:"environment"`
+	Application       string                          `json:"application,omitempty"`
+	Resource          string                          `json:"resource,omitempty"`
+	Host              string                          `json:"host,omitempty"`
+	Port              int32                           `json:"port,omitempty"`
+	Secrets           MongoDatabaseSecrets            `json:"secrets,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

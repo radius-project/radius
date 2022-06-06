@@ -30,11 +30,11 @@ func (rabbitmq RabbitMQMessageQueue) ResourceTypeName() string {
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue resource.
 type RabbitMQMessageQueueProperties struct {
 	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string                           `json:"environment"`
-	Application       string                           `json:"application,omitempty"`
-	Queue             string                           `json:"queue"`
-	Secrets           RabbitMQSecrets                  `json:"secrets,omitempty"`
+	ProvisioningState basedatamodel.ProvisioningState `json:"provisioningState,omitempty"`
+	Environment       string                          `json:"environment"`
+	Application       string                          `json:"application,omitempty"`
+	Queue             string                          `json:"queue"`
+	Secrets           RabbitMQSecrets                 `json:"secrets,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
