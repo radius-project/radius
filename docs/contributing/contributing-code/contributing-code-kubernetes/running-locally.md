@@ -1,20 +1,19 @@
-# Running Radius resource provider locally with an Azure Environment
+# Running Radius resource provider locally with a Kubernetes Environment
 
 There are many times where it's important to be able to debug the Radius RP locally, as there may be code that needs to be updated.
 
 Currently in Radius, there are two different ways to run Radius locally based on whether we are running the _old_ way with a Custom RP, or in the new world with the Application.Core RP.
 
-## Old world - Custom RP
+## Old world - Custom RP, Mongo, and Deployment Engine
 
 You can run the Radius RP locally using:
 
 - MongoDB in a container
 - Your local Kubernetes credentials
-- Your local Azure credentials
 
 This will enable to use an ephemeral database as well as your local changes to the RP (built from source).
 
-## Step 1: Running MongoDB
+### Step 1: Running MongoDB
 
 The resource provider uses MongoDB (CosmosDB in production). For local testing we can provide this via Docker. However, Mongo does some complicated networking things that require a complex setup. The instructions here will run MongoDB in a compatible way with the connection string provided above.
 
@@ -51,7 +50,7 @@ If you need to connect to this using the MongoDB CLI then you can do so like:
 mongo -u mongoadmin -p secret -authenticationDatabase admin rpdb
 ```
 
-## Configuring the RP
+### Configuring the RP
 
 **TLDR:**
 
@@ -60,7 +59,7 @@ export SKIP_AUTH='true'
 export PORT='5000'
 export MONGODB_CONNECTION_STRING='mongodb://mongoadmin:secret@mongo:27017/rpdb?authSource=admin'
 export MONGODB_DATABASE='rpdb'
-export K8S_LOCAL=true
+export K8S_LOCAL='true'
 export ARM_RESOURCE_GROUP="$(whoami)-radius"
 export ARM_SUBSCRIPTION_ID="$(az account show --query 'id'  --output tsv)"
 ```
@@ -82,11 +81,11 @@ You can also specify these in your launch.json settings:
   "mode": "debug",
   "program": "${workspaceFolder}/cmd/radius-rp/main.go",
   "env": {
-      "PORT": 5000,
-      "SKIP_AUTH": true,
+      "PORT": "5000",
+      "SKIP_AUTH": "true",
       "MONGODB_CONNECTION_STRING": "mongodb://mongoadmin:secret@mongo:27017/rpdb?authSource=admin",
       "MONGODB_DATABASE": "rpdb",
-      "K8S_LOCAL": true,
+      "K8S_LOCAL": "true",
       "ARM_RESOURCE_GROUP": "my-rg",
       "ARM_SUBSCRIPTION_ID": "66d1209e-1382-45d3-99bb-650e6bf63fc0",
       // "K8S_CLUSTER_NAME": "radius-aks-ya7cxvgdeh6su",
@@ -134,7 +133,7 @@ We optionally require configuration for managing Azure resources:
 
 The simplest is to use your local configuration for Kubernetes (assuming it's already set up) and some defaults for Azure
 
-## Step 3: Running the RP
+### Step 3: Running the RP
 
 Use `go run` to launch the RP from the same terminal where you configured the environment variables.
 
@@ -142,11 +141,18 @@ Use `go run` to launch the RP from the same terminal where you configured the en
 go run cmd/rp/main.go
 ```
 
+### Step 4: Running the Deployment Engine
+
+
+
 ## Optional: Debugging the RP
 
 Launch VSCode from the same terminal where you configurred the environment variables.
 
 Open `cmd/rp/main.go` and then launch the debugger from VSCode.
+
+## New world - Application.Core RP, Deployment Engine, UCP
+
 
 
 # Test Radius locally
