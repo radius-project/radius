@@ -14,8 +14,8 @@ import (
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/queue/inmemory"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
 	containers_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller/containers"
 )

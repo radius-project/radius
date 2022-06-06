@@ -6,8 +6,8 @@
 package hostoptions
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 )
 
 // ProviderConfig includes the resource provider configuration.
