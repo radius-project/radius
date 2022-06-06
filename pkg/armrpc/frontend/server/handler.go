@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -73,6 +74,7 @@ func ConfigureDefaultHandlers(
 	subscriptionRouter *mux.Router,
 	providerNamespace string,
 	operationCtrlFactory ControllerFunc) error {
+	providerNamespace = strings.ToLower(providerNamespace)
 	rt := fmt.Sprintf("%s/provider", providerNamespace)
 
 	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
