@@ -17,7 +17,7 @@ storageProvider:
   apiserver:
     incluster: true
     context: ''
-    namespace: 'default'
+    namespace: 'radius-system'
 
   #Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
   #provider: "etcd"
