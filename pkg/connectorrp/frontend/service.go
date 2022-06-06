@@ -14,8 +14,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
-	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
 	"github.com/project-radius/radius/pkg/corerp/hostoptions"
 )
 
@@ -30,7 +30,7 @@ func NewService(options hostoptions.HostOptions) *Service {
 }
 
 func (s *Service) Name() string {
-	return "Applications.Core frontend"
+	return "Applications.Connector frontend"
 }
 
 func (s *Service) Run(ctx context.Context) error {

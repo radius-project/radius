@@ -14,7 +14,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"gopkg.in/yaml.v3"
 )
 
