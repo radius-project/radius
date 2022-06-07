@@ -28,9 +28,6 @@ const (
 )
 
 func Test_Gateway(t *testing.T) {
-	// Will re-enable after https://github.com/project-radius/radius/issues/2483
-	t.Skip()
-
 	template := "testdata/kubernetes-resources-gateway.bicep"
 	application := "kubernetes-resources-gateway"
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
@@ -93,6 +90,8 @@ func Test_Gateway(t *testing.T) {
 
 				go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, remotePort, readyChan, stopChan, errorChan)
 
+				time.Sleep(100 * time.Millisecond)
+
 				// Send requests to backing container via port-forward
 				baseURL := fmt.Sprintf("http://%s:%d", localHostname, localPort)
 
@@ -119,7 +118,7 @@ func testGatewayAvailability(t *testing.T, client *http.Client, hostname, url st
 
 	req.Host = hostname
 
-	retries := 5
+	retries := 60
 	for i := 0; i < retries; i++ {
 		t.Logf("making request to %s", url)
 		response, err := client.Do(req)
