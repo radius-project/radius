@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/keys"
+	"github.com/project-radius/radius/pkg/kubernetes/kubectl"
 )
 
 var envDeleteCmd = &cobra.Command{
@@ -92,6 +94,14 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		if err = deleteRadiusResourcesInResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 			return err
 		}
+
+		output.LogInfo("Environment deleted")
+		// Deletes environment entries from rad config and context from kube config
+		if err = deleteFromConfig(cmd, config, az.ClusterName, az.ResourceGroup); err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	dev, ok := env.(*environments.LocalEnvironment)
@@ -226,4 +236,49 @@ func deleteEnvFromConfig(ctx context.Context, config *viper.Viper, envName strin
 	}
 
 	return nil
+}
+
+func deleteFromConfig(cmd *cobra.Command, config *viper.Viper, clusterName string, resourceGroup string) error {
+	var envNames []string
+	var params []string
+
+	env, err := cli.ReadEnvironmentSection(config)
+	if err != nil {
+		return err
+	}
+
+	for envName, envs := range env.Items {
+		if fmt.Sprint(envs["context"]) != "" && fmt.Sprint(envs["context"]) == clusterName {
+			envNames = append(envNames, envName)
+		}
+	}
+	for _, envName := range envNames {
+		// Delete env from the rad config, update default env if needed
+		if err = deleteEnvFromConfig(cmd.Context(), config, envName); err != nil {
+			return err
+		}
+	}
+
+	output.LogInfo("Updating kube config")
+	params = append(params, concat("users.clusterUser_", resourceGroup, "_", clusterName))
+	params = append(params, concat("contexts.", clusterName))
+	params = append(params, concat("clusters.", clusterName))
+
+	for _, param := range params {
+		if err := kubectl.RunCLICommandSilent("config", "unset", param); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func concat(str ...string) string {
+	var b bytes.Buffer
+
+	for _, item := range str {
+		b.WriteString(item)
+	}
+
+	return b.String()
 }

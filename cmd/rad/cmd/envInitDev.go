@@ -24,6 +24,8 @@ func init() {
 	// TODO: right now we only handle Azure as a special case. This needs to be generalized
 	// to handle other providers.
 	registerAzureProviderFlags(envInitLocalCmd)
+	envInitLocalCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
+	envInitLocalCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 }
 
 type DevEnvironmentParams struct {
@@ -44,7 +46,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	sharedArgs, err := parseArgs(cmd)
 	if err != nil {
 		return err
@@ -63,6 +65,16 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	params := &DevEnvironmentParams{
 		Name:      envName,
 		Providers: &environments.Providers{AzureProvider: azureProvider},
+	}
+
+	ucpImage, err := cmd.Flags().GetString("ucp-image")
+	if err != nil {
+		return err
+	}
+
+	ucpTag, err := cmd.Flags().GetString("ucp-tag")
+	if err != nil {
+		return err
 	}
 
 	_, foundConflict := env.Items[envName]
@@ -91,6 +103,8 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 			ChartPath: sharedArgs.ChartPath,
 			Image:     sharedArgs.Image,
 			Tag:       sharedArgs.Tag,
+			UCPImage:  ucpImage,
+			UCPTag:    ucpTag,
 		},
 	}
 	options := helm.NewClusterOptions(cliOptions)

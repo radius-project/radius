@@ -49,6 +49,15 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	// Configure Azure provider for cloud resources if specified
 	azureProvider, err := parseAzureProviderFromArgs(cmd, sharedArgs.Interactive)
+	ucpImage, err := cmd.Flags().GetString("ucp-image")
+	if err != nil {
+		return err
+	}
+
+	ucpTag, err := cmd.Flags().GetString("ucp-tag")
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}
@@ -72,6 +81,8 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 			ChartPath: sharedArgs.ChartPath,
 			Image:     sharedArgs.Image,
 			Tag:       sharedArgs.Tag,
+			UCPImage:  ucpImage,
+			UCPTag:    ucpTag,
 		},
 	}
 
@@ -130,4 +141,6 @@ func createKubernetesClients(contextName string) (client_go.Interface, runtime_c
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	registerAzureProviderFlags(envInitKubernetesCmd)
+	envInitKubernetesCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
+	envInitKubernetesCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 }

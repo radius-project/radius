@@ -398,6 +398,11 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		if err != nil {
 			return err
 		}
+		// Merge credentials for the AKS cluster on client machine
+		err = azcli.RunCLICommand("aks", "get-credentials", "--subscription", subscriptionID, "--resource-group", resourceGroup, "--name", clusterName)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	}
