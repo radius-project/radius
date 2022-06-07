@@ -27,18 +27,18 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 		root = router.PathPrefix(pathBase).Subrouter()
 	}
 
-	subscriptionRt := router
+	scopeRoute := router
 	if !hostoptions.IsSelfHosted() {
-		subscriptionRt = router.PathPrefix(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
+		scopeRoute = router.PathPrefix(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
 	}
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, sp, root, subscriptionRt, ProviderNamespaceName, NewGetOperations)
+	err := server.ConfigureDefaultHandlers(ctx, sp, root, scopeRoute, hostoptions.IsSelfHosted(), ProviderNamespaceName, NewGetOperations)
 	if err != nil {
 		return err
 	}
 
-	envRTSubrouter := subscriptionRt.PathPrefix("/resourcegroups/{resourceGroup}/providers/applications.core/environments").
+	envRTSubrouter := scopeRoute.PathPrefix("/resourcegroups/{resourceGroup}/providers/applications.core/environments").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
 
