@@ -37,7 +37,7 @@ generate-radclient: generate-node-installed generate-autorest-installed ## Gener
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest --use=@autorest/go@4.0.0-preview.29 \
         --module-version=$(AUTOREST_MODULE_VERSION) \
-        --input-file=swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applicationsv2.json \
+        --input-file=swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json \
         --tag=2022-03-15-privatepreview \
         --go  \
         --gomod-root=. \

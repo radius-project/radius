@@ -638,8 +638,8 @@
     }
   },
   "parameters": {
-    "ScopeParameter": {
-      "name": "scope",
+    "RootScopeParameter": {
+      "name": "rootScope",
       "in": "path",
       "required": true,
       "type": "string",

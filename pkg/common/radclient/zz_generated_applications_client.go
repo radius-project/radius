@@ -25,12 +25,12 @@ import (
 type ApplicationsClient struct {
 	ep string
 	pl runtime.Pipeline
-	scope string
+	rootScope string
 }
 
 // NewApplicationsClient creates a new instance of ApplicationsClient with the specified values.
-func NewApplicationsClient(con *arm.Connection, scope string) *ApplicationsClient {
-	return &ApplicationsClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), scope: scope}
+func NewApplicationsClient(con *arm.Connection, rootScope string) *ApplicationsClient {
+	return &ApplicationsClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Create or update an Application.
@@ -52,11 +52,11 @@ func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, applicatio
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{scope}/providers/Applications.Core/applications/{applicationName}"
-	if client.scope == "" {
-		return nil, errors.New("parameter client.scope cannot be empty")
+	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -113,11 +113,11 @@ func (client *ApplicationsClient) Delete(ctx context.Context, applicationName st
 
 // deleteCreateRequest creates the Delete request.
 func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, applicationName string, options *ApplicationsDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{scope}/providers/Applications.Core/applications/{applicationName}"
-	if client.scope == "" {
-		return nil, errors.New("parameter client.scope cannot be empty")
+	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -165,11 +165,11 @@ func (client *ApplicationsClient) Get(ctx context.Context, applicationName strin
 
 // getCreateRequest creates the Get request.
 func (client *ApplicationsClient) getCreateRequest(ctx context.Context, applicationName string, options *ApplicationsGetOptions) (*policy.Request, error) {
-	urlPath := "/{scope}/providers/Applications.Core/applications/{applicationName}"
-	if client.scope == "" {
-		return nil, errors.New("parameter client.scope cannot be empty")
+	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -223,11 +223,11 @@ func (client *ApplicationsClient) ListByScope(options *ApplicationsListByScopeOp
 
 // listByScopeCreateRequest creates the ListByScope request.
 func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, options *ApplicationsListByScopeOptions) (*policy.Request, error) {
-	urlPath := "/{scope}/providers/Applications.Core/applications"
-	if client.scope == "" {
-		return nil, errors.New("parameter client.scope cannot be empty")
+	urlPath := "/{rootScope}/providers/Applications.Core/applications"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -280,11 +280,11 @@ func (client *ApplicationsClient) Update(ctx context.Context, applicationName st
 
 // updateCreateRequest creates the Update request.
 func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{scope}/providers/Applications.Core/applications/{applicationName}"
-	if client.scope == "" {
-		return nil, errors.New("parameter client.scope cannot be empty")
+	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{scope}", url.PathEscape(client.scope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
