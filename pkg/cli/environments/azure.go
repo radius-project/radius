@@ -126,7 +126,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}

@@ -104,7 +104,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}

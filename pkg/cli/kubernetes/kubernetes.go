@@ -116,9 +116,16 @@ func CreateRestRoundTripper(context string, group string, overrideURL string) (h
 	return NewLocationRewriteRoundTripper(merged.Host, client), err
 }
 
-func CreateAPIServerConnection(context string, overrideURL string) (string, *arm.Connection, error) {
+func CreateAPIServerConnection(context string, overrideURL string, enableUCP bool) (string, *arm.Connection, error) {
 
-	baseURL, roundTripper, err := GetBaseUrlAndRoundTripper(overrideURL, "api.radius.dev", context)
+	var baseURL string
+	var roundTripper http.RoundTripper
+	var err error
+	if enableUCP {
+		baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.ucp.dev", context, enableUCP)
+	} else {
+		baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.radius.dev", context, enableUCP)
+	}
 	if err != nil {
 		return "", nil, err
 	}
@@ -168,11 +175,15 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 	return baseURL, roundTripper, nil
 }
 
-func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string) (string, http.RoundTripper, error) {
+func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string, enableUCP bool) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
 	if overrideURL != "" {
-		baseURL = strings.TrimSuffix(overrideURL, "/") + APIServerBasePath
+		if enableUCP {
+			baseURL = strings.TrimSuffix(overrideURL, "/") + APIServerBasePath
+		} else {
+			baseURL = strings.TrimSuffix(overrideURL, "/") + UCPBasePath
+		}
 		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
 	} else {
 		restConfig, err := GetConfig(context)
@@ -185,7 +196,11 @@ func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string)
 			return "", nil, err
 		}
 
-		baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+		if enableUCP {
+			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + UCPBasePath
+		} else {
+			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+		}
 		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
 	return baseURL, roundTripper, nil
