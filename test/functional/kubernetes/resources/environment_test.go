@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 
-	// "github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/stretchr/testify/require"
 )
@@ -25,6 +24,7 @@ const (
 	resourceGroup = "default"
 	apiVersion    = "2022-03-15-privatepreview"
 	envName       = "my-k8s-env"
+	retryInterval = 10
 )
 
 type sender struct {
@@ -98,10 +98,12 @@ func Test_EnvironmentWithCoreRP(t *testing.T) {
 	err = future.WaitForCompletionRef(ctx, deploymentsClient.Client)
 	require.NoError(t, err, "Deployment failed")
 
-	_, err = future.Result(deploymentsClient.DeploymentsClient)
+	deployment, err := future.Result(deploymentsClient.DeploymentsClient)
 	require.NoError(t, err, "Deployment failed")
 
-	setupProxy()
+	require.Equal(t, 200, deployment.StatusCode)
+
+	setupProxy(t)
 
 	// Make an HTTP request to get env
 
@@ -111,16 +113,21 @@ func Test_EnvironmentWithCoreRP(t *testing.T) {
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
+
 	testGetEnvironment(t, client, "localhost", getURL, 200)
+	t.Log("Success")
 }
 
-func setupProxy() {
-	proxyCmd := exec.Command("kubectl", "proxy", "&")
+func setupProxy(t *testing.T) {
+	t.Log("Setting up kubectl proxy")
+	proxyCmd := exec.Command("kubectl", "proxy", "--port", "8001", "&")
 	// Not checking the return value since ignore if already running proxy
 	_ = proxyCmd.Run()
+	t.Log("Done setting up kubectl proxy")
 }
 
 func testGetEnvironment(t *testing.T, client *http.Client, hostname, url string, expectedStatusCode int) {
+	t.Log("Making a GET call to test if the environment was created")
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
@@ -131,7 +138,7 @@ func testGetEnvironment(t *testing.T, client *http.Client, hostname, url string,
 		t.Logf("making request to %s", url)
 		response, err := client.Do(req)
 		if err != nil {
-			t.Logf("got error %s", err.Error())
+			t.Logf("got error %s. retrying...", err.Error())
 			time.Sleep(1 * time.Second)
 			continue
 		}
@@ -142,7 +149,7 @@ func testGetEnvironment(t *testing.T, client *http.Client, hostname, url string,
 
 		if response.StatusCode != expectedStatusCode {
 			t.Logf("got status: %d, wanted: %d. retrying...", response.StatusCode, expectedStatusCode)
-			time.Sleep(retryTimeout * time.Second)
+			time.Sleep(retryInterval * time.Second)
 			continue
 		}
 
