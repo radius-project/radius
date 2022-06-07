@@ -103,7 +103,9 @@ func Test_EnvironmentWithCoreRP(t *testing.T) {
 
 	require.Equal(t, 200, deployment.StatusCode)
 
-	setupProxy(t)
+	go setupProxy(t)
+
+	time.Sleep(100 * time.Millisecond)
 
 	// Make an HTTP request to get env
 
@@ -120,9 +122,12 @@ func Test_EnvironmentWithCoreRP(t *testing.T) {
 
 func setupProxy(t *testing.T) {
 	t.Log("Setting up kubectl proxy")
-	proxyCmd := exec.Command("kubectl", "proxy", "--port", "8001", "&")
+	proxyCmd := exec.Command("kubectl", "proxy", "--port", "8001")
 	// Not checking the return value since ignore if already running proxy
-	_ = proxyCmd.Run()
+	err := proxyCmd.Run()
+	if err != nil {
+		t.Logf("Failed to setup proxy with error: %v", err)
+	}
 	t.Log("Done setting up kubectl proxy")
 }
 
