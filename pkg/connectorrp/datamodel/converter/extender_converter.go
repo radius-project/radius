@@ -8,14 +8,14 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 )
 
 // ExtenderDataModelFromVersioned converts version agnostic Extender datamodel to versioned model.
-func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (api.VersionedModelInterface, error) {
+func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.ExtenderResource{}
@@ -23,7 +23,7 @@ func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (ap
 		return versioned, err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -39,6 +39,6 @@ func ExtenderDataModelFromVersioned(content []byte, version string) (*datamodel.
 		return dm.(*datamodel.Extender), err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }

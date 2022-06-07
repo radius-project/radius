@@ -8,14 +8,14 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 // HTTPRouteDataModelToVersioned converts version agnostic HTTPRoute datamodel to versioned model.
-func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (api.VersionedModelInterface, error) {
+func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.HTTPRouteResource{}
@@ -23,7 +23,7 @@ func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (
 		return versioned, err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -39,6 +39,6 @@ func HTTPRouteDataModelFromVersioned(content []byte, version string) (*datamodel
 		return dm.(*datamodel.HTTPRoute), err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }

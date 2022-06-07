@@ -10,18 +10,17 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
-	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 )
 
-var _ ctrl.ControllerInterface = (*CreateOrUpdateEnvironment)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
 
 // CreateOrUpdateEnvironments is the controller implementation to create or update environment resource.
 type CreateOrUpdateEnvironment struct {
@@ -29,13 +28,8 @@ type CreateOrUpdateEnvironment struct {
 }
 
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
-func NewCreateOrUpdateEnvironment(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
-	return &CreateOrUpdateEnvironment{
-		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewCreateOrUpdateEnvironment(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &CreateOrUpdateEnvironment{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 // Run executes CreateOrUpdateEnvironment operation.
@@ -97,7 +91,7 @@ func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Requ
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	// TODO: Update the state.
-	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
+	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
 	return dm, err
 }

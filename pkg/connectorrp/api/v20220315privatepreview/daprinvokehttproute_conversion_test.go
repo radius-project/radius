@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -66,11 +66,11 @@ func TestDaprInvokeHttpRoute_ConvertDataModelToVersioned(t *testing.T) {
 
 func TestDaprInvokeHttpRoute_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
-		src api.DataModelInterface
+		src conv.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, api.ErrInvalidModelConversion},
-		{nil, api.ErrInvalidModelConversion},
+		{&fakeResource{}, conv.ErrInvalidModelConversion},
+		{nil, conv.ErrInvalidModelConversion},
 	}
 
 	for _, tc := range validationTests {

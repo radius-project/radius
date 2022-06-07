@@ -8,21 +8,20 @@ package datamodel
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 // Extender represents Extender connector resource.
 type Extender struct {
-	basedatamodel.TrackedResource
+	v1.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
+	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties ExtenderProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	basedatamodel.InternalMetadata
+	v1.InternalMetadata
 }
 
 func (extender Extender) ResourceTypeName() string {
@@ -31,12 +30,12 @@ func (extender Extender) ResourceTypeName() string {
 
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderProperties struct {
-	basedatamodel.BasicResourceProperties
+	v1.BasicResourceProperties
 	AdditionalProperties map[string]interface{}
-	ProvisioningState    basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment          string                           `json:"environment"`
-	Application          string                           `json:"application,omitempty"`
-	Secrets              map[string]interface{}           `json:"secrets,omitempty"`
+	ProvisioningState    v1.ProvisioningState   `json:"provisioningState,omitempty"`
+	Environment          string                 `json:"environment"`
+	Application          string                 `json:"application,omitempty"`
+	Secrets              map[string]interface{} `json:"secrets,omitempty"`
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderProperties.
@@ -86,7 +85,7 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func unmarshalInternal(b *basedatamodel.BasicResourceProperties, rawMsg map[string]json.RawMessage) error {
+func unmarshalInternal(b *v1.BasicResourceProperties, rawMsg map[string]json.RawMessage) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {

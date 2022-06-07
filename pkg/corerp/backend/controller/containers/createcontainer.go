@@ -8,26 +8,24 @@ package containers
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ asyncoperation.Controller = (*UpdateContainer)(nil)
+var _ ctrl.Controller = (*UpdateContainer)(nil)
 
 // UpdateContainer is the async operation controller to create or update Applications.Core/Containers resource.
 type UpdateContainer struct {
-	asyncoperation.BaseController
+	ctrl.BaseController
 }
 
 // NewUpdateContainer creates the UpdateContainer controller instance.
-func NewUpdateContainer(store store.StorageClient) (asyncoperation.Controller, error) {
-	return &UpdateContainer{
-		BaseController: asyncoperation.NewBaseAsyncController(store),
-	}, nil
+func NewUpdateContainer(store store.StorageClient) (ctrl.Controller, error) {
+	return &UpdateContainer{ctrl.NewBaseAsyncController(store)}, nil
 }
 
-func (ctrl *UpdateContainer) Run(ctx context.Context, request *asyncoperation.Request) (asyncoperation.Result, error) {
+func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	// TODO: Implement Create or Update Container async operation.
 
-	return asyncoperation.Result{}, nil
+	return ctrl.Result{}, nil
 }

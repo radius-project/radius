@@ -6,21 +6,20 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 // SqlDatabase represents SqlDatabase connector resource.
 type SqlDatabase struct {
-	basedatamodel.TrackedResource
+	v1.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
+	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties SqlDatabaseProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	basedatamodel.InternalMetadata
+	v1.InternalMetadata
 }
 
 func (sql SqlDatabase) ResourceTypeName() string {
@@ -29,11 +28,11 @@ func (sql SqlDatabase) ResourceTypeName() string {
 
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
-	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string                           `json:"environment"`
-	Application       string                           `json:"application,omitempty"`
-	Resource          string                           `json:"resource,omitempty"`
-	Database          string                           `json:"database,omitempty"`
-	Server            string                           `json:"server,omitempty"`
+	v1.BasicResourceProperties
+	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Environment       string               `json:"environment"`
+	Application       string               `json:"application,omitempty"`
+	Resource          string               `json:"resource,omitempty"`
+	Database          string               `json:"database,omitempty"`
+	Server            string               `json:"server,omitempty"`
 }

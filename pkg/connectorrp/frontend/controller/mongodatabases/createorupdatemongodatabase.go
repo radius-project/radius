@@ -10,32 +10,26 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
-	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 )
 
-var _ base_ctrl.ControllerInterface = (*CreateOrUpdateMongoDatabase)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateMongoDatabase)(nil)
 
 // CreateOrUpdateMongoDatabase is the controller implementation to create or update MongoDatabase connector resource.
 type CreateOrUpdateMongoDatabase struct {
-	base_ctrl.BaseController
+	ctrl.BaseController
 }
 
 // NewCreateOrUpdateMongoDatabase creates a new instance of CreateOrUpdateMongoDatabase.
-func NewCreateOrUpdateMongoDatabase(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
-	return &CreateOrUpdateMongoDatabase{
-		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewCreateOrUpdateMongoDatabase(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &CreateOrUpdateMongoDatabase{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 // Run executes CreateOrUpdateMongoDatabase operation.
@@ -56,13 +50,13 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	err = base_ctrl.ValidateETag(*serviceCtx, etag)
+	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
 	// Add system metadata to requested resource
-	newResource.SystemData = base_ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
+	newResource.SystemData = ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
 	if existingResource.CreatedAPIVersion != "" {
 		newResource.CreatedAPIVersion = existingResource.CreatedAPIVersion
 	}
@@ -87,7 +81,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 // Validate extracts versioned resource from request and validates the properties.
 func (mongo *CreateOrUpdateMongoDatabase) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.MongoDatabase, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content, err := base_ctrl.ReadJSONBody(req)
+	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err
 	}
@@ -98,8 +92,8 @@ func (mongo *CreateOrUpdateMongoDatabase) Validate(ctx context.Context, req *htt
 	}
 
 	dm.ID = serviceCtx.ResourceID.String()
-	dm.TrackedResource = base_ctrl.BuildTrackedResource(ctx)
-	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
+	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
+	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
 	return dm, nil
 }

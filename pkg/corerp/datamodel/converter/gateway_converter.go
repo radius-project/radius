@@ -8,14 +8,14 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 // GatewayDataModelToVersioned converts version agnostic Gateway datamodel to versioned model.
-func GatewayDataModelToVersioned(model *datamodel.Gateway, version string) (api.VersionedModelInterface, error) {
+func GatewayDataModelToVersioned(model *datamodel.Gateway, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.GatewayResource{}
@@ -23,7 +23,7 @@ func GatewayDataModelToVersioned(model *datamodel.Gateway, version string) (api.
 		return versioned, err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -39,6 +39,6 @@ func GatewayDataModelFromVersioned(content []byte, version string) (*datamodel.G
 		return dm.(*datamodel.Gateway), err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }

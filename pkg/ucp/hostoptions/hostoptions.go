@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"gopkg.in/yaml.v3"
 )
 
