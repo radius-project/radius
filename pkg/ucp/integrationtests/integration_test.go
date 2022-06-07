@@ -21,7 +21,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +42,9 @@ func NewClient(httpClient *http.Client, baseURL string) Client {
 const (
 	rpURL                = "127.0.0.1:7443"
 	testProxyRequestPath = "/resourceGroups/rg1/providers/Applications.Core/applications"
+	apiVersionQueyParam  = "api-version=2022-03-15-privatepreview"
 	testPlaneID          = "/planes/radius/local"
+	basePath             = "/apis/api.ucp.dev/v1alpha3"
 )
 
 var applicationList = []map[string]interface{}{
@@ -95,10 +96,11 @@ func Test_ProxyToRP(t *testing.T) {
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	api.Register(router, db, ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
-		Address: "localhost:9000",
+		Address:  rpURL,
+		BasePath: basePath,
 	}))
 
-	ucpClient := NewClient(http.DefaultClient, ucp.URL)
+	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
 
 	// Register RP with UCP
 	registerRP(t, ucp, ucpClient, db)
@@ -120,7 +122,7 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	}
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
-	createPlaneRequest, err := http.NewRequest("PUT", ucp.URL+"/planes/radius/local", bytes.NewBuffer(body))
+	createPlaneRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
 	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any())
@@ -148,7 +150,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any())
 	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
 
-	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+"/planes/radius/local/resourceGroups/rg1", bytes.NewBuffer(body))
+	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourceGroups/rg1", bytes.NewBuffer(body))
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
 	require.NoError(t, err)
@@ -162,7 +164,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 }
 
 func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
-	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id resources.ID, options ...store.GetOptions) (*store.Object, error) {
+	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		data := store.Object{
 			Metadata: store.Metadata{},
 			Data:     testPlane,
@@ -170,12 +172,13 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 		return &data, nil
 	})
 
-	proxyRequest, err := http.NewRequest("GET", ucp.URL+"/planes/radius/local"+testProxyRequestPath, nil)
+	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+"/planes/radius/local"+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
-	assert.Equal(t, "http://"+proxyRequest.Host+testPlaneID+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
+	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
+	assert.Equal(t, "http://"+proxyRequest.Host+basePath+testPlaneID+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
 	proxyRequestResponseBody, err := ioutil.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)

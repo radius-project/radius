@@ -65,6 +65,7 @@ input-file:
   - Applications.Connector/preview/2022-03-15-privatepreview/daprSecretStores.json
   - Applications.Connector/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
   - Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/extenders.json
 ```
 
 # Code Generation

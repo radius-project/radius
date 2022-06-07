@@ -15,9 +15,9 @@ storageProvider:
   
   provider: "apiserver"
   apiserver:
-    incluster: false
+    incluster: true
     context: ''
-    namespace: 'default'
+    namespace: 'radius-system'
 
   #Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
   #provider: "etcd"
@@ -29,9 +29,10 @@ planes:
   - id: "/planes/radius/local"
     properties:
       resourceProviders:
-         Applications.Core: "http://localhost:7443"
+        Applications.Core: "http://appcore-rp.radius-system:5443"
+        Applications.Connector: "http://appcore-rp.radius-system:5443"
   - id: "/planes/deployments/local"
     properties:
       resourceProviders:
-         Microsoft.Resources: "http://localhost:6443"
+        Microsoft.Resources: "http://de-api.radius-system:6443"
 

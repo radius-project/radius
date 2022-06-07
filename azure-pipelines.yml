@@ -97,7 +97,7 @@ stages:
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
-        dist/rad env install kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-rp --tag ${{ variables.REL_VERSION }}
+        dist/rad env install kubernetes --chart ${{ variables.RADIUS_CHART_LOCATION }} --image ${{ variables.DOCKER_REGISTRY }}/radius-rp --tag ${{ variables.REL_VERSION }} --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ variables.REL_VERSION }}
       displayName: rad env install kubernetes
     - script: |
         kubectl get pods -n radius-system
