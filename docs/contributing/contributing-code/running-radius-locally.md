@@ -1,8 +1,10 @@
-# Running Radius resource provider locally with a Kubernetes Environment
+# Running Radius resource provider locally
 
-There are many times where it's important to be able to debug the Radius RP locally, as there may be code that needs to be updated.
+There are many times where it's important to be able to debug the Radius RP locally:
+- Fast inner loop debugging on a component in Radius.
+- Can run a subset of processes required for a specific scenario (ex just running Applications.Core and async processor)
 
-Currently in Radius, there are two different ways to run Radius locally based on whether we are running the _old_ way with a Custom RP, or in the new world with the Application.Core RP.
+Currently in Radius, there are two different ways to run Radius locally based on whether we are running the _old_ way with a Custom RP, or in the _new_ world with the Application.Core RP.
 
 ## Old world - Custom RP, Mongo, and Deployment Engine
 
@@ -86,7 +88,7 @@ You can also specify these in your launch.json settings:
       "MONGODB_CONNECTION_STRING": "mongodb://mongoadmin:secret@mongo:27017/rpdb?authSource=admin",
       "MONGODB_DATABASE": "rpdb",
       "K8S_LOCAL": "true",
-      "ARM_RESOURCE_GROUP": "my-rg",
+      "ARM_RESOURCE_GROUP": "my-rg", // last three are optional based off which kind of environment you are running
       "ARM_SUBSCRIPTION_ID": "66d1209e-1382-45d3-99bb-650e6bf63fc0",
       "BASE_PATH": "/apis/api.radius.dev/v1alpha3"
   }
@@ -193,7 +195,7 @@ To do this, open your environment file (`$HOME/.rad/config.yaml`) and edit it ma
 
 You'll need to:
 
-- Duplicate the contents of an Kubernetes Environment
+- Duplicate the contents of the environment (whether it be kubernetes, dev, or azure)
 - Give the new environment a memorable name like `test` or `local`
 - Add `radiusrplocalurl` and `deploymentenginelocalurl` to point to the URLs of your local RP and DE
 
@@ -366,7 +368,7 @@ To do this, open your environment file (`$HOME/.rad/config.yaml`) and edit it ma
 
 You'll need to:
 
-- Duplicate the contents of an Kubernetes Environment
+- Duplicate the contents of a environment
 - Give the new environment a memorable name like `test` or `local`
 - Add `ucplocalurl` and `enableucp` to point to the URLs of your local UCP and enabling UCP
 
