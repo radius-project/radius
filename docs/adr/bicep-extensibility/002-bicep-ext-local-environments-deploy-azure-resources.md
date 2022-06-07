@@ -1,4 +1,4 @@
-# 001 ADR: Enable local environments to deploy Azure resources
+# 002 ADR: Enable local environments to deploy Azure resources
 
 ## Stakeholders
 
