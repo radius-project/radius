@@ -22,13 +22,14 @@ const (
 )
 
 func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router *mux.Router, pathBase string) error {
-	root := router.PathPrefix(pathBase).Subrouter()
-	var subscriptionRt *mux.Router
+	root := router
+	if pathBase != "" {
+		root = router.PathPrefix(pathBase).Subrouter()
+	}
 
+	subscriptionRt := router
 	if !hostoptions.IsSelfHosted() {
 		subscriptionRt = router.PathPrefix(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
-	} else {
-		subscriptionRt = router.PathPrefix(pathBase + "/planes/radius/{radiusTenant}").Subrouter()
 	}
 
 	// Configure the default ARM handlers.

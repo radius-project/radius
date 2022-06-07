@@ -26,12 +26,10 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 	if pathBase != "" {
 		root = router.PathPrefix(pathBase).Subrouter()
 	}
-	var subscriptionRt *mux.Router
 
+	subscriptionRt := router
 	if !hostoptions.IsSelfHosted() {
 		subscriptionRt = router.PathPrefix(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
-	} else {
-		subscriptionRt = router.PathPrefix(pathBase + "/planes/radius/{radiusTenant}").Subrouter()
 	}
 
 	// Configure the default ARM handlers.
