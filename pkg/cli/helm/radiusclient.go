@@ -30,6 +30,8 @@ type RadiusOptions struct {
 	ChartVersion           string
 	Image                  string
 	Tag                    string
+	UCPImage               string
+	UCPTag                 string
 	PublicEndpointOverride string
 	AzureProvider          *azure.Provider
 }
