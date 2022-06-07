@@ -67,8 +67,6 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	// TODO: Save the resource and queue the async task.
-
 	versioned, err := converter.HTTPRouteDataModelToVersioned(newResource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
@@ -91,8 +89,6 @@ func (e *CreateOrUpdateHTTPRoute) Validate(ctx context.Context, req *http.Reques
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: Add more validation e.g. schema, identity, etc.
 
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
