@@ -160,8 +160,6 @@ stages:
               --chart ${{ variables.RADIUS_CHART_LOCATION }}  \
               --image ${{ variables.DOCKER_REGISTRY }}/radius-rp \
               --tag ${{ variables.REL_VERSION }}
-              --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd \
-              --ucp-tag ${{ variables.REL_VERSION }}
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         cd $(Build.SourcesDirectory)
