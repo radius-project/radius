@@ -60,6 +60,16 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	ucpImage, err := cmd.Flags().GetString("ucp-image")
+	if err != nil {
+		return err
+	}
+
+	ucpTag, err := cmd.Flags().GetString("ucp-tag")
+	if err != nil {
+		return err
+	}
+
 	client, runtimeClient, contextName, err := createKubernetesClients("")
 	if err != nil {
 		return err
@@ -126,6 +136,8 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 			ChartPath: chartPath,
 			Image:     image,
 			Tag:       tag,
+			UCPImage:  ucpImage,
+			UCPTag:    ucpTag,
 		},
 	}
 	clusterOptions := helm.NewClusterOptions(cliOptions)
@@ -247,6 +259,8 @@ func init() {
 	envInitKubernetesCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
 	envInitKubernetesCmd.Flags().String("image", "", "Specify the radius controller image to use")
 	envInitKubernetesCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
+	envInitKubernetesCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
+	envInitKubernetesCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 
 	// Parameters to configure Azure provider for cloud resources
 	envInitKubernetesCmd.Flags().BoolP("provider-azure", "", false, "Add Azure provider for cloud resources")
