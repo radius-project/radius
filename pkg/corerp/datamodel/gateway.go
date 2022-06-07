@@ -6,21 +6,20 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 // Gateway represents Gateway resource.
 type Gateway struct {
-	basedatamodel.TrackedResource
+	v1.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
+	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties GatewayProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	basedatamodel.InternalMetadata
+	v1.InternalMetadata
 }
 
 // ResourceTypeName returns the qualified name of the resource
@@ -30,12 +29,12 @@ func (g Gateway) ResourceTypeName() string {
 
 // GatewayProperties represents the properties of Gateway.
 type GatewayProperties struct {
-	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Application       string                           `json:"application,omitempty"`
-	Internal          bool                             `json:"internal,omitempty"`
-	Hostname          GatewayPropertiesHostname        `json:"hostname,omitempty"`
-	Routes            []GatewayRoute                   `json:"routes,omitempty"`
+	v1.BasicResourceProperties
+	ProvisioningState v1.ProvisioningState      `json:"provisioningState,omitempty"`
+	Application       string                    `json:"application,omitempty"`
+	Internal          bool                      `json:"internal,omitempty"`
+	Hostname          GatewayPropertiesHostname `json:"hostname,omitempty"`
+	Routes            []GatewayRoute            `json:"routes,omitempty"`
 }
 
 // GatewayRoute represents the route attached to Gateway.

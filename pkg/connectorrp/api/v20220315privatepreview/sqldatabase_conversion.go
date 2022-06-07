@@ -6,17 +6,17 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel.
-func (src *SQLDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
+func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.SqlDatabase{
-		TrackedResource: basedatamodel.TrackedResource{
+		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
 			Type:     to.String(src.Type),
@@ -24,8 +24,8 @@ func (src *SQLDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: basedatamodel.BasicResourceProperties{
-				Status: basedatamodel.ResourceStatus{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Status: v1.ResourceStatus{
 					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
 				},
 			},
@@ -36,7 +36,7 @@ func (src *SQLDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 			Database:          to.String(src.Properties.Database),
 			Server:            to.String(src.Properties.Server),
 		},
-		InternalMetadata: basedatamodel.InternalMetadata{
+		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}
@@ -44,10 +44,10 @@ func (src *SQLDatabaseResource) ConvertTo() (api.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabase resource.
-func (dst *SQLDatabaseResource) ConvertFrom(src api.DataModelInterface) error {
+func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 	sql, ok := src.(*datamodel.SqlDatabase)
 	if !ok {
-		return api.ErrInvalidModelConversion
+		return conv.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(sql.ID)

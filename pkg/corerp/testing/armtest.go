@@ -12,8 +12,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 )
 
 func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSONFile string, body interface{}) (*http.Request, error) {

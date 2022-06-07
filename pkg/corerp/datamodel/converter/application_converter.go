@@ -8,14 +8,14 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 // ApplicationDataModelToVersioned converts version agnostic application datamodel to versioned model.
-func ApplicationDataModelToVersioned(model *datamodel.Application, version string) (api.VersionedModelInterface, error) {
+func ApplicationDataModelToVersioned(model *datamodel.Application, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.ApplicationResource{}
@@ -23,7 +23,7 @@ func ApplicationDataModelToVersioned(model *datamodel.Application, version strin
 		return versioned, err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -39,6 +39,6 @@ func ApplicationDataModelFromVersioned(content []byte, version string) (*datamod
 		return dm.(*datamodel.Application), err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
