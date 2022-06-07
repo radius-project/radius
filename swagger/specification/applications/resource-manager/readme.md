@@ -48,6 +48,7 @@ input-file:
   - Applications.Core/preview/2022-03-15-privatepreview/applications.json
   - Applications.Core/preview/2022-03-15-privatepreview/httpRoutes.json
   - Applications.Core/preview/2022-03-15-privatepreview/gateways.json
+  - Applications.Core/preview/2022-03-15-privatepreview/containers.json
 ```
 
 ### Tag: package-connector-2022-03-15-privatepreview
@@ -65,6 +66,7 @@ input-file:
   - Applications.Connector/preview/2022-03-15-privatepreview/daprSecretStores.json
   - Applications.Connector/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
   - Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
+  - Applications.Connector/preview/2022-03-15-privatepreview/extenders.json
 ```
 
 # Code Generation

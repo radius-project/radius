@@ -27,7 +27,7 @@ type LocalRPEnvironment struct {
 	Kind                      string `mapstructure:"kind" validate:"required"`
 	SubscriptionID            string `mapstructure:"subscriptionid" validate:"required"`
 	ResourceGroup             string `mapstructure:"resourcegroup" validate:"required"`
-	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup,omitempty"`
+	ControlPlaneResourceGroup string `mapstring:"controlplaneresourcegroup" validate:"required"`
 	ClusterName               string `mapstructure:"clustername" validate:"required"`
 	DefaultApplication        string `mapstructure:"defaultapplication,omitempty"`
 	Context                   string `mapstructure:"context" validate:"required"`
@@ -38,7 +38,8 @@ type LocalRPEnvironment struct {
 	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl"`
 
 	// URL for the local RP
-	URL string `mapstructure:"url,omitempty" validate:"required"`
+	URL       string `mapstructure:"url,omitempty" validate:"required"`
+	EnableUCP bool   `mapstructure:"enableucp,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
@@ -111,23 +112,24 @@ func (e *LocalRPEnvironment) CreateDeploymentClient(ctx context.Context) (client
 	}
 	tags["azureLocation"] = resp.Location
 
-	dc := azclients.NewDeploymentsClientWithBaseURI(deUrl, e.SubscriptionID)
+	dc := azclients.NewResourceDeploymentClientWithBaseURI(deUrl)
 
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
 	dc.Authorizer = auth
 
-	op := azclients.NewOperationsClientWithBaseUri(deUrl, e.SubscriptionID)
+	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(deUrl)
 	op.PollingDelay = 5 * time.Second
 	op.Authorizer = auth
 
 	client := &localrp.LocalRPDeploymentClient{
-		InnerClient: azure.ARMDeploymentClient{
+		InnerClient: azure.ResouceDeploymentClient{
 			Client:           dc,
 			OperationsClient: op,
 			SubscriptionID:   e.SubscriptionID,
 			ResourceGroup:    e.ResourceGroup,
 			Tags:             tags,
+			EnableUCP:        e.EnableUCP,
 		},
 		BindUrl:    bindUrl,
 		BackendUrl: e.URL,

@@ -42,6 +42,7 @@ input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprPubSubBrokers.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/extenders.json
 ```
 
 ### Common

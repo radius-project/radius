@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
 	"github.com/project-radius/radius/pkg/corerp/dataprovider"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -30,7 +31,7 @@ type handlerParam struct {
 	fn           ControllerFunc
 }
 
-func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, parent *mux.Router, resourcetype string, method string, routeName string, CreateController ControllerFunc) error {
+func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, parent *mux.Router, resourcetype string, method string, operationMethod string, CreateController ControllerFunc) error {
 	sc, err := sp.GetStorageClient(ctx, resourcetype)
 	if err != nil {
 		return err
@@ -55,7 +56,9 @@ func registerHandler(ctx context.Context, sp dataprovider.DataStorageProvider, p
 			return
 		}
 	}
-	parent.Methods(method).HandlerFunc(fn).Name(routeName)
+
+	ot := asyncoperation.OperationType{Type: resourcetype, Method: operationMethod}
+	parent.Methods(method).HandlerFunc(fn).Name(ot.String())
 	return nil
 }
 

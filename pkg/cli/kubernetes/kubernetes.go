@@ -41,12 +41,14 @@ import (
 const (
 	APIServerBasePath        = "/apis/api.radius.dev/v1alpha3"
 	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
-	DeploymentsUCPPath       = "/apis/api.ucp.dev/v1alpha3/planes/deployments/local"
 	Location                 = "Location"
 	AzureAsyncOperation      = "Azure-AsyncOperation"
 	IngressServiceName       = "contour-envoy"
 	RadiusConfigName         = "radius-config"
 	RadiusSystemNamespace    = "radius-system"
+	UCPBasePath              = "/apis/api.ucp.dev/v1alpha3"
+	UCPType                  = "api.ucp.dev"
+	BicepType                = "api.bicep.dev"
 )
 
 var (
@@ -127,7 +129,7 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 }
 
 func GetBaseUrlForDeploymentEngine(overrideURL string) string {
-	return strings.TrimSuffix(overrideURL, "/") + DeploymentEngineBasePath
+	return strings.TrimSuffix(overrideURL, "/") + UCPBasePath
 }
 
 func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string, enableUCP bool) (string, http.RoundTripper, error) {
@@ -135,7 +137,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 	var roundTripper http.RoundTripper
 	var basePath string
 	if enableUCP {
-		basePath = DeploymentsUCPPath
+		basePath = UCPBasePath
 	} else {
 		basePath = DeploymentEngineBasePath
 	}
@@ -148,7 +150,14 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 			return "", nil, err
 		}
 
-		roundTripper, err = CreateRestRoundTripper(context, "api.bicep.dev", overrideURL)
+		var k8sType string
+		if enableUCP {
+			k8sType = UCPType
+		} else {
+			k8sType = BicepType
+		}
+
+		roundTripper, err = CreateRestRoundTripper(context, k8sType, overrideURL)
 		if err != nil {
 			return "", nil, err
 		}

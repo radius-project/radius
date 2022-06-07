@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: de
+  name: bicep-de
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: de
+  template:
+    metadata:
+      labels:
+        control-plane: de
+{{ if .Values.global.rp.provider.azure.podidentity }}
+        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
+{{ end }}
+    spec:
+      serviceAccountName: de-manager
+      containers:
+      - args:
+        - --kubernetes=true
+        env:
+        - name: ASPNETCORE_URLS
+          value: http://+:6443
+        - name: kubernetes
+          value: "true"
+        - name: RADIUSBACKENDURL
+          value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3/planes/radius/local
+        - name: ASPNETCORE_Logging__LogLevel__Default
+          value: "Debug"
+        image: {{ .Values.global.engine.image }}:{{ .Values.global.engine.tag }}
+        name: de
+        ports:
+        - containerPort: 6443
+          name: bicep-de-api
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+      - env:
+        - name: ASPNETCORE_URLS
+          value: http://+:5000
+        image: {{ .Values.global.extensibility.image }}:{{ .Values.global.extensibility.tag }}
+        name: bicep-de-extensibility
+        ports:
+        - containerPort: 5000
+          name: bicep-de-ext
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+      terminationGracePeriodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: de-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 6443
+      name: http
+      protocol: TCP
+      targetPort: 6443
+  selector:
+    control-plane: de
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bicep-de-extensibility
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 5000
+      name: http
+      protocol: TCP
+      targetPort: 5000
+  selector:
+    control-plane: de

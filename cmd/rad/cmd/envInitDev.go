@@ -59,6 +59,16 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	ucpImage, err := cmd.Flags().GetString("ucp-image")
+	if err != nil {
+		return err
+	}
+
+	ucpTag, err := cmd.Flags().GetString("ucp-tag")
+	if err != nil {
+		return err
+	}
+
 	var params *DevEnvironmentParams
 	if interactive {
 		params, err = envInitDevConfigInteractive(cmd)
@@ -98,6 +108,8 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 			ChartPath: chartPath,
 			Image:     image,
 			Tag:       tag,
+			UCPImage:  ucpImage,
+			UCPTag:    ucpTag,
 		},
 	}
 	options := helm.NewClusterOptions(cliOptions)
@@ -233,7 +245,8 @@ func init() {
 	envInitLocalCmd.Flags().String("image", "", "specify the radius controller image to use")
 	envInitLocalCmd.Flags().String("tag", "", "specify the radius controller tag to use")
 	envInitLocalCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
-
+	envInitLocalCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
+	envInitLocalCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 }
 
 type DevEnvironmentParams struct {

@@ -12,6 +12,9 @@ dependencies:
   - name: deployment-engine
     version: '42.42.42-dev'
     repository: "file://deployment-engine"
+  - name: de
+    version: '42.42.42-dev'
+    repository: "file://de"
   - name: ucp
     version: '42.42.42-dev'
     repository: "file://ucp"

@@ -226,6 +226,60 @@ type DaprStateStoresListResult struct {
 	DaprStateStoreList
 }
 
+// ExtendersCreateOrUpdateResponse contains the response from method Extenders.CreateOrUpdate.
+type ExtendersCreateOrUpdateResponse struct {
+	ExtendersCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersCreateOrUpdateResult contains the result from method Extenders.CreateOrUpdate.
+type ExtendersCreateOrUpdateResult struct {
+	ExtenderResource
+}
+
+// ExtendersDeleteResponse contains the response from method Extenders.Delete.
+type ExtendersDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersGetResponse contains the response from method Extenders.Get.
+type ExtendersGetResponse struct {
+	ExtendersGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersGetResult contains the result from method Extenders.Get.
+type ExtendersGetResult struct {
+	ExtenderResource
+}
+
+// ExtendersListBySubscriptionResponse contains the response from method Extenders.ListBySubscription.
+type ExtendersListBySubscriptionResponse struct {
+	ExtendersListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersListBySubscriptionResult contains the result from method Extenders.ListBySubscription.
+type ExtendersListBySubscriptionResult struct {
+	ExtenderList
+}
+
+// ExtendersListResponse contains the response from method Extenders.List.
+type ExtendersListResponse struct {
+	ExtendersListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersListResult contains the result from method Extenders.List.
+type ExtendersListResult struct {
+	ExtenderList
+}
+
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
 type MongoDatabasesCreateOrUpdateResponse struct {
 	MongoDatabasesCreateOrUpdateResult

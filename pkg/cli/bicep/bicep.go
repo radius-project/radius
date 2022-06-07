@@ -11,13 +11,11 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/cli/tools"
+	ff "github.com/project-radius/radius/pkg/featureflag"
 )
 
 const radBicepEnvVar = "RAD_BICEP"
 const binaryName = "rad-bicep"
-
-// Placeholders are for: channel, platform, filename
-const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/bicep/%s/%s/%s"
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
 func IsBicepInstalled() (bool, error) {
@@ -53,6 +51,13 @@ func DeleteBicep() error {
 
 // DownloadBicep updates our local copy of bicep
 func DownloadBicep() error {
+	dirPrefix := "bicep"
+	if ff.EnableBicepExtensibility.IsActive() {
+		dirPrefix = "bicep-extensibility"
+	}
+	// Placeholders are for: channel, platform, filename
+	downloadURIFmt := fmt.Sprint("https://radiuspublic.blob.core.windows.net/tools/", dirPrefix, "/%s/%s/%s")
+
 	uri, err := tools.GetDownloadURI(downloadURIFmt, binaryName)
 	if err != nil {
 		return err
