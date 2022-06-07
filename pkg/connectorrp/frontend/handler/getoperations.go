@@ -40,7 +40,7 @@ func (opctrl *GetOperations) Run(ctx context.Context, req *http.Request) (rest.R
 		return rest.NewOKResponse(opctrl.availableOperationsV1()), nil
 	}
 
-	return rest.NewNotFoundAPIVersionResponse("operations", "Applications.Core", sCtx.APIVersion), nil
+	return rest.NewNotFoundAPIVersionResponse("operations", ProviderNamespaceName, sCtx.APIVersion), nil
 }
 
 func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {

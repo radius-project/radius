@@ -40,7 +40,7 @@ func (opctrl *GetOperations) Run(ctx context.Context, req *http.Request) (rest.R
 		return rest.NewOKResponse(opctrl.availableOperationsV1()), nil
 	}
 
-	return rest.NewNotFoundAPIVersionResponse("operations", "Applications.Core", sCtx.APIVersion), nil
+	return rest.NewNotFoundAPIVersionResponse("operations", ProviderNamespaceName, sCtx.APIVersion), nil
 }
 
 func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
@@ -49,7 +49,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 			&v1.Operation{
 				Name: "Applications.Core/operations/read",
 				Display: &v1.OperationDisplayProperties{
-					Provider:    "Applications.Core",
+					Provider:    ProviderNamespaceName,
 					Resource:    "operations",
 					Operation:   "Get operations",
 					Description: "Get the list of operations",
@@ -59,7 +59,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 			&v1.Operation{
 				Name: "Applications.Core/environments/read",
 				Display: &v1.OperationDisplayProperties{
-					Provider:    "Applications.Core",
+					Provider:    ProviderNamespaceName,
 					Resource:    "environments",
 					Operation:   "List environments",
 					Description: "Get the list of environments.",
@@ -69,7 +69,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 			&v1.Operation{
 				Name: "Applications.Core/environments/write",
 				Display: &v1.OperationDisplayProperties{
-					Provider:    "Applications.Core",
+					Provider:    ProviderNamespaceName,
 					Resource:    "environments",
 					Operation:   "Create/Update environment",
 					Description: "Create or update an environment.",
@@ -79,7 +79,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 			&v1.Operation{
 				Name: "Applications.Core/environments/delete",
 				Display: &v1.OperationDisplayProperties{
-					Provider:    "Applications.Core",
+					Provider:    ProviderNamespaceName,
 					Resource:    "environments",
 					Operation:   "Delete environment",
 					Description: "Delete an environment.",
@@ -89,7 +89,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 			&v1.Operation{
 				Name: "Applications.Core/environments/join/action",
 				Display: &v1.OperationDisplayProperties{
-					Provider:    "Applications.Core",
+					Provider:    ProviderNamespaceName,
 					Resource:    "environments",
 					Operation:   "Join environment",
 					Description: "Join to application environment.",
@@ -99,8 +99,8 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 			&v1.Operation{
 				Name: "Applications.Core/register/action",
 				Display: &v1.OperationDisplayProperties{
-					Provider:    "Applications.Core",
-					Resource:    "Applications.Core",
+					Provider:    ProviderNamespaceName,
+					Resource:    ProviderNamespaceName,
 					Operation:   "Register Applications.Core",
 					Description: "Register the subscription for Applications.Core.",
 				},
@@ -109,8 +109,8 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 			&v1.Operation{
 				Name: "Applications.Core/unregister/action",
 				Display: &v1.OperationDisplayProperties{
-					Provider:    "Applications.Core",
-					Resource:    "Applications.Core",
+					Provider:    ProviderNamespaceName,
+					Resource:    ProviderNamespaceName,
 					Operation:   "Unregister Applications.Core",
 					Description: "Unregister the subscription for Applications.Core.",
 				},
