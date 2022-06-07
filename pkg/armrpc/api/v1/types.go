@@ -15,23 +15,30 @@ const (
 	DefaultRetryAfter = "60"
 )
 
+// OperationMethod is the ARM operation of resource.
 type OperationMethod string
 
 var operationMethodToHTTPMethod = map[OperationMethod]string{
-	OperationList:                 http.MethodGet,
-	OperationGet:                  http.MethodGet,
-	OperationPut:                  http.MethodPut,
-	OperationPatch:                http.MethodPatch,
-	OperationDelete:               http.MethodDelete,
+	OperationList:   http.MethodGet,
+	OperationGet:    http.MethodGet,
+	OperationPut:    http.MethodPut,
+	OperationPatch:  http.MethodPatch,
+	OperationDelete: http.MethodDelete,
+
+	// ARM RPC specific operations.
 	OperationGetOperations:        http.MethodGet,
 	OperationGetOperationStatuses: http.MethodGet,
 	OperationGetOperationResult:   http.MethodGet,
 	OperationPutSubscriptions:     http.MethodPut,
 }
 
+// HTTPMethod converts OperationMethod to HTTP Method.
 func (o OperationMethod) HTTPMethod() string {
 	m, ok := operationMethodToHTTPMethod[o]
 	if !ok {
+		// ARM RPC defines CRUD_L operations of one resource type and the custom action should be defined as POST method.
+		// For example, if we want to support `listSecret` API for mongodatabase, this API must be defined as POST method.
+		// POST /subscriptions/{subId}/resourcegroups/{rg}/applications.connectors/mongodatabases/{mongo}/listSecret
 		return http.MethodPost
 	}
 	return m

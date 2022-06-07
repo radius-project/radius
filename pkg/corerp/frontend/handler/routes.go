@@ -44,7 +44,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
 
-	handerOptions := []server.HandlerOptions{
+	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:   envRTSubrouter,
 			ResourceType:   env_ctrl.ResourceTypeName,
@@ -77,7 +77,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 		},
 	}
 
-	for _, h := range handerOptions {
+	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, sp, h); err != nil {
 			return err
 		}

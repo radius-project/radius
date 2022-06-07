@@ -32,18 +32,18 @@ func NewGetOperations(ds store.StorageClient, sm manager.StatusManager) (ctrl.Co
 
 // Run returns the list of available operations/permission for the resource provider at tenant level.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-func (a *GetOperations) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (opctrl *GetOperations) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	switch sCtx.APIVersion {
 	case v20220315privatepreview.Version:
-		return rest.NewOKResponse(a.availableOperationsV1()), nil
+		return rest.NewOKResponse(opctrl.availableOperationsV1()), nil
 	}
 
 	return rest.NewNotFoundAPIVersionResponse("operations", "Applications.Core", sCtx.APIVersion), nil
 }
 
-func (a *GetOperations) availableOperationsV1() *v1.PaginatedList {
+func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 	return &v1.PaginatedList{
 		Value: []interface{}{
 			&v1.Operation{

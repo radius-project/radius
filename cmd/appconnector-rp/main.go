@@ -38,10 +38,10 @@ func main() {
 	flag.Parse()
 
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
-	metricOptions := mh.NewHostOptionsFromEnvironment(*options.Config)
 	if err != nil {
 		log.Fatal(err)
 	}
+	metricOptions := mh.NewHostOptionsFromEnvironment(*options.Config)
 
 	logger, flush, err := radlogger.NewLogger("applications.connector")
 	if err != nil {

@@ -40,8 +40,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 	mongoRTSubrouter := subscriptionRt.PathPrefix("/resourcegroups/{resourceGroup}/providers/applications.connector/mongodatabases").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabases}").Subrouter()
-
-	handerOptions := []server.HandlerOptions{
+	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:   mongoRTSubrouter,
 			ResourceType:   mongo_ctrl.ResourceTypeName,
@@ -72,9 +71,15 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 			Method:         v1.OperationDelete,
 			HandlerFactory: mongo_ctrl.NewDeleteMongoDatabase,
 		},
+		{
+			ParentRouter:   mongoResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   mongo_ctrl.ResourceTypeName,
+			Method:         mongo_ctrl.OperationListSecret,
+			HandlerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
+		},
 	}
 
-	for _, h := range handerOptions {
+	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, sp, h); err != nil {
 			return err
 		}
