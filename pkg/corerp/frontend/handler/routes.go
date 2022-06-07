@@ -21,6 +21,8 @@ import (
 
 	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	connector_provider "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/provider"
+	rabbitmq_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rabbitmqmessagequeues"
+	redis_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rediscaches"
 )
 
 const (
@@ -136,6 +138,20 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 	mongoResourceRouter := mongoResourceTypeSubrouter.Path("/{mongoDatabases}").Subrouter()
 	mongoListSecretsRouter := mongoResourceRouter.Path("/listsecrets").Subrouter()
 
+	// Adds redis connector resource type routes
+	redisResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/rediscaches").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+
+	redisResourceRouter := redisResourceTypeSubrouter.Path("/{redisCaches}").Subrouter()
+	redisListSecretsRouter := redisResourceRouter.Path("/listsecrets").Subrouter()
+
+	// Adds rabbitmq connector resource type routes
+	rabbitMQResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/rabbitmqmessagequeues").
+		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
+
+	rabbitmqResourceRouter := rabbitMQResourceTypeSubrouter.Path("/{rabbitMQMessageQueues}").Subrouter()
+	rabbitmqListSecretsRouter := rabbitmqResourceRouter.Path("/listsecrets").Subrouter()
+
 	h := []handlerParam{
 		// MongoDatabases operations
 		{mongoResourceTypeSubrouter, mongo_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, mongo_ctrl.NewListMongoDatabases},
@@ -143,6 +159,20 @@ func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider
 		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, mongo_ctrl.NewCreateOrUpdateMongoDatabase},
 		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, mongo_ctrl.NewDeleteMongoDatabase},
 		{mongoListSecretsRouter, mongo_ctrl.ResourceTypeName, http.MethodPost, mongo_ctrl.OperationListSecret, mongo_ctrl.NewListSecretsMongoDatabase},
+
+		// RedisCaches operations
+		{redisResourceTypeSubrouter, redis_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, redis_ctrl.NewListRedisCaches},
+		{redisResourceRouter, redis_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGet, redis_ctrl.NewGetRedisCache},
+		{redisResourceRouter, redis_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, redis_ctrl.NewCreateOrUpdateRedisCache},
+		{redisResourceRouter, redis_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, redis_ctrl.NewDeleteRedisCache},
+		{redisListSecretsRouter, redis_ctrl.ResourceTypeName, http.MethodPost, redis_ctrl.OperationListSecret, redis_ctrl.NewListSecretsRedisCache},
+
+		// RabbitMQMessageQueues operations
+		{rabbitMQResourceTypeSubrouter, rabbitmq_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, rabbitmq_ctrl.NewListRabbitMQMessageQueues},
+		{rabbitmqResourceRouter, rabbitmq_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGet, rabbitmq_ctrl.NewGetRabbitMQMessageQueue},
+		{rabbitmqResourceRouter, rabbitmq_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue},
+		{rabbitmqResourceRouter, rabbitmq_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, rabbitmq_ctrl.NewDeleteRabbitMQMessageQueue},
+		{rabbitmqListSecretsRouter, rabbitmq_ctrl.ResourceTypeName, http.MethodPost, rabbitmq_ctrl.OperationListSecret, rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue},
 	}
 	handlers = append(handlers, h...)
 

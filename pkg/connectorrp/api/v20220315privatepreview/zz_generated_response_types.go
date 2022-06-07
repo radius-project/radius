@@ -292,6 +292,18 @@ type RabbitMQMessageQueuesListResult struct {
 	RabbitMQMessageQueueList
 }
 
+// RabbitMQMessageQueuesListSecretsResponse contains the response from method RabbitMQMessageQueues.ListSecrets.
+type RabbitMQMessageQueuesListSecretsResponse struct {
+	RabbitMQMessageQueuesListSecretsResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RabbitMQMessageQueuesListSecretsResult contains the result from method RabbitMQMessageQueues.ListSecrets.
+type RabbitMQMessageQueuesListSecretsResult struct {
+	RabbitMQSecrets
+}
+
 // RedisCachesCreateOrUpdateResponse contains the response from method RedisCaches.CreateOrUpdate.
 type RedisCachesCreateOrUpdateResponse struct {
 	RedisCachesCreateOrUpdateResult
@@ -344,6 +356,18 @@ type RedisCachesListResponse struct {
 // RedisCachesListResult contains the result from method RedisCaches.List.
 type RedisCachesListResult struct {
 	RedisCacheList
+}
+
+// RedisCachesListSecretsResponse contains the response from method RedisCaches.ListSecrets.
+type RedisCachesListSecretsResponse struct {
+	RedisCachesListSecretsResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// RedisCachesListSecretsResult contains the result from method RedisCaches.ListSecrets.
+type RedisCachesListSecretsResult struct {
+	RedisCacheSecrets
 }
 
 // SQLDatabasesCreateOrUpdateResponse contains the response from method SQLDatabases.CreateOrUpdate.

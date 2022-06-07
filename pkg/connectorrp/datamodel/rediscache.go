@@ -36,11 +36,15 @@ type RedisCacheProperties struct {
 	Resource          string                           `json:"resource,omitempty"`
 	Host              string                           `json:"host,omitempty"`
 	Port              int32                            `json:"port,omitempty"`
-	Secrets           RedisSecrets                     `json:"secrets,omitempty"`
+	Secrets           RedisCacheSecrets                `json:"secrets,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
-type RedisSecrets struct {
+type RedisCacheSecrets struct {
 	ConnectionString string `json:"connectionString"`
 	Password         string `json:"password"`
+}
+
+func (mongo RedisCacheSecrets) ResourceTypeName() string {
+	return "Applications.Connector/mongoDatabases"
 }
