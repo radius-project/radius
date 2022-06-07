@@ -25,6 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const metadataEndpoint = "https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01"
+
 func TestCertValidationUnauthorized(t *testing.T) {
 	tests := []struct {
 		armid    string
@@ -54,7 +56,7 @@ func TestCertValidationUnauthorized(t *testing.T) {
 		}
 		ctx := context.Background()
 		log := radlogger.GetLogger(ctx)
-		armCertMgr := NewArmCertManager("https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01", log)
+		armCertMgr := NewArmCertManager(metadataEndpoint, log)
 		ArmCertStore.Store("934367bf1c97033f877db0f15cb1b586957d313", cert)
 		r.Use(ClientCertValidator(armCertMgr))
 		handler := middleware.LowercaseURLPath(r)
@@ -94,7 +96,7 @@ func TestCertValidationAuthorized(t *testing.T) {
 		}
 		ctx := context.Background()
 		log := radlogger.GetLogger(ctx)
-		armCertMgr := NewArmCertManager("https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01", log)
+		armCertMgr := NewArmCertManager(metadataEndpoint, log)
 		ArmCertStore.Store("934367bf1c97033f877db0f15cb1b586957d313", cert)
 		r.Use(ClientCertValidator(armCertMgr))
 		handler := middleware.LowercaseURLPath(r)
