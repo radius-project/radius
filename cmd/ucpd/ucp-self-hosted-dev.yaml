@@ -29,8 +29,8 @@ planes:
   - id: "/planes/radius/local"
     properties:
       resourceProviders:
-        Applications.Core: "http://localhost:"
-        Applications.Connector: "http://appcore-rp.radius-system:5443"
+        Applications.Core: "http://localhost:8080"
+        Applications.Connector: "http://localhost:8080"
   - id: "/planes/deployments/local"
     properties:
       resourceProviders:
