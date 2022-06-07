@@ -218,10 +218,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		UCPHost: r.Host + ucp.options.BasePath,
 	}
 
-	// Remove the /planes/<plane-type>/<plane-name> prefix
-	segments := strings.Split(incomingURL.Path, "/")
-	p := strings.Join(segments[4:], "/")
-	url, err := url.Parse(p)
+	url, err := url.Parse(incomingURL.Path)
 	if err != nil {
 		return nil, err
 	}

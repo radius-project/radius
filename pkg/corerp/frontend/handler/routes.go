@@ -36,7 +36,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		return err
 	}
 
-	envRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/environments").
+	envRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/planes/radius/{planeName}/resourcegroups/{resourceGroup}/providers/applications.core/environments").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
 
