@@ -72,13 +72,13 @@ func ConfigureDefaultHandlers(
 	sp dataprovider.DataStorageProvider,
 	rootRouter *mux.Router,
 	scopeRouter *mux.Router,
-	isSelfhosted bool,
+	isAzureProvider bool,
 	providerNamespace string,
 	operationCtrlFactory ControllerFunc) error {
 	providerNamespace = strings.ToLower(providerNamespace)
 	rt := fmt.Sprintf("%s/provider", providerNamespace)
 
-	if isSelfhosted {
+	if isAzureProvider {
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 		err := RegisterHandler(ctx, sp, HandlerOptions{
 			ParentRouter:   rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),

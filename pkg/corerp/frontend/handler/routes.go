@@ -33,7 +33,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 	}
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, sp, root, scopeRoute, hostoptions.IsSelfHosted(), ProviderNamespaceName, NewGetOperations)
+	err := server.ConfigureDefaultHandlers(ctx, sp, root, scopeRoute, !hostoptions.IsSelfHosted(), ProviderNamespaceName, NewGetOperations)
 	if err != nil {
 		return err
 	}
