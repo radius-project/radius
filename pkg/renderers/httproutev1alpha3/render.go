@@ -27,13 +27,30 @@ import (
 type Renderer struct {
 }
 
-func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
-	return nil, nil, nil
+func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
+	properties, err := r.convert(workload)
+	if err != nil {
+		return nil, nil, err
+	}
+	// If the HttpRoute does not have any traffic split properties
+	if len(properties.Routes) == 0 {
+		return nil, nil, nil
+	}
+	for _, routes := range properties.Routes {
+		destination := routes.Destination
+		resourceID, err := azresources.Parse(*destination)
+		if err != nil {
+			return nil, nil, err
+		}
+		radiusResourceIDs = append(radiusResourceIDs, resourceID)
+	}
+	return radiusResourceIDs, azureResourceIDs, nil
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	route := radclient.HTTPRouteProperties{}
 	resource := options.Resource
+	radiusResourceIDs, _, _ := r.GetDependencyIDs(ctx, resource)
 	port := kubernetes.GetDefaultPort()
 
 	err := resource.ConvertDefinition(&route)
@@ -59,9 +76,15 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	outputs := []outputresource.OutputResource{}
 
 	service := r.makeService(resource, route)
-	trafficsplit := r.makeTrafficSplit(resource, route, service)
 	outputs = append(outputs, service)
-	outputs = append(outputs, trafficsplit)
+	var trafficsplit outputresource.OutputResource
+	//Check if trafficsplit properties are configured for this HttpRoute. If yes, a TrafficSplit object will be created.
+	if len(route.Routes) > 0 {
+		trafficsplit = r.makeTrafficSplit(resource, route, radiusResourceIDs)
+	}
+	if trafficsplit.Resource != nil {
+		outputs = append(outputs, trafficsplit)
+	}
 
 	return renderers.RendererOutput{
 		Resources:      outputs,
@@ -99,33 +122,44 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
-func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route radclient.HTTPRouteProperties, service outputresource.OutputResource) outputresource.OutputResource {
+func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route radclient.HTTPRouteProperties, radiusResourceIDs []azresources.ResourceID) outputresource.OutputResource {
+	namespace := resource.ApplicationName
+	numBackends := len(radiusResourceIDs)
+	backends := make([]tsv1.TrafficSplitBackend, int(numBackends))
+	routeName := resource.ResourceName
+	rootService := namespace + "." + routeName
 	trafficsplit := &tsv1.TrafficSplit{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TrafficSplit",
 			APIVersion: "split.smi-spec.io/v1alpha2",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "bookstore-split", //kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), //"osm-traffic-split",
-			Namespace: "bookstore",       //resource.ApplicationName,
-			// abels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+			Name:      routeName,
+			Namespace: namespace,
+			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
-		//Double check
 		Spec: tsv1.TrafficSplitSpec{
-			// default? Maybe something like {namespace}.default.svc.cluster.local
-			//<root-service>.<namespace>  //"bookstore.default.svc.cluster.local",
-			Service: "bookstore.bookstore",
-			Backends: []tsv1.TrafficSplitBackend{
-				{
-					Service: "bookstore",
-					Weight:  50,
-				},
-				{
-					Service: "bookstore-v2",
-					Weight:  50,
-				},
-			},
+			Service:  rootService,
+			Backends: backends,
 		},
 	}
+	//populating the values in the backends array
+	for i := 0; i < numBackends; i++ {
+		httpRouteName := radiusResourceIDs[i].Types[2].Name
+		trafficsplit.Spec.Backends[i] = tsv1.TrafficSplitBackend{
+			Service: httpRouteName,
+			Weight:  (int)(*(route.Routes[i].Weight)),
+		}
+	}
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, trafficsplit, trafficsplit.ObjectMeta)
+}
+
+func (r Renderer) convert(resource renderers.RendererResource) (*radclient.HTTPRouteProperties, error) {
+	properties := &radclient.HTTPRouteProperties{}
+	err := resource.ConvertDefinition(properties)
+	if err != nil {
+		return nil, err
+	}
+
+	return properties, nil
 }
