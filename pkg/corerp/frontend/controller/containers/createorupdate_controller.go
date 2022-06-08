@@ -27,7 +27,7 @@ type CreateOrUpdateController struct {
 	ctrl.BaseController
 }
 
-// NewCreateOrUpdateController creates a new CreateOrUpdate Controller.
+// NewCreateOrUpdateController creates a new instance of CreateOrUpdate Controller.
 func NewCreateOrUpdateController(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
 	return &CreateOrUpdateController{ctrl.NewBaseController(ds, sm)}, nil
 }

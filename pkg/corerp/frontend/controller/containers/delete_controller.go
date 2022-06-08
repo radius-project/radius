@@ -25,7 +25,7 @@ type DeleteController struct {
 	ctrl.BaseController
 }
 
-// NewDeleteController creates a new Delete Container Controller.
+// NewDeleteController creates a new instance of DeleteContainer Controller.
 func NewDeleteController(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
 	return &DeleteController{ctrl.NewBaseController(ds, sm)}, nil
 }

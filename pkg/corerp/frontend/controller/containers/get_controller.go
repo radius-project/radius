@@ -26,7 +26,7 @@ type GetController struct {
 	ctrl.BaseController
 }
 
-// NewGetController creates a new GetController.
+// NewGetController creates a new instance of GetController.
 func NewGetController(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
 	return &GetController{ctrl.NewBaseController(ds, sm)}, nil
 }
