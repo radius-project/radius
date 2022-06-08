@@ -146,7 +146,7 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	appcorerp := global["appcorerp"].(map[string]interface{})
 
 	if options.AppCoreImage != "" {
-		appcorerp["container"] = options.AppCoreImage
+		appcorerp["image"] = options.AppCoreImage
 	}
 	if options.AppCoreTag != "" {
 		appcorerp["tag"] = options.AppCoreTag
