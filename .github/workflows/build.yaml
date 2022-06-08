@@ -290,6 +290,8 @@ jobs:
           --chart=${{ env.RADIUS_CHART_LOCATION }} \
           --image=${{ env.DOCKER_REGISTRY }}/radius-rp \
           --tag ${{ env.REL_VERSION }} \
+          --appcore-image ${{ env.DOCKER_REGISTRY }}/appcore-rp \
+          --appcore-tag ${{ env.REL_VERSION }} \
           --ucp-image ${{ env.DOCKER_REGISTRY }}/ucpd \
           --ucp-tag ${{ env.REL_VERSION }} \
           --provider-azure \

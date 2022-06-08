@@ -100,11 +100,13 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	cliOptions := helm.ClusterOptions{
 		Namespace: sharedArgs.Namespace,
 		Radius: helm.RadiusOptions{
-			ChartPath: sharedArgs.ChartPath,
-			Image:     sharedArgs.Image,
-			Tag:       sharedArgs.Tag,
-			UCPImage:  ucpImage,
-			UCPTag:    ucpTag,
+			ChartPath:    sharedArgs.ChartPath,
+			Image:        sharedArgs.Image,
+			Tag:          sharedArgs.Tag,
+			UCPImage:     ucpImage,
+			UCPTag:       ucpTag,
+			AppCoreImage: sharedArgs.AppCoreImage,
+			AppCoreTag:   sharedArgs.AppCoreTag,
 		},
 	}
 	options := helm.NewClusterOptions(cliOptions)

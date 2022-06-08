@@ -25,6 +25,8 @@ func init() {
 	envInstallKubernetesCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
 	envInstallKubernetesCmd.Flags().String("image", "", "Specify the radius controller image to use")
 	envInstallKubernetesCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
+	envInstallKubernetesCmd.Flags().String("appcore-image", "", "Specify Application.Core RP image to use")
+	envInstallKubernetesCmd.Flags().String("appcore-tag", "", "Specify Application.Core RP image tag to use")
 	envInstallKubernetesCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
 	envInstallKubernetesCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 

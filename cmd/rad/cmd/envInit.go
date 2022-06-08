@@ -30,14 +30,18 @@ func init() {
 	envInitCmd.PersistentFlags().String("chart", "", "Specify a file path to a helm chart to install radius from")
 	envInitCmd.PersistentFlags().String("image", "", "Specify the radius controller image to use")
 	envInitCmd.PersistentFlags().String("tag", "", "Specify the radius controller tag to use")
+	envInitCmd.PersistentFlags().String("appcore-image", "", "Specify Application.Core RP image to use")
+	envInitCmd.PersistentFlags().String("appcore-tag", "", "Specify Application.Core RP image tag to use")
 }
 
 type sharedArgs struct {
-	Interactive bool
-	Namespace   string
-	ChartPath   string
-	Image       string
-	Tag         string
+	Interactive  bool
+	Namespace    string
+	ChartPath    string
+	Image        string
+	Tag          string
+	AppCoreImage string
+	AppCoreTag   string
 }
 
 type EnvKind int
@@ -70,12 +74,24 @@ func parseArgs(cmd *cobra.Command) (sharedArgs, error) {
 	if err != nil {
 		return sharedArgs{}, err
 	}
+	appcoreImage, err := cmd.Flags().GetString("appcore-image")
+	if err != nil {
+		return sharedArgs{}, err
+	}
+
+	appcoreTag, err := cmd.Flags().GetString("appcore-tag")
+	if err != nil {
+		return sharedArgs{}, err
+	}
+
 	return sharedArgs{
 		Interactive: interactive,
 		Namespace:   namespace,
 		ChartPath:   chartPath,
 		Image:       image,
 		Tag:         tag,
+		AppCoreImage: appcoreImage,
+		AppCoreTag: appcoreTag,
 	}, nil
 }
 
