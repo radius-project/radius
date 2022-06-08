@@ -49,15 +49,16 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	// Configure Azure provider for cloud resources if specified
 	azureProvider, err := parseAzureProviderFromArgs(cmd, sharedArgs.Interactive)
+	if err != nil {
+		return err
+	}
+
 	ucpImage, err := cmd.Flags().GetString("ucp-image")
 	if err != nil {
 		return err
 	}
 
 	ucpTag, err := cmd.Flags().GetString("ucp-tag")
-	if err != nil {
-		return err
-	}
 	if err != nil {
 		return err
 	}
@@ -109,18 +110,18 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 }
 
 func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
-	k8sconfig, err := kubernetes.ReadKubeConfig()
+	k8sConfig, err := kubernetes.ReadKubeConfig()
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	if contextName == "" && k8sconfig.CurrentContext == "" {
+	if contextName == "" && k8sConfig.CurrentContext == "" {
 		return nil, nil, "", errors.New("no kubernetes context is set")
 	} else if contextName == "" {
-		contextName = k8sconfig.CurrentContext
+		contextName = k8sConfig.CurrentContext
 	}
 
-	context := k8sconfig.Contexts[contextName]
+	context := k8sConfig.Contexts[contextName]
 	if context == nil {
 		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
 	}
