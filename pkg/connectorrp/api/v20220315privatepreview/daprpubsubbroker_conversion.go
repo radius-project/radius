@@ -9,22 +9,22 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
-func (src *DaprPubSubBrokerResource) ConvertTo() (api.DataModelInterface, error) {
-	outputResources := basedatamodel.ResourceStatus{}.OutputResources
+func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error) {
+	outputResources := v1.ResourceStatus{}.OutputResources
 	if src.Properties.GetDaprPubSubBrokerProperties().Status != nil {
 		outputResources = src.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources
 	}
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
-		BasicResourceProperties: basedatamodel.BasicResourceProperties{
-			Status: basedatamodel.ResourceStatus{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Status: v1.ResourceStatus{
 				OutputResources: outputResources,
 			},
 		},
@@ -33,14 +33,14 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (api.DataModelInterface, error)
 		Application:       to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
 		Kind:              to.String(src.Properties.GetDaprPubSubBrokerProperties().Kind),
 	}
-	trackedResource := basedatamodel.TrackedResource{
+	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
 		Name:     to.String(src.Name),
 		Type:     to.String(src.Type),
 		Location: to.String(src.Location),
 		Tags:     to.StringMap(src.Tags),
 	}
-	internalMetadata := basedatamodel.InternalMetadata{
+	internalMetadata := v1.InternalMetadata{
 		UpdatedAPIVersion: Version,
 	}
 	converted := &datamodel.DaprPubSubBroker{}
@@ -66,10 +66,10 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (api.DataModelInterface, error)
 }
 
 //ConvertFrom converts from version-agnostic datamodel to the versioned DaprPubSubBroker resource.
-func (dst *DaprPubSubBrokerResource) ConvertFrom(src api.DataModelInterface) error {
+func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) error {
 	daprPubSub, ok := src.(*datamodel.DaprPubSubBroker)
 	if !ok {
-		return api.ErrInvalidModelConversion
+		return conv.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(daprPubSub.ID)
@@ -79,7 +79,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src api.DataModelInterface) err
 	dst.Location = to.StringPtr(daprPubSub.Location)
 	dst.Tags = *to.StringMapPtr(daprPubSub.Tags)
 	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(daprPubSub.Properties.GetDaprPubSubBrokerProperties().Status, basedatamodel.ResourceStatus{})) {
+	if !(reflect.DeepEqual(daprPubSub.Properties.GetDaprPubSubBrokerProperties().Status, v1.ResourceStatus{})) {
 		outputresources = daprPubSub.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources
 	}
 	props := &DaprPubSubBrokerProperties{

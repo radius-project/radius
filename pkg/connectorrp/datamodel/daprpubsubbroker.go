@@ -8,21 +8,20 @@ package datamodel
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 // DaprPubSubBroker represents DaprPubSubBroker connector resource.
 type DaprPubSubBroker struct {
-	basedatamodel.TrackedResource
+	v1.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
+	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties DaprPubSubBrokerPropertiesClassification `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	basedatamodel.InternalMetadata
+	v1.InternalMetadata
 }
 
 func (daprPubSub DaprPubSubBroker) ResourceTypeName() string {
@@ -53,11 +52,11 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 
 // DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.
 type DaprPubSubBrokerProperties struct {
-	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string                           `json:"environment"`
-	Application       string                           `json:"application,omitempty"`
-	Kind              string                           `json:"kind"`
+	v1.BasicResourceProperties
+	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Environment       string               `json:"environment"`
+	Application       string               `json:"application,omitempty"`
+	Kind              string               `json:"kind"`
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubBrokerResource.
