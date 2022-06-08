@@ -10,15 +10,15 @@ import (
 	"errors"
 	"net/http"
 
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.ControllerInterface = (*DeleteEnvironment)(nil)
+var _ ctrl.Controller = (*DeleteEnvironment)(nil)
 
 // DeleteEnvironment is the controller implementation to delete environment resource.
 type DeleteEnvironment struct {
@@ -26,13 +26,8 @@ type DeleteEnvironment struct {
 }
 
 // NewDeleteEnvironment creates a new DeleteEnvironment.
-func NewDeleteEnvironment(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
-	return &DeleteEnvironment{
-		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewDeleteEnvironment(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &DeleteEnvironment{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -55,7 +50,7 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 	}
 
 	// TODO: handle async deletion later.
-	err = e.DBClient.Delete(ctx, serviceCtx.ResourceID.String())
+	err = e.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil

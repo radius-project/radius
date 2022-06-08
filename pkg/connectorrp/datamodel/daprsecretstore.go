@@ -6,8 +6,7 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 type DaprSecretStoreKind string
@@ -19,15 +18,15 @@ const (
 
 // DaprSecretStore represents DaprSecretStore connector resource.
 type DaprSecretStore struct {
-	basedatamodel.TrackedResource
+	v1.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
+	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties DaprSecretStoreProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	basedatamodel.InternalMetadata
+	v1.InternalMetadata
 }
 
 func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
@@ -36,12 +35,12 @@ func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
 
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.
 type DaprSecretStoreProperties struct {
-	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string                           `json:"environment"`
-	Application       string                           `json:"application,omitempty"`
-	Kind              DaprSecretStoreKind              `json:"kind"`
-	Type              string                           `json:"type"`
-	Version           string                           `json:"version"`
-	Metadata          map[string]interface{}           `json:"metadata"`
+	v1.BasicResourceProperties
+	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
+	Environment       string                 `json:"environment"`
+	Application       string                 `json:"application,omitempty"`
+	Kind              DaprSecretStoreKind    `json:"kind"`
+	Type              string                 `json:"type"`
+	Version           string                 `json:"version"`
+	Metadata          map[string]interface{} `json:"metadata"`
 }

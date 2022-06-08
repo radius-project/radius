@@ -10,29 +10,24 @@ import (
 	"errors"
 	"net/http"
 
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ base_ctrl.ControllerInterface = (*DeleteMongoDatabase)(nil)
+var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
 
 // DeleteMongoDatabase is the controller implementation to delete mongodatabase connector resource.
 type DeleteMongoDatabase struct {
-	base_ctrl.BaseController
+	ctrl.BaseController
 }
 
 // NewDeleteMongoDatabase creates a new instance DeleteMongoDatabase.
-func NewDeleteMongoDatabase(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
-	return &DeleteMongoDatabase{
-		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewDeleteMongoDatabase(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &DeleteMongoDatabase{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 func (mongo *DeleteMongoDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -52,12 +47,12 @@ func (mongo *DeleteMongoDatabase) Run(ctx context.Context, req *http.Request) (r
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = base_ctrl.ValidateETag(*serviceCtx, etag)
+	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	err = mongo.DBClient.Delete(ctx, serviceCtx.ResourceID.String())
+	err = mongo.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil

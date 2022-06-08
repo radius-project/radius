@@ -8,14 +8,14 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 )
 
 // SqlDatabaseDataModelFromVersioned converts version agnostic SqlDatabase datamodel to versioned model.
-func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version string) (api.VersionedModelInterface, error) {
+func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.SQLDatabaseResource{}
@@ -23,7 +23,7 @@ func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version strin
 		return versioned, err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -39,6 +39,6 @@ func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamod
 		return dm.(*datamodel.SqlDatabase), err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }

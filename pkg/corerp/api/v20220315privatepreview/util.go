@@ -9,47 +9,46 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
-func toProvisioningStateDataModel(state *ProvisioningState) basedatamodel.ProvisioningStates {
+func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
 	if state == nil {
-		return basedatamodel.ProvisioningStateAccepted
+		return v1.ProvisioningStateAccepted
 	}
 
 	switch *state {
 	case ProvisioningStateUpdating:
-		return basedatamodel.ProvisioningStateUpdating
+		return v1.ProvisioningStateUpdating
 	case ProvisioningStateDeleting:
-		return basedatamodel.ProvisioningStateDeleting
+		return v1.ProvisioningStateDeleting
 	case ProvisioningStateAccepted:
-		return basedatamodel.ProvisioningStateAccepted
+		return v1.ProvisioningStateAccepted
 	case ProvisioningStateSucceeded:
-		return basedatamodel.ProvisioningStateSucceeded
+		return v1.ProvisioningStateSucceeded
 	case ProvisioningStateFailed:
-		return basedatamodel.ProvisioningStateFailed
+		return v1.ProvisioningStateFailed
 	case ProvisioningStateCanceled:
-		return basedatamodel.ProvisioningStateCanceled
+		return v1.ProvisioningStateCanceled
 	default:
-		return basedatamodel.ProvisioningStateAccepted
+		return v1.ProvisioningStateAccepted
 	}
 }
 
-func fromProvisioningStateDataModel(state basedatamodel.ProvisioningStates) *ProvisioningState {
+func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningState {
 	var converted ProvisioningState
 	switch state {
-	case basedatamodel.ProvisioningStateUpdating:
+	case v1.ProvisioningStateUpdating:
 		converted = ProvisioningStateUpdating
-	case basedatamodel.ProvisioningStateDeleting:
+	case v1.ProvisioningStateDeleting:
 		converted = ProvisioningStateDeleting
-	case basedatamodel.ProvisioningStateAccepted:
+	case v1.ProvisioningStateAccepted:
 		converted = ProvisioningStateAccepted
-	case basedatamodel.ProvisioningStateSucceeded:
+	case v1.ProvisioningStateSucceeded:
 		converted = ProvisioningStateSucceeded
-	case basedatamodel.ProvisioningStateFailed:
+	case v1.ProvisioningStateFailed:
 		converted = ProvisioningStateFailed
-	case basedatamodel.ProvisioningStateCanceled:
+	case v1.ProvisioningStateCanceled:
 		converted = ProvisioningStateCanceled
 	default:
 		converted = ProvisioningStateAccepted // should we return error ?
@@ -64,7 +63,7 @@ func unmarshalTimeString(ts string) *time.Time {
 	return (*time.Time)(&tt)
 }
 
-func fromSystemDataModel(s armrpcv1.SystemData) *SystemData {
+func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
 		CreatedBy:          to.StringPtr(s.CreatedBy),
 		CreatedByType:      (*CreatedByType)(to.StringPtr(s.CreatedByType)),

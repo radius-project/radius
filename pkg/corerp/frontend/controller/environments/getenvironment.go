@@ -10,16 +10,16 @@ import (
 	"errors"
 	"net/http"
 
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.ControllerInterface = (*GetEnvironment)(nil)
+var _ ctrl.Controller = (*GetEnvironment)(nil)
 
 // GetEnvironment is the controller implementation to get the environments resource.
 type GetEnvironment struct {
@@ -27,13 +27,8 @@ type GetEnvironment struct {
 }
 
 // NewGetEnvironment creates a new GetEnvironment.
-func NewGetEnvironment(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
-	return &GetEnvironment{
-		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewGetEnvironment(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &GetEnvironment{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 func (e *GetEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {

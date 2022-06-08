@@ -11,7 +11,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func TestMongoDatabaseDataModelToVersioned(t *testing.T) {
 			"",
 			"unsupported",
 			nil,
-			basedatamodel.ErrUnsupportedAPIVersion,
+			v1.ErrUnsupportedAPIVersion,
 		},
 	}
 
@@ -82,7 +82,7 @@ func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 		{
 			"",
 			"unsupported",
-			basedatamodel.ErrUnsupportedAPIVersion,
+			v1.ErrUnsupportedAPIVersion,
 		},
 	}
 
@@ -117,7 +117,7 @@ func TestMongoDatabaseSecretsDataModelToVersioned(t *testing.T) {
 			"",
 			"unsupported",
 			nil,
-			basedatamodel.ErrUnsupportedAPIVersion,
+			v1.ErrUnsupportedAPIVersion,
 		},
 	}
 

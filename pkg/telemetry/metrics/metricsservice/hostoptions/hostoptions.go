@@ -8,7 +8,7 @@
 package hostoptions
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 )
 

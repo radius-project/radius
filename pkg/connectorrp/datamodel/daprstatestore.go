@@ -8,21 +8,20 @@ package datamodel
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api/armrpcv1"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 // DaprStateStore represents DaprStateStore connector resource.
 type DaprStateStore struct {
-	basedatamodel.TrackedResource
+	v1.TrackedResource
 
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData armrpcv1.SystemData `json:"systemData,omitempty"`
+	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties DaprStateStorePropertiesClassification `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	basedatamodel.InternalMetadata
+	v1.InternalMetadata
 }
 
 type DaprStateStorePropertiesClassification interface {
@@ -39,11 +38,11 @@ func (daprStateStore DaprStateStore) ResourceTypeName() string {
 
 // DaprStateStoreProperties represents the properties of DaprStateStore resource.
 type DaprStateStoreProperties struct {
-	basedatamodel.BasicResourceProperties
-	ProvisioningState basedatamodel.ProvisioningStates `json:"provisioningState,omitempty"`
-	Environment       string                           `json:"environment"`
-	Application       string                           `json:"application,omitempty"`
-	Kind              string                           `json:"kind"`
+	v1.BasicResourceProperties
+	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Environment       string               `json:"environment"`
+	Application       string               `json:"application,omitempty"`
+	Kind              string               `json:"kind"`
 }
 
 type DaprStateStoreGenericResourceProperties struct {
