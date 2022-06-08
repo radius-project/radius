@@ -1,6 +1,6 @@
 # This is an example of configuration file.
 environment:
-  name: self-hosted
+  name: Dev
 storageProvider:
   provider: "etcd"
   etcd:
