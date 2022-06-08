@@ -33,7 +33,7 @@ type LocalEnvironment struct {
 	// Registry is the docker/OCI registry we're using for images.
 	Registry *Registry `mapstructure:"registry,omitempty"`
 
-	// APIServerBaseURL is an override for local debugging. This allows us us to run the controller + API Service outside the
+	// RadiusRPLocalURL is an override for local debugging. This allows us us to run the controller + API Service outside the
 	// cluster.
 	RadiusRPLocalURL         string     `mapstructure:"radiusrplocalurl,omitempty"`
 	DeploymentEngineLocalURL string     `mapstructure:"deploymentenginelocalurl,omitempty"`
