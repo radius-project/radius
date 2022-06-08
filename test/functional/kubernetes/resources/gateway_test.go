@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	retryTimeout = 10
+	retryTimeout = 5
 )
 
 func Test_Gateway(t *testing.T) {
@@ -72,6 +72,7 @@ func Test_Gateway(t *testing.T) {
 				// that it finds. Testing multiple gateways here will not work.
 				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client)
 				require.NoError(t, err)
+				t.Logf("found root proxy with hostname: {%s}", hostname)
 
 				var remotePort int
 				if hostname == "localhost" {
@@ -84,47 +85,76 @@ func Test_Gateway(t *testing.T) {
 				// Set up pod port-forwarding for contour-envoy
 				localHostname := "localhost"
 				localPort := 8888
-				readyChan := make(chan struct{}, 1)
-				stopChan := make(chan struct{}, 1)
-				errorChan := make(chan error)
-
-				go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, remotePort, readyChan, stopChan, errorChan)
-
-				time.Sleep(100 * time.Millisecond)
-
-				// Send requests to backing container via port-forward
 				baseURL := fmt.Sprintf("http://%s:%d", localHostname, localPort)
-
-				<-readyChan
 				client := &http.Client{
 					Timeout: time.Second * 10,
 				}
 
-				testGatewayAvailability(t, client, hostname, baseURL+"/healthz", 200)
+				var success bool
+				retries := 3
+			retryLoop:
+				for i := 1; i <= 3; i++ {
+					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+					stopChan := make(chan struct{})
+					readyChan := make(chan struct{})
+					errorChan := make(chan error)
 
-				// Both of these URLs route to the same backend service,
-				// but /backend2 maps to / which allows it to access /healthz
-				testGatewayAvailability(t, client, hostname, baseURL+"/backend2/healthz", 200)
-				testGatewayAvailability(t, client, hostname, baseURL+"/backend1/healthz", 404)
+					go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, remotePort, stopChan, readyChan, errorChan)
+
+					time.Sleep(100 * time.Millisecond)
+
+					select {
+					case err := <-errorChan:
+						t.Logf("Portforward failed with error: %s. retrying: (%d/%d)", err, i, retries)
+					case <-readyChan:
+						t.Logf("Portforward session active at %s", baseURL)
+						// Wait for a few seconds to ensure that envoy registers
+						// the dynamic configuration from httpproxies on the cluster
+						time.Sleep(5 * time.Second)
+
+						if err = testGatewayAvailability(t, client, hostname, baseURL+"/healthz", 200); err != nil {
+							continue retryLoop
+						}
+
+						// Both of these URLs route to the same backend service,
+						// but /backend2 maps to / which allows it to access /healthz
+						if err = testGatewayAvailability(t, client, hostname, baseURL+"/backend2/healthz", 200); err != nil {
+							continue retryLoop
+						}
+
+						if err = testGatewayAvailability(t, client, hostname, baseURL+"/backend1/healthz", 404); err != nil {
+							continue retryLoop
+						}
+
+						// All of the requests were successful
+						t.Logf("All requests encountered the correct status code")
+						success = true
+						break retryLoop
+					}
+				}
+
+				require.True(t, success, "Portforward failed to serve requests after %d retries", retries)
 			},
 		},
 	})
 	test.Test(t)
 }
 
-func testGatewayAvailability(t *testing.T, client *http.Client, hostname, url string, expectedStatusCode int) {
+func testGatewayAvailability(t *testing.T, client *http.Client, hostname, url string, expectedStatusCode int) error {
+	// Send requests to backing container via port-forward
+
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 
 	req.Host = hostname
 
-	retries := 60
-	for i := 0; i < retries; i++ {
-		t.Logf("making request to %s", url)
+	retries := 3
+	for i := 1; i <= retries; i++ {
+		t.Logf("Making request to %s...", url)
 		response, err := client.Do(req)
 		if err != nil {
 			t.Logf("got error %s", err.Error())
-			time.Sleep(1 * time.Second)
+			time.Sleep(retryTimeout * time.Second)
 			continue
 		}
 
@@ -133,14 +163,17 @@ func testGatewayAvailability(t *testing.T, client *http.Client, hostname, url st
 		}
 
 		if response.StatusCode != expectedStatusCode {
-			t.Logf("got status: %d, wanted: %d. retrying...", response.StatusCode, expectedStatusCode)
+			t.Logf("Got status: %d, wanted: %d. retrying (%d/%d)", response.StatusCode, expectedStatusCode, i, retries)
 			time.Sleep(retryTimeout * time.Second)
 			continue
 		}
 
 		// Encountered the correct status code
-		return
+		t.Logf("Successful request: got status: %d, wanted: %d.", response.StatusCode, expectedStatusCode)
+		return nil
 	}
 
-	require.NoError(t, fmt.Errorf("status code %d was not encountered after %d retries", expectedStatusCode, retries))
+	err = fmt.Errorf("Status code %d was not encountered after %d retries", expectedStatusCode, retries)
+	t.Logf(err.Error())
+	return err
 }
