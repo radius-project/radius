@@ -135,9 +135,17 @@ func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string
 		rp["container"] = rpImage
 	}
 
+	// TODO: Remove "rp" config when we cleanup custom resource provider.
+	_, ok = global["appcorerp"]
+	if !ok {
+		global["appcorerp"] = make(map[string]interface{})
+	}
+	appcorerp := global["appcorerp"].(map[string]interface{})
+
 	if containerTag != "" {
 		rp["tag"] = containerTag
 		radius["tag"] = containerTag
+		appcorerp["tag"] = containerTag
 	}
 
 	if publicEndpointOverride != "" {
