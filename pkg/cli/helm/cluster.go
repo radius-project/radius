@@ -77,6 +77,22 @@ func NewClusterOptions(cliOptions ClusterOptions) ClusterOptions {
 		options.Radius.Tag = cliOptions.Radius.Tag
 	}
 
+	if cliOptions.Radius.AppCoreImage != "" {
+		options.Radius.AppCoreImage = cliOptions.Radius.AppCoreImage
+	}
+
+	if cliOptions.Radius.AppCoreTag != "" {
+		options.Radius.AppCoreTag = cliOptions.Radius.AppCoreTag
+	}
+
+	if cliOptions.Radius.UCPImage != "" {
+		options.Radius.UCPImage = cliOptions.Radius.UCPImage
+	}
+
+	if cliOptions.Radius.UCPTag != "" {
+		options.Radius.UCPTag = cliOptions.Radius.UCPTag
+	}
+
 	return options
 }
 

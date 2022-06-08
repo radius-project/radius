@@ -59,6 +59,16 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	appcoreImage, err := cmd.Flags().GetString("appcore-image")
+	if err != nil {
+		return err
+	}
+
+	appcoreTag, err := cmd.Flags().GetString("appcore-tag")
+	if err != nil {
+		return err
+	}
+
 	ucpImage, err := cmd.Flags().GetString("ucp-image")
 	if err != nil {
 		return err
@@ -105,11 +115,13 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	cliOptions := helm.ClusterOptions{
 		Namespace: namespace,
 		Radius: helm.RadiusOptions{
-			ChartPath: chartPath,
-			Image:     image,
-			Tag:       tag,
-			UCPImage:  ucpImage,
-			UCPTag:    ucpTag,
+			ChartPath:    chartPath,
+			Image:        image,
+			Tag:          tag,
+			UCPImage:     ucpImage,
+			UCPTag:       ucpTag,
+			AppCoreImage: appcoreImage,
+			AppCoreTag:   appcoreTag,
 		},
 	}
 	options := helm.NewClusterOptions(cliOptions)
@@ -245,6 +257,8 @@ func init() {
 	envInitLocalCmd.Flags().String("image", "", "specify the radius controller image to use")
 	envInitLocalCmd.Flags().String("tag", "", "specify the radius controller tag to use")
 	envInitLocalCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
+	envInitLocalCmd.Flags().String("appcore-image", "", "Specify Application.Core RP image to use")
+	envInitLocalCmd.Flags().String("appcore-tag", "", "Specify Application.Core RP image tag to use")
 	envInitLocalCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
 	envInitLocalCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 }
