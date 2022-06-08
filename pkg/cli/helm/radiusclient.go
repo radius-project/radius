@@ -152,6 +152,18 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 		appcorerp["tag"] = options.AppCoreTag
 	}
 
+	_, ok = global["ucp"]
+	if !ok {
+		global["ucp"] = make(map[string]interface{})
+	}
+	ucp := global["ucp"].(map[string]interface{})
+	if options.UCPImage != "" {
+		ucp["image"] = options.UCPImage
+	}
+	if options.UCPTag != "" {
+		ucp["tag"] = options.UCPTag
+	}
+
 	return nil
 }
 
