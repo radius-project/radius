@@ -40,7 +40,7 @@ func (e *CreateOrUpdateController) Run(ctx context.Context, req *http.Request) (
 		return nil, err
 	}
 
-	existingResource := &datamodel.Container{}
+	existingResource := &datamodel.ContainerResource{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if req.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
@@ -72,7 +72,7 @@ func (e *CreateOrUpdateController) Run(ctx context.Context, req *http.Request) (
 }
 
 // Validate extracts versioned resource from request and validate the properties.
-func (e *CreateOrUpdateController) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Container, error) {
+func (e *CreateOrUpdateController) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.ContainerResource, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
@@ -92,7 +92,7 @@ func (e *CreateOrUpdateController) Validate(ctx context.Context, req *http.Reque
 }
 
 // UpdateExistingResourceData updates the container resource before it is saved to the DB.
-func UpdateExistingResourceData(ctx context.Context, er *datamodel.Container, nr *datamodel.Container) {
+func UpdateExistingResourceData(ctx context.Context, er *datamodel.ContainerResource, nr *datamodel.ContainerResource) {
 	sc := servicecontext.ARMRequestContextFromContext(ctx)
 	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *sc.SystemData())
 	if er.CreatedAPIVersion != "" {

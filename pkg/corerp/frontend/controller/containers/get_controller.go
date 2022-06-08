@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package environments
+package containers
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func NewGetController(ds store.StorageClient, sm manager.StatusManager) (ctrl.Co
 func (e *GetController) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.Container{}
+	existingResource := &datamodel.ContainerResource{}
 	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil

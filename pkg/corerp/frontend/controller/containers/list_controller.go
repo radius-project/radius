@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package environments
+package containers
 
 import (
 	"context"
@@ -54,7 +54,7 @@ func (e *ListController) createPaginationResponse(ctx context.Context, req *http
 
 	items := []interface{}{}
 	for _, item := range result.Items {
-		dc := &datamodel.Container{}
+		dc := &datamodel.ContainerResource{}
 		if err := item.As(dc); err != nil {
 			return nil, err
 		}
