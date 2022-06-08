@@ -70,3 +70,219 @@ func (p *ApplicationsListByScopePager) PageResponse() ApplicationsListByScopeRes
 	return p.current
 }
 
+// ContainersListByScopePager provides operations for iterating over paged responses.
+type ContainersListByScopePager struct {
+	client *ContainersClient
+	current ContainersListByScopeResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, ContainersListByScopeResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *ContainersListByScopePager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *ContainersListByScopePager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.ContainerResourceList.NextLink == nil || len(*p.current.ContainerResourceList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.pl.Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listByScopeHandleError(resp)
+		return false
+	}
+	result, err := p.client.listByScopeHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current ContainersListByScopeResponse page.
+func (p *ContainersListByScopePager) PageResponse() ContainersListByScopeResponse {
+	return p.current
+}
+
+// EnvironmentsListByScopePager provides operations for iterating over paged responses.
+type EnvironmentsListByScopePager struct {
+	client *EnvironmentsClient
+	current EnvironmentsListByScopeResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, EnvironmentsListByScopeResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *EnvironmentsListByScopePager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *EnvironmentsListByScopePager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.EnvironmentResourceList.NextLink == nil || len(*p.current.EnvironmentResourceList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.pl.Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listByScopeHandleError(resp)
+		return false
+	}
+	result, err := p.client.listByScopeHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current EnvironmentsListByScopeResponse page.
+func (p *EnvironmentsListByScopePager) PageResponse() EnvironmentsListByScopeResponse {
+	return p.current
+}
+
+// GatewaysListByScopePager provides operations for iterating over paged responses.
+type GatewaysListByScopePager struct {
+	client *GatewaysClient
+	current GatewaysListByScopeResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, GatewaysListByScopeResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *GatewaysListByScopePager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *GatewaysListByScopePager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.GatewayResourceList.NextLink == nil || len(*p.current.GatewayResourceList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.pl.Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listByScopeHandleError(resp)
+		return false
+	}
+	result, err := p.client.listByScopeHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current GatewaysListByScopeResponse page.
+func (p *GatewaysListByScopePager) PageResponse() GatewaysListByScopeResponse {
+	return p.current
+}
+
+// HTTPRoutesListByScopePager provides operations for iterating over paged responses.
+type HTTPRoutesListByScopePager struct {
+	client *HTTPRoutesClient
+	current HTTPRoutesListByScopeResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, HTTPRoutesListByScopeResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *HTTPRoutesListByScopePager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *HTTPRoutesListByScopePager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.HTTPRouteResourceList.NextLink == nil || len(*p.current.HTTPRouteResourceList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.pl.Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listByScopeHandleError(resp)
+		return false
+	}
+	result, err := p.client.listByScopeHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current HTTPRoutesListByScopeResponse page.
+func (p *HTTPRoutesListByScopePager) PageResponse() HTTPRoutesListByScopeResponse {
+	return p.current
+}
+

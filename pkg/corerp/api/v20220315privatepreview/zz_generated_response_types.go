@@ -64,3 +64,219 @@ type ApplicationsUpdateResult struct {
 	ApplicationResource
 }
 
+// ContainersCreateOrUpdateResponse contains the response from method Containers.CreateOrUpdate.
+type ContainersCreateOrUpdateResponse struct {
+	ContainersCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersCreateOrUpdateResult contains the result from method Containers.CreateOrUpdate.
+type ContainersCreateOrUpdateResult struct {
+	ContainerResource
+}
+
+// ContainersDeleteResponse contains the response from method Containers.Delete.
+type ContainersDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersGetResponse contains the response from method Containers.Get.
+type ContainersGetResponse struct {
+	ContainersGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersGetResult contains the result from method Containers.Get.
+type ContainersGetResult struct {
+	ContainerResource
+}
+
+// ContainersListByScopeResponse contains the response from method Containers.ListByScope.
+type ContainersListByScopeResponse struct {
+	ContainersListByScopeResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersListByScopeResult contains the result from method Containers.ListByScope.
+type ContainersListByScopeResult struct {
+	ContainerResourceList
+}
+
+// ContainersUpdateResponse contains the response from method Containers.Update.
+type ContainersUpdateResponse struct {
+	ContainersUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ContainersUpdateResult contains the result from method Containers.Update.
+type ContainersUpdateResult struct {
+	ContainerResource
+}
+
+// EnvironmentsCreateOrUpdateResponse contains the response from method Environments.CreateOrUpdate.
+type EnvironmentsCreateOrUpdateResponse struct {
+	EnvironmentsCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// EnvironmentsCreateOrUpdateResult contains the result from method Environments.CreateOrUpdate.
+type EnvironmentsCreateOrUpdateResult struct {
+	EnvironmentResource
+}
+
+// EnvironmentsDeleteResponse contains the response from method Environments.Delete.
+type EnvironmentsDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// EnvironmentsGetResponse contains the response from method Environments.Get.
+type EnvironmentsGetResponse struct {
+	EnvironmentsGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// EnvironmentsGetResult contains the result from method Environments.Get.
+type EnvironmentsGetResult struct {
+	EnvironmentResource
+}
+
+// EnvironmentsListByScopeResponse contains the response from method Environments.ListByScope.
+type EnvironmentsListByScopeResponse struct {
+	EnvironmentsListByScopeResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// EnvironmentsListByScopeResult contains the result from method Environments.ListByScope.
+type EnvironmentsListByScopeResult struct {
+	EnvironmentResourceList
+}
+
+// EnvironmentsUpdateResponse contains the response from method Environments.Update.
+type EnvironmentsUpdateResponse struct {
+	EnvironmentsUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// EnvironmentsUpdateResult contains the result from method Environments.Update.
+type EnvironmentsUpdateResult struct {
+	EnvironmentResource
+}
+
+// GatewaysCreateOrUpdateResponse contains the response from method Gateways.CreateOrUpdate.
+type GatewaysCreateOrUpdateResponse struct {
+	GatewaysCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysCreateOrUpdateResult contains the result from method Gateways.CreateOrUpdate.
+type GatewaysCreateOrUpdateResult struct {
+	GatewayResource
+}
+
+// GatewaysDeleteResponse contains the response from method Gateways.Delete.
+type GatewaysDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysGetResponse contains the response from method Gateways.Get.
+type GatewaysGetResponse struct {
+	GatewaysGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysGetResult contains the result from method Gateways.Get.
+type GatewaysGetResult struct {
+	GatewayResource
+}
+
+// GatewaysListByScopeResponse contains the response from method Gateways.ListByScope.
+type GatewaysListByScopeResponse struct {
+	GatewaysListByScopeResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysListByScopeResult contains the result from method Gateways.ListByScope.
+type GatewaysListByScopeResult struct {
+	GatewayResourceList
+}
+
+// GatewaysUpdateResponse contains the response from method Gateways.Update.
+type GatewaysUpdateResponse struct {
+	GatewaysUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// GatewaysUpdateResult contains the result from method Gateways.Update.
+type GatewaysUpdateResult struct {
+	GatewayResource
+}
+
+// HTTPRoutesCreateOrUpdateResponse contains the response from method HTTPRoutes.CreateOrUpdate.
+type HTTPRoutesCreateOrUpdateResponse struct {
+	HTTPRoutesCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesCreateOrUpdateResult contains the result from method HTTPRoutes.CreateOrUpdate.
+type HTTPRoutesCreateOrUpdateResult struct {
+	HTTPRouteResource
+}
+
+// HTTPRoutesDeleteResponse contains the response from method HTTPRoutes.Delete.
+type HTTPRoutesDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesGetResponse contains the response from method HTTPRoutes.Get.
+type HTTPRoutesGetResponse struct {
+	HTTPRoutesGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesGetResult contains the result from method HTTPRoutes.Get.
+type HTTPRoutesGetResult struct {
+	HTTPRouteResource
+}
+
+// HTTPRoutesListByScopeResponse contains the response from method HTTPRoutes.ListByScope.
+type HTTPRoutesListByScopeResponse struct {
+	HTTPRoutesListByScopeResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesListByScopeResult contains the result from method HTTPRoutes.ListByScope.
+type HTTPRoutesListByScopeResult struct {
+	HTTPRouteResourceList
+}
+
+// HTTPRoutesUpdateResponse contains the response from method HTTPRoutes.Update.
+type HTTPRoutesUpdateResponse struct {
+	HTTPRoutesUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// HTTPRoutesUpdateResult contains the result from method HTTPRoutes.Update.
+type HTTPRoutesUpdateResult struct {
+	HTTPRouteResource
+}
+

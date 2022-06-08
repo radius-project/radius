@@ -60,19 +60,9 @@ generate-radclient: generate-node-installed generate-autorest-installed generate
 		--verbose
 
 .PHONY: generate-rad-corerp-client
-generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the rad corerp client SDK (Autorest).
-	autorest --use=@autorest/go@4.0.0-preview.29 \
-        --module-version=$(AUTOREST_MODULE_VERSION) \
-        --input-file=swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json \
-        --tag=2022-03-15-privatepreview \
-        --go  \
-        --gomod-root=. \
-        --output-folder=./pkg/corerp/api/v20220315privatepreview \
-        --modelerfour.lenient-model-deduplication \
-        --license-header=MICROSOFT_MIT_NO_VERSION \
-        --file-prefix=zz_generated_ \
-        --azure-arm \
-        --verbose
+generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
+	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	autorest pkg/corerp/api/README.md --tag=2022-03-15-privatepreview
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:
