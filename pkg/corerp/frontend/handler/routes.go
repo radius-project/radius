@@ -30,6 +30,9 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 	scopeRoute := router
 	if !hostoptions.IsSelfHosted() {
 		scopeRoute = router.PathPrefix(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
+	} else {
+		// TODO: Enable ucp path.
+		// scopeRoute = router.PathPrefix(pathBase + "/planes/radius/{radiusTenant}").Subrouter()
 	}
 
 	// Configure the default ARM handlers.
