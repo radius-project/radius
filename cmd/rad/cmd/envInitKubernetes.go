@@ -60,6 +60,16 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	appcoreImage, err := cmd.Flags().GetString("appcore-image")
+	if err != nil {
+		return err
+	}
+
+	appcoreTag, err := cmd.Flags().GetString("appcore-tag")
+	if err != nil {
+		return err
+	}
+
 	ucpImage, err := cmd.Flags().GetString("ucp-image")
 	if err != nil {
 		return err
@@ -133,11 +143,13 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	cliOptions := helm.ClusterOptions{
 		Namespace: namespace,
 		Radius: helm.RadiusOptions{
-			ChartPath: chartPath,
-			Image:     image,
-			Tag:       tag,
-			UCPImage:  ucpImage,
-			UCPTag:    ucpTag,
+			ChartPath:    chartPath,
+			Image:        image,
+			Tag:          tag,
+			UCPImage:     ucpImage,
+			UCPTag:       ucpTag,
+			AppCoreImage: appcoreImage,
+			AppCoreTag:   appcoreTag,
 		},
 	}
 	clusterOptions := helm.NewClusterOptions(cliOptions)
