@@ -257,6 +257,8 @@ func init() {
 	envInitLocalCmd.Flags().String("image", "", "specify the radius controller image to use")
 	envInitLocalCmd.Flags().String("tag", "", "specify the radius controller tag to use")
 	envInitLocalCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
+	envInitLocalCmd.Flags().String("appcore-image", "", "Specify Application.Core RP image to use")
+	envInitLocalCmd.Flags().String("appcore-tag", "", "Specify Application.Core RP image tag to use")
 	envInitLocalCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
 	envInitLocalCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 }
