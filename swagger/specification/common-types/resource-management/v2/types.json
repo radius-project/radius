@@ -14,7 +14,7 @@
         "id": {
           "readOnly": true,
           "type": "string",
-          "description": "Fully qualified resource ID for the resource. Ex - /{scope}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+          "description": "Fully qualified resource ID for the resource. Ex - /{rootScope}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
         },
         "name": {
           "readOnly": true,
@@ -102,7 +102,7 @@
           "x-ms-mutability": [
             "read"
           ],
-          "description": "Fully qualified resource ID for the resource. Ex - /{scope}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
+          "description": "Fully qualified resource ID for the resource. Ex - /{rootScope}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}"
         },
         "name": {
           "readOnly": true,
