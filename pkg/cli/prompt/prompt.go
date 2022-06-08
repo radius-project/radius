@@ -8,20 +8,26 @@ package prompt
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
 type BinaryAnswer int
 
 const (
-	unknown = -1
-	Yes BinaryAnswer = iota
+	unknown              = -1
+	Yes     BinaryAnswer = iota
 	No
 )
 
 // EmptyValidator is a validation func that always returns true.
 func EmptyValidator(string) (bool, error) {
 	return true, nil
+}
+
+func UUIDv4Validator(uuid string) (bool, error) {
+	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
+	return r.MatchString(uuid), nil
 }
 
 // Confirm prompts the user to confirm the answer to a yes/no question.
@@ -118,7 +124,3 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 	return selected, nil
 }
 
-// Select prompts the user to choose from the possible options
-func Select(prompt string, choices []string) (int, error) {
-	return SelectWithDefault(prompt, nil, choices)
-}

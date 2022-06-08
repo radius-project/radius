@@ -31,10 +31,5 @@ func init() {
 	envInstallKubernetesCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 
 	// Parameters to configure Azure provider for cloud resources
-	envInstallKubernetesCmd.Flags().BoolP("provider-azure", "", false, "Add Azure provider for cloud resources")
-	envInstallKubernetesCmd.Flags().String("provider-azure-subscription", "", "Azure subscription for cloud resources")
-	envInstallKubernetesCmd.Flags().String("provider-azure-resource-group", "", "Azure resource-group for cloud resources")
-	envInstallKubernetesCmd.Flags().StringP("provider-azure-client-id", "", "", "The client id for the service principal")
-	envInstallKubernetesCmd.Flags().StringP("provider-azure-client-secret", "", "", "The client secret for the service principal")
-	envInstallKubernetesCmd.Flags().StringP("provider-azure-tenant-id", "", "", "The tenant id for the service principal")
+	registerAzureProviderFlags(envInstallKubernetesCmd)
 }
