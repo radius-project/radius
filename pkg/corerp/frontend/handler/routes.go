@@ -122,6 +122,18 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		},
 		// Container resource handlers
 		{
+			ParentRouter:   ctrRTSubrouter,
+			ResourceType:   ctr_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: ctr_ctrl.NewListController,
+		},
+		{
+			ParentRouter:   ctrRTSubrouter,
+			ResourceType:   ctr_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: ctr_ctrl.NewGetController,
+		},
+		{
 			ParentRouter:   ctrResourceRouter,
 			ResourceType:   ctr_ctrl.ResourceTypeName,
 			Method:         v1.OperationPut,
