@@ -67,7 +67,7 @@ generate-rad-corerp-client: generate-node-installed generate-autorest-installed 
 .PHONY: generate-rad-connectors-client
 generate-rad-connectors-client: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/connectors/api/README.md --tag=2022-03-15-privatepreview
+	autorest pkg/connectorrp/api/README.md --tag=2022-03-15-privatepreview
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:

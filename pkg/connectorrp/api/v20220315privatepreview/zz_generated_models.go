@@ -192,13 +192,8 @@ type DaprInvokeHTTPRoutesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprInvokeHTTPRoutesListBySubscriptionOptions contains the optional parameters for the DaprInvokeHTTPRoutes.ListBySubscription method.
-type DaprInvokeHTTPRoutesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprInvokeHTTPRoutesListOptions contains the optional parameters for the DaprInvokeHTTPRoutes.List method.
-type DaprInvokeHTTPRoutesListOptions struct {
+// DaprInvokeHTTPRoutesListByRootScopeOptions contains the optional parameters for the DaprInvokeHTTPRoutes.ListByRootScope method.
+type DaprInvokeHTTPRoutesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -389,13 +384,8 @@ type DaprPubSubBrokersGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprPubSubBrokersListBySubscriptionOptions contains the optional parameters for the DaprPubSubBrokers.ListBySubscription method.
-type DaprPubSubBrokersListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprPubSubBrokersListOptions contains the optional parameters for the DaprPubSubBrokers.List method.
-type DaprPubSubBrokersListOptions struct {
+// DaprPubSubBrokersListByRootScopeOptions contains the optional parameters for the DaprPubSubBrokers.ListByRootScope method.
+type DaprPubSubBrokersListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -607,13 +597,8 @@ type DaprSecretStoresGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprSecretStoresListBySubscriptionOptions contains the optional parameters for the DaprSecretStores.ListBySubscription method.
-type DaprSecretStoresListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprSecretStoresListOptions contains the optional parameters for the DaprSecretStores.List method.
-type DaprSecretStoresListOptions struct {
+// DaprSecretStoresListByRootScopeOptions contains the optional parameters for the DaprSecretStores.ListByRootScope method.
+type DaprSecretStoresListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -893,13 +878,8 @@ type DaprStateStoresGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprStateStoresListBySubscriptionOptions contains the optional parameters for the DaprStateStores.ListBySubscription method.
-type DaprStateStoresListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprStateStoresListOptions contains the optional parameters for the DaprStateStores.List method.
-type DaprStateStoresListOptions struct {
+// DaprStateStoresListByRootScopeOptions contains the optional parameters for the DaprStateStores.ListByRootScope method.
+type DaprStateStoresListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1115,13 +1095,8 @@ type ExtendersGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ExtendersListBySubscriptionOptions contains the optional parameters for the Extenders.ListBySubscription method.
-type ExtendersListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ExtendersListOptions contains the optional parameters for the Extenders.List method.
-type ExtendersListOptions struct {
+// ExtendersListByRootScopeOptions contains the optional parameters for the Extenders.ListByRootScope method.
+type ExtendersListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1294,13 +1269,8 @@ type MongoDatabasesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MongoDatabasesListBySubscriptionOptions contains the optional parameters for the MongoDatabases.ListBySubscription method.
-type MongoDatabasesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabasesListOptions contains the optional parameters for the MongoDatabases.List method.
-type MongoDatabasesListOptions struct {
+// MongoDatabasesListByRootScopeOptions contains the optional parameters for the MongoDatabases.ListByRootScope method.
+type MongoDatabasesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1458,13 +1428,8 @@ type RabbitMQMessageQueuesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMQMessageQueuesListBySubscriptionOptions contains the optional parameters for the RabbitMQMessageQueues.ListBySubscription method.
-type RabbitMQMessageQueuesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// RabbitMQMessageQueuesListOptions contains the optional parameters for the RabbitMQMessageQueues.List method.
-type RabbitMQMessageQueuesListOptions struct {
+// RabbitMQMessageQueuesListByRootScopeOptions contains the optional parameters for the RabbitMQMessageQueues.ListByRootScope method.
+type RabbitMQMessageQueuesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1631,19 +1596,14 @@ type RedisCachesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedisCachesListBySubscriptionOptions contains the optional parameters for the RedisCaches.ListBySubscription method.
-type RedisCachesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// RedisCachesListOptions contains the optional parameters for the RedisCaches.List method.
-type RedisCachesListOptions struct {
+// RedisCachesListByRootScopeOptions contains the optional parameters for the RedisCaches.ListByRootScope method.
+type RedisCachesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /{rootScope}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty" azure:"ro"`
 
 	// READ-ONLY; The name of the resource
@@ -1858,13 +1818,8 @@ type SQLDatabasesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// SQLDatabasesListBySubscriptionOptions contains the optional parameters for the SQLDatabases.ListBySubscription method.
-type SQLDatabasesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// SQLDatabasesListOptions contains the optional parameters for the SQLDatabases.List method.
-type SQLDatabasesListOptions struct {
+// SQLDatabasesListByRootScopeOptions contains the optional parameters for the SQLDatabases.ListByRootScope method.
+type SQLDatabasesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
