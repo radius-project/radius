@@ -34,16 +34,16 @@
       }
     },
     "paths": {
-      "/subscriptions/{subscriptionId}/providers/Applications.Connector/daprStateStores": {
+      "/{rootScope}/providers/Applications.Connector/daprStateStores": {
         "get": {
-          "description": "Lists information about all daprStateStore resources in the given subscription",
-          "operationId": "DaprStateStores_ListBySubscription",
+          "description": "Lists information about all daprStateStore resources in the given root scope",
+          "operationId": "DaprStateStores_ListByRootScope",
           "produces": [
             "application/json"
           ],
           "x-ms-examples": {
-            "DaprStateStoresListBySubscription": {
-              "$ref": "./examples/DaprStateStoresListBySubscription.json"
+            "DaprStateStoresListByRootScope": {
+              "$ref": "./examples/DaprStateStoresListByRootScope.json"
             }
           },
           "tags": [
@@ -54,7 +54,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             }
           ],
           "responses": {
@@ -77,53 +77,7 @@
           }
         }
       },
-      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprStateStores": {
-        "get": {
-          "description": "Lists information about all daprStateStore resources in the given subscription and resource group",
-          "operationId": "DaprStateStores_List",
-          "produces": [
-            "application/json"
-          ],
-          "x-ms-examples": {
-            "DaprStateStoresList": {
-              "$ref": "./examples/DaprStateStoresList.json"
-            }
-          },
-          "tags": [
-            "DaprStateStores"
-          ],
-          "parameters": [
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "List of DaprStateStore resources",
-              "schema": {
-                "$ref": "#/definitions/DaprStateStoreList"
-              }
-            },
-            "default": {
-              "description": "Error response describing why the operation failed.",
-              "schema": {
-                "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-              }
-            }
-          },
-          "deprecated": false,
-          "x-ms-pageable": {
-            "nextLinkName": "nextLink"
-          }
-        }
-      },
-      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}": {
+      "/{rootScope}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}": {
         "get": {
           "description": "Retrieves information about a daprStateStore resource",
           "operationId": "DaprStateStores_Get",
@@ -143,10 +97,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/DaprStateStoreNameParameter"
@@ -186,10 +137,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/DaprStateStoreNameParameter"
@@ -244,10 +192,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/DaprStateStoreNameParameter"
