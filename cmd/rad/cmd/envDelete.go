@@ -6,9 +6,9 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -248,7 +248,7 @@ func deleteFromConfig(cmd *cobra.Command, config *viper.Viper, clusterName strin
 	}
 
 	for envName, envs := range env.Items {
-		if fmt.Sprint(envs["context"]) != "" && fmt.Sprint(envs["context"]) == clusterName {
+		if fmt.Sprint(envs["context"]) == clusterName {
 			envNames = append(envNames, envName)
 		}
 	}
@@ -260,9 +260,9 @@ func deleteFromConfig(cmd *cobra.Command, config *viper.Viper, clusterName strin
 	}
 
 	output.LogInfo("Updating kube config")
-	params = append(params, concat("users.clusterUser_", resourceGroup, "_", clusterName))
-	params = append(params, concat("contexts.", clusterName))
-	params = append(params, concat("clusters.", clusterName))
+	params = append(params, strings.Join([]string{"users.clusterUser_", resourceGroup, "_", clusterName}, ""))
+	params = append(params, strings.Join([]string{"contexts.", clusterName}, ""))
+	params = append(params, strings.Join([]string{"clusters.", clusterName}, ""))
 
 	for _, param := range params {
 		if err := kubectl.RunCLICommandSilent("config", "unset", param); err != nil {
@@ -271,14 +271,4 @@ func deleteFromConfig(cmd *cobra.Command, config *viper.Viper, clusterName strin
 	}
 
 	return nil
-}
-
-func concat(str ...string) string {
-	var b bytes.Buffer
-
-	for _, item := range str {
-		b.WriteString(item)
-	}
-
-	return b.String()
 }
