@@ -15,6 +15,20 @@ const (
 	CORE_RP_API_VERSION = "2022-03-15-privatepreview"
 )
 
+type envType string
+
+const (
+	k8s envType = "kubernetes"
+	dev envType = "dev"
+)
+
+func init() {
+	envInitCmd.AddCommand(envInitKubernetesCmd)
+	registerAzureProviderFlags(envInitKubernetesCmd)
+	envInitKubernetesCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
+	envInitKubernetesCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
+}
+
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "Initializes a kubernetes environment",
