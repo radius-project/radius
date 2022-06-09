@@ -22,7 +22,6 @@ func Test_CreateResourceGroup(t *testing.T) {
 	var testHandler = NewResourceGroupsUCPHandler()
 
 	body := []byte(`{
-		"name": "test-rg"
 	}`)
 	path := "/planes/radius/local/resourceGroups/test-rg"
 
@@ -45,7 +44,25 @@ func Test_CreateResourceGroup(t *testing.T) {
 	mockStorageClient.EXPECT().Save(gomock.Any(), &o)
 	_, err := testHandler.Create(ctx, mockStorageClient, body, path)
 	assert.Equal(t, nil, err)
+}
 
+func Test_CreateResourceGroup_MismatchedNameInBody(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+	var testHandler = NewResourceGroupsUCPHandler()
+
+	body := []byte(`{
+		"name": "not-matching"
+	}`)
+	path := "/planes/radius/local/resourceGroups/test-rg"
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+
+	response, _ := testHandler.Create(ctx, mockStorageClient, body, path)
+	badResponse := rest.NewBadRequestResponse("Resource group name not-matching specified in the body does not match the name test-rg in the id")
+	assert.DeepEqual(t, badResponse, response)
 }
 
 func Test_ListResourceGroups(t *testing.T) {

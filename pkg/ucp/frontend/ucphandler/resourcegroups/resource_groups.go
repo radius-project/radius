@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	resourcegroupsdb "github.com/project-radius/radius/pkg/ucp/db/resourcegroups"
@@ -40,6 +41,12 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 	}
 
 	rg.ID = path
+	segments := strings.Split(path, resources.SegmentSeparator)
+	rgName := segments[len(segments)-1]
+	if rg.Name != "" && rgName != rg.Name {
+		return rest.NewBadRequestResponse(fmt.Sprintf("Resource group name %s specified in the body does not match the name %s in the id", rg.Name, rgName)), nil
+	}
+	rg.Name = segments[len(segments)-1]
 	rgExists := true
 	ID, err := resources.Parse(resources.UCPPrefix + rg.ID)
 	//cannot parse ID something wrong with request

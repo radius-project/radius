@@ -61,6 +61,11 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
+
+	if plane.Name != "" && plane.Name != name {
+		return rest.NewBadRequestResponse(fmt.Sprintf("Plane name %s specified in the body does not match the name %s in the id", plane.Name, name)), nil
+	}
+
 	plane.Type = planes.PlaneTypePrefix + "/" + planeType
 	plane.Name = name
 	planeExists := true

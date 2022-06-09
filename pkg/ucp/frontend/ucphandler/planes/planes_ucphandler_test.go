@@ -60,6 +60,32 @@ func Test_CreatePlane(t *testing.T) {
 
 }
 
+func Test_CreatePlane_MismatchedPlaneNameInBody(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+	var testHandler = NewPlanesUCPHandler(Options{})
+
+	body := []byte(`{
+		"name": "not-matching",
+		"properties": {
+			"resourceProviders": {
+				"Applications.Core": "http://localhost:9080/",
+				"Applications.Connection": "http://localhost:9081/"
+			},
+			"kind": "UCPNative"
+		}
+	}`)
+	path := "/planes/radius/local"
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+
+	response, _ := testHandler.CreateOrUpdate(ctx, mockStorageClient, body, path)
+	badResponse := rest.NewBadRequestResponse("Plane name not-matching specified in the body does not match the name local in the id")
+	assert.DeepEqual(t, badResponse, response)
+
+}
+
 func Test_ListPlane(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
