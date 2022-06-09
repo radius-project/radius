@@ -28,31 +28,13 @@ type Renderer struct {
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
-	properties, err := r.convert(workload)
-	if err != nil {
-		return nil, nil, err
-	}
-	// If the HttpRoute does not have any traffic split properties
-	if len(properties.Routes) == 0 {
-		return nil, nil, nil
-	}
-	for _, routes := range properties.Routes {
-		destination := routes.Destination
-		resourceID, err := azresources.Parse(*destination)
-		if err != nil {
-			return nil, nil, err
-		}
-		radiusResourceIDs = append(radiusResourceIDs, resourceID)
-	}
-	return radiusResourceIDs, azureResourceIDs, nil
+	return nil, nil, nil
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	route := radclient.HTTPRouteProperties{}
 	resource := options.Resource
-	radiusResourceIDs, _, _ := r.GetDependencyIDs(ctx, resource)
 	port := kubernetes.GetDefaultPort()
-
 	err := resource.ConvertDefinition(&route)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -80,7 +62,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	var trafficsplit outputresource.OutputResource
 	//Check if trafficsplit properties are configured for this HttpRoute. If yes, a TrafficSplit object will be created.
 	if len(route.Routes) > 0 {
-		trafficsplit = r.makeTrafficSplit(resource, route, radiusResourceIDs)
+		trafficsplit = r.makeTrafficSplit(resource, route, options)
 	}
 	if trafficsplit.Resource != nil {
 		outputs = append(outputs, trafficsplit)
@@ -122,10 +104,11 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
-func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route radclient.HTTPRouteProperties, radiusResourceIDs []azresources.ResourceID) outputresource.OutputResource {
+func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route radclient.HTTPRouteProperties, options renderers.RenderOptions) outputresource.OutputResource {
 	namespace := resource.ApplicationName
-	numBackends := len(radiusResourceIDs)
-	backends := make([]tsv1.TrafficSplitBackend, int(numBackends))
+	dependencies := options.Dependencies
+	numBackends := len(dependencies)
+	var backends []tsv1.TrafficSplitBackend
 	routeName := resource.ResourceName
 	rootService := namespace + "." + routeName
 	trafficsplit := &tsv1.TrafficSplit{
@@ -145,21 +128,13 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route r
 	}
 	//populating the values in the backends array
 	for i := 0; i < numBackends; i++ {
-		httpRouteName := radiusResourceIDs[i].Types[2].Name
-		trafficsplit.Spec.Backends[i] = tsv1.TrafficSplitBackend{
+		destination := *route.Routes[i].Destination
+		httpRouteName := dependencies[destination].ResourceID.Name()
+		tsBackend := tsv1.TrafficSplitBackend{
 			Service: httpRouteName,
 			Weight:  (int)(*(route.Routes[i].Weight)),
 		}
+		trafficsplit.Spec.Backends = append(trafficsplit.Spec.Backends, tsBackend)
 	}
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, trafficsplit, trafficsplit.ObjectMeta)
-}
-
-func (r Renderer) convert(resource renderers.RendererResource) (*radclient.HTTPRouteProperties, error) {
-	properties := &radclient.HTTPRouteProperties{}
-	err := resource.ConvertDefinition(properties)
-	if err != nil {
-		return nil, err
-	}
-
-	return properties, nil
 }
