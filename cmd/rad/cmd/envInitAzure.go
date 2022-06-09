@@ -24,6 +24,8 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/google/uuid"
+	"github.com/spf13/cobra"
+
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/azcli"
 	"github.com/project-radius/radius/pkg/azure/clients"
@@ -35,8 +37,31 @@ import (
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/version"
-	"github.com/spf13/cobra"
 )
+
+func init() {
+	envInitCmd.AddCommand(envInitAzureCmd)
+
+	envInitAzureCmd.Flags().StringP("subscription-id", "s", "", "The subscription ID to use for the environment")
+	envInitAzureCmd.Flags().StringP("resource-group", "g", "", "The resource group to use for the environment")
+	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
+	envInitAzureCmd.Flags().String("container-registry", "", "Specify the name of an existing Azure Container Registry to grant the environment access to pull containers from the registry")
+	envInitAzureCmd.Flags().String("loganalytics-workspace-id", "", "Specify the ARM resource ID of the log analytics workspace where the logs should be redirected to")
+
+	// development support
+	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
+}
+
+type azureArguments struct {
+	sharedArgs
+	Name                    string
+	SubscriptionID          string
+	ResourceGroup           string
+	Location                string
+	DeploymentTemplate      string
+	ContainerRegistry       string
+	LogAnalyticsWorkspaceID string
+}
 
 var supportedLocations = [5]string{
 	"australiaeast",
@@ -95,7 +120,7 @@ func initAzureRadEnvironment(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		a.Name, err = selectEnvironmentName(cmd.Context(), a.ResourceGroup)
+		a.Name, err = selectEnvironment(cmd, a.ResourceGroup, true)
 		if err != nil {
 			return err
 		}
@@ -128,72 +153,39 @@ func initAzureRadEnvironment(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func init() {
-	envInitCmd.AddCommand(envInitAzureCmd)
-
-	envInitAzureCmd.Flags().StringP("subscription-id", "s", "", "The subscription ID to use for the environment")
-	envInitAzureCmd.Flags().StringP("resource-group", "g", "", "The resource group to use for the environment")
-	envInitAzureCmd.Flags().StringP("location", "l", "", "The Azure location to use for the environment")
-	envInitAzureCmd.Flags().BoolP("interactive", "i", false, "Specify interactive to choose subscription and resource group interactively")
-	envInitAzureCmd.Flags().String("container-registry", "", "Specify the name of an existing Azure Container Registry to grant the environment access to pull containers from the registry")
-	envInitAzureCmd.Flags().String("loganalytics-workspace-id", "", "Specify the ARM resource ID of the log analytics workspace where the logs should be redirected to")
-	envInitAzureCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
-	envInitAzureCmd.Flags().StringP("chart", "", "", "Specify a file path to a helm chart to install radius from")
-	envInitAzureCmd.Flags().String("image", "", "Specify the radius controller image to use")
-	envInitAzureCmd.Flags().String("tag", "", "Specify the radius controller tag to use")
-
-	// development support
-	envInitAzureCmd.Flags().StringP("deployment-template", "t", "", "The file path to the deployment template - this can be used to override a custom build of the environment deployment ARM template for testing")
-}
-
-type arguments struct {
-	Name                    string
-	Interactive             bool
-	SubscriptionID          string
-	ResourceGroup           string
-	Location                string
-	DeploymentTemplate      string
-	ContainerRegistry       string
-	LogAnalyticsWorkspaceID string
-	ChartPath               string
-	Namespace               string
-	Image                   string
-	Tag                     string
-}
-
-func validate(cmd *cobra.Command, args []string) (arguments, error) {
-	interactive, err := cmd.Flags().GetBool("interactive")
+func validate(cmd *cobra.Command, args []string) (azureArguments, error) {
+	sharedArgs, err := parseArgs(cmd)
 	if err != nil {
-		return arguments{}, err
+		return azureArguments{}, err
 	}
 
 	subscriptionID, err := cmd.Flags().GetString("subscription-id")
 	if err != nil {
-		return arguments{}, err
+		return azureArguments{}, err
 	}
 
 	resourceGroup, err := cmd.Flags().GetString("resource-group")
 	if err != nil {
-		return arguments{}, err
+		return azureArguments{}, err
 	}
 
-	name, err := cmd.Flags().GetString("environment")
+	name, err := selectEnvironment(cmd, resourceGroup, false)
 	if err != nil {
-		return arguments{}, err
+		return azureArguments{}, err
 	}
 
 	location, err := cmd.Flags().GetString("location")
 	if err != nil {
-		return arguments{}, err
+		return azureArguments{}, err
 	}
 
-	if interactive && (subscriptionID != "" || resourceGroup != "" || location != "" || name != "") {
-		return arguments{}, errors.New("subcription id, resource group, location or environment name cannot be specified with interactive")
+	if sharedArgs.Interactive && (subscriptionID != "" || resourceGroup != "" || location != "" || name != "") {
+		return azureArguments{}, errors.New("subcription id, resource group, location or environment name cannot be specified with interactive")
 	}
 
-	if !interactive {
+	if !sharedArgs.Interactive {
 		if subscriptionID == "" || resourceGroup == "" || location == "" {
-			return arguments{}, errors.New("subscription id, resource group and location must be specified")
+			return azureArguments{}, errors.New("subscription id, resource group and location must be specified")
 		}
 		if name == "" {
 			name = resourceGroup
@@ -203,63 +195,39 @@ func validate(cmd *cobra.Command, args []string) (arguments, error) {
 
 	deploymentTemplate, err := cmd.Flags().GetString("deployment-template")
 	if err != nil {
-		return arguments{}, err
+		return azureArguments{}, err
 	}
 
 	if deploymentTemplate != "" {
 		_, err := os.Stat(deploymentTemplate)
 		if err != nil {
-			return arguments{}, fmt.Errorf("could not read deployment-template: %w", err)
+			return azureArguments{}, fmt.Errorf("could not read deployment-template: %w", err)
 		}
 	}
 
 	registryName, err := cmd.Flags().GetString("container-registry")
 	if err != nil {
-		return arguments{}, err
+		return azureArguments{}, err
 	}
 
 	logAnalyticsWorkspaceID, err := cmd.Flags().GetString("loganalytics-workspace-id")
 	if err != nil {
-		return arguments{}, err
-	}
-
-	namespace, err := cmd.Flags().GetString("namespace")
-	if err != nil {
-		return arguments{}, err
-	}
-
-	chartPath, err := cmd.Flags().GetString("chart")
-	if err != nil {
-		return arguments{}, err
-	}
-
-	image, err := cmd.Flags().GetString("image")
-	if err != nil {
-		return arguments{}, err
-	}
-
-	tag, err := cmd.Flags().GetString("tag")
-	if err != nil {
-		return arguments{}, err
+		return azureArguments{}, err
 	}
 
 	if location != "" && !isSupportedLocation(location) {
-		return arguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
+		return azureArguments{}, fmt.Errorf("the location '%s' is not supported. choose from: %s", location, strings.Join(supportedLocations[:], ", "))
 	}
 
-	return arguments{
+	return azureArguments{
+		sharedArgs:              sharedArgs,
 		Name:                    name,
-		Interactive:             interactive,
 		SubscriptionID:          subscriptionID,
 		ResourceGroup:           resourceGroup,
 		Location:                location,
 		DeploymentTemplate:      deploymentTemplate,
 		ContainerRegistry:       registryName,
 		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
-		Namespace:               namespace,
-		ChartPath:               chartPath,
-		Image:                   image,
-		Tag:                     tag,
 	}, nil
 }
 
@@ -295,7 +263,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (ra
 		names = append(names, s.DisplayName)
 	}
 
-	index, err := prompt.Select("Select Subscription:", names)
+	index, err := prompt.SelectWithDefault("Select Subscription:", &names[0], names)
 	if err != nil {
 		return radazure.Subscription{}, err
 	}
@@ -333,11 +301,6 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func selectEnvironmentName(ctx context.Context, defaultName string) (string, error) {
-	promptStr := fmt.Sprintf("Enter an Environment name [%s]:", defaultName)
-	return prompt.TextWithDefault(promptStr, &defaultName, prompt.EmptyValidator)
-}
-
 func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub radazure.Subscription) (subscription.Location, error) {
 	// Use the display name for the prompt
 	// alphabetize so the list is stable and scannable
@@ -360,7 +323,7 @@ func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, 
 	}
 	sort.Strings(names)
 
-	index, err := prompt.Select("Select a location:", names)
+	index, err := prompt.SelectWithDefault("Select a location:", &names[0], names)
 	if err != nil {
 		return subscription.Location{}, err
 	}
@@ -634,6 +597,14 @@ func validateLogAnalyticsWorkspace(ctx context.Context, authorizer autorest.Auth
 	return resource.ResourceName, nil
 }
 
+type deploymentParameters struct {
+	ResourceGroup           string
+	Location                string
+	DeploymentTemplate      string
+	RegistryName            string
+	LogAnalyticsWorkspaceID string
+}
+
 func deployEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, params deploymentParameters) (resources.DeploymentExtended, error) {
 	// We have to create the resource group in case it doesn't exist.
 	groupc := clients.NewGroupsClient(subscriptionID, authorizer)
@@ -789,12 +760,4 @@ func isSupportedLocation(name string) bool {
 	}
 
 	return false
-}
-
-type deploymentParameters struct {
-	ResourceGroup           string
-	Location                string
-	DeploymentTemplate      string
-	RegistryName            string
-	LogAnalyticsWorkspaceID string
 }

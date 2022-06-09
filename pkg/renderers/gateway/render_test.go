@@ -53,7 +53,7 @@ func Test_Render_WithNoHostname(t *testing.T) {
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
 	expectedURL := "http://" + expectedHostname
-	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
@@ -78,7 +78,7 @@ func Test_Render_WithPrefix(t *testing.T) {
 
 	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", prefix, applicationName, publicIP)
 	expectedURL := "http://" + expectedHostname
-	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
@@ -101,7 +101,7 @@ func Test_Render_WithFQHostname(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
@@ -126,7 +126,7 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
@@ -150,7 +150,7 @@ func Test_Render_DevEnvironment(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, publicIP, output.ComputedValues["hostname"].Value)
+	require.Equal(t, publicIP, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedFqdn, expectedIncludes)
 }
@@ -174,7 +174,7 @@ func Test_Render_PublicEndpointOverride(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, publicIP, output.ComputedValues["hostname"].Value)
+	require.Equal(t, publicIP, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedFqdn, expectedIncludes)
 }
@@ -196,7 +196,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, "unknown", output.ComputedValues["hostname"].Value)
+	require.Equal(t, "unknown", output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, resource.ApplicationName, expectedIncludes)
 }
@@ -260,7 +260,7 @@ func Test_Render_Single_Route(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	expectedIncludes := []contourv1.Include{
 		{
@@ -310,7 +310,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 3)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	expectedIncludes := []contourv1.Include{
 		{
@@ -363,7 +363,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	expectedIncludes := []contourv1.Include{
 		{
@@ -437,7 +437,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 3)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedURL, output.ComputedValues["hostname"].Value)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	expectedIncludes := []contourv1.Include{
 		{

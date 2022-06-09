@@ -64,6 +64,60 @@ type DaprInvokeHTTPRoutesListResult struct {
 	DaprInvokeHTTPRouteList
 }
 
+// DaprPubSubBrokersCreateOrUpdateResponse contains the response from method DaprPubSubBrokers.CreateOrUpdate.
+type DaprPubSubBrokersCreateOrUpdateResponse struct {
+	DaprPubSubBrokersCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersCreateOrUpdateResult contains the result from method DaprPubSubBrokers.CreateOrUpdate.
+type DaprPubSubBrokersCreateOrUpdateResult struct {
+	DaprPubSubBrokerResource
+}
+
+// DaprPubSubBrokersDeleteResponse contains the response from method DaprPubSubBrokers.Delete.
+type DaprPubSubBrokersDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersGetResponse contains the response from method DaprPubSubBrokers.Get.
+type DaprPubSubBrokersGetResponse struct {
+	DaprPubSubBrokersGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersGetResult contains the result from method DaprPubSubBrokers.Get.
+type DaprPubSubBrokersGetResult struct {
+	DaprPubSubBrokerResource
+}
+
+// DaprPubSubBrokersListBySubscriptionResponse contains the response from method DaprPubSubBrokers.ListBySubscription.
+type DaprPubSubBrokersListBySubscriptionResponse struct {
+	DaprPubSubBrokersListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersListBySubscriptionResult contains the result from method DaprPubSubBrokers.ListBySubscription.
+type DaprPubSubBrokersListBySubscriptionResult struct {
+	DaprPubSubBrokerList
+}
+
+// DaprPubSubBrokersListResponse contains the response from method DaprPubSubBrokers.List.
+type DaprPubSubBrokersListResponse struct {
+	DaprPubSubBrokersListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersListResult contains the result from method DaprPubSubBrokers.List.
+type DaprPubSubBrokersListResult struct {
+	DaprPubSubBrokerList
+}
+
 // DaprSecretStoresCreateOrUpdateResponse contains the response from method DaprSecretStores.CreateOrUpdate.
 type DaprSecretStoresCreateOrUpdateResponse struct {
 	DaprSecretStoresCreateOrUpdateResult

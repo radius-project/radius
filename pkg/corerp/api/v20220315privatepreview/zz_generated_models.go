@@ -75,13 +75,8 @@ type ApplicationsGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ApplicationsListBySubscriptionOptions contains the optional parameters for the Applications.ListBySubscription method.
-type ApplicationsListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ApplicationsListOptions contains the optional parameters for the Applications.List method.
-type ApplicationsListOptions struct {
+// ApplicationsListByScopeOptions contains the optional parameters for the Applications.ListByScope method.
+type ApplicationsListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -335,13 +330,8 @@ type ContainersGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ContainersListBySubscriptionOptions contains the optional parameters for the Containers.ListBySubscription method.
-type ContainersListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ContainersListOptions contains the optional parameters for the Containers.List method.
-type ContainersListOptions struct {
+// ContainersListByScopeOptions contains the optional parameters for the Containers.ListByScope method.
+type ContainersListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -485,13 +475,8 @@ type EnvironmentsGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// EnvironmentsListBySubscriptionOptions contains the optional parameters for the Environments.ListBySubscription method.
-type EnvironmentsListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// EnvironmentsListOptions contains the optional parameters for the Environments.List method.
-type EnvironmentsListOptions struct {
+// EnvironmentsListByScopeOptions contains the optional parameters for the Environments.ListByScope method.
+type EnvironmentsListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -815,13 +800,8 @@ type GatewaysGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// GatewaysListBySubscriptionOptions contains the optional parameters for the Gateways.ListBySubscription method.
-type GatewaysListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// GatewaysListOptions contains the optional parameters for the Gateways.List method.
-type GatewaysListOptions struct {
+// GatewaysListByScopeOptions contains the optional parameters for the Gateways.ListByScope method.
+type GatewaysListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1006,13 +986,8 @@ type HTTPRoutesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// HTTPRoutesListBySubscriptionOptions contains the optional parameters for the HTTPRoutes.ListBySubscription method.
-type HTTPRoutesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// HTTPRoutesListOptions contains the optional parameters for the HTTPRoutes.List method.
-type HTTPRoutesListOptions struct {
+// HTTPRoutesListByScopeOptions contains the optional parameters for the HTTPRoutes.ListByScope method.
+type HTTPRoutesListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1190,7 +1165,7 @@ func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /{rootScope}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty" azure:"ro"`
 
 	// READ-ONLY; The name of the resource

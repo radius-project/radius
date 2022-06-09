@@ -6,12 +6,15 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli"
@@ -22,8 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/kubernetes/kubectl"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var envDeleteCmd = &cobra.Command{
@@ -107,7 +108,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 	if ok {
 
 		if !yes {
-			confirmed, err := prompt.Confirm(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/n]?", dev.ClusterName))
+			confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/N]?", dev.ClusterName), prompt.No)
 			if err != nil {
 				return err
 			}
@@ -247,7 +248,7 @@ func deleteFromConfig(cmd *cobra.Command, config *viper.Viper, clusterName strin
 	}
 
 	for envName, envs := range env.Items {
-		if fmt.Sprint(envs["context"]) != "" && fmt.Sprint(envs["context"]) == clusterName {
+		if fmt.Sprint(envs["context"]) == clusterName {
 			envNames = append(envNames, envName)
 		}
 	}
@@ -259,9 +260,9 @@ func deleteFromConfig(cmd *cobra.Command, config *viper.Viper, clusterName strin
 	}
 
 	output.LogInfo("Updating kube config")
-	params = append(params, concat("users.clusterUser_", resourceGroup, "_", clusterName))
-	params = append(params, concat("contexts.", clusterName))
-	params = append(params, concat("clusters.", clusterName))
+	params = append(params, strings.Join([]string{"users.clusterUser_", resourceGroup, "_", clusterName}, ""))
+	params = append(params, strings.Join([]string{"contexts.", clusterName}, ""))
+	params = append(params, strings.Join([]string{"clusters.", clusterName}, ""))
 
 	for _, param := range params {
 		if err := kubectl.RunCLICommandSilent("config", "unset", param); err != nil {
@@ -270,14 +271,4 @@ func deleteFromConfig(cmd *cobra.Command, config *viper.Viper, clusterName strin
 	}
 
 	return nil
-}
-
-func concat(str ...string) string {
-	var b bytes.Buffer
-
-	for _, item := range str {
-		b.WriteString(item)
-	}
-
-	return b.String()
 }
