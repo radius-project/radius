@@ -67,7 +67,8 @@ func TestHandlers(t *testing.T) {
 	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
 
 	r := mux.NewRouter()
-	AddRoutes(context.Background(), mockSP, r, "", true)
+	err := AddRoutes(context.Background(), mockSP, r, "", true)
+	require.NoError(t, err)
 
 	for _, tt := range handlerTests {
 		t.Run(tt.url, func(t *testing.T) {
