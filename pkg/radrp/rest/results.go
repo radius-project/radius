@@ -219,6 +219,47 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 	return nil
 }
 
+// AsyncOperationCreatedResponse represents an HTTP 201 with a body and headers.
+type AsyncOperationCreatedResponse struct {
+	Body    interface{}
+	Headers map[string]string
+}
+
+// AsyncOperationCreatedResponse creates an AsyncOperationCreatedResponse
+func NewAsyncOperationCreatedResponse(body interface{}, headers map[string]string) Response {
+	return &AsyncOperationCreatedResponse{
+		Body:    body,
+		Headers: headers,
+	}
+}
+
+func (r *AsyncOperationCreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	// Write Body
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	// Write Headers
+	w.Header().Add("Content-Type", "application/json")
+	if _, ok := r.Headers["Location"]; !ok {
+		return fmt.Errorf("location header must exist in AsyncOperationCreatedResponse")
+	}
+
+	for key, element := range r.Headers {
+		w.Header().Add(key, element)
+	}
+
+	w.WriteHeader(http.StatusCreated)
+
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
+
+	return nil
+}
+
 // NoContentResponse represents an HTTP 204.
 //
 // This is used for delete operations.
