@@ -10,29 +10,24 @@ import (
 	"errors"
 	"net/http"
 
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ base_ctrl.ControllerInterface = (*DeleteSqlDatabase)(nil)
+var _ ctrl.Controller = (*DeleteSqlDatabase)(nil)
 
 // DeleteSqlDatabase is the controller implementation to delete sqldatabase connector resource.
 type DeleteSqlDatabase struct {
-	base_ctrl.BaseController
+	ctrl.BaseController
 }
 
 // NewDeleteSqlDatabase creates a new instance DeleteSqlDatabase.
-func NewDeleteSqlDatabase(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
-	return &DeleteSqlDatabase{
-		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewDeleteSqlDatabase(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &DeleteSqlDatabase{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 func (sql *DeleteSqlDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -52,12 +47,12 @@ func (sql *DeleteSqlDatabase) Run(ctx context.Context, req *http.Request) (rest.
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = base_ctrl.ValidateETag(*serviceCtx, etag)
+	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	err = sql.DBClient.Delete(ctx, serviceCtx.ResourceID.String())
+	err = sql.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil

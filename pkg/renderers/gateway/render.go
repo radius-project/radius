@@ -37,8 +37,6 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		return renderers.RendererOutput{}, err
 	}
 
-	fmt.Printf("RuntimeOptions: %+v\n", options.Runtime)
-
 	outputs := []outputresource.OutputResource{}
 
 	gatewayName := kubernetes.MakeResourceName(options.Resource.ApplicationName, options.Resource.ResourceName)
@@ -64,7 +62,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
-		"hostname": {
+		"url": {
 			Value: computedHostname,
 		},
 	}
@@ -138,7 +136,7 @@ func MakeGateway(ctx context.Context, resource renderers.RendererResource, gatew
 }
 
 func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string) ([]outputresource.OutputResource, error) {
-	var outputs []outputresource.OutputResource
+	objects := make(map[string]*contourv1.HTTPProxy)
 
 	for _, route := range gateway.Routes {
 		routeName, err := getRouteName(route)
@@ -146,8 +144,44 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 			return []outputresource.OutputResource{}, err
 		}
 
+		// Create unique localID for dependency graph
+		localID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, routeName)
 		routeResourceName := kubernetes.MakeResourceName(resource.ApplicationName, routeName)
 		port := kubernetes.GetDefaultPort()
+
+		var pathRewritePolicy *contourv1.PathRewritePolicy
+		if route.ReplacePrefix != nil {
+			pathRewritePolicy = &contourv1.PathRewritePolicy{
+				ReplacePrefix: []contourv1.ReplacePrefix{
+					{
+						Prefix:      *route.Path,
+						Replacement: *route.ReplacePrefix,
+					},
+				},
+			}
+		}
+
+		// If this route already exists, append to it
+		if object, exists := objects[localID]; exists {
+			if pathRewritePolicy != nil {
+			outer:
+				for i := range object.Spec.Routes {
+					for _, service := range object.Spec.Routes[i].Services {
+						if service.Name == routeResourceName {
+							if object.Spec.Routes[i].PathRewritePolicy == nil {
+								object.Spec.Routes[i].PathRewritePolicy = pathRewritePolicy
+							} else {
+								object.Spec.Routes[i].PathRewritePolicy.ReplacePrefix = append(object.Spec.Routes[i].PathRewritePolicy.ReplacePrefix, pathRewritePolicy.ReplacePrefix[0])
+							}
+
+							break outer
+						}
+					}
+				}
+			}
+
+			continue
+		}
 
 		httpProxyObject := &contourv1.HTTPProxy{
 			TypeMeta: metav1.TypeMeta{
@@ -168,15 +202,18 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 								Port: port,
 							},
 						},
+						PathRewritePolicy: pathRewritePolicy,
 					},
 				},
 			},
 		}
 
-		// Create unique localID for dependency graph
-		localID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, routeName)
+		objects[localID] = httpProxyObject
+	}
 
-		outputs = append(outputs, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, httpProxyObject, httpProxyObject.ObjectMeta))
+	var outputs []outputresource.OutputResource
+	for localID, object := range objects {
+		outputs = append(outputs, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, object, object.ObjectMeta))
 	}
 
 	return outputs, nil

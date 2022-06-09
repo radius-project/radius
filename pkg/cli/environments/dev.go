@@ -38,8 +38,8 @@ type LocalEnvironment struct {
 	APIServerBaseURL           string     `mapstructure:"apiserverbaseurl,omitempty"`
 	APIDeploymentEngineBaseURL string     `mapstructure:"apideploymentenginebaseurl,omitempty"`
 	Providers                  *Providers `mapstructure:"providers"`
+	EnableUCP                  bool       `mapstructure:"enableucp,omitempty"`
 
-	EnableUCP bool `mapstructure:"enableucp,omitempty"`
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
 }
@@ -120,7 +120,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		tags["azureLocation"] = resp.Location
 	}
 
-	dc := azclients.NewDeploymentsClientWithBaseURI(url, subscriptionId)
+	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
 
 	// Poll faster than the default, many deployments are quick
 	dc.PollingDelay = 5 * time.Second
@@ -128,19 +128,19 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 
 	dc.Sender = &devsender{RoundTripper: roundTripper}
 
-	op := azclients.NewOperationsClientWithBaseUri(url, subscriptionId)
+	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
 	op.PollingDelay = 5 * time.Second
 	op.Sender = &devsender{RoundTripper: roundTripper}
 	op.Authorizer = auth
 
-	client := &azure.ARMDeploymentClient{
+	client := &azure.ResouceDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
 		SubscriptionID:   subscriptionId,
 		ResourceGroup:    resourceGroup,
 		Tags:             tags,
+		EnableUCP:        e.EnableUCP,
 	}
-
 	return client, nil
 }
 

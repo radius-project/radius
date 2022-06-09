@@ -12,6 +12,18 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Connector/daprInvokeHttpRoutes' (ReadOnly, DeployTimeConstant): The resource type
 
+## Resource Applications.Connector/daprPubSubBrokers@2022-03-15-privatepreview
+* **Valid Scope(s)**: ResourceGroup
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [DaprPubSubBrokerProperties](#daprpubsubbrokerproperties) (Required): DaprPubSubBroker connector properties
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Connector/daprPubSubBrokers' (ReadOnly, DeployTimeConstant): The resource type
+
 ## Resource Applications.Connector/daprSecretStores@2022-03-15-privatepreview
 * **Valid Scope(s)**: ResourceGroup
 ### Properties
@@ -35,6 +47,18 @@
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Connector/daprStateStores' (ReadOnly, DeployTimeConstant): The resource type
+
+## Resource Applications.Connector/extenders@2022-03-15-privatepreview
+* **Valid Scope(s)**: ResourceGroup
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [ExtenderProperties](#extenderproperties) (Required): Extender connector properties
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Connector/extenders' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/mongoDatabases@2022-03-15-privatepreview
 * **Valid Scope(s)**: ResourceGroup
@@ -115,6 +139,32 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
+## DaprPubSubBrokerProperties
+* **Discriminator**: kind
+
+### Base Properties
+* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **environment**: string (Required): The resource id of the environment linked to the daprPubSubBroker connector
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+### DaprPubSubGenericResourceProperties
+#### Properties
+* **kind**: 'generic' (Required): The DaprPubSubProperties kind
+* **metadata**: any (Required): Any object
+* **type**: string (Required): Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string (Required): Dapr component version
+
+### DaprPubSubAzureServiceBusResourceProperties
+#### Properties
+* **kind**: 'pubsub.azure.servicebus' (Required): The DaprPubSubProperties kind
+* **resource**: string (Required): PubSub resource
+
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
 ## DaprSecretStoreProperties
 ### Properties
 * **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
@@ -156,6 +206,26 @@
 * **kind**: 'state.sqlserver' (Required): The Dapr StateStore kind
 * **resource**: string (Required): The resource id of the Azure SQL Database the daprStateStore resource is connected to.
 
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## ExtenderProperties
+### Properties
+* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **secrets**: [ExtenderPropertiesSecrets](#extenderpropertiessecrets): Dictionary of <any>
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+### Additional Properties
+* **Additional Properties Type**: any
+
+## ExtenderPropertiesSecrets
+### Properties
+### Additional Properties
+* **Additional Properties Type**: any
 
 ## TrackedResourceTags
 ### Properties

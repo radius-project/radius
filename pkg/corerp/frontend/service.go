@@ -12,11 +12,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
-	armAuthenticator "github.com/project-radius/radius/pkg/corerp/authentication"
-	"github.com/project-radius/radius/pkg/corerp/dataprovider"
+	"github.com/project-radius/radius/pkg/armrpc/authentication"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
-	"github.com/project-radius/radius/pkg/corerp/frontend/server"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 )
 
 type Service struct {
@@ -30,7 +30,7 @@ func NewService(options hostoptions.HostOptions) *Service {
 }
 
 func (s *Service) Name() string {
-	return "Applications.Core RP frontend"
+	return "Applications.Core frontend"
 }
 
 func (s *Service) Run(ctx context.Context) error {
@@ -44,30 +44,23 @@ func (s *Service) Run(ctx context.Context) error {
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 
 	// initialize the manager for ARM client cert validation
-	var acm *armAuthenticator.ArmCertManager
+	var acm *authentication.ArmCertManager
 	if s.Options.Config.Server.EnableArmAuth {
-		acm = armAuthenticator.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
+		acm = authentication.NewArmCertManager(s.Options.Config.Server.ArmMetadataEndpoint, logger)
 		err := acm.Start(ctx)
 		if err != nil {
 			logger.Error(err, "Error creating arm cert manager")
 			return err
 		}
 	}
-	server, err := server.NewServer(ctx, server.ServerOptions{
+	server, err := server.New(ctx, server.Options{
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    acm,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, s.Options.Config.Server.PathBase)
-			if err != nil {
-				return err
-			}
-
-			// TODO Connector RP will be moved into a separate service, for now using core RP's infra to unblock end to end testing
-			// https://github.com/project-radius/core-team/issues/90
-			err = handler.AddConnectorRoutes(ctx, storageProvider, nil, router, handler.DefaultValidatorFactory, "")
+			err := handler.AddRoutes(ctx, storageProvider, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted())
 			if err != nil {
 				return err
 			}

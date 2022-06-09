@@ -12,7 +12,7 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/version"
 )
 

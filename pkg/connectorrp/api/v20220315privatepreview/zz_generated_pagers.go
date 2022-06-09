@@ -124,6 +124,114 @@ func (p *DaprInvokeHTTPRoutesListPager) PageResponse() DaprInvokeHTTPRoutesListR
 	return p.current
 }
 
+// DaprPubSubBrokersListBySubscriptionPager provides operations for iterating over paged responses.
+type DaprPubSubBrokersListBySubscriptionPager struct {
+	client *DaprPubSubBrokersClient
+	current DaprPubSubBrokersListBySubscriptionResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, DaprPubSubBrokersListBySubscriptionResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *DaprPubSubBrokersListBySubscriptionPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *DaprPubSubBrokersListBySubscriptionPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.DaprPubSubBrokerList.NextLink == nil || len(*p.current.DaprPubSubBrokerList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.pl.Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listBySubscriptionHandleError(resp)
+		return false
+	}
+	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current DaprPubSubBrokersListBySubscriptionResponse page.
+func (p *DaprPubSubBrokersListBySubscriptionPager) PageResponse() DaprPubSubBrokersListBySubscriptionResponse {
+	return p.current
+}
+
+// DaprPubSubBrokersListPager provides operations for iterating over paged responses.
+type DaprPubSubBrokersListPager struct {
+	client *DaprPubSubBrokersClient
+	current DaprPubSubBrokersListResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, DaprPubSubBrokersListResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *DaprPubSubBrokersListPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *DaprPubSubBrokersListPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.DaprPubSubBrokerList.NextLink == nil || len(*p.current.DaprPubSubBrokerList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.pl.Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listHandleError(resp)
+		return false
+	}
+	result, err := p.client.listHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current DaprPubSubBrokersListResponse page.
+func (p *DaprPubSubBrokersListPager) PageResponse() DaprPubSubBrokersListResponse {
+	return p.current
+}
+
 // DaprSecretStoresListBySubscriptionPager provides operations for iterating over paged responses.
 type DaprSecretStoresListBySubscriptionPager struct {
 	client *DaprSecretStoresClient
@@ -337,6 +445,114 @@ func (p *DaprStateStoresListPager) NextPage(ctx context.Context) bool {
 
 // PageResponse returns the current DaprStateStoresListResponse page.
 func (p *DaprStateStoresListPager) PageResponse() DaprStateStoresListResponse {
+	return p.current
+}
+
+// ExtendersListBySubscriptionPager provides operations for iterating over paged responses.
+type ExtendersListBySubscriptionPager struct {
+	client *ExtendersClient
+	current ExtendersListBySubscriptionResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, ExtendersListBySubscriptionResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *ExtendersListBySubscriptionPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *ExtendersListBySubscriptionPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.ExtenderList.NextLink == nil || len(*p.current.ExtenderList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.pl.Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listBySubscriptionHandleError(resp)
+		return false
+	}
+	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current ExtendersListBySubscriptionResponse page.
+func (p *ExtendersListBySubscriptionPager) PageResponse() ExtendersListBySubscriptionResponse {
+	return p.current
+}
+
+// ExtendersListPager provides operations for iterating over paged responses.
+type ExtendersListPager struct {
+	client *ExtendersClient
+	current ExtendersListResponse
+	err error
+	requester func(context.Context) (*policy.Request, error)
+	advancer func(context.Context, ExtendersListResponse) (*policy.Request, error)
+}
+
+// Err returns the last error encountered while paging.
+func (p *ExtendersListPager) Err() error {
+	return p.err
+}
+
+// NextPage returns true if the pager advanced to the next page.
+// Returns false if there are no more pages or an error occurred.
+func (p *ExtendersListPager) NextPage(ctx context.Context) bool {
+	var req *policy.Request
+	var err error
+	if !reflect.ValueOf(p.current).IsZero() {
+		if p.current.ExtenderList.NextLink == nil || len(*p.current.ExtenderList.NextLink) == 0 {
+			return false
+		}
+		req, err = p.advancer(ctx, p.current)
+	} else {
+		req, err = p.requester(ctx)
+	}
+	if err != nil {
+		p.err = err
+		return false
+	}
+	resp, err := p.	client.pl.Do(req)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		p.err = p.client.listHandleError(resp)
+		return false
+	}
+	result, err := p.client.listHandleResponse(resp)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.current = result
+	return true
+}
+
+// PageResponse returns the current ExtendersListResponse page.
+func (p *ExtendersListPager) PageResponse() ExtendersListResponse {
 	return p.current
 }
 

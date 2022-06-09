@@ -10,6 +10,64 @@ package v20220315privatepreview
 
 import "encoding/json"
 
+func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (DaprPubSubBrokerPropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b DaprPubSubBrokerPropertiesClassification
+	switch m["kind"] {
+	case "generic":
+		b = &DaprPubSubGenericResourceProperties{}
+	case "pubsub.azure.servicebus":
+		b = &DaprPubSubAzureServiceBusResourceProperties{}
+	default:
+		b = &DaprPubSubBrokerProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalDaprPubSubBrokerPropertiesClassificationArray(rawMsg json.RawMessage) ([]DaprPubSubBrokerPropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]DaprPubSubBrokerPropertiesClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalDaprPubSubBrokerPropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalDaprPubSubBrokerPropertiesClassificationMap(rawMsg json.RawMessage) (map[string]DaprPubSubBrokerPropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]DaprPubSubBrokerPropertiesClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalDaprPubSubBrokerPropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
 func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (DaprStateStorePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

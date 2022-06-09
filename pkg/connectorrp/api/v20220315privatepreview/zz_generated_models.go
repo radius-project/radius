@@ -21,6 +21,13 @@ type BasicResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty"`
 }
 
+// MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
+func (b BasicResourceProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	b.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
 // UnmarshalJSON implements the json.Unmarshaller interface for type BasicResourceProperties.
 func (b *BasicResourceProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
@@ -80,6 +87,17 @@ type DaprInvokeHTTPRouteProperties struct {
 
 	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprInvokeHTTPRouteProperties.
+func (d DaprInvokeHTTPRouteProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "appId", d.AppID)
+	populate(objectMap, "application", d.Application)
+	populate(objectMap, "environment", d.Environment)
+	populate(objectMap, "provisioningState", d.ProvisioningState)
+	return json.Marshal(objectMap)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type DaprInvokeHTTPRouteProperties.
@@ -184,6 +202,254 @@ type DaprInvokeHTTPRoutesListOptions struct {
 	// placeholder for future optional parameters
 }
 
+type DaprPubSubAzureServiceBusResourceProperties struct {
+	DaprPubSubBrokerProperties
+	// REQUIRED; PubSub resource
+	Resource *string `json:"resource,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubAzureServiceBusResourceProperties.
+func (d DaprPubSubAzureServiceBusResourceProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, "pubsub.azure.servicebus")
+	populate(objectMap, "resource", d.Resource)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubAzureServiceBusResourceProperties.
+func (d *DaprPubSubAzureServiceBusResourceProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "resource":
+				err = unpopulate(val, &d.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.DaprPubSubBrokerProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DaprPubSubBrokerList - Object that includes an array of DaprPubSubBroker and a possible link for next set
+type DaprPubSubBrokerList struct {
+	// The link used to fetch the next page of DaprPubSubBroker list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of DaprPubSubBroker resources
+	Value []*DaprPubSubBrokerResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubBrokerList.
+func (d DaprPubSubBrokerList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", d.NextLink)
+	populate(objectMap, "value", d.Value)
+	return json.Marshal(objectMap)
+}
+
+// DaprPubSubBrokerPropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetDaprPubSubBrokerProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *DaprPubSubAzureServiceBusResourceProperties, *DaprPubSubBrokerProperties, *DaprPubSubGenericResourceProperties
+type DaprPubSubBrokerPropertiesClassification interface {
+	// GetDaprPubSubBrokerProperties returns the DaprPubSubBrokerProperties content of the underlying type.
+	GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties
+}
+
+// DaprPubSubBrokerProperties - DaprPubSubBroker connector properties
+type DaprPubSubBrokerProperties struct {
+	BasicResourceProperties
+	// REQUIRED; The resource id of the environment linked to the daprPubSubBroker connector
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; The DaprPubSubProperties kind
+	Kind *string `json:"kind,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the daprPubSubBroker connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type DaprPubSubBrokerProperties.
+func (d *DaprPubSubBrokerProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties { return d }
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubBrokerProperties.
+func (d *DaprPubSubBrokerProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return d.unmarshalInternal(rawMsg)
+}
+
+func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
+	d.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", d.Application)
+	populate(objectMap, "environment", d.Environment)
+	d.Kind = &discValue
+	objectMap["kind"] = d.Kind
+	populate(objectMap, "provisioningState", d.ProvisioningState)
+}
+
+func (d *DaprPubSubBrokerProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &d.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &d.Environment)
+				delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, &d.Kind)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DaprPubSubBrokerResource - DaprPubSubBroker connector
+type DaprPubSubBrokerResource struct {
+	TrackedResource
+	// REQUIRED; DaprPubSubBroker connector properties
+	Properties DaprPubSubBrokerPropertiesClassification `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubBrokerResource.
+func (d DaprPubSubBrokerResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", d.Properties)
+	populate(objectMap, "systemData", d.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubBrokerResource.
+func (d *DaprPubSubBrokerResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				d.Properties, err = unmarshalDaprPubSubBrokerPropertiesClassification(val)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &d.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DaprPubSubBrokersCreateOrUpdateOptions contains the optional parameters for the DaprPubSubBrokers.CreateOrUpdate method.
+type DaprPubSubBrokersCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprPubSubBrokersDeleteOptions contains the optional parameters for the DaprPubSubBrokers.Delete method.
+type DaprPubSubBrokersDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprPubSubBrokersGetOptions contains the optional parameters for the DaprPubSubBrokers.Get method.
+type DaprPubSubBrokersGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprPubSubBrokersListBySubscriptionOptions contains the optional parameters for the DaprPubSubBrokers.ListBySubscription method.
+type DaprPubSubBrokersListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprPubSubBrokersListOptions contains the optional parameters for the DaprPubSubBrokers.List method.
+type DaprPubSubBrokersListOptions struct {
+	// placeholder for future optional parameters
+}
+
+type DaprPubSubGenericResourceProperties struct {
+	DaprPubSubBrokerProperties
+	// REQUIRED; Metadata for the pub sub resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// REQUIRED; Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// REQUIRED; Dapr component version
+	Version *string `json:"version,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprPubSubGenericResourceProperties.
+func (d DaprPubSubGenericResourceProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, "generic")
+	populate(objectMap, "metadata", d.Metadata)
+	populate(objectMap, "type", d.Type)
+	populate(objectMap, "version", d.Version)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DaprPubSubGenericResourceProperties.
+func (d *DaprPubSubGenericResourceProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "metadata":
+				err = unpopulate(val, &d.Metadata)
+				delete(rawMsg, key)
+		case "type":
+				err = unpopulate(val, &d.Type)
+				delete(rawMsg, key)
+		case "version":
+				err = unpopulate(val, &d.Version)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := d.DaprPubSubBrokerProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // DaprSecretStoreList - Object that includes an array of DaprSecretStore and a possible link for next set
 type DaprSecretStoreList struct {
 	// The link used to fetch the next page of DaprSecretStore list.
@@ -224,6 +490,20 @@ type DaprSecretStoreProperties struct {
 
 	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreProperties.
+func (d DaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	d.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", d.Application)
+	populate(objectMap, "environment", d.Environment)
+	populate(objectMap, "kind", d.Kind)
+	populate(objectMap, "metadata", d.Metadata)
+	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "type", d.Type)
+	populate(objectMap, "version", d.Version)
+	return json.Marshal(objectMap)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type DaprSecretStoreProperties.
@@ -676,6 +956,175 @@ func (e ErrorResponse) Error() string {
 	return e.raw
 }
 
+// ExtenderList - Object that includes an array of Extender and a possible link for next set
+type ExtenderList struct {
+	// The link used to fetch the next page of Extender list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of Extender resources
+	Value []*ExtenderResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderList.
+func (e ExtenderList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", e.NextLink)
+	populate(objectMap, "value", e.Value)
+	return json.Marshal(objectMap)
+}
+
+// ExtenderProperties - Extender connector properties
+type ExtenderProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]interface{}
+
+	// Dictionary of
+	Secrets map[string]interface{} `json:"secrets,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the extender connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderProperties.
+func (e ExtenderProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	e.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", e.Application)
+	populate(objectMap, "environment", e.Environment)
+	populate(objectMap, "provisioningState", e.ProvisioningState)
+	populate(objectMap, "secrets", e.Secrets)
+	if e.AdditionalProperties != nil {
+		for key, val := range e.AdditionalProperties {
+			objectMap[key] = val
+		}
+	}
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderProperties.
+func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &e.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &e.Environment)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &e.ProvisioningState)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, &e.Secrets)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := e.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+	var err error
+		if e.AdditionalProperties == nil {
+			e.AdditionalProperties = map[string]interface{}{}
+		}
+		if val != nil {
+			var aux interface{}
+			err = json.Unmarshal(val, &aux)
+			e.AdditionalProperties[key] = aux
+		}
+		delete(rawMsg, key)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ExtenderResource - Extender connector
+type ExtenderResource struct {
+	TrackedResource
+	// REQUIRED; Extender connector properties
+	Properties *ExtenderProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderResource.
+func (e ExtenderResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	e.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", e.Properties)
+	populate(objectMap, "systemData", e.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderResource.
+func (e *ExtenderResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &e.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &e.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := e.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ExtendersCreateOrUpdateOptions contains the optional parameters for the Extenders.CreateOrUpdate method.
+type ExtendersCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersDeleteOptions contains the optional parameters for the Extenders.Delete method.
+type ExtendersDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersGetOptions contains the optional parameters for the Extenders.Get method.
+type ExtendersGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersListBySubscriptionOptions contains the optional parameters for the Extenders.ListBySubscription method.
+type ExtendersListBySubscriptionOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersListOptions contains the optional parameters for the Extenders.List method.
+type ExtendersListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // MongoDatabaseList - Object that includes an array of MongoDatabase and a possible link for next set
 type MongoDatabaseList struct {
 	// The link used to fetch the next page of MongoDatabase list.
@@ -716,6 +1165,20 @@ type MongoDatabaseProperties struct {
 
 	// READ-ONLY; Provisioning state of the mongo database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseProperties.
+func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	m.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", m.Application)
+	populate(objectMap, "environment", m.Environment)
+	populate(objectMap, "host", m.Host)
+	populate(objectMap, "port", m.Port)
+	populate(objectMap, "provisioningState", m.ProvisioningState)
+	populate(objectMap, "resource", m.Resource)
+	populate(objectMap, "secrets", m.Secrets)
+	return json.Marshal(objectMap)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseProperties.
@@ -882,6 +1345,18 @@ type RabbitMQMessageQueueProperties struct {
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueProperties.
+func (r RabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "environment", r.Environment)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "queue", r.Queue)
+	populate(objectMap, "secrets", r.Secrets)
+	return json.Marshal(objectMap)
+}
+
 // UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueProperties.
 func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
@@ -1031,6 +1506,20 @@ type RedisCacheProperties struct {
 
 	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheProperties.
+func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "environment", r.Environment)
+	populate(objectMap, "host", r.Host)
+	populate(objectMap, "port", r.Port)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "resource", r.Resource)
+	populate(objectMap, "secrets", r.Secrets)
+	return json.Marshal(objectMap)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheProperties.
@@ -1256,6 +1745,19 @@ type SQLDatabaseProperties struct {
 
 	// READ-ONLY; Provisioning state of the SQL database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type SQLDatabaseProperties.
+func (s SQLDatabaseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	s.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", s.Application)
+	populate(objectMap, "database", s.Database)
+	populate(objectMap, "environment", s.Environment)
+	populate(objectMap, "provisioningState", s.ProvisioningState)
+	populate(objectMap, "resource", s.Resource)
+	populate(objectMap, "server", s.Server)
+	return json.Marshal(objectMap)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type SQLDatabaseProperties.

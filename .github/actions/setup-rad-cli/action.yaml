@@ -1,0 +1,38 @@
+name: "Setup Rad CLI"
+description: "Sets up the environment to run rad CLI"
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Go ${{ env.GOVER }}
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GOVER }}
+    - name: Get Go Cache path
+      shell: bash
+      id: go-cache-paths
+      run: |
+        echo "::set-output name=go-build::$(go env GOCACHE)"
+        echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-build }}
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v2.0
+    - name: Parse release version and set environment variables
+      shell: bash
+      run: python ./.github/scripts/get_release_version.py
+    - name: Download release artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: rad_cli_linux_amd64
+        path: dist
+    - name: Make rad executable
+      shell: bash
+      run: chmod +x rad
+      working-directory: dist
+

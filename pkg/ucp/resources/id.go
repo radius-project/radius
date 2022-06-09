@@ -11,10 +11,13 @@ import (
 )
 
 const (
-	SegmentSeparator = "/"
-	PlanesSegment    = "planes"
-	ProvidersSegment = "providers"
-	UCPPrefix        = "ucp:"
+	SegmentSeparator      = "/"
+	PlanesSegment         = "planes"
+	ProvidersSegment      = "providers"
+	UCPPrefix             = "ucp:"
+	ResourceGroupsSegment = "resourcegroups"
+	SubscriptionsSegment  = "subscriptions"
+	LocationsSegment      = "locations"
 )
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() to create IDs and use
@@ -88,10 +91,20 @@ func (ri ID) String() string {
 	return ri.id
 }
 
+// FindScope function gets the scope type and returns the name for that scope if it exists.
+func (ri ID) FindScope(scopeType string) string {
+	for _, t := range ri.scopeSegments {
+		if t.Type == scopeType {
+			return t.Name
+		}
+	}
+	return ""
+}
+
 // RootScope returns the root-scope (the part before 'providers'). This includes 'ucp:' prefix.
 //
 // Examples:
-//	/subscriptions{guid}/resourceGroups/cool-group
+//	/subscriptions/{guid}/resourceGroups/cool-group
 //	/planes/radius/local/resourceGroups/cool-group
 func (ri ID) RootScope() string {
 	segments := []string{}
@@ -115,6 +128,9 @@ func (ri ID) RootScope() string {
 // Examples:
 //	Applications.Core
 func (ri ID) ProviderNamespace() string {
+	if len(ri.typeSegments) == 0 {
+		return ""
+	}
 	segments := strings.Split(ri.typeSegments[0].Type, SegmentSeparator)
 	return segments[0]
 }
@@ -218,6 +234,21 @@ func Parse(id string) (ID, error) {
 		id = strings.TrimPrefix(id, UCPPrefix+SegmentSeparator+PlanesSegment)
 	}
 
+	scopes := []ScopeSegment{}
+	if id == "" && isUCPQualified {
+		normalized := ""
+		if isUCPQualified {
+			normalized = MakeUCPID(scopes, []TypeSegment{}...)
+		} else {
+			normalized = MakeRelativeID(scopes, []TypeSegment{}...)
+		}
+		return ID{
+			id:            normalized,
+			scopeSegments: scopes,
+			typeSegments:  []TypeSegment{},
+		}, nil
+	}
+
 	// trim the leading and ending / so we don't end up with an empty segment - we disallow
 	// empty segments in the middle of the string
 	id = strings.TrimPrefix(id, SegmentSeparator)
@@ -225,6 +256,7 @@ func Parse(id string) (ID, error) {
 
 	// The minimum segment count is 2 since we can parse "root scope only" ids.
 	segments := strings.Split(id, SegmentSeparator)
+
 	if len(segments) < 2 {
 		return ID{}, invalid(id)
 	}
@@ -237,7 +269,7 @@ func Parse(id string) (ID, error) {
 	}
 
 	// Parse scopes - iterate until we get to "providers"
-	scopes := []ScopeSegment{}
+
 	i := 0
 	for i < len(segments) {
 		if len(segments)-i < 2 {

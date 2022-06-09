@@ -64,6 +64,60 @@ type DaprInvokeHTTPRoutesListResult struct {
 	DaprInvokeHTTPRouteList
 }
 
+// DaprPubSubBrokersCreateOrUpdateResponse contains the response from method DaprPubSubBrokers.CreateOrUpdate.
+type DaprPubSubBrokersCreateOrUpdateResponse struct {
+	DaprPubSubBrokersCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersCreateOrUpdateResult contains the result from method DaprPubSubBrokers.CreateOrUpdate.
+type DaprPubSubBrokersCreateOrUpdateResult struct {
+	DaprPubSubBrokerResource
+}
+
+// DaprPubSubBrokersDeleteResponse contains the response from method DaprPubSubBrokers.Delete.
+type DaprPubSubBrokersDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersGetResponse contains the response from method DaprPubSubBrokers.Get.
+type DaprPubSubBrokersGetResponse struct {
+	DaprPubSubBrokersGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersGetResult contains the result from method DaprPubSubBrokers.Get.
+type DaprPubSubBrokersGetResult struct {
+	DaprPubSubBrokerResource
+}
+
+// DaprPubSubBrokersListBySubscriptionResponse contains the response from method DaprPubSubBrokers.ListBySubscription.
+type DaprPubSubBrokersListBySubscriptionResponse struct {
+	DaprPubSubBrokersListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersListBySubscriptionResult contains the result from method DaprPubSubBrokers.ListBySubscription.
+type DaprPubSubBrokersListBySubscriptionResult struct {
+	DaprPubSubBrokerList
+}
+
+// DaprPubSubBrokersListResponse contains the response from method DaprPubSubBrokers.List.
+type DaprPubSubBrokersListResponse struct {
+	DaprPubSubBrokersListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// DaprPubSubBrokersListResult contains the result from method DaprPubSubBrokers.List.
+type DaprPubSubBrokersListResult struct {
+	DaprPubSubBrokerList
+}
+
 // DaprSecretStoresCreateOrUpdateResponse contains the response from method DaprSecretStores.CreateOrUpdate.
 type DaprSecretStoresCreateOrUpdateResponse struct {
 	DaprSecretStoresCreateOrUpdateResult
@@ -170,6 +224,60 @@ type DaprStateStoresListResponse struct {
 // DaprStateStoresListResult contains the result from method DaprStateStores.List.
 type DaprStateStoresListResult struct {
 	DaprStateStoreList
+}
+
+// ExtendersCreateOrUpdateResponse contains the response from method Extenders.CreateOrUpdate.
+type ExtendersCreateOrUpdateResponse struct {
+	ExtendersCreateOrUpdateResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersCreateOrUpdateResult contains the result from method Extenders.CreateOrUpdate.
+type ExtendersCreateOrUpdateResult struct {
+	ExtenderResource
+}
+
+// ExtendersDeleteResponse contains the response from method Extenders.Delete.
+type ExtendersDeleteResponse struct {
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersGetResponse contains the response from method Extenders.Get.
+type ExtendersGetResponse struct {
+	ExtendersGetResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersGetResult contains the result from method Extenders.Get.
+type ExtendersGetResult struct {
+	ExtenderResource
+}
+
+// ExtendersListBySubscriptionResponse contains the response from method Extenders.ListBySubscription.
+type ExtendersListBySubscriptionResponse struct {
+	ExtendersListBySubscriptionResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersListBySubscriptionResult contains the result from method Extenders.ListBySubscription.
+type ExtendersListBySubscriptionResult struct {
+	ExtenderList
+}
+
+// ExtendersListResponse contains the response from method Extenders.List.
+type ExtendersListResponse struct {
+	ExtendersListResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersListResult contains the result from method Extenders.List.
+type ExtendersListResult struct {
+	ExtenderList
 }
 
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.

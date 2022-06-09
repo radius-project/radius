@@ -8,12 +8,13 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/spf13/cobra"
 )
 
 // resourceShowCmd command to show details of a resource
@@ -98,7 +99,7 @@ func isAzureConnectionResource(cmd *cobra.Command, args []string) (bool, error) 
 		if len(args) > 0 {
 			resourceType = args[0]
 		} else {
-			return false, fmt.Errorf("Resource type is required")
+			return false, fmt.Errorf("resource type is required")
 		}
 	}
 
