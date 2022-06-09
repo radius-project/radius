@@ -6,10 +6,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 
@@ -37,25 +37,26 @@ func listResources(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, err := environments.CreateManagementClient(cmd.Context(), env)
+	client, err := environments.CreateFirstPartyServiceManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}
+	fmt.Print(client)
+	fmt.Print(applicationName)
+	// resourceList, err := client.ListAllResourcesByApplication(cmd.Context(), applicationName)
+	// if err != nil {
+	// 	return err
+	// }
 
-	resourceList, err := client.ListAllResourcesByApplication(cmd.Context(), applicationName)
-	if err != nil {
-		return err
-	}
+	// format, err := cli.RequireOutput(cmd)
+	// if err != nil {
+	// 	return err
+	// }
 
-	format, err := cli.RequireOutput(cmd)
-	if err != nil {
-		return err
-	}
-
-	err = output.Write(format, resourceList.Value, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
-	if err != nil {
-		return err
-	}
+	// err = output.Write(format, resourceList.Value, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

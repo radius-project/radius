@@ -115,6 +115,11 @@ type ManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
 }
 
+// ManagementClient is used to interface with management features like listing applications and resources.
+type FirstPartyServiceManagementClient interface {
+	ListAllResourcesByApplication(ctx context.Context, applicationName string) (error)
+}
+
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
 	copy := DeploymentParameters{}
 	for k, v := range params {
