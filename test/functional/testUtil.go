@@ -6,11 +6,12 @@
 package functional
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"testing"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,7 +70,7 @@ func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client) 
 	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
 }
 
-func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort, remotePort int, stopChan chan struct{}, readyChan chan struct{}, errorChan chan error) {
+func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort, remotePort int, stopChan chan struct{}, readyChan chan struct{}, errorChan chan error) {
 	serviceName := "contour-envoy"
 	label := "app.kubernetes.io/component=envoy"
 
@@ -103,7 +104,8 @@ func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Conf
 	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, url)
 
-	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
+	tw := TestWriter{t}
+	out, errOut := tw, tw
 
 	forwarder, err := portforward.NewOnAddresses(dialer, []string{localHostname}, ports, stopChan, readyChan, out, errOut)
 	if err != nil {
@@ -113,4 +115,21 @@ func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Conf
 
 	// Run the port-forward with the desired configuration
 	errorChan <- forwarder.ForwardPorts()
+}
+
+func NewTestLogger(t *testing.T) *log.Logger {
+	tw := TestWriter{t}
+	logger := log.Logger{}
+	logger.SetOutput(tw)
+
+	return &logger
+}
+
+type TestWriter struct {
+	t *testing.T
+}
+
+func (tw TestWriter) Write(p []byte) (n int, err error) {
+	tw.t.Log(string(p))
+	return len(p), nil
 }
