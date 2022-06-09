@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GOVER: '^1.17'
+  GOVER: '^1.18'
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
   DOCKER_REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
 
