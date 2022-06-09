@@ -1,6 +1,6 @@
 {
   "parameters": {
-    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "rootScope": "00000000-0000-0000-0000-000000000000:testGroup",
     "api-version": "2022-03-15-privatepreview"
   },
   "responses": {
@@ -8,24 +8,24 @@
       "body": {
         "value": [
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+            "id": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
             "name": "mongo0",
             "type": "Applications.Connector/mongoDatabases",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-              "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
+              "application": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/environments/env0",
+              "resource": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
             }
           },
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Connector/mongoDatabases/mongo1",
+            "id": "/00000000-0000-0000-0000-000000000000:testGroup1/providers/Applications.Connector/mongoDatabases/mongo1",
             "name": "mongo1",
             "type": "Applications.Connector/mongoDatabases",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "application": "/00000000-0000-0000-0000-000000000000:testGroup1/providers/Applications.Core/applications/testApplication",
+              "environment": "/00000000-0000-0000-0000-000000000000:testGroup1/providers/Applications.Core/environments/env0",
               "host": "testAccount1.mongo.cosmos.azure.com",
               "port": 10255,
               "secrets": {
