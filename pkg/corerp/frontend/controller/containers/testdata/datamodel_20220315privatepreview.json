@@ -1,0 +1,51 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/container0",
+    "name": "container0",
+    "type": "applications.core/containers",
+    "location": "West US",
+    "systemData": {
+        "createdAt": "2022-03-22T18:54:52.6857175Z",
+        "createdBy": "fake@hotmail.com",
+        "createdByType": "User",
+        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+        "lastModifiedBy": "fake@hotmail.com",
+        "lastModifiedByType": "User"
+    },
+    "properties": {
+        "status": {
+            "outputResources": [{
+              "LocalID": "Deployment",
+              "ResourceType": {
+                "Type": "containers",
+                "Provider": "aks"
+              }
+            }]
+          },
+          "provisioningState": "Succeeded",
+          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+          "connections": { 
+              "inventory": { 
+                "source": "inventory_route_id", 
+                "iam": {
+                  "kind": "azure",
+                  "roles": [
+                    "read"
+                  ]
+                }
+              } 
+            },
+          "container": { 
+              "image": "radius.azurecr.io/webapptutorial-todoapp",
+              "livenessProbe": {
+                "kind": "tcp",
+                "initialDelaySeconds": 5,
+                "containerPort": 8080
+              }
+          }
+    },
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroup": "radius-test-rg",
+    "createdApiVersion": "2022-03-15-privatepreview",
+    "updatedApiVersion": "2022-03-15-privatepreview"
+}
