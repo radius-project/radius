@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	retryTimeout = 1 * time.Second
+	retryTimeout = 1 * time.Minute
+	retryBackoff = 1 * time.Second
 )
 
 func Test_Gateway(t *testing.T) {
@@ -94,14 +95,14 @@ func Test_Gateway(t *testing.T) {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
 					err = testGatewayWithPortforward(t, ctx, at, hostname, localHostname, localPort, remotePort, retries)
 					if err != nil {
-						t.Logf("Failed to test Gateway via portforward with error: %s. Retrying...", err)
+						t.Logf("Failed to test Gateway via portforward with error: %s", err)
 					} else {
 						// Successfully ran tests
 						return
 					}
 				}
 
-				require.Fail(t, "Gateway tests failed after %d retries", retries)
+				require.Fail(t, fmt.Sprintf("Gateway tests failed after %d retries", retries))
 			},
 		},
 	})
@@ -151,10 +152,8 @@ func testGatewayAvailability(t *testing.T, hostname, url string, expectedStatusC
 
 	req.Host = hostname
 
-	retries := 5
-
 	// Send requests to backing container via port-forward
-	response, err := autorest.Send(req, autorest.DoErrorUnlessStatusCode(expectedStatusCode), autorest.DoRetryForAttempts(retries, retryTimeout), autorest.WithLogging(functional.NewTestLogger(t)))
+	response, err := autorest.Send(req, autorest.DoErrorUnlessStatusCode(expectedStatusCode), autorest.DoRetryForDuration(retryTimeout, retryBackoff), autorest.WithLogging(functional.NewTestLogger(t)))
 	if err != nil {
 		return err
 	}
