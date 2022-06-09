@@ -71,7 +71,7 @@ func ConfigureDefaultHandlers(
 	ctx context.Context,
 	sp dataprovider.DataStorageProvider,
 	rootRouter *mux.Router,
-	scopeRouter *mux.Router,
+	pathBase string,
 	isAzureProvider bool,
 	providerNamespace string,
 	operationCtrlFactory ControllerFunc) error {
@@ -91,7 +91,7 @@ func ConfigureDefaultHandlers(
 		}
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
 		err = RegisterHandler(ctx, sp, HandlerOptions{
-			ParentRouter:   scopeRouter.Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+			ParentRouter:   rootRouter.Path(pathBase).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 			ResourceType:   rt,
 			Method:         v1.OperationPut,
 			HandlerFactory: default_ctrl.NewCreateOrUpdateSubscription,
@@ -101,9 +101,9 @@ func ConfigureDefaultHandlers(
 		}
 	}
 
-	opStatus := fmt.Sprintf("/providers/%s/locations/{location}/operationstatuses/{operationId}", providerNamespace)
+	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", pathBase, providerNamespace)
 	err := RegisterHandler(ctx, sp, HandlerOptions{
-		ParentRouter:   scopeRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationGetOperationStatuses,
 		HandlerFactory: default_ctrl.NewGetOperationStatus,
@@ -112,9 +112,9 @@ func ConfigureDefaultHandlers(
 		return err
 	}
 
-	opResult := fmt.Sprintf("/providers/%s/locations/{location}/operationresults/{operationId}", providerNamespace)
+	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", pathBase, providerNamespace)
 	err = RegisterHandler(ctx, sp, HandlerOptions{
-		ParentRouter:   scopeRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationGetOperationResult,
 		HandlerFactory: default_ctrl.NewGetOperationResult,
