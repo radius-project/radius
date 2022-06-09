@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/azure"
@@ -64,11 +65,46 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 	return s.RoundTripper.RoundTrip(request)
 }
 
+func (e *KubernetesEnvironment) HasAzureProvider() bool {
+	return e.Providers != nil && e.Providers.AzureProvider != nil
+}
+
+func (e *KubernetesEnvironment) GetAzureProviderDetails() (string, string) {
+	if e.HasAzureProvider() {
+		return e.Providers.AzureProvider.SubscriptionID, e.Providers.AzureProvider.ResourceGroup
+	}
+
+	// Use namespace unless we have an Azure subscription attached.
+	return e.Namespace, e.Namespace
+}
+
 func (e *KubernetesEnvironment) CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 
 	if err != nil {
 		return nil, err
+	}
+
+	subscriptionId, resourceGroup := e.GetAzureProviderDetails()
+	tags := map[string]*string{}
+	// To support Azure provider today, we need to inform the deployment engine about the Azure subscription.
+	// Using tags for now, would love to find a better way to do this if possible.
+	if e.HasAzureProvider() {
+		tags["azureSubscriptionID"] = &subscriptionId
+		tags["azureResourceGroup"] = &resourceGroup
+
+		// Get the location of the resource group for the deployment engine.
+		auth, err := armauth.GetArmAuthorizer()
+		if err != nil {
+			return nil, err
+		}
+
+		rgClient := azclients.NewGroupsClient(subscriptionId, auth)
+		resp, err := rgClient.Get(ctx, resourceGroup)
+		if err != nil {
+			return nil, err
+		}
+		tags["azureLocation"] = resp.Location
 	}
 
 	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
