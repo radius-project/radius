@@ -45,6 +45,10 @@
       "metadata": {
         "description": "Optional ACR registry name"
       }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
     }
   },
   "variables": {
@@ -76,7 +80,7 @@
       "type": "Microsoft.ContainerService/managedClusters",
       "apiVersion": "2021-08-01",
       "name": "[parameters('clusterName')]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "tags": "[parameters('resourceTags')]",
       "identity": {
         "type": "UserAssigned",
@@ -127,14 +131,14 @@
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2018-11-30",
       "name": "[parameters('aksIdentityName')]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "tags": "[parameters('resourceTags')]"
     },
     {
       "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
       "apiVersion": "2018-11-30",
       "name": "[parameters('rpIdentityName')]",
-      "location": "[resourceGroup().location]",
+      "location": "[parameters('location')]",
       "tags": "[parameters('resourceTags')]"
     },
     {

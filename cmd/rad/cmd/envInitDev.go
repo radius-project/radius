@@ -8,16 +8,30 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/cobra"
+
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/spf13/cobra"
 )
+
+func init() {
+	envInitCmd.AddCommand(envInitLocalCmd)
+
+	// TODO: right now we only handle Azure as a special case. This needs to be generalized
+	// to handle other providers.
+	registerAzureProviderFlags(envInitLocalCmd)
+	envInitLocalCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
+	envInitLocalCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
+}
+
+type DevEnvironmentParams struct {
+	Name      string
+	Providers *environments.Providers
+}
 
 var envInitLocalCmd = &cobra.Command{
 	Use:   "dev",
@@ -33,30 +47,24 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Gather inputs and validate
-	interactive, err := cmd.Flags().GetBool("interactive")
+	sharedArgs, err := parseArgs(cmd)
 	if err != nil {
 		return err
 	}
 
-	namespace, err := cmd.Flags().GetString("namespace")
+	envName, err := selectEnvironment(cmd, "dev", sharedArgs.Interactive)
 	if err != nil {
 		return err
 	}
 
-	chartPath, err := cmd.Flags().GetString("chart")
+	azureProvider, err := parseAzureProviderFromArgs(cmd, sharedArgs.Interactive)
 	if err != nil {
 		return err
 	}
 
-	image, err := cmd.Flags().GetString("image")
-	if err != nil {
-		return err
-	}
-
-	tag, err := cmd.Flags().GetString("tag")
-	if err != nil {
-		return err
+	params := &DevEnvironmentParams{
+		Name:      envName,
+		Providers: &environments.Providers{AzureProvider: azureProvider},
 	}
 
 	ucpImage, err := cmd.Flags().GetString("ucp-image")
@@ -69,20 +77,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var params *DevEnvironmentParams
-	if interactive {
-		params, err = envInitDevConfigInteractive(cmd)
-		if err != nil {
-			return err
-		}
-	} else {
-		params, err = envInitDevConfigNonInteractive(cmd)
-		if err != nil {
-			return err
-		}
-	}
-
-	_, foundConflict := env.Items[params.Name]
+	_, foundConflict := env.Items[envName]
 	if foundConflict {
 		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", params.Name, params.Name)
 	}
@@ -103,18 +98,21 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	}
 
 	cliOptions := helm.ClusterOptions{
-		Namespace: namespace,
+		Namespace: sharedArgs.Namespace,
 		Radius: helm.RadiusOptions{
-			ChartPath: chartPath,
-			Image:     image,
-			Tag:       tag,
-			UCPImage:  ucpImage,
-			UCPTag:    ucpTag,
+			ChartPath:    sharedArgs.ChartPath,
+			Image:        sharedArgs.Image,
+			Tag:          sharedArgs.Tag,
+			UCPImage:     ucpImage,
+			UCPTag:       ucpTag,
+			AppCoreImage: sharedArgs.AppCoreImage,
+			AppCoreTag:   sharedArgs.AppCoreTag,
 		},
 	}
 	options := helm.NewClusterOptions(cliOptions)
 	options.Contour.HostNetwork = true
 	options.Radius.PublicEndpointOverride = cluster.HTTPEndpoint
+	options.Radius.AzureProvider = azureProvider
 
 	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
 	if err != nil {
@@ -128,7 +126,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		"kind":        "dev",
 		"context":     cluster.ContextName,
 		"clustername": cluster.ClusterName,
-		"namespace":   namespace,
+		"namespace":   sharedArgs.Namespace,
 		"registry": &environments.Registry{
 			PushEndpoint: cluster.RegistryPushEndpoint,
 			PullEndpoint: cluster.RegistryPullEndpoint,
@@ -151,105 +149,4 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func envInitDevConfigInteractive(cmd *cobra.Command) (*DevEnvironmentParams, error) {
-	name, err := prompt.Text("Enter an environment name:", prompt.EmptyValidator)
-	if err != nil {
-		return nil, err
-	}
-
-	if name == "" {
-		name = "dev"
-		output.LogInfo("No environment name provided, using: dev")
-	}
-
-	params := DevEnvironmentParams{
-		Name: name,
-	}
-
-	addAzure, err := prompt.Confirm("Add Azure provider for cloud resources [y/n]?")
-	if err != nil {
-		return nil, err
-	} else if !addAzure {
-		return &params, nil
-	}
-
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		return nil, err
-	}
-
-	subscription, err := selectSubscription(cmd.Context(), authorizer)
-	if err != nil {
-		return nil, err
-	}
-
-	resourceGroup, err := selectResourceGroup(cmd.Context(), authorizer, subscription)
-	if err != nil {
-		return nil, err
-	}
-
-	params.Providers = &environments.Providers{
-		AzureProvider: &environments.AzureProvider{
-			SubscriptionID: subscription.SubscriptionID,
-			ResourceGroup:  resourceGroup,
-		},
-	}
-
-	return &params, nil
-}
-
-func envInitDevConfigNonInteractive(cmd *cobra.Command) (*DevEnvironmentParams, error) {
-	name, err := cmd.Flags().GetString("environment")
-	if err != nil {
-		return nil, err
-	}
-
-	if name == "" {
-		name = "dev"
-		output.LogInfo("No environment name provided, using: dev")
-	}
-
-	subscriptionID, err := cmd.Flags().GetString("provider-azure-subscription")
-	if err != nil {
-		return nil, err
-	}
-
-	resourceGroup, err := cmd.Flags().GetString("provider-azure-resource-group")
-	if err != nil {
-		return nil, err
-	}
-
-	params := DevEnvironmentParams{
-		Name: name,
-	}
-
-	if (subscriptionID != "") != (resourceGroup != "") {
-		return nil, fmt.Errorf("to use the Azure provider both --provider-azure-subscription and --provider-azure-resource-group must be provided")
-	}
-
-	return &params, nil
-}
-
-func init() {
-	envInitCmd.AddCommand(envInitLocalCmd)
-	envInitLocalCmd.Flags().BoolP("interactive", "i", false, "interactively prompt for environment information")
-
-	// TODO: right now we only handle Azure as a special case. This needs to be generalized
-	// to handle other providers.
-	envInitLocalCmd.Flags().String("provider-azure-subscription", "", "Azure subscription for cloud resources")
-	envInitLocalCmd.Flags().String("provider-azure-resource-group", "", "Azure resource-group for cloud resources")
-
-	envInitLocalCmd.Flags().String("chart", "", "specify a file path to a helm chart to install Radius from")
-	envInitLocalCmd.Flags().String("image", "", "specify the radius controller image to use")
-	envInitLocalCmd.Flags().String("tag", "", "specify the radius controller tag to use")
-	envInitLocalCmd.Flags().StringP("namespace", "n", "default", "The namespace to use for the environment")
-	envInitLocalCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
-	envInitLocalCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
-}
-
-type DevEnvironmentParams struct {
-	Name      string
-	Providers *environments.Providers
 }

@@ -197,6 +197,7 @@ func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.Del
 
 	return nil
 }
+
 func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}

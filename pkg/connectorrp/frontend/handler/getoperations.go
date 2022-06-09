@@ -196,6 +196,36 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprPubSubBrokers/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprPubSubBrokers",
+					Operation:   "Get/List daprPubSubBrokers",
+					Description: "Gets/Lists daprPubSubBroker connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprPubSubBrokers/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprPubSubBrokers",
+					Operation:   "Create/Update daprPubSubBrokers",
+					Description: "Creates or updates a daprPubSubBroker connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprPubSubBrokers/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprPubSubBrokers",
+					Operation:   "Delete daprPubSubBroker",
+					Description: "Deletes a daprPubSubBroker connector.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }

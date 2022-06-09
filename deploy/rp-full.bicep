@@ -18,6 +18,8 @@ param logAnalyticsWorkspaceID string = ''
 @description('Optional ACR registry name')
 param registryName string = ''
 
+param location string = resourceGroup().location
+
 var addonsWithLogAnalytics = {
   azureKeyvaultSecretsProvider: {
     config: {
@@ -44,7 +46,7 @@ var addonsWithoutLogAnalytics = {
 
 resource aks 'Microsoft.ContainerService/managedClusters@2021-08-01' = {
   name: clusterName
-  location: resourceGroup().location
+  location: location
   tags: resourceTags
   identity: {
     type: 'UserAssigned'
@@ -98,13 +100,13 @@ module registry 'rp-registry.bicep' =  if (!empty(registryName)) {
 
 resource aks_identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: aksIdentityName
-  location: resourceGroup().location
+  location: location
   tags: resourceTags
 }
 
 resource rp_identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: rpIdentityName
-  location: resourceGroup().location
+  location: location
   tags: resourceTags
 }
 

@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
@@ -21,24 +20,18 @@ const (
 	ProviderNamespaceName = "Applications.Core"
 )
 
-func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router *mux.Router, pathBase string) error {
-	root := router
-	if pathBase != "" {
-		root = router.PathPrefix(pathBase).Subrouter()
-	}
-
-	subscriptionRt := router
-	if !hostoptions.IsSelfHosted() {
-		subscriptionRt = router.PathPrefix(pathBase + "/subscriptions/{subscriptionID}").Subrouter()
+func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router *mux.Router, pathBase string, isARM bool) error {
+	if isARM {
+		pathBase += "/subscriptions/{subscriptionID}"
 	}
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, sp, root, subscriptionRt, ProviderNamespaceName, NewGetOperations)
+	err := server.ConfigureDefaultHandlers(ctx, sp, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
 	if err != nil {
 		return err
 	}
 
-	envRTSubrouter := subscriptionRt.PathPrefix("/resourcegroups/{resourceGroup}/providers/applications.core/environments").
+	envRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/environments").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
 

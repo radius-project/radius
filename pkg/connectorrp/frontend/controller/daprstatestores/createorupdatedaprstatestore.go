@@ -93,6 +93,7 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Validate(ctx context.Context
 
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
-	dm.Properties.GetDaprStateStoreProperties().ProvisioningState = v1.ProvisioningStateSucceeded
+	daprStateStoreProperties := dm.Properties.GetDaprStateStoreProperties()
+	daprStateStoreProperties.ProvisioningState = v1.ProvisioningStateSucceeded
 	return dm, nil
 }
