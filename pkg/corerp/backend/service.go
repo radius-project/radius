@@ -64,6 +64,8 @@ func (w *Service) Run(ctx context.Context) error {
 	if err != nil {
 		panic(err)
 	}
+
+	// TODO: Why is the queue nil?
 	asyncOpManager := sm.New(sc, nil, providerName, w.options.Config.Env.RoleLocation)
 
 	// TODO: Make it configurable.

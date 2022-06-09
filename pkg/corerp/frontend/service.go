@@ -38,6 +38,8 @@ func (s *Service) Run(ctx context.Context) error {
 
 	storageProvider := dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 
+	// TODO: Anything here for the Status Manager?
+
 	ctx = logr.NewContext(ctx, logger)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 

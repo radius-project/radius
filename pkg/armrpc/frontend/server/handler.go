@@ -13,9 +13,11 @@ import (
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
+	"github.com/project-radius/radius/pkg/queue/inmemory"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -42,7 +44,13 @@ func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, o
 		return err
 	}
 
-	ctrl, err := opts.HandlerFactory(sc, nil)
+	// Adding StatusManager
+	// This should be singleton and all the async controllers will use the same queue
+	// Update: This is singleton downstream
+	q := inmemory.NewClient(nil)
+	sm := statusmanager.New(sc, q, "provider-name", "location")
+
+	ctrl, err := opts.HandlerFactory(sc, sm)
 	if err != nil {
 		return err
 	}

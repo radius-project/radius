@@ -32,7 +32,7 @@ func main() {
 
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
-	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", false, "Flag to run async request process worker (for dev/test purpose).")
+	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for dev/test purpose).")
 
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
