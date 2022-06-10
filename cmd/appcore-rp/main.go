@@ -51,9 +51,9 @@ func main() {
 
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
-	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for dev/test purpose).")
+	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
 
-	flag.BoolVar(&runConnector, "run-connector", true, "Flag to run Applications.Connector RP (for dev/test purpose).")
+	flag.BoolVar(&runConnector, "run-connector", true, "Flag to run Applications.Connector RP (for private preview and dev/test purpose).")
 	defaultConnectorConfig := fmt.Sprintf("connector-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&connectorConfigFile, "connector-config", defaultConnectorConfig, "The service configuration file for Applications.Connector.")
 
