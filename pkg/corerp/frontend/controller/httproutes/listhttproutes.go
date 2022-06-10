@@ -21,7 +21,7 @@ import (
 
 var _ ctrl.Controller = (*ListHTTPRoutes)(nil)
 
-// ListHTTPRoute is the controller implementation to get the list of httproutes resources in resource group.
+// ListHTTPRoutes is the controller implementation to get the list of HTTPRoute resources in resource group.
 type ListHTTPRoutes struct {
 	ctrl.BaseController
 }
