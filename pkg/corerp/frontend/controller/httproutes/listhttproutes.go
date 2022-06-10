@@ -26,7 +26,7 @@ type ListHTTPRoutes struct {
 	ctrl.BaseController
 }
 
-// NewListHTTPRoute creates a new ListHTTPRoutes.
+// NewListHTTPRoutes creates a new ListHTTPRoutes.
 func NewListHTTPRoutes(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
 	return &ListHTTPRoutes{ctrl.NewBaseController(ds, sm)}, nil
 }
