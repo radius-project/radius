@@ -67,6 +67,6 @@ func (s *Service) Start(ctx context.Context, opt Options) error {
 		logger.Error(err, "failed to start worker...")
 	}
 
-	logger.Info("Sorker stopped...")
+	logger.Info("Worker stopped...")
 	return nil
 }
