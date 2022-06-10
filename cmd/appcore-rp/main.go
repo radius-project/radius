@@ -18,21 +18,44 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
+
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
 	mh "github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
+
+	connector_frontend "github.com/project-radius/radius/pkg/connectorrp/frontend"
 )
+
+func newConnectorHosts(configFile string) ([]hosting.Service, *hostoptions.HostOptions) {
+	hostings := []hosting.Service{}
+	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	hostings = append(hostings, connector_frontend.NewService(options))
+
+	// TODO: add backend hostings
+
+	return hostings, &options
+}
 
 func main() {
 	var configFile string
 	var enableAsyncWorker bool
 
+	var runConnector bool
+	var connectorConfigFile string
+
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
-	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for dev/test purpose).")
+	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
+
+	flag.BoolVar(&runConnector, "run-connector", true, "Flag to run Applications.Connector RP (for private preview and dev/test purpose).")
+	defaultConnectorConfig := fmt.Sprintf("connector-%s.yaml", hostoptions.Environment())
+	flag.StringVar(&connectorConfigFile, "connector-config", defaultConnectorConfig, "The service configuration file for Applications.Connector.")
 
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
@@ -59,6 +82,15 @@ func main() {
 		hostingSvc = append(hostingSvc, backend.NewService(options))
 	}
 
+	// Configure Applications.Connector to run it with Applications.Core RP.
+	var connOpts *hostoptions.HostOptions
+	if runConnector && connectorConfigFile != "" {
+		logger.Info("Run Applications.Connector.")
+		var connSvcs []hosting.Service
+		connSvcs, connOpts = newConnectorHosts(connectorConfigFile)
+		hostingSvc = append(hostingSvc, connSvcs...)
+	}
+
 	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
 		options.Config.StorageProvider.ETCD.InMemory {
 		// For in-memory etcd we need to register another service to manage its lifecycle.
@@ -67,6 +99,9 @@ func main() {
 		logger.Info("Enabled in-memory etcd")
 		client := hosting.NewAsyncValue()
 		options.Config.StorageProvider.ETCD.Client = client
+		if connOpts != nil {
+			connOpts.Config.StorageProvider.ETCD.Client = client
+		}
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
 
