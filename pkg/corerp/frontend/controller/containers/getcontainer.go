@@ -19,19 +19,19 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*GetController)(nil)
+var _ ctrl.Controller = (*GetContainer)(nil)
 
-// GetController is the controller implementation to get the container resource.
-type GetController struct {
+// GetContainer is the controller implementation to get the container resource.
+type GetContainer struct {
 	ctrl.BaseController
 }
 
-// NewGetController creates a new instance of GetController.
-func NewGetController(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &GetController{ctrl.NewBaseController(ds, sm)}, nil
+// NewGetContainer creates a new instance of GetContainer.
+func NewGetContainer(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &GetContainer{ctrl.NewBaseController(ds, sm)}, nil
 }
 
-func (e *GetController) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *GetContainer) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	existingResource := &datamodel.ContainerResource{}

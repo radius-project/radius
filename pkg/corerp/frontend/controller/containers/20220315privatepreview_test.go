@@ -13,18 +13,18 @@ import (
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 )
 
-const testHeaderfile = "requestheaders_20220315privatepreview.json"
+const testHeaderfile = "20220315privatepreview_requestheaders.json"
 
-func getTestModels_20220315privatepreview() (*v20220315privatepreview.ContainerResource, *datamodel.ContainerResource, *v20220315privatepreview.ContainerResource) {
-	rawInput := radiustesting.ReadFixture("input_20220315privatepreview.json")
+func getTestModels20220315privatepreview() (*v20220315privatepreview.ContainerResource, *datamodel.ContainerResource, *v20220315privatepreview.ContainerResource) {
+	rawInput := radiustesting.ReadFixture("20220315privatepreview_input.json")
 	containerVersioned := &v20220315privatepreview.ContainerResource{}
 	_ = json.Unmarshal(rawInput, containerVersioned)
 
-	rawDataModel := radiustesting.ReadFixture("datamodel_20220315privatepreview.json")
+	rawDataModel := radiustesting.ReadFixture("20220315privatepreview_datamodel.json")
 	containerDataModel := &datamodel.ContainerResource{}
 	_ = json.Unmarshal(rawDataModel, containerDataModel)
 
-	rawExpectedOutput := radiustesting.ReadFixture("output_20220315privatepreview.json")
+	rawExpectedOutput := radiustesting.ReadFixture("20220315privatepreview_output.json")
 	expectedOutput := &v20220315privatepreview.ContainerResource{}
 	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 

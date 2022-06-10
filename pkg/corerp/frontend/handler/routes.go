@@ -40,12 +40,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
 
-<<<<<<< HEAD
 	hrtSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/httproutes").
-=======
-	// Container Resource Router
-	containerRTSubrouter := scopeRoute.PathPrefix("/resourcegroups/{resourceGroup}/providers/applications.core/containers").
->>>>>>> 73f70082 (updating container route)
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
 
@@ -130,13 +125,13 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ParentRouter:   ctrRTSubrouter,
 			ResourceType:   ctr_ctrl.ResourceTypeName,
 			Method:         v1.OperationList,
-			HandlerFactory: ctr_ctrl.NewListController,
+			HandlerFactory: ctr_ctrl.NewListContainers,
 		},
 		{
 			ParentRouter:   ctrRTSubrouter,
 			ResourceType:   ctr_ctrl.ResourceTypeName,
 			Method:         v1.OperationGet,
-			HandlerFactory: ctr_ctrl.NewGetController,
+			HandlerFactory: ctr_ctrl.NewGetContainer,
 		},
 		{
 			ParentRouter:   ctrResourceRouter,

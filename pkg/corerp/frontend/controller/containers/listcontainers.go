@@ -19,19 +19,19 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*ListController)(nil)
+var _ ctrl.Controller = (*ListContainers)(nil)
 
-// ListController is the controller implementation to get the list of container resources in resource group.
-type ListController struct {
+// ListContainers is the controller implementation to get the list of container resources in resource group.
+type ListContainers struct {
 	ctrl.BaseController
 }
 
-// NewListController creates a new instance of ListController.
-func NewListController(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &ListController{ctrl.NewBaseController(ds, sm)}, nil
+// NewListContainers creates a new instance of ListContainer.
+func NewListContainers(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &ListContainers{ctrl.NewBaseController(ds, sm)}, nil
 }
 
-func (e *ListController) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *ListContainers) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{
@@ -49,7 +49,7 @@ func (e *ListController) Run(ctx context.Context, req *http.Request) (rest.Respo
 	return rest.NewOKResponse(list), err
 }
 
-func (e *ListController) createPaginationResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+func (e *ListContainers) createPaginationResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	items := []interface{}{}
