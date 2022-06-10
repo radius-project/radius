@@ -41,12 +41,11 @@ func listResources(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print(client)
-	fmt.Print(applicationName)
-	// resourceList, err := client.ListAllResourcesByApplication(cmd.Context(), applicationName)
-	// if err != nil {
-	// 	return err
-	// }
+	resourceList, err :=client.ListAllResourcesByApplication(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
+	fmt.Print(resourceList)
 
 	// format, err := cli.RequireOutput(cmd)
 	// if err != nil {
