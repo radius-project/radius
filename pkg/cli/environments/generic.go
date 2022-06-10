@@ -27,6 +27,10 @@ func (e *GenericEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *GenericEnvironment) GetContext() string {
+	return ""
+}
+
 func (e *GenericEnvironment) GetContainerRegistry() *Registry {
 	return nil
 }

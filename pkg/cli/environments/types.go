@@ -25,6 +25,7 @@ type Environment interface {
 	GetName() string
 	GetKind() string
 	GetDefaultApplication() string
+	GetContext() string
 
 	// GetStatusLink provides an optional URL for display of the environment.
 	GetStatusLink() string

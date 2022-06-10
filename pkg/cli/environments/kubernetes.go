@@ -49,6 +49,10 @@ func (e *KubernetesEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *KubernetesEnvironment) GetContext() string {
+	return e.Context
+}
+
 func (e *KubernetesEnvironment) GetContainerRegistry() *Registry {
 	return nil
 }

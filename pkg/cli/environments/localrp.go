@@ -57,6 +57,10 @@ func (e *LocalRPEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *LocalRPEnvironment) GetContext() string {
+	return e.Context
+}
+
 func (e *LocalRPEnvironment) GetContainerRegistry() *Registry {
 	return nil
 }
