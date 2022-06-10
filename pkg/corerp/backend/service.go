@@ -11,18 +11,18 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/queue/inmemory"
+	qprovider "github.com/project-radius/radius/pkg/queue/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
 	containers_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller/containers"
 )
 
 const (
-	providerName         = "Applications.Core"
-	providerResourceType = providerName + "/provider"
+	providerName       = "Applications.Core"
+	statusResourceType = providerName + "/operationstatuses"
 )
 
 // Service is a service to run AsyncReqeustProcessWorker.
@@ -47,6 +47,7 @@ func (w *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	sp := dataprovider.NewStorageProvider(w.options.Config.StorageProvider)
+	qp := qprovider.New(w.options.Config.QueueProvider)
 	ctx = hostoptions.WithContext(ctx, w.options.Config)
 
 	// Register async operation controllers.
@@ -59,18 +60,18 @@ func (w *Service) Run(ctx context.Context) error {
 		panic(err)
 	}
 
-	// Create Async operation manager.
-	sc, err := sp.GetStorageClient(ctx, providerResourceType)
+	sc, err := sp.GetStorageClient(ctx, statusResourceType)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	asyncOpManager := sm.New(sc, nil, providerName, w.options.Config.Env.RoleLocation)
-
-	// TODO: Make it configurable.
-	queue := inmemory.NewClient(nil)
+	qcli, err := qp.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+	sm := manager.New(sc, qcli, providerName, w.options.Config.Env.RoleLocation)
 
 	// Create and start worker.
-	worker := worker.New(worker.Options{}, asyncOpManager, queue, controllers)
+	worker := worker.New(worker.Options{}, sm, qcli, controllers)
 
 	logger.Info("Start Worker...")
 	if err := worker.Start(ctx); err != nil {

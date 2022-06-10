@@ -77,7 +77,7 @@ func ConfigureDefaultHandlers(
 	providerNamespace string,
 	operationCtrlFactory ControllerFunc) error {
 	providerNamespace = strings.ToLower(providerNamespace)
-	rt := fmt.Sprintf("%s/provider", providerNamespace)
+	rt := providerNamespace + "/provider"
 
 	if isAzureProvider {
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
@@ -102,10 +102,11 @@ func ConfigureDefaultHandlers(
 		}
 	}
 
+	statusRT := providerNamespace + "/operationstatuses"
 	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", pathBase, providerNamespace)
 	err := RegisterHandler(ctx, sp, sm, HandlerOptions{
 		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
-		ResourceType:   rt,
+		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationStatuses,
 		HandlerFactory: default_ctrl.NewGetOperationStatus,
 	})
@@ -116,7 +117,7 @@ func ConfigureDefaultHandlers(
 	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", pathBase, providerNamespace)
 	err = RegisterHandler(ctx, sp, sm, HandlerOptions{
 		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
-		ResourceType:   rt,
+		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationResult,
 		HandlerFactory: default_ctrl.NewGetOperationResult,
 	})

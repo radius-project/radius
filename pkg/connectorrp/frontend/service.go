@@ -12,11 +12,17 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/handler"
+	qprovider "github.com/project-radius/radius/pkg/queue/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+)
+
+const (
+	statusResourceType = handler.ProviderNamespaceName + "/operationstatuses"
 )
 
 type Service struct {
@@ -30,13 +36,24 @@ func NewService(options hostoptions.HostOptions) *Service {
 }
 
 func (s *Service) Name() string {
-	return "Applications.Connector frontend"
+	return handler.ProviderNamespaceName
 }
 
 func (s *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	storageProvider := dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
+	sp := dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
+	qp := qprovider.New(s.Options.Config.QueueProvider)
+
+	opSC, err := sp.GetStorageClient(ctx, statusResourceType)
+	if err != nil {
+		return err
+	}
+	qcli, err := qp.GetClient(ctx)
+	if err != nil {
+		return err
+	}
+	sm := manager.New(opSC, qcli, handler.ProviderNamespaceName, s.Options.Config.Env.RoleLocation)
 
 	ctx = logr.NewContext(ctx, logger)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
@@ -60,7 +77,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    acm,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, storageProvider, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted())
+			err := handler.AddRoutes(ctx, sp, sm, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted())
 			if err != nil {
 				return err
 			}

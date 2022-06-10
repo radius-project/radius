@@ -84,7 +84,7 @@ func newTestContext(t *testing.T) (*testContext, *gomock.Controller) {
 		mockSM:    manager.NewMockStatusManager(mctrl),
 		mockSP:    dataprovider.NewMockDataStorageProvider(mctrl),
 		internalQ: inmemQ,
-		testQueue: inmemory.NewClient(inmemQ),
+		testQueue: inmemory.New(inmemQ),
 	}, mctrl
 }
 

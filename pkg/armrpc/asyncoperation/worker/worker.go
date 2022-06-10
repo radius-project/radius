@@ -53,7 +53,7 @@ type AsyncRequestProcessWorker struct {
 	options      Options
 	sm           manager.StatusManager
 	registry     *ControllerRegistry
-	requestQueue queue.Dequeuer
+	requestQueue queue.Client
 
 	sem *semaphore.Weighted
 }
@@ -62,7 +62,7 @@ type AsyncRequestProcessWorker struct {
 func New(
 	options Options,
 	sm manager.StatusManager,
-	qu queue.Dequeuer,
+	qu queue.Client,
 	ctrlRegistry *ControllerRegistry) *AsyncRequestProcessWorker {
 	return &AsyncRequestProcessWorker{
 		options:      options,
