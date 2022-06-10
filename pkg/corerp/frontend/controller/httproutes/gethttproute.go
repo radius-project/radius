@@ -21,7 +21,7 @@ import (
 
 var _ ctrl.Controller = (*GetHTTPRoute)(nil)
 
-// GetHTTPRoute is the controller implementation to get the HTTPRoutes resource.
+// GetHTTPRoute is the controller implementation to get the HTTPRoute resource.
 type GetHTTPRoute struct {
 	ctrl.BaseController
 }
