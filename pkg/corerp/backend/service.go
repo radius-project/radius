@@ -49,7 +49,8 @@ func (w *Service) Run(ctx context.Context) error {
 	// Register controllers
 	err := w.Controllers.Register(
 		ctx,
-		v1.OperationType{Type: containers_ctrl.ResourceTypeName, Method: v1.OperationPut},
+		containers_ctrl.ResourceTypeName,
+		v1.OperationPut,
 		containers_ctrl.NewUpdateContainer)
 	if err != nil {
 		panic(err)

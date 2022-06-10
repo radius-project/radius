@@ -47,11 +47,11 @@ func (s *BaseService) Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	qcli, err := qp.GetClient(ctx)
+	reqQueueClient, err := qp.GetClient(ctx)
 	if err != nil {
 		return err
 	}
-	s.OperationStatusManager = manager.New(opSC, qcli, s.ProviderName, s.Options.Config.Env.RoleLocation)
+	s.OperationStatusManager = manager.New(opSC, reqQueueClient, s.ProviderName, s.Options.Config.Env.RoleLocation)
 
 	// Initialize the manager for ARM client cert validation
 	if s.Options.Config.Server.EnableArmAuth {

@@ -138,7 +138,7 @@ func TestStart_UnknownOperation(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
 		ctx,
-		v1.OperationType{Type: testResourceType, Method: "UNDEFINED"},
+		testResourceType, "UNDEFINED",
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return testCtrl, nil
 		})
@@ -179,7 +179,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(0)
 	err := registry.Register(
 		ctx,
-		v1.OperationType{Type: testResourceType, Method: v1.OperationPut},
+		testResourceType, v1.OperationPut,
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return nil, nil
 		})
@@ -238,7 +238,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
 		ctx,
-		v1.OperationType{Type: testResourceType, Method: v1.OperationPut},
+		testResourceType, v1.OperationPut,
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return testCtrl, nil
 		})
@@ -301,7 +301,7 @@ func TestStart_RunOperation(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
 		ctx,
-		v1.OperationType{Type: testResourceType, Method: v1.OperationPut},
+		testResourceType, v1.OperationPut,
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return testCtrl, nil
 		})

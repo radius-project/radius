@@ -17,8 +17,10 @@ func TestNamedQueue(t *testing.T) {
 	cli1 := NewNamedQueue("queue1")
 	cli2 := NewNamedQueue("queue2")
 
-	cli1.Enqueue(context.Background(), &queue.Message{Data: "test1"})
-	cli2.Enqueue(context.Background(), &queue.Message{Data: "test2"})
+	err := cli1.Enqueue(context.Background(), &queue.Message{Data: "test1"})
+	require.NoError(t, err)
+	err = cli2.Enqueue(context.Background(), &queue.Message{Data: "test2"})
+	require.NoError(t, err)
 
 	require.Equal(t, 1, cli1.queue.Len())
 	require.Equal(t, 1, cli2.queue.Len())

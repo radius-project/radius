@@ -28,8 +28,8 @@ type BaseWorkerService struct {
 	OperationStatusManager manager.StatusManager
 	// Controllers is the registry of the async operation controllers.
 	Controllers *ControllerRegistry
-	// QueueClient is the queue client for async operation request message.
-	QueueClient queue.Client
+	// RequestQueue is the queue client for async operation request message.
+	RequestQueue queue.Client
 }
 
 // Init initializes worker service.
@@ -45,11 +45,11 @@ func (s *BaseWorkerService) Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.QueueClient, err = qp.GetClient(ctx)
+	s.RequestQueue, err = qp.GetClient(ctx)
 	if err != nil {
 		return err
 	}
-	s.OperationStatusManager = manager.New(opSC, s.QueueClient, s.ProviderName, s.Options.Config.Env.RoleLocation)
+	s.OperationStatusManager = manager.New(opSC, s.RequestQueue, s.ProviderName, s.Options.Config.Env.RoleLocation)
 	s.Controllers = NewControllerRegistry(s.StorageProvider)
 	return nil
 }
@@ -60,7 +60,7 @@ func (s *BaseWorkerService) StartServer(ctx context.Context, opt Options) error 
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
 	// Create and start worker.
-	worker := New(opt, s.OperationStatusManager, s.QueueClient, s.Controllers)
+	worker := New(opt, s.OperationStatusManager, s.RequestQueue, s.Controllers)
 
 	logger.Info("Start Worker...")
 	if err := worker.Start(ctx); err != nil {
