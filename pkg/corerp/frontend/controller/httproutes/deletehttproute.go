@@ -25,7 +25,7 @@ type DeleteHTTPRoute struct {
 	ctrl.BaseController
 }
 
-// NewDeleteHTTPRoute creates a new DeleteHTTPRoutet.
+// NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
 func NewDeleteHTTPRoute(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
 	return &DeleteHTTPRoute{ctrl.NewBaseController(ds, sm)}, nil
 }
