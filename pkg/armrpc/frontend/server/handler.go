@@ -36,13 +36,13 @@ type HandlerOptions struct {
 	HandlerFactory ControllerFunc
 }
 
-func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, opts HandlerOptions) error {
+func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, opts HandlerOptions) error {
 	sc, err := sp.GetStorageClient(ctx, opts.ResourceType)
 	if err != nil {
 		return err
 	}
 
-	ctrl, err := opts.HandlerFactory(sc, nil)
+	ctrl, err := opts.HandlerFactory(sc, sm)
 	if err != nil {
 		return err
 	}
@@ -70,6 +70,7 @@ func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, o
 func ConfigureDefaultHandlers(
 	ctx context.Context,
 	sp dataprovider.DataStorageProvider,
+	sm manager.StatusManager,
 	rootRouter *mux.Router,
 	pathBase string,
 	isAzureProvider bool,
@@ -80,7 +81,7 @@ func ConfigureDefaultHandlers(
 
 	if isAzureProvider {
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-		err := RegisterHandler(ctx, sp, HandlerOptions{
+		err := RegisterHandler(ctx, sp, sm, HandlerOptions{
 			ParentRouter:   rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 			ResourceType:   rt,
 			Method:         v1.OperationGet,
@@ -90,7 +91,7 @@ func ConfigureDefaultHandlers(
 			return err
 		}
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
-		err = RegisterHandler(ctx, sp, HandlerOptions{
+		err = RegisterHandler(ctx, sp, sm, HandlerOptions{
 			ParentRouter:   rootRouter.Path(pathBase).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 			ResourceType:   rt,
 			Method:         v1.OperationPut,
@@ -102,7 +103,7 @@ func ConfigureDefaultHandlers(
 	}
 
 	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", pathBase, providerNamespace)
-	err := RegisterHandler(ctx, sp, HandlerOptions{
+	err := RegisterHandler(ctx, sp, sm, HandlerOptions{
 		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationGetOperationStatuses,
@@ -113,7 +114,7 @@ func ConfigureDefaultHandlers(
 	}
 
 	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", pathBase, providerNamespace)
-	err = RegisterHandler(ctx, sp, HandlerOptions{
+	err = RegisterHandler(ctx, sp, sm, HandlerOptions{
 		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   rt,
 		Method:         v1.OperationGetOperationResult,

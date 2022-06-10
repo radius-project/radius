@@ -23,7 +23,7 @@ import (
 // statusManager includes the necessary functions to manage asynchronous operations.
 type statusManager struct {
 	storeClient  store.StorageClient
-	enqueuer     queue.Enqueuer
+	queue        queue.Client
 	providerName string
 	location     string
 }
@@ -43,10 +43,10 @@ type StatusManager interface {
 }
 
 // New creates statusManager instance.
-func New(storeClient store.StorageClient, enqueuer queue.Enqueuer, providerName, location string) StatusManager {
+func New(storeClient store.StorageClient, q queue.Client, providerName, location string) StatusManager {
 	return &statusManager{
 		storeClient:  storeClient,
-		enqueuer:     enqueuer,
+		queue:        q,
 		providerName: providerName,
 		location:     location,
 	}
@@ -58,8 +58,8 @@ func (aom *statusManager) operationStatusResourceID(rootScope string, operationI
 }
 
 func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *servicecontext.ARMRequestContext, operationTimeout time.Duration) error {
-	if aom.enqueuer == nil {
-		return errors.New("enqueuer client is unset")
+	if aom.queue == nil {
+		return errors.New("queue client is unset")
 	}
 
 	if sCtx == nil {
@@ -158,5 +158,5 @@ func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *service
 		OperationTimeout: &operationTimeout,
 	}
 
-	return aom.enqueuer.Enqueue(ctx, queue.NewMessage(msg))
+	return aom.queue.Enqueue(ctx, queue.NewMessage(msg))
 }
