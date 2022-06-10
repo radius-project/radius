@@ -44,7 +44,7 @@ func (client *ContainersClient) CreateOrUpdate(ctx context.Context, containerNam
 	if err != nil {
 		return ContainersCreateOrUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
+	if !runtime.HasStatusCode(resp, http.StatusCreated) {
 		return ContainersCreateOrUpdateResponse{}, client.createOrUpdateHandleError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
@@ -272,7 +272,7 @@ func (client *ContainersClient) Update(ctx context.Context, containerName string
 	if err != nil {
 		return ContainersUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
+	if !runtime.HasStatusCode(resp, http.StatusCreated) {
 		return ContainersUpdateResponse{}, client.updateHandleError(resp)
 	}
 	return client.updateHandleResponse(resp)

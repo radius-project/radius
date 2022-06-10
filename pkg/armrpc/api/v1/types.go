@@ -100,6 +100,11 @@ const (
 	ProvisioningStateCanceled     ProvisioningState = "Canceled"
 )
 
+// IsTerminalState returns true if given Provisioning State is a terminal state.
+func IsTerminalState(state ProvisioningState) bool {
+	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled
+}
+
 // TrackedResource represents the common tracked resource.
 type TrackedResource struct {
 	// ID is the fully qualified resource ID for the resource.
