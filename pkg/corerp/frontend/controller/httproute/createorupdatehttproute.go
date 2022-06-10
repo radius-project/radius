@@ -10,32 +10,26 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
-	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 )
 
-var _ ctrl.ControllerInterface = (*CreateOrUpdateHTTPRoute)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateHTTPRoute)(nil)
 
 // CreateOrUpdateHTTPRoute is the controller implementation to create or update HTTPRoute resource.
 type CreateOrUpdateHTTPRoute struct {
 	ctrl.BaseController
 }
 
-// NewCreateOrUpdateHTTPRoute creates a new CreateOrUpdateHTTPRoute.
-func NewCreateOrUpdateHTTPRoute(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
-	return &CreateOrUpdateHTTPRoute{
-		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+// NewCreateOrUpdateTTPRoute creates a new CreateOrUpdateTTPRoute.
+func NewCreateOrUpdateHTTPRoute(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &CreateOrUpdateHTTPRoute{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 // Run executes CreateOrUpdateHTTPRoute operation.
@@ -93,7 +87,7 @@ func (e *CreateOrUpdateHTTPRoute) Validate(ctx context.Context, req *http.Reques
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	// TODO: Update the state.
-	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
+	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
 	return dm, err
 }

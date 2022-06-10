@@ -10,29 +10,24 @@ import (
 	"errors"
 	"net/http"
 
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.ControllerInterface = (*DeleteHTTPRoute)(nil)
+var _ ctrl.Controller = (*DeleteHTTPRoute)(nil)
 
 // DeleteHTTPRoute is the controller implementation to delete HTTPRoute resource.
 type DeleteHTTPRoute struct {
 	ctrl.BaseController
 }
 
-// NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
-func NewDeleteHTTPRoute(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (ctrl.ControllerInterface, error) {
-	return &DeleteHTTPRoute{
-		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+// NewDeleteHTTPRoute creates a new DeleteHTTPRoutet.
+func NewDeleteHTTPRoute(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &DeleteHTTPRoute{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -55,7 +50,7 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 	}
 
 	// TODO: handle async deletion later.
-	err = e.DBClient.Delete(ctx, serviceCtx.ResourceID.String())
+	err = e.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
