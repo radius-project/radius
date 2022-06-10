@@ -116,6 +116,46 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Core/httproutes/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "httproutes",
+					Operation:   "List httproutes",
+					Description: "Get the list of httproutes.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/httproutes/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "httproutes",
+					Operation:   "Create/Update httproute",
+					Description: "Create or update an httproute.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/httproutes/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "httproutes",
+					Operation:   "Delete httproute",
+					Description: "Delete an httproute.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/httproutes/join/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "httproutes",
+					Operation:   "Join httproute",
+					Description: "Join to httproute.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }
