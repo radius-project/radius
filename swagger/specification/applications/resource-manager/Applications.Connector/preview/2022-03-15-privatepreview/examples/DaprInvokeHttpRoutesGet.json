@@ -1,19 +1,19 @@
 {
     "parameters": {
-      "rootScope": "00000000-0000-0000-0000-000000000000:testGroup",
+      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
       "api-version": "2022-03-15-privatepreview",
       "daprInvokeHttpRouteName": "daprHttpRoute0"
     },
     "responses": {
       "200": {
         "body": {
-          "id": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Connector/daprInvokeHttpRoutes/daprHttpRoute0",
+          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/daprInvokeHttpRoutes/daprHttpRoute0",
           "name": "daprHttpRoute0",
           "type": "Applications.Connector/daprInvokeHttpRoutes",
           "properties": {
             "provisioningState": "Succeeded",
-            "application": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/applications/testApplication",
-            "environment": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/environments/env0",
+            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
             "appId": "daprAppId"
           }
         }

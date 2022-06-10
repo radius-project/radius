@@ -1,6 +1,6 @@
 {
     "parameters": {
-      "rootScope": "00000000-0000-0000-0000-000000000000:testGroup",
+      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
       "api-version": "2022-03-15-privatepreview"
     },
     "responses": {
@@ -8,25 +8,25 @@
         "body": {
           "value": [
             {
-              "id": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Connector/daprPubSubBrokers/daprPubSub0",
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/daprPubSub0",
               "name": "daprPubSub0",
               "type": "Applications.Connector/daprPubSubBrokers",
               "properties": {
                 "provisioningState": "Succeeded",
-                "application": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/applications/testApplication",
-                "environment": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/environments/env0",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
                 "kind": "pubsub.azure.servicebus",
-                "resource": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue"
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue"
               }
             },
             {
-              "id": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Connector/daprPubSubBrokers/daprPubSub1",
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/daprPubSub1",
               "name": "daprPubSub1",
               "type": "Applications.Connector/daprPubSubBrokers",
               "properties": {
                 "provisioningState": "Succeeded",
-                "application": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/applications/testApplication",
-                "environment": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/environments/env0",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
                 "kind": "generic",
                 "type": "pubsub.kafka",
                 "version": "v1",

@@ -1,6 +1,6 @@
 {
     "parameters": {
-      "rootScope": "00000000-0000-0000-0000-000000000000:testGroup",
+      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
       "api-version": "2022-03-15-privatepreview"
     },
     "responses": {
@@ -8,37 +8,37 @@
         "body": {
           "value": [
             {
-              "id": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Connector/daprStateStores/daprStateStore0",
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/daprStateStore0",
               "name": "daprStateStore0",
               "type": "Applications.Connector/daprStateStores",
               "properties": {
                 "provisioningState": "Succeeded",
-                "application": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/applications/testApplication",
-                "environment": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/environments/env0",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
                 "kind": "state.sqlserver",
-                "resource": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
               }
             },
             {
-                "id": "/00000000-0000-0000-0000-000000000000:testGroup1/providers/Applications.Connector/daprStateStores/daprStateStore1",
+                "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/daprStateStore1",
                 "name": "daprStateStore1",
                 "type": "Applications.Connector/daprStateStores",
                 "properties": {
                   "provisioningState": "Succeeded",
-                  "application": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/applications/testApplication",
-                  "environment": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/environments/env0",
+                  "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                  "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
                   "kind": "state.azure.tablestorage",
                   "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
                 }
               },
             {
-              "id": "/00000000-0000-0000-0000-000000000000:testGroup2/providers/Applications.Connector/daprStateStores/daprStateStore2",
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/daprStateStore2",
               "name": "daprStateStore2",
               "type": "Applications.Connector/daprStateStores",
               "properties": {
                 "provisioningState": "Succeeded",
-                "application": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/applications/testApplication",
-                "environment": "/00000000-0000-0000-0000-000000000000:testGroup/providers/Applications.Core/environments/env0",
+                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
                 "kind": "generic",
                 "type": "state.zookeeper",
                 "version": "v1",
