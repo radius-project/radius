@@ -8,16 +8,17 @@ package containers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
-	"github.com/gorilla/mux"
+	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -95,27 +96,19 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	locationHeader, err := getHeaderPath(serviceCtx.ResourceID.String(), "operationResults", serviceCtx.OperationID.String())
+	locationHeader, err := getPath(serviceCtx.ResourceID, "operationResults", serviceCtx.OperationID)
 	if err != nil {
-		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Message: err.Error(),
-			},
-		}), nil
+		return nil, err
 	}
 
-	azureAsyncOpHeader, err := getHeaderPath(serviceCtx.ResourceID.String(), "operationStatuses", serviceCtx.OperationID.String())
+	azureAsyncOpHeader, err := getPath(serviceCtx.ResourceID, "operationStatuses", serviceCtx.OperationID)
 	if err != nil {
-		return rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Message: err.Error(),
-			},
-		}), nil
+		return nil, err
 	}
 
 	headers := map[string]string{
-		"Location":             locationHeader.String(),
-		"Azure-AsyncOperation": azureAsyncOpHeader.String(),
+		"Location":             locationHeader,
+		"Azure-AsyncOperation": azureAsyncOpHeader,
 	}
 
 	return rest.NewAsyncOperationCreatedResponse(newResource.Properties, headers), nil
@@ -141,14 +134,13 @@ func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Reques
 	return dm, err
 }
 
-func (e *CreateOrUpdateContainer) RollbackChanges(ctx context.Context, exists bool, oldCnt *datamodel.ContainerResource, etag string) error {
+// RollbackChanges function overwrites the object with an older copy or deletes the object if it didn't exist before.
+func (e *CreateOrUpdateContainer) RollbackChanges(ctx context.Context, exists bool, oldResource *datamodel.ContainerResource, etag string) error {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	var err error
-
-	// If the object existed before, overwrite with the older copy
 	if exists {
-		_, err = e.SaveResource(ctx, serviceCtx.ResourceID.String(), oldCnt, etag)
+		_, err = e.SaveResource(ctx, serviceCtx.ResourceID.String(), oldResource, etag)
 	} else {
 		err = e.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	}
@@ -175,31 +167,27 @@ func updateExistingResourceData(ctx context.Context, er *datamodel.ContainerReso
 	nr.Properties.ProvisioningState = v1.ProvisioningStateUpdating
 }
 
-func GetOperationStatusPath(r *http.Request, id string) string {
-	vars := mux.Vars(r)
+// getPath returns the path for the given resource type.
+func getPath(resourceID resources.ID, resourceType string, operationID uuid.UUID) (string, error) {
+	var sb strings.Builder
 
-	return "/subscriptions/" + vars["subscriptionID"] + "/providers/Applications.Core/locations/" + vars["location"] + "/operationsStatuses/" + id
-}
-
-func GetOperationResultPath(r *http.Request, id string) string {
-	vars := mux.Vars(r)
-
-	return "/subscriptions/" + vars["subscriptionID"] + "/providers/Applications.Core/locations/" + vars["location"] + "/operationsResults/" + id
-}
-
-// getHeaderPath function
-func getHeaderPath(resourceID string, resourceType string, operationID string) (resources.ID, error) {
-	id, err := resources.Parse(resourceID)
+	parsedID, err := resources.Parse(resourceID.String())
 	if err != nil {
-		return id, err
+		return "", err
+	}
+	sb.WriteString(parsedID.RootScope())
+
+	provider := parsedID.ProviderNamespace()
+	if provider == "" {
+		return "", errors.New("provider can not be empty string")
+	}
+	sb.WriteString(fmt.Sprintf("/providers/%s", provider))
+
+	location := parsedID.FindScope(resources.LocationsSegment)
+	if location != "" {
+		sb.WriteString(fmt.Sprintf("/locations/%s", location))
 	}
 
-	ts := resources.TypeSegment{
-		Type: resourceType,
-		Name: operationID,
-	}
-
-	id = id.Truncate().Append(ts)
-
-	return id, nil
+	sb.WriteString(fmt.Sprintf("/%s/%s", resourceType, operationID.String()))
+	return sb.String(), nil
 }

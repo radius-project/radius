@@ -87,7 +87,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
-			// sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{}, tt.getErr).
@@ -123,14 +123,15 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				// require.NotNil(t, w.Header().Get("Location"))
-				// require.Equal(t, GetOperationResultPath(req, sCtx.OperationID.String()),
-				// 	w.Header().Get("Location"))
+				locationHeader, err := getPath(sCtx.ResourceID, "operationResults", sCtx.OperationID)
+				require.NoError(t, err)
+				require.NotNil(t, w.Header().Get("Location"))
+				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				// FIXME: "/subscriptions//providers//locations//operationsStatuses/135dd863-6c0a-4677-8429-b99b5e324f99"
-				// require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
-				// require.Equal(t, GetOperationStatusPath(req, sCtx.OperationID.String()),
-				// 	w.Header().Get("Azure-AsyncOperation"))
+				azureAsyncOpHeader, err := getPath(sCtx.ResourceID, "operationStatuses", sCtx.OperationID)
+				require.NoError(t, err)
+				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
+				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
 		})
 	}
@@ -238,14 +239,15 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				// require.NotNil(t, w.Header().Get("Location"))
-				// require.Equal(t, GetOperationResultPath(req, sCtx.OperationID.String()),
-				// 	w.Header().Get("Location"))
+				locationHeader, err := getPath(sCtx.ResourceID, "operationResults", sCtx.OperationID)
+				require.NoError(t, err)
+				require.NotNil(t, w.Header().Get("Location"))
+				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				// FIXME: "/subscriptions//providers//locations//operationsStatuses/135dd863-6c0a-4677-8429-b99b5e324f99"
-				// require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
-				// require.Equal(t, GetOperationStatusPath(req, sCtx.OperationID.String()),
-				// 	w.Header().Get("Azure-AsyncOperation"))
+				azureAsyncOpHeader, err := getPath(sCtx.ResourceID, "operationStatuses", sCtx.OperationID)
+				require.NoError(t, err)
+				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
+				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
 		})
 	}
