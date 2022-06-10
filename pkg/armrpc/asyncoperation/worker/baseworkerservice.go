@@ -16,16 +16,24 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 )
 
-type BaseService struct {
-	ProviderName           string
-	Options                hostoptions.HostOptions
-	StorageProvider        dataprovider.DataStorageProvider
+// BaseWorkerService is the base worker service implementation to initialize the start worker.
+type BaseWorkerService struct {
+	// ProviderName is the name of provider namespace.
+	ProviderName string
+	// Options is the server hosting options.
+	Options hostoptions.HostOptions
+	// StorageProvider is the provider of storage client.
+	StorageProvider dataprovider.DataStorageProvider
+	// OperationStatusManager is the manager of the operation status.
 	OperationStatusManager manager.StatusManager
-	Controllers            *ControllerRegistry
-	QueueClient            queue.Client
+	// Controllers is the registry of the async operation controllers.
+	Controllers *ControllerRegistry
+	// QueueClient is the queue client for async operation request message.
+	QueueClient queue.Client
 }
 
-func (s *BaseService) Init(ctx context.Context) error {
+// Init initializes worker service.
+func (s *BaseWorkerService) Init(ctx context.Context) error {
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 
 	if s.Options.Config.QueueProvider.Provider == qprovider.TypeInmemory {
@@ -46,7 +54,8 @@ func (s *BaseService) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *BaseService) StartServer(ctx context.Context, opt Options) error {
+// StartServer starts the worker.
+func (s *BaseWorkerService) StartServer(ctx context.Context, opt Options) error {
 	logger := logr.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 

@@ -17,6 +17,7 @@ var (
 	ErrUnsupportedStorageProvider = errors.New("unsupported queue provider")
 )
 
+// QueueProvider is the provider of queue clients.
 type QueueProvider struct {
 	queueClient queue.Client
 	once        sync.Once
@@ -31,7 +32,7 @@ func New(opts QueueProviderOptions) *QueueProvider {
 	}
 }
 
-// GetClient creates or gets queueClient
+// GetClient creates or gets queue client
 func (p *QueueProvider) GetClient(ctx context.Context) (queue.Client, error) {
 	if p.queueClient != nil {
 		return p.queueClient, nil
