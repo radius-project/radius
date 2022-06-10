@@ -1,6 +1,6 @@
 {
     "parameters": {
-      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000",
       "api-version": "2022-03-15-privatepreview"
     },
     "responses": {
@@ -19,7 +19,7 @@
               }
             },
             {
-              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/sqlDatabases/sql1",
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Connector/sqlDatabases/sql1",
               "name": "sql1",
               "type": "Applications.Connector/sqlDatabases",
               "properties": {

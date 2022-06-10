@@ -1,6 +1,6 @@
 {
     "parameters": {
-      "subscriptionId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
       "daprPubSubBrokerName": "daprPubSub0",
       "api-version": "2022-03-15-privatepreview"
     },
