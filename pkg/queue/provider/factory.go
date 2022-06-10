@@ -19,5 +19,9 @@ var clientFactory = map[QueueProviderType]factoryFunc{
 }
 
 func initInMemory(ctx context.Context, opt QueueProviderOptions) (queue.Client, error) {
-	return qinmem.NewNamedQueue(opt.InMemory.Name), nil
+	queueName := string(TypeInmemory)
+	if opt.InMemory != nil && opt.InMemory.Name != "" {
+		queueName = opt.InMemory.Name
+	}
+	return qinmem.NewNamedQueue(queueName), nil
 }

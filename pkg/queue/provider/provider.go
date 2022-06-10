@@ -21,7 +21,6 @@ type QueueProvider struct {
 	queueClient queue.Client
 	once        sync.Once
 	options     QueueProviderOptions
-	name        string
 }
 
 // New creates new QueueProvider instance.
