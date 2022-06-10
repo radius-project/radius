@@ -22,13 +22,13 @@ const (
 
 // Service is a service to run AsyncReqeustProcessWorker.
 type Service struct {
-	worker.BaseWorkerService
+	worker.Service
 }
 
 // NewService creates new service instance to run AsyncReqeustProcessWorker.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
-		worker.BaseWorkerService{
+		worker.Service{
 			ProviderName: providerName,
 			Options:      options,
 		},
@@ -56,5 +56,5 @@ func (w *Service) Run(ctx context.Context) error {
 		panic(err)
 	}
 
-	return w.StartServer(ctx, worker.Options{})
+	return w.Start(ctx, worker.Options{})
 }

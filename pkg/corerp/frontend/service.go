@@ -16,12 +16,12 @@ import (
 )
 
 type Service struct {
-	server.BaseService
+	server.Service
 }
 
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
-		BaseService: server.BaseService{
+		server.Service{
 			Options:      options,
 			ProviderName: handler.ProviderNamespaceName,
 		},
@@ -38,7 +38,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
-	err := s.StartServer(ctx, server.Options{
+	err := s.Start(ctx, server.Options{
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate

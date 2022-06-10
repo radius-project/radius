@@ -16,8 +16,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 )
 
-// BaseWorkerService is the base worker service implementation to initialize the start worker.
-type BaseWorkerService struct {
+// Service is the base worker service implementation to initialize and start worker.
+type Service struct {
 	// ProviderName is the name of provider namespace.
 	ProviderName string
 	// Options is the server hosting options.
@@ -33,7 +33,7 @@ type BaseWorkerService struct {
 }
 
 // Init initializes worker service.
-func (s *BaseWorkerService) Init(ctx context.Context) error {
+func (s *Service) Init(ctx context.Context) error {
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 
 	if s.Options.Config.QueueProvider.Provider == qprovider.TypeInmemory {
@@ -54,8 +54,8 @@ func (s *BaseWorkerService) Init(ctx context.Context) error {
 	return nil
 }
 
-// StartServer starts the worker.
-func (s *BaseWorkerService) StartServer(ctx context.Context, opt Options) error {
+// Start starts the worker.
+func (s *Service) Start(ctx context.Context, opt Options) error {
 	logger := logr.FromContextOrDiscard(ctx)
 	ctx = hostoptions.WithContext(ctx, s.Options.Config)
 
