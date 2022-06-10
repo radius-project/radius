@@ -94,13 +94,13 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			defer w.sem.Release(1)
 
 			op := msgreq.Data.(*ctrl.Request)
-			opLogger := logger.WithValues([]interface{}{
+			opLogger := logger.WithValues(
 				"OperationID", op.OperationID.String(),
 				"OperationType", op.OperationType,
 				"ResourceID", op.ResourceID,
 				"CorrleationID", op.CorrelationID,
 				"W3CTraceID", op.TraceparentID,
-			})
+			)
 
 			opType, ok := v1.ParseOperationType(op.OperationType)
 			if !ok {
