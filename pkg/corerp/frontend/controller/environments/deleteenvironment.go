@@ -49,7 +49,6 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	// TODO: handle async deletion later.
 	err = e.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {

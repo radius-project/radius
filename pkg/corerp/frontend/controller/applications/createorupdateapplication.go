@@ -10,38 +10,32 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ base_ctrl.ControllerInterface = (*CreateOrUpdateApplication)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.
 type CreateOrUpdateApplication struct {
-	base_ctrl.BaseController
+	ctrl.BaseController
 }
 
 // NewCreateOrUpdateApplication creates a new instance of CreateOrUpdateApplication.
-func NewCreateOrUpdateApplication(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
-	return &CreateOrUpdateApplication{
-		BaseController: ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewCreateOrUpdateApplication(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &CreateOrUpdateApplication{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 // Run executes CreateOrUpdateApplication operation.
-func (app *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	newResource, err := app.Validate(ctx, req, serviceCtx.APIVersion)
+	newResource, err := a.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +43,7 @@ func (app *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request
 	// Read existing application resource info from the data store
 	existingResource := &datamodel.Application{}
 
-	etag, err := app.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
+	etag, err := a.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if req.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
@@ -64,7 +58,7 @@ func (app *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request
 
 	UpdateExistingResourceData(ctx, existingResource, newResource)
 
-	nr, err := app.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
+	nr, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
@@ -80,9 +74,9 @@ func (app *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request
 }
 
 // Validate extracts versioned resource from request and validates the properties.
-func (app *CreateOrUpdateApplication) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Application, error) {
+func (a *CreateOrUpdateApplication) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Application, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content, err := base_ctrl.ReadJSONBody(req)
+	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +87,8 @@ func (app *CreateOrUpdateApplication) Validate(ctx context.Context, req *http.Re
 	}
 
 	dm.ID = serviceCtx.ResourceID.String()
-	dm.TrackedResource = base_ctrl.BuildTrackedResource(ctx)
-	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
+	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
+	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 	return dm, nil
 }
 
