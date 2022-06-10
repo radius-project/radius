@@ -56,11 +56,11 @@ metadata:
 spec:
   ports:
     - port: 5443
-      name: http
+      name: core-http
       protocol: TCP
       targetPort: 5443
     - port: 5444
-      name: http
+      name: connector-http
       protocol: TCP
       targetPort: 5444
   selector:
