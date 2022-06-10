@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package httproute
+package httproutes
 
 import (
 	"context"
@@ -29,7 +29,7 @@ func TestListHTTPRoutesRun_20220315PrivatePreview(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, httprouteDataModel, expectedOutput := getTestModels20220315privatepreview()
+	_, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
 
 	t.Run("list zero resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestListHTTPRoutesRun_20220315PrivatePreview(t *testing.T) {
 					Metadata: store.Metadata{
 						ID: uuid.New().String(),
 					},
-					Data: httprouteDataModel,
+					Data: hrtDataModel,
 				}
 				items = append(items, item)
 			}

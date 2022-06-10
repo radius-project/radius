@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package httproute
+package httproutes
 
 import (
 	"context"

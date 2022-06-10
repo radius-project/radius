@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package httproute
+package httproutes
 
 import (
 	"context"
@@ -82,7 +82,7 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			req.Header.Set("If-Match", tt.ifMatchETag)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
-			_, httprouteDataModel, _ := getTestModels20220315privatepreview()
+			_, hrtDataModel, _ := getTestModels20220315privatepreview()
 
 			mStorageClient.
 				EXPECT().
@@ -90,7 +90,7 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return &store.Object{
 						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
-						Data:     httprouteDataModel,
+						Data:     hrtDataModel,
 					}, nil
 				})
 

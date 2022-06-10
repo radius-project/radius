@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package httproute
+package httproutes
 
 import (
 	"context"
@@ -55,11 +55,11 @@ func (e *ListHTTPRoutes) createPaginationResponse(ctx context.Context, req *http
 
 	items := []interface{}{}
 	for _, item := range result.Items {
-		httprouteDataModel := &datamodel.HTTPRoute{}
-		if err := item.As(httprouteDataModel); err != nil {
+		hrtDataModel := &datamodel.HTTPRoute{}
+		if err := item.As(hrtDataModel); err != nil {
 			return nil, err
 		}
-		versioned, err := converter.HTTPRouteDataModelToVersioned(httprouteDataModel, serviceCtx.APIVersion)
+		versioned, err := converter.HTTPRouteDataModelToVersioned(hrtDataModel, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}

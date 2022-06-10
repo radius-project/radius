@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package httproute
+package httproutes
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func TestGetHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, httprouteDataModel, expectedOutput := getTestModels20220315privatepreview()
+	_, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -61,7 +61,7 @@ func TestGetHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 				return &store.Object{
 					Metadata: store.Metadata{ID: id},
-					Data:     httprouteDataModel,
+					Data:     hrtDataModel,
 				}, nil
 			})
 

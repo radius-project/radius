@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package httproute
+package httproutes
 
 import (
 	"context"
@@ -43,9 +43,9 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range createNewResourceCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			httprouteInput, httprouteDataModel, expectedOutput := getTestModels20220315privatepreview()
+			hrtInput, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, httprouteInput)
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, hrtInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
@@ -66,7 +66,7 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 						obj.ETag = "new-resource-etag"
-						obj.Data = httprouteDataModel
+						obj.Data = hrtDataModel
 						return nil
 					})
 			}
@@ -105,9 +105,9 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range updateExistingResourceCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			httprouteInput, httprouteDataModel, expectedOutput := getTestModels20220315privatepreview()
+			hrtInput, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, httprouteInput)
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, hrtInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
@@ -117,7 +117,7 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return &store.Object{
 						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
-						Data:     httprouteDataModel,
+						Data:     hrtDataModel,
 					}, nil
 				})
 
@@ -127,7 +127,7 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 						obj.ETag = "updated-resource-etag"
-						obj.Data = httprouteDataModel
+						obj.Data = hrtDataModel
 						return nil
 					})
 			}
@@ -164,9 +164,9 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range patchNonExistingResourceCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			httprouteInput, _, _ := getTestModels20220315privatepreview()
+			hrtInput, _, _ := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, httprouteInput)
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, hrtInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
@@ -202,9 +202,9 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range patchExistingResourceCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			httprouteInput, httprouteDataModel, expectedOutput := getTestModels20220315privatepreview()
+			hrtInput, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, httprouteInput)
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, hrtInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
@@ -214,7 +214,7 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return &store.Object{
 						Metadata: store.Metadata{ID: id, ETag: tt.resourceEtag},
-						Data:     httprouteDataModel,
+						Data:     hrtDataModel,
 					}, nil
 				})
 
@@ -225,7 +225,7 @@ func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 						cfg := store.NewSaveConfig(opts...)
 						obj.ETag = cfg.ETag
-						obj.Data = httprouteDataModel
+						obj.Data = hrtDataModel
 						return nil
 					})
 			}

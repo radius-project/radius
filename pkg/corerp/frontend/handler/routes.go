@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
+	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
 )
 
 const (
@@ -34,6 +35,10 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 	envRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/environments").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
+
+	hrtSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/httproutes").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{
 		{
@@ -65,6 +70,36 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 			ResourceType:   env_ctrl.ResourceTypeName,
 			Method:         v1.OperationDelete,
 			HandlerFactory: env_ctrl.NewDeleteEnvironment,
+		},
+		{
+			ParentRouter:   hrtSubrouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: hrt_ctrl.NewListHTTPRoutes,
+		},
+		{
+			ParentRouter:   hrtResourceRouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: hrt_ctrl.NewGetHTTPRoute,
+		},
+		{
+			ParentRouter:   hrtResourceRouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: hrt_ctrl.NewCreateOrUpdateHTTPRoute,
+		},
+		{
+			ParentRouter:   hrtResourceRouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: hrt_ctrl.NewCreateOrUpdateHTTPRoute,
+		},
+		{
+			ParentRouter:   hrtResourceRouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: hrt_ctrl.NewDeleteHTTPRoute,
 		},
 	}
 
