@@ -27,7 +27,7 @@ type CreateOrUpdateHTTPRoute struct {
 	ctrl.BaseController
 }
 
-// NewCreateOrUpdateTTPRoute creates a new CreateOrUpdateTTPRoute.
+// NewCreateOrUpdateTTPRoute creates a new CreateOrUpdateHTTPRoute.
 func NewCreateOrUpdateHTTPRoute(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
 	return &CreateOrUpdateHTTPRoute{ctrl.NewBaseController(ds, sm)}, nil
 }
