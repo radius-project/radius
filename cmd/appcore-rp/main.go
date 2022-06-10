@@ -86,7 +86,7 @@ func main() {
 	var connOpts *hostoptions.HostOptions
 	if runConnector && connectorConfigFile != "" {
 		logger.Info("Run Applications.Connector.")
-		connSvcs := []hosting.Service{}
+		var connSvcs []hosting.Service
 		connSvcs, connOpts = newConnectorHosts(connectorConfigFile)
 		hostingSvc = append(hostingSvc, connSvcs...)
 	}
@@ -99,7 +99,9 @@ func main() {
 		logger.Info("Enabled in-memory etcd")
 		client := hosting.NewAsyncValue()
 		options.Config.StorageProvider.ETCD.Client = client
-		connOpts.Config.StorageProvider.ETCD.Client = client
+		if connOpts != nil {
+			connOpts.Config.StorageProvider.ETCD.Client = client
+		}
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
 
