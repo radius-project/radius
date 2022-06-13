@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 func init() {
@@ -117,6 +118,12 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	err = helm.InstallOnCluster(cmd.Context(), options, client, runtimeClient)
 	if err != nil {
 		return err
+	}
+
+	if featureflag.EnableUnifiedControlPlane.IsActive() {
+		if createUCPResourceGroup(cluster.ContextName) != nil {
+			return err
+		}
 	}
 
 	output.CompleteStep(step)

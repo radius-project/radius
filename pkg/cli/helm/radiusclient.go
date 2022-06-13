@@ -11,12 +11,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
+
+	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 const (
@@ -152,6 +154,10 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 		appcorerp["tag"] = options.AppCoreTag
 	}
 
+	// Set feature flags in chart
+	global["rad_ff_enable_bicep_extensibility"] = featureflag.EnableBicepExtensibility.IsActive()
+	global["rad_ff_enable_ucp"] = featureflag.EnableUnifiedControlPlane.IsActive()
+	
 	_, ok = global["ucp"]
 	if !ok {
 		global["ucp"] = make(map[string]interface{})

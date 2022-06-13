@@ -9,6 +9,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
@@ -19,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 var envInitKubernetesCmd = &cobra.Command{
@@ -96,6 +99,12 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if featureflag.EnableUnifiedControlPlane.IsActive() {
+		if createUCPResourceGroup(contextName) != nil {
+			return err
+		}
+	}
+
 	output.CompleteStep(step)
 
 	env.Items[environmentName] = map[string]interface{}{
@@ -108,6 +117,39 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	return nil
+}
+
+func createUCPResourceGroup(kubeCtxName string) error {
+	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
+		"",
+		"",
+		kubeCtxName,
+		featureflag.EnableUnifiedControlPlane.IsActive(),
+	)
+	
+	fmt.Sprintln("***Sending request to create resourceGroup to UCP, ucp baseUrl: ", baseUrl)
+	if err != nil {
+		return err
+	}
+
+	createRgRequest, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", baseUrl, "default"),
+		strings.NewReader("{}"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+	}
+	res, err := rt.RoundTrip(createRgRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", res.StatusCode, res)
+	}
+	fmt.Printf("Received response from UCP: %+v", res)
 	return nil
 }
 

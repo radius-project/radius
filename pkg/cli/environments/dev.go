@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
+
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
@@ -18,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 // LocalEnvironment represents a local test setup for Azure Cloud Radius environment.
@@ -140,7 +142,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		SubscriptionID:   subscriptionId,
 		ResourceGroup:    resourceGroup,
 		Tags:             tags,
-		EnableUCP:        e.EnableUCP,
+		EnableUCP:        featureflag.EnableUnifiedControlPlane.IsActive(),
 	}
 	return client, nil
 }

@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
+
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
@@ -91,7 +93,7 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		OperationsClient: op,
 		SubscriptionID:   e.Namespace,
 		ResourceGroup:    e.Namespace,
-		EnableUCP:        e.EnableUCP,
+		EnableUCP:        featureflag.EnableUnifiedControlPlane.IsActive(),
 	}, nil
 }
 
