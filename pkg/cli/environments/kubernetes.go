@@ -122,6 +122,7 @@ func (e *KubernetesEnvironment) CreateLegacyDeploymentClient(ctx context.Context
 		OperationsClient: op,
 		SubscriptionID:   e.Namespace,
 		ResourceGroup:    e.Namespace,
+		Tags:             tags,
 		EnableUCP:        e.EnableUCP,
 	}, nil
 }
