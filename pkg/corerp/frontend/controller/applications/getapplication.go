@@ -21,7 +21,7 @@ import (
 
 var _ ctrl.Controller = (*GetApplication)(nil)
 
-// GetApplication is the controller implementation to get the appplications resource.
+// GetApplication is the controller implementation to get the appplication resource.
 type GetApplication struct {
 	ctrl.BaseController
 }

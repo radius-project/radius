@@ -21,7 +21,7 @@ import (
 
 var _ ctrl.Controller = (*ListApplications)(nil)
 
-// ListApplications is the controller implementation to get the list of applications resources in resource group.
+// ListApplications is the controller implementation to get the list of application resources in resource group.
 type ListApplications struct {
 	ctrl.BaseController
 }

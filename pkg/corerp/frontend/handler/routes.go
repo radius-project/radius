@@ -43,12 +43,12 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
 
 	// Adds application resource type routes
-	appRTSubrouter := router.PathPrefix(resourceGroupLevelPath+"/applications").
-		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-	appResourceRouter := appRTSubrouter.Path("/{application}").Subrouter()
+	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"resourcegroups/{resourceGroup}/providers/applications.core/applications").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	appResourceRouter := appRTSubrouter.PathPrefix("/{application}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{
-		//Environments resource handler registration.
+		// Environments resource handler registration.
 		{
 			ParentRouter:   envRTSubrouter,
 			ResourceType:   env_ctrl.ResourceTypeName,
@@ -109,7 +109,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			Method:         v1.OperationDelete,
 			HandlerFactory: hrt_ctrl.NewDeleteHTTPRoute,
 		},
-		//Applications resource handler registration.
+		// Applications resource handler registration.
 		{
 			ParentRouter:   appRTSubrouter,
 			ResourceType:   app_ctrl.ResourceTypeName,
