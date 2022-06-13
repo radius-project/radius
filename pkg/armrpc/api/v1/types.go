@@ -105,6 +105,11 @@ func IsTerminalState(state ProvisioningState) bool {
 	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled
 }
 
+// ParseOperationType parses OperationType from string.
+func ParseProvisioningState(s string) ProvisioningState {
+	return ProvisioningState(s)
+}
+
 // TrackedResource represents the common tracked resource.
 type TrackedResource struct {
 	// ID is the fully qualified resource ID for the resource.

@@ -123,3 +123,4 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 
 	return selected, nil
 }
+

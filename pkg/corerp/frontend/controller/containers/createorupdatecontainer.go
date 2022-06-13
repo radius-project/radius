@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -26,7 +27,10 @@ import (
 
 var _ ctrl.Controller = (*CreateOrUpdateContainer)(nil)
 
-var ()
+var (
+	// AsyncPutContainerOperationTimeout is the default timeout duration of async put container operation.
+	AsyncPutContainerOperationTimeout = time.Duration(120) * time.Second
+)
 
 // CreateOrUpdateContainer is the controller implementation to create or update a container resource.
 type CreateOrUpdateContainer struct {
@@ -84,7 +88,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, 60)
+	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncPutContainerOperationTimeout)
 	if err != nil {
 		rbErr := e.RollbackChanges(ctx, exists, existingResource, etag)
 		if rbErr != nil {
@@ -111,7 +115,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		"Azure-AsyncOperation": azureAsyncOpHeader,
 	}
 
-	return rest.NewAsyncOperationCreatedResponse(newResource.Properties, headers), nil
+	return rest.NewAsyncOperationCreatedResponse(newResource, headers), nil
 }
 
 // Validate extracts versioned resource from request and validate the properties.
@@ -164,7 +168,12 @@ func updateExistingResourceData(ctx context.Context, er *datamodel.ContainerReso
 
 	nr.TenantID = sc.HomeTenantID
 
-	nr.Properties.ProvisioningState = v1.ProvisioningStateUpdating
+	// Accepted state
+	// Q is going to update it to Updating
+	// Once finished, Q will update it to a Terminal State
+	// Update worker.go
+	// No retry to add the message to the Q
+	nr.Properties.ProvisioningState = v1.ProvisioningStateAccepted
 }
 
 // getPath returns the path for the given resource type.

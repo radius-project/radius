@@ -102,6 +102,9 @@ func ConfigureDefaultHandlers(
 		}
 	}
 
+	// TODO: Add handler
+	// This registers "subscriptions/.../providers/.../locations/.../operationStatuses/..."
+	// but we also need "subscriptions/.../resourceGroups/.../providers/.../locations/.../operationStatuses/..."
 	statusRT := providerNamespace + "/operationstatuses"
 	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", pathBase, providerNamespace)
 	err := RegisterHandler(ctx, sp, sm, HandlerOptions{

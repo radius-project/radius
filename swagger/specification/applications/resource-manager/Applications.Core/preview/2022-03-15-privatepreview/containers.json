@@ -153,6 +153,12 @@
             }
           ],
           "responses": {
+            "200": {
+              "description": "The resource was updated successfully.",
+              "schema": {
+                "$ref": "#/definitions/ContainerResource"
+              }
+            },
             "201": {
               "description": "The resource will be updated asynchronously.",
               "schema": {
@@ -202,6 +208,12 @@
             }
           ],
           "responses": {
+            "200": {
+              "description": "The resource was updated successfully.",
+              "schema": {
+                "$ref": "#/definitions/ContainerResource"
+              }
+            },
             "201": {
               "description": "The resource will be updated asynchronously.",
               "schema": {
