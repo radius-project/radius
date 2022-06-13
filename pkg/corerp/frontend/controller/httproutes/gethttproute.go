@@ -31,6 +31,7 @@ func NewGetHTTPRoute(ds store.StorageClient, sm manager.StatusManager) (ctrl.Con
 	return &GetHTTPRoute{ctrl.NewBaseController(ds, sm)}, nil
 }
 
+// Run executes GetHTTPRoute operation
 func (e *GetHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 

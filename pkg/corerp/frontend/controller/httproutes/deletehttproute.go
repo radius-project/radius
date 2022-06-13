@@ -30,10 +30,10 @@ func NewDeleteHTTPRoute(ds store.StorageClient, sm manager.StatusManager) (ctrl.
 	return &DeleteHTTPRoute{ctrl.NewBaseController(ds, sm)}, nil
 }
 
+// Run executes DeleteHTTPRoute operation
 func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	// Read resource metadata from the storage
 	existingResource := &datamodel.HTTPRoute{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {

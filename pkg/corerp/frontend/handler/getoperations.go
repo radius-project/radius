@@ -146,16 +146,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
-			&v1.Operation{
-				Name: "Applications.Core/httproutes/join/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    ProviderNamespaceName,
-					Resource:    "httproutes",
-					Operation:   "Join httproute",
-					Description: "Join to httproute.",
-				},
-				IsDataAction: false,
-			},
 		},
 	}
 }

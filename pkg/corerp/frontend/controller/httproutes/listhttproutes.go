@@ -31,6 +31,7 @@ func NewListHTTPRoutes(ds store.StorageClient, sm manager.StatusManager) (ctrl.C
 	return &ListHTTPRoutes{ctrl.NewBaseController(ds, sm)}, nil
 }
 
+// Run executes ListHTTPRoutes operation
 func (e *ListHTTPRoutes) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
