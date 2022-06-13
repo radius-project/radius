@@ -127,8 +127,6 @@ func createUCPResourceGroup(kubeCtxName string) error {
 		kubeCtxName,
 		featureflag.EnableUnifiedControlPlane.IsActive(),
 	)
-	
-	fmt.Sprintln("***Sending request to create resourceGroup to UCP, ucp baseUrl: ", baseUrl)
 	if err != nil {
 		return err
 	}
@@ -146,10 +144,9 @@ func createUCPResourceGroup(kubeCtxName string) error {
 		return fmt.Errorf("failed to create UCP resourceGroup: %w", err)
 	}
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusCreated {
 		return fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", res.StatusCode, res)
 	}
-	fmt.Printf("Received response from UCP: %+v", res)
 	return nil
 }
 
