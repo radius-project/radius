@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
@@ -22,23 +23,24 @@ import (
 // ContainersClient contains the methods for the Containers group.
 // Don't use this type directly, use NewContainersClient() instead.
 type ContainersClient struct {
-	con *connection
-	subscriptionID string
+	ep string
+	pl runtime.Pipeline
+	rootScope string
 }
 
 // NewContainersClient creates a new instance of ContainersClient with the specified values.
-func NewContainersClient(con *connection, subscriptionID string) *ContainersClient {
-	return &ContainersClient{con: con, subscriptionID: subscriptionID}
+func NewContainersClient(con *arm.Connection, rootScope string) *ContainersClient {
+	return &ContainersClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Create or update a Container.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainersClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, containerName string, containerResource ContainerResource, options *ContainersCreateOrUpdateOptions) (ContainersCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, containerName, containerResource, options)
+func (client *ContainersClient) CreateOrUpdate(ctx context.Context, containerName string, containerResource ContainerResource, options *ContainersCreateOrUpdateOptions) (ContainersCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, containerName, containerResource, options)
 	if err != nil {
 		return ContainersCreateOrUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ContainersCreateOrUpdateResponse{}, err
 	}
@@ -49,21 +51,17 @@ func (client *ContainersClient) CreateOrUpdate(ctx context.Context, resourceGrou
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, containerName string, containerResource ContainerResource, options *ContainersCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/containers/{containerName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context, containerName string, containerResource ContainerResource, options *ContainersCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if containerName == "" {
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -98,12 +96,12 @@ func (client *ContainersClient) createOrUpdateHandleError(resp *http.Response) e
 
 // Delete - Delete a Container.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainersClient) Delete(ctx context.Context, resourceGroupName string, containerName string, options *ContainersDeleteOptions) (ContainersDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, containerName, options)
+func (client *ContainersClient) Delete(ctx context.Context, containerName string, options *ContainersDeleteOptions) (ContainersDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, containerName, options)
 	if err != nil {
 		return ContainersDeleteResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ContainersDeleteResponse{}, err
 	}
@@ -114,21 +112,17 @@ func (client *ContainersClient) Delete(ctx context.Context, resourceGroupName st
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ContainersClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, containerName string, options *ContainersDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/containers/{containerName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *ContainersClient) deleteCreateRequest(ctx context.Context, containerName string, options *ContainersDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if containerName == "" {
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -154,12 +148,12 @@ func (client *ContainersClient) deleteHandleError(resp *http.Response) error {
 
 // Get - Gets the properties of an Container.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainersClient) Get(ctx context.Context, resourceGroupName string, containerName string, options *ContainersGetOptions) (ContainersGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, containerName, options)
+func (client *ContainersClient) Get(ctx context.Context, containerName string, options *ContainersGetOptions) (ContainersGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, containerName, options)
 	if err != nil {
 		return ContainersGetResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ContainersGetResponse{}, err
 	}
@@ -170,21 +164,17 @@ func (client *ContainersClient) Get(ctx context.Context, resourceGroupName strin
 }
 
 // getCreateRequest creates the Get request.
-func (client *ContainersClient) getCreateRequest(ctx context.Context, resourceGroupName string, containerName string, options *ContainersGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/containers/{containerName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *ContainersClient) getCreateRequest(ctx context.Context, containerName string, options *ContainersGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if containerName == "" {
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -217,32 +207,28 @@ func (client *ContainersClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - List of Containers.
+// ListByScope - List all containers in the given scope.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainersClient) List(resourceGroupName string, options *ContainersListOptions) (*ContainersListPager) {
-	return &ContainersListPager{
+func (client *ContainersClient) ListByScope(options *ContainersListByScopeOptions) (*ContainersListByScopePager) {
+	return &ContainersListByScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp ContainersListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp ContainersListByScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.ContainerResourceList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *ContainersClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *ContainersListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/containers"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+// listByScopeCreateRequest creates the ListByScope request.
+func (client *ContainersClient) listByScopeCreateRequest(ctx context.Context, options *ContainersListByScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/containers"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -253,71 +239,17 @@ func (client *ContainersClient) listCreateRequest(ctx context.Context, resourceG
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *ContainersClient) listHandleResponse(resp *http.Response) (ContainersListResponse, error) {
-	result := ContainersListResponse{RawResponse: resp}
+// listByScopeHandleResponse handles the ListByScope response.
+func (client *ContainersClient) listByScopeHandleResponse(resp *http.Response) (ContainersListByScopeResponse, error) {
+	result := ContainersListByScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ContainerResourceList); err != nil {
-		return ContainersListResponse{}, err
+		return ContainersListByScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *ContainersClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - List all containers in the given subscription.
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainersClient) ListBySubscription(options *ContainersListBySubscriptionOptions) (*ContainersListBySubscriptionPager) {
-	return &ContainersListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp ContainersListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.ContainerResourceList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *ContainersClient) listBySubscriptionCreateRequest(ctx context.Context, options *ContainersListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Core/containers"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.con.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *ContainersClient) listBySubscriptionHandleResponse(resp *http.Response) (ContainersListBySubscriptionResponse, error) {
-	result := ContainersListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ContainerResourceList); err != nil {
-		return ContainersListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *ContainersClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByScopeHandleError handles the ListByScope error response.
+func (client *ContainersClient) listByScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -331,12 +263,12 @@ func (client *ContainersClient) listBySubscriptionHandleError(resp *http.Respons
 
 // Update - Update the properties of an existing Container.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ContainersClient) Update(ctx context.Context, resourceGroupName string, containerName string, containersResource ContainerResource, options *ContainersUpdateOptions) (ContainersUpdateResponse, error) {
-	req, err := client.updateCreateRequest(ctx, resourceGroupName, containerName, containersResource, options)
+func (client *ContainersClient) Update(ctx context.Context, containerName string, containersResource ContainerResource, options *ContainersUpdateOptions) (ContainersUpdateResponse, error) {
+	req, err := client.updateCreateRequest(ctx, containerName, containersResource, options)
 	if err != nil {
 		return ContainersUpdateResponse{}, err
 	}
-	resp, err := 	client.con.Pipeline().Do(req)
+	resp, err := 	client.pl.Do(req)
 	if err != nil {
 		return ContainersUpdateResponse{}, err
 	}
@@ -347,21 +279,17 @@ func (client *ContainersClient) Update(ctx context.Context, resourceGroupName st
 }
 
 // updateCreateRequest creates the Update request.
-func (client *ContainersClient) updateCreateRequest(ctx context.Context, resourceGroupName string, containerName string, containersResource ContainerResource, options *ContainersUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/containers/{containerName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *ContainersClient) updateCreateRequest(ctx context.Context, containerName string, containersResource ContainerResource, options *ContainersUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if containerName == "" {
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.con.Endpoint(), urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}

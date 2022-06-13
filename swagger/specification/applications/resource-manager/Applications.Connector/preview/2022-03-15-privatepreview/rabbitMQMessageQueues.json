@@ -34,16 +34,16 @@
     }
   },
   "paths": {
-    "/subscriptions/{subscriptionId}/providers/Applications.Connector/rabbitMQMessageQueues": {
+    "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues": {
       "get": {
-        "description": "Lists information about all rabbitMQMessageQueue resources in the given subscription",
-        "operationId": "RabbitMQMessageQueues_ListBySubscription",
+        "description": "Lists information about all rabbitMQMessageQueue resources in the given root scope",
+        "operationId": "RabbitMQMessageQueues_ListByRootScope",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RabbitMQMessageQueuesListBySubscription": {
-            "$ref": "./examples/RabbitMQMessageQueuesListBySubscription.json"
+          "RabbitMQMessageQueuesListByRootScope": {
+            "$ref": "./examples/RabbitMQMessageQueuesListByRootScope.json"
           }
         },
         "tags": [
@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -77,53 +77,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues": {
-      "get": {
-        "description": "Lists information about all rabbitMQMessageQueue resources in the given subscription and resource group",
-        "operationId": "RabbitMQMessageQueues_List",
-        "produces": [
-          "application/json"
-        ],
-        "x-ms-examples": {
-          "RabbitMQMessageQueuesList": {
-            "$ref": "./examples/RabbitMQMessageQueuesList.json"
-          }
-        },
-        "tags": [
-          "RabbitMQMessageQueues"
-        ],
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of RabbitMQMessageQueue resources",
-            "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueList"
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "deprecated": false,
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
+    "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
       "get": {
         "description": "Retrieves information about a rabbitMQMessageQueue resource",
         "operationId": "RabbitMQMessageQueues_Get",
@@ -143,10 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
@@ -186,10 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
@@ -244,10 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"

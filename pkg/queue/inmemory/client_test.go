@@ -13,8 +13,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNamedQueue(t *testing.T) {
+	cli1 := NewNamedQueue("queue1")
+	cli2 := NewNamedQueue("queue2")
+
+	err := cli1.Enqueue(context.Background(), &queue.Message{Data: "test1"})
+	require.NoError(t, err)
+	err = cli2.Enqueue(context.Background(), &queue.Message{Data: "test2"})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, cli1.queue.Len())
+	require.Equal(t, 1, cli2.queue.Len())
+
+	cli3 := NewNamedQueue("queue1")
+	require.Equal(t, 1, cli3.queue.Len())
+	require.Equal(t, "test1", cli3.queue.Dequeue().Data.(string))
+}
+
 func TestClient(t *testing.T) {
-	cli := NewClient(NewInMemQueue(messageLockDuration))
+	cli := New(NewInMemQueue(messageLockDuration))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	msgCh, err := cli.Dequeue(ctx)
@@ -51,7 +68,7 @@ func TestClient(t *testing.T) {
 }
 
 func TestMessageFinish(t *testing.T) {
-	cli := NewClient(NewInMemQueue(messageLockDuration))
+	cli := New(NewInMemQueue(messageLockDuration))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	msgCh, err := cli.Dequeue(ctx)
@@ -80,7 +97,7 @@ func TestMessageFinish(t *testing.T) {
 }
 
 func TestExtendMessageLock(t *testing.T) {
-	cli := NewClient(NewInMemQueue(messageLockDuration))
+	cli := New(NewInMemQueue(messageLockDuration))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	msgCh, _ := cli.Dequeue(ctx)

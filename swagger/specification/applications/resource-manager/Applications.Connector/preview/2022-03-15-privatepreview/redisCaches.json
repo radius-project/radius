@@ -34,16 +34,16 @@
     }
   },
   "paths": {
-    "/subscriptions/{subscriptionId}/providers/Applications.Connector/redisCaches": {
+    "/{rootScope}/providers/Applications.Connector/redisCaches": {
       "get": {
-        "description": "Lists information about all redisCache resources in the given subscription",
-        "operationId": "RedisCaches_ListBySubscription",
+        "description": "Lists information about all redisCache resources in the given root scope",
+        "operationId": "RedisCaches_ListByRootScope",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "RedisCachesListBySubscription": {
-            "$ref": "./examples/RedisCachesListBySubscription.json"
+          "RedisCachesListByRootScope": {
+            "$ref": "./examples/RedisCachesListByRootScope.json"
           }
         },
         "tags": [
@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -77,53 +77,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/redisCaches": {
-      "get": {
-        "description": "Lists information about all redisCache resources in the given subscription and resource group",
-        "operationId": "RedisCaches_List",
-        "produces": [
-          "application/json"
-        ],
-        "x-ms-examples": {
-          "RedisCachesList": {
-            "$ref": "./examples/RedisCachesList.json"
-          }
-        },
-        "tags": [
-          "RedisCaches"
-        ],
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of RedisCache resources",
-            "schema": {
-              "$ref": "#/definitions/RedisCacheList"
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "deprecated": false,
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/redisCaches/{redisCacheName}": {
+    "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}": {
       "get": {
         "description": "Retrieves information about a redisCache resource",
         "operationId": "RedisCaches_Get",
@@ -143,10 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RedisCacheNameParameter"
@@ -186,10 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RedisCacheNameParameter"
@@ -244,10 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RedisCacheNameParameter"

@@ -1,7 +1,7 @@
 # Applications.Core @ 2022-03-15-privatepreview
 
 ## Resource Applications.Core/applications@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -13,7 +13,7 @@
 * **type**: 'Applications.Core/applications' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Core/containers@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -25,7 +25,7 @@
 * **type**: 'Applications.Core/containers' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Core/environments@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -37,7 +37,7 @@
 * **type**: 'Applications.Core/environments' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Core/gateways@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -49,7 +49,7 @@
 * **type**: 'Applications.Core/gateways' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Core/httpRoutes@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id

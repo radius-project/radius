@@ -1,0 +1,38 @@
+# This is an example of configuration file.
+storageProvider:
+  # provider: "cosmosdb"
+  # cosmosdb:
+  #   # Create your own SQL API Cosmos DB account and set url in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_URL environment variable
+  #   url: https://radius-eastus-test.documents.azure.com:443/
+  #   database: applicationscore
+  #   # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
+  #   masterKey: set-me-in-a-different-way
+  
+  # Uncomment to use the Kubernetes APIServer store. 
+  # This supports two modes:
+  # - incluster = true => uses the credentials/service-account of a pod. FOR PRODUCTION USE.
+  # - incluster = false => uses your LOCAL kubernetes context. For TESTING
+  
+  provider: "apiserver"
+  apiserver:
+    incluster: true
+    context: ''
+    namespace: 'radius-system'
+
+  #Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
+  #provider: "etcd"
+  #etcd:
+   # inmemory: true
+
+#Default planes configuration with which ucp starts
+planes:
+  - id: "/planes/radius/local"
+    properties:
+      resourceProviders:
+        Applications.Core: "http://appcore-rp.radius-system:5443"
+        Applications.Connector: "http://appcore-rp.radius-system:5444"
+  - id: "/planes/deployments/local"
+    properties:
+      resourceProviders:
+        Microsoft.Resources: "http://de-api.radius-system:6443"
+

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/spaolacci/murmur3"
 )
@@ -116,53 +116,24 @@ func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
 }
 
 // GenerateCosmosDBKey generates the unqiue key the length of which must be less than 255.
-func GenerateCosmosDBKey(subsID, resourceGroup, fullyQualifiedType, fullyQualifiedName string) (string, error) {
-	unqiueResourceGroup, err := NormalizeStorageKey(resourceGroup, ResourceGroupNameMaxStorageKeyLen)
-	if err != nil {
-		return "", err
-	}
-	resourceTypeAndName, err := NormalizeStorageKey(fullyQualifiedType+fullyQualifiedName, ResourceIdMaxStorageKeyLen)
-	if err != nil {
-		return "", err
-	}
-	return CombineStorageKeys(NormalizeSubscriptionID(subsID), unqiueResourceGroup, resourceTypeAndName)
-}
+func GenerateCosmosDBKey(id resources.ID) (string, error) {
+	storageKeys := []string{NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))}
 
-const (
-	subscriptionType  = "subscriptions"
-	resourceGroupType = "resourceGroups"
-)
+	resourceGroup := id.FindScope(resources.ResourceGroupsSegment)
 
-// TODO: replace ResourceScope with UCP resource id when we merge it to ucp repo - https://github.com/project-radius/radius/issues/2224
-type ResourceScope struct {
-	SubscriptionID string
-	ResourceGroup  string
-}
-
-func NewResourceScope(rootScope string) (*ResourceScope, error) {
-	rScope := &ResourceScope{}
-	scope := strings.TrimPrefix(rootScope, "/")
-	scope = strings.TrimSuffix(scope, "/")
-	s := strings.Split(scope, "/")
-	if len(s) >= 2 && strings.EqualFold(s[0], subscriptionType) {
-		if _, err := uuid.Parse(s[1]); err != nil {
-			return nil, err
+	if resourceGroup != "" {
+		uniqueResourceGroup, err := NormalizeStorageKey(resourceGroup, ResourceGroupNameMaxStorageKeyLen)
+		if err != nil {
+			return "", err
 		}
-		rScope.SubscriptionID = strings.ToLower(s[1])
+		storageKeys = append(storageKeys, uniqueResourceGroup)
 	}
-	if len(s) >= 4 && strings.EqualFold(s[2], resourceGroupType) {
-		rScope.ResourceGroup = strings.ToLower(s[3])
-	}
-	return rScope, nil
-}
 
-func (r ResourceScope) fullyQualifiedSubscriptionScope() string {
-	sb := strings.Builder{}
-	if r.SubscriptionID != "" {
-		sb.WriteString("/")
-		sb.WriteString(subscriptionType)
-		sb.WriteString("/")
-		sb.WriteString(r.SubscriptionID)
+	resourceTypeAndName, err := NormalizeStorageKey(id.RoutingScope(), ResourceIdMaxStorageKeyLen)
+	if err != nil {
+		return "", err
 	}
-	return strings.ToLower(sb.String())
+	storageKeys = append(storageKeys, resourceTypeAndName)
+
+	return CombineStorageKeys(storageKeys...)
 }

@@ -10,7 +10,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/stretchr/testify/require"
@@ -34,7 +34,7 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 			"",
 			"unsupported",
 			nil,
-			basedatamodel.ErrUnsupportedAPIVersion,
+			v1.ErrUnsupportedAPIVersion,
 		},
 	}
 
@@ -73,7 +73,7 @@ func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 		{
 			"",
 			"unsupported",
-			basedatamodel.ErrUnsupportedAPIVersion,
+			v1.ErrUnsupportedAPIVersion,
 		},
 	}
 
@@ -108,7 +108,7 @@ func TestRedisCacheSecretsDataModelToVersioned(t *testing.T) {
 			"",
 			"unsupported",
 			nil,
-			basedatamodel.ErrUnsupportedAPIVersion,
+			v1.ErrUnsupportedAPIVersion,
 		},
 	}
 
@@ -145,7 +145,7 @@ func TestRabbitMQSecretsDataModelToVersioned(t *testing.T) {
 			"",
 			"unsupported",
 			nil,
-			basedatamodel.ErrUnsupportedAPIVersion,
+			v1.ErrUnsupportedAPIVersion,
 		},
 	}
 

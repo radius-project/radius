@@ -6,19 +6,19 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
-func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
+func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
 	converted := &datamodel.HTTPRoute{
-		TrackedResource: basedatamodel.TrackedResource{
+		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
 			Type:     to.String(src.Type),
@@ -26,8 +26,8 @@ func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.HTTPRouteProperties{
-			BasicResourceProperties: basedatamodel.BasicResourceProperties{
-				Status: basedatamodel.ResourceStatus{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Status: v1.ResourceStatus{
 					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
 				},
 			},
@@ -38,7 +38,7 @@ func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
 			Scheme:            to.String(src.Properties.Scheme),
 			URL:               to.String(src.Properties.URL),
 		},
-		InternalMetadata: basedatamodel.InternalMetadata{
+		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}
@@ -46,11 +46,11 @@ func (src *HTTPRouteResource) ConvertTo() (api.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned HTTPRoute resource.
-func (dst *HTTPRouteResource) ConvertFrom(src api.DataModelInterface) error {
+func (dst *HTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
 	// TODO: Improve the validation.
 	route, ok := src.(*datamodel.HTTPRoute)
 	if !ok {
-		return api.ErrInvalidModelConversion
+		return conv.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(route.ID)

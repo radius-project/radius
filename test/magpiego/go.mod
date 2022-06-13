@@ -1,6 +1,6 @@
 module github.com/project-radius/radius/test/magpiego
 
-go 1.17
+go 1.18
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.13.1

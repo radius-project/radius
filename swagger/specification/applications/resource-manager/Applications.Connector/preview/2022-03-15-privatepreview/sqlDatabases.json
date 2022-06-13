@@ -34,16 +34,16 @@
       }
     },
     "paths": {
-      "/subscriptions/{subscriptionId}/providers/Applications.Connector/sqlDatabases": {
+      "/{rootScope}/providers/Applications.Connector/sqlDatabases": {
         "get": {
-          "description": "Lists information about all sqlDatabase resources in the given subscription",
-          "operationId": "SQLDatabases_ListBySubscription",
+          "description": "Lists information about all sqlDatabase resources in the given root scope",
+          "operationId": "SQLDatabases_ListByRootScope",
           "produces": [
             "application/json"
           ],
           "x-ms-examples": {
-            "SQLDatabasesListBySubscription": {
-              "$ref": "./examples/SQLDatabasesListBySubscription.json"
+            "SQLDatabasesListByRootScope": {
+              "$ref": "./examples/SQLDatabasesListByRootScope.json"
             }
           },
           "tags": [
@@ -54,7 +54,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             }
           ],
           "responses": {
@@ -77,53 +77,7 @@
           }
         }
       },
-      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/sqlDatabases": {
-        "get": {
-          "description": "Lists information about all sqlDatabase resources in the given subscription and resource group",
-          "operationId": "SQLDatabases_List",
-          "produces": [
-            "application/json"
-          ],
-          "x-ms-examples": {
-            "SQLDatabasesList": {
-              "$ref": "./examples/SQLDatabasesList.json"
-            }
-          },
-          "tags": [
-            "SQLDatabases"
-          ],
-          "parameters": [
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "List of SQLDatabase resources",
-              "schema": {
-                "$ref": "#/definitions/SQLDatabaseList"
-              }
-            },
-            "default": {
-              "description": "Error response describing why the operation failed.",
-              "schema": {
-                "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-              }
-            }
-          },
-          "deprecated": false,
-          "x-ms-pageable": {
-            "nextLinkName": "nextLink"
-          }
-        }
-      },
-      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}": {
+      "/{rootScope}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}": {
         "get": {
           "description": "Retrieves information about a sqlDatabase resource",
           "operationId": "SQLDatabases_Get",
@@ -143,10 +97,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/SQLDatabaseNameParameter"
@@ -186,10 +137,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/SQLDatabaseNameParameter"
@@ -244,10 +192,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/SQLDatabaseNameParameter"

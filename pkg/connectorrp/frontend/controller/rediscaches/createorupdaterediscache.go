@@ -10,32 +10,26 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
-	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
 )
 
-var _ base_ctrl.ControllerInterface = (*CreateOrUpdateRedisCache)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateRedisCache)(nil)
 
 // CreateOrUpdateRedisCache is the controller implementation to create or update RedisCache connector resource.
 type CreateOrUpdateRedisCache struct {
-	base_ctrl.BaseController
+	ctrl.BaseController
 }
 
 // NewCreateOrUpdateRedisCache creates a new instance of CreateOrUpdateRedisCache.
-func NewCreateOrUpdateRedisCache(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
-	return &CreateOrUpdateRedisCache{
-		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewCreateOrUpdateRedisCache(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &CreateOrUpdateRedisCache{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 // Run executes CreateOrUpdateRedisCache operation.
@@ -56,13 +50,13 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, req *http.Reques
 		return nil, err
 	}
 
-	err = base_ctrl.ValidateETag(*serviceCtx, etag)
+	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
 	// Add system metadata to requested resource
-	newResource.SystemData = base_ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
+	newResource.SystemData = ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
 	if existingResource.CreatedAPIVersion != "" {
 		newResource.CreatedAPIVersion = existingResource.CreatedAPIVersion
 	}
@@ -87,7 +81,7 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, req *http.Reques
 // Validate extracts versioned resource from request and validates the properties.
 func (redis *CreateOrUpdateRedisCache) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.RedisCache, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content, err := base_ctrl.ReadJSONBody(req)
+	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err
 	}
@@ -98,8 +92,8 @@ func (redis *CreateOrUpdateRedisCache) Validate(ctx context.Context, req *http.R
 	}
 
 	dm.ID = serviceCtx.ResourceID.String()
-	dm.TrackedResource = base_ctrl.BuildTrackedResource(ctx)
-	dm.Properties.ProvisioningState = basedatamodel.ProvisioningStateSucceeded
+	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
+	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
 	return dm, nil
 }

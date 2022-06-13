@@ -8,9 +8,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli"
@@ -20,8 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/keys"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/project-radius/radius/pkg/kubernetes/kubectl"
 )
 
 var envDeleteCmd = &cobra.Command{
@@ -91,13 +94,21 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 		if err = deleteRadiusResourcesInResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
 			return err
 		}
+
+		output.LogInfo("Environment deleted")
+		// Deletes environment entries from rad config and context from kube config
+		if err = deleteFromConfig(cmd, config, az.ClusterName, az.ResourceGroup); err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	dev, ok := env.(*environments.LocalEnvironment)
 	if ok {
 
 		if !yes {
-			confirmed, err := prompt.Confirm(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/n]?", dev.ClusterName))
+			confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/N]?", dev.ClusterName), prompt.No)
 			if err != nil {
 				return err
 			}
@@ -222,6 +233,41 @@ func deleteEnvFromConfig(ctx context.Context, config *viper.Viper, envName strin
 
 	if err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeDeleteEnvConfig(envName))); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func deleteFromConfig(cmd *cobra.Command, config *viper.Viper, clusterName string, resourceGroup string) error {
+	var envNames []string
+	var params []string
+
+	env, err := cli.ReadEnvironmentSection(config)
+	if err != nil {
+		return err
+	}
+
+	for envName, envs := range env.Items {
+		if fmt.Sprint(envs["context"]) == clusterName {
+			envNames = append(envNames, envName)
+		}
+	}
+	for _, envName := range envNames {
+		// Delete env from the rad config, update default env if needed
+		if err = deleteEnvFromConfig(cmd.Context(), config, envName); err != nil {
+			return err
+		}
+	}
+
+	output.LogInfo("Updating kube config")
+	params = append(params, strings.Join([]string{"users.clusterUser_", resourceGroup, "_", clusterName}, ""))
+	params = append(params, strings.Join([]string{"contexts.", clusterName}, ""))
+	params = append(params, strings.Join([]string{"clusters.", clusterName}, ""))
+
+	for _, param := range params {
+		if err := kubectl.RunCLICommandSilent("config", "unset", param); err != nil {
+			return err
+		}
 	}
 
 	return nil

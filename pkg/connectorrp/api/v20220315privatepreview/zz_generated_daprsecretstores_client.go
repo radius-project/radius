@@ -25,18 +25,18 @@ import (
 type DaprSecretStoresClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewDaprSecretStoresClient creates a new instance of DaprSecretStoresClient with the specified values.
-func NewDaprSecretStoresClient(con *arm.Connection, subscriptionID string) *DaprSecretStoresClient {
-	return &DaprSecretStoresClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewDaprSecretStoresClient(con *arm.Connection, rootScope string) *DaprSecretStoresClient {
+	return &DaprSecretStoresClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Creates or updates a DaprSecretStore resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprSecretStoresClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, daprSecretStoreName string, daprSecretStoreParameters DaprSecretStoreResource, options *DaprSecretStoresCreateOrUpdateOptions) (DaprSecretStoresCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, daprSecretStoreName, daprSecretStoreParameters, options)
+func (client *DaprSecretStoresClient) CreateOrUpdate(ctx context.Context, daprSecretStoreName string, daprSecretStoreParameters DaprSecretStoreResource, options *DaprSecretStoresCreateOrUpdateOptions) (DaprSecretStoresCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, daprSecretStoreName, daprSecretStoreParameters, options)
 	if err != nil {
 		return DaprSecretStoresCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *DaprSecretStoresClient) CreateOrUpdate(ctx context.Context, resour
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprSecretStoresClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, daprSecretStoreName string, daprSecretStoreParameters DaprSecretStoreResource, options *DaprSecretStoresCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprSecretStores/{daprSecretStoreName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprSecretStoresClient) createOrUpdateCreateRequest(ctx context.Context, daprSecretStoreName string, daprSecretStoreParameters DaprSecretStoreResource, options *DaprSecretStoresCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprSecretStores/{daprSecretStoreName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprSecretStoreName == "" {
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *DaprSecretStoresClient) createOrUpdateHandleError(resp *http.Respo
 
 // Delete - Deletes an existing daprSecretStore resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprSecretStoresClient) Delete(ctx context.Context, resourceGroupName string, daprSecretStoreName string, options *DaprSecretStoresDeleteOptions) (DaprSecretStoresDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, daprSecretStoreName, options)
+func (client *DaprSecretStoresClient) Delete(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoresDeleteOptions) (DaprSecretStoresDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, daprSecretStoreName, options)
 	if err != nil {
 		return DaprSecretStoresDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *DaprSecretStoresClient) Delete(ctx context.Context, resourceGroupN
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprSecretStoresClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, daprSecretStoreName string, options *DaprSecretStoresDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprSecretStores/{daprSecretStoreName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprSecretStoresClient) deleteCreateRequest(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoresDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprSecretStores/{daprSecretStoreName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprSecretStoreName == "" {
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *DaprSecretStoresClient) deleteHandleError(resp *http.Response) err
 
 // Get - Retrieves information about a daprSecretStore resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprSecretStoresClient) Get(ctx context.Context, resourceGroupName string, daprSecretStoreName string, options *DaprSecretStoresGetOptions) (DaprSecretStoresGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, daprSecretStoreName, options)
+func (client *DaprSecretStoresClient) Get(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoresGetOptions) (DaprSecretStoresGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, daprSecretStoreName, options)
 	if err != nil {
 		return DaprSecretStoresGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *DaprSecretStoresClient) Get(ctx context.Context, resourceGroupName
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprSecretStoresClient) getCreateRequest(ctx context.Context, resourceGroupName string, daprSecretStoreName string, options *DaprSecretStoresGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprSecretStores/{daprSecretStoreName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprSecretStoresClient) getCreateRequest(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoresGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprSecretStores/{daprSecretStoreName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprSecretStoreName == "" {
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *DaprSecretStoresClient) getHandleError(resp *http.Response) error 
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - Lists information about all daprSecretStore resources in the given subscription and resource group
+// ListByRootScope - Lists information about all daprSecretStore resources in the given root scope
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprSecretStoresClient) List(resourceGroupName string, options *DaprSecretStoresListOptions) (*DaprSecretStoresListPager) {
-	return &DaprSecretStoresListPager{
+func (client *DaprSecretStoresClient) ListByRootScope(options *DaprSecretStoresListByRootScopeOptions) (*DaprSecretStoresListByRootScopePager) {
+	return &DaprSecretStoresListByRootScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByRootScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp DaprSecretStoresListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp DaprSecretStoresListByRootScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.DaprSecretStoreList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *DaprSecretStoresClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *DaprSecretStoresListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprSecretStores"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *DaprSecretStoresClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprSecretStoresListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprSecretStores"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *DaprSecretStoresClient) listCreateRequest(ctx context.Context, res
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *DaprSecretStoresClient) listHandleResponse(resp *http.Response) (DaprSecretStoresListResponse, error) {
-	result := DaprSecretStoresListResponse{RawResponse: resp}
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *DaprSecretStoresClient) listByRootScopeHandleResponse(resp *http.Response) (DaprSecretStoresListByRootScopeResponse, error) {
+	result := DaprSecretStoresListByRootScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprSecretStoreList); err != nil {
-		return DaprSecretStoresListResponse{}, err
+		return DaprSecretStoresListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *DaprSecretStoresClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - Lists information about all daprSecretStore resources in the given subscription
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprSecretStoresClient) ListBySubscription(options *DaprSecretStoresListBySubscriptionOptions) (*DaprSecretStoresListBySubscriptionPager) {
-	return &DaprSecretStoresListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp DaprSecretStoresListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.DaprSecretStoreList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *DaprSecretStoresClient) listBySubscriptionCreateRequest(ctx context.Context, options *DaprSecretStoresListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Connector/daprSecretStores"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *DaprSecretStoresClient) listBySubscriptionHandleResponse(resp *http.Response) (DaprSecretStoresListBySubscriptionResponse, error) {
-	result := DaprSecretStoresListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DaprSecretStoreList); err != nil {
-		return DaprSecretStoresListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *DaprSecretStoresClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByRootScopeHandleError handles the ListByRootScope error response.
+func (client *DaprSecretStoresClient) listByRootScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)

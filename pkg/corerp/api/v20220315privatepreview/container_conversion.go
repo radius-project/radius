@@ -6,15 +6,15 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
-func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
+func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
 	connections := make(map[string]datamodel.ConnectionProperties)
@@ -64,15 +64,15 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 		extensions = append(extensions, toExtensionClassificationDataModel(e))
 	}
 
-	resourceStatus := basedatamodel.ResourceStatus{}
+	resourceStatus := v1.ResourceStatus{}
 	if src.Properties.BasicResourceProperties.Status != nil {
-		resourceStatus = basedatamodel.ResourceStatus{
+		resourceStatus = v1.ResourceStatus{
 			OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
 		}
 	}
 
 	converted := &datamodel.ContainerResource{
-		TrackedResource: basedatamodel.TrackedResource{
+		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
 			Name:     to.String(src.Name),
 			Type:     to.String(src.Type),
@@ -80,7 +80,7 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.ContainerProperties{
-			BasicResourceProperties: basedatamodel.BasicResourceProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: resourceStatus,
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -96,7 +96,7 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 			},
 			Extensions: extensions,
 		},
-		InternalMetadata: basedatamodel.InternalMetadata{
+		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}
@@ -104,10 +104,10 @@ func (src *ContainerResource) ConvertTo() (api.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Container resource.
-func (dst *ContainerResource) ConvertFrom(src api.DataModelInterface) error {
+func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 	c, ok := src.(*datamodel.ContainerResource)
 	if !ok {
-		return api.ErrInvalidModelConversion
+		return conv.ErrInvalidModelConversion
 	}
 
 	connections := make(map[string]*ConnectionProperties)

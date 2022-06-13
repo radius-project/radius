@@ -10,30 +10,25 @@ import (
 	"errors"
 	"net/http"
 
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
-	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ base_ctrl.ControllerInterface = (*ListSecretsRedisCache)(nil)
+var _ ctrl.Controller = (*ListSecretsRedisCache)(nil)
 
 // ListSecretsRedisCache is the controller implementation to list secrets for the to access the connected redis cache resource resource id passed in the request body.
 type ListSecretsRedisCache struct {
-	base_ctrl.BaseController
+	ctrl.BaseController
 }
 
 // NewListSecretsRedisCache creates a new instance of ListSecretsRedisCache.
-func NewListSecretsRedisCache(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
-	return &ListSecretsRedisCache{
-		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewListSecretsRedisCache(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &ListSecretsRedisCache{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 // Run returns secrets values for the specified RedisCache resource

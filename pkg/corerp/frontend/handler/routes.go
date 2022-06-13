@@ -7,179 +7,71 @@ package handler
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/corerp/asyncoperation"
-	"github.com/project-radius/radius/pkg/corerp/dataprovider"
-	"github.com/project-radius/radius/pkg/corerp/hostoptions"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
-	provider_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/provider"
-
-	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
-	connector_provider "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/provider"
-	rabbitmq_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rabbitmqmessagequeues"
-	redis_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rediscaches"
 )
 
 const (
-	APIVersionParam = "api-version"
+	ProviderNamespaceName = "Applications.Core"
 )
 
-// AddRoutes adds the routes and handlers for each resource provider APIs.
-// TODO: Enable api spec validator.
-func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
-	var resourceGroupLevelPath string
-	var providerRouter *mux.Router
-	var operationsRouter *mux.Router
-	handlers := []handlerParam{}
-
-	if !hostoptions.IsSelfHosted() {
-		// Provider system notification.
-		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
-		providerRouter = router.Path(pathBase+"/subscriptions/{subscriptionID}").
-			Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-
-		// Tenant level API routes.
-		tenantLevelPath := pathBase + "/providers/applications.core"
-		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-		operationsRouter = router.Path(tenantLevelPath+"/operations").
-			Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-
-		// OperationStatus resource paths
-		locationLevelPath := pathBase + "/subscriptions/{subscriptionID}/providers/applications.core/locations/{location}"
-		locationsRouter := router.PathPrefix(locationLevelPath).
-			Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-
-		operationStatusRouter := locationsRouter.Path("/operationstatuses/{operationId}").Subrouter()
-
-		// OperationResult resource paths
-		operationResultRouter := locationsRouter.Path("/operationresults/{operationId}").Subrouter()
-
-		// Resource Group level API routes.
-		resourceGroupLevelPath = pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.core"
-
-		h := []handlerParam{
-			// Provider handler registration.
-			{providerRouter, provider_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPutSubscriptions, provider_ctrl.NewCreateOrUpdateSubscription},
-			{operationsRouter, provider_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGetOperations, provider_ctrl.NewGetOperations},
-			{operationStatusRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, asyncoperation.OperationGetOperationStatuses, provider_ctrl.NewGetOperationStatus},
-			{operationResultRouter, provider_ctrl.OperationStatusResourceTypeName, http.MethodGet, asyncoperation.OperationGetOperationResult, provider_ctrl.NewGetOperationResult},
-		}
-		handlers = append(handlers, h...)
-
-	} else {
-		resourceGroupLevelPath = pathBase + "/resourcegroups/{resourceGroup}/providers/applications.core"
+func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, router *mux.Router, pathBase string, isARM bool) error {
+	if isARM {
+		pathBase += "/subscriptions/{subscriptionID}"
 	}
 
-	// Adds environment resource type routes
-	envRTSubrouter := router.PathPrefix(resourceGroupLevelPath+"/environments").
-		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-	envResourceRouter := envRTSubrouter.Path("/{environment}").Subrouter()
-
-	h := []handlerParam{
-		// Environments resource handler registration.
-		{envRTSubrouter, env_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, env_ctrl.NewListEnvironments},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGet, env_ctrl.NewGetEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, env_ctrl.NewCreateOrUpdateEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodPatch, asyncoperation.OperationPatch, env_ctrl.NewCreateOrUpdateEnvironment},
-		{envResourceRouter, env_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, env_ctrl.NewDeleteEnvironment},
+	// Configure the default ARM handlers.
+	err := server.ConfigureDefaultHandlers(ctx, sp, sm, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
+	if err != nil {
+		return err
 	}
-	handlers = append(handlers, h...)
 
-	// Create the operational controller and add new resource types' handlers.
-	for _, h := range handlers {
-		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.routeName, h.fn); err != nil {
+	envRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/environments").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
+
+	handlerOptions := []server.HandlerOptions{
+		{
+			ParentRouter:   envRTSubrouter,
+			ResourceType:   env_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: env_ctrl.NewListEnvironments,
+		},
+		{
+			ParentRouter:   envResourceRouter,
+			ResourceType:   env_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: env_ctrl.NewGetEnvironment,
+		},
+		{
+			ParentRouter:   envResourceRouter,
+			ResourceType:   env_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: env_ctrl.NewCreateOrUpdateEnvironment,
+		},
+		{
+			ParentRouter:   envResourceRouter,
+			ResourceType:   env_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: env_ctrl.NewCreateOrUpdateEnvironment,
+		},
+		{
+			ParentRouter:   envResourceRouter,
+			ResourceType:   env_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: env_ctrl.NewDeleteEnvironment,
+		},
+	}
+
+	for _, h := range handlerOptions {
+		if err := server.RegisterHandler(ctx, sp, sm, h); err != nil {
 			return err
-		}
-	}
-
-	return nil
-}
-
-// AddConnectorRoutes adds routes and handlers for connector RP APIs.
-func AddConnectorRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, jobEngine deployment.DeploymentProcessor, router *mux.Router, validatorFactory ValidatorFactory, pathBase string) error {
-	// Provider system notification.
-	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
-	// providerRouter := router.Path(pathBase+"/subscriptions/{subscriptionID}").
-	// 	Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-
-	handlers := []handlerParam{}
-	var resourceGroupLevelPath string
-
-	if !hostoptions.IsSelfHosted() {
-		// Tenant level API routes.
-		tenantLevelPath := pathBase + "/providers/applications.connector"
-		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-		operationsRouter := router.Path(tenantLevelPath+"/operations").
-			Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-		h := []handlerParam{
-			// TODO PUT subscriptions is a tenant-level api, implement it after connector RP is separated out of core RP.
-			// Provider handler registration.
-			// {providerRouter, connector_provider.ResourceTypeName, http.MethodPut, connectorRPPrefix + "subscription", connector_provider.NewCreateOrUpdateSubscription},
-			// Provider operations.
-			{operationsRouter, connector_provider.ResourceTypeName, http.MethodGet, asyncoperation.OperationGetOperations, connector_provider.NewGetOperations},
-		}
-		handlers = append(handlers, h...)
-		// Resource Group level API routes.
-		resourceGroupLevelPath = pathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/applications.connector"
-	} else {
-		// Resource Group level API routes.
-		resourceGroupLevelPath = pathBase + "/resourcegroups/{resourceGroup}/providers/applications.connector"
-	}
-
-	// Adds mongo connector resource type routes
-	mongoResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/mongodatabases").
-		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-
-	mongoResourceRouter := mongoResourceTypeSubrouter.Path("/{mongoDatabases}").Subrouter()
-	mongoListSecretsRouter := mongoResourceRouter.Path("/listsecrets").Subrouter()
-
-	// Adds redis connector resource type routes
-	redisResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/rediscaches").
-		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-
-	redisResourceRouter := redisResourceTypeSubrouter.Path("/{redisCaches}").Subrouter()
-	redisListSecretsRouter := redisResourceRouter.Path("/listsecrets").Subrouter()
-
-	// Adds rabbitmq connector resource type routes
-	rabbitMQResourceTypeSubrouter := router.PathPrefix(resourceGroupLevelPath+"/rabbitmqmessagequeues").
-		Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter()
-
-	rabbitmqResourceRouter := rabbitMQResourceTypeSubrouter.Path("/{rabbitMQMessageQueues}").Subrouter()
-	rabbitmqListSecretsRouter := rabbitmqResourceRouter.Path("/listsecrets").Subrouter()
-
-	h := []handlerParam{
-		// MongoDatabases operations
-		{mongoResourceTypeSubrouter, mongo_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, mongo_ctrl.NewListMongoDatabases},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGet, mongo_ctrl.NewGetMongoDatabase},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, mongo_ctrl.NewCreateOrUpdateMongoDatabase},
-		{mongoResourceRouter, mongo_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, mongo_ctrl.NewDeleteMongoDatabase},
-		{mongoListSecretsRouter, mongo_ctrl.ResourceTypeName, http.MethodPost, mongo_ctrl.OperationListSecret, mongo_ctrl.NewListSecretsMongoDatabase},
-
-		// RedisCaches operations
-		{redisResourceTypeSubrouter, redis_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, redis_ctrl.NewListRedisCaches},
-		{redisResourceRouter, redis_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGet, redis_ctrl.NewGetRedisCache},
-		{redisResourceRouter, redis_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, redis_ctrl.NewCreateOrUpdateRedisCache},
-		{redisResourceRouter, redis_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, redis_ctrl.NewDeleteRedisCache},
-		{redisListSecretsRouter, redis_ctrl.ResourceTypeName, http.MethodPost, redis_ctrl.OperationListSecret, redis_ctrl.NewListSecretsRedisCache},
-
-		// RabbitMQMessageQueues operations
-		{rabbitMQResourceTypeSubrouter, rabbitmq_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationList, rabbitmq_ctrl.NewListRabbitMQMessageQueues},
-		{rabbitmqResourceRouter, rabbitmq_ctrl.ResourceTypeName, http.MethodGet, asyncoperation.OperationGet, rabbitmq_ctrl.NewGetRabbitMQMessageQueue},
-		{rabbitmqResourceRouter, rabbitmq_ctrl.ResourceTypeName, http.MethodPut, asyncoperation.OperationPut, rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue},
-		{rabbitmqResourceRouter, rabbitmq_ctrl.ResourceTypeName, http.MethodDelete, asyncoperation.OperationDelete, rabbitmq_ctrl.NewDeleteRabbitMQMessageQueue},
-		{rabbitmqListSecretsRouter, rabbitmq_ctrl.ResourceTypeName, http.MethodPost, rabbitmq_ctrl.OperationListSecret, rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue},
-	}
-	handlers = append(handlers, h...)
-
-	// Register handlers
-	for _, h := range handlers {
-		if err := registerHandler(ctx, sp, h.parent, h.resourcetype, h.method, h.routeName, h.fn); err != nil {
-			return fmt.Errorf("failed to register %s handler for route %s: %w", h.method, h.routeName, err)
 		}
 	}
 

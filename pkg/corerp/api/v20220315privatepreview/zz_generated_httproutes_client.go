@@ -25,18 +25,18 @@ import (
 type HTTPRoutesClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewHTTPRoutesClient creates a new instance of HTTPRoutesClient with the specified values.
-func NewHTTPRoutesClient(con *arm.Connection, subscriptionID string) *HTTPRoutesClient {
-	return &HTTPRoutesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewHTTPRoutesClient(con *arm.Connection, rootScope string) *HTTPRoutesClient {
+	return &HTTPRoutesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Create or update an HTTP Route.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *HTTPRoutesClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesCreateOrUpdateOptions) (HTTPRoutesCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, httpRouteName, httpRouteResource, options)
+func (client *HTTPRoutesClient) CreateOrUpdate(ctx context.Context, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesCreateOrUpdateOptions) (HTTPRoutesCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, httpRouteName, httpRouteResource, options)
 	if err != nil {
 		return HTTPRoutesCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *HTTPRoutesClient) CreateOrUpdate(ctx context.Context, resourceGrou
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *HTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *HTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if httpRouteName == "" {
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *HTTPRoutesClient) createOrUpdateHandleError(resp *http.Response) e
 
 // Delete - Delete an HTTP Route.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *HTTPRoutesClient) Delete(ctx context.Context, resourceGroupName string, httpRouteName string, options *HTTPRoutesDeleteOptions) (HTTPRoutesDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, httpRouteName, options)
+func (client *HTTPRoutesClient) Delete(ctx context.Context, httpRouteName string, options *HTTPRoutesDeleteOptions) (HTTPRoutesDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, httpRouteName, options)
 	if err != nil {
 		return HTTPRoutesDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *HTTPRoutesClient) Delete(ctx context.Context, resourceGroupName st
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, httpRouteName string, options *HTTPRoutesDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, httpRouteName string, options *HTTPRoutesDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if httpRouteName == "" {
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *HTTPRoutesClient) deleteHandleError(resp *http.Response) error {
 
 // Get - Gets the properties of an HTTP Route.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *HTTPRoutesClient) Get(ctx context.Context, resourceGroupName string, httpRouteName string, options *HTTPRoutesGetOptions) (HTTPRoutesGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, httpRouteName, options)
+func (client *HTTPRoutesClient) Get(ctx context.Context, httpRouteName string, options *HTTPRoutesGetOptions) (HTTPRoutesGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, httpRouteName, options)
 	if err != nil {
 		return HTTPRoutesGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *HTTPRoutesClient) Get(ctx context.Context, resourceGroupName strin
 }
 
 // getCreateRequest creates the Get request.
-func (client *HTTPRoutesClient) getCreateRequest(ctx context.Context, resourceGroupName string, httpRouteName string, options *HTTPRoutesGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *HTTPRoutesClient) getCreateRequest(ctx context.Context, httpRouteName string, options *HTTPRoutesGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if httpRouteName == "" {
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *HTTPRoutesClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - List of HTTP Routes.
+// ListByScope - List all HTTP Routes in the given scope.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *HTTPRoutesClient) List(resourceGroupName string, options *HTTPRoutesListOptions) (*HTTPRoutesListPager) {
-	return &HTTPRoutesListPager{
+func (client *HTTPRoutesClient) ListByScope(options *HTTPRoutesListByScopeOptions) (*HTTPRoutesListByScopePager) {
+	return &HTTPRoutesListByScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp HTTPRoutesListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp HTTPRoutesListByScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.HTTPRouteResourceList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *HTTPRoutesClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *HTTPRoutesListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+// listByScopeCreateRequest creates the ListByScope request.
+func (client *HTTPRoutesClient) listByScopeCreateRequest(ctx context.Context, options *HTTPRoutesListByScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *HTTPRoutesClient) listCreateRequest(ctx context.Context, resourceG
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *HTTPRoutesClient) listHandleResponse(resp *http.Response) (HTTPRoutesListResponse, error) {
-	result := HTTPRoutesListResponse{RawResponse: resp}
+// listByScopeHandleResponse handles the ListByScope response.
+func (client *HTTPRoutesClient) listByScopeHandleResponse(resp *http.Response) (HTTPRoutesListByScopeResponse, error) {
+	result := HTTPRoutesListByScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.HTTPRouteResourceList); err != nil {
-		return HTTPRoutesListResponse{}, err
+		return HTTPRoutesListByScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *HTTPRoutesClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - List all HTTP Routes in the given subscription.
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *HTTPRoutesClient) ListBySubscription(options *HTTPRoutesListBySubscriptionOptions) (*HTTPRoutesListBySubscriptionPager) {
-	return &HTTPRoutesListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp HTTPRoutesListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.HTTPRouteResourceList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *HTTPRoutesClient) listBySubscriptionCreateRequest(ctx context.Context, options *HTTPRoutesListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Core/httpRoutes"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *HTTPRoutesClient) listBySubscriptionHandleResponse(resp *http.Response) (HTTPRoutesListBySubscriptionResponse, error) {
-	result := HTTPRoutesListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.HTTPRouteResourceList); err != nil {
-		return HTTPRoutesListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *HTTPRoutesClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByScopeHandleError handles the ListByScope error response.
+func (client *HTTPRoutesClient) listByScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -333,8 +263,8 @@ func (client *HTTPRoutesClient) listBySubscriptionHandleError(resp *http.Respons
 
 // Update - Update the properties of an existing HTTP Route.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *HTTPRoutesClient) Update(ctx context.Context, resourceGroupName string, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesUpdateOptions) (HTTPRoutesUpdateResponse, error) {
-	req, err := client.updateCreateRequest(ctx, resourceGroupName, httpRouteName, httpRouteResource, options)
+func (client *HTTPRoutesClient) Update(ctx context.Context, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesUpdateOptions) (HTTPRoutesUpdateResponse, error) {
+	req, err := client.updateCreateRequest(ctx, httpRouteName, httpRouteResource, options)
 	if err != nil {
 		return HTTPRoutesUpdateResponse{}, err
 	}
@@ -349,16 +279,12 @@ func (client *HTTPRoutesClient) Update(ctx context.Context, resourceGroupName st
 }
 
 // updateCreateRequest creates the Update request.
-func (client *HTTPRoutesClient) updateCreateRequest(ctx context.Context, resourceGroupName string, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *HTTPRoutesClient) updateCreateRequest(ctx context.Context, httpRouteName string, httpRouteResource HTTPRouteResource, options *HTTPRoutesUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if httpRouteName == "" {
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}

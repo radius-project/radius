@@ -25,18 +25,18 @@ import (
 type DaprStateStoresClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewDaprStateStoresClient creates a new instance of DaprStateStoresClient with the specified values.
-func NewDaprStateStoresClient(con *arm.Connection, subscriptionID string) *DaprStateStoresClient {
-	return &DaprStateStoresClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewDaprStateStoresClient(con *arm.Connection, rootScope string) *DaprStateStoresClient {
+	return &DaprStateStoresClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Creates or updates a DaprStateStore resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprStateStoresClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, daprStateStoreName string, daprStateStoreParameters DaprStateStoreResource, options *DaprStateStoresCreateOrUpdateOptions) (DaprStateStoresCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, daprStateStoreName, daprStateStoreParameters, options)
+func (client *DaprStateStoresClient) CreateOrUpdate(ctx context.Context, daprStateStoreName string, daprStateStoreParameters DaprStateStoreResource, options *DaprStateStoresCreateOrUpdateOptions) (DaprStateStoresCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, daprStateStoreName, daprStateStoreParameters, options)
 	if err != nil {
 		return DaprStateStoresCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *DaprStateStoresClient) CreateOrUpdate(ctx context.Context, resourc
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprStateStoresClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, daprStateStoreName string, daprStateStoreParameters DaprStateStoreResource, options *DaprStateStoresCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprStateStoresClient) createOrUpdateCreateRequest(ctx context.Context, daprStateStoreName string, daprStateStoreParameters DaprStateStoreResource, options *DaprStateStoresCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *DaprStateStoresClient) createOrUpdateHandleError(resp *http.Respon
 
 // Delete - Deletes an existing daprStateStore resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprStateStoresClient) Delete(ctx context.Context, resourceGroupName string, daprStateStoreName string, options *DaprStateStoresDeleteOptions) (DaprStateStoresDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, daprStateStoreName, options)
+func (client *DaprStateStoresClient) Delete(ctx context.Context, daprStateStoreName string, options *DaprStateStoresDeleteOptions) (DaprStateStoresDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, daprStateStoreName, options)
 	if err != nil {
 		return DaprStateStoresDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *DaprStateStoresClient) Delete(ctx context.Context, resourceGroupNa
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprStateStoresClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, daprStateStoreName string, options *DaprStateStoresDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprStateStoresClient) deleteCreateRequest(ctx context.Context, daprStateStoreName string, options *DaprStateStoresDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *DaprStateStoresClient) deleteHandleError(resp *http.Response) erro
 
 // Get - Retrieves information about a daprStateStore resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprStateStoresClient) Get(ctx context.Context, resourceGroupName string, daprStateStoreName string, options *DaprStateStoresGetOptions) (DaprStateStoresGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, daprStateStoreName, options)
+func (client *DaprStateStoresClient) Get(ctx context.Context, daprStateStoreName string, options *DaprStateStoresGetOptions) (DaprStateStoresGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, daprStateStoreName, options)
 	if err != nil {
 		return DaprStateStoresGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *DaprStateStoresClient) Get(ctx context.Context, resourceGroupName 
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprStateStoresClient) getCreateRequest(ctx context.Context, resourceGroupName string, daprStateStoreName string, options *DaprStateStoresGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprStateStoresClient) getCreateRequest(ctx context.Context, daprStateStoreName string, options *DaprStateStoresGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *DaprStateStoresClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - Lists information about all daprStateStore resources in the given subscription and resource group
+// ListByRootScope - Lists information about all daprStateStore resources in the given root scope
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprStateStoresClient) List(resourceGroupName string, options *DaprStateStoresListOptions) (*DaprStateStoresListPager) {
-	return &DaprStateStoresListPager{
+func (client *DaprStateStoresClient) ListByRootScope(options *DaprStateStoresListByRootScopeOptions) (*DaprStateStoresListByRootScopePager) {
+	return &DaprStateStoresListByRootScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByRootScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp DaprStateStoresListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp DaprStateStoresListByRootScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.DaprStateStoreList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *DaprStateStoresClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *DaprStateStoresListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprStateStores"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *DaprStateStoresClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprStateStoresListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprStateStores"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *DaprStateStoresClient) listCreateRequest(ctx context.Context, reso
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *DaprStateStoresClient) listHandleResponse(resp *http.Response) (DaprStateStoresListResponse, error) {
-	result := DaprStateStoresListResponse{RawResponse: resp}
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *DaprStateStoresClient) listByRootScopeHandleResponse(resp *http.Response) (DaprStateStoresListByRootScopeResponse, error) {
+	result := DaprStateStoresListByRootScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprStateStoreList); err != nil {
-		return DaprStateStoresListResponse{}, err
+		return DaprStateStoresListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *DaprStateStoresClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - Lists information about all daprStateStore resources in the given subscription
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprStateStoresClient) ListBySubscription(options *DaprStateStoresListBySubscriptionOptions) (*DaprStateStoresListBySubscriptionPager) {
-	return &DaprStateStoresListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp DaprStateStoresListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.DaprStateStoreList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *DaprStateStoresClient) listBySubscriptionCreateRequest(ctx context.Context, options *DaprStateStoresListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Connector/daprStateStores"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *DaprStateStoresClient) listBySubscriptionHandleResponse(resp *http.Response) (DaprStateStoresListBySubscriptionResponse, error) {
-	result := DaprStateStoresListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DaprStateStoreList); err != nil {
-		return DaprStateStoresListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *DaprStateStoresClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByRootScopeHandleError handles the ListByRootScope error response.
+func (client *DaprStateStoresClient) listByRootScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)

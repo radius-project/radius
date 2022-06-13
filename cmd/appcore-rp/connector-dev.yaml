@@ -1,0 +1,19 @@
+# This is an example of configuration file.
+environment:
+  name: Dev
+storageProvider:
+  provider: "etcd"
+  etcd:
+    inmemory: true
+queueProvider:
+  provider: inmemory
+metricsProvider:
+  prometheus:
+    port: 2222
+    endpoint: "/metrics"
+featureFlags:
+  - "PLACEHOLDER"
+server:
+  host: "0.0.0.0"
+  port: 8081
+  enableArmAuth: false

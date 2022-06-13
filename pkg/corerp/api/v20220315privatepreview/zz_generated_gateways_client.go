@@ -25,18 +25,18 @@ import (
 type GatewaysClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewGatewaysClient creates a new instance of GatewaysClient with the specified values.
-func NewGatewaysClient(con *arm.Connection, subscriptionID string) *GatewaysClient {
-	return &GatewaysClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewGatewaysClient(con *arm.Connection, rootScope string) *GatewaysClient {
+	return &GatewaysClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Create or update a Gateway.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *GatewaysClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, gatewayName string, gatewayResource GatewayResource, options *GatewaysCreateOrUpdateOptions) (GatewaysCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, gatewayName, gatewayResource, options)
+func (client *GatewaysClient) CreateOrUpdate(ctx context.Context, gatewayName string, gatewayResource GatewayResource, options *GatewaysCreateOrUpdateOptions) (GatewaysCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, gatewayName, gatewayResource, options)
 	if err != nil {
 		return GatewaysCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *GatewaysClient) CreateOrUpdate(ctx context.Context, resourceGroupN
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, gatewayName string, gatewayResource GatewayResource, options *GatewaysCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/gateways/{gatewayName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, gatewayName string, gatewayResource GatewayResource, options *GatewaysCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *GatewaysClient) createOrUpdateHandleError(resp *http.Response) err
 
 // Delete - Delete a Gateway.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *GatewaysClient) Delete(ctx context.Context, resourceGroupName string, gatewayName string, options *GatewaysDeleteOptions) (GatewaysDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, gatewayName, options)
+func (client *GatewaysClient) Delete(ctx context.Context, gatewayName string, options *GatewaysDeleteOptions) (GatewaysDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, gatewayName, options)
 	if err != nil {
 		return GatewaysDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *GatewaysClient) Delete(ctx context.Context, resourceGroupName stri
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, gatewayName string, options *GatewaysDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/gateways/{gatewayName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayName string, options *GatewaysDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *GatewaysClient) deleteHandleError(resp *http.Response) error {
 
 // Get - Gets the properties of a Gateway.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *GatewaysClient) Get(ctx context.Context, resourceGroupName string, gatewayName string, options *GatewaysGetOptions) (GatewaysGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, gatewayName, options)
+func (client *GatewaysClient) Get(ctx context.Context, gatewayName string, options *GatewaysGetOptions) (GatewaysGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, gatewayName, options)
 	if err != nil {
 		return GatewaysGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *GatewaysClient) Get(ctx context.Context, resourceGroupName string,
 }
 
 // getCreateRequest creates the Get request.
-func (client *GatewaysClient) getCreateRequest(ctx context.Context, resourceGroupName string, gatewayName string, options *GatewaysGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/gateways/{gatewayName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *GatewaysClient) getCreateRequest(ctx context.Context, gatewayName string, options *GatewaysGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *GatewaysClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - List of Gateways.
+// ListByScope - List all Gateways in the given scope.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *GatewaysClient) List(resourceGroupName string, options *GatewaysListOptions) (*GatewaysListPager) {
-	return &GatewaysListPager{
+func (client *GatewaysClient) ListByScope(options *GatewaysListByScopeOptions) (*GatewaysListByScopePager) {
+	return &GatewaysListByScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp GatewaysListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp GatewaysListByScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.GatewayResourceList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *GatewaysClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *GatewaysListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/gateways"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+// listByScopeCreateRequest creates the ListByScope request.
+func (client *GatewaysClient) listByScopeCreateRequest(ctx context.Context, options *GatewaysListByScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/gateways"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *GatewaysClient) listCreateRequest(ctx context.Context, resourceGro
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *GatewaysClient) listHandleResponse(resp *http.Response) (GatewaysListResponse, error) {
-	result := GatewaysListResponse{RawResponse: resp}
+// listByScopeHandleResponse handles the ListByScope response.
+func (client *GatewaysClient) listByScopeHandleResponse(resp *http.Response) (GatewaysListByScopeResponse, error) {
+	result := GatewaysListByScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.GatewayResourceList); err != nil {
-		return GatewaysListResponse{}, err
+		return GatewaysListByScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *GatewaysClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - List all Gateways in the given subscription.
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *GatewaysClient) ListBySubscription(options *GatewaysListBySubscriptionOptions) (*GatewaysListBySubscriptionPager) {
-	return &GatewaysListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp GatewaysListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.GatewayResourceList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *GatewaysClient) listBySubscriptionCreateRequest(ctx context.Context, options *GatewaysListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Core/gateways"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *GatewaysClient) listBySubscriptionHandleResponse(resp *http.Response) (GatewaysListBySubscriptionResponse, error) {
-	result := GatewaysListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.GatewayResourceList); err != nil {
-		return GatewaysListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *GatewaysClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByScopeHandleError handles the ListByScope error response.
+func (client *GatewaysClient) listByScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -333,8 +263,8 @@ func (client *GatewaysClient) listBySubscriptionHandleError(resp *http.Response)
 
 // Update - Update the properties of an existing Gateway.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *GatewaysClient) Update(ctx context.Context, resourceGroupName string, gatewayName string, gatewayResource GatewayResource, options *GatewaysUpdateOptions) (GatewaysUpdateResponse, error) {
-	req, err := client.updateCreateRequest(ctx, resourceGroupName, gatewayName, gatewayResource, options)
+func (client *GatewaysClient) Update(ctx context.Context, gatewayName string, gatewayResource GatewayResource, options *GatewaysUpdateOptions) (GatewaysUpdateResponse, error) {
+	req, err := client.updateCreateRequest(ctx, gatewayName, gatewayResource, options)
 	if err != nil {
 		return GatewaysUpdateResponse{}, err
 	}
@@ -349,16 +279,12 @@ func (client *GatewaysClient) Update(ctx context.Context, resourceGroupName stri
 }
 
 // updateCreateRequest creates the Update request.
-func (client *GatewaysClient) updateCreateRequest(ctx context.Context, resourceGroupName string, gatewayName string, gatewayResource GatewayResource, options *GatewaysUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/gateways/{gatewayName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *GatewaysClient) updateCreateRequest(ctx context.Context, gatewayName string, gatewayResource GatewayResource, options *GatewaysUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}

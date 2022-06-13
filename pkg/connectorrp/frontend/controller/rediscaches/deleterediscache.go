@@ -10,29 +10,24 @@ import (
 	"errors"
 	"net/http"
 
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	base_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/servicecontext"
-	"github.com/project-radius/radius/pkg/radrp/backend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ base_ctrl.ControllerInterface = (*DeleteRedisCache)(nil)
+var _ ctrl.Controller = (*DeleteRedisCache)(nil)
 
 // DeleteRedisCache is the controller implementation to delete rediscache connector resource.
 type DeleteRedisCache struct {
-	base_ctrl.BaseController
+	ctrl.BaseController
 }
 
 // NewDeleteRedisCache creates a new instance DeleteRedisCache.
-func NewDeleteRedisCache(storageClient store.StorageClient, jobEngine deployment.DeploymentProcessor) (base_ctrl.ControllerInterface, error) {
-	return &DeleteRedisCache{
-		BaseController: base_ctrl.BaseController{
-			DBClient:  storageClient,
-			JobEngine: jobEngine,
-		},
-	}, nil
+func NewDeleteRedisCache(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &DeleteRedisCache{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 func (redis *DeleteRedisCache) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -52,12 +47,12 @@ func (redis *DeleteRedisCache) Run(ctx context.Context, req *http.Request) (rest
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = base_ctrl.ValidateETag(*serviceCtx, etag)
+	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	err = redis.DBClient.Delete(ctx, serviceCtx.ResourceID.String())
+	err = redis.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil

@@ -62,7 +62,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
-		"hostname": {
+		"url": {
 			Value: computedHostname,
 		},
 	}

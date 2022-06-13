@@ -43,7 +43,11 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 
 	tlsCertDir := os.Getenv("TLS_CERT_DIR")
 	ucpConfigFile := os.Getenv("UCP_CONFIG")
+
 	port := os.Getenv("PORT")
+	if port == "" {
+		return Options{}, errors.New("UCP Port number must be set")
+	}
 
 	opts, err := hostoptions.NewHostOptionsFromEnvironment(ucpConfigFile)
 	if err != nil {

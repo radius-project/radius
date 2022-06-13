@@ -55,7 +55,7 @@ func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 		return nil, err
 	}
 
-	hostname := fmt.Sprint(response.RadiusResourceGetResult.RadiusResource.Properties["hostname"])
+	hostname := fmt.Sprint(response.RadiusResourceGetResult.RadiusResource.Properties["url"])
 
 	return &hostname, nil
 }

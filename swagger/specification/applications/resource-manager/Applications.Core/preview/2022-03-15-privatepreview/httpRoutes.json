@@ -34,16 +34,16 @@
       }
     },
     "paths": {
-      "/subscriptions/{subscriptionId}/providers/Applications.Core/httpRoutes": {
+      "/{rootScope}/providers/Applications.Core/httpRoutes": {
         "get": {
-          "description": "List all HTTP Routes in the given subscription.",
-          "operationId": "HttpRoutes_ListBySubscription",
+          "description": "List all HTTP Routes in the given scope.",
+          "operationId": "HttpRoutes_ListByScope",
           "produces": [
             "application/json"
           ],
           "x-ms-examples": {
-            "RadiusHttpRoutesListBySubscription": {
-              "$ref": "./examples/HttpRoutesListBySubscription.json"
+            "RadiusHttpRoutesListByScope": {
+              "$ref": "./examples/HttpRoutesListByScope.json"
             }
           },
           "tags": [
@@ -54,7 +54,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             }
           ],
           "responses": {
@@ -77,53 +77,7 @@
           }
         }
       },
-      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes": {
-        "get": {
-          "description": "List of HTTP Routes.",
-          "operationId": "HttpRoutes_List",
-          "produces": [
-            "application/json"
-          ],
-          "x-ms-examples": {
-            "RadiusHttpRoutesList": {
-              "$ref": "./examples/HttpRoutesList.json"
-            }
-          },
-          "tags": [
-            "HttpRoutes"
-          ],
-          "parameters": [
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "HTTP Route details.",
-              "schema": {
-                "$ref": "#/definitions/HttpRouteResourceList"
-              }
-            },
-            "default": {
-              "description": "Error response describing why the operation failed.",
-              "schema": {
-                "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-              }
-            }
-          },
-          "deprecated": false,
-          "x-ms-pageable": {
-            "nextLinkName": "nextLink"
-          }
-        }
-      },
-      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/httpRoutes/{httpRouteName}": {
+      "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}": {
         "get": {
           "description": "Gets the properties of an HTTP Route.",
           "operationId": "HttpRoutes_Get",
@@ -140,13 +94,10 @@
           ],
           "parameters": [
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
             },
             {
               "$ref": "#/parameters/HttpRouteNameParameter"
@@ -183,13 +134,10 @@
           ],
           "parameters": [
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
             },
             {
               "$ref": "#/parameters/HttpRouteNameParameter"
@@ -244,13 +192,10 @@
           ],
           "parameters": [
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
             },
             {
               "$ref": "#/parameters/HttpRouteNameParameter"
@@ -305,13 +250,10 @@
           ],
           "parameters": [
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
             },
             {
               "$ref": "#/parameters/HttpRouteNameParameter"

@@ -8,14 +8,14 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 )
 
 // RedisCacheDataModelFromVersioned converts version agnostic RedisCache datamodel to versioned model.
-func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string) (api.VersionedModelInterface, error) {
+func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.RedisCacheResource{}
@@ -23,7 +23,7 @@ func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string)
 		return versioned, err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
 
@@ -39,11 +39,11 @@ func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamode
 		return dm.(*datamodel.RedisCache), err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }
 
-func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, version string) (api.VersionedModelInterface, error) {
+func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.RedisCacheSecrets{}
@@ -51,6 +51,6 @@ func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, v
 		return versioned, err
 
 	default:
-		return nil, basedatamodel.ErrUnsupportedAPIVersion
+		return nil, v1.ErrUnsupportedAPIVersion
 	}
 }

@@ -25,18 +25,18 @@ import (
 type SQLDatabasesClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewSQLDatabasesClient creates a new instance of SQLDatabasesClient with the specified values.
-func NewSQLDatabasesClient(con *arm.Connection, subscriptionID string) *SQLDatabasesClient {
-	return &SQLDatabasesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewSQLDatabasesClient(con *arm.Connection, rootScope string) *SQLDatabasesClient {
+	return &SQLDatabasesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Creates or updates a SQLDatabase resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *SQLDatabasesClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, sqlDatabaseName string, sqlDatabaseParameters SQLDatabaseResource, options *SQLDatabasesCreateOrUpdateOptions) (SQLDatabasesCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, sqlDatabaseName, sqlDatabaseParameters, options)
+func (client *SQLDatabasesClient) CreateOrUpdate(ctx context.Context, sqlDatabaseName string, sqlDatabaseParameters SQLDatabaseResource, options *SQLDatabasesCreateOrUpdateOptions) (SQLDatabasesCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, sqlDatabaseName, sqlDatabaseParameters, options)
 	if err != nil {
 		return SQLDatabasesCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *SQLDatabasesClient) CreateOrUpdate(ctx context.Context, resourceGr
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, sqlDatabaseName string, sqlDatabaseParameters SQLDatabaseResource, options *SQLDatabasesCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, sqlDatabaseName string, sqlDatabaseParameters SQLDatabaseResource, options *SQLDatabasesCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *SQLDatabasesClient) createOrUpdateHandleError(resp *http.Response)
 
 // Delete - Deletes an existing sqlDatabase resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *SQLDatabasesClient) Delete(ctx context.Context, resourceGroupName string, sqlDatabaseName string, options *SQLDatabasesDeleteOptions) (SQLDatabasesDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, sqlDatabaseName, options)
+func (client *SQLDatabasesClient) Delete(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesDeleteOptions) (SQLDatabasesDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, sqlDatabaseName, options)
 	if err != nil {
 		return SQLDatabasesDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *SQLDatabasesClient) Delete(ctx context.Context, resourceGroupName 
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, sqlDatabaseName string, options *SQLDatabasesDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *SQLDatabasesClient) deleteHandleError(resp *http.Response) error {
 
 // Get - Retrieves information about a sqlDatabase resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *SQLDatabasesClient) Get(ctx context.Context, resourceGroupName string, sqlDatabaseName string, options *SQLDatabasesGetOptions) (SQLDatabasesGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, sqlDatabaseName, options)
+func (client *SQLDatabasesClient) Get(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesGetOptions) (SQLDatabasesGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, sqlDatabaseName, options)
 	if err != nil {
 		return SQLDatabasesGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *SQLDatabasesClient) Get(ctx context.Context, resourceGroupName str
 }
 
 // getCreateRequest creates the Get request.
-func (client *SQLDatabasesClient) getCreateRequest(ctx context.Context, resourceGroupName string, sqlDatabaseName string, options *SQLDatabasesGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *SQLDatabasesClient) getCreateRequest(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *SQLDatabasesClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - Lists information about all sqlDatabase resources in the given subscription and resource group
+// ListByRootScope - Lists information about all sqlDatabase resources in the given root scope
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *SQLDatabasesClient) List(resourceGroupName string, options *SQLDatabasesListOptions) (*SQLDatabasesListPager) {
-	return &SQLDatabasesListPager{
+func (client *SQLDatabasesClient) ListByRootScope(options *SQLDatabasesListByRootScopeOptions) (*SQLDatabasesListByRootScopePager) {
+	return &SQLDatabasesListByRootScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByRootScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp SQLDatabasesListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp SQLDatabasesListByRootScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.SQLDatabaseList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *SQLDatabasesClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *SQLDatabasesListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/sqlDatabases"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *SQLDatabasesClient) listByRootScopeCreateRequest(ctx context.Context, options *SQLDatabasesListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/sqlDatabases"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *SQLDatabasesClient) listCreateRequest(ctx context.Context, resourc
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *SQLDatabasesClient) listHandleResponse(resp *http.Response) (SQLDatabasesListResponse, error) {
-	result := SQLDatabasesListResponse{RawResponse: resp}
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *SQLDatabasesClient) listByRootScopeHandleResponse(resp *http.Response) (SQLDatabasesListByRootScopeResponse, error) {
+	result := SQLDatabasesListByRootScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseList); err != nil {
-		return SQLDatabasesListResponse{}, err
+		return SQLDatabasesListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *SQLDatabasesClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - Lists information about all sqlDatabase resources in the given subscription
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *SQLDatabasesClient) ListBySubscription(options *SQLDatabasesListBySubscriptionOptions) (*SQLDatabasesListBySubscriptionPager) {
-	return &SQLDatabasesListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp SQLDatabasesListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.SQLDatabaseList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *SQLDatabasesClient) listBySubscriptionCreateRequest(ctx context.Context, options *SQLDatabasesListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Connector/sqlDatabases"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *SQLDatabasesClient) listBySubscriptionHandleResponse(resp *http.Response) (SQLDatabasesListBySubscriptionResponse, error) {
-	result := SQLDatabasesListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseList); err != nil {
-		return SQLDatabasesListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *SQLDatabasesClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByRootScopeHandleError handles the ListByRootScope error response.
+func (client *SQLDatabasesClient) listByRootScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)

@@ -25,18 +25,19 @@ import (
 type RabbitMQMessageQueuesClient struct {
 	ep string
 	pl runtime.Pipeline
+	rootScope string
 	subscriptionID string
 }
 
 // NewRabbitMQMessageQueuesClient creates a new instance of RabbitMQMessageQueuesClient with the specified values.
-func NewRabbitMQMessageQueuesClient(con *arm.Connection, subscriptionID string) *RabbitMQMessageQueuesClient {
-	return &RabbitMQMessageQueuesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewRabbitMQMessageQueuesClient(con *arm.Connection, rootScope string, subscriptionID string) *RabbitMQMessageQueuesClient {
+	return &RabbitMQMessageQueuesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope, subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a RabbitMQMessageQueue resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitMQMessageQueuesClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, rabbitMQMessageQueueName string, rabbitMQMessageQueueParameters RabbitMQMessageQueueResource, options *RabbitMQMessageQueuesCreateOrUpdateOptions) (RabbitMQMessageQueuesCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, rabbitMQMessageQueueName, rabbitMQMessageQueueParameters, options)
+func (client *RabbitMQMessageQueuesClient) CreateOrUpdate(ctx context.Context, rabbitMQMessageQueueName string, rabbitMQMessageQueueParameters RabbitMQMessageQueueResource, options *RabbitMQMessageQueuesCreateOrUpdateOptions) (RabbitMQMessageQueuesCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, rabbitMQMessageQueueName, rabbitMQMessageQueueParameters, options)
 	if err != nil {
 		return RabbitMQMessageQueuesCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +52,12 @@ func (client *RabbitMQMessageQueuesClient) CreateOrUpdate(ctx context.Context, r
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, rabbitMQMessageQueueName string, rabbitMQMessageQueueParameters RabbitMQMessageQueueResource, options *RabbitMQMessageQueuesCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, rabbitMQMessageQueueParameters RabbitMQMessageQueueResource, options *RabbitMQMessageQueuesCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
@@ -100,8 +97,8 @@ func (client *RabbitMQMessageQueuesClient) createOrUpdateHandleError(resp *http.
 
 // Delete - Deletes an existing rabbitMQMessageQueue resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitMQMessageQueuesClient) Delete(ctx context.Context, resourceGroupName string, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesDeleteOptions) (RabbitMQMessageQueuesDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, rabbitMQMessageQueueName, options)
+func (client *RabbitMQMessageQueuesClient) Delete(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesDeleteOptions) (RabbitMQMessageQueuesDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, rabbitMQMessageQueueName, options)
 	if err != nil {
 		return RabbitMQMessageQueuesDeleteResponse{}, err
 	}
@@ -116,16 +113,12 @@ func (client *RabbitMQMessageQueuesClient) Delete(ctx context.Context, resourceG
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *RabbitMQMessageQueuesClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *RabbitMQMessageQueuesClient) deleteCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
@@ -156,8 +149,8 @@ func (client *RabbitMQMessageQueuesClient) deleteHandleError(resp *http.Response
 
 // Get - Retrieves information about a rabbitMQMessageQueue resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitMQMessageQueuesClient) Get(ctx context.Context, resourceGroupName string, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesGetOptions) (RabbitMQMessageQueuesGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, rabbitMQMessageQueueName, options)
+func (client *RabbitMQMessageQueuesClient) Get(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesGetOptions) (RabbitMQMessageQueuesGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, rabbitMQMessageQueueName, options)
 	if err != nil {
 		return RabbitMQMessageQueuesGetResponse{}, err
 	}
@@ -172,16 +165,12 @@ func (client *RabbitMQMessageQueuesClient) Get(ctx context.Context, resourceGrou
 }
 
 // getCreateRequest creates the Get request.
-func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context, resourceGroupName string, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
@@ -219,31 +208,27 @@ func (client *RabbitMQMessageQueuesClient) getHandleError(resp *http.Response) e
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - Lists information about all rabbitMQMessageQueue resources in the given subscription and resource group
+// ListByRootScope - Lists information about all rabbitMQMessageQueue resources in the given root scope
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitMQMessageQueuesClient) List(resourceGroupName string, options *RabbitMQMessageQueuesListOptions) (*RabbitMQMessageQueuesListPager) {
-	return &RabbitMQMessageQueuesListPager{
+func (client *RabbitMQMessageQueuesClient) ListByRootScope(options *RabbitMQMessageQueuesListByRootScopeOptions) (*RabbitMQMessageQueuesListByRootScopePager) {
+	return &RabbitMQMessageQueuesListByRootScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByRootScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp RabbitMQMessageQueuesListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp RabbitMQMessageQueuesListByRootScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.RabbitMQMessageQueueList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *RabbitMQMessageQueuesClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *RabbitMQMessageQueuesListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *RabbitMQMessageQueuesClient) listByRootScopeCreateRequest(ctx context.Context, options *RabbitMQMessageQueuesListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +240,17 @@ func (client *RabbitMQMessageQueuesClient) listCreateRequest(ctx context.Context
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *RabbitMQMessageQueuesClient) listHandleResponse(resp *http.Response) (RabbitMQMessageQueuesListResponse, error) {
-	result := RabbitMQMessageQueuesListResponse{RawResponse: resp}
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *RabbitMQMessageQueuesClient) listByRootScopeHandleResponse(resp *http.Response) (RabbitMQMessageQueuesListByRootScopeResponse, error) {
+	result := RabbitMQMessageQueuesListByRootScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueList); err != nil {
-		return RabbitMQMessageQueuesListResponse{}, err
+		return RabbitMQMessageQueuesListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *RabbitMQMessageQueuesClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - Lists information about all rabbitMQMessageQueue resources in the given subscription
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitMQMessageQueuesClient) ListBySubscription(options *RabbitMQMessageQueuesListBySubscriptionOptions) (*RabbitMQMessageQueuesListBySubscriptionPager) {
-	return &RabbitMQMessageQueuesListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp RabbitMQMessageQueuesListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.RabbitMQMessageQueueList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *RabbitMQMessageQueuesClient) listBySubscriptionCreateRequest(ctx context.Context, options *RabbitMQMessageQueuesListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Connector/rabbitMQMessageQueues"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *RabbitMQMessageQueuesClient) listBySubscriptionHandleResponse(resp *http.Response) (RabbitMQMessageQueuesListBySubscriptionResponse, error) {
-	result := RabbitMQMessageQueuesListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueList); err != nil {
-		return RabbitMQMessageQueuesListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *RabbitMQMessageQueuesClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByRootScopeHandleError handles the ListByRootScope error response.
+func (client *RabbitMQMessageQueuesClient) listByRootScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
