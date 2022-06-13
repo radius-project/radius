@@ -132,7 +132,7 @@ func GetBaseUrlForDeploymentEngine(overrideURL string) string {
 	return strings.TrimSuffix(overrideURL, "/") + UCPBasePath
 }
 
-func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context string, enableUCP bool) (string, http.RoundTripper, error) {
+func GetBaseUrlAndRoundTripperForDeploymentEngine(deploymentEngineURL string, ucpURL string, context string, enableUCP bool) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
 	var basePath string
@@ -141,9 +141,12 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 	} else {
 		basePath = DeploymentEngineBasePath
 	}
-	if overrideURL != "" {
-		baseURL = strings.TrimSuffix(overrideURL, "/") + basePath
-		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
+	if deploymentEngineURL != "" {
+		baseURL = strings.TrimSuffix(deploymentEngineURL, "/") + basePath
+		roundTripper = NewLocationRewriteRoundTripper(deploymentEngineURL, http.DefaultTransport)
+	} else if ucpURL != "" {
+		baseURL = strings.TrimSuffix(ucpURL, "/") + basePath
+		roundTripper = NewLocationRewriteRoundTripper(ucpURL, http.DefaultTransport)
 	} else {
 		restConfig, err := GetConfig(context)
 		if err != nil {
@@ -157,7 +160,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(overrideURL string, context st
 			k8sType = BicepType
 		}
 
-		roundTripper, err = CreateRestRoundTripper(context, k8sType, overrideURL)
+		roundTripper, err = CreateRestRoundTripper(context, k8sType, deploymentEngineURL)
 		if err != nil {
 			return "", nil, err
 		}

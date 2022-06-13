@@ -22,15 +22,17 @@ import (
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
 type KubernetesEnvironment struct {
-	Name                       string `mapstructure:"name" validate:"required"`
-	Kind                       string `mapstructure:"kind" validate:"required"`
-	Context                    string `mapstructure:"context" validate:"required"`
-	Namespace                  string `mapstructure:"namespace" validate:"required"`
-	DefaultApplication         string `mapstructure:"defaultapplication,omitempty"`
-	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
-	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
-	Providers                  *Providers `mapstructure:"providers"`
-	EnableUCP                  bool   `mapstructure:"enableucp,omitempty"`
+	Name                     string     `mapstructure:"name" validate:"required"`
+	Kind                     string     `mapstructure:"kind" validate:"required"`
+	Context                  string     `mapstructure:"context" validate:"required"`
+	Namespace                string     `mapstructure:"namespace" validate:"required"`
+	DefaultApplication       string     `mapstructure:"defaultapplication,omitempty"`
+	Providers                *Providers `mapstructure:"providers"`
+	RadiusRPLocalURL         string     `mapstructure:"radiusrplocalurl,omitempty"`
+	DeploymentEngineLocalURL string     `mapstructure:"deploymentenginelocalurl,omitempty"`
+	UCPLocalURL              string     `mapstructure:"ucplocalurl,omitempty"`
+	EnableUCP                bool       `mapstructure:"enableucp,omitempty"`
+
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
 }
@@ -84,7 +86,7 @@ func (e *KubernetesEnvironment) GetAzureProviderDetails() (string, string) {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 
 	if err != nil {
 		return nil, err
@@ -142,7 +144,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +160,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
