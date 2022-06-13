@@ -34,16 +34,16 @@
       }
     },
     "paths": {
-      "/subscriptions/{subscriptionId}/providers/Applications.Connector/extenders": {
+      "/{rootScope}/providers/Applications.Connector/extenders": {
         "get": {
-          "description": "Lists information about all extender resources in the given subscription",
-          "operationId": "Extenders_ListBySubscription",
+          "description": "Lists information about all extender resources in the given root scope",
+          "operationId": "Extenders_ListByRootScope",
           "produces": [
             "application/json"
           ],
           "x-ms-examples": {
-            "ExtendersListBySubscription": {
-              "$ref": "./examples/ExtendersListBySubscription.json"
+            "ExtendersListByRootScope": {
+              "$ref": "./examples/ExtendersListByRootScope.json"
             }
           },
           "tags": [
@@ -54,7 +54,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             }
           ],
           "responses": {
@@ -77,53 +77,7 @@
           }
         }
       },
-      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/extenders": {
-        "get": {
-          "description": "Lists information about all extender resources in the given subscription and resource group",
-          "operationId": "Extenders_List",
-          "produces": [
-            "application/json"
-          ],
-          "x-ms-examples": {
-            "ExtendersList": {
-              "$ref": "./examples/ExtendersList.json"
-            }
-          },
-          "tags": [
-            "Extenders"
-          ],
-          "parameters": [
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "List of Extender resources",
-              "schema": {
-                "$ref": "#/definitions/ExtenderList"
-              }
-            },
-            "default": {
-              "description": "Error response describing why the operation failed.",
-              "schema": {
-                "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-              }
-            }
-          },
-          "deprecated": false,
-          "x-ms-pageable": {
-            "nextLinkName": "nextLink"
-          }
-        }
-      },
-      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/extenders/{extenderName}": {
+      "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}": {
         "get": {
           "description": "Retrieves information about a extender resource",
           "operationId": "Extenders_Get",
@@ -143,10 +97,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/ExtenderNameParameter"
@@ -186,10 +137,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/ExtenderNameParameter"
@@ -244,10 +192,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/ExtenderNameParameter"

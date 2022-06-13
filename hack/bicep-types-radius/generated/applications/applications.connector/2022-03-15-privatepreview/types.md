@@ -1,7 +1,7 @@
 # Applications.Connector @ 2022-03-15-privatepreview
 
 ## Resource Applications.Connector/daprInvokeHttpRoutes@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -13,7 +13,7 @@
 * **type**: 'Applications.Connector/daprInvokeHttpRoutes' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/daprPubSubBrokers@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -25,7 +25,7 @@
 * **type**: 'Applications.Connector/daprPubSubBrokers' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/daprSecretStores@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -37,7 +37,7 @@
 * **type**: 'Applications.Connector/daprSecretStores' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/daprStateStores@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -49,7 +49,7 @@
 * **type**: 'Applications.Connector/daprStateStores' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/extenders@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -61,7 +61,7 @@
 * **type**: 'Applications.Connector/extenders' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/mongoDatabases@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -73,7 +73,7 @@
 * **type**: 'Applications.Connector/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/rabbitMQMessageQueues@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -85,7 +85,7 @@
 * **type**: 'Applications.Connector/rabbitMQMessageQueues' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/redisCaches@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
@@ -97,7 +97,7 @@
 * **type**: 'Applications.Connector/redisCaches' (ReadOnly, DeployTimeConstant): The resource type
 
 ## Resource Applications.Connector/sqlDatabases@2022-03-15-privatepreview
-* **Valid Scope(s)**: ResourceGroup
+* **Valid Scope(s)**: Unknown
 ### Properties
 * **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id

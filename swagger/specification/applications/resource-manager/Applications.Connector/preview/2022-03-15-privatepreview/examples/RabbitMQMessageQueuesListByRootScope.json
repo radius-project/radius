@@ -1,6 +1,6 @@
 {
     "parameters": {
-      "subscriptionId": "00000000-0000-0000-0000-000000000000",
+      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000",
       "api-version": "2022-03-15-privatepreview"
     },
     "responses": {
@@ -8,22 +8,21 @@
         "body": {
           "value": [
             {
-              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/extenders/extender0",
-              "name": "extender0",
-              "type": "Applications.Connector/extenders",
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Connector/rabbitMQMessageQueues/rabbitmq0",
+              "name": "rabbitmq0",
+              "type": "Applications.Connector/rabbitMQMessageQueues",
               "properties": {
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
                 "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-                "fromNumber": "222-222-2222",
+                "queue": "rabbitmq0",
                 "secrets": {
-                    "accountSid": "sid",
-                    "authToken:": "token"
+                  "connectionString": "connection://string"
                 }
               }
             }
           ],
-          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Connector/extenders?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Connector/rabbitMQMessageQueues?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
         }
       }
     }
