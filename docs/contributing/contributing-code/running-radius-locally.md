@@ -244,7 +244,7 @@ export RADIUS_ENV="self-hosted-dev"
 go run cmd/appcore-rp/main.go
 ```
 
-Or in VSCode:
+Or in VSCode by adding this to the launch.json file in the Radius repository:
 
 ```json
 {
@@ -278,7 +278,7 @@ export RADIUSBACKENDURL="http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/
 dotnet run --project src/DeploymentEngine/DeploymentEngine.csproj
 ```
 
-OR opening VSCode inside of the DeploymentEngine repo and adding the following configuration and run it:
+OR opening VSCode inside of the DeploymentEngine repo and adding the following configuration to launch.json file:
 ```json
     "configurations": [
         {
@@ -340,7 +340,7 @@ export UCP_CONFIG="cmd/ucpd/ucp-self-hosted-dev.yaml"
 go run cmd/ucp/main.go
 ```
 
-Or having the following VSCode configuration and running in VSCode:
+Or having the following VSCode configuration in the radius repository launch.json file:
 ```json
 {
     "name": "Run ucp controller",
@@ -386,9 +386,36 @@ environment:
       ucplocalurl: http://localhost:9000
 ```
 
+### Step 4.5: Have the right verison of bicep installed and right type of Bicep file
+
+To be able to deploy to the appcore RP, we need to have the right version of bicep installed.
+
+```bash
+export RAD_FF_ENABLE_BICEP_EXTENSIBILITY=true
+make build
+./dist/.../rad bicep download # path to rad that is built as part of the repo
+```
+
+```bicep
+import radius as radius {
+  foo: 'foo'
+}
+
+resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+  name: 'myenv'
+  location: 'westus2'
+  properties: {
+    compute:{
+      kind: 'kubernetes'
+      resourceId: ''
+    }
+  }
+}
+```
+
 ### Step 5: Run rad deploy
 
-You can now run `rad deploy <bicep>` to deploy your BICEP to the local RP. You can also configure a launch.json file to debug the execution of `rad deploy`.
+You can now run `rad deploy <bicep>` to deploy your BICEP to the local RP. You can also configure a launch.json file to debug the execution of `rad deploy`. FYI the args portion can be replaced with other rad commands (like `rad application list`) to test different CLI commands.
 
 ```json
 {
@@ -397,6 +424,6 @@ You can now run `rad deploy <bicep>` to deploy your BICEP to the local RP. You c
     "request": "launch",
     "mode": "debug",
     "program": "${workspaceFolder}/cmd/rad/main.go",
-    "args": ["deploy", "<bicep>"]
+    "args": ["deploy", "<path to bicep file to deploy>"]
 },
 ```
