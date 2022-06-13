@@ -138,7 +138,8 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 			PushEndpoint: cluster.RegistryPushEndpoint,
 			PullEndpoint: cluster.RegistryPullEndpoint,
 		},
-		"ucprgname": "default",
+		"ucpresourcegroupname": "default",
+		"enableucp": fmt.Sprint(featureflag.EnableUnifiedControlPlane.IsActive()),
 	}
 
 	if params.Providers != nil {

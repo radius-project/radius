@@ -111,7 +111,8 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		"kind":      environments.KindKubernetes,
 		"context":   contextName,
 		"namespace": sharedArgs.Namespace,
-		"ucprgname": "default",
+		"ucpresourcegroupname": "default",
+		"enableucp": fmt.Sprint(featureflag.EnableUnifiedControlPlane.IsActive()),
 	}
 
 	if err := cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(environmentName))); err != nil {

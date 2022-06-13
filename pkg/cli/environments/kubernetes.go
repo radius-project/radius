@@ -31,7 +31,7 @@ type KubernetesEnvironment struct {
 	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
 	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
 	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
-	UCPResourceGroupName     string `mapstructure:"ucprgname,omitempty"`
+	UCPResourceGroupName     string `mapstructure:"ucpresourcegroupname,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
