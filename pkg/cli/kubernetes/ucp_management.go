@@ -66,7 +66,7 @@ func (um *ARMUCPManagementClient) ListAllResourcesByApplication(ctx context.Cont
 func getMongoResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.MongoDatabaseResource, error) {
 
 	mongoclient := v20220315privatepreview.NewMongoDatabasesClient(con, "00000000-0000-0000-0000-000000000000")
-	mongoPager := mongoclient.List("radius-test-rg", nil)
+	mongoPager := mongoclient.List("radius-test-rg", &v20220315privatepreview.MongoDatabasesListOptions{})
 	mongoResourceList := []v20220315privatepreview.MongoDatabaseResource{}
 	for mongoPager.NextPage(ctx) {
 		currResourceList := mongoPager.PageResponse().MongoDatabaseList.Value
@@ -80,8 +80,8 @@ func getMongoResources(con *arm.Connection, subscriptionId string, resourceGroup
 // get all rabbit mq resources
 func getRabbitMqResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.RabbitMQMessageQueueResource, error) {
 
-	rabbitClient := v20220315privatepreview.NewRabbitMQMessageQueuesClient(con, "00000000-0000-0000-0000-000000000000")
-	rabbitPager := rabbitClient.List("radius-test-rg", nil)
+	rabbitClient := v20220315privatepreview.NewRabbitMQMessageQueuesClient(con, subscriptionId)
+	rabbitPager := rabbitClient.List(resourceGroupName, &v20220315privatepreview.RabbitMQMessageQueuesListOptions{})
 	rabbitResourceList := []v20220315privatepreview.RabbitMQMessageQueueResource{}
 	for rabbitPager.NextPage(ctx) {
 		currResourceList := rabbitPager.PageResponse().RabbitMQMessageQueueList.Value
@@ -96,7 +96,7 @@ func getRabbitMqResources(con *arm.Connection, subscriptionId string, resourceGr
 func getRedisResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.RedisCacheResource, error) {
 
 	redisClient := v20220315privatepreview.NewRedisCachesClient(con, subscriptionId)
-	redisPager := redisClient.List(resourceGroupName, nil)
+	redisPager := redisClient.List(resourceGroupName, &v20220315privatepreview.RedisCachesListOptions{})
 	redisResourceList := []v20220315privatepreview.RedisCacheResource{}
 	for redisPager.NextPage(ctx) {
 		currResourceList := redisPager.PageResponse().RedisCacheList.Value
@@ -111,7 +111,7 @@ func getRedisResources(con *arm.Connection, subscriptionId string, resourceGroup
 func getSQLResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.SQLDatabaseResource, error) {
 
 	sqlClient := v20220315privatepreview.NewSQLDatabasesClient(con, subscriptionId)
-	sqlPager := sqlClient.List(resourceGroupName, nil)
+	sqlPager := sqlClient.List(resourceGroupName, &v20220315privatepreview.SQLDatabasesListOptions{})
 	sqlResourceList := []v20220315privatepreview.SQLDatabaseResource{}
 	for sqlPager.NextPage(ctx) {
 		currResourceList := sqlPager.PageResponse().SQLDatabaseList.Value
