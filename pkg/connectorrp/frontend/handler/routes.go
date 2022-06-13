@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
@@ -20,13 +21,13 @@ const (
 	ProviderNamespaceName = "Applications.Connector"
 )
 
-func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router *mux.Router, pathBase string, isARM bool) error {
+func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, router *mux.Router, pathBase string, isARM bool) error {
 	if isARM {
 		pathBase += "/subscriptions/{subscriptionID}"
 	}
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, sp, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
+	err := server.ConfigureDefaultHandlers(ctx, sp, sm, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 	}
 
 	for _, h := range handlerOptions {
-		if err := server.RegisterHandler(ctx, sp, h); err != nil {
+		if err := server.RegisterHandler(ctx, sp, sm, h); err != nil {
 			return err
 		}
 	}

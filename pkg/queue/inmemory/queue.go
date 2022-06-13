@@ -18,17 +18,17 @@ import (
 var (
 	messageLockDuration   = 5 * time.Minute
 	messageExpireDuration = 24 * time.Hour
-)
 
-var ErrAlreadyCompletedMessage = errors.New("message has already completed")
+	ErrAlreadyCompletedMessage = errors.New("message has already completed")
+
+	defaultQueue = NewInMemQueue(messageLockDuration)
+)
 
 type element struct {
 	val *queue.Message
 
 	visible bool
 }
-
-var defaultQueue = NewInMemQueue(messageLockDuration)
 
 // InmemQueue implements in-memory queue for dev/test
 type InmemQueue struct {

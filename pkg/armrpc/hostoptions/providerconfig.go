@@ -6,6 +6,7 @@
 package hostoptions
 
 import (
+	qprovider "github.com/project-radius/radius/pkg/queue/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 )
@@ -15,6 +16,7 @@ type ProviderConfig struct {
 	Env             EnvironmentOptions                  `yaml:"environment"`
 	Identity        IdentityOptions                     `yaml:"identity"`
 	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
+	QueueProvider   qprovider.QueueProviderOptions      `yaml:"queueProvider"`
 	Server          *ServerOptions                      `yaml:"server,omitempty"`
 	WorkerServer    *WorkerServerOptions                `yaml:"workerServer,omitempty"`
 	MetricsProvider provider.MetricsProviderOptions     `yaml:"metricsProvider"`
