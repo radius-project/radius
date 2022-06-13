@@ -127,6 +127,7 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		OperationsClient: op,
 		SubscriptionID:   e.Namespace,
 		ResourceGroup:    e.Namespace,
+		Tags:             tags,
 		EnableUCP:        e.EnableUCP,
 	}, nil
 }
