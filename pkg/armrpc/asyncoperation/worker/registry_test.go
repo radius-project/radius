@@ -29,7 +29,7 @@ func TestRegister_Get(t *testing.T) {
 	opGet := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationGet}
 	opPut := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationPut}
 
-	err := registry.Register(context.TODO(), opGet, func(s store.StorageClient) (ctrl.Controller, error) {
+	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(s store.StorageClient) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(nil),
 			fn: func(ctx context.Context) (ctrl.Result, error) {
@@ -39,7 +39,7 @@ func TestRegister_Get(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = registry.Register(context.TODO(), opPut, func(s store.StorageClient) (ctrl.Controller, error) {
+	err = registry.Register(context.TODO(), opPut.Type, opPut.Method, func(s store.StorageClient) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(nil),
 		}, nil
