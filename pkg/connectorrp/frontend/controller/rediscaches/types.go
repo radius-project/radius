@@ -9,5 +9,5 @@ const (
 	ResourceTypeName = "Applications.Connector/redisCaches"
 
 	// User defined operation names
-	OperationListSecret = "LISTSECRET"
+	OperationListSecret = "LISTSECRETS"
 )

@@ -9,5 +9,5 @@ const (
 	ResourceTypeName = "Applications.Connector/rabbitMQMessageQueues"
 
 	// User defined operation names
-	OperationListSecret = "LISTSECRET"
+	OperationListSecret = "LISTSECRETS"
 )
