@@ -135,11 +135,3 @@ func filterByName(resourceList map[string]v20220315privatepreview.Resource, appl
 	}
 	return filteredResourceList, nil
 }
-
-func getResourceAppName(applicationId string) (string, error) {
-	parsedId, err := resources.Parse(applicationId)
-	if err != nil {
-		return "", err
-	}
-	return parsedId.Name(), nil
-}
