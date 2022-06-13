@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azure
+package kubernetes
 
 import (
 	"context"
@@ -58,13 +58,13 @@ func (um *ARMUCPManagementClient) ListAllResourcesByApplication(ctx context.Cont
 	for _, sqlResource := range sqlResourceList {
 		resourceMap[*sqlResource.Properties.Application] = sqlResource.Resource
 	}
-	
+
 	return filterByName(resourceMap, applicationName)
 }
 
 // get all mongo resources
 func getMongoResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.MongoDatabaseResource, error) {
-	
+
 	mongoclient := v20220315privatepreview.NewMongoDatabasesClient(con, "00000000-0000-0000-0000-000000000000")
 	mongoPager := mongoclient.List("radius-test-rg", nil)
 	mongoResourceList := []v20220315privatepreview.MongoDatabaseResource{}
@@ -79,7 +79,7 @@ func getMongoResources(con *arm.Connection, subscriptionId string, resourceGroup
 
 // get all rabbit mq resources
 func getRabbitMqResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.RabbitMQMessageQueueResource, error) {
-	
+
 	rabbitClient := v20220315privatepreview.NewRabbitMQMessageQueuesClient(con, "00000000-0000-0000-0000-000000000000")
 	rabbitPager := rabbitClient.List("radius-test-rg", nil)
 	rabbitResourceList := []v20220315privatepreview.RabbitMQMessageQueueResource{}
@@ -94,7 +94,7 @@ func getRabbitMqResources(con *arm.Connection, subscriptionId string, resourceGr
 
 // get all rabbit resources
 func getRedisResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.RedisCacheResource, error) {
-	
+
 	redisClient := v20220315privatepreview.NewRedisCachesClient(con, "00000000-0000-0000-0000-000000000000")
 	redisPager := redisClient.List("radius-test-rg", nil)
 	redisResourceList := []v20220315privatepreview.RedisCacheResource{}
@@ -109,7 +109,7 @@ func getRedisResources(con *arm.Connection, subscriptionId string, resourceGroup
 
 // get all sql resources
 func getSQLResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.SQLDatabaseResource, error) {
-	
+
 	sqlClient := v20220315privatepreview.NewSQLDatabasesClient(con, "00000000-0000-0000-0000-000000000000")
 	sqlPager := sqlClient.List("radius-test-rg", nil)
 	sqlResourceList := []v20220315privatepreview.SQLDatabaseResource{}
@@ -122,7 +122,7 @@ func getSQLResources(con *arm.Connection, subscriptionId string, resourceGroupNa
 	return sqlResourceList, nil
 }
 
-func filterByName(resourceList map[string]v20220315privatepreview.Resource, applicationName string) ([]v20220315privatepreview.Resource, error){
+func filterByName(resourceList map[string]v20220315privatepreview.Resource, applicationName string) ([]v20220315privatepreview.Resource, error) {
 	filteredResourceList := []v20220315privatepreview.Resource{}
 	for appId, resource := range resourceList {
 		IdParsed, err := resources.Parse(appId)

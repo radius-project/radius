@@ -166,7 +166,7 @@ func (e *AzureCloudEnvironment) CreateUCPManagementClient(ctx context.Context) (
 		return nil, err
 	}
 
-	return &azure.ARMUCPManagementClient{
+	return &kubernetes.ARMUCPManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
