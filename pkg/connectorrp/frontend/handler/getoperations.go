@@ -106,6 +106,36 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Connector/sqlDatabases/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "sqlDatabases",
+					Operation:   "Get/List sqlDatabases",
+					Description: "Gets/Lists sqlDatabase connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/sqlDatabases/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "sqlDatabases",
+					Operation:   "Create/Update sqlDatabases",
+					Description: "Creates or updates a sql database connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/sqlDatabases/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "sqlDatabases",
+					Operation:   "Delete sqlDatabase",
+					Description: "Deletes a sqlDatabase connector.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }
