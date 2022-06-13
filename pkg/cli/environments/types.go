@@ -90,12 +90,12 @@ func CreateManagementClient(ctx context.Context, env Environment) (clients.Manag
 	return me.CreateManagementClient(ctx)
 }
 
-type FirstPartyServiceManagementEnvironment interface {
-	CreateUCPManagementClient(ctx context.Context) (clients.FirstPartyServiceManagementClient, error)
+type AppManagementEnvironment interface {
+	CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error)
 }
 
-func CreateFirstPartyServiceManagementClient(ctx context.Context, env Environment) (clients.FirstPartyServiceManagementClient, error) {
-	me, ok := env.(FirstPartyServiceManagementEnvironment)
+func CreateAppServiceManagementClient(ctx context.Context, env Environment) (clients.AppManagementClient, error) {
+	me, ok := env.(AppManagementEnvironment)
 	if !ok {
 		return nil, fmt.Errorf("an environment of kind '%s' does not support management operations", env.GetKind())
 	}

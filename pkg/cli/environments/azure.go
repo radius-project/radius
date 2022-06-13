@@ -160,7 +160,7 @@ func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (cli
 	}, nil
 }
 
-func (e *AzureCloudEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.FirstPartyServiceManagementClient, error) {
+func (e *AzureCloudEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
 	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
 	if err != nil {
 		return nil, err

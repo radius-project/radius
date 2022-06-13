@@ -22,7 +22,7 @@ type ARMUCPManagementClient struct {
 	EnvironmentName string
 }
 
-var _ clients.FirstPartyServiceManagementClient = (*ARMUCPManagementClient)(nil)
+var _ clients.AppManagementClient = (*ARMUCPManagementClient)(nil)
 
 // ListAllResourcesByApplication lists the resources of a particular application
 func (um *ARMUCPManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error) {
@@ -95,8 +95,8 @@ func getRabbitMqResources(con *arm.Connection, subscriptionId string, resourceGr
 // get all rabbit resources
 func getRedisResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.RedisCacheResource, error) {
 
-	redisClient := v20220315privatepreview.NewRedisCachesClient(con, "00000000-0000-0000-0000-000000000000")
-	redisPager := redisClient.List("radius-test-rg", nil)
+	redisClient := v20220315privatepreview.NewRedisCachesClient(con, subscriptionId)
+	redisPager := redisClient.List(resourceGroupName, nil)
 	redisResourceList := []v20220315privatepreview.RedisCacheResource{}
 	for redisPager.NextPage(ctx) {
 		currResourceList := redisPager.PageResponse().RedisCacheList.Value
@@ -110,8 +110,8 @@ func getRedisResources(con *arm.Connection, subscriptionId string, resourceGroup
 // get all sql resources
 func getSQLResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.SQLDatabaseResource, error) {
 
-	sqlClient := v20220315privatepreview.NewSQLDatabasesClient(con, "00000000-0000-0000-0000-000000000000")
-	sqlPager := sqlClient.List("radius-test-rg", nil)
+	sqlClient := v20220315privatepreview.NewSQLDatabasesClient(con, subscriptionId)
+	sqlPager := sqlClient.List(resourceGroupName, nil)
 	sqlResourceList := []v20220315privatepreview.SQLDatabaseResource{}
 	for sqlPager.NextPage(ctx) {
 		currResourceList := sqlPager.PageResponse().SQLDatabaseList.Value

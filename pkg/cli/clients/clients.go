@@ -117,7 +117,7 @@ type ManagementClient interface {
 }
 
 // ManagementClient is used to interface with management features like listing applications and resources.
-type FirstPartyServiceManagementClient interface {
+type AppManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error)
 }
 

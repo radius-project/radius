@@ -6,8 +6,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -20,20 +18,32 @@ var resourceListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists application resources",
 	Long:  "List all the resources in the specified application",
-	RunE:  listResources,
+	RunE:  listResourcesRouter,
 }
 
 func init() {
 	resourceCmd.AddCommand(resourceListCmd)
 }
 
-func listResources(cmd *cobra.Command, args []string) error {
+func listResourcesRouter(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}
+	isUCPEnabled := false
+	if env.GetKind() == environments.KindKubernetes {
+		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
+	}
+	if isUCPEnabled {
+		listResourcesUCP(cmd, args, env)
+	} else {
+		listResources(cmd, args, env)
+	}
+	return nil
+}
 
+func listResources(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
@@ -49,32 +59,16 @@ func listResources(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	format, err := cli.RequireOutput(cmd)
-	if err != nil {
-		return err
-	}
-
-	err = output.Write(format, resourceList.Value, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return printOutput(cmd, resourceList.Value)
 }
 
-func listResourcesUCP(cmd *cobra.Command, args []string) error {
-	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
-	if err != nil {
-		return err
-	}
-
+func listResourcesUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
 	}
 
-	client, err := environments.CreateFirstPartyServiceManagementClient(cmd.Context(), env)
+	client, err := environments.CreateAppServiceManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}
@@ -82,17 +76,19 @@ func listResourcesUCP(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print(resourceList)
 
-	// format, err := cli.RequireOutput(cmd)
-	// if err != nil {
-	// 	return err
-	// }
+	return printOutput(cmd, resourceList)
+}
 
-	// err = output.Write(format, resourceList.Value, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
-	// if err != nil {
-	// 	return err
-	// }
+func printOutput(cmd *cobra.Command, obj interface{}) error {
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
 
+	err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	if err != nil {
+		return err
+	}
 	return nil
 }
