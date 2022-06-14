@@ -133,3 +133,18 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 		SubscriptionID:  e.Namespace,
 	}, nil
 }
+
+func (e *KubernetesEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubernetes.ARMUCPManagementClient{
+		EnvironmentName: e.Name,
+		Connection:      connection,
+		Scope:           "/ResourceGroups/dummy", //+ e.ResourceGroup,
+		//ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
+		//SubscriptionID:  e.Namespace,
+	}, nil
+}

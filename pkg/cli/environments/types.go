@@ -80,6 +80,10 @@ type ManagementEnvironment interface {
 	CreateManagementClient(ctx context.Context) (clients.ManagementClient, error)
 }
 
+type UCPManagementEnvironment interface {
+	CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error)
+}
+
 func CreateManagementClient(ctx context.Context, env Environment) (clients.ManagementClient, error) {
 	me, ok := env.(ManagementEnvironment)
 	if !ok {
@@ -87,6 +91,15 @@ func CreateManagementClient(ctx context.Context, env Environment) (clients.Manag
 	}
 
 	return me.CreateManagementClient(ctx)
+}
+
+func CreateUCPManagementClient(ctx context.Context, env Environment) (clients.AppManagementClient, error) {
+	me, ok := env.(UCPManagementEnvironment)
+	if !ok {
+		return nil, fmt.Errorf("an environment of kind '%s' does not support management operations", env.GetKind())
+	}
+
+	return me.CreateUCPManagementClient(ctx)
 }
 
 type ServerLifecycleEnvironment interface {

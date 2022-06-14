@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -113,6 +114,12 @@ type ManagementClient interface {
 
 	ShowResource(ctx context.Context, applicationName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
+}
+
+// ManagementClient is used to interface with management features like listing applications and resources.
+type AppManagementClient interface {
+	//ListAllResourcesByApplication(ctx context.Context, applicationName string) error
+	ListEnv(ctx context.Context) ([]v20220315privatepreview.EnvironmentResourceList, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

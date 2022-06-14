@@ -188,6 +188,21 @@ func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.
 	}, nil
 }
 
+func (e *LocalEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubernetes.ARMUCPManagementClient{
+		EnvironmentName: e.Name,
+		Connection:      connection,
+		Scope:           "/ResourceGroups/dummy", // + e.ResourceGroup,
+		//	ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
+		//	SubscriptionID:  e.Namespace,
+	}, nil
+}
+
 func (e *LocalEnvironment) CreateServerLifecycleClient(ctx context.Context) (clients.ServerLifecycleClient, error) {
 	return &k3d.ServerLifecycleClient{
 		ClusterName: e.ClusterName,
