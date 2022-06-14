@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
@@ -23,7 +24,13 @@ func init() {
 }
 
 func envUninstallKubernetes(cmd *cobra.Command, args []string) error {
-	err := helm.UninstallOnCluster(cmd.Context())
+	config := ConfigFromContext(cmd.Context())
+	env, err := cli.RequireEnvironment(cmd, config)
+	if err != nil {
+		return err
+	}
+
+	err = helm.UninstallOnCluster(env.GetKubeContext())
 	if err != nil {
 		return err
 	}

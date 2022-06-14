@@ -30,15 +30,11 @@ const (
 	retries          = 5
 )
 
-func HelmConfig(namespace string, builder strings.Builder) (*helm.Configuration, error) {
+func HelmConfig(builder strings.Builder, flags *genericclioptions.ConfigFlags) (*helm.Configuration, error) {
 	hc := helm.Configuration{}
-	flags := &genericclioptions.ConfigFlags{
-		Namespace: &namespace,
-	}
-
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.
-	err := hc.Init(flags, namespace, helmDriverSecret, func(format string, v ...interface{}) {
+	err := hc.Init(flags, *flags.Namespace, helmDriverSecret, func(format string, v ...interface{}) {
 		builder.WriteString(fmt.Sprintf(format, v...))
 	})
 	return &hc, err
