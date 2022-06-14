@@ -31,13 +31,13 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 	// Need all httproutes that are used by this gateway
 	gateway, err := r.convert(resource)
 	if err != nil {
-		return nil, nil, nil
+		return nil, nil, err
 	}
 
 	for _, httpRoute := range gateway.Routes {
 		resourceID, err := azresources.Parse(*httpRoute.Destination)
 		if err != nil {
-			return nil, nil, nil
+			return nil, nil, err
 		}
 
 		radiusResourceIDs = append(radiusResourceIDs, resourceID)
