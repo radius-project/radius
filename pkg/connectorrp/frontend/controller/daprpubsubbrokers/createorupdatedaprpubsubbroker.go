@@ -95,5 +95,21 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Validate(ctx context.Context, 
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	daprPubSubProperties := dm.Properties.GetDaprPubSubBrokerProperties()
 	daprPubSubProperties.ProvisioningState = v1.ProvisioningStateSucceeded
+	switch v := dm.Properties.(type) {
+	case *datamodel.DaprPubSubAzureServiceBusResourceProperties:
+		dm.Properties = &datamodel.DaprPubSubAzureServiceBusResourceProperties{
+			DaprPubSubBrokerProperties: daprPubSubProperties,
+			Resource:                   v.Resource,
+		}
+	case *datamodel.DaprPubSubGenericResourceProperties:
+		dm.Properties = &datamodel.DaprPubSubGenericResourceProperties{
+			DaprPubSubBrokerProperties: daprPubSubProperties,
+			Type:                       v.Type,
+			Version:                    v.Version,
+			Metadata:                   v.Metadata,
+		}
+	default:
+		dm.Properties = daprPubSubProperties
+	}
 	return dm, nil
 }

@@ -95,5 +95,26 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Validate(ctx context.Context
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	daprStateStoreProperties := dm.Properties.GetDaprStateStoreProperties()
 	daprStateStoreProperties.ProvisioningState = v1.ProvisioningStateSucceeded
+	switch v := dm.Properties.(type) {
+	case *datamodel.DaprStateStoreAzureTableStorageResourceProperties:
+		dm.Properties = &datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+			DaprStateStoreProperties: daprStateStoreProperties,
+			Resource:                 v.Resource,
+		}
+	case *datamodel.DaprStateStoreSQLServerResourceProperties:
+		dm.Properties = &datamodel.DaprStateStoreSQLServerResourceProperties{
+			DaprStateStoreProperties: daprStateStoreProperties,
+			Resource:                 v.Resource,
+		}
+	case *datamodel.DaprStateStoreGenericResourceProperties:
+		dm.Properties = &datamodel.DaprStateStoreGenericResourceProperties{
+			DaprStateStoreProperties: daprStateStoreProperties,
+			Type:                     v.Type,
+			Version:                  v.Version,
+			Metadata:                 v.Metadata,
+		}
+	default:
+		dm.Properties = daprStateStoreProperties
+	}
 	return dm, nil
 }
