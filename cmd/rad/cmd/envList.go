@@ -30,7 +30,12 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if true /*featureflag.EnableUnifiedControlPlane.IsActive() one Ariel's change is merged */ {
+	isUCPEnabled := false
+	if env.GetKind() == environments.KindKubernetes {
+		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
+	}
+
+	if isUCPEnabled {
 		client, err := environments.CreateUCPManagementClient(cmd.Context(), env)
 		if err != nil {
 			return err

@@ -157,7 +157,7 @@ func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (cli
 }
 
 func (e *AzureCloudEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func (e *AzureCloudEnvironment) CreateUCPManagementClient(ctx context.Context) (
 	return &kubernetes.ARMUCPManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		Scope:           "/Subscriptions/" + e.SubscriptionID + "/ResourceGroups" + e.ResourceGroup,
+		RootScope:       "/Subscriptions/" + e.SubscriptionID + "/ResourceGroups" + e.ResourceGroup,
 		//ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
 		//SubscriptionID:  e.Namespace,
 	}, nil

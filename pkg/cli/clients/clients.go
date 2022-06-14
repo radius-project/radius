@@ -119,7 +119,7 @@ type ManagementClient interface {
 // ManagementClient is used to interface with management features like listing applications and resources.
 type AppManagementClient interface {
 	//ListAllResourcesByApplication(ctx context.Context, applicationName string) error
-	ListEnv(ctx context.Context) ([]v20220315privatepreview.EnvironmentResourceList, error)
+	ListEnv(ctx context.Context) ([]v20220315privatepreview.EnvironmentResource, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
