@@ -43,7 +43,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
 
 	// Adds application resource type routes
-	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"resourcegroups/{resourceGroup}/providers/applications.core/applications").
+	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/applications").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	appResourceRouter := appRTSubrouter.PathPrefix("/{application}").Subrouter()
 
