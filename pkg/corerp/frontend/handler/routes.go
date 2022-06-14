@@ -141,7 +141,6 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			HandlerFactory: app_ctrl.NewDeleteApplication,
 		},
 	}
-
 	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, sp, sm, h); err != nil {
 			return err
