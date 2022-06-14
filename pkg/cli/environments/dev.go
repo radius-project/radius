@@ -199,7 +199,7 @@ func (e *LocalEnvironment) CreateServerLifecycleClient(ctx context.Context) (cli
 }
 
 func (e *LocalEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}
