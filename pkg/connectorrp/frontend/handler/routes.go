@@ -17,6 +17,7 @@ import (
 	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rediscaches"
+	sql_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/sqldatabases"
 )
 
 const (
@@ -46,6 +47,9 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	rabbitmqResourceRouter := rabbitmqRTSubrouter.PathPrefix("/{rabbitmqmessagequeues}").Subrouter()
 
+	sqlRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/sqldatabases").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	sqlResourceRouter := sqlRTSubrouter.PathPrefix("/{sqlDatabases}").Subrouter()
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:   mongoRTSubrouter,
@@ -154,6 +158,35 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
 			Method:         rabbitmq_ctrl.OperationListSecret,
 			HandlerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
+		}, {
+			ParentRouter:   sqlRTSubrouter,
+			ResourceType:   sql_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: sql_ctrl.NewListSqlDatabases,
+		},
+		{
+			ParentRouter:   sqlResourceRouter,
+			ResourceType:   sql_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: sql_ctrl.NewGetSqlDatabase,
+		},
+		{
+			ParentRouter:   sqlResourceRouter,
+			ResourceType:   sql_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: sql_ctrl.NewCreateOrUpdateSqlDatabase,
+		},
+		{
+			ParentRouter:   sqlResourceRouter,
+			ResourceType:   sql_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: sql_ctrl.NewCreateOrUpdateSqlDatabase,
+		},
+		{
+			ParentRouter:   sqlResourceRouter,
+			ResourceType:   sql_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: sql_ctrl.NewDeleteSqlDatabase,
 		},
 	}
 
