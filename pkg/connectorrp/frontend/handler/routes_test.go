@@ -55,6 +55,87 @@ var handlerTests = []struct {
 		method:     http.MethodPut,
 		isAzureAPI: true,
 	},
+	{
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	},
 }
 
 func TestHandlers(t *testing.T) {
