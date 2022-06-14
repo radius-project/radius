@@ -27,7 +27,7 @@ func (e *GenericEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
-func (e *GenericEnvironment) GetContext() string {
+func (e *GenericEnvironment) GetKubeContext() string {
 	return ""
 }
 

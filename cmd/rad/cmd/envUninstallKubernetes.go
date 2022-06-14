@@ -30,7 +30,7 @@ func envUninstallKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = helm.UninstallOnCluster(env.GetContext())
+	err = helm.UninstallOnCluster(env.GetKubeContext())
 	if err != nil {
 		return err
 	}

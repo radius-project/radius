@@ -50,7 +50,7 @@ func (e *KubernetesEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
-func (e *KubernetesEnvironment) GetContext() string {
+func (e *KubernetesEnvironment) GetKubeContext() string {
 	return e.Context
 }
 

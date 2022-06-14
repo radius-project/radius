@@ -61,7 +61,7 @@ func (e *LocalEnvironment) GetStatusLink() string {
 	return ""
 }
 
-func (e *LocalEnvironment) GetContext() string {
+func (e *LocalEnvironment) GetKubeContext() string {
 	return e.Context
 }
 

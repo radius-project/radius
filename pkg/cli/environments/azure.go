@@ -58,7 +58,7 @@ func (e *AzureCloudEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
-func (e *AzureCloudEnvironment) GetContext() string {
+func (e *AzureCloudEnvironment) GetKubeContext() string {
 	return e.Context
 }
 
