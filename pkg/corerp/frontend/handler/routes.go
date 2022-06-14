@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
+	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
 	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
 )
@@ -41,7 +42,13 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
 
+	// Adds application resource type routes
+	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/applications").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	appResourceRouter := appRTSubrouter.PathPrefix("/{application}").Subrouter()
+
 	handlerOptions := []server.HandlerOptions{
+		// Environments resource handler registration.
 		{
 			ParentRouter:   envRTSubrouter,
 			ResourceType:   env_ctrl.ResourceTypeName,
@@ -102,8 +109,38 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			Method:         v1.OperationDelete,
 			HandlerFactory: hrt_ctrl.NewDeleteHTTPRoute,
 		},
+		// Applications resource handler registration.
+		{
+			ParentRouter:   appRTSubrouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: app_ctrl.NewListApplications,
+		},
+		{
+			ParentRouter:   appResourceRouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: app_ctrl.NewGetApplication,
+		},
+		{
+			ParentRouter:   appResourceRouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: app_ctrl.NewCreateOrUpdateApplication,
+		},
+		{
+			ParentRouter:   appResourceRouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: app_ctrl.NewCreateOrUpdateApplication,
+		},
+		{
+			ParentRouter:   appResourceRouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: app_ctrl.NewDeleteApplication,
+		},
 	}
-
 	for _, h := range handlerOptions {
 		if err := server.RegisterHandler(ctx, sp, sm, h); err != nil {
 			return err

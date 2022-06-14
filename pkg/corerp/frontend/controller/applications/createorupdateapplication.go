@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package environments
+package applications
 
 import (
 	"context"
@@ -20,28 +20,30 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
-// CreateOrUpdateEnvironments is the controller implementation to create or update environment resource.
-type CreateOrUpdateEnvironment struct {
+// CreateOrUpdateApplication is the controller implementation to create or update application resource.
+type CreateOrUpdateApplication struct {
 	ctrl.BaseController
 }
 
-// NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
-func NewCreateOrUpdateEnvironment(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateEnvironment{ctrl.NewBaseController(ds, sm)}, nil
+// NewCreateOrUpdateApplication creates a new instance of CreateOrUpdateApplication.
+func NewCreateOrUpdateApplication(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &CreateOrUpdateApplication{ctrl.NewBaseController(ds, sm)}, nil
 }
 
-// Run executes CreateOrUpdateEnvironment operation.
-func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+// Run executes CreateOrUpdateApplication operation.
+func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	newResource, err := e.Validate(ctx, req, serviceCtx.APIVersion)
+	newResource, err := a.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	existingResource := &datamodel.Environment{}
-	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
+	// Read existing application resource info from the data store
+	existingResource := &datamodel.Application{}
+
+	etag, err := a.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if req.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
@@ -56,12 +58,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 
 	UpdateExistingResourceData(ctx, existingResource, newResource)
 
-	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
+	nr, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
 
-	versioned, err := converter.EnvironmentDataModelToVersioned(newResource, serviceCtx.APIVersion)
+	versioned, err := converter.ApplicationDataModelToVersioned(newResource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -71,35 +73,31 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	return rest.NewOKResponseWithHeaders(versioned, headers), nil
 }
 
-// Validate extracts versioned resource from request and validate the properties.
-func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Environment, error) {
+// Validate extracts versioned resource from request and validates the properties.
+func (a *CreateOrUpdateApplication) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Application, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err
 	}
 
-	dm, err := converter.EnvironmentDataModelFromVersioned(content, apiVersion)
+	dm, err := converter.ApplicationDataModelFromVersioned(content, apiVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Add more validation e.g. schema, identity, etc.
-
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
-	// TODO: Update the state.
 	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
-
-	return dm, err
+	return dm, nil
 }
 
-// UpdateExistingResourceData updates the environment resource before it is saved to the DB.
-func UpdateExistingResourceData(ctx context.Context, er *datamodel.Environment, nr *datamodel.Environment) {
+// UpdateExistingResourceData updates the application resource before it is saved to the DB.
+func UpdateExistingResourceData(ctx context.Context, er *datamodel.Application, nr *datamodel.Application) {
 	sc := servicecontext.ARMRequestContextFromContext(ctx)
 	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *sc.SystemData())
-	if er.CreatedAPIVersion != "" {
-		nr.CreatedAPIVersion = er.CreatedAPIVersion
+	if er.InternalMetadata.CreatedAPIVersion != "" {
+		nr.InternalMetadata.CreatedAPIVersion = er.InternalMetadata.CreatedAPIVersion
 	}
-	nr.TenantID = sc.HomeTenantID
+	nr.InternalMetadata.TenantID = sc.HomeTenantID
 }
