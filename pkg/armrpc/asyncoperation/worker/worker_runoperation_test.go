@@ -7,6 +7,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -29,7 +30,7 @@ var (
 		Data: map[string]interface{}{
 			"name": "env0",
 			"properties": map[string]interface{}{
-				"provisioningState": "Updating",
+				"provisioningState": "Accepted",
 			},
 		},
 	}
@@ -98,9 +99,10 @@ func genTestMessage(opID uuid.UUID, opTimeout time.Duration) (*queue.Message, *a
 			NextVisibleAt: time.Now().Add(time.Duration(120) * time.Second),
 		},
 		Data: &ctrl.Request{
-			OperationID:      opID,
-			OperationType:    "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
-			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+			OperationID:   opID,
+			OperationType: "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
+			ResourceID: fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/%s",
+				uuid.NewString()),
 			CorrelationID:    uuid.NewString(),
 			OperationTimeout: &opTimeout,
 		},
@@ -207,131 +209,132 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	require.Equal(t, MaxDequeueCount+1, testMessage.DequeueCount)
 }
 
-// func TestStart_MaxConcurrency(t *testing.T) {
-// 	tCtx, mctrl := newTestContext(t)
-// 	defer mctrl.Finish()
+func TestStart_MaxConcurrency(t *testing.T) {
+	t.Skip()
+	tCtx, mctrl := newTestContext(t)
+	defer mctrl.Finish()
 
-// 	// set up mocks
-// 	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
-// 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-// 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-// 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
+	// set up mocks
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
+	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
-// 	registry := NewControllerRegistry(tCtx.mockSP)
-// 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
+	registry := NewControllerRegistry(tCtx.mockSP)
+	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
-// 	// register test controller.
-// 	cnt := atomic.NewInt32(0)
-// 	maxConcurrency := atomic.NewInt32(0)
-// 	testCtrl := &testAsyncController{
-// 		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
-// 		fn: func(ctx context.Context) (ctrl.Result, error) {
-// 			cnt.Inc()
-// 			if maxConcurrency.Load() < cnt.Load() {
-// 				maxConcurrency.Store(cnt.Load())
-// 			}
-// 			time.Sleep(100 * time.Millisecond)
-// 			cnt.Dec()
-// 			return ctrl.Result{}, nil
-// 		},
-// 	}
-// 	ctx, cancel := tCtx.cancellable(time.Duration(0))
-// 	err := registry.Register(
-// 		ctx,
-// 		testResourceType, v1.OperationPut,
-// 		func(s store.StorageClient) (ctrl.Controller, error) {
-// 			return testCtrl, nil
-// 		})
-// 	require.NoError(t, err)
+	// register test controller.
+	cnt := atomic.NewInt32(0)
+	maxConcurrency := atomic.NewInt32(0)
+	testCtrl := &testAsyncController{
+		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		fn: func(ctx context.Context) (ctrl.Result, error) {
+			cnt.Inc()
+			if maxConcurrency.Load() < cnt.Load() {
+				maxConcurrency.Store(cnt.Load())
+			}
+			time.Sleep(100 * time.Millisecond)
+			cnt.Dec()
+			return ctrl.Result{}, nil
+		},
+	}
+	ctx, cancel := tCtx.cancellable(time.Duration(0))
+	err := registry.Register(
+		ctx,
+		testResourceType, v1.OperationPut,
+		func(s store.StorageClient) (ctrl.Controller, error) {
+			return testCtrl, nil
+		})
+	require.NoError(t, err)
 
-// 	done := make(chan struct{}, 1)
-// 	go func() {
-// 		err = worker.Start(ctx)
-// 		require.NoError(t, err)
-// 		close(done)
-// 	}()
+	done := make(chan struct{}, 1)
+	go func() {
+		err = worker.Start(ctx)
+		require.NoError(t, err)
+		close(done)
+	}()
 
-// 	testMessageCnt := 10
-// 	testMessages := []*queue.Message{}
-// 	// queue asyncoperation messages.
-// 	for i := 0; i < testMessageCnt; i++ {
-// 		testMessage, _, _ := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
-// 		testMessages = append(testMessages, testMessage)
-// 		err = tCtx.testQueue.Enqueue(ctx, testMessage)
-// 		require.NoError(t, err)
-// 	}
+	testMessageCnt := 10
+	testMessages := []*queue.Message{}
+	// queue asyncoperation messages.
+	for i := 0; i < testMessageCnt; i++ {
+		testMessage, _, _ := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
+		testMessages = append(testMessages, testMessage)
+		err = tCtx.testQueue.Enqueue(ctx, testMessage)
+		require.NoError(t, err)
+	}
 
-// 	tCtx.drainQueueOrAssert(t)
+	tCtx.drainQueueOrAssert(t)
 
-// 	// Cancelling worker loop.
-// 	cancel()
-// 	<-done
+	// Cancelling worker loop.
+	cancel()
+	<-done
 
-// 	for i := 0; i < testMessageCnt; i++ {
-// 		require.Equal(t, 1, testMessages[i].DequeueCount)
-// 	}
-// 	require.Equal(t, int32(MaxOperationConcurrency), maxConcurrency.Load())
-// }
+	for i := 0; i < testMessageCnt; i++ {
+		require.Equal(t, 1, testMessages[i].DequeueCount)
+	}
+	require.Equal(t, int32(MaxOperationConcurrency), maxConcurrency.Load())
+}
 
-// func TestStart_RunOperation(t *testing.T) {
-// 	tCtx, mctrl := newTestContext(t)
-// 	defer mctrl.Finish()
+func TestStart_RunOperation(t *testing.T) {
+	tCtx, mctrl := newTestContext(t)
+	defer mctrl.Finish()
 
-// 	// set up mocks
-// 	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
-// 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-// 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-// 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
+	// set up mocks
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
+	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
-// 	registry := NewControllerRegistry(tCtx.mockSP)
-// 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
+	registry := NewControllerRegistry(tCtx.mockSP)
+	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
-// 	called := make(chan bool, 1)
-// 	var opCtx context.Context
-// 	testCtrl := &testAsyncController{
-// 		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
-// 		fn: func(ctx context.Context) (ctrl.Result, error) {
-// 			// operation context will be cancelled after this function is called
-// 			opCtx = ctx
-// 			called <- true
-// 			return ctrl.Result{}, nil
-// 		},
-// 	}
+	called := make(chan bool, 1)
+	var opCtx context.Context
+	testCtrl := &testAsyncController{
+		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		fn: func(ctx context.Context) (ctrl.Result, error) {
+			// operation context will be cancelled after this function is called
+			opCtx = ctx
+			called <- true
+			return ctrl.Result{}, nil
+		},
+	}
 
-// 	ctx, cancel := tCtx.cancellable(time.Duration(0))
-// 	err := registry.Register(
-// 		ctx,
-// 		testResourceType, v1.OperationPut,
-// 		func(s store.StorageClient) (ctrl.Controller, error) {
-// 			return testCtrl, nil
-// 		})
-// 	require.NoError(t, err)
+	ctx, cancel := tCtx.cancellable(time.Duration(0))
+	err := registry.Register(
+		ctx,
+		testResourceType, v1.OperationPut,
+		func(s store.StorageClient) (ctrl.Controller, error) {
+			return testCtrl, nil
+		})
+	require.NoError(t, err)
 
-// 	done := make(chan struct{}, 1)
-// 	go func() {
-// 		err = worker.Start(ctx)
-// 		require.NoError(t, err)
-// 		close(done)
-// 	}()
+	done := make(chan struct{}, 1)
+	go func() {
+		err = worker.Start(ctx)
+		require.NoError(t, err)
+		close(done)
+	}()
 
-// 	// Queue async operation.
-// 	testMessage, _, _ := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
-// 	err = tCtx.testQueue.Enqueue(ctx, testMessage)
-// 	require.NoError(t, err)
-// 	<-called
+	// Queue async operation.
+	testMessage, _, _ := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
+	err = tCtx.testQueue.Enqueue(ctx, testMessage)
+	require.NoError(t, err)
+	<-called
 
-// 	// Wait until operation context is done.
-// 	<-opCtx.Done()
+	// Wait until operation context is done.
+	<-opCtx.Done()
 
-// 	tCtx.drainQueueOrAssert(t)
+	tCtx.drainQueueOrAssert(t)
 
-// 	// Cancelling worker loop
-// 	cancel()
-// 	<-done
+	// Cancelling worker loop
+	cancel()
+	<-done
 
-// 	require.Equal(t, 0, tCtx.internalQ.Len())
-// 	require.Equal(t, 1, testMessage.DequeueCount)
-// }
+	require.Equal(t, 0, tCtx.internalQ.Len())
+	require.Equal(t, 1, testMessage.DequeueCount)
+}
 
 func TestRunOperation_Successfully(t *testing.T) {
 	tCtx, mctrl := newTestContext(t)
@@ -387,13 +390,9 @@ func TestRunOperation_CancelContext(t *testing.T) {
 	tCtx, _ := newTestContext(t)
 	worker := New(Options{}, nil, tCtx.testQueue, nil)
 
-	// set up mocks
-	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any()).Return(testResourceObject, nil).Times(1)
-	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-
 	done := make(chan struct{}, 1)
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		BaseController: ctrl.NewBaseAsyncController(nil),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
 			<-ctx.Done()
 			close(done)

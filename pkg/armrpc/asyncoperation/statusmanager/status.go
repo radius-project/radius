@@ -25,10 +25,3 @@ type Status struct {
 	// ClientObjectID is async operation caller's client id such as the value from x-ms-client-object-id header.
 	ClientObjectID string `json:"clientObjectID,omitempty"`
 }
-
-// InTerminalState returns true if asynchronous operation status is the terminated state.
-func (aos *Status) InTerminalState() bool {
-	return aos.AsyncOperationStatus.Status == v1.ProvisioningStateSucceeded ||
-		aos.AsyncOperationStatus.Status == v1.ProvisioningStateFailed ||
-		aos.AsyncOperationStatus.Status == v1.ProvisioningStateCanceled
-}

@@ -70,7 +70,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	// If the resource exists and also not in a terminal state
-	if exists && !v1.IsTerminalState(existingResource.Properties.ProvisioningState) {
+	if exists && !existingResource.Properties.ProvisioningState.IsTerminal() {
 		return rest.NewConflictResponse(ErrOngoingAsyncOperationOnResource.Error()), nil
 	}
 
@@ -90,10 +90,10 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 
 	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncPutContainerOperationTimeout)
 	if err != nil {
-		rbErr := e.RollbackChanges(ctx, exists, existingResource, etag)
+		rbErr := e.RollbackChanges(ctx, exists, existingResource, newResource, etag)
 		if rbErr != nil {
 			// TODO: Should this be an internal error response?
-			return nil, err
+			return nil, rbErr
 		}
 
 		// TODO: Should this be an internal error response?
@@ -138,16 +138,17 @@ func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Reques
 	return dm, err
 }
 
-// RollbackChanges function overwrites the object with an older copy or deletes the object if it didn't exist before.
-func (e *CreateOrUpdateContainer) RollbackChanges(ctx context.Context, exists bool, oldResource *datamodel.ContainerResource, etag string) error {
+// RollbackChanges function overwrites the object with an older copy or updates the state of the new object to Failed.
+func (e *CreateOrUpdateContainer) RollbackChanges(ctx context.Context, exists bool, oldCopy *datamodel.ContainerResource, newCopy *datamodel.ContainerResource, etag string) error {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	var err error
-	if exists {
-		_, err = e.SaveResource(ctx, serviceCtx.ResourceID.String(), oldResource, etag)
-	} else {
-		err = e.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
+	cntr := oldCopy
+	if !exists {
+		cntr = newCopy
+		cntr.Properties.ProvisioningState = v1.ProvisioningStateFailed
 	}
+
+	_, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), cntr, etag)
 
 	if err != nil {
 		return err

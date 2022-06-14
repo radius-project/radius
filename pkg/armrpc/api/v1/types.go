@@ -98,16 +98,12 @@ const (
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
 	ProvisioningStateFailed       ProvisioningState = "Failed"
 	ProvisioningStateCanceled     ProvisioningState = "Canceled"
+	ProvisioningStateUndefined    ProvisioningState = "Undefined"
 )
 
-// IsTerminalState returns true if given Provisioning State is a terminal state.
-func IsTerminalState(state ProvisioningState) bool {
+// IsTerminal returns true if given Provisioning State is in a terminal state.
+func (state ProvisioningState) IsTerminal() bool {
 	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled
-}
-
-// ParseOperationType parses OperationType from string.
-func ParseProvisioningState(s string) ProvisioningState {
-	return ProvisioningState(s)
 }
 
 // TrackedResource represents the common tracked resource.

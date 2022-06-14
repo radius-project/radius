@@ -136,7 +136,6 @@ func (aom *statusManager) Update(ctx context.Context, rootScope string, operatio
 		s.Error = opError
 	}
 
-	// We are not saving s so there is no update here
 	obj.Data = s
 
 	return aom.storeClient.Save(ctx, obj, store.WithETag(obj.ETag))

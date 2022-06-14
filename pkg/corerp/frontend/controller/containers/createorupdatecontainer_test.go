@@ -38,14 +38,14 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 		4. Queue Resource
 		5. [Conditional] If Queue has an error then Rollback changes
 		6. [Conditional] If resource already existed, write the old copy back
-		7. [Conditional] If resource didn't exist, delete the newly created record
+		7. [Conditional] If resource didn't exist, update the newly created record's status to Failed
 	*/
 	createCases := []struct {
 		desc    string
 		getErr  error
 		saveErr error
 		qErr    error
-		delErr  error
+		rbErr   error
 		rCode   int
 		rErr    error
 	}{
@@ -104,8 +104,8 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 						Times(1)
 
 					if tt.qErr != nil {
-						mds.EXPECT().Delete(gomock.Any(), gomock.Any()).
-							Return(tt.delErr).
+						mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+							Return(tt.rbErr).
 							Times(1)
 					}
 				}

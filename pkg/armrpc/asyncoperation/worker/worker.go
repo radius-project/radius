@@ -32,7 +32,7 @@ var (
 
 const (
 	// MaxOperationConcurrency is the maximum concurrency to process async request operation.
-	// TODO: make this concurrency configurable.
+	// TOOD: make this concurrency configurable.
 	MaxOperationConcurrency = 3
 
 	// MaxDequeueCount is the maximum dequeue count which will be retried.
@@ -139,6 +139,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
+			// TODO: This line makes `TestStart_MaxConcurrency` run into an infinite loop
 			if err = updateResourceState(ctx, ctrl.StorageClient(), op.ResourceID, v1.ProvisioningStateUpdating); err != nil {
 				logger.Error(err, "failed to update the provisioningState of resource to Updating before starting the operation.")
 				return
@@ -212,13 +213,6 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 		case <-ctx.Done():
 			logger.Info("Stopping processing async operation. This operation will be reprocessed.")
-
-			// Update resource status back to Accepted
-			err := updateResourceState(ctx, asyncCtrl.StorageClient(), asyncReq.ResourceID, v1.ProvisioningStateAccepted)
-			if err != nil {
-				logger.Info("Error while updating resource state back to Accepted.")
-			}
-
 			return
 
 		case <-opDone:
@@ -301,19 +295,19 @@ func updateResourceState(ctx context.Context, sc store.StorageClient, id string,
 func getResourceState(ctx context.Context, sc store.StorageClient, id string) (v1.ProvisioningState, error) {
 	obj, err := sc.Get(ctx, id)
 	if err != nil {
-		return "", err
+		return v1.ProvisioningStateNone, err
 	}
 
 	objmap := obj.Data.(map[string]interface{})
 	objmap, ok := objmap["properties"].(map[string]interface{})
 	if !ok {
-		return "", errPropertiesNotFound
+		return v1.ProvisioningStateUndefined, errPropertiesNotFound
 	}
 
 	pState, ok := objmap["provisioningState"].(string)
 	if !ok {
-		return "", errProvisioningStateNotFound
+		return v1.ProvisioningStateUndefined, errProvisioningStateNotFound
 	}
 
-	return v1.ParseProvisioningState(pState), nil
+	return v1.ProvisioningState(pState), nil
 }
