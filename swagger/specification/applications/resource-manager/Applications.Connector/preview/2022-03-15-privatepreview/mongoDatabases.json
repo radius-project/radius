@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "../../../Applications.Core/preview/2022-03-15-privatepreview/global.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -97,7 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "../../../Applications.Core/preview/2022-03-15-privatepreview/global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/MongoDatabaseNameParameter"
@@ -137,7 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "../../../Applications.Core/preview/2022-03-15-privatepreview/global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/MongoDatabaseNameParameter"
@@ -192,7 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "../../../Applications.Core/preview/2022-03-15-privatepreview/global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/MongoDatabaseNameParameter"
@@ -237,7 +237,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "../../../Applications.Core/preview/2022-03-15-privatepreview/global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/MongoDatabaseNameParameter"
