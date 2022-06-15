@@ -221,38 +221,43 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 	return nil
 }
 
-// AsyncOperationCreatedResponse represents an HTTP 201 with a body and headers.
-type AsyncOperationCreatedResponse struct {
+// AsyncOperationResponse represents the response for an async operation request.
+type AsyncOperationResponse struct {
 	Body        interface{}
+	Location    string
+	Code        int
 	ResourceID  resources.ID
 	OperationID uuid.UUID
 }
 
-// AsyncOperationCreatedResponse creates an AsyncOperationCreatedResponse
-func NewAsyncOperationCreatedResponse(body interface{}, resourceID resources.ID, operationID uuid.UUID) Response {
-	return &AsyncOperationCreatedResponse{
+// NewAsyncOperationResponse creates an AsyncOperationResponse
+func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID) Response {
+	return &AsyncOperationResponse{
 		Body:        body,
+		Location:    location,
+		Code:        code,
 		ResourceID:  resourceID,
 		OperationID: operationID,
 	}
 }
 
-func (r *AsyncOperationCreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	// Write Body
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	locationHeader := getAsyncLocationPath(r.ResourceID, "operationResults", r.OperationID)
-	azureAsyncOpHeader := getAsyncLocationPath(r.ResourceID, "operationStatuses", r.OperationID)
+	locationHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationResults", r.OperationID)
+	azureAsyncOpHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationStatuses", r.OperationID)
 
 	// Write Headers
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", locationHeader)
 	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
-	w.WriteHeader(http.StatusCreated)
+
+	w.WriteHeader(r.Code)
 
 	_, err = w.Write(bytes)
 	if err != nil {
@@ -263,9 +268,14 @@ func (r *AsyncOperationCreatedResponse) Apply(ctx context.Context, w http.Respon
 }
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
-func getAsyncLocationPath(resourceID resources.ID, resourceType string, operationID uuid.UUID) string {
-	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", resourceID.RootScope(), resourceID.ProviderNamespace(),
-		resourceID.FindScope(resources.LocationsSegment), resourceType, operationID.String())
+func getAsyncLocationPath(resourceID resources.ID, location string, resourceType string, operationID uuid.UUID) string {
+	root := fmt.Sprintf("/subscriptions/%s", resourceID.FindScope(resources.SubscriptionsSegment))
+
+	if resourceID.IsUCPQualfied() {
+		root = fmt.Sprintf("/planes/%s", resourceID.PlaneNamespace())
+	}
+
+	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String())
 }
 
 // NoContentResponse represents an HTTP 204.

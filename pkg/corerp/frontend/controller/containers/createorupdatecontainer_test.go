@@ -40,8 +40,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 		3. Save Resource
 		4. Queue Resource
 		5. [Conditional] If Queue has an error then Rollback changes
-		6. [Conditional] If resource already existed, write the old copy back
-		7. [Conditional] If resource didn't exist, update the newly created record's status to Failed
+		6. [Conditional] Update the record state to Failed
 	*/
 	createCases := []struct {
 		desc    string
@@ -83,7 +82,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range createCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			containerInput, _, _ := getTestModels20220315privatepreview()
+			containerInput, containerDataModel, _ := getTestModels20220315privatepreview()
 
 			w := httptest.NewRecorder()
 			req, err := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPut, testHeaderfile, containerInput)
@@ -126,11 +125,11 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				locationHeader := getAsyncLocationPath(sCtx.ResourceID, "operationResults", sCtx.OperationID)
+				locationHeader := getAsyncLocationPath(sCtx.ResourceID, containerDataModel.TrackedResource.Location, "operationResults", sCtx.OperationID)
 				require.NotNil(t, w.Header().Get("Location"))
 				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, "operationStatuses", sCtx.OperationID)
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, containerDataModel.TrackedResource.Location, "operationStatuses", sCtx.OperationID)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
@@ -154,7 +153,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			nil,
 			nil,
 			nil,
-			http.StatusCreated,
+			http.StatusAccepted,
 			nil,
 		},
 		{
@@ -164,7 +163,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			nil,
 			nil,
 			nil,
-			http.StatusCreated,
+			http.StatusAccepted,
 			&store.ErrConcurrency{},
 		},
 		{
@@ -195,7 +194,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			containerDataModel.Properties.ProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPut, testHeaderfile, containerInput)
+			req, err := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, containerInput)
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -240,11 +239,11 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				locationHeader := getAsyncLocationPath(sCtx.ResourceID, "operationResults", sCtx.OperationID)
+				locationHeader := getAsyncLocationPath(sCtx.ResourceID, containerDataModel.TrackedResource.Location, "operationResults", sCtx.OperationID)
 				require.NotNil(t, w.Header().Get("Location"))
 				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, "operationStatuses", sCtx.OperationID)
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, containerDataModel.TrackedResource.Location, "operationStatuses", sCtx.OperationID)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
@@ -252,7 +251,12 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 	}
 }
 
-func getAsyncLocationPath(resourceID resources.ID, resourceType string, operationID uuid.UUID) string {
-	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", resourceID.RootScope(), resourceID.ProviderNamespace(),
-		resourceID.FindScope(resources.LocationsSegment), resourceType, operationID.String())
+func getAsyncLocationPath(resourceID resources.ID, location string, resourceType string, operationID uuid.UUID) string {
+	root := fmt.Sprintf("/subscriptions/%s", resourceID.FindScope(resources.SubscriptionsSegment))
+
+	if resourceID.IsUCPQualfied() {
+		root = fmt.Sprintf("/planes/%s", resourceID.PlaneNamespace())
+	}
+
+	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String())
 }

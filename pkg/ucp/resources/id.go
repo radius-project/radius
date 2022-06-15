@@ -135,6 +135,23 @@ func (ri ID) ProviderNamespace() string {
 	return segments[0]
 }
 
+// PlaneNamespace returns the plane part of the UCP ID
+//
+// Examples:
+//	radius
+func (ri ID) PlaneNamespace() string {
+	if !ri.IsUCPQualfied() {
+		return ""
+	}
+
+	scopeSegment := ri.ScopeSegments()[0]
+	keys := []string{
+		scopeSegment.Type,
+		scopeSegment.Name,
+	}
+	return strings.Join(keys, "/")
+}
+
 // RoutingScope returns the routing-scope (the part after 'providers').
 //
 // Examples:
