@@ -295,7 +295,7 @@
 
 ## RedisCacheSecrets
 ### Properties
-* **connectionString**: string: The Redis connection string used to connect to the redis cache
+* **connectionString**: string: The connection string used to connect to the redis cache
 * **password**: string: The password for this Redis instance
 
 ## TrackedResourceTags
@@ -326,7 +326,7 @@
 
 ## RedisCacheSecrets
 ### Properties
-* **connectionString**: string: The Redis connection string used to connect to the redis cache
+* **connectionString**: string: The connection string used to connect to the redis cache
 * **password**: string: The password for this Redis instance
 
 ## RabbitMQSecrets
