@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -462,6 +463,128 @@ func TestPlaneNamespace(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, tt.plane, rID.PlaneNamespace())
+		})
+	}
+}
+
+func Test_ValidateResourceType_Valid(t *testing.T) {
+	testID := ID{
+		id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-db",
+		scopeSegments: []ScopeSegment{
+			{Type: "subscriptions", Name: "s1"},
+			{Type: "resourceGroups", Name: "r1"},
+		},
+		typeSegments: []TypeSegment{
+			{Type: "Microsoft.DocumentDB/databaseAccounts", Name: "test-account"},
+			{Type: "mongodbDatabases", Name: "test-db"},
+		},
+	}
+
+	err := testID.ValidateResourceType(KnownType{Types: []TypeSegment{
+		{
+			Type: azresources.DocumentDBDatabaseAccounts,
+			Name: "*",
+		},
+		{
+			Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+			Name: "*",
+		},
+	}})
+	require.NoError(t, err)
+}
+
+func Test_ValidateResourceType_Invalid(t *testing.T) {
+	values := []struct {
+		testID        ID
+		testKnownType KnownType
+	}{
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Microsoft.DocumentDB", Name: "test-account"},
+				},
+			},
+			testKnownType: KnownType{Types: []TypeSegment{
+				{
+					Type: azresources.DocumentDBDatabaseAccounts,
+					Name: "*",
+				},
+				{
+					Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+					Name: "*",
+				},
+			}},
+		},
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/mongodbDatabases/test-db",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Microsoft.DocumentDB", Name: ""},
+					{Type: "mongodbDatabases", Name: "test-db"},
+				},
+			},
+			testKnownType: KnownType{Types: []TypeSegment{
+				{
+					Type: azresources.DocumentDBDatabaseAccounts,
+					Name: "*",
+				},
+				{
+					Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+					Name: "*",
+				},
+			}},
+		},
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Microsoft.DocumentDB/databaseAccounts", Name: "test-account"},
+				},
+			},
+			testKnownType: KnownType{Types: []TypeSegment{
+				{
+					Type: azresources.DocumentDBDatabaseAccounts,
+					Name: "",
+				},
+			}},
+		},
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/databaseAccounts/",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Microsoft.DocumentDB/databaseAccounts", Name: ""},
+				},
+			},
+			testKnownType: KnownType{Types: []TypeSegment{
+				{
+					Type: azresources.DocumentDBDatabaseAccounts,
+					Name: "test-account",
+				},
+			}},
+		},
+	}
+
+	for i, v := range values {
+		t.Run(fmt.Sprintf("%d: %v", i, v.testID.id), func(t *testing.T) {
+			err := v.testID.ValidateResourceType(v.testKnownType)
+			require.Errorf(t, err, "resource '%s' does not match the expected resource type %s", v.testID.id)
 		})
 	}
 }

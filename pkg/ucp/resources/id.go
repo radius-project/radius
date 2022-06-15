@@ -52,6 +52,10 @@ type TypeSegment struct {
 	Name string
 }
 
+type KnownType struct {
+	Types []TypeSegment
+}
+
 // IsEmpty returns true if the ID is empty.
 func (ri ID) IsEmpty() bool {
 	return ri.id == ""
@@ -200,6 +204,37 @@ func (ri ID) Name() string {
 	}
 
 	return ri.typeSegments[len(ri.typeSegments)-1].Name
+}
+
+// ValidateResourceType validates that the resource ID type segment matches the expected type.
+func (ri ID) ValidateResourceType(t KnownType) error {
+
+	if len(ri.typeSegments) != len(t.Types) {
+		return invalidType(ri.id)
+	}
+
+	for i, rt := range t.Types {
+		// Mismatched type
+		if !strings.EqualFold(rt.Type, ri.typeSegments[i].Type) {
+			return invalidType(ri.id)
+		}
+
+		// A collection was expected and this has a name.
+		if rt.Name == "" && ri.typeSegments[i].Name != "" {
+			return invalidType(ri.id)
+		}
+
+		// A resource was expected and this a collection.
+		if rt.Name != "" && ri.typeSegments[i].Name == "" {
+			return invalidType(ri.id)
+		}
+	}
+
+	return nil
+}
+
+func invalidType(id string) error {
+	return fmt.Errorf("resource '%v' does not match the expected resource type", id)
 }
 
 // Append appends a type/name pair to the ResourceID.
