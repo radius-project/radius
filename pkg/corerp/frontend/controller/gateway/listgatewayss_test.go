@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package applications
+package gateway
 
 import (
 	"context"
@@ -22,14 +22,14 @@ import (
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
-func TestListApplicationsRun_20220315PrivatePreview(t *testing.T) {
+func TestListGatewayRun_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, appDataModel, expectedOutput := getTestModels20220315privatepreview()
+	_, gtwyDataModel, expectedOutput := getTestModels20220315privatepreview()
 
 	t.Run("list zero resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -45,7 +45,7 @@ func TestListApplicationsRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListApplications(mStorageClient, nil)
+		ctl, err := NewListGateways(mStorageClient, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -53,25 +53,25 @@ func TestListApplicationsRun_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.ApplicationResourceList{}
+		actualOutput := &v20220315privatepreview.GatewayResourceList{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, 0, len(actualOutput.Value))
 		require.Nil(t, actualOutput.NextLink)
 	})
 
-	listAppsCases := []struct {
+	listGtwysCases := []struct {
 		desc       string
 		dbCount    int
 		batchCount int
 		top        string
 		skipToken  bool
 	}{
-		{"list-apps-more-items-than-top", 10, 5, "5", true},
-		{"list-apps-less-items-than-top", 5, 5, "10", false},
-		{"list-apps-no-top", 5, 5, "", false},
+		{"list-gtwys-more-items-than-top", 10, 5, "5", true},
+		{"list-gtwys-less-items-than-top", 5, 5, "10", false},
+		{"list-gtwys-no-top", 5, 5, "", false},
 	}
 
-	for _, tt := range listAppsCases {
+	for _, tt := range listGtwysCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
@@ -93,7 +93,7 @@ func TestListApplicationsRun_20220315PrivatePreview(t *testing.T) {
 					Metadata: store.Metadata{
 						ID: uuid.New().String(),
 					},
-					Data: appDataModel,
+					Data: gtwyDataModel,
 				}
 				items = append(items, item)
 			}
@@ -108,7 +108,7 @@ func TestListApplicationsRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListApplications(mStorageClient, nil)
+			ctl, err := NewListGateways(mStorageClient, nil)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
@@ -116,7 +116,7 @@ func TestListApplicationsRun_20220315PrivatePreview(t *testing.T) {
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
-			actualOutput := &v20220315privatepreview.ApplicationResourceList{}
+			actualOutput := &v20220315privatepreview.GatewayResourceList{}
 			_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 			require.Equal(t, tt.batchCount, len(actualOutput.Value))
 			require.Equal(t, expectedOutput, actualOutput.Value[0])

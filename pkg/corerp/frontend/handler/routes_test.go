@@ -71,6 +71,10 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/gateways?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/providers/applications.core/operations?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: true,
