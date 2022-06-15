@@ -105,6 +105,8 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 	// A Map that alters the resource requests and limits of OSM pods
 	modification := map[string]interface{}{
 		"OpenServiceMesh": map[string]interface{}{
+			"enablePermissiveTrafficPolicy": true,
+			"osmNamespace":                  RadiusSystemNamespace,
 			"injector": map[string]interface{}{
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
