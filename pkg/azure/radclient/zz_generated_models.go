@@ -1895,7 +1895,8 @@ type HTTPRouteProperties struct {
 	// The port number for the route. Defaults to 80. Readonly.
 	Port *int32 `json:"port,omitempty"`
 
-	// Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of json obects that each only have two keys: desination and weight
+	// Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of JSON objects that each only have two keys: destination and
+// weight
 	Routes []*HTTPRoutePropertiesRoutesItem `json:"routes,omitempty"`
 
 	// The scheme used for traffic. Readonly.
