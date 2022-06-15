@@ -71,7 +71,7 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *service
 		AsyncOperationStatus: v1.AsyncOperationStatus{
 			ID:        opID,
 			Name:      sCtx.OperationID.String(),
-			Status:    v1.ProvisioningStateUpdating,
+			Status:    v1.ProvisioningStateAccepted,
 			StartTime: time.Now().UTC(),
 		},
 		LinkedResourceID: sCtx.ResourceID.String(),
@@ -135,6 +135,8 @@ func (aom *statusManager) Update(ctx context.Context, rootScope string, operatio
 	if opError != nil {
 		s.Error = opError
 	}
+
+	s.LastUpdatedTime = time.Now().UTC()
 
 	obj.Data = s
 

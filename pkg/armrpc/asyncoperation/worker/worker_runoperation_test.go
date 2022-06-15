@@ -34,6 +34,18 @@ var (
 			},
 		},
 	}
+	testOperationStatus = &manager.Status{
+		AsyncOperationStatus: v1.AsyncOperationStatus{
+			ID:        uuid.NewString(),
+			Name:      "operation-status",
+			Status:    v1.ProvisioningStateUpdating,
+			StartTime: time.Now().UTC(),
+		},
+		LinkedResourceID: uuid.New().String(),
+		Location:         "test-location",
+		HomeTenantID:     "test-home-tenant-id",
+		ClientObjectID:   "test-client-object-id",
+	}
 )
 
 type testAsyncController struct {
@@ -211,12 +223,14 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 
 func TestStart_MaxConcurrency(t *testing.T) {
 	t.Skip()
+
 	tCtx, mctrl := newTestContext(t)
 	defer mctrl.Finish()
 
 	// set up mocks
 	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
@@ -241,7 +255,8 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
 		ctx,
-		testResourceType, v1.OperationPut,
+		testResourceType,
+		v1.OperationPut,
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return testCtrl, nil
 		})
@@ -283,6 +298,7 @@ func TestStart_RunOperation(t *testing.T) {
 	// set up mocks
 	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
