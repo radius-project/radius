@@ -165,6 +165,63 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 	return err
 }
 
+func (dm *ARMManagementClient) ShowApplicationStatus(ctx context.Context, applicationName string) (*clients.ApplicationStatus, error) {
+	applicationStatus := &clients.ApplicationStatus{}
+
+	// Get Application Status
+	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
+	application, err := ac.Get(ctx, dm.ResourceGroup, applicationName, nil)
+	if err != nil {
+		if isNotFound(err) {
+			errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
+		return nil, err
+	}
+
+	if application.Name != nil {
+		applicationStatus.Name = *application.Name
+	}
+
+	if application.Properties != nil && application.Properties.Status != nil {
+		if application.Properties.Status.HealthState != nil {
+			applicationStatus.HealthState = *application.Properties.Status.HealthState
+		}
+		if application.Properties.Status.ProvisioningState != nil {
+			applicationStatus.ProvisioningState = *application.Properties.Status.ProvisioningState
+		}
+	}
+
+	// Get Application Resource count
+	resourceList, err := dm.ListAllResourcesByApplication(ctx, applicationName)
+	if err != nil {
+		if isNotFound(err) {
+			errorMessage := fmt.Sprintf("Application '%s' not found in environment '%s'", applicationName, dm.EnvironmentName)
+			return nil, radclient.NewRadiusError("ResourceNotFound", errorMessage)
+		}
+		return nil, err
+	}
+
+	applicationStatus.ResourceCount = len(resourceList.Value)
+
+	// Get Application Gateways
+	gatewayList := []clients.GatewayStatus{}
+	for _, resource := range resourceList.Value {
+		if resource.Type != nil && strings.HasSuffix(*resource.Type, "Gateway") {
+			if url, ok := resource.Properties["url"].(string); ok && resource.Name != nil {
+				gatewayList = append(gatewayList, clients.GatewayStatus{
+					Name:     *resource.Name,
+					Endpoint: url,
+				})
+			}
+		}
+	}
+
+	applicationStatus.Gateways = gatewayList
+
+	return applicationStatus, nil
+}
+
 func (dm *ARMManagementClient) ShowResource(ctx context.Context, appName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error) {
 	var options radclient.RadiusResourceGetOptions
 

@@ -105,11 +105,25 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
+type ApplicationStatus struct {
+	Name              string
+	HealthState       string
+	ProvisioningState string
+	ResourceCount     int
+	Gateways          []GatewayStatus
+}
+
+type GatewayStatus struct {
+	Name     string
+	Endpoint string
+}
+
 // ManagementClient is used to interface with management features like listing applications and resources.
 type ManagementClient interface {
 	ListApplications(ctx context.Context) (*radclient.ApplicationList, error)
 	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) error
+	ShowApplicationStatus(ctx context.Context, applicationName string) (*ApplicationStatus, error)
 
 	ShowResource(ctx context.Context, applicationName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
