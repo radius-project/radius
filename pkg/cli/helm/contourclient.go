@@ -15,6 +15,7 @@ import (
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const (
@@ -31,7 +32,12 @@ func ApplyContourHelmChart(options ContourOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
-	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+
+	helmConf, err := HelmConfig(helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}

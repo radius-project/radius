@@ -63,6 +63,10 @@ func (e *LocalEnvironment) GetStatusLink() string {
 	return ""
 }
 
+func (e *LocalEnvironment) GetKubeContext() string {
+	return e.Context
+}
+
 func (e *LocalEnvironment) GetContainerRegistry() *Registry {
 	return e.Registry
 }

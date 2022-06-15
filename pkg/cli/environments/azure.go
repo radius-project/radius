@@ -58,6 +58,10 @@ func (e *AzureCloudEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *AzureCloudEnvironment) GetKubeContext() string {
+	return e.Context
+}
+
 func (e *AzureCloudEnvironment) GetContainerRegistry() *Registry {
 	return nil
 }

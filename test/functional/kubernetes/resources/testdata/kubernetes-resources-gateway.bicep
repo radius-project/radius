@@ -29,6 +29,9 @@ resource app 'radius.dev/Application@v1alpha3' = {
 
   resource frontendroute 'HttpRoute' = {
     name: 'frontendroute'
+    properties: {
+      port: 81
+    }
   }
 
   resource frontend 'Container' = {

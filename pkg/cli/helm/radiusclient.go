@@ -15,6 +15,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -44,7 +45,12 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
-	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+
+	helmConf, err := HelmConfig(helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -157,7 +163,7 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	// Set feature flags in chart
 	global["rad_ff_enable_bicep_extensibility"] = featureflag.EnableBicepExtensibility.IsActive()
 	global["rad_ff_enable_ucp"] = featureflag.EnableUnifiedControlPlane.IsActive()
-	
+
 	_, ok = global["ucp"]
 	if !ok {
 		global["ucp"] = make(map[string]interface{})
