@@ -70,28 +70,28 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 }
 
 func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
-	installClient := helm.NewInstall(helmConf)
-	installClient.Namespace = RadiusSystemNamespace
-	installClient.ReleaseName = OSMReleaseName
-	installClient.Wait = true
-	installClient.Timeout = installTimeout
-	err := runInstall(installClient, helmChart)
-	if err != nil {
-		upgradeClient := helm.NewUpgrade(helmConf)
-		// upgradeClient.Install = true
-		upgradeClient.Wait = true
-		upgradeClient.Timeout = installTimeout
-		upgradeClient.Namespace = RadiusSystemNamespace
-		modification := map[string]interface{}{
-			"OpenServiceMesh": map[string]interface{}{
-				"install": true,
-			},
-		}
-		helmChart.Values = MergeMaps(helmChart.Values, modification)
-		_, err := upgradeClient.Run(OSMReleaseName, helmChart, helmChart.Values)
-		return err
+	// installClient := helm.NewInstall(helmConf)
+	// installClient.Namespace = RadiusSystemNamespace
+	// installClient.ReleaseName = OSMReleaseName
+	// installClient.Wait = true
+	// installClient.Timeout = installTimeout
+	// err := runInstall(installClient, helmChart)
+	// if err != nil {
+	upgradeClient := helm.NewUpgrade(helmConf)
+	// upgradeClient.Install = true
+	upgradeClient.Wait = true
+	upgradeClient.Timeout = installTimeout
+	upgradeClient.Namespace = RadiusSystemNamespace
+	modification := map[string]interface{}{
+		"OpenServiceMesh": map[string]interface{}{
+			"install": true,
+		},
 	}
+	helmChart.Values = MergeMaps(helmChart.Values, modification)
+	_, err := upgradeClient.Run(OSMReleaseName, helmChart, helmChart.Values)
 	return err
+	// }
+	// return err
 }
 
 func RunOSMHelmUninstall(helmConf *helm.Configuration) error {
