@@ -49,6 +49,5 @@ func ToTimeHookFunc() mapstructure.DecodeHookFunc {
 		default:
 			return data, nil
 		}
-		// Convert it by parsing
 	}
 }

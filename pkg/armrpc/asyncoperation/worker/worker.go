@@ -139,7 +139,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 			if dup {
-				logger.Warn("duplicated message detected.")
+				opLogger.V(radlogger.Warn).Info("duplicated message detected")
 				return
 			}
 

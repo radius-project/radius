@@ -8,15 +8,18 @@ package containers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -123,13 +126,11 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				locationHeader, err := getPath(sCtx.ResourceID, "operationResults", sCtx.OperationID)
-				require.NoError(t, err)
+				locationHeader := getAsyncLocationPath(sCtx.ResourceID, "operationResults", sCtx.OperationID)
 				require.NotNil(t, w.Header().Get("Location"))
 				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				azureAsyncOpHeader, err := getPath(sCtx.ResourceID, "operationStatuses", sCtx.OperationID)
-				require.NoError(t, err)
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, "operationStatuses", sCtx.OperationID)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
@@ -239,16 +240,19 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				locationHeader, err := getPath(sCtx.ResourceID, "operationResults", sCtx.OperationID)
-				require.NoError(t, err)
+				locationHeader := getAsyncLocationPath(sCtx.ResourceID, "operationResults", sCtx.OperationID)
 				require.NotNil(t, w.Header().Get("Location"))
 				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				azureAsyncOpHeader, err := getPath(sCtx.ResourceID, "operationStatuses", sCtx.OperationID)
-				require.NoError(t, err)
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, "operationStatuses", sCtx.OperationID)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
 		})
 	}
+}
+
+func getAsyncLocationPath(resourceID resources.ID, resourceType string, operationID uuid.UUID) string {
+	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", resourceID.RootScope(), resourceID.ProviderNamespace(),
+		resourceID.FindScope(resources.LocationsSegment), resourceType, operationID.String())
 }
