@@ -79,6 +79,8 @@ func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) err
 	if err != nil {
 		upgradeClient := helm.NewUpgrade(helmConf)
 		// upgradeClient.Install = true
+		upgradeClient.Wait = true
+		upgradeClient.Timeout = installTimeout
 		upgradeClient.Namespace = RadiusSystemNamespace
 		modification := map[string]interface{}{
 			"OpenServiceMesh": map[string]interface{}{
