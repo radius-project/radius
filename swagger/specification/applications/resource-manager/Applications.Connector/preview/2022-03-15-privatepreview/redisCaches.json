@@ -217,7 +217,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets": {
+    "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets": {
       "post": {
         "description": "Lists secrets values for the specified RedisCache resource",
         "operationId": "RedisCaches_listSecrets",
@@ -248,7 +248,7 @@
         ],
         "responses": {
           "200": {
-            "description": "RedisCache resource",
+            "description": "RedisCache secrets",
             "schema": {
               "$ref": "#/definitions/RedisCacheListSecretsResult"
             }
@@ -310,7 +310,7 @@
       "description": "The secret values for the given RedisCache resource",
       "properties": {
         "connectionString": {
-          "description": "The Redis connection string used to connect to the redis cache",
+          "description": "The connection string used to connect to the redis cache",
           "type": "string",
           "example": [
             "myrediscache.redis.cache.windows.net:6380",

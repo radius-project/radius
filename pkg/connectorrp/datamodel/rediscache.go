@@ -44,6 +44,6 @@ type RedisCacheSecrets struct {
 	Password         string `json:"password"`
 }
 
-func (mongo RedisCacheSecrets) ResourceTypeName() string {
-	return "Applications.Connector/mongoDatabases"
+func (redis RedisCacheSecrets) ResourceTypeName() string {
+	return "Applications.Connector/redisCaches"
 }

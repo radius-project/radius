@@ -217,7 +217,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
+    "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
       "post": {
         "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
         "operationId": "RabbitMQMessageQueues_listSecrets",
