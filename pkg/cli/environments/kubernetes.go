@@ -105,7 +105,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (cli
 }
 
 func (e *KubernetesEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,5 @@ func (e *KubernetesEnvironment) CreateUCPManagementClient(ctx context.Context) (
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		RootScope:       "/ResourceGroups/dummy", //+ e.ResourceGroup,
-		//ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
-		//SubscriptionID:  e.Namespace,
 	}, nil
 }

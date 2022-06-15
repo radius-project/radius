@@ -156,7 +156,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 }
 
 func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.
 }
 
 func (e *LocalEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
