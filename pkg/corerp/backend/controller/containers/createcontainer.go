@@ -27,6 +27,5 @@ func NewUpdateContainer(store store.StorageClient) (ctrl.Controller, error) {
 func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	// TODO: Implement Create or Update Container async operation.
 
-	// Should we return Succeeded here based on the output of the provisioning?
 	return ctrl.Result{}, nil
 }

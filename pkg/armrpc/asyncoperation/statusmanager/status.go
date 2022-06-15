@@ -6,6 +6,8 @@
 package statusmanager
 
 import (
+	time "time"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
@@ -24,4 +26,7 @@ type Status struct {
 
 	// ClientObjectID is async operation caller's client id such as the value from x-ms-client-object-id header.
 	ClientObjectID string `json:"clientObjectID,omitempty"`
+
+	// LastUpdatedTime represents the async operation last updated time.
+	LastUpdatedTime time.Time `json:"lastUpdatedTime,omitempty"`
 }

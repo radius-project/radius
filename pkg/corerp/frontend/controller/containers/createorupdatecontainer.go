@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,14 +47,12 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 
 	newResource, err := e.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
-		// TODO: Should this be an validation error response?
 		return nil, err
 	}
 
 	existingResource := &datamodel.ContainerResource{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
-		// TODO: Should this be an internal error response?
 		return nil, err
 	}
 
@@ -64,27 +61,23 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		exists = false
 	}
 
-	// If this is a PATCH request but the resource doesn't exist
 	if req.Method == http.MethodPatch && !exists {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	// If the resource exists and also not in a terminal state
 	if exists && !existingResource.Properties.ProvisioningState.IsTerminal() {
 		return rest.NewConflictResponse(ErrOngoingAsyncOperationOnResource.Error()), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
 	if err != nil {
-		// TODO: Are we going to have ETag on Async requests?
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	updateExistingResourceData(ctx, existingResource, newResource)
+	enrichMetadata(ctx, existingResource, newResource)
 
 	_, err = e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
-		// TODO: Should this be an internal error response?
 		return nil, err
 	}
 
@@ -92,11 +85,8 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	if err != nil {
 		rbErr := e.RollbackChanges(ctx, exists, existingResource, newResource, etag)
 		if rbErr != nil {
-			// TODO: Should this be an internal error response?
 			return nil, rbErr
 		}
-
-		// TODO: Should this be an internal error response?
 		return nil, err
 	}
 
@@ -157,8 +147,8 @@ func (e *CreateOrUpdateContainer) RollbackChanges(ctx context.Context, exists bo
 	return nil
 }
 
-// updateExistingResourceData updates the container resource before it is saved to the DB.
-func updateExistingResourceData(ctx context.Context, er *datamodel.ContainerResource, nr *datamodel.ContainerResource) {
+// enrichMetadata updates necessary metadata of the resource.
+func enrichMetadata(ctx context.Context, er *datamodel.ContainerResource, nr *datamodel.ContainerResource) {
 	sc := servicecontext.ARMRequestContextFromContext(ctx)
 
 	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *sc.SystemData())
@@ -169,35 +159,30 @@ func updateExistingResourceData(ctx context.Context, er *datamodel.ContainerReso
 
 	nr.TenantID = sc.HomeTenantID
 
-	// Accepted state
-	// Q is going to update it to Updating
-	// Once finished, Q will update it to a Terminal State
-	// Update worker.go
-	// No retry to add the message to the Q
 	nr.Properties.ProvisioningState = v1.ProvisioningStateAccepted
 }
 
 // getPath returns the path for the given resource type.
 func getPath(resourceID resources.ID, resourceType string, operationID uuid.UUID) (string, error) {
-	var sb strings.Builder
+	var path string
 
 	parsedID, err := resources.Parse(resourceID.String())
 	if err != nil {
 		return "", err
 	}
-	sb.WriteString(parsedID.RootScope())
+	path = parsedID.RootScope()
 
 	provider := parsedID.ProviderNamespace()
 	if provider == "" {
 		return "", errors.New("provider can not be empty string")
 	}
-	sb.WriteString(fmt.Sprintf("/providers/%s", provider))
+	path += fmt.Sprintf("/providers/%s", provider)
 
 	location := parsedID.FindScope(resources.LocationsSegment)
 	if location != "" {
-		sb.WriteString(fmt.Sprintf("/locations/%s", location))
+		path += fmt.Sprintf("/locations/%s", location)
 	}
 
-	sb.WriteString(fmt.Sprintf("/%s/%s", resourceType, operationID.String()))
-	return sb.String(), nil
+	path += fmt.Sprintf("/%s/%s", resourceType, operationID.String())
+	return path, nil
 }

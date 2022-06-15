@@ -70,8 +70,6 @@ func (r *Result) SetProvisioningState(s v1.ProvisioningState) {
 
 // ProvisioningState gets the provisioning state of the result.
 func (r *Result) ProvisioningState() v1.ProvisioningState {
-	// TODO: if the state is nil we return Succeeded which should probably be changed
-	// TODO: Succeeded should be explicitly specified
 	if r.state == nil {
 		return v1.ProvisioningStateSucceeded
 	}

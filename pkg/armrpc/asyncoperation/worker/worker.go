@@ -46,7 +46,7 @@ const (
 	minMessageLockDuration = time.Duration(5) * time.Second
 
 	// deduplicationDuration is the duration for the deduplication detection.
-	deduplicationDuration = time.Duration(15) * time.Second
+	deduplicationDuration = time.Duration(30) * time.Second
 )
 
 type Options struct {
@@ -133,18 +133,13 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			// 1. The same message is delivered twice in multiple instances.
 			// 2. provisioningState is not matched between resource and operationStatuses
 
-			dedup, err := w.isPotentialDeduplication(ctx, ctrl.StorageClient(), op.ResourceID, op.OperationID)
+			dup, err := w.isDuplicated(ctx, ctrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
 				logger.Error(err, "failed to check potential deduplication.")
 				return
 			}
-			if dedup {
-				logger.Info("potential deduplication.")
-				return
-			}
-
-			opExists, err := isThereOngoingOperationOnResource(ctx, ctrl.StorageClient(), op.ResourceID)
-			if err != nil || opExists {
+			if dup {
+				logger.Warn("duplicated message detected.")
 				return
 			}
 
@@ -271,22 +266,19 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	return nil
 }
 
-func (w *AsyncRequestProcessWorker) isPotentialDeduplication(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID) (bool, error) {
-	logger := logr.FromContextOrDiscard(ctx)
-
+func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID) (bool, error) {
 	rID, err := resources.Parse(resourceID)
 	if err != nil {
-		logger.Error(err, "failed to parse resource ID")
 		return false, err
 	}
 
 	status, err := w.sm.Get(ctx, rID.RootScope(), operationID)
 	if err != nil {
-		logger.Error(err, "failed to get operation status")
 		return false, err
 	}
 
-	if status.LastUpdatedTime.IsZero() && status.LastUpdatedTime.Add(deduplicationDuration).After(time.Now().UTC()) {
+	if status.Status == v1.ProvisioningStateUpdating && status.LastUpdatedTime.IsZero() &&
+		status.LastUpdatedTime.Add(deduplicationDuration).After(time.Now().UTC()) {
 		return true, nil
 	}
 
@@ -330,41 +322,4 @@ func updateResourceState(ctx context.Context, sc store.StorageClient, id string,
 	}
 
 	return nil
-}
-
-func isThereOngoingOperationOnResource(ctx context.Context, sc store.StorageClient, id string) (bool, error) {
-	logger := logr.FromContextOrDiscard(ctx)
-
-	state, err := getResourceState(ctx, sc, id)
-	if err != nil {
-		logger.Error(err, "failed to get the provisioningState of resource.")
-		return false, err
-	}
-
-	if state == v1.ProvisioningStateUpdating {
-		logger.Error(err, "resource is already being provisioned.")
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func getResourceState(ctx context.Context, sc store.StorageClient, id string) (v1.ProvisioningState, error) {
-	obj, err := sc.Get(ctx, id)
-	if err != nil {
-		return v1.ProvisioningStateNone, err
-	}
-
-	objmap := obj.Data.(map[string]interface{})
-	objmap, ok := objmap["properties"].(map[string]interface{})
-	if !ok {
-		return v1.ProvisioningStateUndefined, errPropertiesNotFound
-	}
-
-	pState, ok := objmap["provisioningState"].(string)
-	if !ok {
-		return v1.ProvisioningStateUndefined, errProvisioningStateNotFound
-	}
-
-	return v1.ProvisioningState(pState), nil
 }

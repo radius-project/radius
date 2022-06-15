@@ -222,8 +222,6 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 }
 
 func TestStart_MaxConcurrency(t *testing.T) {
-	t.Skip()
-
 	tCtx, mctrl := newTestContext(t)
 	defer mctrl.Finish()
 
