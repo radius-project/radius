@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
@@ -94,7 +93,7 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		OperationsClient: op,
 		SubscriptionID:   e.Namespace,
 		ResourceGroup:    e.Namespace,
-		EnableUCP:        featureflag.EnableUnifiedControlPlane.IsActive(),
+		EnableUCP:        e.EnableUCP,
 	}, nil
 }
 

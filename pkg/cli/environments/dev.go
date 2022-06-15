@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 // LocalEnvironment represents a local test setup for Azure Cloud Radius environment.
@@ -143,7 +142,7 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 		SubscriptionID:   subscriptionId,
 		ResourceGroup:    resourceGroup,
 		Tags:             tags,
-		EnableUCP:        featureflag.EnableUnifiedControlPlane.IsActive(),
+		EnableUCP:        e.EnableUCP,
 	}
 	return client, nil
 }

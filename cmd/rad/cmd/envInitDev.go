@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
@@ -121,7 +122,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	}
 
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
-		if createUCPResourceGroup(cluster.ContextName) != nil {
+		if createUCPResourceGroup(cluster.ContextName, sharedArgs.Namespace) != nil {
 			return err
 		}
 	}
@@ -139,7 +140,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 			PullEndpoint: cluster.RegistryPullEndpoint,
 		},
 		"ucpresourcegroupname": "default",
-		"enableucp": fmt.Sprint(featureflag.EnableUnifiedControlPlane.IsActive()),
+		"enableucp":            strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
 	}
 
 	if params.Providers != nil {

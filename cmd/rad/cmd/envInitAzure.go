@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/featureflag"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/version"
@@ -740,6 +742,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		"clusterName":    clusterName,
 		"context":        clusterName,
 		"namespace":      "default",
+		"enableucp":      strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
 	}
 
 	err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(name)))

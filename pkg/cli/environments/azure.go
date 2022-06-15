@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
@@ -78,7 +77,7 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		e.DeploymentEngineLocalURL,
 		e.UCPLocalURL,
 		e.Context,
-		featureflag.EnableUnifiedControlPlane.IsActive(),
+		e.EnableUCP,
 	)
 	if err != nil {
 		return nil, err
@@ -118,7 +117,7 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		SubscriptionID:   e.SubscriptionID,
 		ResourceGroup:    e.ResourceGroup,
 		Tags:             tags,
-		EnableUCP:        featureflag.EnableUnifiedControlPlane.IsActive(),
+		EnableUCP:        e.EnableUCP,
 	}, nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -100,7 +101,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
-		if createUCPResourceGroup(contextName) != nil {
+		if createUCPResourceGroup(contextName, sharedArgs.Namespace) != nil {
 			return err
 		}
 	}
@@ -108,11 +109,11 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	output.CompleteStep(step)
 
 	env.Items[environmentName] = map[string]interface{}{
-		"kind":      environments.KindKubernetes,
-		"context":   contextName,
-		"namespace": sharedArgs.Namespace,
+		"kind":                 environments.KindKubernetes,
+		"context":              contextName,
+		"namespace":            sharedArgs.Namespace,
 		"ucpresourcegroupname": "default",
-		"enableucp": fmt.Sprint(featureflag.EnableUnifiedControlPlane.IsActive()),
+		"enableucp":            strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
 	}
 
 	if err := cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(environmentName))); err != nil {
@@ -122,7 +123,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func createUCPResourceGroup(kubeCtxName string) error {
+func createUCPResourceGroup(kubeCtxName, resourceGroupName string) error {
 	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		"",
 		"",
@@ -135,7 +136,7 @@ func createUCPResourceGroup(kubeCtxName string) error {
 
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", baseUrl, "default"),
+		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", baseUrl, resourceGroupName),
 		strings.NewReader("{}"),
 	)
 	if err != nil {
