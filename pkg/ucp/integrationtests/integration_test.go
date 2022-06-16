@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/assert"
@@ -288,4 +289,26 @@ func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient C
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)
 	require.NoError(t, err)
 	assert.Equal(t, applicationList, responseAppList)
+}
+
+func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
+	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+		data := store.Object{
+			Metadata: store.Metadata{},
+			Data:     testPlane,
+		}
+		return &data, nil
+	})
+
+	rgID, err := resources.Parse("/planes/radius/local/resourceGroups/rg1")
+	require.NoError(t, err)
+
+	db.EXPECT().Get(gomock.Any(), rgID.String()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+		return nil, &store.ErrNotFound{}
+	})
+	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+"/planes/radius/local"+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
+	require.NoError(t, err)
+	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, proxyRequestResponse.StatusCode)
 }

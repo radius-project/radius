@@ -182,12 +182,20 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	// Check if the resource group exists
-	rgExists, rgID, err := checkResourceGroupExists(ctx, db, incomingURL)
-	if !rgExists {
-		return rest.NewNotFoundResponse(rgID), err
-	}
-	// For other errors
+	id, err := resources.Parse(incomingURL.Path)
 	if err != nil {
+		return rest.InternalServerError(err), err
+	}
+	rgPath := id.RootScope()
+	rgID, err := resources.Parse(rgPath)
+	if err != nil {
+		return nil, err
+	}
+	_, err = resourcegroupsdb.GetByID(ctx, db, rgID)
+	if err != nil {
+		if errors.Is(err, &store.ErrNotFound{}) {
+			return rest.NewNotFoundResponse(rgID.String()), err
+		}
 		return nil, err
 	}
 
@@ -261,24 +269,4 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	sender.ServeHTTP(w, r.WithContext(ctx))
 
 	return nil, nil
-}
-
-func checkResourceGroupExists(ctx context.Context, db store.StorageClient, incomingURL *url.URL) (bool, string, error) {
-	// Check if the resource group exists
-	segments := strings.Split(strings.ToLower(incomingURL.Path), resources.ResourceGroupsSegment)
-	rgName := strings.Split(segments[1], resources.SegmentSeparator)[1]
-	rgPath := resources.UCPPrefix + segments[0] + resources.ResourceGroupsSegment + resources.SegmentSeparator + rgName
-	rgID, err := resources.Parse(rgPath)
-	if err != nil {
-		return false, rgID.String(), err
-	}
-
-	_, err = resourcegroupsdb.GetByID(ctx, db, rgID)
-	if err != nil {
-		if errors.Is(err, &store.ErrNotFound{}) {
-			return false, rgID.String(), fmt.Errorf("Resource group %s not found", rgName)
-		}
-		return true, rgID.String(), err
-	}
-	return true, rgID.String(), nil
 }
