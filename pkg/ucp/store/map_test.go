@@ -54,7 +54,7 @@ func TestDecodeMap_WithTimeDecodeHook(t *testing.T) {
 		Squash:  true,
 		Result:  out,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			ToTimeHookFunc()),
+			toTimeHookFunc()),
 	}
 	decoder, err := mapstructure.NewDecoder(cfg)
 	require.NoError(t, err)

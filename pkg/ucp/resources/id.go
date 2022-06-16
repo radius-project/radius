@@ -137,6 +137,10 @@ func (ri ID) ProviderNamespace() string {
 
 // PlaneNamespace returns the plane part of the UCP ID
 //
+// Note: This function does NOT handle invalid IDs.
+// If an invalid ID calls this function then there is
+// a chance that it is going to trigger a panic.
+//
 // Examples:
 //	radius
 func (ri ID) PlaneNamespace() string {

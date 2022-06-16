@@ -19,7 +19,7 @@ func DecodeMap(in interface{}, out interface{}) error {
 		Result:  out,
 		Squash:  true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			ToTimeHookFunc()),
+			toTimeHookFunc()),
 	}
 	decoder, err := mapstructure.NewDecoder(cfg)
 	if err != nil {
@@ -30,7 +30,7 @@ func DecodeMap(in interface{}, out interface{}) error {
 }
 
 // https://github.com/mitchellh/mapstructure/issues/159
-func ToTimeHookFunc() mapstructure.DecodeHookFunc {
+func toTimeHookFunc() mapstructure.DecodeHookFunc {
 	return func(
 		f reflect.Type,
 		t reflect.Type,

@@ -25,13 +25,16 @@ import (
 )
 
 func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
 
-	mds := store.NewMockStorageClient(mctrl)
-	msm := statusmanager.NewMockStatusManager(mctrl)
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+		mctrl := gomock.NewController(t)
+		mds := store.NewMockStorageClient(mctrl)
+		msm := statusmanager.NewMockStatusManager(mctrl)
 
-	ctx := context.Background()
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mds, msm
+	}
 
 	/*
 		Creating a container resource in an async way has multiple operations with branching:
@@ -82,10 +85,13 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range createCases {
 		t.Run(tt.desc, func(t *testing.T) {
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
+
 			containerInput, containerDataModel, _ := getTestModels20220315privatepreview()
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPut, testHeaderfile, containerInput)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, containerInput)
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -190,11 +196,14 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range updateCases {
 		t.Run(tt.desc, func(t *testing.T) {
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
+
 			containerInput, containerDataModel, _ := getTestModels20220315privatepreview()
 			containerDataModel.Properties.ProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, containerInput)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, containerInput)
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
