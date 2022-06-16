@@ -22,7 +22,7 @@ import (
 
 var _ ctrl.Controller = (*GetGateway)(nil)
 
-// GetGateway is the controller implementation to get the getway resource.
+// GetGateway is the controller implementation to get the gateway resource.
 type GetGateway struct {
 	ctrl.BaseController
 }
