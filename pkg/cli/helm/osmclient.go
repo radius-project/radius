@@ -79,7 +79,7 @@ func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) err
 	fmt.Println("Time to run install! Hopefully it works!")
 	// , err := installClient.Run(helmChart, helmChart.Values)
 	err := runInstall(installClient, helmChart)
-	fmt.Println("OSM is so werid. Did it work? ")
+	fmt.Println("Did it work? ")
 	if err != nil {
 		fmt.Errorf("OSM installation failed, err: %w, helm output: %s", err, helmOutput.String())
 	}
