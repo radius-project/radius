@@ -38,7 +38,7 @@ type MongoResourceOperations struct {
 }
 
 func (mo *MongoResourceOperations) GetResourcesByApplication(con *arm.Connection, ctx context.Context, rootScope string, applicationName string) ([]v20220315privatepreview.Resource, error) {
-	mongoClient := v20220315privatepreview.NewMongoDatabasesClient(con, "/subscriptionId/00000000-0000-0000-0000-000000000000/resourceGroup/radius-test-rg")
+	mongoClient := v20220315privatepreview.NewMongoDatabasesClient(con, rootScope)
 	mongoPager := mongoClient.ListByRootScope(nil)
 	resourceMap := make(map[string]v20220315privatepreview.Resource)
 	for mongoPager.NextPage(ctx) {

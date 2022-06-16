@@ -36,12 +36,12 @@ func listResourcesRouter(cmd *cobra.Command, args []string) error {
 		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
 	}
 	if isUCPEnabled {
-		err := listResourcesUCP (cmd, args, env)
+		err := listResourcesUCP(cmd, args, env)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := listResources (cmd, args, env)
+		err := listResources(cmd, args, env)
 		if err != nil {
 			return err
 		}

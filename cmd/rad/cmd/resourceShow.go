@@ -81,7 +81,7 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = output.Write(format, resource, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	err = output.Write(format, resource, cmd.OutOrStdout(), objectformats.GetResourceTableFormatOld())
 	if err != nil {
 		return err
 	}
