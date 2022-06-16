@@ -54,7 +54,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+              "$ref": "global.json#/parameters/RootScopeParameter"
             }
          
           ],
@@ -98,7 +98,7 @@
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             },
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+              "$ref": "global.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "#/parameters/ApplicationNameParameter"
@@ -135,7 +135,7 @@
           ],
           "parameters": [
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+              "$ref": "global.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
@@ -190,7 +190,7 @@
           ],
           "parameters": [
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+              "$ref": "global.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
@@ -245,7 +245,7 @@
           ],
           "parameters": [
             {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+              "$ref": "global.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"

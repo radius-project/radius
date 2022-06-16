@@ -61,8 +61,6 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
-	// TODO: Save the resource and queue the async task.
-
 	versioned, err := converter.EnvironmentDataModelToVersioned(newResource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
