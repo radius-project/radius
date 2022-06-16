@@ -31,12 +31,24 @@ func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string)
 func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamodel.RedisCache, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.RedisCacheResource{}
-		if err := json.Unmarshal(content, am); err != nil {
+		versioned := &v20220315privatepreview.RedisCacheResource{}
+		if err := json.Unmarshal(content, versioned); err != nil {
 			return nil, err
 		}
-		dm, err := am.ConvertTo()
+		dm, err := versioned.ConvertTo()
 		return dm.(*datamodel.RedisCache), err
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
+func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, version string) (conv.VersionedModelInterface, error) {
+	switch version {
+	case v20220315privatepreview.Version:
+		versioned := &v20220315privatepreview.RedisCacheSecrets{}
+		err := versioned.ConvertFrom(model)
+		return versioned, err
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

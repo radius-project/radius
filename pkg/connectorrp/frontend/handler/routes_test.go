@@ -55,6 +55,54 @@ var handlerTests = []struct {
 		method:     http.MethodPut,
 		isAzureAPI: true,
 	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis/listsecrets?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPost,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq/listsecrets?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPost,
+		isAzureAPI: false,
+	}, {
 		url:        "/resourcegroups/testrg/providers/applications.connector/sqldatabases?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,

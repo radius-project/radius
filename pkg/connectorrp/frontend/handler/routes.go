@@ -15,6 +15,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
 	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
+	rabbitmq_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rabbitmqmessagequeues"
+	redis_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rediscaches"
 	sql_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/sqldatabases"
 )
 
@@ -36,6 +38,14 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	mongoRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/mongodatabases").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabases}").Subrouter()
+
+	redisRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/rediscaches").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	redisResourceRouter := redisRTSubrouter.PathPrefix("/{redisDatabases}").Subrouter()
+
+	rabbitmqRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/rabbitmqmessagequeues").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	rabbitmqResourceRouter := rabbitmqRTSubrouter.PathPrefix("/{rabbitmqmessagequeues}").Subrouter()
 
 	sqlRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/sqldatabases").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
@@ -78,6 +88,77 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			HandlerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
 		},
 		{
+			ParentRouter:   redisRTSubrouter,
+			ResourceType:   redis_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: redis_ctrl.NewListRedisCaches,
+		},
+		{
+			ParentRouter:   redisResourceRouter,
+			ResourceType:   redis_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: redis_ctrl.NewGetRedisCache,
+		},
+		{
+			ParentRouter:   redisResourceRouter,
+			ResourceType:   redis_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: redis_ctrl.NewCreateOrUpdateRedisCache,
+		},
+		{
+			ParentRouter:   redisResourceRouter,
+			ResourceType:   redis_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: redis_ctrl.NewCreateOrUpdateRedisCache,
+		},
+		{
+			ParentRouter:   redisResourceRouter,
+			ResourceType:   redis_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: redis_ctrl.NewDeleteRedisCache,
+		},
+		{
+			ParentRouter:   redisResourceRouter.Path("/listsecrets").Subrouter(),
+			ResourceType:   redis_ctrl.ResourceTypeName,
+			Method:         redis_ctrl.OperationListSecret,
+			HandlerFactory: redis_ctrl.NewListSecretsRedisCache,
+		},
+		{
+			ParentRouter:   rabbitmqRTSubrouter,
+			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: rabbitmq_ctrl.NewListRabbitMQMessageQueues,
+		},
+		{
+			ParentRouter:   rabbitmqResourceRouter,
+			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: rabbitmq_ctrl.NewGetRabbitMQMessageQueue,
+		},
+		{
+			ParentRouter:   rabbitmqResourceRouter,
+			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue,
+		},
+		{
+			ParentRouter:   rabbitmqResourceRouter,
+			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue,
+		},
+		{
+			ParentRouter:   rabbitmqResourceRouter,
+			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: rabbitmq_ctrl.NewDeleteRabbitMQMessageQueue,
+		},
+		{
+			ParentRouter:   rabbitmqResourceRouter.Path("/listsecrets").Subrouter(),
+			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
+			Method:         rabbitmq_ctrl.OperationListSecret,
+			HandlerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
+		}, {
 			ParentRouter:   sqlRTSubrouter,
 			ResourceType:   sql_ctrl.ResourceTypeName,
 			Method:         v1.OperationList,
