@@ -264,8 +264,8 @@ func (client *RedisCachesClient) listByRootScopeHandleError(resp *http.Response)
 
 // ListSecrets - Lists secrets values for the specified RedisCache resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RedisCachesClient) ListSecrets(ctx context.Context, resourceGroupName string, redisCacheName string, options *RedisCachesListSecretsOptions) (RedisCachesListSecretsResponse, error) {
-	req, err := client.listSecretsCreateRequest(ctx, resourceGroupName, redisCacheName, options)
+func (client *RedisCachesClient) ListSecrets(ctx context.Context, redisCacheName string, options *RedisCachesListSecretsOptions) (RedisCachesListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, redisCacheName, options)
 	if err != nil {
 		return RedisCachesListSecretsResponse{}, err
 	}
@@ -280,16 +280,16 @@ func (client *RedisCachesClient) ListSecrets(ctx context.Context, resourceGroupN
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
-func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, resourceGroupName string, redisCacheName string, options *RedisCachesListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets"
+func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, redisCacheName string, options *RedisCachesListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}

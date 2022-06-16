@@ -264,8 +264,8 @@ func (client *RabbitMQMessageQueuesClient) listByRootScopeHandleError(resp *http
 
 // ListSecrets - Lists secrets values for the specified RabbitMQMessageQueue resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RabbitMQMessageQueuesClient) ListSecrets(ctx context.Context, resourceGroupName string, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesListSecretsOptions) (RabbitMQMessageQueuesListSecretsResponse, error) {
-	req, err := client.listSecretsCreateRequest(ctx, resourceGroupName, rabbitMQMessageQueueName, options)
+func (client *RabbitMQMessageQueuesClient) ListSecrets(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesListSecretsOptions) (RabbitMQMessageQueuesListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, rabbitMQMessageQueueName, options)
 	if err != nil {
 		return RabbitMQMessageQueuesListSecretsResponse{}, err
 	}
@@ -280,16 +280,16 @@ func (client *RabbitMQMessageQueuesClient) ListSecrets(ctx context.Context, reso
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
-func (client *RabbitMQMessageQueuesClient) listSecretsCreateRequest(ctx context.Context, resourceGroupName string, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets"
+func (client *RabbitMQMessageQueuesClient) listSecretsCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}

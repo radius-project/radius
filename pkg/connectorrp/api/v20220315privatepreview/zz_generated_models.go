@@ -1582,7 +1582,7 @@ func (r *RedisCacheResource) UnmarshalJSON(data []byte) error {
 
 // RedisCacheSecrets - The secret values for the given RedisCache resource
 type RedisCacheSecrets struct {
-	// The Redis connection string used to connect to the redis cache
+	// The connection string used to connect to the redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
 
 	// The password for this Redis instance
@@ -1616,7 +1616,7 @@ type RedisCachesListSecretsOptions struct {
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /{rootScope}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty" azure:"ro"`
 
 	// READ-ONLY; The name of the resource
