@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/ucp"
 )
 
 func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
@@ -166,10 +167,9 @@ func (e *AzureCloudEnvironment) CreateUCPManagementClient(ctx context.Context) (
 		return nil, err
 	}
 
-	return &kubernetes.ARMUCPManagementClient{
+	return &ucp.ARMUCPManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
-		SubscriptionID:  e.Namespace,
+		RootScope:       "/Subscriptions/" + e.SubscriptionID + "/ResourceGroups/" + e.ResourceGroup,
 	}, nil
 }

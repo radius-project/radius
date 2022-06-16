@@ -123,7 +123,7 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 		return "", nil, err
 	}
 
-	return baseURL, arm.NewConnection("http://localhost:8080", &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
+	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
 		HTTPClient: &KubernetesTransporter{Client: roundTripper},
 	}), nil
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/ucp"
 )
 
 // LocalEnvironment represents a local test setup for Azure Cloud Radius environment.
@@ -204,10 +205,12 @@ func (e *LocalEnvironment) CreateUCPManagementClient(ctx context.Context) (clien
 		return nil, err
 	}
 
-	return &kubernetes.ARMUCPManagementClient{
+	//ignore subscription Id as it is not required for dev environment
+	_, resourceGroup := e.GetAzureProviderDetails()
+
+	return &ucp.ARMUCPManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
-		SubscriptionID:  e.Namespace,
+		RootScope:       "/ResourceGroups/" + resourceGroup,
 	}, nil
 }

@@ -3,68 +3,100 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package kubernetes
+package ucp
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/azureresources"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-//TODO: Change subId and ResourceId to scope
 type ARMUCPManagementClient struct {
-	Connection      *arm.Connection
-	ResourceGroup   string
-	SubscriptionID  string
 	EnvironmentName string
+	Connection      *arm.Connection
+	RootScope       string
 }
 
 var _ clients.AppManagementClient = (*ARMUCPManagementClient)(nil)
 
+var (
+	resourceOperationList = []azureresources.AzureResourceOperationsModel{
+		{
+			ResourceType: azureresources.MongoResource,
+			ResourceOperations: &azureresources.MongoResourceOperations{},
+		},
+		{
+			ResourceType: azureresources.RabbitMQResource,
+			ResourceOperations: &azureresources.RabbitResourceOperations{},
+		},
+		{
+			ResourceType: azureresources.RedisResource,
+			ResourceOperations: &azureresources.RedisResourceOperations{},
+		},
+		{
+			ResourceType: azureresources.SQLResource,
+			ResourceOperations: &azureresources.SQLResourceOperations{},
+		},
+	}
+)
+
 // ListAllResourcesByApplication lists the resources of a particular application
 func (um *ARMUCPManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error) {
-	mongoResourceList, err := getMongoResources(um.Connection, um.SubscriptionID, um.ResourceGroup, ctx)
-	if err != nil {
-		return nil, err
-	}
-	resourceMap := make(map[string]v20220315privatepreview.Resource)
-	for _, mongoResource := range mongoResourceList {
-		resourceMap[*mongoResource.Properties.Application] = mongoResource.Resource
-	}
-
-	rabbitResourceList, err := getRabbitMqResources(um.Connection, um.SubscriptionID, um.ResourceGroup, ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, rabbitResource := range rabbitResourceList {
-		resourceMap[*rabbitResource.Properties.Application] = rabbitResource.Resource
+	rootScope := um.RootScope
+	fmt.Print(resourceOperationList, rootScope)
+	resourceListByApplication := make([]v20220315privatepreview.Resource, 0)
+	for _, resourceOperation := range resourceOperationList {
+		resourceList, err := resourceOperation.ResourceOperations.GetResourcesByApplication(um.Connection, ctx, rootScope, applicationName)
+		if err != nil {
+			return nil, err
+		}
+		resourceListByApplication = append(resourceListByApplication, resourceList...)
 	}
 
-	redisResourceList, err := getRedisResources(um.Connection, um.SubscriptionID, um.ResourceGroup, ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, redisResource := range redisResourceList {
-		resourceMap[*redisResource.Properties.Application] = redisResource.Resource
-	}
+	// mongoResourceList, err := getMongoResources(um.Connection, um.SubscriptionID, um.ResourceGroup, ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// resourceMap := make(map[string]v20220315privatepreview.Resource)
+	// for _, mongoResource := range mongoResourceList {
+	// 	resourceMap[*mongoResource.Properties.Application] = mongoResource.Resource
+	// }
 
-	sqlResourceList, err := getSQLResources(um.Connection, um.SubscriptionID, um.ResourceGroup, ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, sqlResource := range sqlResourceList {
-		resourceMap[*sqlResource.Properties.Application] = sqlResource.Resource
-	}
+	// rabbitResourceList, err := getRabbitMqResources(um.Connection, um.SubscriptionID, um.ResourceGroup, ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// for _, rabbitResource := range rabbitResourceList {
+	// 	resourceMap[*rabbitResource.Properties.Application] = rabbitResource.Resource
+	// }
 
-	return filterByName(resourceMap, applicationName)
+	// redisResourceList, err := getRedisResources(um.Connection, um.SubscriptionID, um.ResourceGroup, ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// for _, redisResource := range redisResourceList {
+	// 	resourceMap[*redisResource.Properties.Application] = redisResource.Resource
+	// }
+
+	// sqlResourceList, err := getSQLResources(um.Connection, um.SubscriptionID, um.ResourceGroup, ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// for _, sqlResource := range sqlResourceList {
+	// 	resourceMap[*sqlResource.Properties.Application] = sqlResource.Resource
+	// }
+
+	// return filterByApplicationName(resourceMap, applicationName)
+	return resourceListByApplication, nil
 }
 
 // get all mongo resources
 func getMongoResources(con *arm.Connection, subscriptionId string, resourceGroupName string, ctx context.Context) ([]v20220315privatepreview.MongoDatabaseResource, error) {
-
 	mongoclient := v20220315privatepreview.NewMongoDatabasesClient(con, "/subscriptionId/00000000-0000-0000-0000-000000000000/resourceGroup/radius-test-rg")
 	mongoPager := mongoclient.ListByRootScope(&v20220315privatepreview.MongoDatabasesListByRootScopeOptions{})
 	mongoResourceList := []v20220315privatepreview.MongoDatabaseResource{}
@@ -122,7 +154,7 @@ func getSQLResources(con *arm.Connection, subscriptionId string, resourceGroupNa
 	return sqlResourceList, nil
 }
 
-func filterByName(resourceList map[string]v20220315privatepreview.Resource, applicationName string) ([]v20220315privatepreview.Resource, error) {
+func filterByApplicationName(resourceList map[string]v20220315privatepreview.Resource, applicationName string) ([]v20220315privatepreview.Resource, error) {
 	filteredResourceList := []v20220315privatepreview.Resource{}
 	for appId, resource := range resourceList {
 		IdParsed, err := resources.Parse(appId)

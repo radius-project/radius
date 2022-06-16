@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/ucp"
 )
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
@@ -144,10 +145,9 @@ func (e *KubernetesEnvironment) CreateUCPManagementClient(ctx context.Context) (
 		return nil, err
 	}
 
-	return &kubernetes.ARMUCPManagementClient{
+	return &ucp.ARMUCPManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
-		SubscriptionID:  e.Namespace,
+		RootScope:       e.Namespace, // Temporarily set to namespace before rootScope is generated in kubernetes environment
 	}, nil
 }
