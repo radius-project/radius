@@ -40,27 +40,15 @@ type DaprInvokeHTTPRoutesGetResult struct {
 	DaprInvokeHTTPRouteResource
 }
 
-// DaprInvokeHTTPRoutesListBySubscriptionResponse contains the response from method DaprInvokeHTTPRoutes.ListBySubscription.
-type DaprInvokeHTTPRoutesListBySubscriptionResponse struct {
-	DaprInvokeHTTPRoutesListBySubscriptionResult
+// DaprInvokeHTTPRoutesListByRootScopeResponse contains the response from method DaprInvokeHTTPRoutes.ListByRootScope.
+type DaprInvokeHTTPRoutesListByRootScopeResponse struct {
+	DaprInvokeHTTPRoutesListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprInvokeHTTPRoutesListBySubscriptionResult contains the result from method DaprInvokeHTTPRoutes.ListBySubscription.
-type DaprInvokeHTTPRoutesListBySubscriptionResult struct {
-	DaprInvokeHTTPRouteList
-}
-
-// DaprInvokeHTTPRoutesListResponse contains the response from method DaprInvokeHTTPRoutes.List.
-type DaprInvokeHTTPRoutesListResponse struct {
-	DaprInvokeHTTPRoutesListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// DaprInvokeHTTPRoutesListResult contains the result from method DaprInvokeHTTPRoutes.List.
-type DaprInvokeHTTPRoutesListResult struct {
+// DaprInvokeHTTPRoutesListByRootScopeResult contains the result from method DaprInvokeHTTPRoutes.ListByRootScope.
+type DaprInvokeHTTPRoutesListByRootScopeResult struct {
 	DaprInvokeHTTPRouteList
 }
 
@@ -94,27 +82,15 @@ type DaprPubSubBrokersGetResult struct {
 	DaprPubSubBrokerResource
 }
 
-// DaprPubSubBrokersListBySubscriptionResponse contains the response from method DaprPubSubBrokers.ListBySubscription.
-type DaprPubSubBrokersListBySubscriptionResponse struct {
-	DaprPubSubBrokersListBySubscriptionResult
+// DaprPubSubBrokersListByRootScopeResponse contains the response from method DaprPubSubBrokers.ListByRootScope.
+type DaprPubSubBrokersListByRootScopeResponse struct {
+	DaprPubSubBrokersListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprPubSubBrokersListBySubscriptionResult contains the result from method DaprPubSubBrokers.ListBySubscription.
-type DaprPubSubBrokersListBySubscriptionResult struct {
-	DaprPubSubBrokerList
-}
-
-// DaprPubSubBrokersListResponse contains the response from method DaprPubSubBrokers.List.
-type DaprPubSubBrokersListResponse struct {
-	DaprPubSubBrokersListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// DaprPubSubBrokersListResult contains the result from method DaprPubSubBrokers.List.
-type DaprPubSubBrokersListResult struct {
+// DaprPubSubBrokersListByRootScopeResult contains the result from method DaprPubSubBrokers.ListByRootScope.
+type DaprPubSubBrokersListByRootScopeResult struct {
 	DaprPubSubBrokerList
 }
 
@@ -148,27 +124,15 @@ type DaprSecretStoresGetResult struct {
 	DaprSecretStoreResource
 }
 
-// DaprSecretStoresListBySubscriptionResponse contains the response from method DaprSecretStores.ListBySubscription.
-type DaprSecretStoresListBySubscriptionResponse struct {
-	DaprSecretStoresListBySubscriptionResult
+// DaprSecretStoresListByRootScopeResponse contains the response from method DaprSecretStores.ListByRootScope.
+type DaprSecretStoresListByRootScopeResponse struct {
+	DaprSecretStoresListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprSecretStoresListBySubscriptionResult contains the result from method DaprSecretStores.ListBySubscription.
-type DaprSecretStoresListBySubscriptionResult struct {
-	DaprSecretStoreList
-}
-
-// DaprSecretStoresListResponse contains the response from method DaprSecretStores.List.
-type DaprSecretStoresListResponse struct {
-	DaprSecretStoresListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// DaprSecretStoresListResult contains the result from method DaprSecretStores.List.
-type DaprSecretStoresListResult struct {
+// DaprSecretStoresListByRootScopeResult contains the result from method DaprSecretStores.ListByRootScope.
+type DaprSecretStoresListByRootScopeResult struct {
 	DaprSecretStoreList
 }
 
@@ -202,27 +166,15 @@ type DaprStateStoresGetResult struct {
 	DaprStateStoreResource
 }
 
-// DaprStateStoresListBySubscriptionResponse contains the response from method DaprStateStores.ListBySubscription.
-type DaprStateStoresListBySubscriptionResponse struct {
-	DaprStateStoresListBySubscriptionResult
+// DaprStateStoresListByRootScopeResponse contains the response from method DaprStateStores.ListByRootScope.
+type DaprStateStoresListByRootScopeResponse struct {
+	DaprStateStoresListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// DaprStateStoresListBySubscriptionResult contains the result from method DaprStateStores.ListBySubscription.
-type DaprStateStoresListBySubscriptionResult struct {
-	DaprStateStoreList
-}
-
-// DaprStateStoresListResponse contains the response from method DaprStateStores.List.
-type DaprStateStoresListResponse struct {
-	DaprStateStoresListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// DaprStateStoresListResult contains the result from method DaprStateStores.List.
-type DaprStateStoresListResult struct {
+// DaprStateStoresListByRootScopeResult contains the result from method DaprStateStores.ListByRootScope.
+type DaprStateStoresListByRootScopeResult struct {
 	DaprStateStoreList
 }
 
@@ -256,27 +208,15 @@ type ExtendersGetResult struct {
 	ExtenderResource
 }
 
-// ExtendersListBySubscriptionResponse contains the response from method Extenders.ListBySubscription.
-type ExtendersListBySubscriptionResponse struct {
-	ExtendersListBySubscriptionResult
+// ExtendersListByRootScopeResponse contains the response from method Extenders.ListByRootScope.
+type ExtendersListByRootScopeResponse struct {
+	ExtendersListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ExtendersListBySubscriptionResult contains the result from method Extenders.ListBySubscription.
-type ExtendersListBySubscriptionResult struct {
-	ExtenderList
-}
-
-// ExtendersListResponse contains the response from method Extenders.List.
-type ExtendersListResponse struct {
-	ExtendersListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// ExtendersListResult contains the result from method Extenders.List.
-type ExtendersListResult struct {
+// ExtendersListByRootScopeResult contains the result from method Extenders.ListByRootScope.
+type ExtendersListByRootScopeResult struct {
 	ExtenderList
 }
 
@@ -310,27 +250,15 @@ type MongoDatabasesGetResult struct {
 	MongoDatabaseResource
 }
 
-// MongoDatabasesListBySubscriptionResponse contains the response from method MongoDatabases.ListBySubscription.
-type MongoDatabasesListBySubscriptionResponse struct {
-	MongoDatabasesListBySubscriptionResult
+// MongoDatabasesListByRootScopeResponse contains the response from method MongoDatabases.ListByRootScope.
+type MongoDatabasesListByRootScopeResponse struct {
+	MongoDatabasesListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// MongoDatabasesListBySubscriptionResult contains the result from method MongoDatabases.ListBySubscription.
-type MongoDatabasesListBySubscriptionResult struct {
-	MongoDatabaseList
-}
-
-// MongoDatabasesListResponse contains the response from method MongoDatabases.List.
-type MongoDatabasesListResponse struct {
-	MongoDatabasesListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// MongoDatabasesListResult contains the result from method MongoDatabases.List.
-type MongoDatabasesListResult struct {
+// MongoDatabasesListByRootScopeResult contains the result from method MongoDatabases.ListByRootScope.
+type MongoDatabasesListByRootScopeResult struct {
 	MongoDatabaseList
 }
 
@@ -376,28 +304,28 @@ type RabbitMQMessageQueuesGetResult struct {
 	RabbitMQMessageQueueResource
 }
 
-// RabbitMQMessageQueuesListBySubscriptionResponse contains the response from method RabbitMQMessageQueues.ListBySubscription.
-type RabbitMQMessageQueuesListBySubscriptionResponse struct {
-	RabbitMQMessageQueuesListBySubscriptionResult
+// RabbitMQMessageQueuesListByRootScopeResponse contains the response from method RabbitMQMessageQueues.ListByRootScope.
+type RabbitMQMessageQueuesListByRootScopeResponse struct {
+	RabbitMQMessageQueuesListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RabbitMQMessageQueuesListBySubscriptionResult contains the result from method RabbitMQMessageQueues.ListBySubscription.
-type RabbitMQMessageQueuesListBySubscriptionResult struct {
+// RabbitMQMessageQueuesListByRootScopeResult contains the result from method RabbitMQMessageQueues.ListByRootScope.
+type RabbitMQMessageQueuesListByRootScopeResult struct {
 	RabbitMQMessageQueueList
 }
 
-// RabbitMQMessageQueuesListResponse contains the response from method RabbitMQMessageQueues.List.
-type RabbitMQMessageQueuesListResponse struct {
-	RabbitMQMessageQueuesListResult
+// RabbitMQMessageQueuesListSecretsResponse contains the response from method RabbitMQMessageQueues.ListSecrets.
+type RabbitMQMessageQueuesListSecretsResponse struct {
+	RabbitMQMessageQueuesListSecretsResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RabbitMQMessageQueuesListResult contains the result from method RabbitMQMessageQueues.List.
-type RabbitMQMessageQueuesListResult struct {
-	RabbitMQMessageQueueList
+// RabbitMQMessageQueuesListSecretsResult contains the result from method RabbitMQMessageQueues.ListSecrets.
+type RabbitMQMessageQueuesListSecretsResult struct {
+	RabbitMQSecrets
 }
 
 // RedisCachesCreateOrUpdateResponse contains the response from method RedisCaches.CreateOrUpdate.
@@ -430,28 +358,28 @@ type RedisCachesGetResult struct {
 	RedisCacheResource
 }
 
-// RedisCachesListBySubscriptionResponse contains the response from method RedisCaches.ListBySubscription.
-type RedisCachesListBySubscriptionResponse struct {
-	RedisCachesListBySubscriptionResult
+// RedisCachesListByRootScopeResponse contains the response from method RedisCaches.ListByRootScope.
+type RedisCachesListByRootScopeResponse struct {
+	RedisCachesListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RedisCachesListBySubscriptionResult contains the result from method RedisCaches.ListBySubscription.
-type RedisCachesListBySubscriptionResult struct {
+// RedisCachesListByRootScopeResult contains the result from method RedisCaches.ListByRootScope.
+type RedisCachesListByRootScopeResult struct {
 	RedisCacheList
 }
 
-// RedisCachesListResponse contains the response from method RedisCaches.List.
-type RedisCachesListResponse struct {
-	RedisCachesListResult
+// RedisCachesListSecretsResponse contains the response from method RedisCaches.ListSecrets.
+type RedisCachesListSecretsResponse struct {
+	RedisCachesListSecretsResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// RedisCachesListResult contains the result from method RedisCaches.List.
-type RedisCachesListResult struct {
-	RedisCacheList
+// RedisCachesListSecretsResult contains the result from method RedisCaches.ListSecrets.
+type RedisCachesListSecretsResult struct {
+	RedisCacheSecrets
 }
 
 // SQLDatabasesCreateOrUpdateResponse contains the response from method SQLDatabases.CreateOrUpdate.
@@ -484,27 +412,15 @@ type SQLDatabasesGetResult struct {
 	SQLDatabaseResource
 }
 
-// SQLDatabasesListBySubscriptionResponse contains the response from method SQLDatabases.ListBySubscription.
-type SQLDatabasesListBySubscriptionResponse struct {
-	SQLDatabasesListBySubscriptionResult
+// SQLDatabasesListByRootScopeResponse contains the response from method SQLDatabases.ListByRootScope.
+type SQLDatabasesListByRootScopeResponse struct {
+	SQLDatabasesListByRootScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// SQLDatabasesListBySubscriptionResult contains the result from method SQLDatabases.ListBySubscription.
-type SQLDatabasesListBySubscriptionResult struct {
-	SQLDatabaseList
-}
-
-// SQLDatabasesListResponse contains the response from method SQLDatabases.List.
-type SQLDatabasesListResponse struct {
-	SQLDatabasesListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// SQLDatabasesListResult contains the result from method SQLDatabases.List.
-type SQLDatabasesListResult struct {
+// SQLDatabasesListByRootScopeResult contains the result from method SQLDatabases.ListByRootScope.
+type SQLDatabasesListByRootScopeResult struct {
 	SQLDatabaseList
 }
 

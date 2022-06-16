@@ -130,7 +130,7 @@ func GetShortenedTargetPortName(name string) string {
 }
 
 // GetDefaultPort() returns the default HTTP port (80)
-func GetDefaultPort() int {
+func GetDefaultPort() int32 {
 	return 80
 }
 

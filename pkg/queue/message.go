@@ -23,7 +23,7 @@ type Metadata struct {
 	NextVisibleAt time.Time
 }
 
-// Message represents message managed by enqueuer and dequeuer.
+// Message represents message managed by queue.
 type Message struct {
 	Metadata
 

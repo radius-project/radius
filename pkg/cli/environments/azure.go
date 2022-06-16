@@ -29,17 +29,18 @@ func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
 
 // AzureCloudEnvironment represents an Azure Cloud Radius environment.
 type AzureCloudEnvironment struct {
-	Name                       string `mapstructure:"name" validate:"required"`
-	Kind                       string `mapstructure:"kind" validate:"required"`
-	SubscriptionID             string `mapstructure:"subscriptionid" validate:"required"`
-	ResourceGroup              string `mapstructure:"resourcegroup" validate:"required"`
-	ClusterName                string `mapstructure:"clustername" validate:"required"`
-	DefaultApplication         string `mapstructure:"defaultapplication" yaml:",omitempty"`
-	Context                    string `mapstructure:"context" validate:"required"`
-	Namespace                  string `mapstructure:"namespace" validate:"required"`
-	APIServerBaseURL           string `mapstructure:"apiserverbaseurl,omitempty"`
-	APIDeploymentEngineBaseURL string `mapstructure:"apideploymentenginebaseurl,omitempty"`
-	EnableUCP                  bool   `mapstructure:"enableucp,omitempty"`
+	Name                     string `mapstructure:"name" validate:"required"`
+	Kind                     string `mapstructure:"kind" validate:"required"`
+	SubscriptionID           string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup            string `mapstructure:"resourcegroup" validate:"required"`
+	ClusterName              string `mapstructure:"clustername" validate:"required"`
+	DefaultApplication       string `mapstructure:"defaultapplication" yaml:",omitempty"`
+	Context                  string `mapstructure:"context" validate:"required"`
+	Namespace                string `mapstructure:"namespace" validate:"required"`
+	RadiusRPLocalURL         string `mapstructure:"radiusrplocalurl,omitempty"`
+	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
+	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
+	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain" yaml:",omitempty"`
@@ -57,6 +58,10 @@ func (e *AzureCloudEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *AzureCloudEnvironment) GetKubeContext() string {
+	return e.Context
+}
+
 func (e *AzureCloudEnvironment) GetContainerRegistry() *Registry {
 	return nil
 }
@@ -72,7 +77,7 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 }
 
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +131,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +147,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}

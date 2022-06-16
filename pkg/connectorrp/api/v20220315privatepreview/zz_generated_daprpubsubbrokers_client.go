@@ -25,18 +25,18 @@ import (
 type DaprPubSubBrokersClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewDaprPubSubBrokersClient creates a new instance of DaprPubSubBrokersClient with the specified values.
-func NewDaprPubSubBrokersClient(con *arm.Connection, subscriptionID string) *DaprPubSubBrokersClient {
-	return &DaprPubSubBrokersClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewDaprPubSubBrokersClient(con *arm.Connection, rootScope string) *DaprPubSubBrokersClient {
+	return &DaprPubSubBrokersClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Creates or updates a DaprPubSubBroker resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprPubSubBrokersClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, daprPubSubBrokerName string, daprPubSubBrokerParameters DaprPubSubBrokerResource, options *DaprPubSubBrokersCreateOrUpdateOptions) (DaprPubSubBrokersCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, daprPubSubBrokerName, daprPubSubBrokerParameters, options)
+func (client *DaprPubSubBrokersClient) CreateOrUpdate(ctx context.Context, daprPubSubBrokerName string, daprPubSubBrokerParameters DaprPubSubBrokerResource, options *DaprPubSubBrokersCreateOrUpdateOptions) (DaprPubSubBrokersCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, daprPubSubBrokerName, daprPubSubBrokerParameters, options)
 	if err != nil {
 		return DaprPubSubBrokersCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *DaprPubSubBrokersClient) CreateOrUpdate(ctx context.Context, resou
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprPubSubBrokersClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, daprPubSubBrokerName string, daprPubSubBrokerParameters DaprPubSubBrokerResource, options *DaprPubSubBrokersCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprPubSubBrokersClient) createOrUpdateCreateRequest(ctx context.Context, daprPubSubBrokerName string, daprPubSubBrokerParameters DaprPubSubBrokerResource, options *DaprPubSubBrokersCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprPubSubBrokerName == "" {
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *DaprPubSubBrokersClient) createOrUpdateHandleError(resp *http.Resp
 
 // Delete - Deletes an existing daprPubSubBroker resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprPubSubBrokersClient) Delete(ctx context.Context, resourceGroupName string, daprPubSubBrokerName string, options *DaprPubSubBrokersDeleteOptions) (DaprPubSubBrokersDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, daprPubSubBrokerName, options)
+func (client *DaprPubSubBrokersClient) Delete(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokersDeleteOptions) (DaprPubSubBrokersDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, daprPubSubBrokerName, options)
 	if err != nil {
 		return DaprPubSubBrokersDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *DaprPubSubBrokersClient) Delete(ctx context.Context, resourceGroup
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprPubSubBrokersClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, daprPubSubBrokerName string, options *DaprPubSubBrokersDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprPubSubBrokersClient) deleteCreateRequest(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokersDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprPubSubBrokerName == "" {
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *DaprPubSubBrokersClient) deleteHandleError(resp *http.Response) er
 
 // Get - Retrieves information about a daprPubSubBroker resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprPubSubBrokersClient) Get(ctx context.Context, resourceGroupName string, daprPubSubBrokerName string, options *DaprPubSubBrokersGetOptions) (DaprPubSubBrokersGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, daprPubSubBrokerName, options)
+func (client *DaprPubSubBrokersClient) Get(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokersGetOptions) (DaprPubSubBrokersGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, daprPubSubBrokerName, options)
 	if err != nil {
 		return DaprPubSubBrokersGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *DaprPubSubBrokersClient) Get(ctx context.Context, resourceGroupNam
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprPubSubBrokersClient) getCreateRequest(ctx context.Context, resourceGroupName string, daprPubSubBrokerName string, options *DaprPubSubBrokersGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprPubSubBrokersClient) getCreateRequest(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokersGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprPubSubBrokerName == "" {
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *DaprPubSubBrokersClient) getHandleError(resp *http.Response) error
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - Lists information about all daprPubSubBroker resources in the given subscription and resource group
+// ListByRootScope - Lists information about all daprPubSubBroker resources in the given root scope
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprPubSubBrokersClient) List(resourceGroupName string, options *DaprPubSubBrokersListOptions) (*DaprPubSubBrokersListPager) {
-	return &DaprPubSubBrokersListPager{
+func (client *DaprPubSubBrokersClient) ListByRootScope(options *DaprPubSubBrokersListByRootScopeOptions) (*DaprPubSubBrokersListByRootScopePager) {
+	return &DaprPubSubBrokersListByRootScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByRootScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp DaprPubSubBrokersListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp DaprPubSubBrokersListByRootScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.DaprPubSubBrokerList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *DaprPubSubBrokersClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *DaprPubSubBrokersListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprPubSubBrokers"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *DaprPubSubBrokersClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprPubSubBrokersListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprPubSubBrokers"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *DaprPubSubBrokersClient) listCreateRequest(ctx context.Context, re
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *DaprPubSubBrokersClient) listHandleResponse(resp *http.Response) (DaprPubSubBrokersListResponse, error) {
-	result := DaprPubSubBrokersListResponse{RawResponse: resp}
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *DaprPubSubBrokersClient) listByRootScopeHandleResponse(resp *http.Response) (DaprPubSubBrokersListByRootScopeResponse, error) {
+	result := DaprPubSubBrokersListByRootScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprPubSubBrokerList); err != nil {
-		return DaprPubSubBrokersListResponse{}, err
+		return DaprPubSubBrokersListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *DaprPubSubBrokersClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - Lists information about all daprPubSubBroker resources in the given subscription
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprPubSubBrokersClient) ListBySubscription(options *DaprPubSubBrokersListBySubscriptionOptions) (*DaprPubSubBrokersListBySubscriptionPager) {
-	return &DaprPubSubBrokersListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp DaprPubSubBrokersListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.DaprPubSubBrokerList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *DaprPubSubBrokersClient) listBySubscriptionCreateRequest(ctx context.Context, options *DaprPubSubBrokersListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Connector/daprPubSubBrokers"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *DaprPubSubBrokersClient) listBySubscriptionHandleResponse(resp *http.Response) (DaprPubSubBrokersListBySubscriptionResponse, error) {
-	result := DaprPubSubBrokersListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DaprPubSubBrokerList); err != nil {
-		return DaprPubSubBrokersListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *DaprPubSubBrokersClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByRootScopeHandleError handles the ListByRootScope error response.
+func (client *DaprPubSubBrokersClient) listByRootScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)

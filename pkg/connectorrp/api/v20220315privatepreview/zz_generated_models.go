@@ -192,13 +192,8 @@ type DaprInvokeHTTPRoutesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprInvokeHTTPRoutesListBySubscriptionOptions contains the optional parameters for the DaprInvokeHTTPRoutes.ListBySubscription method.
-type DaprInvokeHTTPRoutesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprInvokeHTTPRoutesListOptions contains the optional parameters for the DaprInvokeHTTPRoutes.List method.
-type DaprInvokeHTTPRoutesListOptions struct {
+// DaprInvokeHTTPRoutesListByRootScopeOptions contains the optional parameters for the DaprInvokeHTTPRoutes.ListByRootScope method.
+type DaprInvokeHTTPRoutesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -389,13 +384,8 @@ type DaprPubSubBrokersGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprPubSubBrokersListBySubscriptionOptions contains the optional parameters for the DaprPubSubBrokers.ListBySubscription method.
-type DaprPubSubBrokersListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprPubSubBrokersListOptions contains the optional parameters for the DaprPubSubBrokers.List method.
-type DaprPubSubBrokersListOptions struct {
+// DaprPubSubBrokersListByRootScopeOptions contains the optional parameters for the DaprPubSubBrokers.ListByRootScope method.
+type DaprPubSubBrokersListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -607,13 +597,8 @@ type DaprSecretStoresGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprSecretStoresListBySubscriptionOptions contains the optional parameters for the DaprSecretStores.ListBySubscription method.
-type DaprSecretStoresListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprSecretStoresListOptions contains the optional parameters for the DaprSecretStores.List method.
-type DaprSecretStoresListOptions struct {
+// DaprSecretStoresListByRootScopeOptions contains the optional parameters for the DaprSecretStores.ListByRootScope method.
+type DaprSecretStoresListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -893,13 +878,8 @@ type DaprStateStoresGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprStateStoresListBySubscriptionOptions contains the optional parameters for the DaprStateStores.ListBySubscription method.
-type DaprStateStoresListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprStateStoresListOptions contains the optional parameters for the DaprStateStores.List method.
-type DaprStateStoresListOptions struct {
+// DaprStateStoresListByRootScopeOptions contains the optional parameters for the DaprStateStores.ListByRootScope method.
+type DaprStateStoresListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1115,13 +1095,8 @@ type ExtendersGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ExtendersListBySubscriptionOptions contains the optional parameters for the Extenders.ListBySubscription method.
-type ExtendersListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// ExtendersListOptions contains the optional parameters for the Extenders.List method.
-type ExtendersListOptions struct {
+// ExtendersListByRootScopeOptions contains the optional parameters for the Extenders.ListByRootScope method.
+type ExtendersListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1294,13 +1269,8 @@ type MongoDatabasesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MongoDatabasesListBySubscriptionOptions contains the optional parameters for the MongoDatabases.ListBySubscription method.
-type MongoDatabasesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabasesListOptions contains the optional parameters for the MongoDatabases.List method.
-type MongoDatabasesListOptions struct {
+// MongoDatabasesListByRootScopeOptions contains the optional parameters for the MongoDatabases.ListByRootScope method.
+type MongoDatabasesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1336,7 +1306,7 @@ type RabbitMQMessageQueueProperties struct {
 	Queue *string `json:"queue,omitempty"`
 
 	// Secrets provided by resources,
-	Secrets *RabbitMQMessageQueuePropertiesSecrets `json:"secrets,omitempty"`
+	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -1390,12 +1360,6 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
-}
-
-// RabbitMQMessageQueuePropertiesSecrets - Secrets provided by resources,
-type RabbitMQMessageQueuePropertiesSecrets struct {
-	// The connection string used to connect to this RabbitMQ instance
-	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
 // RabbitMQMessageQueueResource - RabbitMQMessageQueue connector
@@ -1458,14 +1422,20 @@ type RabbitMQMessageQueuesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMQMessageQueuesListBySubscriptionOptions contains the optional parameters for the RabbitMQMessageQueues.ListBySubscription method.
-type RabbitMQMessageQueuesListBySubscriptionOptions struct {
+// RabbitMQMessageQueuesListByRootScopeOptions contains the optional parameters for the RabbitMQMessageQueues.ListByRootScope method.
+type RabbitMQMessageQueuesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMQMessageQueuesListOptions contains the optional parameters for the RabbitMQMessageQueues.List method.
-type RabbitMQMessageQueuesListOptions struct {
+// RabbitMQMessageQueuesListSecretsOptions contains the optional parameters for the RabbitMQMessageQueues.ListSecrets method.
+type RabbitMQMessageQueuesListSecretsOptions struct {
 	// placeholder for future optional parameters
+}
+
+// RabbitMQSecrets - The secret values for the given RabbitMQMessageQueue resource
+type RabbitMQSecrets struct {
+	// The connection string used to connect to this RabbitMQ instance
+	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
 // RedisCacheList - Object that includes an array of RedisCache and a possible link for next set
@@ -1499,7 +1469,9 @@ type RedisCacheProperties struct {
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
-	Secrets *RedisCachePropertiesSecrets `json:"secrets,omitempty"`
+
+	// The secret values for the given RedisCache resource
+	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -1563,14 +1535,6 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type RedisCachePropertiesSecrets struct {
-	// The Redis connection string used to connect to the redis cache
-	ConnectionString *string `json:"connectionString,omitempty"`
-
-	// The password for this Redis instance
-	Password *string `json:"password,omitempty"`
-}
-
 // RedisCacheResource - RedisCache connector
 type RedisCacheResource struct {
 	TrackedResource
@@ -1616,6 +1580,15 @@ func (r *RedisCacheResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// RedisCacheSecrets - The secret values for the given RedisCache resource
+type RedisCacheSecrets struct {
+	// The connection string used to connect to the redis cache
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// The password for this Redis instance
+	Password *string `json:"password,omitempty"`
+}
+
 // RedisCachesCreateOrUpdateOptions contains the optional parameters for the RedisCaches.CreateOrUpdate method.
 type RedisCachesCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -1631,13 +1604,13 @@ type RedisCachesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedisCachesListBySubscriptionOptions contains the optional parameters for the RedisCaches.ListBySubscription method.
-type RedisCachesListBySubscriptionOptions struct {
+// RedisCachesListByRootScopeOptions contains the optional parameters for the RedisCaches.ListByRootScope method.
+type RedisCachesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedisCachesListOptions contains the optional parameters for the RedisCaches.List method.
-type RedisCachesListOptions struct {
+// RedisCachesListSecretsOptions contains the optional parameters for the RedisCaches.ListSecrets method.
+type RedisCachesListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -1858,13 +1831,8 @@ type SQLDatabasesGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// SQLDatabasesListBySubscriptionOptions contains the optional parameters for the SQLDatabases.ListBySubscription method.
-type SQLDatabasesListBySubscriptionOptions struct {
-	// placeholder for future optional parameters
-}
-
-// SQLDatabasesListOptions contains the optional parameters for the SQLDatabases.List method.
-type SQLDatabasesListOptions struct {
+// SQLDatabasesListByRootScopeOptions contains the optional parameters for the SQLDatabases.ListByRootScope method.
+type SQLDatabasesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 

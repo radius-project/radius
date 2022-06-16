@@ -36,13 +36,13 @@ type HandlerOptions struct {
 	HandlerFactory ControllerFunc
 }
 
-func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, opts HandlerOptions) error {
+func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, opts HandlerOptions) error {
 	sc, err := sp.GetStorageClient(ctx, opts.ResourceType)
 	if err != nil {
 		return err
 	}
 
-	ctrl, err := opts.HandlerFactory(sc, nil)
+	ctrl, err := opts.HandlerFactory(sc, sm)
 	if err != nil {
 		return err
 	}
@@ -70,17 +70,18 @@ func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, o
 func ConfigureDefaultHandlers(
 	ctx context.Context,
 	sp dataprovider.DataStorageProvider,
+	sm manager.StatusManager,
 	rootRouter *mux.Router,
-	scopeRouter *mux.Router,
+	pathBase string,
 	isAzureProvider bool,
 	providerNamespace string,
 	operationCtrlFactory ControllerFunc) error {
 	providerNamespace = strings.ToLower(providerNamespace)
-	rt := fmt.Sprintf("%s/provider", providerNamespace)
+	rt := providerNamespace + "/provider"
 
 	if isAzureProvider {
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
-		err := RegisterHandler(ctx, sp, HandlerOptions{
+		err := RegisterHandler(ctx, sp, sm, HandlerOptions{
 			ParentRouter:   rootRouter.Path(fmt.Sprintf("/providers/%s/operations", providerNamespace)).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 			ResourceType:   rt,
 			Method:         v1.OperationGet,
@@ -90,8 +91,8 @@ func ConfigureDefaultHandlers(
 			return err
 		}
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#creating-or-updating-a-subscription
-		err = RegisterHandler(ctx, sp, HandlerOptions{
-			ParentRouter:   scopeRouter.Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		err = RegisterHandler(ctx, sp, sm, HandlerOptions{
+			ParentRouter:   rootRouter.Path(pathBase).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 			ResourceType:   rt,
 			Method:         v1.OperationPut,
 			HandlerFactory: default_ctrl.NewCreateOrUpdateSubscription,
@@ -101,10 +102,11 @@ func ConfigureDefaultHandlers(
 		}
 	}
 
-	opStatus := fmt.Sprintf("/providers/%s/locations/{location}/operationstatuses/{operationId}", providerNamespace)
-	err := RegisterHandler(ctx, sp, HandlerOptions{
-		ParentRouter:   scopeRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
-		ResourceType:   rt,
+	statusRT := providerNamespace + "/operationstatuses"
+	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", pathBase, providerNamespace)
+	err := RegisterHandler(ctx, sp, sm, HandlerOptions{
+		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationStatuses,
 		HandlerFactory: default_ctrl.NewGetOperationStatus,
 	})
@@ -112,10 +114,10 @@ func ConfigureDefaultHandlers(
 		return err
 	}
 
-	opResult := fmt.Sprintf("/providers/%s/locations/{location}/operationresults/{operationId}", providerNamespace)
-	err = RegisterHandler(ctx, sp, HandlerOptions{
-		ParentRouter:   scopeRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
-		ResourceType:   rt,
+	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", pathBase, providerNamespace)
+	err = RegisterHandler(ctx, sp, sm, HandlerOptions{
+		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
+		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationResult,
 		HandlerFactory: default_ctrl.NewGetOperationResult,
 	})

@@ -27,6 +27,7 @@ type KubernetesEnvironment struct {
 	DefaultApplication       string `mapstructure:"defaultapplication,omitempty"`
 	RadiusRPLocalURL         string `mapstructure:"radiusrplocalurl,omitempty"`
 	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
+	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
 	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
@@ -49,6 +50,10 @@ func (e *KubernetesEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
 
+func (e *KubernetesEnvironment) GetKubeContext() string {
+	return e.Context
+}
+
 func (e *KubernetesEnvironment) GetContainerRegistry() *Registry {
 	return nil
 }
@@ -69,7 +74,7 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.Context, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 
 	if err != nil {
 		return nil, err

@@ -40,27 +40,15 @@ type ApplicationsGetResult struct {
 	ApplicationResource
 }
 
-// ApplicationsListBySubscriptionResponse contains the response from method Applications.ListBySubscription.
-type ApplicationsListBySubscriptionResponse struct {
-	ApplicationsListBySubscriptionResult
+// ApplicationsListByScopeResponse contains the response from method Applications.ListByScope.
+type ApplicationsListByScopeResponse struct {
+	ApplicationsListByScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ApplicationsListBySubscriptionResult contains the result from method Applications.ListBySubscription.
-type ApplicationsListBySubscriptionResult struct {
-	ApplicationResourceList
-}
-
-// ApplicationsListResponse contains the response from method Applications.List.
-type ApplicationsListResponse struct {
-	ApplicationsListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// ApplicationsListResult contains the result from method Applications.List.
-type ApplicationsListResult struct {
+// ApplicationsListByScopeResult contains the result from method Applications.ListByScope.
+type ApplicationsListByScopeResult struct {
 	ApplicationResourceList
 }
 
@@ -106,27 +94,15 @@ type ContainersGetResult struct {
 	ContainerResource
 }
 
-// ContainersListBySubscriptionResponse contains the response from method Containers.ListBySubscription.
-type ContainersListBySubscriptionResponse struct {
-	ContainersListBySubscriptionResult
+// ContainersListByScopeResponse contains the response from method Containers.ListByScope.
+type ContainersListByScopeResponse struct {
+	ContainersListByScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// ContainersListBySubscriptionResult contains the result from method Containers.ListBySubscription.
-type ContainersListBySubscriptionResult struct {
-	ContainerResourceList
-}
-
-// ContainersListResponse contains the response from method Containers.List.
-type ContainersListResponse struct {
-	ContainersListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// ContainersListResult contains the result from method Containers.List.
-type ContainersListResult struct {
+// ContainersListByScopeResult contains the result from method Containers.ListByScope.
+type ContainersListByScopeResult struct {
 	ContainerResourceList
 }
 
@@ -172,27 +148,15 @@ type EnvironmentsGetResult struct {
 	EnvironmentResource
 }
 
-// EnvironmentsListBySubscriptionResponse contains the response from method Environments.ListBySubscription.
-type EnvironmentsListBySubscriptionResponse struct {
-	EnvironmentsListBySubscriptionResult
+// EnvironmentsListByScopeResponse contains the response from method Environments.ListByScope.
+type EnvironmentsListByScopeResponse struct {
+	EnvironmentsListByScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// EnvironmentsListBySubscriptionResult contains the result from method Environments.ListBySubscription.
-type EnvironmentsListBySubscriptionResult struct {
-	EnvironmentResourceList
-}
-
-// EnvironmentsListResponse contains the response from method Environments.List.
-type EnvironmentsListResponse struct {
-	EnvironmentsListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// EnvironmentsListResult contains the result from method Environments.List.
-type EnvironmentsListResult struct {
+// EnvironmentsListByScopeResult contains the result from method Environments.ListByScope.
+type EnvironmentsListByScopeResult struct {
 	EnvironmentResourceList
 }
 
@@ -238,27 +202,15 @@ type GatewaysGetResult struct {
 	GatewayResource
 }
 
-// GatewaysListBySubscriptionResponse contains the response from method Gateways.ListBySubscription.
-type GatewaysListBySubscriptionResponse struct {
-	GatewaysListBySubscriptionResult
+// GatewaysListByScopeResponse contains the response from method Gateways.ListByScope.
+type GatewaysListByScopeResponse struct {
+	GatewaysListByScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// GatewaysListBySubscriptionResult contains the result from method Gateways.ListBySubscription.
-type GatewaysListBySubscriptionResult struct {
-	GatewayResourceList
-}
-
-// GatewaysListResponse contains the response from method Gateways.List.
-type GatewaysListResponse struct {
-	GatewaysListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// GatewaysListResult contains the result from method Gateways.List.
-type GatewaysListResult struct {
+// GatewaysListByScopeResult contains the result from method Gateways.ListByScope.
+type GatewaysListByScopeResult struct {
 	GatewayResourceList
 }
 
@@ -304,27 +256,15 @@ type HTTPRoutesGetResult struct {
 	HTTPRouteResource
 }
 
-// HTTPRoutesListBySubscriptionResponse contains the response from method HTTPRoutes.ListBySubscription.
-type HTTPRoutesListBySubscriptionResponse struct {
-	HTTPRoutesListBySubscriptionResult
+// HTTPRoutesListByScopeResponse contains the response from method HTTPRoutes.ListByScope.
+type HTTPRoutesListByScopeResponse struct {
+	HTTPRoutesListByScopeResult
 	// RawResponse contains the underlying HTTP response.
 	RawResponse *http.Response
 }
 
-// HTTPRoutesListBySubscriptionResult contains the result from method HTTPRoutes.ListBySubscription.
-type HTTPRoutesListBySubscriptionResult struct {
-	HTTPRouteResourceList
-}
-
-// HTTPRoutesListResponse contains the response from method HTTPRoutes.List.
-type HTTPRoutesListResponse struct {
-	HTTPRoutesListResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// HTTPRoutesListResult contains the result from method HTTPRoutes.List.
-type HTTPRoutesListResult struct {
+// HTTPRoutesListByScopeResult contains the result from method HTTPRoutes.ListByScope.
+type HTTPRoutesListByScopeResult struct {
 	HTTPRouteResourceList
 }
 

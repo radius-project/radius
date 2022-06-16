@@ -16,6 +16,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const (
@@ -41,7 +42,12 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
-	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+
+	helmConf, err := HelmConfig(helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -149,6 +155,18 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 	if options.AppCoreTag != "" {
 		appcorerp["tag"] = options.AppCoreTag
+	}
+
+	_, ok = global["ucp"]
+	if !ok {
+		global["ucp"] = make(map[string]interface{})
+	}
+	ucp := global["ucp"].(map[string]interface{})
+	if options.UCPImage != "" {
+		ucp["image"] = options.UCPImage
+	}
+	if options.UCPTag != "" {
+		ucp["tag"] = options.UCPTag
 	}
 
 	return nil

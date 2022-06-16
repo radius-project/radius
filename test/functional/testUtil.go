@@ -8,8 +8,10 @@ package functional
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"testing"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,19 +70,19 @@ func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client) 
 	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
 }
 
-func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort, remotePort int, readyChan chan struct{}, stopChan <-chan struct{}, errChan chan error) {
+func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort, remotePort int, stopChan chan struct{}, readyChan chan struct{}, errorChan chan error) {
 	serviceName := "contour-envoy"
 	label := "app.kubernetes.io/component=envoy"
 
 	// Get the backing pod of the Ingress Service
 	pods, err := client.CoreV1().Pods(RadiusSystemNamespace).List(ctx, metav1.ListOptions{LabelSelector: label, Limit: 1})
 	if err != nil {
-		errChan <- err
+		errorChan <- err
 		return
 	}
 
 	if len(pods.Items) == 0 {
-		errChan <- fmt.Errorf("no pods exist for service: %s", serviceName)
+		errorChan <- fmt.Errorf("no pods exist for service: %s", serviceName)
 		return
 	}
 
@@ -95,22 +97,39 @@ func ExposeIngress(ctx context.Context, client *k8s.Clientset, config *rest.Conf
 
 	transport, upgrader, err := spdy.RoundTripperFor(config)
 	if err != nil {
-		errChan <- err
+		errorChan <- err
 		return
 	}
 
-	out := os.Stdout
-	errOut := os.Stderr
-
 	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", url)
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, url)
 
-	fw, err := portforward.NewOnAddresses(dialer, []string{localHostname}, ports, stopChan, readyChan, out, errOut)
+	tw := TestWriter{t}
+	out, errOut := tw, tw
+
+	forwarder, err := portforward.NewOnAddresses(dialer, []string{localHostname}, ports, stopChan, readyChan, out, errOut)
 	if err != nil {
-		errChan <- err
+		errorChan <- err
 		return
 	}
 
 	// Run the port-forward with the desired configuration
-	errChan <- fw.ForwardPorts()
+	errorChan <- forwarder.ForwardPorts()
+}
+
+func NewTestLogger(t *testing.T) *log.Logger {
+	tw := TestWriter{t}
+	logger := log.Logger{}
+	logger.SetOutput(tw)
+
+	return &logger
+}
+
+type TestWriter struct {
+	t *testing.T
+}
+
+func (tw TestWriter) Write(p []byte) (n int, err error) {
+	tw.t.Log(string(p))
+	return len(p), nil
 }

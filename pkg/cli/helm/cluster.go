@@ -12,6 +12,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/version"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -141,9 +142,16 @@ func InstallOnCluster(ctx context.Context, options ClusterOptions, client client
 	return err
 }
 
-func UninstallOnCluster(ctx context.Context) error {
+func UninstallOnCluster(kubeContext string) error {
 	var helmOutput strings.Builder
-	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
+
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+		Context:   &kubeContext,
+	}
+
+	helmConf, err := HelmConfig(helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}

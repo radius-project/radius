@@ -53,7 +53,7 @@ type AsyncRequestProcessWorker struct {
 	options      Options
 	sm           manager.StatusManager
 	registry     *ControllerRegistry
-	requestQueue queue.Dequeuer
+	requestQueue queue.Client
 
 	sem *semaphore.Weighted
 }
@@ -62,7 +62,7 @@ type AsyncRequestProcessWorker struct {
 func New(
 	options Options,
 	sm manager.StatusManager,
-	qu queue.Dequeuer,
+	qu queue.Client,
 	ctrlRegistry *ControllerRegistry) *AsyncRequestProcessWorker {
 	return &AsyncRequestProcessWorker{
 		options:      options,
@@ -94,13 +94,13 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			defer w.sem.Release(1)
 
 			op := msgreq.Data.(*ctrl.Request)
-			opLogger := logger.WithValues([]interface{}{
+			opLogger := logger.WithValues(
 				"OperationID", op.OperationID.String(),
 				"OperationType", op.OperationType,
 				"ResourceID", op.ResourceID,
 				"CorrleationID", op.CorrelationID,
 				"W3CTraceID", op.TraceparentID,
-			})
+			)
 
 			opType, ok := v1.ParseOperationType(op.OperationType)
 			if !ok {

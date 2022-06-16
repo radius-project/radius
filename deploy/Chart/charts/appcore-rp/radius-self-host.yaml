@@ -12,6 +12,8 @@ storageProvider:
     incluster: true 
     context: ''
     namespace: 'radius-system'
+queueProvider:
+  provider: inmemory
 metricsProvider:
   prometheus:
     endpoint: "/metrics"

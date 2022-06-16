@@ -25,18 +25,18 @@ import (
 type ExtendersClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewExtendersClient creates a new instance of ExtendersClient with the specified values.
-func NewExtendersClient(con *arm.Connection, subscriptionID string) *ExtendersClient {
-	return &ExtendersClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewExtendersClient(con *arm.Connection, rootScope string) *ExtendersClient {
+	return &ExtendersClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Creates or updates a Extender resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ExtendersClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, extenderName string, extenderParameters ExtenderResource, options *ExtendersCreateOrUpdateOptions) (ExtendersCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, extenderName, extenderParameters, options)
+func (client *ExtendersClient) CreateOrUpdate(ctx context.Context, extenderName string, extenderParameters ExtenderResource, options *ExtendersCreateOrUpdateOptions) (ExtendersCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, extenderName, extenderParameters, options)
 	if err != nil {
 		return ExtendersCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *ExtendersClient) CreateOrUpdate(ctx context.Context, resourceGroup
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, extenderName string, extenderParameters ExtenderResource, options *ExtendersCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/extenders/{extenderName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, extenderName string, extenderParameters ExtenderResource, options *ExtendersCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *ExtendersClient) createOrUpdateHandleError(resp *http.Response) er
 
 // Delete - Deletes an existing extender resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ExtendersClient) Delete(ctx context.Context, resourceGroupName string, extenderName string, options *ExtendersDeleteOptions) (ExtendersDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, extenderName, options)
+func (client *ExtendersClient) Delete(ctx context.Context, extenderName string, options *ExtendersDeleteOptions) (ExtendersDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, extenderName, options)
 	if err != nil {
 		return ExtendersDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *ExtendersClient) Delete(ctx context.Context, resourceGroupName str
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, extenderName string, options *ExtendersDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/extenders/{extenderName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, extenderName string, options *ExtendersDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *ExtendersClient) deleteHandleError(resp *http.Response) error {
 
 // Get - Retrieves information about a extender resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ExtendersClient) Get(ctx context.Context, resourceGroupName string, extenderName string, options *ExtendersGetOptions) (ExtendersGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, extenderName, options)
+func (client *ExtendersClient) Get(ctx context.Context, extenderName string, options *ExtendersGetOptions) (ExtendersGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, extenderName, options)
 	if err != nil {
 		return ExtendersGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *ExtendersClient) Get(ctx context.Context, resourceGroupName string
 }
 
 // getCreateRequest creates the Get request.
-func (client *ExtendersClient) getCreateRequest(ctx context.Context, resourceGroupName string, extenderName string, options *ExtendersGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/extenders/{extenderName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *ExtendersClient) getCreateRequest(ctx context.Context, extenderName string, options *ExtendersGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *ExtendersClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - Lists information about all extender resources in the given subscription and resource group
+// ListByRootScope - Lists information about all extender resources in the given root scope
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *ExtendersClient) List(resourceGroupName string, options *ExtendersListOptions) (*ExtendersListPager) {
-	return &ExtendersListPager{
+func (client *ExtendersClient) ListByRootScope(options *ExtendersListByRootScopeOptions) (*ExtendersListByRootScopePager) {
+	return &ExtendersListByRootScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByRootScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp ExtendersListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp ExtendersListByRootScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.ExtenderList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *ExtendersClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *ExtendersListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/extenders"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *ExtendersClient) listByRootScopeCreateRequest(ctx context.Context, options *ExtendersListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/extenders"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *ExtendersClient) listCreateRequest(ctx context.Context, resourceGr
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *ExtendersClient) listHandleResponse(resp *http.Response) (ExtendersListResponse, error) {
-	result := ExtendersListResponse{RawResponse: resp}
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *ExtendersClient) listByRootScopeHandleResponse(resp *http.Response) (ExtendersListByRootScopeResponse, error) {
+	result := ExtendersListByRootScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderList); err != nil {
-		return ExtendersListResponse{}, err
+		return ExtendersListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *ExtendersClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - Lists information about all extender resources in the given subscription
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *ExtendersClient) ListBySubscription(options *ExtendersListBySubscriptionOptions) (*ExtendersListBySubscriptionPager) {
-	return &ExtendersListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp ExtendersListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.ExtenderList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *ExtendersClient) listBySubscriptionCreateRequest(ctx context.Context, options *ExtendersListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Connector/extenders"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *ExtendersClient) listBySubscriptionHandleResponse(resp *http.Response) (ExtendersListBySubscriptionResponse, error) {
-	result := ExtendersListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderList); err != nil {
-		return ExtendersListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *ExtendersClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByRootScopeHandleError handles the ListByRootScope error response.
+func (client *ExtendersClient) listByRootScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
