@@ -86,7 +86,10 @@ func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) err
 	err := runInstall(installClient, helmChart)
 	fmt.Println("Did it work? ")
 	if err != nil {
-		fmt.Errorf("OSM installation failed, err: %w, helm output: %s", err, helmOutput.String())
+		// Why was the error not caught here
+		fmt.Println("The error is caught in the if statement")
+		fmt.Println(err)
+		return fmt.Errorf("OSM installation failed, err: %w, helm output: %s", err, helmOutput.String())
 	}
 	// if err != nil {
 	// 	upgradeClient := helm.NewUpgrade(helmConf)
