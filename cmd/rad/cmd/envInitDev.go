@@ -54,7 +54,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	envName, err := selectEnvironment(cmd, "dev", sharedArgs.Interactive)
+	environmentName, err := selectEnvironment(cmd, "dev", sharedArgs.Interactive)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	}
 
 	params := &DevEnvironmentParams{
-		Name:      envName,
+		Name:      environmentName,
 		Providers: &environments.Providers{AzureProvider: azureProvider},
 	}
 
@@ -79,7 +79,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, foundConflict := env.Items[envName]
+	_, foundConflict := env.Items[environmentName]
 	if foundConflict {
 		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", params.Name, params.Name)
 	}
@@ -121,14 +121,6 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if featureflag.EnableUnifiedControlPlane.IsActive() {
-		if createUCPResourceGroup(cluster.ContextName, sharedArgs.Namespace) != nil {
-			return err
-		}
-	}
-
-	output.CompleteStep(step)
-
 	// Persist settings
 	env.Items[params.Name] = map[string]interface{}{
 		"kind":        "dev",
@@ -139,9 +131,18 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 			PushEndpoint: cluster.RegistryPushEndpoint,
 			PullEndpoint: cluster.RegistryPullEndpoint,
 		},
-		"ucpresourcegroupname": "default",
 		"enableucp":            strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
 	}
+
+	if featureflag.EnableUnifiedControlPlane.IsActive() {
+		rgName := fmt.Sprintf("%s-rg", environmentName)
+		env.Items[params.Name]["ucpresourcegroupname"] = rgName
+		if createUCPResourceGroup(cluster.ContextName, rgName) != nil {
+			return err
+		}
+	}
+
+	output.CompleteStep(step)
 
 	if params.Providers != nil {
 		providerData := map[string]interface{}{}

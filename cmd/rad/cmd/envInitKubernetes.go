@@ -100,21 +100,24 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	
+	env.Items[environmentName] = map[string]interface{}{
+		"kind":                 environments.KindKubernetes,
+		"context":              contextName,
+		"namespace":            sharedArgs.Namespace,
+		"enableucp":            strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
+	}
+
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
-		if createUCPResourceGroup(contextName, sharedArgs.Namespace) != nil {
+		rgName := fmt.Sprintf("%s-rg", environmentName)
+		env.Items[environmentName]["ucpresourcegroupname"] = rgName
+		if createUCPResourceGroup(contextName, rgName) != nil {
 			return err
 		}
 	}
 
 	output.CompleteStep(step)
 
-	env.Items[environmentName] = map[string]interface{}{
-		"kind":                 environments.KindKubernetes,
-		"context":              contextName,
-		"namespace":            sharedArgs.Namespace,
-		"ucpresourcegroupname": "default",
-		"enableucp":            strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
-	}
 
 	if err := cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(environmentName))); err != nil {
 		return err
