@@ -177,7 +177,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 	}, nil
 }
 
-func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
+func (e *LocalEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
 	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
@@ -185,7 +185,7 @@ func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.
 
 	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
-	return &azure.ARMManagementClient{
+	return &azure.LegacyARMManagementClient{
 		Connection:      connection,
 		SubscriptionID:  subscriptionID,
 		ResourceGroup:   resourceGroup,
@@ -199,7 +199,7 @@ func (e *LocalEnvironment) CreateServerLifecycleClient(ctx context.Context) (cli
 	}, nil
 }
 
-func (e *LocalEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
+func (e *LocalEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
 	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
@@ -208,7 +208,7 @@ func (e *LocalEnvironment) CreateUCPManagementClient(ctx context.Context) (clien
 	//ignore subscription Id as it is not required for dev environment
 	_, resourceGroup := e.GetAzureProviderDetails()
 
-	return &ucp.ARMUCPManagementClient{
+	return &ucp.ARMApplicationsManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		RootScope:       "/ResourceGroups/" + resourceGroup,

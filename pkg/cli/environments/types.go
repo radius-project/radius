@@ -77,30 +77,30 @@ func CreateDiagnosticsClient(ctx context.Context, env Environment) (clients.Diag
 	return de.CreateDiagnosticsClient(ctx)
 }
 
-type ManagementEnvironment interface {
-	CreateManagementClient(ctx context.Context) (clients.ManagementClient, error)
+type LegacyManagementEnvironment interface {
+	CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error)
 }
 
-func CreateManagementClient(ctx context.Context, env Environment) (clients.ManagementClient, error) {
-	me, ok := env.(ManagementEnvironment)
+func CreateLegacyManagementClient(ctx context.Context, env Environment) (clients.LegacyManagementClient, error) {
+	me, ok := env.(LegacyManagementEnvironment)
 	if !ok {
 		return nil, fmt.Errorf("an environment of kind '%s' does not support management operations", env.GetKind())
 	}
 
-	return me.CreateManagementClient(ctx)
+	return me.CreateLegacyManagementClient(ctx)
 }
 
-type AppManagementEnvironment interface {
-	CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error)
+type ApplicationsManagementEnvironment interface {
+	CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error)
 }
 
-func CreateAppServiceManagementClient(ctx context.Context, env Environment) (clients.AppManagementClient, error) {
-	me, ok := env.(AppManagementEnvironment)
+func CreateApplicationsManagementClient(ctx context.Context, env Environment) (clients.ApplicationsManagementClient, error) {
+	me, ok := env.(ApplicationsManagementEnvironment)
 	if !ok {
 		return nil, fmt.Errorf("an environment of kind '%s' does not support management operations", env.GetKind())
 	}
 
-	return me.CreateUCPManagementClient(ctx)
+	return me.CreateApplicationsManagementClient(ctx)
 }
 
 type ServerLifecycleEnvironment interface {

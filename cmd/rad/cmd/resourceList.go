@@ -55,7 +55,7 @@ func listResources(cmd *cobra.Command, args []string, env environments.Environme
 		return err
 	}
 
-	client, err := environments.CreateManagementClient(cmd.Context(), env)
+	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func listResourcesUCP(cmd *cobra.Command, args []string, env environments.Enviro
 		return err
 	}
 
-	client, err := environments.CreateAppServiceManagementClient(cmd.Context(), env)
+	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}

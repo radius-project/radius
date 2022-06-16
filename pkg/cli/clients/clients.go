@@ -106,8 +106,8 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
-// ManagementClient is used to interface with management features like listing applications and resources.
-type ManagementClient interface {
+// LegacyManagementClient is used to interface with management features like listing applications and resources.
+type LegacyManagementClient interface {
 	ListApplications(ctx context.Context) (*radclient.ApplicationList, error)
 	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) error
@@ -116,8 +116,8 @@ type ManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
 }
 
-// AppManagementClient is used to interface with management features like listing resources by app, show details of a resource.
-type AppManagementClient interface {
+// ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
+type ApplicationsManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error)
 }
 

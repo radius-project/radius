@@ -66,7 +66,7 @@ func showResource(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client, err := environments.CreateManagementClient(cmd.Context(), env)
+	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}

@@ -14,13 +14,13 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 )
 
-type ARMUCPManagementClient struct {
+type ARMApplicationsManagementClient struct {
 	EnvironmentName string
 	Connection      *arm.Connection
 	RootScope       string
 }
 
-var _ clients.AppManagementClient = (*ARMUCPManagementClient)(nil)
+var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(nil)
 
 var (
 	resourceOperationList = []azureresources.AzureResourceOperationsModel{
@@ -44,7 +44,7 @@ var (
 )
 
 // ListAllResourcesByApplication lists the resources of a particular application
-func (um *ARMUCPManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error) {
+func (um *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error) {
 	rootScope := um.RootScope
 	resourceListByApplication := make([]v20220315privatepreview.Resource, 0)
 	for _, resourceOperation := range resourceOperationList {

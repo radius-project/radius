@@ -147,13 +147,13 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	}, nil
 }
 
-func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
+func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
 	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &azure.ARMManagementClient{
+	return &azure.LegacyARMManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		ResourceGroup:   e.ResourceGroup,
@@ -161,13 +161,13 @@ func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (cli
 	}, nil
 }
 
-func (e *AzureCloudEnvironment) CreateUCPManagementClient(ctx context.Context) (clients.AppManagementClient, error) {
+func (e *AzureCloudEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
 	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ucp.ARMUCPManagementClient{
+	return &ucp.ARMApplicationsManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		RootScope:       "/Subscriptions/" + e.SubscriptionID + "/ResourceGroups/" + e.ResourceGroup,
