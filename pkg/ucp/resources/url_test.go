@@ -13,9 +13,6 @@ import (
 
 func Test_ExtractPlanesPrefixFromURLPath_Invalid(t *testing.T) {
 	data := []string{
-		// ucp prefix does not appear in URL
-		"ucp:/planes/radius/local/foo",
-
 		"planes/radius", // Not long enough
 
 		"planes//foo", // Empty segment
