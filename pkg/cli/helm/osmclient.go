@@ -76,7 +76,7 @@ func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) err
 	installClient.ReleaseName = OSMReleaseName
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
-	fmt.Println("Time to run install! Hopefully this works!")
+	fmt.Println("Time to run install! Hopefully it works!")
 	// , err := installClient.Run(helmChart, helmChart.Values)
 	err := runInstall(installClient, helmChart)
 	fmt.Println("OSM is so werid. Did it work? ")
