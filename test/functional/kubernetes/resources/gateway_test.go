@@ -70,10 +70,8 @@ func Test_Gateway(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetes.ApplicationTest) {
-				// Get hostname from root HTTPProxy
-				// Note: this just gets the hostname from the first root proxy
-				// that it finds. Testing multiple gateways here will not work.
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client)
+				// Get hostname from root HTTPProxy in 'application' namespace
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client, application)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
