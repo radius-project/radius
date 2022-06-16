@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
+	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
 	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateway"
 	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
@@ -42,6 +43,10 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	hrtSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/httproutes").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
+
+	ctrRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/containers").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	ctrResourceRouter := ctrRTSubrouter.PathPrefix("/{container}").Subrouter()
 
 	// Adds application resource type routes
 	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/applications").
@@ -114,6 +119,12 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ResourceType:   hrt_ctrl.ResourceTypeName,
 			Method:         v1.OperationDelete,
 			HandlerFactory: hrt_ctrl.NewDeleteHTTPRoute,
+		},
+		{
+			ParentRouter:   ctrResourceRouter,
+			ResourceType:   ctr_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: ctr_ctrl.NewCreateOrUpdateContainer,
 		},
 		// Applications resource handler registration.
 		{

@@ -415,3 +415,54 @@ func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
 	routingScope := id.RoutingScope()
 	require.Equal(t, "", routingScope)
 }
+
+func TestPlaneNamespace(t *testing.T) {
+	tests := []struct {
+		desc     string
+		id       string
+		parseErr bool
+		plane    string
+	}{
+		{
+			"empty-id",
+			"",
+			true,
+			"",
+		},
+		{
+			"arm-container-resource",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/test-container-0",
+			false,
+			"",
+		},
+		{
+			"ucp-invalid-resource",
+			"ucp:/planes/radius",
+			true,
+			"",
+		},
+		{
+			"ucp-valid-resource",
+			"ucp:/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/containers/test-container-0",
+			false,
+			"radius/local",
+		},
+		{
+			"ucp-missing-plane-name",
+			"ucp:/planes/radius/resourceGroups/radius-test-rg/providers/Applications.Core/containers/test-container-0",
+			true,
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			rID, err := Parse(tt.id)
+			if tt.parseErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.plane, rID.PlaneNamespace())
+		})
+	}
+}
