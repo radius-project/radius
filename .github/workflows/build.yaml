@@ -323,6 +323,15 @@ jobs:
         export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-kubernetes
+    # GitHub Action reference: https://github.com/jupyterhub/action-k8s-namespace-report
+    - name: Kubernetes namespace report
+      uses: jupyterhub/action-k8s-namespace-report@v1
+      if: always()
+      with:
+        namespace: radius-system
+      #   pod-selector: app.kubernetes.io/component notin (secret-server,boring-server)
+      #   important-workloads: deploy/my-deployment sts/my-statefulset
+
     - name: Run 'rad env delete'
       if: always()
       run: |
