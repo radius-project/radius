@@ -18,14 +18,14 @@ var resourceListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists application resources",
 	Long:  "List all the resources in the specified application",
-	RunE:  listResourcesRouter,
+	RunE:  listResources,
 }
 
 func init() {
 	resourceCmd.AddCommand(resourceListCmd)
 }
 
-func listResourcesRouter(cmd *cobra.Command, args []string) error {
+func listResources(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
@@ -41,7 +41,7 @@ func listResourcesRouter(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		err := listResources(cmd, args, env)
+		err := listResourcesLegacy(cmd, args, env)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ func listResourcesRouter(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func listResources(cmd *cobra.Command, args []string, env environments.Environment) error {
+func listResourcesLegacy(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
