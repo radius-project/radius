@@ -16,6 +16,7 @@ import (
 
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
+	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateway"
 	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
 )
 
@@ -46,6 +47,11 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/applications").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	appResourceRouter := appRTSubrouter.PathPrefix("/{application}").Subrouter()
+
+	// Adds gateway resource type routes
+	gtwyRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/gateways").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	gtwyResourceRouter := gtwyRTSubrouter.PathPrefix("/{application}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{
 		// Environments resource handler registration.
@@ -139,6 +145,20 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ResourceType:   app_ctrl.ResourceTypeName,
 			Method:         v1.OperationDelete,
 			HandlerFactory: app_ctrl.NewDeleteApplication,
+		},
+		// Gateway resource handler registration.
+		// TODO: Add async registration for createorupdate and delete handler
+		{
+			ParentRouter:   gtwyRTSubrouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: gtwy_ctrl.NewListGateways,
+		},
+		{
+			ParentRouter:   gtwyResourceRouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: gtwy_ctrl.NewGetGateway,
 		},
 	}
 	for _, h := range handlerOptions {

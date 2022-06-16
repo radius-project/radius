@@ -176,6 +176,17 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			// TODO: add CREATE, UPDATE and DELETE operations for gateway resource after async implementation
+			&v1.Operation{
+				Name: "Applications.Core/gateways/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "gateways",
+					Operation:   "List gateways",
+					Description: "Get the list of gateways.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }
