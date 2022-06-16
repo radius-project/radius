@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -43,6 +44,9 @@ const (
 
 	// minMessageLockDuration is the minimum duration of message lock duration.
 	minMessageLockDuration = time.Duration(5) * time.Second
+
+	// deduplicationDuration is the duration for the deduplication detection.
+	deduplicationDuration = time.Duration(30) * time.Second
 )
 
 type Options struct {
@@ -129,6 +133,20 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			// 1. The same message is delivered twice in multiple instances.
 			// 2. provisioningState is not matched between resource and operationStatuses
 
+			dup, err := w.isDuplicated(ctx, ctrl.StorageClient(), op.ResourceID, op.OperationID)
+			if err != nil {
+				logger.Error(err, "failed to check potential deduplication.")
+				return
+			}
+			if dup {
+				opLogger.V(radlogger.Warn).Info("duplicated message detected")
+				return
+			}
+
+			if err = w.updateResourceAndOperationStatus(ctx, ctrl.StorageClient(), op.ResourceID, op.OperationID, v1.ProvisioningStateUpdating, nil); err != nil {
+				return
+			}
+
 			opCtx := logr.NewContext(ctx, opLogger)
 			w.runOperation(opCtx, msgreq, ctrl)
 		}(msg)
@@ -211,21 +229,8 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	logger := logr.FromContextOrDiscard(ctx)
 	req := message.Data.(*ctrl.Request)
 
-	rID, err := resources.Parse(req.ResourceID)
+	err := w.updateResourceAndOperationStatus(ctx, sc, req.ResourceID, req.OperationID, result.ProvisioningState(), result.Error)
 	if err != nil {
-		logger.Error(err, "failed to parse resource ID")
-		return
-	}
-
-	if err = updateResourceState(ctx, sc, rID.String(), result.ProvisioningState()); err != nil {
-		logger.Error(err, "failed to update the provisioningState in resource.")
-		return
-	}
-
-	now := time.Now().UTC()
-	err = w.sm.Update(ctx, rID.RootScope(), req.OperationID, result.ProvisioningState(), &now, result.Error)
-	if err != nil {
-		logger.Error(err, "failed to update operationstatus", "OperationID", req.OperationID.String())
 		return
 	}
 
@@ -235,6 +240,49 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 			logger.Error(err, "failed to finish the message")
 		}
 	}
+}
+
+func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID, state v1.ProvisioningState, opErr *armerrors.ErrorDetails) error {
+	logger := logr.FromContextOrDiscard(ctx)
+
+	rID, err := resources.Parse(resourceID)
+	if err != nil {
+		logger.Error(err, "failed to parse resource ID")
+		return err
+	}
+
+	if err = updateResourceState(ctx, sc, rID.String(), state); err != nil {
+		logger.Error(err, "failed to update the provisioningState in resource.")
+		return err
+	}
+
+	now := time.Now().UTC()
+	err = w.sm.Update(ctx, rID.RootScope(), operationID, state, &now, opErr)
+	if err != nil {
+		logger.Error(err, "failed to update operationstatus", "OperationID", operationID.String())
+		return err
+	}
+
+	return nil
+}
+
+func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID) (bool, error) {
+	rID, err := resources.Parse(resourceID)
+	if err != nil {
+		return false, err
+	}
+
+	status, err := w.sm.Get(ctx, rID.RootScope(), operationID)
+	if err != nil {
+		return false, err
+	}
+
+	if status.Status == v1.ProvisioningStateUpdating && status.LastUpdatedTime.IsZero() &&
+		status.LastUpdatedTime.Add(deduplicationDuration).After(time.Now().UTC()) {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func getMessageExtendDuration(visibleAt time.Time) time.Duration {

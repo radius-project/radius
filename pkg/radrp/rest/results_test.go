@@ -3,15 +3,18 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T) {
@@ -523,4 +526,58 @@ func Test_OKResponse_WithBody(t *testing.T) {
 	err = json.Unmarshal(w.Body.Bytes(), &body)
 	require.NoError(t, err)
 	require.Equal(t, payload, body)
+}
+
+func TestGetAsyncLocationPath(t *testing.T) {
+	operationID := uuid.New()
+
+	testCases := []struct {
+		desc     string
+		rID      string
+		rType    string
+		loc      string
+		opID     uuid.UUID
+		expected string
+	}{
+		{
+			"ucp-location-header",
+			"ucp:/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"operationResults",
+			"global",
+			operationID,
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
+		},
+		{
+			"ucp-azure-asyncoperation-header",
+			"ucp:/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"operationStatuses",
+			"global",
+			operationID,
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+		},
+		{
+			"arm-location-header",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"operationResults",
+			"global",
+			operationID,
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
+		},
+		{
+			"arm-azure-asyncoperation-header",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"operationStatuses",
+			"global",
+			operationID,
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			resourceID, err := resources.Parse(tt.rID)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, getAsyncLocationPath(resourceID, tt.loc, tt.rType, tt.opID))
+		})
+	}
 }
