@@ -36,7 +36,6 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 
 	// ChartPath is not one of the OSMoptions, so we will just retrieve the chart from the container registry
 	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, OSMHelmRepo, OSMReleaseName)
-
 	if err != nil {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -50,7 +49,6 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	// Invoke the installation of OSM control plane
-
 	// retrieve the history of the releases
 	_, err = histClient.Run(OSMReleaseName)
 	// if a previous release is not found
@@ -70,28 +68,33 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 }
 
 func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
-	// installClient := helm.NewInstall(helmConf)
-	// installClient.Namespace = RadiusSystemNamespace
-	// installClient.ReleaseName = OSMReleaseName
-	// installClient.Wait = true
-	// installClient.Timeout = installTimeout
-	// err := runInstall(installClient, helmChart)
-	// if err != nil {
-	upgradeClient := helm.NewUpgrade(helmConf)
-	// upgradeClient.Install = true
-	upgradeClient.Wait = true
-	upgradeClient.Timeout = installTimeout
-	upgradeClient.Namespace = RadiusSystemNamespace
-	modification := map[string]interface{}{
-		"OpenServiceMesh": map[string]interface{}{
-			"install": true,
-		},
+	var helmOutput strings.Builder
+	installClient := helm.NewInstall(helmConf)
+	installClient.Namespace = RadiusSystemNamespace
+	installClient.ReleaseName = OSMReleaseName
+	installClient.Wait = true
+	installClient.Timeout = installTimeout
+	// , err := installClient.Run(helmChart, helmChart.Values)
+	err := runInstall(installClient, helmChart)
+	if err != nil {
+		fmt.Errorf("OSM installation failed, err: %w, helm output: %s", err, helmOutput.String())
 	}
-	helmChart.Values = MergeMaps(helmChart.Values, modification)
-	_, err := upgradeClient.Run(OSMReleaseName, helmChart, helmChart.Values)
-	return err
+	// if err != nil {
+	// 	upgradeClient := helm.NewUpgrade(helmConf)
+	// 	// upgradeClient.Install = true
+	// 	upgradeClient.Wait = true
+	// 	upgradeClient.Timeout = installTimeout
+	// 	upgradeClient.Namespace = RadiusSystemNamespace
+	// 	modification := map[string]interface{}{
+	// 		"OpenServiceMesh": map[string]interface{}{
+	// 			"install": true,
+	// 		},
+	// 	}
+	// 	helmChart.Values = MergeMaps(helmChart.Values, modification)
+	// 	_, err := upgradeClient.Run(OSMReleaseName, helmChart, helmChart.Values)
+	// 	return err
 	// }
-	// return err
+	return err
 }
 
 func RunOSMHelmUninstall(helmConf *helm.Configuration) error {
@@ -115,6 +118,7 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 		"OpenServiceMesh": map[string]interface{}{
 			"enablePermissiveTrafficPolicy": true,
 			"osmNamespace":                  RadiusSystemNamespace,
+			"controllerLogLevel":            "debug",
 			"injector": map[string]interface{}{
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
