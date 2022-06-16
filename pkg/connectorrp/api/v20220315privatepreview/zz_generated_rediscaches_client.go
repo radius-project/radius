@@ -26,12 +26,11 @@ type RedisCachesClient struct {
 	ep string
 	pl runtime.Pipeline
 	rootScope string
-	subscriptionID string
 }
 
 // NewRedisCachesClient creates a new instance of RedisCachesClient with the specified values.
-func NewRedisCachesClient(con *arm.Connection, rootScope string, subscriptionID string) *RedisCachesClient {
-	return &RedisCachesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope, subscriptionID: subscriptionID}
+func NewRedisCachesClient(con *arm.Connection, rootScope string) *RedisCachesClient {
+	return &RedisCachesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Creates or updates a RedisCache resource
@@ -282,10 +281,6 @@ func (client *RedisCachesClient) ListSecrets(ctx context.Context, redisCacheName
 // listSecretsCreateRequest creates the ListSecrets request.
 func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, redisCacheName string, options *RedisCachesListSecretsOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
