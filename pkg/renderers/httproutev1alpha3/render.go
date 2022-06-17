@@ -32,12 +32,32 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	route := radclient.HTTPRouteProperties{}
+	// route := radclient.HTTPRouteProperties{}
+	// resource := options.Resource
+	// port := kubernetes.GetDefaultPort()
+	// err := resource.ConvertDefinition(&route)
+	// if err != nil {
+	// 	return renderers.RendererOutput{}, err
+	// }
+
+	// if route.Port == nil {
+	// 	defaultPort := kubernetes.GetDefaultPort()
+	// 	route = &radclient.HTTPRouteProperties{
+	// 		Port: &defaultPort,
+	// 	}
+	// }
 	resource := options.Resource
-	port := kubernetes.GetDefaultPort()
-	err := resource.ConvertDefinition(&route)
+
+	route, err := r.convert(resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
+	}
+
+	if route == nil || route.Port == nil {
+		defaultPort := kubernetes.GetDefaultPort()
+		route = &radclient.HTTPRouteProperties{
+			Port: &defaultPort,
+		}
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
@@ -45,10 +65,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 		},
 		"port": {
-			Value: port,
+			Value: *route.Port,
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), port),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), *route.Port),
 		},
 		"scheme": {
 			Value: "http",
@@ -74,9 +94,10 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}, nil
 }
 
-func (r *Renderer) makeService(resource renderers.RendererResource, route radclient.HTTPRouteProperties) outputresource.OutputResource {
+func (r *Renderer) makeService(resource renderers.RendererResource, route *radclient.HTTPRouteProperties) outputresource.OutputResource {
 	typeParts := strings.Split(resource.ResourceType, "/")
-	port := kubernetes.GetDefaultPort()
+	resourceType := typeParts[len(typeParts)-1]
+
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -88,13 +109,13 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, typeParts[len(typeParts)-1], resource.ResourceName),
+			Selector: kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, resourceType, resource.ResourceName),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       resource.ResourceName,
-					Port:       int32(port),
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + typeParts[len(typeParts)-1] + resource.ResourceName)),
+					Port:       *route.Port,
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
@@ -104,7 +125,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route radcli
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
-func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route radclient.HTTPRouteProperties, options renderers.RenderOptions) outputresource.OutputResource {
+func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *radclient.HTTPRouteProperties, options renderers.RenderOptions) outputresource.OutputResource {
 	namespace := resource.ApplicationName
 	dependencies := options.Dependencies
 	numBackends := len(dependencies)
@@ -137,4 +158,14 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route r
 		trafficsplit.Spec.Backends = append(trafficsplit.Spec.Backends, tsBackend)
 	}
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, trafficsplit, trafficsplit.ObjectMeta)
+}
+
+func (r Renderer) convert(resource renderers.RendererResource) (*radclient.HTTPRouteProperties, error) {
+	properties := &radclient.HTTPRouteProperties{}
+	err := resource.ConvertDefinition(&properties)
+	if err != nil {
+		return nil, err
+	}
+
+	return properties, nil
 }

@@ -73,21 +73,13 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 }
 
 func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, helmOutput strings.Builder) error {
-	fmt.Println("Installed reached")
 	installClient := helm.NewInstall(helmConf)
-	fmt.Println("Install client created!:)")
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.ReleaseName = OSMReleaseName
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
-	fmt.Println("Time to run install! Hopefully it works!")
-	// , err := installClient.Run(helmChart, helmChart.Values)
 	err := runInstall(installClient, helmChart)
-	fmt.Println("Did it work? ")
 	if err != nil {
-		// Why was the error not caught here
-		fmt.Println("The error is caught in the if statement")
-		fmt.Println(err)
 		return fmt.Errorf("OSM installation failed, err: %w, helm output: %s", err, helmOutput.String())
 	}
 	// if err != nil {
