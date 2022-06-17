@@ -511,8 +511,8 @@ func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persiste
 	// Make volumeMount spec
 	volumeMountSpec := corev1.VolumeMount{}
 	volumeMountSpec.Name = volumeName
-	volumeMountSpec.MountPath = persistentVolume.MountPath
 	if persistentVolume != nil && persistentVolume.Rbac == datamodel.VolumeRbacRead {
+		volumeMountSpec.MountPath = persistentVolume.MountPath
 		volumeMountSpec.ReadOnly = true
 	}
 	return volumeSpec, volumeMountSpec, nil
@@ -633,9 +633,7 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 		if len(connection.Iam.Roles) < 1 {
 			return nil, fmt.Errorf("rbac permissions are required to access Azure connections")
 		}
-		for _, role := range connection.Iam.Roles {
-			roleNames = append(roleNames, role)
-		}
+		roleNames = append(roleNames, connection.Iam.Roles...)
 		armResourceIdentifier = connection.Source
 	} else {
 		// We're reporting errors in this code path to avoid obscuring a bug in another layer of the system.
