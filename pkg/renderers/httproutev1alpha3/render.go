@@ -27,7 +27,7 @@ import (
 type Renderer struct {
 }
 
-func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
 	return nil, nil, nil
 }
 
