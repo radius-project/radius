@@ -25,18 +25,18 @@ import (
 type EnvironmentsClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewEnvironmentsClient creates a new instance of EnvironmentsClient with the specified values.
-func NewEnvironmentsClient(con *arm.Connection, subscriptionID string) *EnvironmentsClient {
-	return &EnvironmentsClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewEnvironmentsClient(con *arm.Connection, rootScope string) *EnvironmentsClient {
+	return &EnvironmentsClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Create or update an Environment.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsCreateOrUpdateOptions) (EnvironmentsCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, environmentName, environmentResource, options)
+func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsCreateOrUpdateOptions) (EnvironmentsCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, environmentName, environmentResource, options)
 	if err != nil {
 		return EnvironmentsCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, resourceGr
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments/{environmentName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Context, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *EnvironmentsClient) createOrUpdateHandleError(resp *http.Response)
 
 // Delete - Delete an Environment.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *EnvironmentsClient) Delete(ctx context.Context, resourceGroupName string, environmentName string, options *EnvironmentsDeleteOptions) (EnvironmentsDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, environmentName, options)
+func (client *EnvironmentsClient) Delete(ctx context.Context, environmentName string, options *EnvironmentsDeleteOptions) (EnvironmentsDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, environmentName, options)
 	if err != nil {
 		return EnvironmentsDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *EnvironmentsClient) Delete(ctx context.Context, resourceGroupName 
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, environmentName string, options *EnvironmentsDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments/{environmentName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, environmentName string, options *EnvironmentsDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *EnvironmentsClient) deleteHandleError(resp *http.Response) error {
 
 // Get - Gets the properties of an Environment.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *EnvironmentsClient) Get(ctx context.Context, resourceGroupName string, environmentName string, options *EnvironmentsGetOptions) (EnvironmentsGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, environmentName, options)
+func (client *EnvironmentsClient) Get(ctx context.Context, environmentName string, options *EnvironmentsGetOptions) (EnvironmentsGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, environmentName, options)
 	if err != nil {
 		return EnvironmentsGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *EnvironmentsClient) Get(ctx context.Context, resourceGroupName str
 }
 
 // getCreateRequest creates the Get request.
-func (client *EnvironmentsClient) getCreateRequest(ctx context.Context, resourceGroupName string, environmentName string, options *EnvironmentsGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments/{environmentName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *EnvironmentsClient) getCreateRequest(ctx context.Context, environmentName string, options *EnvironmentsGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *EnvironmentsClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - List of Environments.
+// ListByScope - List all environments in a scope.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *EnvironmentsClient) List(resourceGroupName string, options *EnvironmentsListOptions) (*EnvironmentsListPager) {
-	return &EnvironmentsListPager{
+func (client *EnvironmentsClient) ListByScope(options *EnvironmentsListByScopeOptions) (*EnvironmentsListByScopePager) {
+	return &EnvironmentsListByScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp EnvironmentsListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp EnvironmentsListByScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.EnvironmentResourceList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *EnvironmentsClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *EnvironmentsListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+// listByScopeCreateRequest creates the ListByScope request.
+func (client *EnvironmentsClient) listByScopeCreateRequest(ctx context.Context, options *EnvironmentsListByScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *EnvironmentsClient) listCreateRequest(ctx context.Context, resourc
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *EnvironmentsClient) listHandleResponse(resp *http.Response) (EnvironmentsListResponse, error) {
-	result := EnvironmentsListResponse{RawResponse: resp}
+// listByScopeHandleResponse handles the ListByScope response.
+func (client *EnvironmentsClient) listByScopeHandleResponse(resp *http.Response) (EnvironmentsListByScopeResponse, error) {
+	result := EnvironmentsListByScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResourceList); err != nil {
-		return EnvironmentsListResponse{}, err
+		return EnvironmentsListByScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *EnvironmentsClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - List all environments in a subscription.
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *EnvironmentsClient) ListBySubscription(options *EnvironmentsListBySubscriptionOptions) (*EnvironmentsListBySubscriptionPager) {
-	return &EnvironmentsListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp EnvironmentsListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.EnvironmentResourceList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *EnvironmentsClient) listBySubscriptionCreateRequest(ctx context.Context, options *EnvironmentsListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Core/environments"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *EnvironmentsClient) listBySubscriptionHandleResponse(resp *http.Response) (EnvironmentsListBySubscriptionResponse, error) {
-	result := EnvironmentsListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResourceList); err != nil {
-		return EnvironmentsListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *EnvironmentsClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByScopeHandleError handles the ListByScope error response.
+func (client *EnvironmentsClient) listByScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -333,8 +263,8 @@ func (client *EnvironmentsClient) listBySubscriptionHandleError(resp *http.Respo
 
 // Update - Update the properties of an existing Environment.
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *EnvironmentsClient) Update(ctx context.Context, resourceGroupName string, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsUpdateOptions) (EnvironmentsUpdateResponse, error) {
-	req, err := client.updateCreateRequest(ctx, resourceGroupName, environmentName, environmentResource, options)
+func (client *EnvironmentsClient) Update(ctx context.Context, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsUpdateOptions) (EnvironmentsUpdateResponse, error) {
+	req, err := client.updateCreateRequest(ctx, environmentName, environmentResource, options)
 	if err != nil {
 		return EnvironmentsUpdateResponse{}, err
 	}
@@ -349,16 +279,12 @@ func (client *EnvironmentsClient) Update(ctx context.Context, resourceGroupName 
 }
 
 // updateCreateRequest creates the Update request.
-func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, resourceGroupName string, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Core/environments/{environmentName}"
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
+func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}

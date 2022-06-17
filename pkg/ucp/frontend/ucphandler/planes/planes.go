@@ -64,7 +64,7 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	plane.Type = planes.PlaneTypePrefix + "/" + planeType
 	plane.Name = name
 	planeExists := true
-	ID, err := resources.Parse(resources.UCPPrefix + plane.ID)
+	ID, err := resources.Parse(plane.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -95,7 +95,7 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
 	var query store.Query
-	query.RootScope = resources.UCPPrefix + path
+	query.RootScope = path
 	query.ScopeRecursive = true
 	query.IsScopeQuery = true
 	listOfPlanes, err := planesdb.GetScope(ctx, db, query)
@@ -107,9 +107,7 @@ func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path st
 }
 
 func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
-	//make id fully qualified. Ex, plane id : ucp:/planes/radius/local
-	id := resources.UCPPrefix + path
-	id = strings.ToLower(id)
+	id := strings.ToLower(path)
 	resourceId, err := resources.Parse(id)
 	if err != nil {
 		if err != nil {
@@ -129,9 +127,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 }
 
 func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
-	//make id fully qualified. Ex, plane id : ucp:/planes/radius/local
-	id := resources.UCPPrefix + path
-	resourceId, err := resources.Parse(id)
+	resourceId, err := resources.Parse(path)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
@@ -159,7 +155,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 
 	// Lookup the plane
 	planePath := PlanesPath + "/" + planeType + "/" + name
-	planeID, err := resources.Parse(resources.UCPPrefix + planePath)
+	planeID, err := resources.Parse(planePath)
 	if err != nil {
 		if err != nil {
 			return rest.InternalServerError(err), err
@@ -174,7 +170,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	// Get the resource provider
-	resourceID, err := resources.Parse(resources.UCPPrefix + incomingURL.Path)
+	resourceID, err := resources.Parse(incomingURL.Path)
 	if err != nil {
 		return rest.InternalServerError(err), err
 	}

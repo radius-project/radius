@@ -33,12 +33,13 @@ type LocalEnvironment struct {
 	// Registry is the docker/OCI registry we're using for images.
 	Registry *Registry `mapstructure:"registry,omitempty"`
 
-	// APIServerBaseURL is an override for local debugging. This allows us us to run the controller + API Service outside the
+	// RadiusRPLocalURL is an override for local debugging. This allows us us to run the controller + API Service outside the
 	// cluster.
-	APIServerBaseURL           string     `mapstructure:"apiserverbaseurl,omitempty"`
-	APIDeploymentEngineBaseURL string     `mapstructure:"apideploymentenginebaseurl,omitempty"`
-	Providers                  *Providers `mapstructure:"providers"`
-	EnableUCP                  bool       `mapstructure:"enableucp,omitempty"`
+	RadiusRPLocalURL         string     `mapstructure:"radiusrplocalurl,omitempty"`
+	DeploymentEngineLocalURL string     `mapstructure:"deploymentenginelocalurl,omitempty"`
+	UCPLocalURL              string     `mapstructure:"ucplocalurl,omitempty"`
+	Providers                *Providers `mapstructure:"providers"`
+	EnableUCP                bool       `mapstructure:"enableucp,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
@@ -58,6 +59,10 @@ func (e *LocalEnvironment) GetDefaultApplication() string {
 
 func (e *LocalEnvironment) GetStatusLink() string {
 	return ""
+}
+
+func (e *LocalEnvironment) GetKubeContext() string {
+	return e.Context
 }
 
 func (e *LocalEnvironment) GetContainerRegistry() *Registry {
@@ -88,7 +93,7 @@ func (s *devsender) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.APIDeploymentEngineBaseURL, e.Context, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 
 	if err != nil {
 		return nil, err
@@ -155,7 +160,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +177,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 }
 
 func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.APIServerBaseURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}

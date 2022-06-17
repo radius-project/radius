@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/api"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -77,15 +77,63 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 }
 func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
-		src api.DataModelInterface
+		src conv.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, api.ErrInvalidModelConversion},
-		{nil, api.ErrInvalidModelConversion},
+		{&fakeResource{}, conv.ErrInvalidModelConversion},
+		{nil, conv.ErrInvalidModelConversion},
 	}
 
 	for _, tc := range validationTests {
 		versioned := &RabbitMQMessageQueueResource{}
+		err := versioned.ConvertFrom(tc.src)
+		require.ErrorAs(t, tc.err, &err)
+	}
+}
+
+func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
+	// arrange
+	rawPayload := loadTestData("rabbitmqsecrets.json")
+	versioned := &RabbitMQSecrets{}
+	err := json.Unmarshal(rawPayload, versioned)
+	require.NoError(t, err)
+
+	// act
+	dm, err := versioned.ConvertTo()
+
+	// assert
+	require.NoError(t, err)
+	converted := dm.(*datamodel.RabbitMQSecrets)
+	require.Equal(t, "test-connection-string", converted.ConnectionString)
+}
+
+func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
+	// arrange
+	rawPayload := loadTestData("rabbitmqsecretsdatamodel.json")
+	secrets := &datamodel.RabbitMQSecrets{}
+	err := json.Unmarshal(rawPayload, secrets)
+	require.NoError(t, err)
+
+	// act
+	versionedResource := &RabbitMQSecrets{}
+	err = versionedResource.ConvertFrom(secrets)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "test-connection-string", secrets.ConnectionString)
+}
+
+func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {
+	validationTests := []struct {
+		src conv.DataModelInterface
+		err error
+	}{
+		{&fakeResource{}, conv.ErrInvalidModelConversion},
+		{nil, conv.ErrInvalidModelConversion},
+	}
+
+	for _, tc := range validationTests {
+		versioned := &RabbitMQSecrets{}
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}

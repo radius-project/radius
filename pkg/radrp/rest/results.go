@@ -14,6 +14,8 @@ import (
 	"net/url"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
@@ -217,6 +219,63 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 	}
 
 	return nil
+}
+
+// AsyncOperationResponse represents the response for an async operation request.
+type AsyncOperationResponse struct {
+	Body        interface{}
+	Location    string
+	Code        int
+	ResourceID  resources.ID
+	OperationID uuid.UUID
+}
+
+// NewAsyncOperationResponse creates an AsyncOperationResponse
+func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID) Response {
+	return &AsyncOperationResponse{
+		Body:        body,
+		Location:    location,
+		Code:        code,
+		ResourceID:  resourceID,
+		OperationID: operationID,
+	}
+}
+
+func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	// Write Body
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	locationHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationResults", r.OperationID)
+	azureAsyncOpHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationStatuses", r.OperationID)
+
+	// Write Headers
+	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Location", locationHeader)
+	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
+	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
+
+	w.WriteHeader(r.Code)
+
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
+
+	return nil
+}
+
+// getAsyncLocationPath returns the async operation location path for the given resource type.
+func getAsyncLocationPath(resourceID resources.ID, location string, resourceType string, operationID uuid.UUID) string {
+	root := fmt.Sprintf("/subscriptions/%s", resourceID.FindScope(resources.SubscriptionsSegment))
+
+	if resourceID.IsUCPQualfied() {
+		root = fmt.Sprintf("/planes/%s", resourceID.PlaneNamespace())
+	}
+
+	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String())
 }
 
 // NoContentResponse represents an HTTP 204.

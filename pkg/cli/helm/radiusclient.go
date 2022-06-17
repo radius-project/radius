@@ -17,6 +17,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const (
@@ -30,6 +31,10 @@ type RadiusOptions struct {
 	ChartVersion           string
 	Image                  string
 	Tag                    string
+	AppCoreImage           string
+	AppCoreTag             string
+	UCPImage               string
+	UCPTag                 string
 	PublicEndpointOverride string
 	AzureProvider          *azure.Provider
 }
@@ -38,7 +43,12 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
-	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+
+	helmConf, err := HelmConfig(helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -54,7 +64,7 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
-	err = addRadiusValues(helmChart, options.Image, options.Tag, options.PublicEndpointOverride)
+	err = addRadiusValues(helmChart, &options)
 	if err != nil {
 		return fmt.Errorf("failed to add radius values, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -102,7 +112,7 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	return runInstall(installClient, helmChart)
 }
 
-func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string, publicEndpointOverride string) error {
+func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
 	_, ok := values["global"]
@@ -115,31 +125,49 @@ func addRadiusValues(helmChart *chart.Chart, rpImage string, containerTag string
 	if !ok {
 		global["radius"] = make(map[string]interface{})
 	}
-
 	radius := global["radius"].(map[string]interface{})
-
-	if containerTag != "" {
-		radius["tag"] = containerTag
-	}
 
 	_, ok = global["rp"]
 	if !ok {
 		global["rp"] = make(map[string]interface{})
 	}
-
 	rp := global["rp"].(map[string]interface{})
 
-	if rpImage != "" {
-		rp["container"] = rpImage
+	if options.Image != "" {
+		rp["container"] = options.Image
 	}
 
-	if containerTag != "" {
-		rp["tag"] = containerTag
-		radius["tag"] = containerTag
+	if options.Tag != "" {
+		rp["tag"] = options.Tag
+		radius["tag"] = options.Tag
+	}
+	if options.PublicEndpointOverride != "" {
+		rp["publicEndpointOverride"] = options.PublicEndpointOverride
 	}
 
-	if publicEndpointOverride != "" {
-		rp["publicEndpointOverride"] = publicEndpointOverride
+	_, ok = global["appcorerp"]
+	if !ok {
+		global["appcorerp"] = make(map[string]interface{})
+	}
+	appcorerp := global["appcorerp"].(map[string]interface{})
+
+	if options.AppCoreImage != "" {
+		appcorerp["image"] = options.AppCoreImage
+	}
+	if options.AppCoreTag != "" {
+		appcorerp["tag"] = options.AppCoreTag
+	}
+
+	_, ok = global["ucp"]
+	if !ok {
+		global["ucp"] = make(map[string]interface{})
+	}
+	ucp := global["ucp"].(map[string]interface{})
+	if options.UCPImage != "" {
+		ucp["image"] = options.UCPImage
+	}
+	if options.UCPTag != "" {
+		ucp["tag"] = options.UCPTag
 	}
 
 	return nil

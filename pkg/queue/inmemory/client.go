@@ -7,29 +7,39 @@ package inmemory
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/project-radius/radius/pkg/queue"
 )
 
-var dequeueInterval = 5 * time.Millisecond
+const dequeueInterval = 5 * time.Millisecond
 
-var _ queue.Enqueuer = (*Client)(nil)
-var _ queue.Dequeuer = (*Client)(nil)
+var namedQueue = &sync.Map{}
+var _ queue.Client = (*Client)(nil)
 
 // Client is the queue client used for dev and test purpose.
 type Client struct {
-	queue *inmemQueue
+	queue *InmemQueue
 }
 
-// NewClient creates the in-memory queue Client instance. Client will use the default global queue if queue is not given.
-func NewClient(queue *inmemQueue) *Client {
+// New creates the in-memory queue Client instance. Client will use the default global queue if queue is nil.
+func New(queue *InmemQueue) *Client {
 	if queue == nil {
 		queue = defaultQueue
 	}
 
 	return &Client{
 		queue: queue,
+	}
+}
+
+// New creates the named in-memory queue Client instance.
+func NewNamedQueue(name string) *Client {
+	inmemq, _ := namedQueue.LoadOrStore(name, NewInMemQueue(messageLockDuration))
+
+	return &Client{
+		queue: inmemq.(*InmemQueue),
 	}
 }
 

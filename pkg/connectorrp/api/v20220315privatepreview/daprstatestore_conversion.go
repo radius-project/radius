@@ -4,22 +4,22 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/project-radius/radius/pkg/api"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
-func (src *DaprStateStoreResource) ConvertTo() (api.DataModelInterface, error) {
-	outputResources := basedatamodel.ResourceStatus{}.OutputResources
+func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) {
+	outputResources := v1.ResourceStatus{}.OutputResources
 	if src.Properties.GetDaprStateStoreProperties().Status != nil {
 		outputResources = src.Properties.GetDaprStateStoreProperties().Status.OutputResources
 	}
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
-		BasicResourceProperties: basedatamodel.BasicResourceProperties{
-			Status: basedatamodel.ResourceStatus{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Status: v1.ResourceStatus{
 				OutputResources: outputResources,
 			},
 		},
@@ -28,14 +28,14 @@ func (src *DaprStateStoreResource) ConvertTo() (api.DataModelInterface, error) {
 		Application:       to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		Kind:              to.String(src.Properties.GetDaprStateStoreProperties().Kind),
 	}
-	trackedResource := basedatamodel.TrackedResource{
+	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
 		Name:     to.String(src.Name),
 		Type:     to.String(src.Type),
 		Location: to.String(src.Location),
 		Tags:     to.StringMap(src.Tags),
 	}
-	internalMetadata := basedatamodel.InternalMetadata{
+	internalMetadata := v1.InternalMetadata{
 		UpdatedAPIVersion: Version,
 	}
 	converted := &datamodel.DaprStateStore{}
@@ -66,10 +66,10 @@ func (src *DaprStateStoreResource) ConvertTo() (api.DataModelInterface, error) {
 }
 
 //ConvertFrom converts from version-agnostic datamodel to the versioned DaprStateStore resource.
-func (dst *DaprStateStoreResource) ConvertFrom(src api.DataModelInterface) error {
+func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) error {
 	daprStateStore, ok := src.(*datamodel.DaprStateStore)
 	if !ok {
-		return api.ErrInvalidModelConversion
+		return conv.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(daprStateStore.ID)
@@ -79,7 +79,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src api.DataModelInterface) error
 	dst.Location = to.StringPtr(daprStateStore.Location)
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
 	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(daprStateStore.Properties.GetDaprStateStoreProperties().Status, basedatamodel.ResourceStatus{})) {
+	if !(reflect.DeepEqual(daprStateStore.Properties.GetDaprStateStoreProperties().Status, v1.ResourceStatus{})) {
 		outputresources = daprStateStore.Properties.GetDaprStateStoreProperties().Status.OutputResources
 	}
 	props := &DaprStateStoreProperties{

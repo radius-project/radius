@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -82,6 +83,21 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 
 	server, err := embed.StartEtcd(config)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "listen tcp ") {
+			logger.Info("failed to start etcd server due to port conflict, assuming another instance of etcd is already running")
+			clientconfig := etcdclient.Config{
+				Endpoints: []string{
+					"http://localhost:2379",
+				},
+			}
+			if zaplog != nil {
+				clientconfig.Logger = zaplog.Named("etcd.client")
+			}
+
+			s.options.ClientConfigSink.Put(&clientconfig)
+			<-ctx.Done()
+		}
+
 		return err
 	}
 

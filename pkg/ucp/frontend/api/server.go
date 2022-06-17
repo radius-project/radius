@@ -9,20 +9,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/middleware"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler/planes"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/store/etcdstore"
-	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 const (
@@ -37,7 +35,10 @@ type ServiceOptions struct {
 	DBClient                store.StorageClient
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
+	UCPConfigFile           string
 	BasePath                string
+	StorageProviderOptions  dataprovider.StorageProviderOptions
+	InitialPlanes           []rest.Plane
 }
 
 type Service struct {
@@ -59,27 +60,21 @@ func (s *Service) Name() string {
 
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
-	if s.options.DBClient == nil {
-		// Initialize the storage client once the storage service has started
-		obj, err := s.options.ClientConfigSource.Get(ctx)
-		if err != nil {
-			return nil, err
-		}
 
-		clientconfig := obj.(*etcdclient.Config)
-		client, err := etcdclient.New(*clientconfig)
+	if s.options.DBClient == nil {
+		dbClient, err := s.InitializeStorageClient(ctx)
 		if err != nil {
 			return nil, err
 		}
-		etcdClient := etcdstore.NewETCDClient(client)
-		s.options.DBClient = etcdClient
+		s.options.DBClient = dbClient
 	}
+
 	Register(r, s.options.DBClient, s.options.UcpHandler)
 	if s.options.Configure != nil {
 		s.options.Configure(r)
 	}
 
-	err := s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.UcpHandler.Planes)
+	err := s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.UcpHandler.Planes, s.options.InitialPlanes)
 	if err != nil {
 		return nil, err
 	}
@@ -97,22 +92,25 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	return server, nil
 }
 
+func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageClient, error) {
+	var storageClient store.StorageClient
+
+	if s.options.StorageProviderOptions.Provider == dataprovider.TypeETCD {
+		s.options.StorageProviderOptions.ETCD.Client = s.options.ClientConfigSource
+	}
+
+	storageProvider := dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
+	storageClient, err := storageProvider.GetStorageClient(ctx, string(s.options.StorageProviderOptions.Provider))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return storageClient, nil
+}
+
 // ConfigureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
-func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planesUCPHandler planes.PlanesUCPHandler) error {
-	if s.options.DefaultPlanesConfigFile == "" {
-		// No default planes to configure
-		return nil
-	}
-	// Read the default planes confiuration file and configure the planes
-	data, err := ioutil.ReadFile(s.options.DefaultPlanesConfigFile)
-	if err != nil {
-		return err
-	}
-	var planes = []rest.Plane{}
-	err = json.Unmarshal(data, &planes)
-	if err != nil {
-		return err
-	}
+func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planesUCPHandler planes.PlanesUCPHandler, planes []rest.Plane) error {
 
 	for _, plane := range planes {
 		bytes, err := json.Marshal(plane)

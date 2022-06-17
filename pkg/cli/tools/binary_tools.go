@@ -14,6 +14,7 @@ import (
 	"runtime"
 
 	"github.com/mitchellh/go-homedir"
+
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -84,15 +85,17 @@ func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
 		return "", err
 	}
 
-	if runtime.GOOS == "darwin" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "macos-x64", filename), nil
-	} else if runtime.GOOS == "linux" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "linux-x64", filename), nil
-	} else if runtime.GOOS == "windows" {
-		return fmt.Sprintf(downloadURIFmt, version.Channel(), "windows-x64", filename), nil
-	} else {
+	var platform string
+	switch runtime.GOOS {
+	case "linux", "windows":
+		platform = runtime.GOOS
+	case "darwin":
+		platform = "macos"
+	default:
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
+
+	return fmt.Sprintf(downloadURIFmt, version.Channel(), fmt.Sprint(platform, "-x64"), filename), nil
 }
 
 func DownloadToFolder(filepath string, resp *http.Response) error {

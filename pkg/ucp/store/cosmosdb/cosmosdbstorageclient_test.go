@@ -9,41 +9,55 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/basedatamodel"
+	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
 
-var fakeSubs = []string{
+var randomSubscriptionIDs = []string{
 	"eaf9116d-84e7-4720-a841-67ca2b67f888",
 	"7826d962-510f-407a-92a2-5aeb37aa7b6e",
 	"b2c7913e-e1fe-4c1d-a843-212159d07e46",
 }
-var fakeResourceGroups = []string{
+var randomResourceGroups = []string{
 	"red-group",
 	"blue-group",
 	"radius-lala",
+}
+var randomPlanes = []string{
+	"local",
+	"k8s",
+	"azure",
 }
 
 var (
 	// To run this test, you need to specify the below environment variable before running the test.
 	dBUrl     = os.Getenv("TEST_COSMOSDB_URL")
 	masterKey = os.Getenv("TEST_COSMOSDB_MASTERKEY")
+
+	dbName           = "applicationscore"
+	dbCollectionName = "functional-test-environments"
+
+	testLocation            = "test-location"
+	environmentResourceType = "applications.core/environments"
 )
 
-func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Environment {
-	testID := "/subscriptions/" + subID + "/resourceGroups/" + rgName + "/providers/Applications.Core/environments/" + resourceName
+func getTestEnvironmentModel(rootScope string, resourceName string) *datamodel.Environment {
+	testID := rootScope + "/providers/applications.core/environments/" + resourceName
+
 	env := &datamodel.Environment{
-		TrackedResource: basedatamodel.TrackedResource{
+		TrackedResource: v1.TrackedResource{
 			ID:       testID,
 			Name:     resourceName,
-			Type:     "Applications.Core/environments",
-			Location: "WEST US",
+			Type:     environmentResourceType,
+			Location: testLocation,
 		},
 		Properties: datamodel.EnvironmentProperties{
 			Compute: datamodel.EnvironmentCompute{
@@ -51,7 +65,7 @@ func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Envi
 				ResourceID: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 			},
 		},
-		InternalMetadata: basedatamodel.InternalMetadata{},
+		InternalMetadata: v1.InternalMetadata{},
 	}
 
 	env.InternalMetadata.CreatedAPIVersion = "2022-03-15-privatepreview"
@@ -60,15 +74,22 @@ func getTestEnvironmentModel(subID, rgName, resourceName string) *datamodel.Envi
 	return env
 }
 
-func mustGetTestClient(t *testing.T, dbName, collName string) *CosmosDBStorageClient {
+var dbClient *CosmosDBStorageClient
+
+func mustGetTestClient(t *testing.T) *CosmosDBStorageClient {
 	if dBUrl == "" || masterKey == "" {
 		t.Skip("TEST_COSMOSDB_URL and TEST_COSMOSDB_MASTERKEY are not set.")
 	}
 
-	client, err := NewCosmosDBStorageClient(&ConnectionOptions{
+	if dbClient != nil {
+		return dbClient
+	}
+
+	var err error
+	dbClient, err = NewCosmosDBStorageClient(&ConnectionOptions{
 		Url:            dBUrl,
 		DatabaseName:   dbName,
-		CollectionName: collName,
+		CollectionName: dbCollectionName,
 		MasterKey:      masterKey,
 	})
 
@@ -76,31 +97,35 @@ func mustGetTestClient(t *testing.T, dbName, collName string) *CosmosDBStorageCl
 		panic(err)
 	}
 
-	if client.Init(context.Background()) != nil {
+	if dbClient.Init(context.Background()) != nil {
 		panic(err)
 	}
 
-	return client
+	return dbClient
 }
 
 func TestConstructCosmosDBQuery(t *testing.T) {
 	tests := []struct {
+		desc        string
 		storeQuery  store.Query
 		queryString string
 		params      []cosmosapi.QueryParam
 		err         error
 	}{
 		{
+			desc:       "invalid-query-parameters",
 			storeQuery: store.Query{},
-			err:        &store.ErrInvalid{Message: "invalid Query parameters"},
+			err:        &store.ErrInvalid{Message: "RootScope can not be empty."},
 		},
 		{
+			desc:       "scope-recursive-and-routing-scope-prefix",
 			storeQuery: store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", RoutingScopePrefix: "prefix"},
-			err:        &store.ErrInvalid{Message: "ScopeRecursive and RoutingScopePrefix are not supported."},
+			err:        &store.ErrInvalid{Message: "RoutingScopePrefix is not supported."},
 		},
 		{
-			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001"},
-			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
+			desc:        "root-scope-subscription-id",
+			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001", ScopeRecursive: true},
+			queryString: "SELECT * FROM c WHERE STARTSWITH(c.rootScope, @rootScope, true)",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
 				Value: "/subscriptions/00000000-0000-0000-1000-000000000001",
@@ -108,29 +133,24 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 			err: nil,
 		},
 		{
-			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup"},
-			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope and c.resourceGroup = @rgName",
+			desc:        "root-scope-subscription-id-and-resource-group",
+			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup", ScopeRecursive: false},
+			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
-				Value: "/subscriptions/00000000-0000-0000-1000-000000000001",
-			}, {
-				Name:  "@rgName",
-				Value: "testgroup",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup",
 			}},
 			err: nil,
 		},
 		{
 			storeQuery: store.Query{
-				RootScope:    "/subscriptions/00000000-A000-0000-1000-000000000001/resourceGroups/testGroup",
+				RootScope:    "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup",
 				ResourceType: "applications.core/environments",
 			},
-			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope and c.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true)",
+			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope and STRINGEQUALS(c.entity.type, @rtype, true)",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
-				Value: "/subscriptions/00000000-a000-0000-1000-000000000001",
-			}, {
-				Name:  "@rgName",
-				Value: "testgroup",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup",
 			}, {
 				Name:  "@rtype",
 				Value: "applications.core/environments",
@@ -139,43 +159,39 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 		},
 		{
 			storeQuery: store.Query{
-				RootScope:    "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup",
+				RootScope:    "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup",
 				ResourceType: "applications.core/environments",
 				Filters: []store.QueryFilter{
 					{
 						Field: "properties.environment",
-						Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/env0",
+						Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup/providers/applications.core/environments/env0",
 					},
 					{
 						Field: "properties.application",
-						Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/applications/app0",
+						Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup/providers/applications.core/applications/app0",
 					},
 				},
 			},
-			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope and c.resourceGroup = @rgName and STRINGEQUALS(c.entity.type, @rtype, true) and STRINGEQUALS(c.entity.properties.environment, @filter0, true) and STRINGEQUALS(c.entity.properties.application, @filter1, true)",
+			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope and STRINGEQUALS(c.entity.type, @rtype, true) and STRINGEQUALS(c.entity.properties.environment, @filter0, true) and STRINGEQUALS(c.entity.properties.application, @filter1, true)",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
-				Value: "/subscriptions/00000000-0000-0000-1000-000000000001",
-			}, {
-				Name:  "@rgName",
-				Value: "testgroup",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup",
 			}, {
 				Name:  "@rtype",
 				Value: "applications.core/environments",
 			}, {
 				Name:  "@filter0",
-				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/env0",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup/providers/applications.core/environments/env0",
 			}, {
 				Name:  "@filter1",
-				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/applications/app0",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup/providers/applications.core/applications/app0",
 			}},
 			err: nil,
 		},
 	}
-
 	for _, tc := range tests {
-		t.Run(tc.queryString, func(t *testing.T) {
-			_, qry, err := constructCosmosDBQuery(tc.storeQuery)
+		t.Run(tc.desc, func(t *testing.T) {
+			qry, err := constructCosmosDBQuery(tc.storeQuery)
 			if tc.err != nil {
 				require.ErrorIs(t, tc.err, err)
 			} else {
@@ -188,7 +204,7 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 
 func TestGetNotFound(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient(t, "applicationscore", "environments")
+	client := mustGetTestClient(t)
 
 	_, err := client.Get(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
 	require.ErrorIs(t, &store.ErrNotFound{}, err)
@@ -196,7 +212,7 @@ func TestGetNotFound(t *testing.T) {
 
 func TestDeleteNotFound(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient(t, "applicationscore", "environments")
+	client := mustGetTestClient(t)
 
 	err := client.Delete(ctx, "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/applications.core/environments/notfound")
 	require.ErrorIs(t, &store.ErrNotFound{}, err)
@@ -204,78 +220,127 @@ func TestDeleteNotFound(t *testing.T) {
 
 func TestSave(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient(t, "applicationscore", "environments")
-	const testResourceName = "envsavetest"
-	env := getTestEnvironmentModel(fakeSubs[0], fakeResourceGroups[0], testResourceName)
+	client := mustGetTestClient(t)
 
-	t.Run("succeeded to upsert new resource without ETag", func(t *testing.T) {
-		_ = client.Delete(ctx, env.ID)
-		r := &store.Object{
+	ucpRootScope := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", randomResourceGroups[0])
+	ucpResource := getTestEnvironmentModel(ucpRootScope, "test-ucp-resource")
+
+	armResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", randomSubscriptionIDs[0], randomResourceGroups[0])
+	armResource := getTestEnvironmentModel(armResourceRootScope, "test-resource")
+
+	setupTest := func(tb testing.TB, resource *datamodel.Environment) (func(tb testing.TB), *store.Object) {
+		// Prepare DB object
+		obj := &store.Object{
 			Metadata: store.Metadata{
-				ID: env.ID,
+				ID: resource.ID,
 			},
-			Data: env,
+			Data: resource,
 		}
-		err := client.Save(ctx, r)
-		require.NoError(t, err)
-		require.NotEmpty(t, r.ETag)
 
-		r.ETag = ""
-		err = client.Save(ctx, r)
-		require.NoError(t, err)
-	})
+		// Save the object
+		err := client.Save(ctx, obj)
+		require.NoError(tb, err)
+		require.NotEmpty(tb, obj.ETag)
 
-	t.Run("succeeded to upsert new resource with valid ETag", func(t *testing.T) {
-		_ = client.Delete(ctx, env.ID)
-		r := &store.Object{
-			Metadata: store.Metadata{
-				ID: env.ID,
-			},
-			Data: env,
-		}
-		err := client.Save(ctx, r)
-		require.NoError(t, err)
-		require.NotEmpty(t, r.ETag)
+		// Return teardown func and the object
+		return func(tb testing.TB) {
+			// Delete object if it exists
+			err = client.Delete(ctx, resource.ID)
+			require.NoError(tb, err)
+		}, obj
+	}
 
-		err = client.Save(ctx, r)
-		require.NoError(t, err)
-	})
+	// useObjEtag lets you use the existing object etag
+	tests := map[string]struct {
+		resource   *datamodel.Environment
+		useObjEtag bool
+		etag       string
+		useOpts    bool
+		err        error
+	}{
+		"upsert-ucp-resource-without-etag": {
+			resource:   ucpResource,
+			useObjEtag: false,
+			etag:       "",
+			useOpts:    false,
+			err:        nil,
+		},
+		"upsert-arm-resource-without-etag": {
+			resource:   armResource,
+			useObjEtag: false,
+			etag:       "",
+			useOpts:    false,
+			err:        nil,
+		},
+		"upsert-ucp-resource-with-valid-etag": {
+			resource:   ucpResource,
+			useObjEtag: true,
+			etag:       "",
+			useOpts:    false,
+			err:        nil,
+		},
+		"upsert-arm-resource-with-valid-etag": {
+			resource:   armResource,
+			useObjEtag: true,
+			etag:       "",
+			useOpts:    false,
+			err:        nil,
+		},
+		"upsert-ucp-resource-with-options": {
+			resource:   ucpResource,
+			useObjEtag: false,
+			etag:       "",
+			useOpts:    true,
+			err:        nil,
+		},
+		"upsert-arm-resource-with-options": {
+			resource:   armResource,
+			useObjEtag: false,
+			etag:       "",
+			useOpts:    true,
+			err:        nil,
+		},
+		"upsert-ucp-resource-with-invalid-etag": {
+			resource:   ucpResource,
+			useObjEtag: false,
+			etag:       "invalid-etag",
+			useOpts:    false,
+			err:        &store.ErrConcurrency{},
+		},
+		"upsert-arm-resource-with-invalid-etag": {
+			resource:   armResource,
+			useObjEtag: false,
+			etag:       "invalid-etag",
+			useOpts:    false,
+			err:        &store.ErrConcurrency{},
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			teardownTest, obj := setupTest(t, tc.resource)
+			defer teardownTest(t)
 
-	t.Run("succeeded to upsert new resource by WithETag", func(t *testing.T) {
-		_ = client.Delete(ctx, env.ID)
-		r := &store.Object{
-			Metadata: store.Metadata{
-				ID: env.ID,
-			},
-			Data: env,
-		}
-		err := client.Save(ctx, r)
-		require.NoError(t, err)
-		require.NotEmpty(t, r.ETag)
+			// Update the etag
+			if !tc.useObjEtag {
+				obj.ETag = tc.etag
+			}
 
-		validEtag := r.ETag
-		r.ETag = ""
+			// Upsert the object
+			var err error
+			if tc.useOpts {
+				err = client.Save(ctx, obj, store.WithETag(obj.ETag))
+			} else {
+				err = client.Save(ctx, obj)
+			}
 
-		err = client.Save(ctx, r, store.WithETag(validEtag))
-		require.NoError(t, err)
-	})
-
-	t.Run("failed to upsert new resource with invalid ETag", func(t *testing.T) {
-		_ = client.Delete(ctx, env.ID)
-		r := &store.Object{
-			Metadata: store.Metadata{
-				ID: env.ID,
-			},
-			Data: env,
-		}
-		err := client.Save(ctx, r)
-		require.NoError(t, err)
-		require.NotEmpty(t, r.ETag)
-
-		r.ETag = "invalid_etag"
-		err = client.Save(ctx, r)
-		require.ErrorIs(t, &store.ErrConcurrency{}, err)
-	})
+			// Error checking
+			if tc.err != nil {
+				require.ErrorIs(t, err, tc.err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 // TestQuery tests the following scenarios:
@@ -288,178 +353,386 @@ func TestSave(t *testing.T) {
 //   - Use case - this will be used when environment queries all linked applications and connectors.
 func TestQuery(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient(t, "applicationscore", "environments")
+	client := mustGetTestClient(t)
 
-	// set up
-	testIDs := []string{}
+	ucpResources := []string{}
+	armResources := []string{}
 
-	const testResourceName = "envsavetest"
-	for _, subID := range fakeSubs {
-		for _, rg := range fakeResourceGroups {
-			env := getTestEnvironmentModel(subID, rg, testResourceName)
-			r := &store.Object{
-				Metadata: store.Metadata{
-					ID: env.ID,
-				},
-				Data: env,
+	// TODO: UCP doesn't check for the plane type
+	// Ex: /planes/radius/azure/resourcegroups/rg/.../environments/env
+	// is equal to /planes/radius/local/resourcegroups/rg/.../environments/env
+
+	setupTest := func(tb testing.TB) func(tb testing.TB) {
+		// Reset arrays each time
+		ucpResources = []string{}
+		armResources = []string{}
+
+		// Creates ucp resources under 3 different planes and 3 different resource groups.
+		// Total makes 9 ucp resources
+		for _, plane := range randomPlanes {
+			for _, resourceGroup := range randomResourceGroups {
+				// Create and Save a UCP Resource
+				ucpRootScope := fmt.Sprintf("/planes/radius/%s/resourcegroups/%s", plane, resourceGroup)
+				ucpEnv := buildAndSaveTestModel(ctx, t, ucpRootScope, uuid.New().String())
+				ucpResources = append(ucpResources, ucpEnv.ID)
 			}
-			err := client.Save(ctx, r)
-			require.NoError(t, err)
-			testIDs = append(testIDs, env.ID)
+		}
+
+		// Creates ARM resources under 3 different subscriptions and 3 different resource groups.
+		// Total makes 9 ARM resources
+		for _, subscriptionID := range randomSubscriptionIDs {
+			for idx, resourceGroup := range randomResourceGroups {
+				// Create and Save an ARM Resource
+				armResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", subscriptionID, resourceGroup)
+				armEnv := buildAndSaveTestModel(ctx, t, armResourceRootScope, fmt.Sprintf("test-env-%d", idx))
+				armResources = append(armResources, armEnv.ID)
+			}
+		}
+
+		// Return teardown
+		return func(tb testing.TB) {
+			// Delete all UCP resources after each test
+			for i := 0; i < len(ucpResources); i++ {
+				ucpResourceID := ucpResources[i]
+				err := client.Delete(ctx, ucpResourceID)
+				require.NoError(tb, err)
+			}
+
+			// Delete all ARM resources after each test
+			for i := 0; i < len(armResources); i++ {
+				armResourceID := armResources[i]
+				err := client.Delete(ctx, armResourceID)
+				require.NoError(tb, err)
+			}
 		}
 	}
 
-	t.Run("Query all resources at subscription level using RootScope", func(t *testing.T) {
-		for _, id := range testIDs {
-			azID, _ := azresources.Parse(id)
-			rootScope := fmt.Sprintf("/subscriptions/%s", azID.SubscriptionID)
-			results, err := client.Query(ctx, store.Query{RootScope: rootScope})
+	queryTest := func(resourceID string, resourceType string, filters []store.QueryFilter, itemsLen int) {
+		parsedID, err := resources.Parse(resourceID)
+		require.NoError(t, err)
+
+		// Build the query for testing
+		query := store.Query{
+			RootScope: parsedID.RootScope(),
+		}
+		if resourceType != "" {
+			query.ResourceType = resourceType
+		}
+		if len(filters) > 0 {
+			query.Filters = filters
+		}
+
+		results, err := client.Query(ctx, query)
+		require.NoError(t, err)
+		require.NotNil(t, results)
+		require.NotNil(t, results.Items)
+		require.Equal(t, itemsLen, len(results.Items))
+	}
+
+	// Query with subscriptionID + resourceGroup
+	tests := map[string]struct {
+		resourceType string
+		filters      []store.QueryFilter
+		expected     int
+	}{
+		"just-root-scope": {
+			resourceType: "",
+			filters:      []store.QueryFilter{},
+			expected:     1,
+		},
+		"root-scope-with-resource-type": {
+			resourceType: environmentResourceType,
+			filters:      []store.QueryFilter{},
+			expected:     1,
+		},
+		"root-scope-resource-type-location-filter": {
+			resourceType: environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: testLocation,
+				},
+			},
+			expected: 1,
+		},
+		"root-scope-resource-type-wrong-location-filter": {
+			resourceType: environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: "wrong-location",
+				},
+			},
+			expected: 0,
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			teardownTest := setupTest(t)
+			defer teardownTest(t)
+
+			// Query each ucp resource
+			for i := 0; i < len(ucpResources); i++ {
+				ucpResource := ucpResources[i]
+				queryTest(ucpResource, tc.resourceType, tc.filters, tc.expected)
+			}
+
+			// Query each ARM resource
+			for i := 0; i < len(armResources); i++ {
+				armResource := armResources[i]
+				queryTest(armResource, tc.resourceType, tc.filters, tc.expected)
+			}
+		})
+	}
+
+	// Query with subscriptionID
+	subscriptionIDCases := map[string]struct {
+		subscriptionID string
+		resourceType   string
+		filters        []store.QueryFilter
+		expected       int
+	}{
+		"arm-resource-subscription-id": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   "",
+			filters:        []store.QueryFilter{},
+			expected:       3,
+		},
+		"ucp-resource-subscription-id": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   "",
+			filters:        []store.QueryFilter{},
+			expected:       3,
+		},
+		"arm-resource-subscription-id-with-resource-type": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters:        []store.QueryFilter{},
+			expected:       3,
+		},
+		"ucp-resource-subscription-idd-with-resource-type": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters:        []store.QueryFilter{},
+			expected:       3,
+		},
+		"arm-resource-subscription-id-with-resource-type-with-filter": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: testLocation,
+				},
+			},
+			expected: 3,
+		},
+		"ucp-resource-subscription-idd-with-resource-type-with-filter": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: testLocation,
+				},
+			},
+			expected: 3,
+		},
+		"arm-resource-subscription-id-with-resource-type-with-invalid-filter": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: "wrong-location",
+				},
+			},
+			expected: 0,
+		},
+		"ucp-resource-subscription-idd-with-resource-type-with-invalid-filter": {
+			subscriptionID: randomSubscriptionIDs[0],
+			resourceType:   environmentResourceType,
+			filters: []store.QueryFilter{
+				{
+					Field: "location",
+					Value: "wrong-location",
+				},
+			},
+			expected: 0,
+		},
+	}
+	for name, tc := range subscriptionIDCases {
+		t.Run(name, func(t *testing.T) {
+			teardownTest := setupTest(t)
+			defer teardownTest(t)
+
+			// Build the query for testing
+			query := store.Query{
+				RootScope:      fmt.Sprintf("/subscriptions/%s", tc.subscriptionID),
+				ScopeRecursive: true,
+			}
+			if tc.resourceType != "" {
+				query.ResourceType = tc.resourceType
+			}
+			if len(tc.filters) > 0 {
+				query.Filters = tc.filters
+			}
+
+			results, err := client.Query(ctx, query)
 			require.NoError(t, err)
 			require.NotNil(t, results)
 			require.NotNil(t, results.Items)
-			require.Equal(t, len(fakeResourceGroups), len(results.Items))
-		}
-	})
-
-	t.Run("Query all resources at resourcegroup level using RootScope", func(t *testing.T) {
-		for _, id := range testIDs {
-			azID, _ := azresources.Parse(id)
-			rootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", azID.SubscriptionID, azID.ResourceGroup)
-			results, err := client.Query(ctx, store.Query{RootScope: rootScope})
-			require.NoError(t, err)
-			require.NotNil(t, results.Items)
-			require.Equal(t, 1, len(results.Items))
-		}
-	})
-
-	t.Run("Query all resources at subscription level and at type using RootScope, ResourceType.", func(t *testing.T) {
-		azID, _ := azresources.Parse(testIDs[0])
-		query := store.Query{
-			RootScope:    fmt.Sprintf("/subscriptions/%s", azID.SubscriptionID),
-			ResourceType: "Applications.Core/environments",
-		}
-
-		results, err := client.Query(ctx, query)
-		require.NoError(t, err)
-		require.NotNil(t, results)
-		require.NotNil(t, results.Items)
-		require.Equal(t, len(fakeResourceGroups), len(results.Items))
-	})
-
-	t.Run("Query all resources at resourcegroup level and at type using RootScope, ResourceType.", func(t *testing.T) {
-		azID, _ := azresources.Parse(testIDs[0])
-		query := store.Query{
-			RootScope:    fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", azID.SubscriptionID, azID.ResourceGroup),
-			ResourceType: "applications.core/environments",
-		}
-
-		results, err := client.Query(ctx, query)
-		require.NoError(t, err)
-		require.NotNil(t, results)
-		require.NotNil(t, results.Items)
-		require.Equal(t, 1, len(results.Items))
-	})
-
-	t.Run("Query all resources at resourcegroup level and at type using RootScope, ResourceType with filter.", func(t *testing.T) {
-		azID, _ := azresources.Parse(testIDs[0])
-		query := store.Query{
-			RootScope:    fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", azID.SubscriptionID, azID.ResourceGroup),
-			ResourceType: "applications.core/environments",
-			Filters: []store.QueryFilter{
-				{
-					Field: "location",
-					Value: "WEST US",
-				},
-			},
-		}
-
-		results, err := client.Query(ctx, query)
-		require.NoError(t, err)
-		require.NotNil(t, results)
-		require.NotNil(t, results.Items)
-		require.Equal(t, 1, len(results.Items))
-	})
-
-	t.Run("Query all resources at resourcegroup level and at type using RootScope, ResourceType with filter.", func(t *testing.T) {
-		query := store.Query{
-			RootScope:    "/",
-			ResourceType: "applications.core/environments",
-		}
-
-		results, err := client.Query(ctx, query)
-		require.NoError(t, err)
-		require.NotNil(t, results)
-		require.NotNil(t, results.Items)
-		require.Equal(t, 9, len(results.Items))
-	})
-
-	// tear down
-	for _, id := range testIDs {
-		err := client.Delete(ctx, id)
-		require.NoError(t, err)
+			require.Equal(t, tc.expected, len(results.Items))
+		})
 	}
 }
 
-// TestPaginationContinuationToken tests the pagination scenario using continuation token.
-func TestPaginationContinuationToken(t *testing.T) {
+// TestPaginationTokenAndQueryItemCount tests the pagination scenario using continuation token and query item count.
+func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 	ctx := context.Background()
-	client := mustGetTestClient(t, "applicationscore", "environments")
+	client := mustGetTestClient(t)
 
-	testIDs := []string{}
-	// set up
-	const testResourceName = "envsavetest"
-	for i := 0; i < 50; i++ {
-		env := getTestEnvironmentModel(fakeSubs[0], fakeResourceGroups[0], fmt.Sprintf("%s-%05d", testResourceName, i))
-		r := &store.Object{
-			Metadata: store.Metadata{
-				ID: env.ID,
-			},
-			Data: env,
+	ucpResources := []string{}
+	armResources := []string{}
+
+	ucpRootScope := "/planes/radius/local/resourcegroups/test-rg"
+	armResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-rg"
+
+	setupTest := func(tb testing.TB) func(tb testing.TB) {
+		// 50 UCP - 50 ARM
+		for i := 0; i < 50; i++ {
+			ucpEnv := buildAndSaveTestModel(ctx, t, ucpRootScope, fmt.Sprintf("ucp-env-%d", i))
+			ucpResources = append(ucpResources, ucpEnv.ID)
+
+			armEnv := buildAndSaveTestModel(ctx, t, armResourceRootScope, fmt.Sprintf("test-env-%d", i))
+			armResources = append(armResources, armEnv.ID)
 		}
-		err := client.Save(ctx, r)
-		require.NoError(t, err)
-		testIDs = append(testIDs, env.ID)
+
+		// Return teardown
+		return func(tb testing.TB) {
+			for i := 0; i < 50; i++ {
+				ucpResourceID := ucpResources[i]
+				err := client.Delete(ctx, ucpResourceID)
+				require.NoError(tb, err)
+
+				armResourceID := armResources[i]
+				err = client.Delete(ctx, armResourceID)
+				require.NoError(tb, err)
+			}
+		}
 	}
 
-	azID, _ := azresources.Parse(testIDs[0])
-	rootScope := fmt.Sprintf("/subscriptions/%s", azID.SubscriptionID)
-
-	t.Run("pagination with default query item count (20)", func(t *testing.T) {
-		// Query the first 20 documents
-		results, err := client.Query(ctx, store.Query{RootScope: rootScope})
-		require.NoError(t, err)
-		require.Equal(t, 20, len(results.Items))
-		require.NotEmpty(t, results.PaginationToken)
-
-		// Query the second 20 documents
-		results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken))
-		require.NoError(t, err)
-		require.Equal(t, 20, len(results.Items))
-		require.NotEmpty(t, results.PaginationToken)
-
-		// Query the remaining 10 documents
-		results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken))
-		require.NoError(t, err)
-		require.Equal(t, 10, len(results.Items))
-		require.Empty(t, results.PaginationToken)
-	})
-
-	t.Run("pagination with WithMaxQueryItemCount option", func(t *testing.T) {
-		// Query the first 10 documents with WithQueryCount Option
-		results, err := client.Query(ctx, store.Query{RootScope: rootScope}, store.WithMaxQueryItemCount(10))
-		require.NoError(t, err)
-		require.Equal(t, 10, len(results.Items))
-		require.NotEmpty(t, results.PaginationToken)
-
-		results, err = client.Query(ctx, store.Query{RootScope: rootScope}, store.WithPaginationToken(results.PaginationToken), store.WithMaxQueryItemCount(10))
-		require.NoError(t, err)
-		require.Equal(t, 10, len(results.Items))
-		require.NotEmpty(t, results.PaginationToken)
-	})
-
-	// tear down
-	for _, id := range testIDs {
-		err := client.Delete(ctx, id)
-		require.NoError(t, err)
+	tests := map[string]struct {
+		rootScope string
+		itemCount string
+	}{
+		"ucp-resource-default-query-item-count": {
+			rootScope: ucpRootScope,
+			itemCount: "",
+		},
+		"arm-resource-default-query-item-count": {
+			rootScope: armResourceRootScope,
+			itemCount: "",
+		},
+		"ucp-resource-10-query-item-count": {
+			rootScope: ucpRootScope,
+			itemCount: "10",
+		},
+		"arm-resource-10-query-item-count": {
+			rootScope: armResourceRootScope,
+			itemCount: "10",
+		},
 	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			teardownTest := setupTest(t)
+			defer teardownTest(t)
+
+			remaining := 50
+			queryItemCount := defaultQueryItemCount
+			paginationToken := ""
+
+			for remaining > 0 {
+				// Build query options
+				queryOptions := []store.QueryOptions{}
+				if tc.itemCount != "" {
+					ic, err := strconv.Atoi(tc.itemCount)
+					require.NoError(t, err)
+					queryOptions = append(queryOptions, store.WithMaxQueryItemCount(ic))
+					queryItemCount = ic
+				}
+				if paginationToken != "" {
+					queryOptions = append(queryOptions, store.WithPaginationToken(paginationToken))
+				}
+
+				if remaining < queryItemCount {
+					queryItemCount = remaining
+				}
+
+				results, err := client.Query(ctx, store.Query{RootScope: tc.rootScope}, queryOptions...)
+				require.NoError(t, err)
+				require.Equal(t, queryItemCount, len(results.Items))
+
+				remaining -= queryItemCount
+
+				if remaining > 0 {
+					require.NotEmpty(t, results.PaginationToken)
+					paginationToken = results.PaginationToken
+				} else {
+					require.Empty(t, results.PaginationToken)
+				}
+			}
+		})
+	}
+}
+
+func TestGetPartitionKey(t *testing.T) {
+	cases := []struct {
+		desc   string
+		fullID string
+		out    string
+	}{
+		{
+			"env-partition-key",
+			"subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"00000000000000001000000000000001",
+		},
+		{
+			"env-no-subscription-partition-key",
+			"resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"",
+		},
+		{
+			"ucp-resource-partition-key-radius-local",
+			"/planes/radius/local/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"RADIUSLOCAL",
+		},
+		{
+			"ucp-resource-partition-key-radius-k8s",
+			"/planes/radius/k8s/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"RADIUSK8S",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			testID, err := resources.Parse(tc.fullID)
+			require.NoError(t, err)
+			key, err := GetPartitionKey(testID)
+			require.NoError(t, err)
+			require.Equal(t, tc.out, key)
+		})
+	}
+}
+
+func buildAndSaveTestModel(ctx context.Context, t *testing.T, rootScope string, resourceName string) *datamodel.Environment {
+	model := getTestEnvironmentModel(rootScope, resourceName)
+	obj := &store.Object{
+		Metadata: store.Metadata{
+			ID: model.ID,
+		},
+		Data: model,
+	}
+	err := dbClient.Save(ctx, obj)
+	require.NoError(t, err)
+	return model
 }

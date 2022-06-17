@@ -57,7 +57,72 @@ func (c EnvironmentComputeKind) ToPtr() *EnvironmentComputeKind {
 	return &c
 }
 
-// ProvisioningState - Provisioning state of the resource at the time the operation was called.
+// Kind - The kind of IAM provider to configure
+type Kind string
+
+const (
+	KindAzure Kind = "azure"
+)
+
+// PossibleKindValues returns the possible values for the Kind const type.
+func PossibleKindValues() []Kind {
+	return []Kind{	
+		KindAzure,
+	}
+}
+
+// ToPtr returns a *Kind pointing to the current value.
+func (c Kind) ToPtr() *Kind {
+	return &c
+}
+
+// ManagedStore - Backing store for the ephemeral volume
+type ManagedStore string
+
+const (
+	ManagedStoreDisk ManagedStore = "disk"
+	ManagedStoreMemory ManagedStore = "memory"
+)
+
+// PossibleManagedStoreValues returns the possible values for the ManagedStore const type.
+func PossibleManagedStoreValues() []ManagedStore {
+	return []ManagedStore{	
+		ManagedStoreDisk,
+		ManagedStoreMemory,
+	}
+}
+
+// ToPtr returns a *ManagedStore pointing to the current value.
+func (c ManagedStore) ToPtr() *ManagedStore {
+	return &c
+}
+
+// Protocol - Protocol in use by the port
+type Protocol string
+
+const (
+	ProtocolGrpc Protocol = "grpc"
+	ProtocolHTTP Protocol = "http"
+	ProtocolTCP Protocol = "TCP"
+	ProtocolUDP Protocol = "UDP"
+)
+
+// PossibleProtocolValues returns the possible values for the Protocol const type.
+func PossibleProtocolValues() []Protocol {
+	return []Protocol{	
+		ProtocolGrpc,
+		ProtocolHTTP,
+		ProtocolTCP,
+		ProtocolUDP,
+	}
+}
+
+// ToPtr returns a *Protocol pointing to the current value.
+func (c Protocol) ToPtr() *Protocol {
+	return &c
+}
+
+// ProvisioningState - Gets the status of the container at the time the operation was called.
 type ProvisioningState string
 
 const (
@@ -85,6 +150,27 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 
 // ToPtr returns a *ProvisioningState pointing to the current value.
 func (c ProvisioningState) ToPtr() *ProvisioningState {
+	return &c
+}
+
+// VolumeRbac - Container read/write access to the volume
+type VolumeRbac string
+
+const (
+	VolumeRbacRead VolumeRbac = "read"
+	VolumeRbacWrite VolumeRbac = "write"
+)
+
+// PossibleVolumeRbacValues returns the possible values for the VolumeRbac const type.
+func PossibleVolumeRbacValues() []VolumeRbac {
+	return []VolumeRbac{	
+		VolumeRbacRead,
+		VolumeRbacWrite,
+	}
+}
+
+// ToPtr returns a *VolumeRbac pointing to the current value.
+func (c VolumeRbac) ToPtr() *VolumeRbac {
 	return &c
 }
 

@@ -51,8 +51,7 @@ func Save(ctx context.Context, db store.StorageClient, plane rest.Plane) (rest.P
 	var storedPlane rest.Plane
 	//TODO: set the right API version and ETag
 	o.Metadata.ContentType = "application/json"
-	id := resources.UCPPrefix + plane.ID
-	o.Metadata.ID = id
+	o.Metadata.ID = plane.ID
 	o.Data = &plane
 	err := db.Save(ctx, &o)
 	if err == nil {

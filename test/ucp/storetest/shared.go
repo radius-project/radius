@@ -26,9 +26,10 @@ const (
 	ResourcePath2       = "System.Resources/resourceType2/resource2"
 	NestedResourcePath1 = "System.Resources/resourceType1/resource1/nestedType/nested1"
 
-	RadiusScope         = "ucp:/planes/radius/local/"
-	ResourceGroup1Scope = "ucp:/planes/radius/local/resourceGroups/group1"
-	ResourceGroup2Scope = "ucp:/planes/radius/local/resourceGroups/group2"
+	RadiusScope         = "/planes/radius/local/"
+	PlaneScope          = "/planes"
+	ResourceGroup1Scope = "/planes/radius/local/resourceGroups/group1"
+	ResourceGroup2Scope = "/planes/radius/local/resourceGroups/group2"
 	ARMResourceScope    = "/subscriptions/abc/resourceGroups/group3"
 	APIVersion          = "test-api-version"
 )
@@ -328,6 +329,16 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		clear(t)
 
 		objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope})
+		require.NoError(t, err)
+		require.Empty(t, objs)
+	})
+
+	t.Run("query_planes", func(t *testing.T) {
+		clear(t)
+
+		objs, err := client.Query(ctx, store.Query{RootScope: PlaneScope,
+			IsScopeQuery: true,
+		})
 		require.NoError(t, err)
 		require.Empty(t, objs)
 	})

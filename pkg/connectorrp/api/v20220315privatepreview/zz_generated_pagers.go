@@ -16,23 +16,23 @@ import (
 	"reflect"
 )
 
-// DaprInvokeHTTPRoutesListBySubscriptionPager provides operations for iterating over paged responses.
-type DaprInvokeHTTPRoutesListBySubscriptionPager struct {
+// DaprInvokeHTTPRoutesListByRootScopePager provides operations for iterating over paged responses.
+type DaprInvokeHTTPRoutesListByRootScopePager struct {
 	client *DaprInvokeHTTPRoutesClient
-	current DaprInvokeHTTPRoutesListBySubscriptionResponse
+	current DaprInvokeHTTPRoutesListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, DaprInvokeHTTPRoutesListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, DaprInvokeHTTPRoutesListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *DaprInvokeHTTPRoutesListBySubscriptionPager) Err() error {
+func (p *DaprInvokeHTTPRoutesListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *DaprInvokeHTTPRoutesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+func (p *DaprInvokeHTTPRoutesListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
@@ -53,10 +53,10 @@ func (p *DaprInvokeHTTPRoutesListBySubscriptionPager) NextPage(ctx context.Conte
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listBySubscriptionHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -65,32 +65,32 @@ func (p *DaprInvokeHTTPRoutesListBySubscriptionPager) NextPage(ctx context.Conte
 	return true
 }
 
-// PageResponse returns the current DaprInvokeHTTPRoutesListBySubscriptionResponse page.
-func (p *DaprInvokeHTTPRoutesListBySubscriptionPager) PageResponse() DaprInvokeHTTPRoutesListBySubscriptionResponse {
+// PageResponse returns the current DaprInvokeHTTPRoutesListByRootScopeResponse page.
+func (p *DaprInvokeHTTPRoutesListByRootScopePager) PageResponse() DaprInvokeHTTPRoutesListByRootScopeResponse {
 	return p.current
 }
 
-// DaprInvokeHTTPRoutesListPager provides operations for iterating over paged responses.
-type DaprInvokeHTTPRoutesListPager struct {
-	client *DaprInvokeHTTPRoutesClient
-	current DaprInvokeHTTPRoutesListResponse
+// DaprPubSubBrokersListByRootScopePager provides operations for iterating over paged responses.
+type DaprPubSubBrokersListByRootScopePager struct {
+	client *DaprPubSubBrokersClient
+	current DaprPubSubBrokersListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, DaprInvokeHTTPRoutesListResponse) (*policy.Request, error)
+	advancer func(context.Context, DaprPubSubBrokersListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *DaprInvokeHTTPRoutesListPager) Err() error {
+func (p *DaprPubSubBrokersListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *DaprInvokeHTTPRoutesListPager) NextPage(ctx context.Context) bool {
+func (p *DaprPubSubBrokersListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.DaprInvokeHTTPRouteList.NextLink == nil || len(*p.current.DaprInvokeHTTPRouteList.NextLink) == 0 {
+		if p.current.DaprPubSubBrokerList.NextLink == nil || len(*p.current.DaprPubSubBrokerList.NextLink) == 0 {
 			return false
 		}
 		req, err = p.advancer(ctx, p.current)
@@ -107,10 +107,10 @@ func (p *DaprInvokeHTTPRoutesListPager) NextPage(ctx context.Context) bool {
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -119,28 +119,28 @@ func (p *DaprInvokeHTTPRoutesListPager) NextPage(ctx context.Context) bool {
 	return true
 }
 
-// PageResponse returns the current DaprInvokeHTTPRoutesListResponse page.
-func (p *DaprInvokeHTTPRoutesListPager) PageResponse() DaprInvokeHTTPRoutesListResponse {
+// PageResponse returns the current DaprPubSubBrokersListByRootScopeResponse page.
+func (p *DaprPubSubBrokersListByRootScopePager) PageResponse() DaprPubSubBrokersListByRootScopeResponse {
 	return p.current
 }
 
-// DaprSecretStoresListBySubscriptionPager provides operations for iterating over paged responses.
-type DaprSecretStoresListBySubscriptionPager struct {
+// DaprSecretStoresListByRootScopePager provides operations for iterating over paged responses.
+type DaprSecretStoresListByRootScopePager struct {
 	client *DaprSecretStoresClient
-	current DaprSecretStoresListBySubscriptionResponse
+	current DaprSecretStoresListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, DaprSecretStoresListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, DaprSecretStoresListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *DaprSecretStoresListBySubscriptionPager) Err() error {
+func (p *DaprSecretStoresListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *DaprSecretStoresListBySubscriptionPager) NextPage(ctx context.Context) bool {
+func (p *DaprSecretStoresListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
@@ -161,10 +161,10 @@ func (p *DaprSecretStoresListBySubscriptionPager) NextPage(ctx context.Context) 
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listBySubscriptionHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -173,82 +173,28 @@ func (p *DaprSecretStoresListBySubscriptionPager) NextPage(ctx context.Context) 
 	return true
 }
 
-// PageResponse returns the current DaprSecretStoresListBySubscriptionResponse page.
-func (p *DaprSecretStoresListBySubscriptionPager) PageResponse() DaprSecretStoresListBySubscriptionResponse {
+// PageResponse returns the current DaprSecretStoresListByRootScopeResponse page.
+func (p *DaprSecretStoresListByRootScopePager) PageResponse() DaprSecretStoresListByRootScopeResponse {
 	return p.current
 }
 
-// DaprSecretStoresListPager provides operations for iterating over paged responses.
-type DaprSecretStoresListPager struct {
-	client *DaprSecretStoresClient
-	current DaprSecretStoresListResponse
-	err error
-	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, DaprSecretStoresListResponse) (*policy.Request, error)
-}
-
-// Err returns the last error encountered while paging.
-func (p *DaprSecretStoresListPager) Err() error {
-	return p.err
-}
-
-// NextPage returns true if the pager advanced to the next page.
-// Returns false if there are no more pages or an error occurred.
-func (p *DaprSecretStoresListPager) NextPage(ctx context.Context) bool {
-	var req *policy.Request
-	var err error
-	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.DaprSecretStoreList.NextLink == nil || len(*p.current.DaprSecretStoreList.NextLink) == 0 {
-			return false
-		}
-		req, err = p.advancer(ctx, p.current)
-	} else {
-		req, err = p.requester(ctx)
-	}
-	if err != nil {
-		p.err = err
-		return false
-	}
-	resp, err := p.	client.pl.Do(req)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listHandleError(resp)
-		return false
-	}
-	result, err := p.client.listHandleResponse(resp)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	p.current = result
-	return true
-}
-
-// PageResponse returns the current DaprSecretStoresListResponse page.
-func (p *DaprSecretStoresListPager) PageResponse() DaprSecretStoresListResponse {
-	return p.current
-}
-
-// DaprStateStoresListBySubscriptionPager provides operations for iterating over paged responses.
-type DaprStateStoresListBySubscriptionPager struct {
+// DaprStateStoresListByRootScopePager provides operations for iterating over paged responses.
+type DaprStateStoresListByRootScopePager struct {
 	client *DaprStateStoresClient
-	current DaprStateStoresListBySubscriptionResponse
+	current DaprStateStoresListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, DaprStateStoresListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, DaprStateStoresListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *DaprStateStoresListBySubscriptionPager) Err() error {
+func (p *DaprStateStoresListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *DaprStateStoresListBySubscriptionPager) NextPage(ctx context.Context) bool {
+func (p *DaprStateStoresListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
@@ -269,10 +215,10 @@ func (p *DaprStateStoresListBySubscriptionPager) NextPage(ctx context.Context) b
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listBySubscriptionHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -281,32 +227,32 @@ func (p *DaprStateStoresListBySubscriptionPager) NextPage(ctx context.Context) b
 	return true
 }
 
-// PageResponse returns the current DaprStateStoresListBySubscriptionResponse page.
-func (p *DaprStateStoresListBySubscriptionPager) PageResponse() DaprStateStoresListBySubscriptionResponse {
+// PageResponse returns the current DaprStateStoresListByRootScopeResponse page.
+func (p *DaprStateStoresListByRootScopePager) PageResponse() DaprStateStoresListByRootScopeResponse {
 	return p.current
 }
 
-// DaprStateStoresListPager provides operations for iterating over paged responses.
-type DaprStateStoresListPager struct {
-	client *DaprStateStoresClient
-	current DaprStateStoresListResponse
+// ExtendersListByRootScopePager provides operations for iterating over paged responses.
+type ExtendersListByRootScopePager struct {
+	client *ExtendersClient
+	current ExtendersListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, DaprStateStoresListResponse) (*policy.Request, error)
+	advancer func(context.Context, ExtendersListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *DaprStateStoresListPager) Err() error {
+func (p *ExtendersListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *DaprStateStoresListPager) NextPage(ctx context.Context) bool {
+func (p *ExtendersListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.DaprStateStoreList.NextLink == nil || len(*p.current.DaprStateStoreList.NextLink) == 0 {
+		if p.current.ExtenderList.NextLink == nil || len(*p.current.ExtenderList.NextLink) == 0 {
 			return false
 		}
 		req, err = p.advancer(ctx, p.current)
@@ -323,10 +269,10 @@ func (p *DaprStateStoresListPager) NextPage(ctx context.Context) bool {
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -335,28 +281,28 @@ func (p *DaprStateStoresListPager) NextPage(ctx context.Context) bool {
 	return true
 }
 
-// PageResponse returns the current DaprStateStoresListResponse page.
-func (p *DaprStateStoresListPager) PageResponse() DaprStateStoresListResponse {
+// PageResponse returns the current ExtendersListByRootScopeResponse page.
+func (p *ExtendersListByRootScopePager) PageResponse() ExtendersListByRootScopeResponse {
 	return p.current
 }
 
-// MongoDatabasesListBySubscriptionPager provides operations for iterating over paged responses.
-type MongoDatabasesListBySubscriptionPager struct {
+// MongoDatabasesListByRootScopePager provides operations for iterating over paged responses.
+type MongoDatabasesListByRootScopePager struct {
 	client *MongoDatabasesClient
-	current MongoDatabasesListBySubscriptionResponse
+	current MongoDatabasesListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, MongoDatabasesListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, MongoDatabasesListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *MongoDatabasesListBySubscriptionPager) Err() error {
+func (p *MongoDatabasesListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *MongoDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+func (p *MongoDatabasesListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
@@ -377,10 +323,10 @@ func (p *MongoDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bo
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listBySubscriptionHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -389,82 +335,28 @@ func (p *MongoDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bo
 	return true
 }
 
-// PageResponse returns the current MongoDatabasesListBySubscriptionResponse page.
-func (p *MongoDatabasesListBySubscriptionPager) PageResponse() MongoDatabasesListBySubscriptionResponse {
+// PageResponse returns the current MongoDatabasesListByRootScopeResponse page.
+func (p *MongoDatabasesListByRootScopePager) PageResponse() MongoDatabasesListByRootScopeResponse {
 	return p.current
 }
 
-// MongoDatabasesListPager provides operations for iterating over paged responses.
-type MongoDatabasesListPager struct {
-	client *MongoDatabasesClient
-	current MongoDatabasesListResponse
-	err error
-	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, MongoDatabasesListResponse) (*policy.Request, error)
-}
-
-// Err returns the last error encountered while paging.
-func (p *MongoDatabasesListPager) Err() error {
-	return p.err
-}
-
-// NextPage returns true if the pager advanced to the next page.
-// Returns false if there are no more pages or an error occurred.
-func (p *MongoDatabasesListPager) NextPage(ctx context.Context) bool {
-	var req *policy.Request
-	var err error
-	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.MongoDatabaseList.NextLink == nil || len(*p.current.MongoDatabaseList.NextLink) == 0 {
-			return false
-		}
-		req, err = p.advancer(ctx, p.current)
-	} else {
-		req, err = p.requester(ctx)
-	}
-	if err != nil {
-		p.err = err
-		return false
-	}
-	resp, err := p.	client.pl.Do(req)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listHandleError(resp)
-		return false
-	}
-	result, err := p.client.listHandleResponse(resp)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	p.current = result
-	return true
-}
-
-// PageResponse returns the current MongoDatabasesListResponse page.
-func (p *MongoDatabasesListPager) PageResponse() MongoDatabasesListResponse {
-	return p.current
-}
-
-// RabbitMQMessageQueuesListBySubscriptionPager provides operations for iterating over paged responses.
-type RabbitMQMessageQueuesListBySubscriptionPager struct {
+// RabbitMQMessageQueuesListByRootScopePager provides operations for iterating over paged responses.
+type RabbitMQMessageQueuesListByRootScopePager struct {
 	client *RabbitMQMessageQueuesClient
-	current RabbitMQMessageQueuesListBySubscriptionResponse
+	current RabbitMQMessageQueuesListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, RabbitMQMessageQueuesListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, RabbitMQMessageQueuesListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *RabbitMQMessageQueuesListBySubscriptionPager) Err() error {
+func (p *RabbitMQMessageQueuesListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *RabbitMQMessageQueuesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+func (p *RabbitMQMessageQueuesListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
@@ -485,10 +377,10 @@ func (p *RabbitMQMessageQueuesListBySubscriptionPager) NextPage(ctx context.Cont
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listBySubscriptionHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -497,82 +389,28 @@ func (p *RabbitMQMessageQueuesListBySubscriptionPager) NextPage(ctx context.Cont
 	return true
 }
 
-// PageResponse returns the current RabbitMQMessageQueuesListBySubscriptionResponse page.
-func (p *RabbitMQMessageQueuesListBySubscriptionPager) PageResponse() RabbitMQMessageQueuesListBySubscriptionResponse {
+// PageResponse returns the current RabbitMQMessageQueuesListByRootScopeResponse page.
+func (p *RabbitMQMessageQueuesListByRootScopePager) PageResponse() RabbitMQMessageQueuesListByRootScopeResponse {
 	return p.current
 }
 
-// RabbitMQMessageQueuesListPager provides operations for iterating over paged responses.
-type RabbitMQMessageQueuesListPager struct {
-	client *RabbitMQMessageQueuesClient
-	current RabbitMQMessageQueuesListResponse
-	err error
-	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, RabbitMQMessageQueuesListResponse) (*policy.Request, error)
-}
-
-// Err returns the last error encountered while paging.
-func (p *RabbitMQMessageQueuesListPager) Err() error {
-	return p.err
-}
-
-// NextPage returns true if the pager advanced to the next page.
-// Returns false if there are no more pages or an error occurred.
-func (p *RabbitMQMessageQueuesListPager) NextPage(ctx context.Context) bool {
-	var req *policy.Request
-	var err error
-	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.RabbitMQMessageQueueList.NextLink == nil || len(*p.current.RabbitMQMessageQueueList.NextLink) == 0 {
-			return false
-		}
-		req, err = p.advancer(ctx, p.current)
-	} else {
-		req, err = p.requester(ctx)
-	}
-	if err != nil {
-		p.err = err
-		return false
-	}
-	resp, err := p.	client.pl.Do(req)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listHandleError(resp)
-		return false
-	}
-	result, err := p.client.listHandleResponse(resp)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	p.current = result
-	return true
-}
-
-// PageResponse returns the current RabbitMQMessageQueuesListResponse page.
-func (p *RabbitMQMessageQueuesListPager) PageResponse() RabbitMQMessageQueuesListResponse {
-	return p.current
-}
-
-// RedisCachesListBySubscriptionPager provides operations for iterating over paged responses.
-type RedisCachesListBySubscriptionPager struct {
+// RedisCachesListByRootScopePager provides operations for iterating over paged responses.
+type RedisCachesListByRootScopePager struct {
 	client *RedisCachesClient
-	current RedisCachesListBySubscriptionResponse
+	current RedisCachesListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, RedisCachesListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, RedisCachesListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *RedisCachesListBySubscriptionPager) Err() error {
+func (p *RedisCachesListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *RedisCachesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+func (p *RedisCachesListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
@@ -593,10 +431,10 @@ func (p *RedisCachesListBySubscriptionPager) NextPage(ctx context.Context) bool 
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listBySubscriptionHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -605,82 +443,28 @@ func (p *RedisCachesListBySubscriptionPager) NextPage(ctx context.Context) bool 
 	return true
 }
 
-// PageResponse returns the current RedisCachesListBySubscriptionResponse page.
-func (p *RedisCachesListBySubscriptionPager) PageResponse() RedisCachesListBySubscriptionResponse {
+// PageResponse returns the current RedisCachesListByRootScopeResponse page.
+func (p *RedisCachesListByRootScopePager) PageResponse() RedisCachesListByRootScopeResponse {
 	return p.current
 }
 
-// RedisCachesListPager provides operations for iterating over paged responses.
-type RedisCachesListPager struct {
-	client *RedisCachesClient
-	current RedisCachesListResponse
-	err error
-	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, RedisCachesListResponse) (*policy.Request, error)
-}
-
-// Err returns the last error encountered while paging.
-func (p *RedisCachesListPager) Err() error {
-	return p.err
-}
-
-// NextPage returns true if the pager advanced to the next page.
-// Returns false if there are no more pages or an error occurred.
-func (p *RedisCachesListPager) NextPage(ctx context.Context) bool {
-	var req *policy.Request
-	var err error
-	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.RedisCacheList.NextLink == nil || len(*p.current.RedisCacheList.NextLink) == 0 {
-			return false
-		}
-		req, err = p.advancer(ctx, p.current)
-	} else {
-		req, err = p.requester(ctx)
-	}
-	if err != nil {
-		p.err = err
-		return false
-	}
-	resp, err := p.	client.pl.Do(req)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listHandleError(resp)
-		return false
-	}
-	result, err := p.client.listHandleResponse(resp)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	p.current = result
-	return true
-}
-
-// PageResponse returns the current RedisCachesListResponse page.
-func (p *RedisCachesListPager) PageResponse() RedisCachesListResponse {
-	return p.current
-}
-
-// SQLDatabasesListBySubscriptionPager provides operations for iterating over paged responses.
-type SQLDatabasesListBySubscriptionPager struct {
+// SQLDatabasesListByRootScopePager provides operations for iterating over paged responses.
+type SQLDatabasesListByRootScopePager struct {
 	client *SQLDatabasesClient
-	current SQLDatabasesListBySubscriptionResponse
+	current SQLDatabasesListByRootScopeResponse
 	err error
 	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, SQLDatabasesListBySubscriptionResponse) (*policy.Request, error)
+	advancer func(context.Context, SQLDatabasesListByRootScopeResponse) (*policy.Request, error)
 }
 
 // Err returns the last error encountered while paging.
-func (p *SQLDatabasesListBySubscriptionPager) Err() error {
+func (p *SQLDatabasesListByRootScopePager) Err() error {
 	return p.err
 }
 
 // NextPage returns true if the pager advanced to the next page.
 // Returns false if there are no more pages or an error occurred.
-func (p *SQLDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bool {
+func (p *SQLDatabasesListByRootScopePager) NextPage(ctx context.Context) bool {
 	var req *policy.Request
 	var err error
 	if !reflect.ValueOf(p.current).IsZero() {
@@ -701,10 +485,10 @@ func (p *SQLDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bool
 		return false
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listBySubscriptionHandleError(resp)
+		p.err = p.client.listByRootScopeHandleError(resp)
 		return false
 	}
-	result, err := p.client.listBySubscriptionHandleResponse(resp)
+	result, err := p.client.listByRootScopeHandleResponse(resp)
 	if err != nil {
 		p.err = err
 		return false
@@ -713,62 +497,8 @@ func (p *SQLDatabasesListBySubscriptionPager) NextPage(ctx context.Context) bool
 	return true
 }
 
-// PageResponse returns the current SQLDatabasesListBySubscriptionResponse page.
-func (p *SQLDatabasesListBySubscriptionPager) PageResponse() SQLDatabasesListBySubscriptionResponse {
-	return p.current
-}
-
-// SQLDatabasesListPager provides operations for iterating over paged responses.
-type SQLDatabasesListPager struct {
-	client *SQLDatabasesClient
-	current SQLDatabasesListResponse
-	err error
-	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, SQLDatabasesListResponse) (*policy.Request, error)
-}
-
-// Err returns the last error encountered while paging.
-func (p *SQLDatabasesListPager) Err() error {
-	return p.err
-}
-
-// NextPage returns true if the pager advanced to the next page.
-// Returns false if there are no more pages or an error occurred.
-func (p *SQLDatabasesListPager) NextPage(ctx context.Context) bool {
-	var req *policy.Request
-	var err error
-	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.SQLDatabaseList.NextLink == nil || len(*p.current.SQLDatabaseList.NextLink) == 0 {
-			return false
-		}
-		req, err = p.advancer(ctx, p.current)
-	} else {
-		req, err = p.requester(ctx)
-	}
-	if err != nil {
-		p.err = err
-		return false
-	}
-	resp, err := p.	client.pl.Do(req)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listHandleError(resp)
-		return false
-	}
-	result, err := p.client.listHandleResponse(resp)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	p.current = result
-	return true
-}
-
-// PageResponse returns the current SQLDatabasesListResponse page.
-func (p *SQLDatabasesListPager) PageResponse() SQLDatabasesListResponse {
+// PageResponse returns the current SQLDatabasesListByRootScopeResponse page.
+func (p *SQLDatabasesListByRootScopePager) PageResponse() SQLDatabasesListByRootScopeResponse {
 	return p.current
 }
 

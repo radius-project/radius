@@ -15,14 +15,14 @@
 //
 // Keys are structured like the following example:
 //
-// 		scope|ucp:/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
-// 		resource|ucp:/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
+// 		scope|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
+// 		resource|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 //
 // scope or resource prefix helps with querying for scope or resources selectively.
-// For example, a scope Query for planes would match all key prefixes such as scope:/ucp:/planes thus returning a
+// For example, a scope Query for planes would match all key prefixes such as scope://planes thus returning a
 // list of planes and other "scopes" where as a resource query on planes would match all the resources under all the planes,
-// which will be identifiable by key prefix resource|ucp:/planes
-// Without the help of this prefix, when we query for a prefix ucp:/planes, we are potentially requesting for
+// which will be identifiable by key prefix resource|/planes
+// Without the help of this prefix, when we query for a prefix /planes, we are potentially requesting for
 // everything in the database
 // The routing-scope is separated from the resource-path by the '|' separator.
 //
@@ -197,6 +197,7 @@ func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.Del
 
 	return nil
 }
+
 func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
@@ -258,7 +259,7 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 func idFromKey(key []byte) (resources.ID, error) {
 	parts := strings.Split(string(key), SectionSeparator)
 	// sample valid key:
-	// scope|ucp:/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
+	// scope|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 	if len(parts) != 3 {
 		return resources.ID{}, errors.New("the etcd key '%q' is invalid because it does not have 3 sections")
 	}
@@ -274,7 +275,7 @@ func idFromKey(key []byte) (resources.ID, error) {
 	}
 
 	// The key might look like:
-	// 	scope|ucp:/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
+	// 	scope|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 	// OR
 	// 	/subscriptions/{guid}/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 	//
@@ -356,9 +357,7 @@ func normalize(part string) string {
 	if len(part) == 0 {
 		return ""
 	}
-	if strings.HasPrefix(part, resources.UCPPrefix+resources.SegmentSeparator) {
-		// Already prefixed
-	} else if !strings.HasPrefix(part, resources.SegmentSeparator) {
+	if !strings.HasPrefix(part, resources.SegmentSeparator) {
 		part = resources.SegmentSeparator + part
 	}
 	if !strings.HasSuffix(part, resources.SegmentSeparator) {

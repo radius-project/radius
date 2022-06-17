@@ -79,6 +79,16 @@
       "properties": {}
     }
   },
+  "parameters": {
+    "RootScopeParameter": {
+      "name": "rootScope",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "minLength": 1
+    }
+  },
   "paths": {
     "/providers/Applications.Core/operations": {
       "get": {
@@ -99,6 +109,7 @@
           {
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
+         
         ],
         "responses": {
           "200": {

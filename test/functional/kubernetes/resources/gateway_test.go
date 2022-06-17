@@ -7,11 +7,13 @@ package resource_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -24,7 +26,8 @@ import (
 )
 
 const (
-	retryTimeout = 10
+	retryTimeout = 1 * time.Minute
+	retryBackoff = 1 * time.Second
 )
 
 func Test_Gateway(t *testing.T) {
@@ -67,11 +70,10 @@ func Test_Gateway(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetes.ApplicationTest) {
-				// Get hostname from root HTTPProxy
-				// Note: this just gets the hostname from the first root proxy
-				// that it finds. Testing multiple gateways here will not work.
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client)
+				// Get hostname from root HTTPProxy in 'application' namespace
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client, application)
 				require.NoError(t, err)
+				t.Logf("found root proxy with hostname: {%s}", hostname)
 
 				var remotePort int
 				if hostname == "localhost" {
@@ -84,61 +86,92 @@ func Test_Gateway(t *testing.T) {
 				// Set up pod port-forwarding for contour-envoy
 				localHostname := "localhost"
 				localPort := 8888
-				readyChan := make(chan struct{}, 1)
-				stopChan := make(chan struct{}, 1)
-				errorChan := make(chan error)
 
-				go functional.ExposeIngress(ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, remotePort, readyChan, stopChan, errorChan)
+				retries := 3
 
-				// Send requests to backing container via port-forward
-				baseURL := fmt.Sprintf("http://%s:%d", localHostname, localPort)
-
-				<-readyChan
-				client := &http.Client{
-					Timeout: time.Second * 10,
+				for i := 1; i <= retries; i++ {
+					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+					err = testGatewayWithPortforward(t, ctx, at, hostname, localHostname, localPort, remotePort, retries)
+					if err != nil {
+						t.Logf("Failed to test Gateway via portforward with error: %s", err)
+					} else {
+						// Successfully ran tests
+						return
+					}
 				}
 
-				testGatewayAvailability(t, client, hostname, baseURL+"/healthz", 200)
-
-				// Both of these URLs route to the same backend service,
-				// but /backend2 maps to / which allows it to access /healthz
-				testGatewayAvailability(t, client, hostname, baseURL+"/backend2/healthz", 200)
-				testGatewayAvailability(t, client, hostname, baseURL+"/backend1/healthz", 404)
+				require.Fail(t, fmt.Sprintf("Gateway tests failed after %d retries", retries))
 			},
 		},
 	})
 	test.Test(t)
 }
 
-func testGatewayAvailability(t *testing.T, client *http.Client, hostname, url string, expectedStatusCode int) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	require.NoError(t, err)
+func testGatewayWithPortforward(t *testing.T, ctx context.Context, at kubernetes.ApplicationTest, hostname, localHostname string, localPort, remotePort, retries int) error {
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	errorChan := make(chan error)
+
+	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, remotePort, stopChan, readyChan, errorChan)
+
+	select {
+	case err := <-errorChan:
+		return fmt.Errorf("portforward failed with error: %s", err)
+	case <-readyChan:
+		baseURL := fmt.Sprintf("http://%s:%d", localHostname, localPort)
+		t.Logf("Portforward session active at %s", baseURL)
+
+		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200); err != nil {
+			close(stopChan)
+			return err
+		}
+
+		// Both of these URLs route to the same backend service,
+		// but /backend2 maps to / which allows it to access /healthz
+		if err := testGatewayAvailability(t, hostname, baseURL, "backend2/healthz", 200); err != nil {
+			close(stopChan)
+			return err
+		}
+
+		if err := testGatewayAvailability(t, hostname, baseURL, "backend1/healthz", 404); err != nil {
+			close(stopChan)
+			return err
+		}
+
+		// All of the requests were successful
+		t.Logf("All requests encountered the correct status code")
+		return nil
+	}
+
+}
+
+func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
+	req, err := autorest.Prepare(&http.Request{},
+		autorest.WithBaseURL(baseURL),
+		autorest.WithPath(path))
+	if err != nil {
+		return err
+	}
 
 	req.Host = hostname
 
-	retries := 5
-	for i := 0; i < retries; i++ {
-		t.Logf("making request to %s", url)
-		response, err := client.Do(req)
-		if err != nil {
-			t.Logf("got error %s", err.Error())
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		if response.Body != nil {
-			defer response.Body.Close()
-		}
-
-		if response.StatusCode != expectedStatusCode {
-			t.Logf("got status: %d, wanted: %d. retrying...", response.StatusCode, expectedStatusCode)
-			time.Sleep(retryTimeout * time.Second)
-			continue
-		}
-
-		// Encountered the correct status code
-		return
+	// Send requests to backing container via port-forward
+	response, err := autorest.Send(req,
+		autorest.WithLogging(functional.NewTestLogger(t)),
+		autorest.DoErrorUnlessStatusCode(expectedStatusCode),
+		autorest.DoRetryForDuration(retryTimeout, retryBackoff))
+	if err != nil {
+		return err
 	}
 
-	require.NoError(t, fmt.Errorf("status code %d was not encountered after %d retries", expectedStatusCode, retries))
+	if response.Body != nil {
+		defer response.Body.Close()
+	}
+
+	if response.StatusCode != expectedStatusCode {
+		return errors.New("did not encounter correct status code")
+	}
+
+	// Encountered the correct status code
+	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 )
 
@@ -24,6 +25,7 @@ type Environment interface {
 	GetName() string
 	GetKind() string
 	GetDefaultApplication() string
+	GetKubeContext() string
 
 	// GetStatusLink provides an optional URL for display of the environment.
 	GetStatusLink() string
@@ -46,12 +48,7 @@ type Registry struct {
 }
 
 type Providers struct {
-	AzureProvider *AzureProvider `mapstructure:"azure,omitempty"`
-}
-
-type AzureProvider struct {
-	SubscriptionID string `mapstructure:"subscriptionid" validate:"required"`
-	ResourceGroup  string `mapstructure:"resourcegroup" validate:"required"`
+	AzureProvider *azure.Provider `mapstructure:"azure,omitempty"`
 }
 
 type DeploymentEnvironment interface {

@@ -14,6 +14,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -26,31 +27,45 @@ import (
 type Renderer struct {
 }
 
-func (r Renderer) GetDependencyIDs(ctx context.Context, workload renderers.RendererResource) ([]azresources.ResourceID, []azresources.ResourceID, error) {
-	return nil, nil, nil
+func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
+	// Need all httproutes that are used by this gateway
+	gateway, err := r.convert(resource)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, httpRoute := range gateway.Routes {
+		resourceID, err := azresources.Parse(*httpRoute.Destination)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		radiusResourceIDs = append(radiusResourceIDs, resourceID)
+	}
+
+	return radiusResourceIDs, azureResourceIDs, nil
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	gateway := radclient.GatewayProperties{}
-	err := options.Resource.ConvertDefinition(&gateway)
+	outputResources := []outputresource.OutputResource{}
+
+	gateway, err := r.convert(options.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	outputs := []outputresource.OutputResource{}
-
 	gatewayName := kubernetes.MakeResourceName(options.Resource.ApplicationName, options.Resource.ResourceName)
-	hostname, err := getHostname(ctx, options.Resource, gateway, options.Runtime)
+	hostname, err := getHostname(options.Resource, gateway, options.Runtime)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	}
 
-	gatewayObject, err := MakeGateway(ctx, options.Resource, gateway, gatewayName, hostname)
+	gatewayObject, err := MakeGateway(options, gateway, gatewayName, hostname)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	outputs = append(outputs, gatewayObject)
+	outputResources = append(outputResources, gatewayObject)
 
 	var computedHostname string
 	if hostname == "" {
@@ -62,24 +77,24 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
-		"hostname": {
+		"url": {
 			Value: computedHostname,
 		},
 	}
 
-	httpRouteObjects, err := MakeHttpRoutes(options.Resource, gateway, gatewayName)
+	httpRouteObjects, err := MakeHttpRoutes(options, gateway, gatewayName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-	outputs = append(outputs, httpRouteObjects...)
+	outputResources = append(outputResources, httpRouteObjects...)
 
 	return renderers.RendererOutput{
-		Resources:      outputs,
+		Resources:      outputResources,
 		ComputedValues: computedValues,
 	}, nil
 }
 
-func MakeGateway(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string, hostname string) (outputresource.OutputResource, error) {
+func MakeGateway(options renderers.RenderOptions, gateway *radclient.GatewayProperties, gatewayName string, hostname string) (outputresource.OutputResource, error) {
 	includes := []contourv1.Include{}
 
 	if len(gateway.Routes) < 1 {
@@ -92,7 +107,7 @@ func MakeGateway(ctx context.Context, resource renderers.RendererResource, gatew
 			return outputresource.OutputResource{}, err
 		}
 
-		routeResourceName := kubernetes.MakeResourceName(resource.ApplicationName, routeName)
+		routeResourceName := kubernetes.MakeResourceName(options.Resource.ApplicationName, routeName)
 
 		includes = append(includes, contourv1.Include{
 			Name: routeResourceName,
@@ -108,7 +123,7 @@ func MakeGateway(ctx context.Context, resource renderers.RendererResource, gatew
 	if hostname == "" {
 		// If the given hostname is empty, use the application name
 		// in order to make sure that this resource is seen as a root proxy.
-		virtualHostname = resource.ApplicationName
+		virtualHostname = options.Resource.ApplicationName
 	}
 
 	virtualHost := &contourv1.VirtualHost{
@@ -123,8 +138,8 @@ func MakeGateway(ctx context.Context, resource renderers.RendererResource, gatew
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gatewayName,
-			Namespace: resource.ApplicationName,
-			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+			Namespace: options.Resource.ApplicationName,
+			Labels:    kubernetes.MakeDescriptiveLabels(options.Resource.ApplicationName, options.Resource.ResourceName),
 		},
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: virtualHost,
@@ -135,10 +150,19 @@ func MakeGateway(ctx context.Context, resource renderers.RendererResource, gatew
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
 }
 
-func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.GatewayProperties, gatewayName string) ([]outputresource.OutputResource, error) {
+func MakeHttpRoutes(options renderers.RenderOptions, gateway *radclient.GatewayProperties, gatewayName string) ([]outputresource.OutputResource, error) {
+	resource := options.Resource
+	dependencies := options.Dependencies
 	objects := make(map[string]*contourv1.HTTPProxy)
 
 	for _, route := range gateway.Routes {
+		routeProperties := dependencies[to.String(route.Destination)]
+		port := kubernetes.GetDefaultPort()
+		routePort, ok := routeProperties.ComputedValues["port"].(int32)
+		if ok {
+			port = routePort
+		}
+
 		routeName, err := getRouteName(route)
 		if err != nil {
 			return []outputresource.OutputResource{}, err
@@ -147,7 +171,6 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 		// Create unique localID for dependency graph
 		localID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, routeName)
 		routeResourceName := kubernetes.MakeResourceName(resource.ApplicationName, routeName)
-		port := kubernetes.GetDefaultPort()
 
 		var pathRewritePolicy *contourv1.PathRewritePolicy
 		if route.ReplacePrefix != nil {
@@ -199,7 +222,7 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 						Services: []contourv1.Service{
 							{
 								Name: routeResourceName,
-								Port: port,
+								Port: int(port),
 							},
 						},
 						PathRewritePolicy: pathRewritePolicy,
@@ -211,12 +234,22 @@ func MakeHttpRoutes(resource renderers.RendererResource, gateway radclient.Gatew
 		objects[localID] = httpProxyObject
 	}
 
-	var outputs []outputresource.OutputResource
+	var outputResources []outputresource.OutputResource
 	for localID, object := range objects {
-		outputs = append(outputs, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, object, object.ObjectMeta))
+		outputResources = append(outputResources, outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, object, object.ObjectMeta))
 	}
 
-	return outputs, nil
+	return outputResources, nil
+}
+
+func (r Renderer) convert(resource renderers.RendererResource) (*radclient.GatewayProperties, error) {
+	properties := &radclient.GatewayProperties{}
+	err := resource.ConvertDefinition(&properties)
+	if err != nil {
+		return nil, err
+	}
+
+	return properties, nil
 }
 
 func getRouteName(route *radclient.GatewayRoute) (string, error) {
@@ -228,7 +261,7 @@ func getRouteName(route *radclient.GatewayRoute) (string, error) {
 	return resourceID.Name(), nil
 }
 
-func getHostname(ctx context.Context, resource renderers.RendererResource, gateway radclient.GatewayProperties, options renderers.RuntimeOptions) (string, error) {
+func getHostname(resource renderers.RendererResource, gateway *radclient.GatewayProperties, options renderers.RuntimeOptions) (string, error) {
 	publicIP := options.Gateway.PublicIP
 	publicEndpointOverride := options.Gateway.PublicEndpointOverride
 

@@ -18,9 +18,11 @@ import (
 var (
 	messageLockDuration   = 5 * time.Minute
 	messageExpireDuration = 24 * time.Hour
-)
 
-var ErrAlreadyCompletedMessage = errors.New("message has already completed")
+	ErrAlreadyCompletedMessage = errors.New("message has already completed")
+
+	defaultQueue = NewInMemQueue(messageLockDuration)
+)
 
 type element struct {
 	val *queue.Message
@@ -28,24 +30,28 @@ type element struct {
 	visible bool
 }
 
-var defaultQueue = newInMemQueue(messageLockDuration)
-
-// inmemQueue implements in-memory queue for dev/test
-type inmemQueue struct {
+// InmemQueue implements in-memory queue for dev/test
+type InmemQueue struct {
 	v   *list.List
 	vMu sync.Mutex
 
 	lockDuration time.Duration
 }
 
-func newInMemQueue(lockDuration time.Duration) *inmemQueue {
-	return &inmemQueue{
+func NewInMemQueue(lockDuration time.Duration) *InmemQueue {
+	return &InmemQueue{
 		v:            &list.List{},
 		lockDuration: lockDuration,
 	}
 }
 
-func (q *inmemQueue) Enqueue(msg *queue.Message) {
+func (q *InmemQueue) Len() int {
+	q.vMu.Lock()
+	defer q.vMu.Unlock()
+	return q.v.Len()
+}
+
+func (q *InmemQueue) Enqueue(msg *queue.Message) {
 	q.updateQueue()
 
 	q.vMu.Lock()
@@ -59,7 +65,7 @@ func (q *inmemQueue) Enqueue(msg *queue.Message) {
 	q.v.PushBack(&element{val: msg, visible: true})
 }
 
-func (q *inmemQueue) Dequeue() *queue.Message {
+func (q *InmemQueue) Dequeue() *queue.Message {
 	q.updateQueue()
 
 	var found *queue.Message
@@ -78,7 +84,7 @@ func (q *inmemQueue) Dequeue() *queue.Message {
 	return found
 }
 
-func (q *inmemQueue) Complete(msg *queue.Message) error {
+func (q *InmemQueue) Complete(msg *queue.Message) error {
 	found := false
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
@@ -96,7 +102,7 @@ func (q *inmemQueue) Complete(msg *queue.Message) error {
 	return nil
 }
 
-func (q *inmemQueue) Extend(msg *queue.Message) error {
+func (q *InmemQueue) Extend(msg *queue.Message) error {
 	found := false
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
@@ -114,7 +120,7 @@ func (q *inmemQueue) Extend(msg *queue.Message) error {
 	return nil
 }
 
-func (q *inmemQueue) updateQueue() {
+func (q *InmemQueue) updateQueue() {
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		now := time.Now().UTC()
 		if elem.val.ExpireAt.UnixNano() <= now.UnixNano() {
@@ -126,7 +132,7 @@ func (q *inmemQueue) updateQueue() {
 	})
 }
 
-func (q *inmemQueue) elementRange(fn func(*list.Element, *element) bool) {
+func (q *InmemQueue) elementRange(fn func(*list.Element, *element) bool) {
 	q.vMu.Lock()
 	defer q.vMu.Unlock()
 

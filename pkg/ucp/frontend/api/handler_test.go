@@ -27,6 +27,7 @@ import (
 const baseURI = "/planes"
 
 func initializeTestEnv(t *testing.T, ucp ucphandler.UCPHandler, dbClient store.StorageClient) http.Handler {
+
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 	options := ServiceOptions{
