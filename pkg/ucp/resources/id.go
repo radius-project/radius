@@ -14,7 +14,6 @@ const (
 	SegmentSeparator      = "/"
 	PlanesSegment         = "planes"
 	ProvidersSegment      = "providers"
-	UCPPrefix             = "ucp:"
 	ResourceGroupsSegment = "resourcegroups"
 	SubscriptionsSegment  = "subscriptions"
 	LocationsSegment      = "locations"
@@ -72,9 +71,9 @@ func (ri ID) IsScope() bool {
 	return !ri.IsEmpty() && len(ri.typeSegments) == 0
 }
 
-// IsUCPQualfied returns true if the ID has a UCP qualifier ('ucp:/').
+// IsUCPQualfied returns true if the ID is a UCP id.
 func (ri ID) IsUCPQualfied() bool {
-	return strings.HasPrefix(ri.id, UCPPrefix)
+	return strings.HasPrefix(ri.id, SegmentSeparator+PlanesSegment)
 }
 
 // ScopeSegments gets the slice of root-scope segments.
@@ -117,7 +116,7 @@ func (ri ID) RootScope() string {
 
 	joined := strings.Join(segments, SegmentSeparator)
 	if ri.IsUCPQualfied() {
-		return UCPPrefix + SegmentSeparator + PlanesSegment + SegmentSeparator + joined
+		return SegmentSeparator + PlanesSegment + SegmentSeparator + joined
 	}
 
 	return SegmentSeparator + joined
@@ -250,9 +249,9 @@ func (ri ID) Truncate() ID {
 // Parse parses a resource ID.
 func Parse(id string) (ID, error) {
 	isUCPQualified := false
-	if strings.HasPrefix(id, UCPPrefix+SegmentSeparator+PlanesSegment) {
+	if strings.HasPrefix(id, SegmentSeparator+PlanesSegment) {
 		isUCPQualified = true
-		id = strings.TrimPrefix(id, UCPPrefix+SegmentSeparator+PlanesSegment)
+		id = strings.TrimPrefix(id, SegmentSeparator+PlanesSegment)
 	}
 
 	scopes := []ScopeSegment{}
@@ -402,7 +401,7 @@ func MakeUCPID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
 		}
 	}
 
-	return UCPPrefix + SegmentSeparator + strings.Join(segments, SegmentSeparator)
+	return SegmentSeparator + strings.Join(segments, SegmentSeparator)
 }
 
 // MakeRelativeID makes a plane-relative resource ID (ARM style).
