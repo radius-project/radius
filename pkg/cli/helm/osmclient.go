@@ -72,6 +72,7 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 
 }
 
+
 func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, helmOutput strings.Builder) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.Namespace = RadiusSystemNamespace
@@ -82,21 +83,6 @@ func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, hel
 	if err != nil {
 		return fmt.Errorf("OSM installation failed, err: %w, helm output: %s", err, helmOutput.String())
 	}
-	// if err != nil {
-	// 	upgradeClient := helm.NewUpgrade(helmConf)
-	// 	// upgradeClient.Install = true
-	// 	upgradeClient.Wait = true
-	// 	upgradeClient.Timeout = installTimeout
-	// 	upgradeClient.Namespace = RadiusSystemNamespace
-	// 	modification := map[string]interface{}{
-	// 		"OpenServiceMesh": map[string]interface{}{
-	// 			"install": true,
-	// 		},
-	// 	}
-	// 	helmChart.Values = MergeMaps(helmChart.Values, modification)
-	// 	_, err := upgradeClient.Run(OSMReleaseName, helmChart, helmChart.Values)
-	// 	return err
-	// }
 	return err
 }
 
