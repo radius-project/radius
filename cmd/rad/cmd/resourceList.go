@@ -95,7 +95,7 @@ func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
 	if !isLegacy {
 		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
 	} else {
-		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormatOld())
 	}
 	if err != nil {
 		return err
