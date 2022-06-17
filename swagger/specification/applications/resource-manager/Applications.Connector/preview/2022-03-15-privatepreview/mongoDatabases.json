@@ -107,7 +107,7 @@
           "200": {
             "description": "MongoDatabase resource",
             "schema": {
-              "$ref": "#/definitions/MongoDatabaseResource"
+              "$ref": "#/definitions/MongoDatabaseResponseResource"
             }
           },
           "default": {
@@ -269,7 +269,7 @@
           "description": "List of MongoDatabase resources",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/MongoDatabaseResource"
+            "$ref": "#/definitions/MongoDatabaseResponseResource"
           }
         },
         "nextLink": {
@@ -299,7 +299,28 @@
         }
       }
     },
-    "MongoDatabaseProperties": {
+    "MongoDatabaseResponseResource": {
+      "description": "MongoDatabse connector",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "systemData": {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/MongoDatabaseResponseProperties"
+        }
+      }
+    },
+    "MongoDatabaseResponseProperties":{
       "description": "MongoDatabse connector properties",
       "type": "object",
       "allOf": [
@@ -340,7 +361,18 @@
           "example": [
             27017
           ]
-        },
+        }
+      }
+    },
+    "MongoDatabaseProperties": {
+      "description": "MongoDatabse connector properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/MongoDatabaseResponseProperties"
+        }
+      ],
+      "properties": {
         "secrets": {
           "type": "object",
           "description": "Secrets values provided for the resource",

@@ -188,7 +188,7 @@ func (client *MongoDatabasesClient) getCreateRequest(ctx context.Context, mongoD
 // getHandleResponse handles the Get response.
 func (client *MongoDatabasesClient) getHandleResponse(resp *http.Response) (MongoDatabasesGetResponse, error) {
 	result := MongoDatabasesGetResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseResponseResource); err != nil {
 		return MongoDatabasesGetResponse{}, err
 	}
 	return result, nil

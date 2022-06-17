@@ -34,7 +34,7 @@ func NewGetMongoDatabase(ds store.StorageClient, sm manager.StatusManager) (ctrl
 func (mongo *GetMongoDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.MongoDatabase{}
+	existingResource := &datamodel.MongoDatabaseResponse{}
 	_, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
@@ -43,6 +43,6 @@ func (mongo *GetMongoDatabase) Run(ctx context.Context, req *http.Request) (rest
 		return nil, err
 	}
 
-	versioned, _ := converter.MongoDatabaseDataModelToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := converter.MongoDatabaseResponseDataModelToVersioned(existingResource, serviceCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }

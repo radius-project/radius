@@ -247,7 +247,7 @@ type MongoDatabasesGetResponse struct {
 
 // MongoDatabasesGetResult contains the result from method MongoDatabases.Get.
 type MongoDatabasesGetResult struct {
-	MongoDatabaseResource
+	MongoDatabaseResponseResource
 }
 
 // MongoDatabasesListByRootScopeResponse contains the response from method MongoDatabases.ListByRootScope.
