@@ -15,9 +15,9 @@ import (
 
 // ConvertTo converts from the versioned RedisCache resource to version-agnostic datamodel.
 func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
-	secrets := datamodel.RedisSecrets{}
+	secrets := datamodel.RedisCacheSecrets{}
 	if src.Properties.Secrets != nil {
-		secrets = datamodel.RedisSecrets{
+		secrets = datamodel.RedisCacheSecrets{
 			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
 			Password:         to.String(src.Properties.Secrets.Password),
 		}
@@ -78,12 +78,34 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 		Host:              to.StringPtr(redis.Properties.Host),
 		Port:              to.Int32Ptr(redis.Properties.Port),
 	}
-	if (redis.Properties.Secrets != datamodel.RedisSecrets{}) {
-		dst.Properties.Secrets = &RedisCachePropertiesSecrets{
+	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
+		dst.Properties.Secrets = &RedisCacheSecrets{
 			ConnectionString: to.StringPtr(redis.Properties.Secrets.ConnectionString),
 			Password:         to.StringPtr(redis.Properties.Secrets.Password),
 		}
 	}
 
 	return nil
+}
+
+// ConvertFrom converts from version-agnostic datamodel to the versioned RedisCacheSecrets instance.
+func (dst *RedisCacheSecrets) ConvertFrom(src conv.DataModelInterface) error {
+	redisSecrets, ok := src.(*datamodel.RedisCacheSecrets)
+	if !ok {
+		return conv.ErrInvalidModelConversion
+	}
+
+	dst.ConnectionString = to.StringPtr(redisSecrets.ConnectionString)
+	dst.Password = to.StringPtr(redisSecrets.Password)
+
+	return nil
+}
+
+// ConvertTo converts from the versioned RedisCacheSecrets instance to version-agnostic datamodel.
+func (src *RedisCacheSecrets) ConvertTo() (conv.DataModelInterface, error) {
+	converted := &datamodel.RedisCacheSecrets{
+		ConnectionString: to.String(src.ConnectionString),
+		Password:         to.String(src.Password),
+	}
+	return converted, nil
 }

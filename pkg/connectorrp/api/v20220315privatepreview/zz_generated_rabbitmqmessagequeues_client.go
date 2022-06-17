@@ -26,11 +26,12 @@ type RabbitMQMessageQueuesClient struct {
 	ep string
 	pl runtime.Pipeline
 	rootScope string
+	subscriptionID string
 }
 
 // NewRabbitMQMessageQueuesClient creates a new instance of RabbitMQMessageQueuesClient with the specified values.
-func NewRabbitMQMessageQueuesClient(con *arm.Connection, rootScope string) *RabbitMQMessageQueuesClient {
-	return &RabbitMQMessageQueuesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
+func NewRabbitMQMessageQueuesClient(con *arm.Connection, rootScope string, subscriptionID string) *RabbitMQMessageQueuesClient {
+	return &RabbitMQMessageQueuesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope, subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a RabbitMQMessageQueue resource
@@ -250,6 +251,71 @@ func (client *RabbitMQMessageQueuesClient) listByRootScopeHandleResponse(resp *h
 
 // listByRootScopeHandleError handles the ListByRootScope error response.
 func (client *RabbitMQMessageQueuesClient) listByRootScopeHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
+	if err != nil {
+		return runtime.NewResponseError(err, resp)
+	}
+		errType := ErrorResponse{raw: string(body)}
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
+	}
+	return runtime.NewResponseError(&errType, resp)
+}
+
+// ListSecrets - Lists secrets values for the specified RabbitMQMessageQueue resource
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *RabbitMQMessageQueuesClient) ListSecrets(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesListSecretsOptions) (RabbitMQMessageQueuesListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, rabbitMQMessageQueueName, options)
+	if err != nil {
+		return RabbitMQMessageQueuesListSecretsResponse{}, err
+	}
+	resp, err := 	client.pl.Do(req)
+	if err != nil {
+		return RabbitMQMessageQueuesListSecretsResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return RabbitMQMessageQueuesListSecretsResponse{}, client.listSecretsHandleError(resp)
+	}
+	return client.listSecretsHandleResponse(resp)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *RabbitMQMessageQueuesClient) listSecretsCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets"
+	if client.subscriptionID == "" {
+		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	if rabbitMQMessageQueueName == "" {
+		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	client.ep, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *RabbitMQMessageQueuesClient) listSecretsHandleResponse(resp *http.Response) (RabbitMQMessageQueuesListSecretsResponse, error) {
+	result := RabbitMQMessageQueuesListSecretsResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQSecrets); err != nil {
+		return RabbitMQMessageQueuesListSecretsResponse{}, err
+	}
+	return result, nil
+}
+
+// listSecretsHandleError handles the ListSecrets error response.
+func (client *RabbitMQMessageQueuesClient) listSecretsHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)

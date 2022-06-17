@@ -46,7 +46,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 	// Read existing resource info from the data store
 	existingResource := &datamodel.MongoDatabase{}
 	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
-	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
+	if req.Method == http.MethodPatch && err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
 	}
 

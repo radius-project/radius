@@ -98,7 +98,13 @@ const (
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
 	ProvisioningStateFailed       ProvisioningState = "Failed"
 	ProvisioningStateCanceled     ProvisioningState = "Canceled"
+	ProvisioningStateUndefined    ProvisioningState = "Undefined"
 )
+
+// IsTerminal returns true if given Provisioning State is in a terminal state.
+func (state ProvisioningState) IsTerminal() bool {
+	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled
+}
 
 // TrackedResource represents the common tracked resource.
 type TrackedResource struct {

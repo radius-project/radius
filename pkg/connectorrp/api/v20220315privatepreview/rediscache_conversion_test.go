@@ -86,3 +86,53 @@ func TestRedisCache_ConvertFromValidation(t *testing.T) {
 		require.ErrorAs(t, tc.err, &err)
 	}
 }
+
+func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
+	// arrange
+	rawPayload := loadTestData("rediscachesecrets.json")
+	versioned := &RedisCacheSecrets{}
+	err := json.Unmarshal(rawPayload, versioned)
+	require.NoError(t, err)
+
+	// act
+	dm, err := versioned.ConvertTo()
+
+	// assert
+	require.NoError(t, err)
+	converted := dm.(*datamodel.RedisCacheSecrets)
+	require.Equal(t, "test-connection-string", converted.ConnectionString)
+	require.Equal(t, "testPassword", converted.Password)
+}
+
+func TestRedisCacheSecrets_ConvertDataModelToVersioned(t *testing.T) {
+	// arrange
+	rawPayload := loadTestData("rediscachesecretsdatamodel.json")
+	secrets := &datamodel.RedisCacheSecrets{}
+	err := json.Unmarshal(rawPayload, secrets)
+	require.NoError(t, err)
+
+	// act
+	versionedResource := &RedisCacheSecrets{}
+	err = versionedResource.ConvertFrom(secrets)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "test-connection-string", secrets.ConnectionString)
+	require.Equal(t, "testPassword", secrets.Password)
+}
+
+func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {
+	validationTests := []struct {
+		src conv.DataModelInterface
+		err error
+	}{
+		{&fakeResource{}, conv.ErrInvalidModelConversion},
+		{nil, conv.ErrInvalidModelConversion},
+	}
+
+	for _, tc := range validationTests {
+		versioned := &RedisCacheSecrets{}
+		err := versioned.ConvertFrom(tc.src)
+		require.ErrorAs(t, tc.err, &err)
+	}
+}

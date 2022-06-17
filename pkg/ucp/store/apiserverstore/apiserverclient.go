@@ -543,15 +543,15 @@ func convert(obj *store.Object) (*ucpv1alpha1.ResourceEntry, error) {
 func idMatchesQuery(id resources.ID, query store.Query) bool {
 	if query.ScopeRecursive && !strings.HasPrefix(normalize(id.RootScope()), normalize(query.RootScope)) {
 		// Example:
-		// id is ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
-		// query.RootScope is ucp:/planes/azure/azurecloud
+		// id is /planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
+		// query.RootScope is /planes/azure/azurecloud
 		//
 		// Query root scope is not a prefix
 		return false
 	} else if !query.ScopeRecursive && normalize(id.RootScope()) != normalize(query.RootScope) {
 		// Example:
-		// id is ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
-		// query.RootScope is ucp:/planes/radius/local/resourceGroups/another-group
+		// id is /planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
+		// query.RootScope is /planes/radius/local/resourceGroups/another-group
 		//
 		// Query root scope does not match
 		return false
@@ -559,8 +559,8 @@ func idMatchesQuery(id resources.ID, query store.Query) bool {
 
 	if query.RoutingScopePrefix != "" && !strings.HasPrefix(normalize(id.RoutingScope()), normalize(query.RoutingScopePrefix)) {
 		// Example:
-		// id is ucp:/planes/radius/local/resourceGroups/cool-group/providers/Some.Resource/type1/name1/type2/name2
-		// query.RoutingScopePrefix is ucp:/planes/radius/local/resourceGroups/cool-group/providers/Some.Resource/type1/anothername
+		// id is /planes/radius/local/resourceGroups/cool-group/providers/Some.Resource/type1/name1/type2/name2
+		// query.RoutingScopePrefix is /planes/radius/local/resourceGroups/cool-group/providers/Some.Resource/type1/anothername
 		//
 		// Query routing scope is not a prefix
 		return false
@@ -568,7 +568,7 @@ func idMatchesQuery(id resources.ID, query store.Query) bool {
 
 	if query.ResourceType != "" && query.IsScopeQuery {
 		// Example:
-		// id is ucp:/planes/radius/local/resourceGroups/cool-group
+		// id is /planes/radius/local/resourceGroups/cool-group
 		// query.ResourceType is subscriptions
 		//
 		// Query resource type is not a match
@@ -577,7 +577,7 @@ func idMatchesQuery(id resources.ID, query store.Query) bool {
 		return strings.EqualFold(resourceType, query.ResourceType)
 	} else if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
 		// Example:
-		// id is ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
+		// id is /planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
 		// query.ResourceType is Applications.Core/containers
 		//
 		// Query resource type is not a match
@@ -592,9 +592,7 @@ func normalize(part string) string {
 		return ""
 	}
 
-	if strings.HasPrefix(part, resources.UCPPrefix+resources.SegmentSeparator) {
-		// Already prefixed
-	} else if !strings.HasPrefix(part, resources.SegmentSeparator) {
+	if !strings.HasPrefix(part, resources.SegmentSeparator) {
 		part = resources.SegmentSeparator + part
 	}
 

@@ -136,6 +136,66 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Connector/redisCaches/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "redisCaches",
+					Operation:   "Get/List redisCaches",
+					Description: "Gets/Lists redisCache connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/redisCaches/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "redisCaches",
+					Operation:   "Create/Update redisCaches",
+					Description: "Creates or updates a redisCache connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/redisCaches/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "redisCaches",
+					Operation:   "Delete redisCache",
+					Description: "Deletes a redisCache connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/rabbitMQMessageQueues/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "rabbitMQMessageQueues",
+					Operation:   "Get/List rabbitMQMessageQueues",
+					Description: "Gets/Lists rabbitMQMessageQueue connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/rabbitMQMessageQueues/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "rabbitMQMessageQueues",
+					Operation:   "Create/Update rabbitMQMessageQueues",
+					Description: "Creates or updates a rabbitMQMessageQueue connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/rabbitMQMessageQueues/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "rabbitMQMessageQueues",
+					Operation:   "Delete rabbitMQMessageQueue",
+					Description: "Deletes a rabbitMQMessageQueue connector.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }
