@@ -6,12 +6,13 @@
 package validator
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync"
 
-	"github.com/go-openapi/errors"
+	oai_errors "github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
@@ -51,32 +52,39 @@ type validator struct {
 	paramsMu *sync.RWMutex
 }
 
-func getRootScopePath(route *mux.Route) (string, error) {
-	muxTemplate, err := route.GetPathTemplate()
-	if err != nil {
-		return "", err
+func (v *validator) getParam(req *http.Request) (map[string]spec.Parameter, error) {
+	route := mux.CurrentRoute(req)
+	if route == nil {
+		return nil, errors.New("route is nil")
 	}
-	return strings.Replace(muxTemplate, "{rootScope:.*}", "{rootScope}", 1), nil
-}
+	pathTemplate, err := route.GetPathTemplate()
+	if err != nil {
+		return nil, err
+	}
 
-func (v *validator) getParam(method, path string) map[string]spec.Parameter {
-	path = strings.ToLower(path)
 	v.paramsMu.RLock()
-	p, ok := v.params[path]
+	p, ok := v.params[pathTemplate]
 	v.paramsMu.RUnlock()
 	if ok {
-		return p
+		return p, nil
 	}
 
 	v.paramsMu.Lock()
 	defer v.paramsMu.Unlock()
-	for k, _ := range v.specDoc.Analyzer.AllPaths() {
-		if strings.Contains(strings.ToLower(k), path) {
-			v.params[path] = v.specDoc.Analyzer.ParamsFor(method, k)
+
+	// Gorilla mux route path should start with {rootScope;.*} to handle UCP and Azure root scope.
+	scopePath := strings.Replace(pathTemplate, "{rootScope:.*}", "{rootScope}", 1)
+	var param map[string]spec.Parameter = nil
+	for k := range v.specDoc.Analyzer.AllPaths() {
+		if strings.EqualFold(k, scopePath) {
+			param = v.specDoc.Analyzer.ParamsFor(req.Method, k)
 		}
 	}
-
-	return v.params[path]
+	if param != nil {
+		v.params[pathTemplate] = param
+		return v.params[pathTemplate], nil
+	}
+	return nil, ErrUndefinedAPI
 }
 
 func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
@@ -91,17 +99,14 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 }
 
 func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
-	rootScopeRoute, err := getRootScopePath(mux.CurrentRoute(req))
+	routeParams := v.toRouteParams(req)
+	params, err := v.getParam(req)
 	if err != nil {
 		return routePathParseError(err)
 	}
 
-	routeParams := v.toRouteParams(req)
-
-	params := v.getParam(req.Method, rootScopeRoute)
 	binder := middleware.NewUntypedRequestBinder(params, v.specDoc.Spec(), strfmt.Default)
 	data := map[string]interface{}{}
-
 	var errs []ValidationError
 	result := binder.Bind(req, middleware.RouteParams(routeParams), runtime.JSONConsumer(), &data)
 	if result != nil {
@@ -135,35 +140,38 @@ func (v *AggregateValidationError) Error() string {
 	return message.String()
 }
 
-func flattenComposite(errs *errors.CompositeError) *errors.CompositeError {
+func flattenComposite(errs *oai_errors.CompositeError) *oai_errors.CompositeError {
 	var res []error
 	for _, er := range errs.Errors {
 		switch e := er.(type) {
-		case *errors.CompositeError:
+		case *oai_errors.CompositeError:
 			if len(e.Errors) > 0 {
 				flat := flattenComposite(e)
 				if len(flat.Errors) > 0 {
 					res = append(res, flat.Errors...)
 				}
 			}
-		case *errors.Validation:
+		case *oai_errors.Validation:
 			if e != nil {
 				res = append(res, e)
 			}
 		}
 	}
-	return errors.CompositeValidationError(res...)
+	return oai_errors.CompositeValidationError(res...)
 }
 
 func parseResult(result error) []ValidationError {
 	errs := []ValidationError{}
-	flattened := flattenComposite(result.(*errors.CompositeError))
+	flattened := flattenComposite(result.(*oai_errors.CompositeError))
 	for _, e := range flattened.Errors {
-		valErr, ok := e.(*errors.Validation)
+		valErr, ok := e.(*oai_errors.Validation)
 		if ok {
-			firstIndex := strings.Index(valErr.Name, ".")
-			if firstIndex < 0 {
-				firstIndex = 0
+			firstIndex := 0
+			if valErr.In == "body" {
+				firstIndex = strings.Index(valErr.Name, ".")
+				if firstIndex < 0 {
+					firstIndex = 0
+				}
 			}
 			errs = append(errs, ValidationError{
 				Position: valErr.Name[firstIndex:],

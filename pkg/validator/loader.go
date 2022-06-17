@@ -19,11 +19,16 @@ import (
 
 var (
 	ErrSpecDocumentNotFound = errors.New("not found OpenAPI specification document")
+	ErrUndefinedAPI         = errors.New("undefined API")
 )
 
-const (
-	separator = "-"
-)
+func NewLoader(providerName string, specs fs.FS) *Loader {
+	return &Loader{
+		providerName: providerName,
+		validators:   map[string]validator{},
+		specFiles:    specs,
+	}
+}
 
 type Loader struct {
 	validators   map[string]validator
@@ -33,16 +38,6 @@ type Loader struct {
 
 func (l *Loader) Name() string {
 	return l.providerName
-}
-
-func NewLoader(providerName string, specs fs.FS) *Loader {
-	loader := &Loader{
-		providerName: providerName,
-		validators:   map[string]validator{},
-		specFiles:    specs,
-	}
-
-	return loader
 }
 
 func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
@@ -60,12 +55,14 @@ func (l *Loader) LoadSpec() error {
 			return nil
 		}
 
+		// Skip the shared common-types
 		if strings.HasPrefix(path, "specification/common-types") {
 			return nil
 		}
 
+		// Check if specification file pathname is valid and skip global.json.
 		parsed := parseSpecFilePath(path)
-		if namespace, ok := parsed["provider"]; !ok || !strings.EqualFold(namespace, l.providerName) || parsed["resourcetype"] == "global" {
+		if pn, ok := parsed["provider"]; !ok || !strings.EqualFold(pn, l.providerName) || parsed["resourcetype"] == "global" {
 			return nil
 		}
 
@@ -84,6 +81,7 @@ func (l *Loader) LoadSpec() error {
 		wDoc, err := specDoc.Expanded(&spec.ExpandOptions{
 			RelativeBase: path,
 			PathLoader: func(path string) (json.RawMessage, error) {
+				// Trim prefix part if path is always the absolute path.
 				first := strings.Index(path, "specification")
 				data, err := fs.ReadFile(l.specFiles, path[first:])
 				return json.RawMessage(data), err
@@ -94,7 +92,6 @@ func (l *Loader) LoadSpec() error {
 		}
 
 		key := getValidatorKey(parsed["resourcetype"], parsed["version"])
-
 		l.validators[key] = validator{
 			TypeName:   parsed["provider"] + "/" + parsed["resourcetype"],
 			APIVersion: parsed["version"],
@@ -114,11 +111,13 @@ func (l *Loader) LoadSpec() error {
 }
 
 func getValidatorKey(resourceType, version string) string {
-	return strings.ToLower(strings.Join([]string{resourceType, version}, separator))
+	return strings.ToLower(strings.Join([]string{resourceType, version}, "-"))
 }
 
 func parseSpecFilePath(path string) map[string]string {
-	re := regexp.MustCompile(".*specification\\/(?P<name>.+)\\/resource-manager\\/(?P<provider>.+)\\/(?P<state>.+)\\/(?P<version>.+)\\/(?P<resourcetype>.+)\\.json$")
+	// OpenAPI specs are stored under swagger/ directory structure based on this spec - https://github.com/Azure/azure-rest-api-specs/wiki#directory-structure
+	// This regex extracts the information from the filepath.
+	re := regexp.MustCompile(".*specification\\/(?P<productname>.+)\\/resource-manager\\/(?P<provider>.+)\\/(?P<state>.+)\\/(?P<version>.+)\\/(?P<resourcetype>.+)\\.json$")
 	values := re.FindStringSubmatch(path)
 	keys := re.SubexpNames()
 	d := map[string]string{}

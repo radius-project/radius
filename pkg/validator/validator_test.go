@@ -25,7 +25,7 @@ var envRequestBody = `{
 			"kind": "kubernetes",
 			"resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster"
 		}
-	}
+	
 }
 `
 
