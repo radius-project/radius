@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -100,12 +99,11 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	
 	env.Items[environmentName] = map[string]interface{}{
-		"kind":                 environments.KindKubernetes,
-		"context":              contextName,
-		"namespace":            sharedArgs.Namespace,
-		"enableucp":            strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
+		"kind":      environments.KindKubernetes,
+		"context":   contextName,
+		"namespace": sharedArgs.Namespace,
+		"enableucp": featureflag.EnableUnifiedControlPlane.IsActive(),
 	}
 
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
@@ -117,7 +115,6 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	output.CompleteStep(step)
-
 
 	if err := cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(environmentName))); err != nil {
 		return err

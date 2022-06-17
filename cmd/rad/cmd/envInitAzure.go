@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -749,7 +748,7 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, envNa
 		"clusterName":    clusterName,
 		"context":        clusterName,
 		"namespace":      "default",
-		"enableucp":      strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
+		"enableucp":      featureflag.EnableUnifiedControlPlane.IsActive(),
 	}
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
 		env.Items[envName]["ucpresourcegroupname"] = radiusRgName

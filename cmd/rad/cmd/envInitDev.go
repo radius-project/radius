@@ -7,7 +7,6 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
@@ -131,7 +130,7 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 			PushEndpoint: cluster.RegistryPushEndpoint,
 			PullEndpoint: cluster.RegistryPullEndpoint,
 		},
-		"enableucp":            strconv.FormatBool(featureflag.EnableUnifiedControlPlane.IsActive()),
+		"enableucp": featureflag.EnableUnifiedControlPlane.IsActive(),
 	}
 
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
