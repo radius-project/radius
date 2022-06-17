@@ -185,11 +185,17 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	// We need to preserve the case while storing data in DB and therefore iterating for case
 	// insensitive comparisons
 	var proxyURL string
-	for k, v := range plane.Properties.ResourceProviders {
-		if strings.EqualFold(k, resourceID.ProviderNamespace()) {
-			proxyURL = v
-			break
+	if plane.Properties.Kind == rest.PlaneKindUCPNative {
+		for k, v := range plane.Properties.ResourceProviders {
+			if strings.EqualFold(k, resourceID.ProviderNamespace()) {
+				proxyURL = v
+				break
+			}
 		}
+	} else {
+		// For a non UCP-native plane, the configuration should have a single RP with key = "*"
+		// and all the requests will be forwarded to that URL
+		proxyURL = plane.Properties.ResourceProviders["*"]
 	}
 
 	downstream, err := url.Parse(proxyURL)
@@ -198,8 +204,9 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	options := proxy.ReverseProxyOptions{
-		RoundTripper: http.DefaultTransport,
-		ProxyAddress: ucp.options.Address,
+		RoundTripper:   http.DefaultTransport,
+		ProxyAddress:   ucp.options.Address,
+		UCPNativeProxy: (plane.Properties.Kind == rest.PlaneKindUCPNative),
 	}
 
 	// As per https://github.com/golang/go/issues/28940#issuecomment-441749380, the way to check

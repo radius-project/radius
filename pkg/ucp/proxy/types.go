@@ -42,8 +42,9 @@ type ReverseProxy interface {
 }
 
 type ReverseProxyOptions struct {
-	RoundTripper http.RoundTripper
-	ProxyAddress string
+	RoundTripper   http.RoundTripper
+	ProxyAddress   string
+	UCPNativeProxy bool
 }
 
 type ReverseProxyBuilder struct {

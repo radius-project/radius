@@ -9,6 +9,13 @@ type PlaneProperties struct {
 	ResourceProviders map[string]string `json:"resourceProviders" yaml:"resourceProviders"`
 	Kind              string            `json:"kind" yaml:"kind"`
 }
+
+// Plane kinds
+const (
+	PlaneKindUCPNative = "UCPNative"
+	PlaneKindAzure     = "Azure"
+)
+
 type Plane struct {
 	ID         string          `json:"id" yaml:"id"`
 	Type       string          `json:"type" yaml:"type"`
