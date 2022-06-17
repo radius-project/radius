@@ -20,7 +20,7 @@ import (
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
-func TestGetAppilcationRun_20220315PrivatePreview(t *testing.T) {
+func TestGetApplicationRun_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 

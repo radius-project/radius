@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteAppilcationRun_20220315PrivatePreview(t *testing.T) {
+func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
