@@ -65,7 +65,7 @@ func listResourcesLegacy(cmd *cobra.Command, args []string, env environments.Env
 		return err
 	}
 
-	return printOutput(cmd, resourceList.Value)
+	return printOutput(cmd, resourceList.Value, true)
 }
 
 func listResourcesUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
@@ -83,16 +83,20 @@ func listResourcesUCP(cmd *cobra.Command, args []string, env environments.Enviro
 		return err
 	}
 
-	return printOutput(cmd, resourceList)
+	return printOutput(cmd, resourceList, false)
 }
 
-func printOutput(cmd *cobra.Command, obj interface{}) error {
+func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
 	}
 
-	err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	if !isLegacy {
+		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	} else {
+		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	}
 	if err != nil {
 		return err
 	}
