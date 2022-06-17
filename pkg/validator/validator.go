@@ -117,13 +117,6 @@ func routePathParseError(err error) []ValidationError {
 	}}
 }
 
-func invalidJSONError(err error) []ValidationError {
-	return []ValidationError{{
-		Message:   "invalid JSON error",
-		JSONError: err,
-	}}
-}
-
 type AggregateValidationError struct {
 	Details []ValidationError
 }

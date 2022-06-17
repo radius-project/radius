@@ -89,6 +89,9 @@ func (l *Loader) LoadSpec() error {
 				return json.RawMessage(data), err
 			},
 		})
+		if err != nil {
+			return err
+		}
 
 		key := getValidatorKey(parsed["resourcetype"], parsed["version"])
 
