@@ -230,6 +230,49 @@ func IsValidKind(kind Kind) bool {
 	return false
 }
 
+type SecretObjectProperties struct {
+	// REQUIRED; The name of the secret
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *SecretObjectPropertiesEncoding `json:"encoding,omitempty"`
+
+	// Secret version
+	Version *string `json:"version,omitempty"`
+}
+
+// SecretObjectPropertiesEncoding - Encoding format. Default utf-8
+type SecretObjectPropertiesEncoding string
+
+const (
+	SecretObjectPropertiesEncodingBase64 SecretObjectPropertiesEncoding = "base64"
+	SecretObjectPropertiesEncodingHex    SecretObjectPropertiesEncoding = "hex"
+	SecretObjectPropertiesEncodingUTF8   SecretObjectPropertiesEncoding = "utf-8"
+)
+
+// PossibleSecretObjectPropertiesEncodingValues returns the possible values for the SecretObjectPropertiesEncoding const type.
+func PossibleSecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEncoding {
+	return []SecretObjectPropertiesEncoding{
+		SecretObjectPropertiesEncodingBase64,
+		SecretObjectPropertiesEncodingHex,
+		SecretObjectPropertiesEncodingUTF8,
+	}
+}
+
+type KeyObjectProperties struct {
+	// REQUIRED; The name of the key
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Key version
+	Version *string `json:"version,omitempty"`
+}
+
 // IamProperties represents the properties of IAM provider.
 type IamProperties struct {
 	Kind  Kind     `json:"kind,omitempty"`
