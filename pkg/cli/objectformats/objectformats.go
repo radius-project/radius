@@ -73,11 +73,7 @@ func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 			},
 			{
 				Heading:  "KIND",
-				JSONPath: "{ .Kind }",
-			},
-			{
-				Heading:  "DEFAULT APPLICATION",
-				JSONPath: "{ .DefaultApplication }",
+				JSONPath: "{ .properties.compute.Kind }",
 			},
 		},
 	}

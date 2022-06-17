@@ -143,6 +143,6 @@ func (e *KubernetesEnvironment) CreateUCPManagementClient(ctx context.Context) (
 	return &kubernetes.ARMUCPManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		RootScope:       "/ResourceGroups/dummy", //+ e.ResourceGroup,
+		RootScope:       "ResourceGroups/default", //+ e.ResourceGroup,
 	}, nil
 }

@@ -46,7 +46,7 @@ const (
 	IngressServiceName       = "contour-envoy"
 	RadiusConfigName         = "radius-config"
 	RadiusSystemNamespace    = "radius-system"
-	UCPBasePath              = "/apis/api.ucp.dev/v1alpha3"
+	UCPAPIServerBasePath     = "/apis/api.ucp.dev/v1alpha3"
 	UCPType                  = "api.ucp.dev"
 	BicepType                = "api.bicep.dev"
 )
@@ -123,7 +123,7 @@ func CreateAPIServerConnection(context string, overrideURL string, enableUCP boo
 	var roundTripper http.RoundTripper
 
 	if enableUCP {
-		baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.ucp.dev", context, enableUCP)
+		baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.ucp.dev/planes/radius/local", context, enableUCP)
 	} else {
 		baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.radius.dev", context, enableUCP)
 	}
@@ -138,7 +138,7 @@ func CreateAPIServerConnection(context string, overrideURL string, enableUCP boo
 }
 
 func GetBaseUrlForDeploymentEngine(overrideURL string) string {
-	return strings.TrimSuffix(overrideURL, "/") + UCPBasePath
+	return strings.TrimSuffix(overrideURL, "/") + UCPAPIServerBasePath
 }
 
 func GetBaseUrlAndRoundTripperForDeploymentEngine(deploymentEngineURL string, ucpURL string, context string, enableUCP bool) (string, http.RoundTripper, error) {
@@ -146,7 +146,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(deploymentEngineURL string, uc
 	var roundTripper http.RoundTripper
 	var basePath string
 	if enableUCP {
-		basePath = UCPBasePath
+		basePath = UCPAPIServerBasePath
 	} else {
 		basePath = DeploymentEngineBasePath
 	}
@@ -184,20 +184,23 @@ func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string,
 	var baseURL string
 	var roundTripper http.RoundTripper
 	if overrideURL != "" {
-		baseURL = strings.TrimSuffix(overrideURL, "/") + APIServerBasePath
+		if enableUCP {
+			baseURL = strings.TrimSuffix(overrideURL, "/") + UCPAPIServerBasePath
+		} else {
+			baseURL = strings.TrimSuffix(overrideURL, "/") + APIServerBasePath
+		}
 		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
 	} else {
 		restConfig, err := GetConfig(context)
 		if err != nil {
 			return "", nil, err
 		}
-
 		roundTripper, err = CreateRestRoundTripper(context, group, overrideURL)
 		if err != nil {
 			return "", nil, err
 		}
 		if enableUCP {
-			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + UCPBasePath
+			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + UCPAPIServerBasePath + "/planes/radius/local"
 		} else {
 			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
 		}
