@@ -134,7 +134,7 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
 						"cpu":    "100m",
-						"memory": "16M",
+						"memory": "32M",
 					},
 					"requests": map[string]interface{}{
 						"cpu":    "100m",
@@ -158,7 +158,7 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
 						"cpu":    "200m",
-						"memory": "32M",
+						"memory": "64M",
 					},
 					"requests": map[string]interface{}{
 						"cpu":    "100m",
