@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package containerv1alpha3
+package container
 
 import (
 	"context"
@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	ResourceType = "Container"
+	ResourceType = "Applications.Core/containers"
 )
 
 // Liveness/Readiness constants
@@ -109,7 +109,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	resource, ok := dm.(*datamodel.ContainerResource)
+	resource, ok := dm.(datamodel.ContainerResource)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
@@ -162,7 +162,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	return renderers.RendererOutput{Resources: outputResources}, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.ContainerResource, applicationName string, options renderers.RenderOptions) ([]outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.ContainerResource, applicationName string, options renderers.RenderOptions) ([]outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
@@ -544,7 +544,7 @@ func (r Renderer) makeAzureKeyVaultPersistentVolume(volumeName string, keyvaultV
 	return volumeSpec, volumeMountSpec, nil
 }
 
-func (r Renderer) makeSecret(ctx context.Context, resource *datamodel.ContainerResource, applicationName string, secrets map[string][]byte) outputresource.OutputResource {
+func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte) outputresource.OutputResource {
 	secret := corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -574,7 +574,7 @@ func (r Renderer) isIdentitySupported(kind datamodel.Kind) bool {
 }
 
 // Builds a user-assigned managed identity output resource.
-func (r Renderer) makeManagedIdentity(ctx context.Context, resource *datamodel.ContainerResource, applicationName string) outputresource.OutputResource {
+func (r Renderer) makeManagedIdentity(ctx context.Context, resource datamodel.ContainerResource, applicationName string) outputresource.OutputResource {
 	managedIdentityName := applicationName + "-" + resource.Name + "-msi"
 	identityOutputResource := outputresource.OutputResource{
 		ResourceType: resourcemodel.ResourceType{
@@ -592,7 +592,7 @@ func (r Renderer) makeManagedIdentity(ctx context.Context, resource *datamodel.C
 }
 
 // Builds an AKS pod-identity output resource.
-func (r Renderer) makePodIdentity(ctx context.Context, resource *datamodel.ContainerResource, applicationName string, roles []outputresource.OutputResource) outputresource.OutputResource {
+func (r Renderer) makePodIdentity(ctx context.Context, resource datamodel.ContainerResource, applicationName string, roles []outputresource.OutputResource) outputresource.OutputResource {
 
 	// Note: Pod Identity name cannot have camel case
 	podIdentityName := fmt.Sprintf("podid-%s-%s", strings.ToLower(applicationName), strings.ToLower(resource.Name))

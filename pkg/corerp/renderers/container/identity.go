@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package containerv1alpha3
+package container
 
 // RoleAssignmentData describes how to configure role assignment permissions based on the kind of
 // connection.
