@@ -186,8 +186,49 @@ func (e Extension) GetExtension() Extension { return e }
 type Kind string
 
 const (
-	KindAzure Kind = "azure"
+	KindAzure                   Kind = "azure"
+	KindAzureComKeyVault        Kind = "azure.com/KeyVault"
+	KindAzureComServiceBusQueue Kind = "azure.com/ServiceBusQueue"
+	KindDaprIoInvokeHTTP        Kind = "dapr.io/InvokeHttp"
+	KindDaprIoPubSubTopic       Kind = "dapr.io/PubSubTopic"
+	KindDaprIoSecretStore       Kind = "dapr.io/SecretStore"
+	KindDaprIoStateStore        Kind = "dapr.io/StateStore"
+	KindGrpc                    Kind = "Grpc"
+	KindHTTP                    Kind = "Http"
+	KindMicrosoftComSQL         Kind = "microsoft.com/SQL"
+	KindMongoComMongoDB         Kind = "mongo.com/MongoDB"
+	KindRabbitmqComMessageQueue Kind = "rabbitmq.com/MessageQueue"
+	KindRedislabsComRedis       Kind = "redislabs.com/Redis"
 )
+
+// PossibleKindValues returns the possible values for the Kind const type.
+func PossibleKindValues() []Kind {
+	return []Kind{
+		KindAzure,
+		KindAzureComKeyVault,
+		KindAzureComServiceBusQueue,
+		KindDaprIoInvokeHTTP,
+		KindDaprIoPubSubTopic,
+		KindDaprIoSecretStore,
+		KindDaprIoStateStore,
+		KindGrpc,
+		KindHTTP,
+		KindMicrosoftComSQL,
+		KindMongoComMongoDB,
+		KindRabbitmqComMessageQueue,
+		KindRedislabsComRedis,
+	}
+}
+
+func IsValidKind(kind Kind) bool {
+	s := PossibleKindValues()
+	for _, v := range s {
+		if v == kind {
+			return true
+		}
+	}
+	return false
+}
 
 // IamProperties represents the properties of IAM provider.
 type IamProperties struct {
