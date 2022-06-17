@@ -3,18 +3,21 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package swagger
+package validator
 
 import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
+	"github.com/gorilla/mux"
 )
 
 // ValidationError represents a validation error.
@@ -40,34 +43,78 @@ type Validator interface {
 }
 
 type validator struct {
-	TypeName string
-	specDoc  loads.Document
+	TypeName   string
+	APIVersion string
+
+	specDoc  *loads.Document
+	params   map[string]map[string]spec.Parameter
+	paramsMu *sync.RWMutex
+}
+
+func getRootScopePath(route *mux.Route) (string, error) {
+	muxTemplate, err := route.GetPathTemplate()
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(muxTemplate, "{rootScope:.*}", "{rootScope}", 1), nil
+}
+
+func (v *validator) getParam(method, path string) map[string]spec.Parameter {
+	path = strings.ToLower(path)
+	v.paramsMu.RLock()
+	p, ok := v.params[path]
+	v.paramsMu.RUnlock()
+	if ok {
+		return p
+	}
+
+	v.paramsMu.Lock()
+	defer v.paramsMu.Unlock()
+	for k, _ := range v.specDoc.Analyzer.AllPaths() {
+		if strings.Contains(strings.ToLower(k), path) {
+			v.params[path] = v.specDoc.Analyzer.ParamsFor(method, k)
+		}
+	}
+
+	return v.params[path]
+}
+
+func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
+	params := mux.Vars(req)
+
+	routeParams := middleware.RouteParams{}
+	for k, v := range params {
+		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: v})
+	}
+
+	return routeParams
 }
 
 func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
-	// Fake HTTP request
-	params := v.specDoc.Analyzer.ParamsFor("PUT", "/{rootScope}/providers/Applications.Core/environments/{environmentName}")
+	rootScopeRoute, err := getRootScopePath(mux.CurrentRoute(req))
+	if err != nil {
+		return routePathParseError(err)
+	}
+
+	routeParams := v.toRouteParams(req)
+
+	params := v.getParam(req.Method, rootScopeRoute)
 	binder := middleware.NewUntypedRequestBinder(params, v.specDoc.Spec(), strfmt.Default)
 	data := map[string]interface{}{}
 
-	// Need to populate the parameters using gorilla mux
-	routeParams := []middleware.RouteParam{
-		{"environmentName", "env0"},
-		{"rootScope", "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup"},
-		{"api-version", "2022-03-15-privatepreview"},
-	}
-
-	// Validate!
+	var errs []ValidationError
 	result := binder.Bind(req, middleware.RouteParams(routeParams), runtime.JSONConsumer(), &data)
 	if result != nil {
-		// Flatten the validation errors.
-		errs := parseResult(result)
-		fmt.Printf("\n\n%v", errs)
-		// Output example:
-		// [{api-version query  api-version in query is required} {EnvironmentResource.properties.compute.kind body <nil> EnvironmentResource.properties.compute.kind in body is required}]
+		errs = parseResult(result)
 	}
 
-	return nil
+	return errs
+}
+
+func routePathParseError(err error) []ValidationError {
+	return []ValidationError{{
+		Message: "failed to parse route: " + err.Error(),
+	}}
 }
 
 func invalidJSONError(err error) []ValidationError {
@@ -121,8 +168,12 @@ func parseResult(result error) []ValidationError {
 	for _, e := range flattened.Errors {
 		valErr, ok := e.(*errors.Validation)
 		if ok {
+			firstIndex := strings.Index(valErr.Name, ".")
+			if firstIndex < 0 {
+				firstIndex = 0
+			}
 			errs = append(errs, ValidationError{
-				Position: valErr.Name,
+				Position: valErr.Name[firstIndex:],
 				Message:  valErr.Error(),
 			})
 		}
