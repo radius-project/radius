@@ -61,7 +61,7 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 		output.LogInfo("Installing Open Service Mesh (OSM) to namespace: %s", RadiusSystemNamespace)
 
 		// Installation of OSM
-		err = runOSMHelmInstall(helmConf, helmChart)
+		err = runOSMHelmInstall(helmConf, helmChart, helmOutput)
 		if err != nil {
 			return fmt.Errorf("failed to run Open Service Mesh (OSM) helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
@@ -72,8 +72,7 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 
 }
 
-func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
-	var helmOutput strings.Builder
+func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, helmOutput strings.Builder) error {
 	fmt.Println("Installed reached")
 	installClient := helm.NewInstall(helmConf)
 	fmt.Println("Install client created!:)")
