@@ -248,22 +248,10 @@ func Test_ParseValidIDs(t *testing.T) {
 			provider: "",
 		},
 		{
-			id:       "ucp:/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
-			expected: "ucp:/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
-			scopes: []ScopeSegment{
-				{Type: "radius", Name: "local"},
-				{Type: "resourceGroups", Name: "r1"},
-			},
-			types: []TypeSegment{{
-				Type: "Applications.Core/environments", Name: "env"},
-			},
-			provider: "Applications.Core",
-		},
-		{
 			id:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
 			expected: "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
 			scopes: []ScopeSegment{
-				{Type: "planes/radius", Name: "local"},
+				{Type: "radius", Name: "local"},
 				{Type: "resourceGroups", Name: "r1"},
 			},
 			types: []TypeSegment{{

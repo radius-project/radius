@@ -40,21 +40,21 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
 
-	hrtSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/httproutes").
+	hrtSubrouter := router.NewRoute().PathPrefix(pathBase+"/planes/radius/{planeName}/resourcegroups/{resourceGroup}/providers/applications.core/httproutes").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
 
-	ctrRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/containers").
+	ctrRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/planes/radius/{planeName}/resourcegroups/{resourceGroup}/providers/applications.core/containers").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	ctrResourceRouter := ctrRTSubrouter.PathPrefix("/{container}").Subrouter()
 
 	// Adds application resource type routes
-	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/applications").
+	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/planes/radius/{planeName}/resourcegroups/{resourceGroup}/providers/applications.core/applications").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	appResourceRouter := appRTSubrouter.PathPrefix("/{application}").Subrouter()
 
 	// Adds gateway resource type routes
-	gtwyRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/gateways").
+	gtwyRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/planes/radius/{planeName}/resourcegroups/{resourceGroup}/providers/applications.core/gateways").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	gtwyResourceRouter := gtwyRTSubrouter.PathPrefix("/{application}").Subrouter()
 

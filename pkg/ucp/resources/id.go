@@ -304,14 +304,6 @@ func Parse(id string) (ID, error) {
 		}, nil
 	}
 
-	// If UCP forwards a request to the RP, the incoming URL
-	// will not have the UCP Prefix but will have a planes segment
-	isUCPForwarded := false
-	if strings.HasPrefix(id, SegmentSeparator+PlanesSegment) {
-		isUCPForwarded = true
-		id = strings.TrimPrefix(id, SegmentSeparator+PlanesSegment)
-	}
-
 	// trim the leading and ending / so we don't end up with an empty segment - we disallow
 	// empty segments in the middle of the string
 	id = strings.TrimPrefix(id, SegmentSeparator)
@@ -351,10 +343,10 @@ func Parse(id string) (ID, error) {
 			return ID{}, invalid(id)
 		}
 
-		if isUCPForwarded && i == 0 {
-			// Add the planes segment to the scope
-			segments[i] = PlanesSegment + SegmentSeparator + segments[i]
-		}
+		// if isUCPForwarded && i == 0 {
+		// 	// Add the planes segment to the scope
+		// 	segments[i] = PlanesSegment + SegmentSeparator + segments[i]
+		// }
 		scopes = append(scopes, ScopeSegment{Type: segments[i], Name: segments[i+1]})
 		i += 2
 	}
