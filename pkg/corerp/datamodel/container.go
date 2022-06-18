@@ -120,10 +120,10 @@ type HealthProbePropertiesClassification interface {
 
 // HealthProbeProperties - Properties for readiness/liveness probe
 type HealthProbeProperties struct {
-	Kind                string  `json:"kind,omitempty"`
-	FailureThreshold    float32 `json:"failureThreshold,omitempty"`
-	InitialDelaySeconds float32 `json:"initialDelaySeconds,omitempty"`
-	PeriodSeconds       float32 `json:"periodSeconds,omitempty"`
+	Kind                string   `json:"kind,omitempty"`
+	FailureThreshold    *float32 `json:"failureThreshold,omitempty"`
+	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       *float32 `json:"periodSeconds,omitempty"`
 }
 
 // ExecHealthProbeProperties - Specifies the properties for readiness/liveness probe using an executable
@@ -228,6 +228,10 @@ func (k Kind) IsValid() bool {
 		}
 	}
 	return false
+}
+
+func (k Kind) IsKind(kind Kind) bool {
+	return k == kind
 }
 
 type SecretObjectProperties struct {

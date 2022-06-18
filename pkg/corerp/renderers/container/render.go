@@ -35,13 +35,12 @@ import (
 
 const (
 	ResourceType = "Applications.Core/containers"
-)
 
-// Liveness/Readiness constants
-const (
-	DefaultInitialDelaySeconds   = 0
-	DefaultFailureThreshold      = 3
-	DefaultPeriodSeconds         = 10
+	// Liveness/Readiness constants
+	DefaultInitialDelaySeconds = 0
+	DefaultFailureThreshold    = 3
+	DefaultPeriodSeconds       = 10
+
 	AzureKeyVaultSecretsUserRole = "Key Vault Secrets User"
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
 )
@@ -55,7 +54,7 @@ type Renderer struct {
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
-	resource, ok := dm.(*datamodel.ContainerResource)
+	resource, ok := dm.(datamodel.ContainerResource)
 	if !ok {
 		return nil, nil, conv.ErrInvalidModelConversion
 	}
@@ -72,7 +71,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 		}
 
 		// Non-radius Azure connections that are accessible from Radius container resource.
-		if connection.Iam.Kind == datamodel.KindAzure {
+		if connection.Iam.Kind.IsKind(datamodel.KindAzure) {
 			azureResourceIDs = append(azureResourceIDs, resourceID)
 			continue
 		}
@@ -95,7 +94,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 	for _, volume := range properties.Container.Volumes {
 		switch v := volume.(type) {
-		case *datamodel.PersistentVolume:
+		case datamodel.PersistentVolume:
 			resourceID, err := azresources.Parse(v.Source)
 			if err != nil {
 				return nil, nil, err
@@ -297,7 +296,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			switch properties.Definition["kind"] {
 			case volumev1alpha3.PersistentVolumeKindAzureFileShare:
 				// Create spec for persistent volume
-				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, &v, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, &v, resource.Name, options)
 				if err != nil {
 					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
 				}
@@ -440,9 +439,9 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbePropertiesClassificatio
 		}
 		probeSpec.ProbeHandler.HTTPGet.HTTPHeaders = httpHeaders
 		c := containerHealthProbeConfig{
-			initialDelaySeconds: to.Float32Ptr(probe.InitialDelaySeconds),
-			failureThreshold:    to.Float32Ptr(probe.FailureThreshold),
-			periodSeconds:       to.Float32Ptr(probe.PeriodSeconds),
+			initialDelaySeconds: probe.InitialDelaySeconds,
+			failureThreshold:    probe.FailureThreshold,
+			periodSeconds:       probe.PeriodSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	case *datamodel.TCPHealthProbeProperties:
@@ -450,9 +449,9 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbePropertiesClassificatio
 		probeSpec.ProbeHandler.TCPSocket = &corev1.TCPSocketAction{}
 		probeSpec.TCPSocket.Port = intstr.FromInt(int(probe.ContainerPort))
 		c := containerHealthProbeConfig{
-			initialDelaySeconds: to.Float32Ptr(probe.InitialDelaySeconds),
-			failureThreshold:    to.Float32Ptr(probe.FailureThreshold),
-			periodSeconds:       to.Float32Ptr(probe.PeriodSeconds),
+			initialDelaySeconds: probe.InitialDelaySeconds,
+			failureThreshold:    probe.FailureThreshold,
+			periodSeconds:       probe.PeriodSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	case *datamodel.ExecHealthProbeProperties:
@@ -460,9 +459,9 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbePropertiesClassificatio
 		probeSpec.ProbeHandler.Exec = &corev1.ExecAction{}
 		probeSpec.Exec.Command = strings.Split(probe.Command, " ")
 		c := containerHealthProbeConfig{
-			initialDelaySeconds: to.Float32Ptr(probe.InitialDelaySeconds),
-			failureThreshold:    to.Float32Ptr(probe.FailureThreshold),
-			periodSeconds:       to.Float32Ptr(probe.PeriodSeconds),
+			initialDelaySeconds: probe.InitialDelaySeconds,
+			failureThreshold:    probe.FailureThreshold,
+			periodSeconds:       probe.PeriodSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	default:
@@ -496,12 +495,12 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persistentVolume *datamodel.PersistentVolume, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
+func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persistentVolume *datamodel.PersistentVolume, applicationName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
 	volumeSpec.Name = volumeName
 	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
-	volumeSpec.AzureFile.SecretName = options.Resource.ResourceName
+	volumeSpec.AzureFile.SecretName = applicationName
 	resourceID, err := azresources.Parse(persistentVolume.Source)
 	if err != nil {
 		return corev1.Volume{}, corev1.VolumeMount{}, err
@@ -629,7 +628,7 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource datamodel.Contai
 func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection *datamodel.ConnectionProperties, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
 	var roleNames []string
 	var armResourceIdentifier string
-	if connection.Iam.Kind == datamodel.KindAzure {
+	if connection.Iam.Kind.IsKind(datamodel.KindAzure) {
 		if len(connection.Iam.Roles) < 1 {
 			return nil, fmt.Errorf("rbac permissions are required to access Azure connections")
 		}

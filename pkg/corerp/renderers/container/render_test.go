@@ -942,9 +942,9 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 				ContainerPort: 8080,
 				Headers:       map[string]string{"header1": "value1"},
 				HealthProbeProperties: datamodel.HealthProbeProperties{
-					InitialDelaySeconds: 30,
-					FailureThreshold:    10,
-					PeriodSeconds:       2,
+					InitialDelaySeconds: to.Float32Ptr(30),
+					FailureThreshold:    to.Float32Ptr(10),
+					PeriodSeconds:       to.Float32Ptr(2),
 				},
 			},
 		},
@@ -1012,9 +1012,9 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 			ReadinessProbe: &datamodel.TCPHealthProbeProperties{
 				ContainerPort: 8080,
 				HealthProbeProperties: datamodel.HealthProbeProperties{
-					InitialDelaySeconds: 30,
-					FailureThreshold:    10,
-					PeriodSeconds:       2,
+					InitialDelaySeconds: to.Float32Ptr(30),
+					FailureThreshold:    to.Float32Ptr(10),
+					PeriodSeconds:       to.Float32Ptr(2),
 				},
 			},
 		},
@@ -1072,12 +1072,12 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 				envVarName1: envVarValue1,
 				envVarName2: envVarValue2,
 			},
-			ReadinessProbe: &datamodel.ExecHealthProbeProperties{
+			LivenessProbe: &datamodel.ExecHealthProbeProperties{
 				Command: "a b c",
 				HealthProbeProperties: datamodel.HealthProbeProperties{
-					InitialDelaySeconds: 30,
-					FailureThreshold:    10,
-					PeriodSeconds:       2,
+					InitialDelaySeconds: to.Float32Ptr(30),
+					FailureThreshold:    to.Float32Ptr(10),
+					PeriodSeconds:       to.Float32Ptr(2),
 				},
 			},
 		},
@@ -1131,7 +1131,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			ReadinessProbe: &datamodel.ExecHealthProbeProperties{
+			LivenessProbe: &datamodel.ExecHealthProbeProperties{
 				Command: "a b c",
 			},
 		},
@@ -1164,6 +1164,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 		require.Equal(t, resourceName, container.Name)
 
 		expectedLivenessProbe := &v1.Probe{
+			// Aligining with Kubernetes defaults
 			InitialDelaySeconds: DefaultInitialDelaySeconds,
 			FailureThreshold:    DefaultFailureThreshold,
 			PeriodSeconds:       DefaultPeriodSeconds,
