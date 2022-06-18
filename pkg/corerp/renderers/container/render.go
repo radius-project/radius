@@ -280,8 +280,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	for volumeName, volume := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
 		switch v := volume.(type) {
-		case *datamodel.EphemeralVolume:
-			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, v)
+		case datamodel.EphemeralVolume:
+			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, &v)
 			if err != nil {
 				return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
 			}
@@ -289,7 +289,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
 			// Add the volume to the list of volumes to be added to the Volumes spec
 			volumes = append(volumes, volumeSpec)
-		case *datamodel.PersistentVolume:
+		case datamodel.PersistentVolume:
 			var volumeSpec corev1.Volume
 			var volumeMountSpec corev1.VolumeMount
 			properties := dependencies[v.Source]
@@ -297,7 +297,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			switch properties.Definition["kind"] {
 			case volumev1alpha3.PersistentVolumeKindAzureFileShare:
 				// Create spec for persistent volume
-				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, v, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, &v, options)
 				if err != nil {
 					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
 				}
@@ -331,7 +331,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
 				secretProviderClassName := secretProviderClass.Data.(resourcemodel.KubernetesIdentity).Name
 				// Create spec for secret store
-				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, v, secretProviderClassName, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, &v, secretProviderClassName, options)
 				if err != nil {
 					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
