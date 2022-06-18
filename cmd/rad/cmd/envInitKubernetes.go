@@ -112,6 +112,9 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		if createUCPResourceGroup(contextName, rgName) != nil {
 			return err
 		}
+		if createEnvironmentResource(contextName, rgName, environmentName) != nil {
+			return err
+		}
 	}
 
 	output.CompleteStep(step)
@@ -137,7 +140,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) error {
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
 		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", baseUrl, resourceGroupName),
-		strings.NewReader("{}"),
+		strings.NewReader(`{}`),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create UCP resourceGroup: %w", err)
@@ -149,6 +152,37 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) error {
 
 	if res.StatusCode != http.StatusCreated {
 		return fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", res.StatusCode, res)
+	}
+	return nil
+}
+
+func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName string) error {
+	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
+		"",
+		"",
+		kubeCtxName,
+		featureflag.EnableUnifiedControlPlane.IsActive(),
+	)
+	if err != nil {
+		return err
+	}
+
+	createRgRequest, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s?api-version=2022-03-15-privatepreview", baseUrl, resourceGroupName, environmentName),
+		strings.NewReader(`{"properties":{"compute":{"kind":""}}}`),
+	)
+	createRgRequest.Header.Add("Content-Type", "application/json")
+	if err != nil {
+		return fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
+	}
+	res, err := rt.RoundTrip(createRgRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
+	}
+
+	if res.StatusCode != http.StatusOK { //shouldn't it be http.StatusCreated for consistency with rg?
+		return fmt.Errorf("request to create Applications.Core/environments resource failed with status: %d, request: %+v", res.StatusCode, res)
 	}
 	return nil
 }

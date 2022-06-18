@@ -486,6 +486,9 @@ func connect(ctx context.Context, environmentName string, subscriptionID string,
 		if createUCPResourceGroup(clusterName, rgName) != nil {
 			return err
 		}
+		if createEnvironmentResource(clusterName, rgName, environmentName) != nil {
+			return err
+		}
 	}
 
 	err = storeEnvironment(ctx, armauth, environmentName, subscriptionID, resourceGroup, clusterName, rgName)

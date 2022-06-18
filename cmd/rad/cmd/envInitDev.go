@@ -139,6 +139,9 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 		if createUCPResourceGroup(cluster.ContextName, rgName) != nil {
 			return err
 		}
+		if createEnvironmentResource(cluster.ContextName, rgName, environmentName) != nil {
+			return err
+		}
 	}
 
 	output.CompleteStep(step)
