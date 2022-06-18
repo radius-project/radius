@@ -7,7 +7,6 @@ package validator
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -21,20 +20,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	InvalidRequestContentCode   = "InvalidRequestContent"
+	InvalidObjectPropertiesCode = "InvalidObjectProperties"
+)
+
 // ValidationError represents a validation error.
 type ValidationError struct {
-	// Position contains the field position, e.g. (root),
-	// (root).location, (root).properties.resources.0
-	//
-	// It could be unset, in case the object was not valid JSON.
-	Position string
+	// Code represents the code of validation error.
+	Code string
 
 	// Message contains the error message, e.g. "location is required".
 	Message string
-
-	// JSONError contains the parsing error if the provided document
-	// wasn't valid JSON.
-	JSONError error
 }
 
 // Validator validates HTTP request.
@@ -47,46 +44,56 @@ type validator struct {
 	TypeName   string
 	APIVersion string
 
-	specDoc  *loads.Document
-	params   map[string]map[string]spec.Parameter
-	paramsMu *sync.RWMutex
+	specDoc      *loads.Document
+	paramCache   map[string]map[string]spec.Parameter
+	paramCacheMu *sync.RWMutex
 }
 
+// getParam looks up the correct spec.Parameter which a unique parameter is defined by a combination
+// of a [name](#parameterName) and [location](#parameterIn). This spec.Parameter are loaded from swagger
+// file and consumed by middleware.NewUntypedRequestBinder. To fetch spec.Parameter, we need to get
+// the case-sensitive route path which is defined in swagger file. getParam first gets route defined
+// by gorilla mux, replace {rootScope:.*} in gorilla mux route with {rootScope} and iterate the loaded
+// parameters from swagger file to find the matched route path defined in swagger file. Then it caches
+// spec.Parameter for the next lookup.
 func (v *validator) getParam(req *http.Request) (map[string]spec.Parameter, error) {
 	route := mux.CurrentRoute(req)
 	if route == nil {
 		return nil, errors.New("route is nil")
 	}
+	// Fetch gorilla mux route path from the current request.
 	pathTemplate, err := route.GetPathTemplate()
 	if err != nil {
 		return nil, err
 	}
 
-	v.paramsMu.RLock()
-	p, ok := v.params[pathTemplate]
-	v.paramsMu.RUnlock()
+	v.paramCacheMu.RLock()
+	p, ok := v.paramCache[pathTemplate]
+	v.paramCacheMu.RUnlock()
 	if ok {
 		return p, nil
 	}
 
-	v.paramsMu.Lock()
-	defer v.paramsMu.Unlock()
+	v.paramCacheMu.Lock()
+	defer v.paramCacheMu.Unlock()
 
-	// Gorilla mux route path should start with {rootScope;.*} to handle UCP and Azure root scope.
+	// Gorilla mux route path should start with {rootScope:.*} to handle UCP and Azure root scope.
 	scopePath := strings.Replace(pathTemplate, "{rootScope:.*}", "{rootScope}", 1)
 	var param map[string]spec.Parameter = nil
+	// Iterate loaded paths to find the matched route.
 	for k := range v.specDoc.Analyzer.AllPaths() {
 		if strings.EqualFold(k, scopePath) {
 			param = v.specDoc.Analyzer.ParamsFor(req.Method, k)
 		}
 	}
 	if param != nil {
-		v.params[pathTemplate] = param
-		return v.params[pathTemplate], nil
+		v.paramCache[pathTemplate] = param
+		return v.paramCache[pathTemplate], nil
 	}
 	return nil, ErrUndefinedAPI
 }
 
+// toRouteParams converts gorilla mux params to go-openapi RouteParams to validate parameters.
 func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	params := mux.Vars(req)
 
@@ -98,6 +105,7 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	return routeParams
 }
 
+// ValidateRequest validates http.Request and returns ValidationError if the request is invalid.
 func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	routeParams := v.toRouteParams(req)
 	params, err := v.getParam(req)
@@ -118,26 +126,37 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 
 func routePathParseError(err error) []ValidationError {
 	return []ValidationError{{
+		Code:    InvalidRequestContentCode,
 		Message: "failed to parse route: " + err.Error(),
 	}}
 }
 
-type AggregateValidationError struct {
-	Details []ValidationError
-}
+func parseResult(result error) []ValidationError {
+	errs := []ValidationError{}
+	flattened := flattenComposite(result.(*oai_errors.CompositeError))
+	for _, e := range flattened.Errors {
+		valErr, ok := e.(*oai_errors.Validation)
+		if ok {
+			ve := ValidationError{
+				Message: valErr.Error(),
+			}
 
-func (v *AggregateValidationError) Error() string {
-	var message strings.Builder
-	fmt.Fprintln(&message, "failed validation(s):")
-	for _, err := range v.Details {
-		if err.JSONError != nil {
-			// The given document isn't even JSON.
-			fmt.Fprintf(&message, "- %s: %v\n", err.Message, err.JSONError)
-		} else {
-			fmt.Fprintf(&message, "- %s: %s\n", err.Position, err.Message)
+			if valErr.In == "body" {
+				period := strings.Index(valErr.Name, ".")
+				if period < 0 {
+					ve.Code = InvalidRequestContentCode
+					ve.Message = "The request content was invalid and could not be deserialized."
+				} else {
+					name := valErr.Name[:period]
+					ve.Code = InvalidObjectPropertiesCode
+					ve.Message = strings.ReplaceAll(ve.Message, name, "$")
+				}
+			}
+
+			errs = append(errs, ve)
 		}
 	}
-	return message.String()
+	return errs
 }
 
 func flattenComposite(errs *oai_errors.CompositeError) *oai_errors.CompositeError {
@@ -158,26 +177,4 @@ func flattenComposite(errs *oai_errors.CompositeError) *oai_errors.CompositeErro
 		}
 	}
 	return oai_errors.CompositeValidationError(res...)
-}
-
-func parseResult(result error) []ValidationError {
-	errs := []ValidationError{}
-	flattened := flattenComposite(result.(*oai_errors.CompositeError))
-	for _, e := range flattened.Errors {
-		valErr, ok := e.(*oai_errors.Validation)
-		if ok {
-			firstIndex := 0
-			if valErr.In == "body" {
-				firstIndex = strings.Index(valErr.Name, ".")
-				if firstIndex < 0 {
-					firstIndex = 0
-				}
-			}
-			errs = append(errs, ValidationError{
-				Position: valErr.Name[firstIndex:],
-				Message:  valErr.Error(),
-			})
-		}
-	}
-	return errs
 }

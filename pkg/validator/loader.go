@@ -22,6 +22,7 @@ var (
 	ErrUndefinedAPI         = errors.New("undefined API")
 )
 
+// NewLoader creates OpenAPI spec loader.
 func NewLoader(providerName string, specs fs.FS) *Loader {
 	return &Loader{
 		providerName: providerName,
@@ -30,16 +31,19 @@ func NewLoader(providerName string, specs fs.FS) *Loader {
 	}
 }
 
+// Loader is the OpenAPI spec loader implementation.
 type Loader struct {
 	validators   map[string]validator
 	providerName string
 	specFiles    fs.FS
 }
 
+// Name returns the name of loader.
 func (l *Loader) Name() string {
 	return l.providerName
 }
 
+// GetValidator returns the cached validator.
 func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 	// ARM types are compared case-insensitively
 	validator, ok := l.validators[getValidatorKey(resourceType, version)]
@@ -49,7 +53,9 @@ func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 	return nil, false
 }
 
+// LoadSpec loads the swagger files and caches the validator.
 func (l *Loader) LoadSpec() error {
+	// Walk through embedded files to load OpenAPI spec document.
 	err := fs.WalkDir(l.specFiles, ".", func(path string, d fs.DirEntry, _ error) error {
 		if d.IsDir() {
 			return nil
@@ -77,11 +83,11 @@ func (l *Loader) LoadSpec() error {
 			return err
 		}
 
-		// Expand external references.
+		// Expand $ref external references.
 		wDoc, err := specDoc.Expanded(&spec.ExpandOptions{
 			RelativeBase: path,
 			PathLoader: func(path string) (json.RawMessage, error) {
-				// Trim prefix part if path is always the absolute path.
+				// Trim before 'specification' to convert relative path.
 				first := strings.Index(path, "specification")
 				data, err := fs.ReadFile(l.specFiles, path[first:])
 				return json.RawMessage(data), err
@@ -93,11 +99,11 @@ func (l *Loader) LoadSpec() error {
 
 		key := getValidatorKey(parsed["resourcetype"], parsed["version"])
 		l.validators[key] = validator{
-			TypeName:   parsed["provider"] + "/" + parsed["resourcetype"],
-			APIVersion: parsed["version"],
-			specDoc:    wDoc,
-			params:     make(map[string]map[string]spec.Parameter),
-			paramsMu:   &sync.RWMutex{},
+			TypeName:     parsed["provider"] + "/" + parsed["resourcetype"],
+			APIVersion:   parsed["version"],
+			specDoc:      wDoc,
+			paramCache:   make(map[string]map[string]spec.Parameter),
+			paramCacheMu: &sync.RWMutex{},
 		}
 
 		return nil
