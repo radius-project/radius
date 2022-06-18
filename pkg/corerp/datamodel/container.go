@@ -201,8 +201,8 @@ const (
 	KindRedislabsComRedis       Kind = "redislabs.com/Redis"
 )
 
-// PossibleKindValues returns the possible values for the Kind const type.
-func PossibleKindValues() []Kind {
+// Kinds returns the possible values for the Kind const type.
+func Kinds() []Kind {
 	return []Kind{
 		KindAzure,
 		KindAzureComKeyVault,
@@ -220,10 +220,10 @@ func PossibleKindValues() []Kind {
 	}
 }
 
-func IsValidKind(kind Kind) bool {
-	s := PossibleKindValues()
+func (k Kind) IsValid() bool {
+	s := Kinds()
 	for _, v := range s {
-		if v == kind {
+		if v == k {
 			return true
 		}
 	}
@@ -253,8 +253,8 @@ const (
 	SecretObjectPropertiesEncodingUTF8   SecretObjectPropertiesEncoding = "utf-8"
 )
 
-// PossibleSecretObjectPropertiesEncodingValues returns the possible values for the SecretObjectPropertiesEncoding const type.
-func PossibleSecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEncoding {
+// SecretObjectPropertiesEncodingValues returns the possible values for the SecretObjectPropertiesEncoding const type.
+func SecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEncoding {
 	return []SecretObjectPropertiesEncoding{
 		SecretObjectPropertiesEncodingBase64,
 		SecretObjectPropertiesEncodingHex,

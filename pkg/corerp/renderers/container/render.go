@@ -565,7 +565,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 }
 
 func (r Renderer) isIdentitySupported(kind datamodel.Kind) bool {
-	if r.RoleAssignmentMap == nil || !datamodel.IsValidKind(kind) {
+	if r.RoleAssignmentMap == nil || !kind.IsValid() {
 		return false
 	}
 
