@@ -225,41 +225,9 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	}
 
 	// We build the environment variable list in a stable order for testability
-	env := map[string]corev1.EnvVar{}
-
 	// For the values that come from connections we back them with secretData. We'll extract the values
 	// and return them.
-	secretData := map[string][]byte{}
-
-	// Take each connection and create environment variables for each part
-	for name, con := range cc.Connections {
-		properties := dependencies[con.Source]
-		for key, value := range properties.ComputedValues {
-			name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
-
-			// We'll store each value in a secret named with the same name as the resource.
-			// We'll use the environment variable names as keys.
-			source := corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: resource.Name,
-					},
-					Key: name,
-				},
-			}
-			switch v := value.(type) {
-			case string:
-				secretData[name] = []byte(v)
-				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-			case float64: // Float is used by the JSON serializer
-				secretData[name] = []byte(strconv.Itoa(int(v)))
-				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-			case int:
-				secretData[name] = []byte(strconv.Itoa(v))
-				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-			}
-		}
-	}
+	env, secretData := getEnvVarsAndSecretData(resource, dependencies)
 
 	for k, v := range cc.Container.Env {
 		env[k] = corev1.EnvVar{Name: k, Value: v}
@@ -400,6 +368,45 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	output := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
 	outputResources = append(outputResources, output)
 	return outputResources, secretData, nil
+}
+
+func getEnvVarsAndSecretData(resource datamodel.ContainerResource, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte) {
+	env := map[string]corev1.EnvVar{}
+	secretData := map[string][]byte{}
+	cc := resource.Properties
+
+	// Take each connection and create environment variables for each part
+	// We'll store each value in a secret named with the same name as the resource.
+	// We'll use the environment variable names as keys.
+	// Float is used by the JSON serializer
+	for name, con := range cc.Connections {
+		properties := dependencies[con.Source]
+		for key, value := range properties.ComputedValues {
+			name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
+
+			source := corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: resource.Name,
+					},
+					Key: name,
+				},
+			}
+			switch v := value.(type) {
+			case string:
+				secretData[name] = []byte(v)
+				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+			case float64:
+				secretData[name] = []byte(strconv.Itoa(int(v)))
+				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+			case int:
+				secretData[name] = []byte(strconv.Itoa(v))
+				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+			}
+		}
+	}
+
+	return env, secretData
 }
 
 func (r Renderer) makeEphemeralVolume(volumeName string, volume *datamodel.EphemeralVolume) (corev1.Volume, corev1.VolumeMount, error) {
