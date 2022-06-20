@@ -24,6 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/featureflag"
 )
 
+const (
+	CORE_RP_API_VERSION = "2022-03-15-privatepreview"
+)
+
 var envInitKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "Initializes a kubernetes environment",
@@ -107,12 +111,13 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
-		rgName := fmt.Sprintf("%s-rg", environmentName)
-		env.Items[environmentName]["ucpresourcegroupname"] = rgName
-		if createUCPResourceGroup(contextName, rgName) != nil {
+		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
+		ucpRGName := fmt.Sprintf("%s-rg", environmentName)
+		env.Items[environmentName]["ucpresourcegroupname"] = ucpRGName
+		if createUCPResourceGroup(contextName, ucpRGName) != nil {
 			return err
 		}
-		if createEnvironmentResource(contextName, rgName, environmentName) != nil {
+		if createEnvironmentResource(contextName, ucpRGName, environmentName) != nil {
 			return err
 		}
 	}
@@ -167,16 +172,16 @@ func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName s
 		return err
 	}
 
-	createRgRequest, err := http.NewRequest(
+	createEnvRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s?api-version=2022-03-15-privatepreview", baseUrl, resourceGroupName, environmentName),
+		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s?api-version=%s", baseUrl, resourceGroupName, environmentName, CORE_RP_API_VERSION),
 		strings.NewReader(`{"properties":{"compute":{"kind":""}}}`),
 	)
-	createRgRequest.Header.Add("Content-Type", "application/json")
+	createEnvRequest.Header.Add("Content-Type", "application/json")
 	if err != nil {
 		return fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
 	}
-	res, err := rt.RoundTrip(createRgRequest)
+	res, err := rt.RoundTrip(createEnvRequest)
 	if err != nil {
 		return fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
 	}

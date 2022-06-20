@@ -134,12 +134,13 @@ func initDevRadEnvironment(cmd *cobra.Command, args []string) error {
 	}
 
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
-		rgName := fmt.Sprintf("%s-rg", environmentName)
-		env.Items[params.Name]["ucpresourcegroupname"] = rgName
-		if createUCPResourceGroup(cluster.ContextName, rgName) != nil {
+		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
+		ucpRGName := fmt.Sprintf("%s-rg", environmentName)
+		env.Items[params.Name]["ucpresourcegroupname"] = ucpRGName
+		if createUCPResourceGroup(cluster.ContextName, ucpRGName) != nil {
 			return err
 		}
-		if createEnvironmentResource(cluster.ContextName, rgName, environmentName) != nil {
+		if createEnvironmentResource(cluster.ContextName, ucpRGName, environmentName) != nil {
 			return err
 		}
 	}
