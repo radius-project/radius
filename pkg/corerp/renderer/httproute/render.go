@@ -15,8 +15,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
@@ -30,20 +31,18 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.Rende
 	return nil, nil, nil
 }
 
-func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+
+	route, ok := dm.(datamodel.HTTPRoute)
+	if !ok {
+		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+	}
 	outputResources := []outputresource.OutputResource{}
 	resource := options.Resource
 
-	route, err := r.convert(resource)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-
-	if route == nil || route.Port == nil {
-		defaultPort := kubernetes.GetDefaultPort()
-		route = &v20220315privatepreview.HTTPRouteProperties{
-			Port: &defaultPort,
-		}
+	// What values do we check for to see if route.Properties.Port does not exist??
+	if route.Properties.Port == 0 {
+		route.Properties.Port = kubernetes.GetDefaultPort()
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
@@ -51,17 +50,17 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
 		},
 		"port": {
-			Value: *route.Port,
+			Value: route.Properties.Port,
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), *route.Port),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), route.Properties.Port),
 		},
 		"scheme": {
 			Value: "http",
 		},
 	}
 
-	service := r.makeService(resource, route)
+	service := r.makeService(resource, &route.Properties)
 	outputResources = append(outputResources, service)
 
 	return renderers.RendererOutput{
@@ -70,7 +69,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}, nil
 }
 
-func (r *Renderer) makeService(resource renderers.RendererResource, route *v20220315privatepreview.HTTPRouteProperties) outputresource.OutputResource {
+func (r *Renderer) makeService(resource renderers.RendererResource, routeProp *datamodel.HTTPRouteProperties) outputresource.OutputResource {
 	typeParts := strings.Split(resource.ResourceType, "/")
 	resourceType := typeParts[len(typeParts)-1]
 
@@ -90,7 +89,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *v2022
 			Ports: []corev1.ServicePort{
 				{
 					Name:       resource.ResourceName,
-					Port:       *route.Port,
+					Port:       routeProp.Port,
 					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName)),
 					Protocol:   corev1.ProtocolTCP,
 				},
@@ -99,14 +98,4 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *v2022
 	}
 
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
-}
-
-func (r Renderer) convert(resource renderers.RendererResource) (*v20220315privatepreview.HTTPRouteProperties, error) {
-	properties := &v20220315privatepreview.HTTPRouteProperties{}
-	err := resource.ConvertDefinition(&properties)
-	if err != nil {
-		return nil, err
-	}
-
-	return properties, nil
 }
