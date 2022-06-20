@@ -94,6 +94,7 @@ metadata:
 rules:
 - apiGroups:
   - ""
+  - "split.smi-spec.io"
   - "apps"
   - "dapr.io"
   - "projectcontour.io"
