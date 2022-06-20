@@ -181,22 +181,24 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		return rest.InternalServerError(err), err
 	}
 
-	// Check if the resource group exists
-	id, err := resources.Parse(incomingURL.Path)
-	if err != nil {
-		return rest.InternalServerError(err), err
-	}
-	rgPath := id.RootScope()
-	rgID, err := resources.Parse(rgPath)
-	if err != nil {
-		return nil, err
-	}
-	_, err = resourcegroupsdb.GetByID(ctx, db, rgID)
-	if err != nil {
-		if errors.Is(err, &store.ErrNotFound{}) {
-			return rest.NewNotFoundResponse(rgID.String()), err
+	if plane.Properties.Kind == rest.PlaneKindUCPNative {
+		// Check if the resource group exists
+		id, err := resources.Parse(incomingURL.Path)
+		if err != nil {
+			return rest.InternalServerError(err), err
 		}
-		return nil, err
+		rgPath := id.RootScope()
+		rgID, err := resources.Parse(rgPath)
+		if err != nil {
+			return nil, err
+		}
+		_, err = resourcegroupsdb.GetByID(ctx, db, rgID)
+		if err != nil {
+			if errors.Is(err, &store.ErrNotFound{}) {
+				return rest.NewNotFoundResponse(rgID.String()), err
+			}
+			return nil, err
+		}
 	}
 
 	// Get the resource provider
