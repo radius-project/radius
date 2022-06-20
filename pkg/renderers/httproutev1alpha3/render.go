@@ -84,14 +84,11 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	service := r.makeService(resource, route)
 	outputs = append(outputs, service)
 	var trafficsplit outputresource.OutputResource
-	//Check if trafficsplit properties are configured for this HttpRoute. If yes, a TrafficSplit object will be created.
+	// Check if trafficsplit properties are configured for this HttpRoute. If yes, a TrafficSplit object will be created.
 	if len(route.Routes) > 0 {
 		trafficsplit = r.makeTrafficSplit(resource, route, options)
-	}
-	if trafficsplit.Resource != nil {
 		outputs = append(outputs, trafficsplit)
 	}
-
 	return renderers.RendererOutput{
 		Resources:      outputs,
 		ComputedValues: computedValues,
@@ -151,7 +148,7 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *
 			Backends: backends,
 		},
 	}
-	//populating the values in the backends array
+	// populating the values in the backends array
 	for i := 0; i < numBackends; i++ {
 		destination := *route.Routes[i].Destination
 		httpRouteName := dependencies[destination].ResourceID.Name()
