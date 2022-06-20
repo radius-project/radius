@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
+	extender_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/extenders"
 	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rediscaches"
@@ -50,6 +51,11 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	sqlRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/sqldatabases").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	sqlResourceRouter := sqlRTSubrouter.PathPrefix("/{sqlDatabases}").Subrouter()
+
+	extenderRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/extenders").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	extenderResourceRouter := extenderRTSubrouter.PathPrefix("/{extenders}").Subrouter()
+
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:   mongoRTSubrouter,
@@ -187,6 +193,42 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ResourceType:   sql_ctrl.ResourceTypeName,
 			Method:         v1.OperationDelete,
 			HandlerFactory: sql_ctrl.NewDeleteSqlDatabase,
+		},
+		{
+			ParentRouter:   extenderRTSubrouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: extender_ctrl.NewListExtenders,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: extender_ctrl.NewGetExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: extender_ctrl.NewDeleteExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter.Path("/listsecrets").Subrouter(),
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         extender_ctrl.OperationListSecret,
+			HandlerFactory: extender_ctrl.NewListSecretsExtender,
 		},
 	}
 

@@ -196,6 +196,36 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Get/List extenders",
+					Description: "Gets/Lists extender connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Create/Update extenders",
+					Description: "Creates or updates a extender connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Delete extender",
+					Description: "Deletes a extender connector.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }

@@ -220,6 +220,19 @@ type ExtendersListByRootScopeResult struct {
 	ExtenderList
 }
 
+// ExtendersListSecretsResponse contains the response from method Extenders.ListSecrets.
+type ExtendersListSecretsResponse struct {
+	ExtendersListSecretsResult
+	// RawResponse contains the underlying HTTP response.
+	RawResponse *http.Response
+}
+
+// ExtendersListSecretsResult contains the result from method Extenders.ListSecrets.
+type ExtendersListSecretsResult struct {
+	// The secret values for the given Extender resource
+	Value map[string]interface{}
+}
+
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
 type MongoDatabasesCreateOrUpdateResponse struct {
 	MongoDatabasesCreateOrUpdateResult

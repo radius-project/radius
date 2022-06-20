@@ -123,6 +123,11 @@
 * **ApiVersion**: 2022-03-15-privatepreview
 * **Output**: [RabbitMQSecrets](#rabbitmqsecrets)
 
+## Function listSecrets (Applications.Connector/extenders@2022-03-15-privatepreview)
+* **Resource**: Applications.Connector/extenders
+* **ApiVersion**: 2022-03-15-privatepreview
+* **Output**: [ExtenderSecrets](#extendersecrets)
+
 ## DaprInvokeHttpRouteProperties
 ### Properties
 * **appId**: string (Required): The Dapr appId used for the route
@@ -227,12 +232,12 @@
 * **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **secrets**: [ExtenderPropertiesSecrets](#extenderpropertiessecrets): Dictionary of <any>
+* **secrets**: [ExtenderSecrets](#extendersecrets): The secret values for the given Extender resource
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any
 
-## ExtenderPropertiesSecrets
+## ExtenderSecrets
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: any
@@ -332,4 +337,9 @@
 ## RabbitMQSecrets
 ### Properties
 * **connectionString**: string: The connection string used to connect to this RabbitMQ instance
+
+## ExtenderSecrets
+### Properties
+### Additional Properties
+* **Additional Properties Type**: any
 
