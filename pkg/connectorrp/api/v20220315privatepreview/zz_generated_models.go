@@ -1117,7 +1117,7 @@ func (m MongoDatabaseList) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// MongoDatabaseProperties - MongoDatabse connector properties
+// MongoDatabaseProperties - MongoDatabase connector properties
 type MongoDatabaseProperties struct {
 	MongoDatabaseResponseProperties
 	// Secrets values provided for the resource
@@ -1155,10 +1155,10 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MongoDatabaseResource - MongoDatabse connector
+// MongoDatabaseResource - MongoDatabase connector
 type MongoDatabaseResource struct {
 	TrackedResource
-	// REQUIRED; MongoDatabse connector properties
+	// REQUIRED; MongoDatabase connector properties
 	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
 
 	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
@@ -1200,7 +1200,7 @@ func (m *MongoDatabaseResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MongoDatabaseResponseProperties - MongoDatabse connector properties
+// MongoDatabaseResponseProperties - MongoDatabase connector properties
 type MongoDatabaseResponseProperties struct {
 	BasicResourceProperties
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
@@ -1281,10 +1281,10 @@ func (m *MongoDatabaseResponseProperties) unmarshalInternal(rawMsg map[string]js
 	return nil
 }
 
-// MongoDatabaseResponseResource - MongoDatabse connector
+// MongoDatabaseResponseResource - MongoDatabase connector
 type MongoDatabaseResponseResource struct {
 	TrackedResource
-	// REQUIRED; MongoDatabse connector properties
+	// REQUIRED; MongoDatabase connector properties
 	Properties *MongoDatabaseResponseProperties `json:"properties,omitempty"`
 
 	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.

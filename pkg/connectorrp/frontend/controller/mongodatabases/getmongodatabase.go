@@ -21,7 +21,7 @@ import (
 
 var _ ctrl.Controller = (*GetMongoDatabase)(nil)
 
-// GetMongoDatabase is the controller implementation to get the mongoDatabse conenctor resource.
+// GetMongoDatabase is the controller implementation to get the mongoDatabase conenctor resource.
 type GetMongoDatabase struct {
 	ctrl.BaseController
 }

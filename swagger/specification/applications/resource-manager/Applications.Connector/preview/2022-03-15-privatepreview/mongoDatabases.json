@@ -279,7 +279,7 @@
       }
     },
     "MongoDatabaseResource": {
-      "description": "MongoDatabse connector",
+      "description": "MongoDatabase connector",
       "type": "object",
       "allOf": [
         {
@@ -300,7 +300,7 @@
       }
     },
     "MongoDatabaseResponseResource": {
-      "description": "MongoDatabse connector",
+      "description": "MongoDatabase connector",
       "type": "object",
       "allOf": [
         {
@@ -321,7 +321,7 @@
       }
     },
     "MongoDatabaseResponseProperties":{
-      "description": "MongoDatabse connector properties",
+      "description": "MongoDatabase connector properties",
       "type": "object",
       "allOf": [
         {
@@ -365,7 +365,7 @@
       }
     },
     "MongoDatabaseProperties": {
-      "description": "MongoDatabse connector properties",
+      "description": "MongoDatabase connector properties",
       "type": "object",
       "allOf": [
         {
