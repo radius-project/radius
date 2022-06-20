@@ -11,11 +11,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/renderers/httproutev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/stretchr/testify/require"
@@ -29,13 +32,44 @@ const (
 	publicIP        = "86.753.099.99"
 )
 
-func Test_GetDependencyIDs_Empty(t *testing.T) {
-	r := &Renderer{}
+func createContext(t *testing.T) context.Context {
+	logger, err := radlogger.NewTestLogger(t)
+	if err != nil {
+		t.Log("Unable to initialize logger")
+		return context.Background()
+	}
+	return logr.NewContext(context.Background(), logger)
+}
 
-	resource := renderers.RendererResource{}
-	dependencies, _, err := r.GetDependencyIDs(context.Background(), resource)
+func Test_GetDependencyIDs_Success(t *testing.T) {
+	testRouteAResourceID := makeRouteResourceID("testroutea")
+	testRouteBResourceID := makeRouteResourceID("testrouteb")
+	properties := radclient.GatewayProperties{
+		Routes: []*radclient.GatewayRoute{
+			{
+				Destination: &testRouteAResourceID,
+			},
+			{
+				Destination: &testRouteBResourceID,
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+
+	renderer := Renderer{}
+	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.NoError(t, err)
-	require.Empty(t, dependencies)
+	require.Len(t, radiusResourceIDs, 2)
+	require.Len(t, azureResourceIDs, 0)
+
+	expectedRadiusResourceIDs := []azresources.ResourceID{
+		makeResourceID(t, testRouteAResourceID),
+		makeResourceID(t, testRouteBResourceID),
+	}
+	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
+
+	expectedAzureResourceIDs := []azresources.ResourceID{}
+	require.ElementsMatch(t, expectedAzureResourceIDs, azureResourceIDs)
 }
 
 func Test_Render_WithNoHostname(t *testing.T) {
@@ -274,7 +308,7 @@ func Test_Render_Single_Route(t *testing.T) {
 	}
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
-	validateHttpRoute(t, output.Resources, routeName, nil)
+	validateHttpRoute(t, output.Resources, routeName, 80, nil)
 }
 
 func Test_Render_Multiple_Routes(t *testing.T) {
@@ -332,8 +366,8 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	}
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
-	validateHttpRoute(t, output.Resources, routeAName, nil)
-	validateHttpRoute(t, output.Resources, routeBName, nil)
+	validateHttpRoute(t, output.Resources, routeAName, 80, nil)
+	validateHttpRoute(t, output.Resources, routeBName, 80, nil)
 }
 
 func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
@@ -385,7 +419,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 			},
 		},
 	}
-	validateHttpRoute(t, output.Resources, routeName, expectedPathRewritePolicy)
+	validateHttpRoute(t, output.Resources, routeName, 80, expectedPathRewritePolicy)
 }
 
 func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
@@ -487,8 +521,77 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 	}
-	validateHttpRoute(t, output.Resources, routeAName, nil)
-	validateHttpRoute(t, output.Resources, routeBName, expectedPathRewritePolicy)
+	validateHttpRoute(t, output.Resources, routeAName, 80, nil)
+	validateHttpRoute(t, output.Resources, routeBName, 80, expectedPathRewritePolicy)
+}
+
+func Test_Render_WithDependencies(t *testing.T) {
+	r := &Renderer{}
+
+	var httpRoutePort int32 = 81
+	httpRoute := renderHttpRoute(t, httpRoutePort)
+
+	var routes []*radclient.GatewayRoute
+	routeName := "routename"
+	routeDestination := makeRouteResourceID(routeName)
+	routePath := "/routea"
+	route := radclient.GatewayRoute{
+		Destination: &routeDestination,
+		Path:        &routePath,
+	}
+	routes = append(routes, &route)
+	properties := radclient.GatewayProperties{
+		Routes: routes,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, routeDestination).ID): {
+			ResourceID: makeResourceID(t, routeDestination),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"port": (httpRoute.ComputedValues["port"].Value).(int32),
+			},
+		},
+	}
+
+	additionalProperties := GetRuntimeOptions()
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, publicIP)
+	expectedURL := "http://" + expectedHostname
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: additionalProperties})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
+
+	expectedIncludes := []contourv1.Include{
+		{
+			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: routePath,
+				},
+			},
+		},
+	}
+
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateHttpRoute(t, output.Resources, routeName, httpRoutePort, nil)
+}
+
+func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
+	r := &httproutev1alpha3.Renderer{}
+
+	dependencies := map[string]renderers.RendererDependency{}
+	properties := radclient.HTTPRouteProperties{
+		Port: &port,
+	}
+	resource := makeResource(t, properties)
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies})
+	require.NoError(t, err)
+
+	return output
 }
 
 func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include) {
@@ -520,7 +623,7 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 	require.Equal(t, expectedGatewaySpec, gateway.Spec)
 }
 
-func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputResource, expectedRouteName string, expectedRewrite *contourv1.PathRewritePolicy) {
+func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputResource, expectedRouteName string, expectedPort int32, expectedRewrite *contourv1.PathRewritePolicy) {
 	expectedLocalID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, expectedRouteName)
 	httpRoute, httpRouteOutputResource := kubernetes.FindHttpRouteByLocalID(outputResources, expectedLocalID)
 	expectedHttpRouteOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
@@ -532,7 +635,6 @@ func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputReso
 
 	require.Nil(t, httpRoute.Spec.VirtualHost)
 
-	expectedPort := 80
 	expectedServiceName := kubernetes.MakeResourceName(applicationName, expectedRouteName)
 
 	expectedHttpRouteSpec := contourv1.HTTPProxySpec{
@@ -541,7 +643,7 @@ func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputReso
 				Services: []contourv1.Service{
 					{
 						Name: expectedServiceName,
-						Port: expectedPort,
+						Port: int(expectedPort),
 					},
 				},
 				PathRewritePolicy: expectedRewrite,
@@ -571,8 +673,8 @@ func makeRouteResourceID(routeName string) string {
 	)
 }
 
-func makeResource(t *testing.T, properties radclient.GatewayProperties) renderers.RendererResource {
-	b, err := json.Marshal(&properties)
+func makeResource(t *testing.T, T any) renderers.RendererResource {
+	b, err := json.Marshal(&T)
 	require.NoError(t, err)
 
 	definition := map[string]interface{}{}
@@ -585,6 +687,13 @@ func makeResource(t *testing.T, properties radclient.GatewayProperties) renderer
 		ResourceType:    ResourceType,
 		Definition:      definition,
 	}
+}
+
+func makeResourceID(t *testing.T, resourceID string) azresources.ResourceID {
+	id, err := azresources.Parse(resourceID)
+	require.NoError(t, err)
+
+	return id
 }
 
 func makeTestGateway(config radclient.GatewayProperties) (radclient.GatewayProperties, []contourv1.Include) {

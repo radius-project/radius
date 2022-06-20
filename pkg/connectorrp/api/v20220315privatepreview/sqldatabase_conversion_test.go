@@ -15,56 +15,69 @@ import (
 )
 
 func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
-	// arrange
-	rawPayload := loadTestData("sqldatabaseresource.json")
-	versionedResource := &SQLDatabaseResource{}
-	err := json.Unmarshal(rawPayload, versionedResource)
-	require.NoError(t, err)
 
-	// act
-	dm, err := versionedResource.ConvertTo()
+	testset := []string{"sqldatabaseresource.json", "sqldatabaseresource2.json"}
+	for _, payload := range testset {
+		// arrange
+		rawPayload := loadTestData(payload)
+		versionedResource := &SQLDatabaseResource{}
+		err := json.Unmarshal(rawPayload, versionedResource)
+		require.NoError(t, err)
 
-	resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.sql.database"}
-	// assert
-	require.NoError(t, err)
-	convertedResource := dm.(*datamodel.SqlDatabase)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/sqlDatabases/sql0", convertedResource.ID)
-	require.Equal(t, "sql0", convertedResource.Name)
-	require.Equal(t, "Applications.Connector/sqlDatabases", convertedResource.Type)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.Resource)
-	require.Equal(t, "testAccount1.sql.cosmos.azure.com", convertedResource.Properties.Server)
-	require.Equal(t, "testDatabase", convertedResource.Properties.Database)
-	require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-	require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+		// act
+		dm, err := versionedResource.ConvertTo()
+
+		resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.sql.database"}
+		// assert
+		require.NoError(t, err)
+		convertedResource := dm.(*datamodel.SqlDatabase)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/sqlDatabases/sql0", convertedResource.ID)
+		require.Equal(t, "sql0", convertedResource.Name)
+		require.Equal(t, "Applications.Connector/sqlDatabases", convertedResource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.Resource)
+		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+		if payload == "sqldatabaseresource.json" {
+			require.Equal(t, "testAccount1.sql.cosmos.azure.com", convertedResource.Properties.Server)
+			require.Equal(t, "testDatabase", convertedResource.Properties.Database)
+			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+		}
+	}
 }
 
 func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
-	// arrange
-	rawPayload := loadTestData("sqldatabaseresourcedatamodel.json")
-	resource := &datamodel.SqlDatabase{}
-	err := json.Unmarshal(rawPayload, resource)
-	require.NoError(t, err)
+	testset := []string{"sqldatabaseresourcedatamodel.json", "sqldatabaseresourcedatamodel2.json"}
 
-	// act
-	versionedResource := &SQLDatabaseResource{}
-	err = versionedResource.ConvertFrom(resource)
+	for _, payload := range testset {
+		// arrange
+		rawPayload := loadTestData(payload)
+		resource := &datamodel.SqlDatabase{}
+		err := json.Unmarshal(rawPayload, resource)
+		require.NoError(t, err)
 
-	resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.sql.database"}
-	// assert
-	require.NoError(t, err)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/sqlDatabases/sql0", resource.ID)
-	require.Equal(t, "sql0", resource.Name)
-	require.Equal(t, "Applications.Connector/sqlDatabases", resource.Type)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.Resource)
-	require.Equal(t, "testAccount1.sql.cosmos.azure.com", resource.Properties.Server)
-	require.Equal(t, "testDatabase", resource.Properties.Database)
-	require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+		// act
+		versionedResource := &SQLDatabaseResource{}
+		err = versionedResource.ConvertFrom(resource)
+
+		resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.sql.database"}
+		// assert
+		require.NoError(t, err)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/sqlDatabases/sql0", resource.ID)
+		require.Equal(t, "sql0", resource.Name)
+		require.Equal(t, "Applications.Connector/sqlDatabases", resource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.Resource)
+		if payload == "sqldatabaseresourcedatamodel.json" {
+			require.Equal(t, "testAccount1.sql.cosmos.azure.com", resource.Properties.Server)
+			require.Equal(t, "testDatabase", resource.Properties.Database)
+			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+		}
+	}
+
 }
 
 func TestSqlDatabase_ConvertFromValidation(t *testing.T) {

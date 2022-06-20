@@ -33,11 +33,13 @@ func NewControllerRegistry(sp dataprovider.DataStorageProvider) *ControllerRegis
 }
 
 // Register registers controller.
-func (h *ControllerRegistry) Register(ctx context.Context, operationType v1.OperationType, factoryFn ControllerFactoryFunc) error {
+func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, method v1.OperationMethod, factoryFn ControllerFactoryFunc) error {
 	h.ctrlMapMu.Lock()
 	defer h.ctrlMapMu.Unlock()
 
-	sc, err := h.sp.GetStorageClient(ctx, operationType.Type)
+	ot := v1.OperationType{Type: resourceType, Method: method}
+
+	sc, err := h.sp.GetStorageClient(ctx, ot.Type)
 	if err != nil {
 		return err
 	}
@@ -47,7 +49,7 @@ func (h *ControllerRegistry) Register(ctx context.Context, operationType v1.Oper
 		return err
 	}
 
-	h.ctrlMap[operationType.String()] = ctrl
+	h.ctrlMap[ot.String()] = ctrl
 	return nil
 }
 

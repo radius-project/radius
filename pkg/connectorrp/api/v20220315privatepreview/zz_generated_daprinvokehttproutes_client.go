@@ -25,18 +25,18 @@ import (
 type DaprInvokeHTTPRoutesClient struct {
 	ep string
 	pl runtime.Pipeline
-	subscriptionID string
+	rootScope string
 }
 
 // NewDaprInvokeHTTPRoutesClient creates a new instance of DaprInvokeHTTPRoutesClient with the specified values.
-func NewDaprInvokeHTTPRoutesClient(con *arm.Connection, subscriptionID string) *DaprInvokeHTTPRoutesClient {
-	return &DaprInvokeHTTPRoutesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewDaprInvokeHTTPRoutesClient(con *arm.Connection, rootScope string) *DaprInvokeHTTPRoutesClient {
+	return &DaprInvokeHTTPRoutesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Creates or updates a DaprInvokeHttpRoute resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprInvokeHTTPRoutesClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, daprInvokeHTTPRouteName string, daprInvokeHTTPRouteParameters DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRoutesCreateOrUpdateOptions) (DaprInvokeHTTPRoutesCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, daprInvokeHTTPRouteName, daprInvokeHTTPRouteParameters, options)
+func (client *DaprInvokeHTTPRoutesClient) CreateOrUpdate(ctx context.Context, daprInvokeHTTPRouteName string, daprInvokeHTTPRouteParameters DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRoutesCreateOrUpdateOptions) (DaprInvokeHTTPRoutesCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, daprInvokeHTTPRouteName, daprInvokeHTTPRouteParameters, options)
 	if err != nil {
 		return DaprInvokeHTTPRoutesCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +51,12 @@ func (client *DaprInvokeHTTPRoutesClient) CreateOrUpdate(ctx context.Context, re
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprInvokeHTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, daprInvokeHTTPRouteName string, daprInvokeHTTPRouteParameters DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRoutesCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprInvokeHTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, daprInvokeHTTPRouteParameters DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRoutesCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
@@ -100,8 +96,8 @@ func (client *DaprInvokeHTTPRoutesClient) createOrUpdateHandleError(resp *http.R
 
 // Delete - Deletes an existing daprInvokeHttpRoute resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprInvokeHTTPRoutesClient) Delete(ctx context.Context, resourceGroupName string, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesDeleteOptions) (DaprInvokeHTTPRoutesDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, daprInvokeHTTPRouteName, options)
+func (client *DaprInvokeHTTPRoutesClient) Delete(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesDeleteOptions) (DaprInvokeHTTPRoutesDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, daprInvokeHTTPRouteName, options)
 	if err != nil {
 		return DaprInvokeHTTPRoutesDeleteResponse{}, err
 	}
@@ -116,16 +112,12 @@ func (client *DaprInvokeHTTPRoutesClient) Delete(ctx context.Context, resourceGr
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprInvokeHTTPRoutesClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprInvokeHTTPRoutesClient) deleteCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
@@ -156,8 +148,8 @@ func (client *DaprInvokeHTTPRoutesClient) deleteHandleError(resp *http.Response)
 
 // Get - Retrieves information about a daprInvokeHttpRoute resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprInvokeHTTPRoutesClient) Get(ctx context.Context, resourceGroupName string, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesGetOptions) (DaprInvokeHTTPRoutesGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, daprInvokeHTTPRouteName, options)
+func (client *DaprInvokeHTTPRoutesClient) Get(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesGetOptions) (DaprInvokeHTTPRoutesGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, daprInvokeHTTPRouteName, options)
 	if err != nil {
 		return DaprInvokeHTTPRoutesGetResponse{}, err
 	}
@@ -172,16 +164,12 @@ func (client *DaprInvokeHTTPRoutesClient) Get(ctx context.Context, resourceGroup
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprInvokeHTTPRoutesClient) getCreateRequest(ctx context.Context, resourceGroupName string, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *DaprInvokeHTTPRoutesClient) getCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
@@ -219,31 +207,27 @@ func (client *DaprInvokeHTTPRoutesClient) getHandleError(resp *http.Response) er
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - Lists information about all daprInvokeHttpRoute resources in the given subscription and resource group
+// ListByRootScope - Lists information about all daprInvokeHttpRoute resources in the given root scope
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprInvokeHTTPRoutesClient) List(resourceGroupName string, options *DaprInvokeHTTPRoutesListOptions) (*DaprInvokeHTTPRoutesListPager) {
-	return &DaprInvokeHTTPRoutesListPager{
+func (client *DaprInvokeHTTPRoutesClient) ListByRootScope(options *DaprInvokeHTTPRoutesListByRootScopeOptions) (*DaprInvokeHTTPRoutesListByRootScopePager) {
+	return &DaprInvokeHTTPRoutesListByRootScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByRootScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp DaprInvokeHTTPRoutesListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp DaprInvokeHTTPRoutesListByRootScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.DaprInvokeHTTPRouteList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *DaprInvokeHTTPRoutesClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *DaprInvokeHTTPRoutesListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprInvokeHttpRoutes"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *DaprInvokeHTTPRoutesClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprInvokeHTTPRoutesListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,71 +239,17 @@ func (client *DaprInvokeHTTPRoutesClient) listCreateRequest(ctx context.Context,
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *DaprInvokeHTTPRoutesClient) listHandleResponse(resp *http.Response) (DaprInvokeHTTPRoutesListResponse, error) {
-	result := DaprInvokeHTTPRoutesListResponse{RawResponse: resp}
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *DaprInvokeHTTPRoutesClient) listByRootScopeHandleResponse(resp *http.Response) (DaprInvokeHTTPRoutesListByRootScopeResponse, error) {
+	result := DaprInvokeHTTPRoutesListByRootScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprInvokeHTTPRouteList); err != nil {
-		return DaprInvokeHTTPRoutesListResponse{}, err
+		return DaprInvokeHTTPRoutesListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *DaprInvokeHTTPRoutesClient) listHandleError(resp *http.Response) error {
-	body, err := runtime.Payload(resp)
-	if err != nil {
-		return runtime.NewResponseError(err, resp)
-	}
-		errType := ErrorResponse{raw: string(body)}
-	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
-		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
-	}
-	return runtime.NewResponseError(&errType, resp)
-}
-
-// ListBySubscription - Lists information about all daprInvokeHttpRoute resources in the given subscription
-// If the operation fails it returns the *ErrorResponse error type.
-func (client *DaprInvokeHTTPRoutesClient) ListBySubscription(options *DaprInvokeHTTPRoutesListBySubscriptionOptions) (*DaprInvokeHTTPRoutesListBySubscriptionPager) {
-	return &DaprInvokeHTTPRoutesListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp DaprInvokeHTTPRoutesListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.DaprInvokeHTTPRouteList.NextLink)
-		},
-	}
-}
-
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *DaprInvokeHTTPRoutesClient) listBySubscriptionCreateRequest(ctx context.Context, options *DaprInvokeHTTPRoutesListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Connector/daprInvokeHttpRoutes"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header.Set("Accept", "application/json")
-	return req, nil
-}
-
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *DaprInvokeHTTPRoutesClient) listBySubscriptionHandleResponse(resp *http.Response) (DaprInvokeHTTPRoutesListBySubscriptionResponse, error) {
-	result := DaprInvokeHTTPRoutesListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DaprInvokeHTTPRouteList); err != nil {
-		return DaprInvokeHTTPRoutesListBySubscriptionResponse{}, err
-	}
-	return result, nil
-}
-
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *DaprInvokeHTTPRoutesClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listByRootScopeHandleError handles the ListByRootScope error response.
+func (client *DaprInvokeHTTPRoutesClient) listByRootScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)

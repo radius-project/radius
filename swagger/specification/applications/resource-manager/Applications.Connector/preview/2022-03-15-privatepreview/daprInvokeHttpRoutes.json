@@ -34,16 +34,16 @@
     }
   },
   "paths": {
-    "/subscriptions/{subscriptionId}/providers/Applications.Connector/daprInvokeHttpRoutes": {
+    "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes": {
       "get": {
-        "description": "Lists information about all daprInvokeHttpRoute resources in the given subscription",
-        "operationId": "DaprInvokeHttpRoutes_ListBySubscription",
+        "description": "Lists information about all daprInvokeHttpRoute resources in the given root scope",
+        "operationId": "DaprInvokeHttpRoutes_ListByRootScope",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "DaprInvokeHttpRoutesListBySubscription": {
-            "$ref": "./examples/DaprInvokeHttpRoutesListBySubscription.json"
+          "DaprInvokeHttpRoutesListByRootscope": {
+            "$ref": "./examples/DaprInvokeHttpRoutesListByRootScope.json"
           }
         },
         "tags": [
@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -77,53 +77,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprInvokeHttpRoutes": {
-      "get": {
-        "description": "Lists information about all daprInvokeHttpRoute resources in the given subscription and resource group",
-        "operationId": "DaprInvokeHttpRoutes_List",
-        "produces": [
-          "application/json"
-        ],
-        "x-ms-examples": {
-          "DaprInvokeHttpRoutesList": {
-            "$ref": "./examples/DaprInvokeHttpRoutesList.json"
-          }
-        },
-        "tags": [
-          "DaprInvokeHttpRoutes"
-        ],
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of DaprInvokeHttpRoute resources",
-            "schema": {
-              "$ref": "#/definitions/DaprInvokeHttpRouteList"
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "deprecated": false,
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}": {
+    "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}": {
       "get": {
         "description": "Retrieves information about a daprInvokeHttpRoute resource",
         "operationId": "DaprInvokeHttpRoutes_Get",
@@ -143,10 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"
@@ -186,10 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"
@@ -244,10 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/DaprInvokeHttpRouteNameParameter"

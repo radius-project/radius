@@ -25,18 +25,19 @@ import (
 type RedisCachesClient struct {
 	ep string
 	pl runtime.Pipeline
+	rootScope string
 	subscriptionID string
 }
 
 // NewRedisCachesClient creates a new instance of RedisCachesClient with the specified values.
-func NewRedisCachesClient(con *arm.Connection, subscriptionID string) *RedisCachesClient {
-	return &RedisCachesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), subscriptionID: subscriptionID}
+func NewRedisCachesClient(con *arm.Connection, rootScope string, subscriptionID string) *RedisCachesClient {
+	return &RedisCachesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope, subscriptionID: subscriptionID}
 }
 
 // CreateOrUpdate - Creates or updates a RedisCache resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RedisCachesClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, redisCacheName string, redisCacheParameters RedisCacheResource, options *RedisCachesCreateOrUpdateOptions) (RedisCachesCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, resourceGroupName, redisCacheName, redisCacheParameters, options)
+func (client *RedisCachesClient) CreateOrUpdate(ctx context.Context, redisCacheName string, redisCacheParameters RedisCacheResource, options *RedisCachesCreateOrUpdateOptions) (RedisCachesCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, redisCacheName, redisCacheParameters, options)
 	if err != nil {
 		return RedisCachesCreateOrUpdateResponse{}, err
 	}
@@ -51,16 +52,12 @@ func (client *RedisCachesClient) CreateOrUpdate(ctx context.Context, resourceGro
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context, resourceGroupName string, redisCacheName string, redisCacheParameters RedisCacheResource, options *RedisCachesCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/redisCaches/{redisCacheName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context, redisCacheName string, redisCacheParameters RedisCacheResource, options *RedisCachesCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
@@ -100,8 +97,8 @@ func (client *RedisCachesClient) createOrUpdateHandleError(resp *http.Response) 
 
 // Delete - Deletes an existing redisCache resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RedisCachesClient) Delete(ctx context.Context, resourceGroupName string, redisCacheName string, options *RedisCachesDeleteOptions) (RedisCachesDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, resourceGroupName, redisCacheName, options)
+func (client *RedisCachesClient) Delete(ctx context.Context, redisCacheName string, options *RedisCachesDeleteOptions) (RedisCachesDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, redisCacheName, options)
 	if err != nil {
 		return RedisCachesDeleteResponse{}, err
 	}
@@ -116,16 +113,12 @@ func (client *RedisCachesClient) Delete(ctx context.Context, resourceGroupName s
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, resourceGroupName string, redisCacheName string, options *RedisCachesDeleteOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/redisCaches/{redisCacheName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, redisCacheName string, options *RedisCachesDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
@@ -156,8 +149,8 @@ func (client *RedisCachesClient) deleteHandleError(resp *http.Response) error {
 
 // Get - Retrieves information about a redisCache resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RedisCachesClient) Get(ctx context.Context, resourceGroupName string, redisCacheName string, options *RedisCachesGetOptions) (RedisCachesGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, resourceGroupName, redisCacheName, options)
+func (client *RedisCachesClient) Get(ctx context.Context, redisCacheName string, options *RedisCachesGetOptions) (RedisCachesGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, redisCacheName, options)
 	if err != nil {
 		return RedisCachesGetResponse{}, err
 	}
@@ -172,16 +165,12 @@ func (client *RedisCachesClient) Get(ctx context.Context, resourceGroupName stri
 }
 
 // getCreateRequest creates the Get request.
-func (client *RedisCachesClient) getCreateRequest(ctx context.Context, resourceGroupName string, redisCacheName string, options *RedisCachesGetOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/redisCaches/{redisCacheName}"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+func (client *RedisCachesClient) getCreateRequest(ctx context.Context, redisCacheName string, options *RedisCachesGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
@@ -219,31 +208,27 @@ func (client *RedisCachesClient) getHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// List - Lists information about all redisCache resources in the given subscription and resource group
+// ListByRootScope - Lists information about all redisCache resources in the given root scope
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RedisCachesClient) List(resourceGroupName string, options *RedisCachesListOptions) (*RedisCachesListPager) {
-	return &RedisCachesListPager{
+func (client *RedisCachesClient) ListByRootScope(options *RedisCachesListByRootScopeOptions) (*RedisCachesListByRootScopePager) {
+	return &RedisCachesListByRootScopePager{
 		client: client,
 		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listCreateRequest(ctx, resourceGroupName, options)
+			return client.listByRootScopeCreateRequest(ctx, options)
 		},
-		advancer: func(ctx context.Context, resp RedisCachesListResponse) (*policy.Request, error) {
+		advancer: func(ctx context.Context, resp RedisCachesListByRootScopeResponse) (*policy.Request, error) {
 			return runtime.NewRequest(ctx, http.MethodGet, *resp.RedisCacheList.NextLink)
 		},
 	}
 }
 
-// listCreateRequest creates the List request.
-func (client *RedisCachesClient) listCreateRequest(ctx context.Context, resourceGroupName string, options *RedisCachesListOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/redisCaches"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *RedisCachesClient) listByRootScopeCreateRequest(ctx context.Context, options *RedisCachesListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	if resourceGroupName == "" {
-		return nil, errors.New("parameter resourceGroupName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -255,17 +240,17 @@ func (client *RedisCachesClient) listCreateRequest(ctx context.Context, resource
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *RedisCachesClient) listHandleResponse(resp *http.Response) (RedisCachesListResponse, error) {
-	result := RedisCachesListResponse{RawResponse: resp}
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *RedisCachesClient) listByRootScopeHandleResponse(resp *http.Response) (RedisCachesListByRootScopeResponse, error) {
+	result := RedisCachesListByRootScopeResponse{RawResponse: resp}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheList); err != nil {
-		return RedisCachesListResponse{}, err
+		return RedisCachesListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// listHandleError handles the List error response.
-func (client *RedisCachesClient) listHandleError(resp *http.Response) error {
+// listByRootScopeHandleError handles the ListByRootScope error response.
+func (client *RedisCachesClient) listByRootScopeHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)
@@ -277,28 +262,39 @@ func (client *RedisCachesClient) listHandleError(resp *http.Response) error {
 	return runtime.NewResponseError(&errType, resp)
 }
 
-// ListBySubscription - Lists information about all redisCache resources in the given subscription
+// ListSecrets - Lists secrets values for the specified RedisCache resource
 // If the operation fails it returns the *ErrorResponse error type.
-func (client *RedisCachesClient) ListBySubscription(options *RedisCachesListBySubscriptionOptions) (*RedisCachesListBySubscriptionPager) {
-	return &RedisCachesListBySubscriptionPager{
-		client: client,
-		requester: func(ctx context.Context) (*policy.Request, error) {
-			return client.listBySubscriptionCreateRequest(ctx, options)
-		},
-		advancer: func(ctx context.Context, resp RedisCachesListBySubscriptionResponse) (*policy.Request, error) {
-			return runtime.NewRequest(ctx, http.MethodGet, *resp.RedisCacheList.NextLink)
-		},
+func (client *RedisCachesClient) ListSecrets(ctx context.Context, redisCacheName string, options *RedisCachesListSecretsOptions) (RedisCachesListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, redisCacheName, options)
+	if err != nil {
+		return RedisCachesListSecretsResponse{}, err
 	}
+	resp, err := 	client.pl.Do(req)
+	if err != nil {
+		return RedisCachesListSecretsResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return RedisCachesListSecretsResponse{}, client.listSecretsHandleError(resp)
+	}
+	return client.listSecretsHandleResponse(resp)
 }
 
-// listBySubscriptionCreateRequest creates the ListBySubscription request.
-func (client *RedisCachesClient) listBySubscriptionCreateRequest(ctx context.Context, options *RedisCachesListBySubscriptionOptions) (*policy.Request, error) {
-	urlPath := "/subscriptions/{subscriptionId}/providers/Applications.Connector/redisCaches"
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, redisCacheName string, options *RedisCachesListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets"
 	if client.subscriptionID == "" {
 		return nil, errors.New("parameter client.subscriptionID cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	if redisCacheName == "" {
+		return nil, errors.New("parameter redisCacheName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -309,17 +305,17 @@ func (client *RedisCachesClient) listBySubscriptionCreateRequest(ctx context.Con
 	return req, nil
 }
 
-// listBySubscriptionHandleResponse handles the ListBySubscription response.
-func (client *RedisCachesClient) listBySubscriptionHandleResponse(resp *http.Response) (RedisCachesListBySubscriptionResponse, error) {
-	result := RedisCachesListBySubscriptionResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheList); err != nil {
-		return RedisCachesListBySubscriptionResponse{}, err
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *RedisCachesClient) listSecretsHandleResponse(resp *http.Response) (RedisCachesListSecretsResponse, error) {
+	result := RedisCachesListSecretsResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheSecrets); err != nil {
+		return RedisCachesListSecretsResponse{}, err
 	}
 	return result, nil
 }
 
-// listBySubscriptionHandleError handles the ListBySubscription error response.
-func (client *RedisCachesClient) listBySubscriptionHandleError(resp *http.Response) error {
+// listSecretsHandleError handles the ListSecrets error response.
+func (client *RedisCachesClient) listSecretsHandleError(resp *http.Response) error {
 	body, err := runtime.Payload(resp)
 	if err != nil {
 		return runtime.NewResponseError(err, resp)

@@ -34,16 +34,16 @@
     }
   },
   "paths": {
-    "/subscriptions/{subscriptionId}/providers/Applications.Connector/daprPubSubBrokers": {
+    "/{rootScope}/providers/Applications.Connector/daprPubSubBrokers": {
       "get": {
-        "description": "Lists information about all daprPubSubBroker resources in the given subscription",
-        "operationId": "DaprPubSubBrokers_ListBySubscription",
+        "description": "Lists information about all daprPubSubBroker resources in the given root scope",
+        "operationId": "DaprPubSubBrokers_ListByRootScope",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "DaprPubSubBrokersListBySubscription": {
-            "$ref": "./examples/DaprPubSubBrokersListBySubscription.json"
+          "DaprPubSubBrokersListByRootScope": {
+            "$ref": "./examples/DaprPubSubBrokersListByRootScope.json"
           }
         },
         "tags": [
@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -77,53 +77,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprPubSubBrokers": {
-      "get": {
-        "description": "Lists information about all daprPubSubBroker resources in the given subscription and resource group",
-        "operationId": "DaprPubSubBrokers_List",
-        "produces": [
-          "application/json"
-        ],
-        "x-ms-examples": {
-          "DaprPubSubBrokersList": {
-            "$ref": "./examples/DaprPubSubBrokersList.json"
-          }
-        },
-        "tags": [
-          "DaprPubSubBrokers"
-        ],
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of daprPubSubBroker resources",
-            "schema": {
-              "$ref": "#/definitions/DaprPubSubBrokerList"
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "deprecated": false,
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}": {
+    "/{rootScope}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}": {
       "get": {
         "description": "Retrieves information about a daprPubSubBroker resource",
         "operationId": "DaprPubSubBrokers_Get",
@@ -143,10 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/DaprPubSubBrokerNameParameter"
@@ -186,10 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/DaprPubSubBrokerNameParameter"
@@ -244,10 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/DaprPubSubBrokerNameParameter"

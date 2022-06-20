@@ -40,7 +40,7 @@ stages:
     steps:
     - task: GoTool@0
       inputs:
-        version: '1.17'
+        version: '1.18'
     - script: |
         echo "##vso[task.setvariable variable=goBuildCache;isOutput=true]$(go env GOCACHE)"
       displayName: Set Go cache paths
@@ -71,7 +71,7 @@ stages:
     steps:
     - task: GoTool@0
       inputs:
-        version: '1.17'
+        version: '1.18'
     - script: |
         echo "##vso[task.setvariable variable=goBuildCache;isOutput=true]$(go env GOCACHE)"
       displayName: Set Go cache paths
@@ -130,7 +130,7 @@ stages:
     steps:
     - task: GoTool@0
       inputs:
-        version: '1.17'
+        version: '1.18'
     - script: |
         make build
         cp ./dist/linux_amd64/release/rad ./dist/

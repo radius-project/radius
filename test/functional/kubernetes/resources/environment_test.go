@@ -40,7 +40,7 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 // tests have been migrated to use the CoreRP
 func Test_EnvironmentWithCoreRP(t *testing.T) {
 	ctx := context.Background()
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "", true)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "", "", true)
 
 	require.NoError(t, err, "")
 

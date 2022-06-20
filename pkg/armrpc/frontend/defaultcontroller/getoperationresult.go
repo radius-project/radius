@@ -47,7 +47,7 @@ func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.R
 		return rest.NewNotFoundResponse(id), nil
 	}
 
-	if !os.InTerminalState() {
+	if !os.Status.IsTerminal() {
 		headers := map[string]string{
 			"Location":    req.URL.String(),
 			"Retry-After": v1.DefaultRetryAfter,

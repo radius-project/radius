@@ -10,23 +10,28 @@ import (
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 
+	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
+	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
+	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateway"
+	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
 )
 
 const (
 	ProviderNamespaceName = "Applications.Core"
 )
 
-func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router *mux.Router, pathBase string, isARM bool) error {
+func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, router *mux.Router, pathBase string, isARM bool) error {
 	if isARM {
 		pathBase += "/subscriptions/{subscriptionID}"
 	}
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, sp, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
+	err := server.ConfigureDefaultHandlers(ctx, sp, sm, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
 	if err != nil {
 		return err
 	}
@@ -35,7 +40,26 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
 
+	hrtSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/httproutes").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
+
+	ctrRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/containers").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	ctrResourceRouter := ctrRTSubrouter.PathPrefix("/{container}").Subrouter()
+
+	// Adds application resource type routes
+	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/applications").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	appResourceRouter := appRTSubrouter.PathPrefix("/{application}").Subrouter()
+
+	// Adds gateway resource type routes
+	gtwyRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/gateways").
+		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
+	gtwyResourceRouter := gtwyRTSubrouter.PathPrefix("/{application}").Subrouter()
+
 	handlerOptions := []server.HandlerOptions{
+		// Environments resource handler registration.
 		{
 			ParentRouter:   envRTSubrouter,
 			ResourceType:   env_ctrl.ResourceTypeName,
@@ -66,10 +90,90 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, router 
 			Method:         v1.OperationDelete,
 			HandlerFactory: env_ctrl.NewDeleteEnvironment,
 		},
+		{
+			ParentRouter:   hrtSubrouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: hrt_ctrl.NewListHTTPRoutes,
+		},
+		{
+			ParentRouter:   hrtResourceRouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: hrt_ctrl.NewGetHTTPRoute,
+		},
+		{
+			ParentRouter:   hrtResourceRouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: hrt_ctrl.NewCreateOrUpdateHTTPRoute,
+		},
+		{
+			ParentRouter:   hrtResourceRouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: hrt_ctrl.NewCreateOrUpdateHTTPRoute,
+		},
+		{
+			ParentRouter:   hrtResourceRouter,
+			ResourceType:   hrt_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: hrt_ctrl.NewDeleteHTTPRoute,
+		},
+		{
+			ParentRouter:   ctrResourceRouter,
+			ResourceType:   ctr_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: ctr_ctrl.NewCreateOrUpdateContainer,
+		},
+		// Applications resource handler registration.
+		{
+			ParentRouter:   appRTSubrouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: app_ctrl.NewListApplications,
+		},
+		{
+			ParentRouter:   appResourceRouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: app_ctrl.NewGetApplication,
+		},
+		{
+			ParentRouter:   appResourceRouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: app_ctrl.NewCreateOrUpdateApplication,
+		},
+		{
+			ParentRouter:   appResourceRouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: app_ctrl.NewCreateOrUpdateApplication,
+		},
+		{
+			ParentRouter:   appResourceRouter,
+			ResourceType:   app_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: app_ctrl.NewDeleteApplication,
+		},
+		// Gateway resource handler registration.
+		// TODO: Add async registration for createorupdate and delete handler
+		{
+			ParentRouter:   gtwyRTSubrouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: gtwy_ctrl.NewListGateways,
+		},
+		{
+			ParentRouter:   gtwyResourceRouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: gtwy_ctrl.NewGetGateway,
+		},
 	}
-
 	for _, h := range handlerOptions {
-		if err := server.RegisterHandler(ctx, sp, h); err != nil {
+		if err := server.RegisterHandler(ctx, sp, sm, h); err != nil {
 			return err
 		}
 	}

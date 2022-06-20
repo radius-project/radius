@@ -364,21 +364,6 @@ func (env EnvironmentSection) decodeEnvironmentSection(name string) (environment
 		}
 
 		return decoded, nil
-	} else if kind == environments.KindLocalRP {
-		decoded := &environments.LocalRPEnvironment{}
-		err := mapstructure.Decode(raw, decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
-		}
-
-		decoded.Name = name
-
-		err = validate(decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
-		}
-
-		return decoded, nil
 	} else {
 		decoded := &environments.GenericEnvironment{}
 		err := mapstructure.Decode(raw, decoded)

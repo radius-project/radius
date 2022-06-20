@@ -23,7 +23,7 @@ import (
 type asyncOperationsManagerTest struct {
 	manager     StatusManager
 	storeClient *store.MockStorageClient
-	enqueuer    *queue.MockEnqueuer
+	queue       *queue.MockClient
 }
 
 const (
@@ -38,9 +38,9 @@ const (
 func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 	ctrl := gomock.NewController(tb)
 	sc := store.NewMockStorageClient(ctrl)
-	enq := queue.NewMockEnqueuer(ctrl)
+	enq := queue.NewMockClient(ctrl)
 	aom := New(sc, enq, "Test-AsyncOperationsManager", "test-location")
-	return asyncOperationsManagerTest{manager: aom, storeClient: sc, enqueuer: enq}, ctrl
+	return asyncOperationsManagerTest{manager: aom, storeClient: sc, queue: enq}, ctrl
 }
 
 var reqCtx = &servicecontext.ARMRequestContext{
@@ -109,7 +109,7 @@ func TestCreateAsyncOperationStatus(t *testing.T) {
 
 			// We can't expect an async operation to be queued if it is not saved to the DB.
 			if tt.SaveErr == nil {
-				aomTest.enqueuer.EXPECT().Enqueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.EnqueueErr)
+				aomTest.queue.EXPECT().Enqueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.EnqueueErr)
 			}
 
 			// If there is an error when enqueuing the message, the async operation should be deleted.

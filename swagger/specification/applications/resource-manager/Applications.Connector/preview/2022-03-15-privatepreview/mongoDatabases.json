@@ -34,16 +34,16 @@
     }
   },
   "paths": {
-    "/subscriptions/{subscriptionId}/providers/Applications.Connector/mongoDatabases": {
+    "/{rootScope}/providers/Applications.Connector/mongoDatabases": {
       "get": {
-        "description": "Lists information about all mongoDatabases resources in the given subscription",
-        "operationId": "MongoDatabases_ListBySubscription",
+        "description": "Lists information about all mongoDatabases resources in the given root scope",
+        "operationId": "MongoDatabases_ListByRootScope",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "MongoDatabasesListBySubscription": {
-            "$ref": "./examples/MongoDatabasesListBySubscription.json"
+          "MongoDatabasesListByRootScope": {
+            "$ref": "./examples/MongoDatabasesListByRootScope.json"
           }
         },
         "tags": [
@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -77,53 +77,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/mongoDatabases": {
-      "get": {
-        "description": "Lists information about all mongoDatabases resources in the given subscription and resource group",
-        "operationId": "MongoDatabases_List",
-        "produces": [
-          "application/json"
-        ],
-        "x-ms-examples": {
-          "MongoDatabasesList": {
-            "$ref": "./examples/MongoDatabasesList.json"
-          }
-        },
-        "tags": [
-          "MongoDatabases"
-        ],
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of MongoDatabase resources",
-            "schema": {
-              "$ref": "#/definitions/MongoDatabaseList"
-            }
-          },
-          "default": {
-            "description": "Error response describing why the operation failed.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "deprecated": false,
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}": {
+    "/{rootScope}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}": {
       "get": {
         "description": "Retrieves information about a mongoDatabases resource",
         "operationId": "MongoDatabases_Get",
@@ -143,10 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/MongoDatabaseNameParameter"
@@ -186,10 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/MongoDatabaseNameParameter"
@@ -244,10 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/MongoDatabaseNameParameter"
@@ -272,7 +217,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}/listSecrets": {
+    "/{rootScope}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}/listSecrets": {
       "post": {
         "description": "Lists secrets values for the specified MongoDatabase resource",
         "operationId": "MongoDatabases_listSecrets",
@@ -292,10 +237,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/MongoDatabaseNameParameter"

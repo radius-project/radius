@@ -7,6 +7,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -29,9 +30,21 @@ var (
 		Data: map[string]interface{}{
 			"name": "env0",
 			"properties": map[string]interface{}{
-				"provisioningState": "Updating",
+				"provisioningState": "Accepted",
 			},
 		},
+	}
+	testOperationStatus = &manager.Status{
+		AsyncOperationStatus: v1.AsyncOperationStatus{
+			ID:        uuid.NewString(),
+			Name:      "operation-status",
+			Status:    v1.ProvisioningStateUpdating,
+			StartTime: time.Now().UTC(),
+		},
+		LinkedResourceID: uuid.New().String(),
+		Location:         "test-location",
+		HomeTenantID:     "test-home-tenant-id",
+		ClientObjectID:   "test-client-object-id",
 	}
 )
 
@@ -84,7 +97,7 @@ func newTestContext(t *testing.T) (*testContext, *gomock.Controller) {
 		mockSM:    manager.NewMockStatusManager(mctrl),
 		mockSP:    dataprovider.NewMockDataStorageProvider(mctrl),
 		internalQ: inmemQ,
-		testQueue: inmemory.NewClient(inmemQ),
+		testQueue: inmemory.New(inmemQ),
 	}, mctrl
 }
 
@@ -98,9 +111,10 @@ func genTestMessage(opID uuid.UUID, opTimeout time.Duration) (*queue.Message, *a
 			NextVisibleAt: time.Now().Add(time.Duration(120) * time.Second),
 		},
 		Data: &ctrl.Request{
-			OperationID:      opID,
-			OperationType:    "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
-			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+			OperationID:   opID,
+			OperationType: "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
+			ResourceID: fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/%s",
+				uuid.NewString()),
 			CorrelationID:    uuid.NewString(),
 			OperationTimeout: &opTimeout,
 		},
@@ -138,7 +152,7 @@ func TestStart_UnknownOperation(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
 		ctx,
-		v1.OperationType{Type: testResourceType, Method: "UNDEFINED"},
+		testResourceType, "UNDEFINED",
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return testCtrl, nil
 		})
@@ -179,7 +193,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(0)
 	err := registry.Register(
 		ctx,
-		v1.OperationType{Type: testResourceType, Method: v1.OperationPut},
+		testResourceType, v1.OperationPut,
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return nil, nil
 		})
@@ -214,6 +228,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	// set up mocks
 	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
@@ -238,7 +253,8 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
 		ctx,
-		v1.OperationType{Type: testResourceType, Method: v1.OperationPut},
+		testResourceType,
+		v1.OperationPut,
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return testCtrl, nil
 		})
@@ -280,6 +296,7 @@ func TestStart_RunOperation(t *testing.T) {
 	// set up mocks
 	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).AnyTimes()
 
@@ -301,7 +318,7 @@ func TestStart_RunOperation(t *testing.T) {
 	ctx, cancel := tCtx.cancellable(time.Duration(0))
 	err := registry.Register(
 		ctx,
-		v1.OperationType{Type: testResourceType, Method: v1.OperationPut},
+		testResourceType, v1.OperationPut,
 		func(s store.StorageClient) (ctrl.Controller, error) {
 			return testCtrl, nil
 		})
