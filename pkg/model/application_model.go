@@ -185,6 +185,15 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
+				Type:     "TrafficSplit",
+				Provider: providers.ProviderKubernetes,
+			},
+			HealthHandler:                  handlers.NewKubernetesHealthHandler(k8s),
+			ResourceHandler:                handlers.NewKubernetesHandler(k8s),
+			ShouldSupportHealthMonitorFunc: shouldSupportHealthMonitorFunc,
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
 				Provider: providers.ProviderKubernetes,
 			},

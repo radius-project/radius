@@ -14,6 +14,7 @@ import (
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const (
@@ -29,14 +30,17 @@ type OSMOptions struct {
 func ApplyOSMHelmChart(options OSMOptions) error {
 	var helmOutput strings.Builder
 
-	helmConf, err := HelmConfig(RadiusSystemNamespace, helmOutput)
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+	}
+	helmConf, err := HelmConfig(helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
 	// ChartPath is not one of the OSMoptions, so we will just retrieve the chart from the container registry
 	helmChart, err := helmChartFromContainerRegistry(options.ChartVersion, helmConf, OSMHelmRepo, OSMReleaseName)
-
 	if err != nil {
 		return fmt.Errorf("failed to load helm chart, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -50,7 +54,6 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	// Invoke the installation of OSM control plane
-
 	// retrieve the history of the releases
 	_, err = histClient.Run(OSMReleaseName)
 	// if a previous release is not found
@@ -58,7 +61,7 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 		output.LogInfo("Installing Open Service Mesh (OSM) to namespace: %s", RadiusSystemNamespace)
 
 		// Installation of OSM
-		err = runOSMHelmInstall(helmConf, helmChart)
+		err = runOSMHelmInstall(helmConf, helmChart, helmOutput)
 		if err != nil {
 			return fmt.Errorf("failed to run Open Service Mesh (OSM) helm install, err: %w, helm output: %s", err, helmOutput.String())
 		}
@@ -69,7 +72,8 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 
 }
 
-func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
+
+func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, helmOutput strings.Builder) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.ReleaseName = OSMReleaseName
@@ -77,11 +81,7 @@ func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) err
 	installClient.Timeout = installTimeout
 	err := runInstall(installClient, helmChart)
 	if err != nil {
-		upgradeClient := helm.NewUpgrade(helmConf)
-		upgradeClient.Install = true
-		upgradeClient.Namespace = RadiusSystemNamespace
-		_, err := upgradeClient.Run(OSMReleaseName, helmChart, helmChart.Values)
-		return err
+		return fmt.Errorf("OSM installation failed, err: %w, helm output: %s", err, helmOutput.String())
 	}
 	return err
 }
@@ -105,11 +105,14 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 	// A Map that alters the resource requests and limits of OSM pods
 	modification := map[string]interface{}{
 		"OpenServiceMesh": map[string]interface{}{
+			"enablePermissiveTrafficPolicy": true,
+			"osmNamespace":                  RadiusSystemNamespace,
+			"controllerLogLevel":            "debug",
 			"injector": map[string]interface{}{
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
 						"cpu":    "100m",
-						"memory": "16M",
+						"memory": "32M",
 					},
 					"requests": map[string]interface{}{
 						"cpu":    "100m",
@@ -133,7 +136,7 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 				"resource": map[string]interface{}{
 					"limits": map[string]interface{}{
 						"cpu":    "200m",
-						"memory": "32M",
+						"memory": "64M",
 					},
 					"requests": map[string]interface{}{
 						"cpu":    "100m",
