@@ -1198,7 +1198,7 @@
           "type": "integer"
         },
         "routes": {
-          "description": "Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of json obects that each only have two keys: desination and weight",
+          "description": "Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of JSON objects that each only have two keys: destination and weight",
           "items": {
             "additionalProperties": false,
             "properties": {
