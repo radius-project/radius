@@ -181,6 +181,9 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 		return nil, err
 	}
 	if !addAzureSPN {
+		if subscriptionID == "" && resourceGroup == "" {
+			return nil, nil
+		}
 		return &azure.Provider{
 			SubscriptionID: subscriptionID,
 			ResourceGroup:  resourceGroup,

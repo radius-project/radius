@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
+
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/azure"
@@ -30,6 +31,7 @@ type KubernetesEnvironment struct {
 	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
 	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
 	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
+	UCPResourceGroupName     string `mapstructure:"ucpresourcegroupname,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`

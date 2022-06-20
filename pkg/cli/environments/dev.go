@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
+
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
@@ -41,6 +42,7 @@ type LocalEnvironment struct {
 	UCPLocalURL              string     `mapstructure:"ucplocalurl,omitempty"`
 	Providers                *Providers `mapstructure:"providers"`
 	EnableUCP                bool       `mapstructure:"enableucp,omitempty"`
+	UCPResourceGroupName     string     `mapstructure:"ucpresourcegroupname,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`

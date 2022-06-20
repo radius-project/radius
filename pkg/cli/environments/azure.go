@@ -42,6 +42,7 @@ type AzureCloudEnvironment struct {
 	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
 	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
 	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
+	UCPResourceGroupName     string `mapstructure:"ucpresourcegroupname,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain" yaml:",omitempty"`
@@ -78,7 +79,12 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 }
 
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
+		e.DeploymentEngineLocalURL,
+		e.UCPLocalURL,
+		e.Context,
+		e.EnableUCP,
+	)
 	if err != nil {
 		return nil, err
 	}
