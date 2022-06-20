@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -49,8 +48,7 @@ func Test_CreatePlane(t *testing.T) {
 
 	var o store.Object
 	o.Metadata.ContentType = "application/json"
-	id := resources.UCPPrefix + plane.ID
-	o.Metadata.ID = id
+	o.Metadata.ID = plane.ID
 	o.Data = &plane
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
@@ -67,7 +65,7 @@ func Test_ListPlane(t *testing.T) {
 	var testHandler = NewPlanesUCPHandler(Options{})
 
 	var query store.Query
-	query.RootScope = resources.UCPPrefix + path
+	query.RootScope = path
 	query.ScopeRecursive = true
 	query.IsScopeQuery = true
 

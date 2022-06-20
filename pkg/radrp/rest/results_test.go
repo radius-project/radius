@@ -541,7 +541,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 	}{
 		{
 			"ucp-location-header",
-			"ucp:/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
 			"operationResults",
 			"global",
 			operationID,
@@ -549,7 +549,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 		},
 		{
 			"ucp-azure-asyncoperation-header",
-			"ucp:/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
 			"operationStatuses",
 			"global",
 			operationID,

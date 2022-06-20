@@ -222,7 +222,7 @@ func TestSave(t *testing.T) {
 	ctx := context.Background()
 	client := mustGetTestClient(t)
 
-	ucpRootScope := fmt.Sprintf("ucp:/planes/radius/local/resourcegroups/%s", randomResourceGroups[0])
+	ucpRootScope := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", randomResourceGroups[0])
 	ucpResource := getTestEnvironmentModel(ucpRootScope, "test-ucp-resource")
 
 	armResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", randomSubscriptionIDs[0], randomResourceGroups[0])
@@ -359,8 +359,8 @@ func TestQuery(t *testing.T) {
 	armResources := []string{}
 
 	// TODO: UCP doesn't check for the plane type
-	// Ex: ucp:/planes/radius/azure/resourcegroups/rg/.../environments/env
-	// is equal to ucp:/planes/radius/local/resourcegroups/rg/.../environments/env
+	// Ex: /planes/radius/azure/resourcegroups/rg/.../environments/env
+	// is equal to /planes/radius/local/resourcegroups/rg/.../environments/env
 
 	setupTest := func(tb testing.TB) func(tb testing.TB) {
 		// Reset arrays each time
@@ -372,7 +372,7 @@ func TestQuery(t *testing.T) {
 		for _, plane := range randomPlanes {
 			for _, resourceGroup := range randomResourceGroups {
 				// Create and Save a UCP Resource
-				ucpRootScope := fmt.Sprintf("ucp:/planes/radius/%s/resourcegroups/%s", plane, resourceGroup)
+				ucpRootScope := fmt.Sprintf("/planes/radius/%s/resourcegroups/%s", plane, resourceGroup)
 				ucpEnv := buildAndSaveTestModel(ctx, t, ucpRootScope, uuid.New().String())
 				ucpResources = append(ucpResources, ucpEnv.ID)
 			}
@@ -595,7 +595,7 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 	ucpResources := []string{}
 	armResources := []string{}
 
-	ucpRootScope := "ucp:/planes/radius/local/resourcegroups/test-rg"
+	ucpRootScope := "/planes/radius/local/resourcegroups/test-rg"
 	armResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-rg"
 
 	setupTest := func(tb testing.TB) func(tb testing.TB) {
@@ -704,12 +704,12 @@ func TestGetPartitionKey(t *testing.T) {
 		},
 		{
 			"ucp-resource-partition-key-radius-local",
-			"ucp:/planes/radius/local/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"/planes/radius/local/resourcegroups/testGroup/providers/applications.core/environments/env0",
 			"RADIUSLOCAL",
 		},
 		{
 			"ucp-resource-partition-key-radius-k8s",
-			"ucp:/planes/radius/k8s/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"/planes/radius/k8s/resourcegroups/testGroup/providers/applications.core/environments/env0",
 			"RADIUSK8S",
 		},
 	}

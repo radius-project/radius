@@ -10,11 +10,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/version"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/version"
 )
 
 const (
@@ -141,7 +142,7 @@ func UninstallOnCluster(kubeContext string) error {
 		Context:   &kubeContext,
 	}
 
-	helmConf, err := HelmConfig(helmOutput, &flags)
+	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}

@@ -26,10 +26,10 @@ const (
 	ResourcePath2       = "System.Resources/resourceType2/resource2"
 	NestedResourcePath1 = "System.Resources/resourceType1/resource1/nestedType/nested1"
 
-	RadiusScope         = "ucp:/planes/radius/local/"
-	PlaneScope          = "ucp:/planes"
-	ResourceGroup1Scope = "ucp:/planes/radius/local/resourceGroups/group1"
-	ResourceGroup2Scope = "ucp:/planes/radius/local/resourceGroups/group2"
+	RadiusScope         = "/planes/radius/local/"
+	PlaneScope          = "/planes"
+	ResourceGroup1Scope = "/planes/radius/local/resourceGroups/group1"
+	ResourceGroup2Scope = "/planes/radius/local/resourceGroups/group2"
 	ARMResourceScope    = "/subscriptions/abc/resourceGroups/group3"
 	APIVersion          = "test-api-version"
 )

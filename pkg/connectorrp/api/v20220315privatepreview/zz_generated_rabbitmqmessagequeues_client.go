@@ -26,12 +26,11 @@ type RabbitMQMessageQueuesClient struct {
 	ep string
 	pl runtime.Pipeline
 	rootScope string
-	subscriptionID string
 }
 
 // NewRabbitMQMessageQueuesClient creates a new instance of RabbitMQMessageQueuesClient with the specified values.
-func NewRabbitMQMessageQueuesClient(con *arm.Connection, rootScope string, subscriptionID string) *RabbitMQMessageQueuesClient {
-	return &RabbitMQMessageQueuesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope, subscriptionID: subscriptionID}
+func NewRabbitMQMessageQueuesClient(con *arm.Connection, rootScope string) *RabbitMQMessageQueuesClient {
+	return &RabbitMQMessageQueuesClient{ep: con.Endpoint(), pl: con.NewPipeline(module, version), rootScope: rootScope}
 }
 
 // CreateOrUpdate - Creates or updates a RabbitMQMessageQueue resource
@@ -282,10 +281,6 @@ func (client *RabbitMQMessageQueuesClient) ListSecrets(ctx context.Context, rabb
 // listSecretsCreateRequest creates the ListSecrets request.
 func (client *RabbitMQMessageQueuesClient) listSecretsCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesListSecretsOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets"
-	if client.subscriptionID == "" {
-		return nil, errors.New("parameter client.subscriptionID cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}

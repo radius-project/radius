@@ -33,8 +33,7 @@ func TestSaveValidPlane(t *testing.T) {
 
 	var o store.Object
 	o.Metadata.ContentType = "application/json"
-	id := resources.UCPPrefix + plane.ID
-	o.Metadata.ID = id
+	o.Metadata.ID = plane.ID
 	o.Data = &plane
 
 	mockCtrl := gomock.NewController(t)
@@ -49,7 +48,7 @@ func TestSaveValidPlane(t *testing.T) {
 func TestGetByIdPlane(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
-	id := "ucp:/planes/radius/local"
+	id := "/planes/radius/local"
 	resourceId, _ := resources.Parse(id)
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()

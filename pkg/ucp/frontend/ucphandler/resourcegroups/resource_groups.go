@@ -41,7 +41,7 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 
 	rg.ID = path
 	rgExists := true
-	ID, err := resources.Parse(resources.UCPPrefix + rg.ID)
+	ID, err := resources.Parse(rg.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -73,7 +73,7 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
 	var query store.Query
-	query.RootScope = resources.UCPPrefix + path
+	query.RootScope = path
 	query.ScopeRecursive = false
 	query.IsScopeQuery = true
 	listOfPlanes, err := resourcegroupsdb.GetScope(ctx, db, query)
@@ -85,9 +85,7 @@ func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path st
 }
 
 func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
-	//make id fully qualified. Ex, plane id : ucp:/planes/radius/local/resourceGroups/rg
-	id := resources.UCPPrefix + path
-	id = strings.ToLower(id)
+	id := strings.ToLower(path)
 	resourceId, err := resources.Parse(id)
 	if err != nil {
 		if err != nil {
@@ -107,9 +105,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 }
 
 func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
-	//make id fully qualified. Ex, plane id : ucp:/planes/radius/local/resourceGroups/rg
-	id := resources.UCPPrefix + path
-	resourceId, err := resources.Parse(id)
+	resourceId, err := resources.Parse(path)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
