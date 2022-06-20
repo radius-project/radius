@@ -28,36 +28,40 @@ type Renderer struct {
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, resource renderers.RendererResource) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
-	return nil, nil, nil
+	properties, err := r.convert(resource)
+	if err != nil {
+		return nil, nil, err
+	}
+	if properties == nil || len(properties.Routes) == 0 {
+		return nil, nil, nil
+	}
+	for _, routes := range properties.Routes {
+		destination := routes.Destination
+		resourceID, err := azresources.Parse(*destination)
+		if err != nil {
+			return nil, nil, err
+		}
+		radiusResourceIDs = append(radiusResourceIDs, resourceID)
+	}
+	return radiusResourceIDs, azureResourceIDs, nil
 }
 
 func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	// route := radclient.HTTPRouteProperties{}
-	// resource := options.Resource
-	// port := kubernetes.GetDefaultPort()
-	// err := resource.ConvertDefinition(&route)
-	// if err != nil {
-	// 	return renderers.RendererOutput{}, err
-	// }
-
-	// if route.Port == nil {
-	// 	defaultPort := kubernetes.GetDefaultPort()
-	// 	route = &radclient.HTTPRouteProperties{
-	// 		Port: &defaultPort,
-	// 	}
-	// }
 	resource := options.Resource
-
 	route, err := r.convert(resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	if route == nil || route.Port == nil {
+	if route == nil {
 		defaultPort := kubernetes.GetDefaultPort()
 		route = &radclient.HTTPRouteProperties{
 			Port: &defaultPort,
 		}
+	}
+	if route.Port == nil {
+		defaultPort := kubernetes.GetDefaultPort()
+		route.Port = &defaultPort
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
