@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/ucp"
 )
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
@@ -124,16 +125,29 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	}, nil
 }
 
-func (e *KubernetesEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
+func (e *KubernetesEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
 	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &azure.ARMManagementClient{
+	return &azure.LegacyARMManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		ResourceGroup:   e.Namespace, // Temporarily set resource group and subscription id to the namespace
 		SubscriptionID:  e.Namespace,
+	}, nil
+}
+
+func (e *KubernetesEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ucp.ARMApplicationsManagementClient{
+		EnvironmentName: e.Name,
+		Connection:      connection,
+		RootScope:       e.Namespace, // Temporarily set to namespace before rootScope is generated in kubernetes environment
 	}, nil
 }

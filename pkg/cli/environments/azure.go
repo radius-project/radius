@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/ucp"
 )
 
 func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
@@ -146,16 +147,29 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	}, nil
 }
 
-func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
+func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
 	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &azure.ARMManagementClient{
+	return &azure.LegacyARMManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		ResourceGroup:   e.ResourceGroup,
 		SubscriptionID:  e.SubscriptionID,
+	}, nil
+}
+
+func (e *AzureCloudEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ucp.ARMApplicationsManagementClient{
+		EnvironmentName: e.Name,
+		Connection:      connection,
+		RootScope:       "/Subscriptions/" + e.SubscriptionID + "/ResourceGroups/" + e.ResourceGroup,
 	}, nil
 }
