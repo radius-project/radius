@@ -13,12 +13,12 @@ import (
 
 	"github.com/go-logr/logr"
 	//"github.com/project-radius/radius/pkg/azure/radclient"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/outputresource"
+
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
-
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -53,12 +53,13 @@ func Test_Render_WithPort(t *testing.T) {
 	var port int32 = 6379
 
 	dependencies := map[string]renderers.RendererDependency{}
-	properties := v20220315privatepreview.HTTPRouteProperties{
-		Port: &port,
-	}
+	properties := datamodel.HTTPRouteProperties{}
+	properties.Port = port
+	dm := datamodel.HTTPRoute{Properties: properties}
+
 	resource := makeResource(t, properties)
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}})
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}}, dm)
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -102,12 +103,15 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	resource := renderers.RendererResource{
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
-		ResourceType:    ResourceType,
+		ResourceType:    ResourceTypeName,
 		Definition:      map[string]interface{}{},
 	}
 	dependencies := map[string]renderers.RendererDependency{}
+	properties := datamodel.HTTPRouteProperties{}
+	properties.Port = defaultPort
+	dm := datamodel.HTTPRoute{Properties: properties}
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}})
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}}, dm)
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -155,7 +159,7 @@ func makeResource(t *testing.T, T any) renderers.RendererResource {
 	return renderers.RendererResource{
 		ApplicationName: applicationName,
 		ResourceName:    resourceName,
-		ResourceType:    ResourceType,
+		ResourceType:    ResourceTypeName,
 		Definition:      definition,
 	}
 }
