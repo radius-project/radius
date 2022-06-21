@@ -7,7 +7,9 @@ package redisv1alpha3
 
 import (
 	"context"
+	"strconv"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -90,27 +92,17 @@ func RenderResource(resourceName string, properties radclient.RedisCacheResource
 func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: properties.Host,
+			Value: to.String(properties.Host),
 		},
 		"port": {
-			Value: properties.Port,
+			Value: strconv.Itoa(int(to.Int32(properties.Port))),
 		},
-	}
-
-	if properties.Resource == nil {
-		// Using cluster credentials
-		computedValues["username"] = renderers.ComputedValueReference{
-			Value: "",
-		}
-	} else {
-		// An Azure Redis Resource has been specified
-		computedValues["username"] = renderers.ComputedValueReference{
+		"username": {
 			LocalID:           outputresource.LocalIDAzureRedis,
 			PropertyReference: handlers.RedisUsernameKey,
-		}
+		},
 	}
-
-	if properties.Secrets == nil && properties.Resource != nil {
+	if properties.Secrets == nil {
 		secretValues := map[string]renderers.SecretValueReference{
 			"password": {
 				LocalID:       outputresource.LocalIDAzureRedis,
@@ -124,19 +116,10 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
-	secretValues := map[string]renderers.SecretValueReference{}
-	if properties.Secrets != nil {
-		secretValues = map[string]renderers.SecretValueReference{}
-		if properties.Secrets.ConnectionString != nil {
-			secretValues[renderers.ConnectionStringValue] = renderers.SecretValueReference{
-				Value: *properties.Secrets.ConnectionString,
-			}
-		}
-		if properties.Secrets.Password != nil {
-			secretValues[renderers.PasswordStringHolder] = renderers.SecretValueReference{
-				Value: *properties.Secrets.Password,
-			}
-		}
+	secretValues := map[string]renderers.SecretValueReference{
+		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
+		renderers.PasswordStringHolder:  {Value: *properties.Secrets.Password},
+		//TODO(#2050): Add support for redis username
 	}
 	return computedValues, secretValues
 }
