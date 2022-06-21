@@ -48,7 +48,7 @@ func (e *AzureCloudEnvironment) GetDefaultApplication() string {
 }
 
 func (e *AzureCloudEnvironment) GetKubeContext() string {
-	return e.KubeContext
+	return e.Context
 }
 
 func (e *AzureCloudEnvironment) GetContainerRegistry() *Registry {
@@ -69,7 +69,7 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		e.DeploymentEngineLocalURL,
 		e.UCPLocalURL,
-		e.KubeContext,
+		e.Context,
 		e.EnableUCP,
 	)
 	if err != nil {
@@ -115,17 +115,17 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 }
 
 func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	k8sTypedClient, config, err := kubernetes.CreateTypedClient(e.KubeContext)
+	k8sTypedClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
 	}
 
-	k8sRuntimeclient, err := kubernetes.CreateRuntimeClient(e.KubeContext, kubernetes.Scheme)
+	k8sRuntimeclient, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context
 }
 
 func (e *AzureCloudEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}

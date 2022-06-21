@@ -152,7 +152,7 @@ environment:
 	require.Equal(t, "testsub", aenv.SubscriptionID)
 	require.Equal(t, "testrg", aenv.ResourceGroup)
 	require.Equal(t, "default", aenv.Namespace)
-	require.Equal(t, "my-context", aenv.KubeContext)
+	require.Equal(t, "my-context", aenv.Context)
 	require.Equal(t, map[string]interface{}{"extra": "testextra"}, aenv.Properties)
 }
 

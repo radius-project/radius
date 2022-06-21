@@ -42,7 +42,7 @@ func (e *KubernetesEnvironment) GetDefaultApplication() string {
 }
 
 func (e *KubernetesEnvironment) GetKubeContext() string {
-	return e.KubeContext
+	return e.Context
 }
 
 func (e *KubernetesEnvironment) GetContainerRegistry() *Registry {
@@ -65,7 +65,7 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.KubeContext, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 
 	if err != nil {
 		return nil, err
@@ -91,16 +91,16 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 }
 
 func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	k8sClient, config, err := kubernetes.CreateTypedClient(e.KubeContext)
+	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
 	}
-	client, err := kubernetes.CreateRuntimeClient(e.KubeContext, kubernetes.Scheme)
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *KubernetesEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (e *KubernetesEnvironment) CreateLegacyManagementClient(ctx context.Context
 }
 
 func (e *KubernetesEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}

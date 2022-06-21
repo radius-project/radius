@@ -137,7 +137,7 @@ func runApplication(cmd *cobra.Command, args []string) error {
 
 	if dev, ok := env.(*environments.LocalEnvironment); ok {
 		output.LogInfo("Launching log stream...")
-		err = tools.SternStart(cmd.Context(), dev.KubeContext, dev.Namespace, manifest.Name)
+		err = tools.SternStart(cmd.Context(), dev.Context, dev.Namespace, manifest.Name)
 		if errors.As(err, &tools.ErrToolNotFound{}) {
 			output.LogInfo(err.Error()) // Tolerate missing tool
 		} else if err != nil {

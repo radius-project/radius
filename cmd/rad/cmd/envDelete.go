@@ -139,7 +139,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if err = helm.UninstallOnCluster(kub.KubeContext); err != nil {
+		if err = helm.UninstallOnCluster(kub.Context); err != nil {
 			return err
 		}
 	}

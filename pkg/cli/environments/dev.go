@@ -26,7 +26,7 @@ import (
 type LocalEnvironment struct {
 	RadiusEnvironment
 	// Registry is the docker/OCI registry we're using for images.
-	Registry *Registry `mapstructure:"registry,omitempty"`
+	Registry  *Registry  `mapstructure:"registry,omitempty"`
 	Providers *Providers `mapstructure:"providers"`
 }
 
@@ -47,7 +47,7 @@ func (e *LocalEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalEnvironment) GetKubeContext() string {
-	return e.KubeContext
+	return e.Context
 }
 
 func (e *LocalEnvironment) GetContainerRegistry() *Registry {
@@ -78,7 +78,7 @@ func (s *devsender) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.KubeContext, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 
 	if err != nil {
 		return nil, err
@@ -135,17 +135,17 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 }
 
 func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	k8sClient, config, err := kubernetes.CreateTypedClient(e.KubeContext)
+	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := kubernetes.CreateRuntimeClient(e.KubeContext, kubernetes.Scheme)
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 }
 
 func (e *LocalEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (e *LocalEnvironment) CreateServerLifecycleClient(ctx context.Context) (cli
 }
 
 func (e *LocalEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}

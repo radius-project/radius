@@ -3,7 +3,7 @@ package environments
 type RadiusEnvironment struct {
 	Name               string `mapstructure:"name" validate:"required"`
 	Kind               string `mapstructure:"kind" validate:"required"`
-	KubeContext        string `mapstructure:"context" validate:"required"`
+	Context            string `mapstructure:"context" validate:"required"`
 	ClusterName        string `mapstructure:"clustername" validate:"required"`
 	Namespace          string `mapstructure:"namespace" validate:"required"`
 	DefaultApplication string `mapstructure:"defaultapplication" yaml:",omitempty"`
