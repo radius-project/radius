@@ -22,10 +22,8 @@ import (
 func APIValidator(loader *Loader, skipRoutes []string) func(h http.Handler) http.Handler {
 	// Create map to create disallow list to skip the validation.
 	skipRouteSet := map[string]bool{}
-	if skipRoutes != nil {
-		for _, p := range skipRoutes {
-			skipRouteSet[strings.ToLower(p)] = true
-		}
+	for _, p := range skipRoutes {
+		skipRouteSet[strings.ToLower(p)] = true
 	}
 
 	return func(h http.Handler) http.Handler {
