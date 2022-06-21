@@ -6,30 +6,24 @@
 package validator
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"regexp"
 	"strings"
 	"sync"
 
+	"github.com/go-logr/logr"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/spec"
+	"github.com/project-radius/radius/pkg/radlogger"
 )
 
 var (
 	ErrSpecDocumentNotFound = errors.New("not found OpenAPI specification document")
 )
-
-// NewLoader creates OpenAPI spec loader.
-func NewLoader(providerName string, specs fs.FS) *Loader {
-	return &Loader{
-		providerName:      providerName,
-		validators:        map[string]validator{},
-		supportedVersions: map[string][]string{},
-		specFiles:         specs,
-	}
-}
 
 // Loader is the OpenAPI spec loader implementation.
 type Loader struct {
@@ -46,7 +40,10 @@ func (l *Loader) Name() string {
 
 // SupportedVersions returns supported api version for resource type
 func (l *Loader) SupportedVersions(resourceType string) []string {
-	return l.supportedVersions[resourceType]
+	if versions, ok := l.supportedVersions[resourceType]; ok {
+		return versions
+	}
+	return []string{}
 }
 
 // GetValidator returns the cached validator.
@@ -60,7 +57,15 @@ func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 }
 
 // LoadSpec loads the swagger files and caches the validator.
-func (l *Loader) LoadSpec() error {
+func LoadSpec(ctx context.Context, providerName string, specs fs.FS) (*Loader, error) {
+	log := logr.FromContextOrDiscard(ctx)
+	l := &Loader{
+		providerName:      providerName,
+		validators:        map[string]validator{},
+		supportedVersions: map[string][]string{},
+		specFiles:         specs,
+	}
+
 	// Walk through embedded files to load OpenAPI spec document.
 	err := fs.WalkDir(l.specFiles, ".", func(path string, d fs.DirEntry, _ error) error {
 		if d.IsDir() {
@@ -74,6 +79,11 @@ func (l *Loader) LoadSpec() error {
 
 		// Check if specification file pathname is valid and skip global.json.
 		parsed := parseSpecFilePath(path)
+		if parsed == nil {
+			log.V(radlogger.Warn).Info(fmt.Sprintf("failed to parse %s", path))
+			return nil
+		}
+
 		if pn, ok := parsed["provider"]; !ok || !strings.EqualFold(pn, l.providerName) || parsed["resourcetype"] == "global" {
 			return nil
 		}
@@ -117,11 +127,15 @@ func (l *Loader) LoadSpec() error {
 		return nil
 	})
 
-	if len(l.validators) == 0 {
-		return ErrSpecDocumentNotFound
+	if err != nil {
+		return nil, err
 	}
 
-	return err
+	if len(l.validators) == 0 {
+		return nil, ErrSpecDocumentNotFound
+	}
+
+	return l, nil
 }
 
 func getValidatorKey(resourceType, version string) string {
@@ -134,6 +148,10 @@ func parseSpecFilePath(path string) map[string]string {
 	re := regexp.MustCompile(`.*specification\/(?P<productname>.+)\/resource-manager\/(?P<provider>.+)\/(?P<state>.+)\/(?P<version>.+)\/(?P<resourcetype>.+)\.json$`)
 	values := re.FindStringSubmatch(path)
 	keys := re.SubexpNames()
+	if len(keys) < 6 {
+		return nil
+	}
+
 	d := map[string]string{}
 	for i := 1; i < len(keys); i++ {
 		d[keys[i]] = strings.ToLower(values[i])

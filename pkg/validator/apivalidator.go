@@ -52,7 +52,7 @@ func APIValidator(loader *Loader, skipRoutes []string) func(h http.Handler) http
 			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
 			v, ok := loader.GetValidator(rID.Type(), apiVersion)
 			if !ok {
-				resp := unsupportedAPIVersionResponse(apiVersion, rID.Type())
+				resp := unsupportedAPIVersionResponse(apiVersion, rID.Type(), loader.SupportedVersions(rID.Type()))
 				if err := resp.Apply(r.Context(), w, r); err != nil {
 					handleError(r.Context(), w, err)
 				}
@@ -84,11 +84,11 @@ func invalidResourceIDResponse(id string) rest.Response {
 	})
 }
 
-func unsupportedAPIVersionResponse(apiVersion, resourceType string) rest.Response {
+func unsupportedAPIVersionResponse(apiVersion, resourceType string, supportedAPIVersions []string) rest.Response {
 	return rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
 			Code:    armerrors.InvalidApiVersionParameter,
-			Message: fmt.Sprintf("API version '%s' for type '%s' is not supported.", apiVersion, resourceType),
+			Message: fmt.Sprintf("API version '%s' for type '%s' is not supported. The supported api-versions are '%s'.", apiVersion, resourceType, strings.Join(supportedAPIVersions, ", ")),
 		},
 	})
 }

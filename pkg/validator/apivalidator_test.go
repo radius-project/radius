@@ -37,8 +37,7 @@ func TestAPIValidator_UCPID(t *testing.T) {
 
 func runTest(t *testing.T, resourceIDUrl string) {
 	// Load OpenAPI Spec for applications.core provider.
-	l := NewLoader("applications.core", swagger.SpecFiles)
-	err := l.LoadSpec()
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles)
 
 	require.NoError(t, err)
 
@@ -91,7 +90,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr: &armerrors.ErrorResponse{
 				Error: armerrors.ErrorDetails{
 					Code:    "InvalidApiVersionParameter",
-					Message: "API version '2022-06-20-privatepreview' for type 'applications.core/environments' is not supported.",
+					Message: "API version '2022-06-20-privatepreview' for type 'applications.core/environments' is not supported. The supported api-versions are '2022-03-15-privatepreview'.",
 				},
 			},
 		},

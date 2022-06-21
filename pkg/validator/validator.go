@@ -104,7 +104,7 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	routeParams := middleware.RouteParams{}
 
-	for k, _ := range req.URL.Query() {
+	for k := range req.URL.Query() {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
 	}
 	for k, v := range mux.Vars(req) {

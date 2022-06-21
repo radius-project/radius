@@ -6,6 +6,7 @@
 package validator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/project-radius/radius/swagger"
@@ -61,8 +62,7 @@ func TestParseSpecFilePath(t *testing.T) {
 }
 
 func TestLoader(t *testing.T) {
-	l := NewLoader("applications.core", swagger.SpecFiles)
-	err := l.LoadSpec()
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles)
 	require.NoError(t, err)
 	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
 	require.True(t, ok)

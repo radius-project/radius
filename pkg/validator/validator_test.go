@@ -6,6 +6,7 @@
 package validator
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,8 +17,7 @@ import (
 )
 
 func TestFindParam(t *testing.T) {
-	l := NewLoader("applications.core", swagger.SpecFiles)
-	err := l.LoadSpec()
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles)
 	require.NoError(t, err)
 	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
 	require.True(t, ok)
