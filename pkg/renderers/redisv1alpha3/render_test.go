@@ -58,6 +58,7 @@ func Test_Render_Kubernetes_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"host": {
 				Value: to.StringPtr("hello.com"),

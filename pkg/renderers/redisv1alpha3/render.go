@@ -35,9 +35,9 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		return renderers.RendererOutput{}, err
 	}
 
-	var outputResources []outputresource.OutputResource
+	outputResources := []outputresource.OutputResource{}
+
 	if properties.Resource != nil && *properties.Resource != "" {
-		outputResources = []outputresource.OutputResource{}
 		redisCacheOutputResource, err := RenderResource(resource.ResourceName, properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
@@ -88,7 +88,6 @@ func RenderResource(resourceName string, properties radclient.RedisCacheResource
 }
 
 func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
-	var secretValues map[string]renderers.SecretValueReference
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
 			Value: properties.Host,
@@ -97,6 +96,7 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 			Value: properties.Port,
 		},
 	}
+
 	if properties.Resource == nil {
 		// Using cluster credentials
 		computedValues["username"] = renderers.ComputedValueReference{
@@ -109,8 +109,9 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 			PropertyReference: handlers.RedisUsernameKey,
 		}
 	}
+
 	if properties.Secrets == nil && properties.Resource != nil {
-		secretValues = map[string]renderers.SecretValueReference{
+		secretValues := map[string]renderers.SecretValueReference{
 			"password": {
 				LocalID:       outputresource.LocalIDAzureRedis,
 				Action:        "listKeys",
@@ -123,15 +124,19 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
-	secretValues = make(map[string]renderers.SecretValueReference)
+	secretValues := map[string]renderers.SecretValueReference{}
 	if properties.Secrets != nil {
+		secretValues = map[string]renderers.SecretValueReference{}
 		if properties.Secrets.ConnectionString != nil {
-			secretValues[renderers.ConnectionStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.ConnectionString}
+			secretValues[renderers.ConnectionStringValue] = renderers.SecretValueReference{
+				Value: *properties.Secrets.ConnectionString,
+			}
 		}
 		if properties.Secrets.Password != nil {
-			secretValues[renderers.PasswordStringHolder] = renderers.SecretValueReference{Value: *properties.Secrets.Password}
+			secretValues[renderers.PasswordStringHolder] = renderers.SecretValueReference{
+				Value: *properties.Secrets.Password,
+			}
 		}
-		//TODO(#2050): Add support for redis username
 	}
 	return computedValues, secretValues
 }
