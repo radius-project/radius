@@ -3,16 +3,15 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package mongodbv1alpha3
+package mongodatabases
 
-import "github.com/project-radius/radius/pkg/azure/azresources"
-
-const (
-	ResourceType = "mongo.com.MongoDatabase"
+import (
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-var CosmosMongoResourceType = azresources.KnownType{
-	Types: []azresources.ResourceType{
+var AzureCosmosMongoResourceType = resources.KnownType{
+	Types: []resources.TypeSegment{
 		{
 			Type: azresources.DocumentDBDatabaseAccounts,
 			Name: "*",

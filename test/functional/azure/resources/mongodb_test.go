@@ -39,7 +39,7 @@ func Test_MongoDB(t *testing.T) {
 						},
 						Children: []validation.ExpectedChildResource{
 							{
-								Type:        azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+								Type:        azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 								Name:        "mydb",
 								UserManaged: true,
 							},
