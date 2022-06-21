@@ -7,6 +7,7 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,13 +15,13 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteContainerRun_20220315PrivatePreview(t *testing.T) {
-
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
@@ -93,6 +94,13 @@ func TestDeleteContainerRun_20220315PrivatePreview(t *testing.T) {
 
 			result := w.Result()
 			require.Equal(t, tt.code, result.StatusCode)
+
+			// If happy path, expect that the returned object has Deleting state
+			if tt.code == http.StatusAccepted {
+				actualOutput := &datamodel.ContainerResource{}
+				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+				require.Equal(t, v1.ProvisioningStateDeleting, actualOutput.Properties.ProvisioningState)
+			}
 		})
 	}
 }

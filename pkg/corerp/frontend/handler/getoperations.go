@@ -187,6 +187,36 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Core/containers/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "containers",
+					Operation:   "List containers",
+					Description: "Get the list of containers.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/containers/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "containers",
+					Operation:   "Create/Update container",
+					Description: "Create or update a container.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/containers/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "containers",
+					Operation:   "Delete container",
+					Description: "Delete a container.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }

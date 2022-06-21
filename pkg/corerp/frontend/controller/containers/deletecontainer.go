@@ -45,13 +45,13 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
 	}
-	// If the resource doesn't exist (checked with other RPs)
+
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNoContentResponse(), nil
 	}
 
 	if !existingContainer.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(ErrOngoingAsyncOperationOnResource.Error()), nil
+		return rest.NewConflictResponse(OngoingAsyncOperationOnResourceMessage), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -69,11 +69,7 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 		return nil, err
 	}
 
-	// TODO: Check this
-	// If we update the state to Updating to show to the client
-	// We will have manipulated the state even though it might not be in that state
-	// Because the queue sets the resource to that state
-	existingContainer.Properties.ProvisioningState = v1.ProvisioningStateUpdating
+	existingContainer.Properties.ProvisioningState = v1.ProvisioningStateDeleting
 
 	return rest.NewAsyncOperationResponse(existingContainer, existingContainer.TrackedResource.Location, http.StatusAccepted,
 		serviceCtx.ResourceID, serviceCtx.OperationID), nil
