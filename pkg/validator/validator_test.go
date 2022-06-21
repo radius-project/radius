@@ -26,8 +26,9 @@ func TestFindParam(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := mux.NewRouter()
 	req, _ := http.NewRequest(http.MethodPut, armIDUrl, nil)
-	r.Path(envRoute).Methods(http.MethodPut).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+	router := r.PathPrefix("/{rootScope:.*}").Subrouter()
+	router.Path(envRoute).Methods(http.MethodPut).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param, err := validator.findParam(r)
 		require.NoError(t, err)
 		require.NotNil(t, param)
