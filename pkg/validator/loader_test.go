@@ -36,21 +36,21 @@ func TestParseSpecFilePath(t *testing.T) {
 		{
 			path: "specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environments.json",
 			parsed: map[string]string{
-				"name":         "applications",
+				"productname":  "applications",
 				"provider":     "applications.core",
 				"state":        "preview",
 				"version":      "2022-03-15-privatepreview",
-				"resourcetype": "applications.core/environments",
+				"resourcetype": "environments",
 			},
 		},
 		{
 			path: "specification/applications/resource-manager/Applications.Core/stable/2022-03-15/gateways.json",
 			parsed: map[string]string{
-				"name":         "applications",
+				"productname":  "applications",
 				"provider":     "applications.core",
 				"state":        "stable",
 				"version":      "2022-03-15",
-				"resourcetype": "applications.core/gateways",
+				"resourcetype": "gateways",
 			},
 		},
 	}
@@ -64,7 +64,7 @@ func TestLoader(t *testing.T) {
 	l := NewLoader("applications.core", swagger.SpecFiles)
 	err := l.LoadSpec()
 	require.NoError(t, err)
-	v, ok := l.GetValidator("environments", "2022-03-15-privatepreview")
+	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
 	require.True(t, ok)
 	require.NotNil(t, v)
 }
