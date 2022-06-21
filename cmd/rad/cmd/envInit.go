@@ -64,6 +64,10 @@ const (
 	Dev
 )
 
+func (k EnvKind) String() string {
+	return [...]string{"Azure", "Kubernetes", "Dev"}[k]
+}
+
 func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.ReadEnvironmentSection(config)
@@ -260,7 +264,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, erro
 	}
 	defer resp.Body.Close()
 	var jsonBody map[string]interface{}
-	if json.NewDecoder(resp.Body).Decode(jsonBody) != nil {
+	if json.NewDecoder(resp.Body).Decode(&jsonBody) != nil {
 		return "", nil
 	}
 
@@ -297,7 +301,7 @@ func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName s
 	}
 	defer resp.Body.Close()
 	var jsonBody map[string]interface{}
-	if json.NewDecoder(resp.Body).Decode(jsonBody) != nil {
+	if json.NewDecoder(resp.Body).Decode(&jsonBody) != nil {
 		return "", nil
 	}
 
