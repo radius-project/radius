@@ -114,7 +114,11 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	return routeParams
 }
 
-// ValidateRequest validates http.Request and returns ValidationError if the request is invalid.
+// ValidateRequest validates http.Request and returns []ValidationError if the request is invalid.
+// Known limitation:
+//  - readonly property: go-openapi/middleware doesn't support "readonly" property even though
+//    go-openapi/validate has readonly property check used only for go-swagger.
+//    (xeipuuv/gojsonschema and kin-openapi doesn't support readonly either)
 func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	routeParams := v.toRouteParams(req)
 	params, err := v.findParam(req)
