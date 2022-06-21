@@ -42,8 +42,7 @@ func createContext(t *testing.T) context.Context {
 func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
 
-	resource := renderers.RendererResource{}
-	dependencies, _, err := r.GetDependencyIDs(createContext(t), resource)
+	dependencies, _, err := r.GetDependencyIDs(createContext(t), datamodel.HTTPRoute{})
 	require.NoError(t, err)
 	require.Empty(t, dependencies)
 }
@@ -59,7 +58,7 @@ func Test_Render_WithPort(t *testing.T) {
 
 	resource := makeResource(t, properties)
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}}, dm)
+	output, err := r.Render(context.Background(), dm, renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -111,7 +110,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	properties.Port = defaultPort
 	dm := datamodel.HTTPRoute{Properties: properties}
 
-	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}}, dm)
+	output, err := r.Render(context.Background(), dm, renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
