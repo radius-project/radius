@@ -23,21 +23,26 @@ import (
 )
 
 func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient) {
+		mctrl := gomock.NewController(t)
+		mStorageClient := store.NewMockStorageClient(mctrl)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mStorageClient
+	}
 
 	_, dataModel, expectedOutput := getTestModels20220315privatepreview()
 
 	t.Run("list zero resources", func(t *testing.T) {
+		teardownTest, msc := setupTest(t)
+		defer teardownTest(t)
+
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
-		mStorageClient.
-			EXPECT().
+		msc.EXPECT().
 			Query(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 				return &store.ObjectQueryResult{
@@ -45,7 +50,7 @@ func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListContainers(mStorageClient, nil)
+		ctl, err := NewListContainers(msc, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -73,8 +78,11 @@ func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range listCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
+			teardownTest, msc := setupTest(t)
+			defer teardownTest(t)
+
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, nil)
 
 			q := req.URL.Query()
 			q.Add("top", tt.top)
@@ -98,8 +106,7 @@ func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
 				items = append(items, item)
 			}
 
-			mStorageClient.
-				EXPECT().
+			msc.EXPECT().
 				Query(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 					return &store.ObjectQueryResult{
@@ -108,7 +115,7 @@ func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListContainers(mStorageClient, nil)
+			ctl, err := NewListContainers(msc, nil)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

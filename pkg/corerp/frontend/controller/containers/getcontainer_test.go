@@ -21,27 +21,32 @@ import (
 )
 
 func TestGetContainerRun_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient) {
+		mctrl := gomock.NewController(t)
+		mStorageClient := store.NewMockStorageClient(mctrl)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mStorageClient
+	}
 
 	_, contDataModel, expectedOutput := getTestModels20220315privatepreview()
 
 	t.Run("get non-existing resource", func(t *testing.T) {
+		teardownTest, msc := setupTest(t)
+		defer teardownTest(t)
+
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
-		mStorageClient.
-			EXPECT().
+		msc.EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewGetContainer(mStorageClient, nil)
+		ctl, err := NewGetContainer(msc, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -51,21 +56,19 @@ func TestGetContainerRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("get existing resource", func(t *testing.T) {
+		teardownTest, msc := setupTest(t)
+		defer teardownTest(t)
+
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
-		mStorageClient.
-			EXPECT().
+		msc.EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return &store.Object{
-					Metadata: store.Metadata{ID: id},
-					Data:     contDataModel,
-				}, nil
-			})
+			Return(&store.Object{Metadata: store.Metadata{ID: contDataModel.ID}, Data: contDataModel}, nil).
+			Times(1)
 
-		ctl, err := NewGetContainer(mStorageClient, nil)
+		ctl, err := NewGetContainer(msc, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
