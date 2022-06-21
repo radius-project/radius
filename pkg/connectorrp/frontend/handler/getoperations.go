@@ -196,6 +196,126 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprInvokeHttpRoutes/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprInvokeHttpRoutes",
+					Operation:   "Get/List daprInvokeHttpRoutes",
+					Description: "Gets/Lists daprInvokeHttpRoutes connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprInvokeHttpRoutes/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprInvokeHttpRoutes",
+					Operation:   "Create/Update daprInvokeHttpRoutes",
+					Description: "Creates or updates a mdaprInvokeHttpRoute connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprInvokeHttpRoutes/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprInvokeHttpRoutes",
+					Operation:   "Delete daprInvokeHttpRoute",
+					Description: "Deletes a daprInvokeHttpRoute connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprSecretStores/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprSecretStores",
+					Operation:   "Get/List daprSecretStores",
+					Description: "Gets/Lists daprSecretStore connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprSecretStores/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprSecretStores",
+					Operation:   "Create/Update daprSecretStores",
+					Description: "Creates or updates a daprSecretStore connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprSecretStores/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprSecretStores",
+					Operation:   "Delete daprSecretStore",
+					Description: "Deletes a daprSecretStore connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprStateStores/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprStateStores",
+					Operation:   "Get/List daprStateStores",
+					Description: "Gets/Lists daprStateStore connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprStateStores/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprStateStores",
+					Operation:   "Create/Update daprStateStores",
+					Description: "Creates or updates a daprStateStore connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprStateStores/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprStateStores",
+					Operation:   "Delete daprStateStore",
+					Description: "Deletes a daprStateStore connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprPubSubBrokers/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprPubSubBrokers",
+					Operation:   "Get/List daprPubSubBrokers",
+					Description: "Gets/Lists daprPubSubBroker connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprPubSubBrokers/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprPubSubBrokers",
+					Operation:   "Create/Update daprPubSubBrokers",
+					Description: "Creates or updates a daprPubSubBroker connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/daprPubSubBrokers/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "daprPubSubBrokers",
+					Operation:   "Delete daprPubSubBroker",
+					Description: "Deletes a daprPubSubBroker connector.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }
