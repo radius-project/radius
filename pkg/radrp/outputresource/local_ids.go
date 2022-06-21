@@ -65,6 +65,7 @@ const (
 	LocalIDService                      = "Service"
 	LocalIDStatefulSet                  = "StatefulSet"
 	LocalIDUserAssignedManagedIdentity  = "UserAssignedManagedIdentity"
+	LocalIDTrafficSplit                 = "TrafficSplit"
 
 	// Obsolete when we remove AppModelV1
 	LocalIDRoleAssignmentKVKeys         = "RoleAssignment-KVKeys"
