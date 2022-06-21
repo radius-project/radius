@@ -16,9 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
@@ -36,7 +36,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	outputResources := []outputresource.OutputResource{}
-	resource := options.Resource
+	//resource := options.Resource
 
 	// What values do we check for to see if route.Properties.Port does not exist??
 	if route.Properties.Port == 0 {
@@ -45,20 +45,20 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
+			Value: kubernetes.MakeResourceName(route.Properties.Application, route.Name),
 		},
 		"port": {
 			Value: route.Properties.Port,
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), route.Properties.Port),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(route.Properties.Application, route.Name), route.Properties.Port),
 		},
 		"scheme": {
 			Value: "http",
 		},
 	}
 
-	service := r.makeService(resource, &route.Properties)
+	service := r.makeService(&route)
 	outputResources = append(outputResources, service)
 
 	return renderers.RendererOutput{
@@ -67,26 +67,27 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}, nil
 }
 
-func (r *Renderer) makeService(resource renderers.RendererResource, routeProp *datamodel.HTTPRouteProperties) outputresource.OutputResource {
+func (r *Renderer) makeService(route *datamodel.HTTPRoute) outputresource.OutputResource {
 
+	application := route.Properties.Application
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
-			Namespace: resource.ApplicationName,
-			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
+			Name:      kubernetes.MakeResourceName(application, route.Name),
+			Namespace: route.Properties.Application,
+			Labels:    kubernetes.MakeDescriptiveLabels(application, route.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, resource.ResourceType, resource.ResourceName),
+			Selector: kubernetes.MakeRouteSelectorLabels(application, ResourceTypeName, route.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
-					Name:       resource.ResourceName,
-					Port:       routeProp.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resource.ResourceType + resource.ResourceName)),
+					Name:       route.Name,
+					Port:       route.Properties.Port,
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(application + ResourceTypeName + route.Name)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},

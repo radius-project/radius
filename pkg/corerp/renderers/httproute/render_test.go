@@ -7,18 +7,15 @@ package httproute
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
-	//"github.com/project-radius/radius/pkg/azure/radclient"
-
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -52,13 +49,10 @@ func Test_Render_WithPort(t *testing.T) {
 	var port int32 = 6379
 
 	dependencies := map[string]renderers.RendererDependency{}
-	properties := datamodel.HTTPRouteProperties{}
-	properties.Port = port
-	dm := datamodel.HTTPRoute{Properties: properties}
-
+	properties := makeHTTPRouteProperties(port)
 	resource := makeResource(t, properties)
 
-	output, err := r.Render(context.Background(), dm, renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}})
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{}})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -76,11 +70,11 @@ func Test_Render_WithPort(t *testing.T) {
 	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), service.Name)
+	require.Equal(t, kubernetes.MakeResourceName(resource.Properties.Application, resource.Name), service.Name)
 	require.Equal(t, applicationName, service.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
 
-	require.Equal(t, kubernetes.MakeRouteSelectorLabels(applicationName, resource.ResourceType, resourceName), service.Spec.Selector)
+	require.Equal(t, kubernetes.MakeRouteSelectorLabels(applicationName, ResourceTypeName, resourceName), service.Spec.Selector)
 	require.Equal(t, corev1.ServiceTypeClusterIP, service.Spec.Type)
 
 	require.Len(t, service.Spec.Ports, 1)
@@ -89,7 +83,7 @@ func Test_Render_WithPort(t *testing.T) {
 	expectedServicePort := corev1.ServicePort{
 		Name:       resourceName,
 		Port:       port,
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resource.ResourceType + resource.ResourceName)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.Properties.Application + ResourceTypeName + resource.Name)),
 		Protocol:   "TCP",
 	}
 	require.Equal(t, expectedServicePort, servicePort)
@@ -99,18 +93,11 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	r := &Renderer{}
 
 	defaultPort := kubernetes.GetDefaultPort()
-	resource := renderers.RendererResource{
-		ApplicationName: applicationName,
-		ResourceName:    resourceName,
-		ResourceType:    ResourceTypeName,
-		Definition:      map[string]interface{}{},
-	}
 	dependencies := map[string]renderers.RendererDependency{}
-	properties := datamodel.HTTPRouteProperties{}
-	properties.Port = defaultPort
-	dm := datamodel.HTTPRoute{Properties: properties}
+	properties := makeHTTPRouteProperties(defaultPort)
+	resource := makeResource(t, properties)
 
-	output, err := r.Render(context.Background(), dm, renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}})
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{}})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -128,11 +115,11 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName), service.Name)
+	require.Equal(t, kubernetes.MakeResourceName(resource.Properties.Application, resource.Name), service.Name)
 	require.Equal(t, applicationName, service.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
 
-	require.Equal(t, kubernetes.MakeRouteSelectorLabels(applicationName, resource.ResourceType, resourceName), service.Spec.Selector)
+	require.Equal(t, kubernetes.MakeRouteSelectorLabels(applicationName, ResourceTypeName, resourceName), service.Spec.Selector)
 	require.Equal(t, corev1.ServiceTypeClusterIP, service.Spec.Type)
 
 	require.Len(t, service.Spec.Ports, 1)
@@ -141,24 +128,26 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	expectedPort := corev1.ServicePort{
 		Name:       resourceName,
 		Port:       defaultPort,
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resource.ResourceType + resource.ResourceName)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.Properties.Application + ResourceTypeName + resource.Name)),
 		Protocol:   "TCP",
 	}
 	require.Equal(t, expectedPort, port)
 }
 
-func makeResource(t *testing.T, T any) renderers.RendererResource {
-	b, err := json.Marshal(&T)
-	require.NoError(t, err)
-
-	definition := map[string]interface{}{}
-	err = json.Unmarshal(b, &definition)
-	require.NoError(t, err)
-
-	return renderers.RendererResource{
-		ApplicationName: applicationName,
-		ResourceName:    resourceName,
-		ResourceType:    ResourceTypeName,
-		Definition:      definition,
+func makeHTTPRouteProperties(port int32) datamodel.HTTPRouteProperties {
+	properties := datamodel.HTTPRouteProperties{}
+	properties.Application = applicationName
+	if port > 0 {
+		properties.Port = port
 	}
+
+	return properties
+}
+
+func makeResource(t *testing.T, properties datamodel.HTTPRouteProperties) datamodel.HTTPRoute {
+
+	dm := datamodel.HTTPRoute{Properties: properties}
+	dm.Name = resourceName
+
+	return dm
 }
