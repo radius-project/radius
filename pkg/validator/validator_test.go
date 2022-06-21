@@ -49,4 +49,6 @@ func TestToRouteParams(t *testing.T) {
 	req, _ = http.NewRequest("", "http://radius/test?api-version=2022-03-15-privatepreview", nil)
 	ps = v.toRouteParams(req)
 	require.Equal(t, 1, len(ps))
+	require.Equal(t, "api-version", ps[0].Name)
+	require.Equal(t, "2022-03-15-privatepreview", ps[0].Value)
 }

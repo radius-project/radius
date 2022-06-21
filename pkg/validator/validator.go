@@ -102,14 +102,12 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 
 // toRouteParams converts gorilla mux params to go-openapi RouteParams to validate parameters.
 func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
-	params := mux.Vars(req)
-
 	routeParams := middleware.RouteParams{}
-	apiVersion := req.URL.Query().Get(APIVersionQueryKey)
-	if apiVersion != "" {
-		routeParams = append(routeParams, middleware.RouteParam{Name: APIVersionQueryKey, Value: apiVersion})
+
+	for k, _ := range req.URL.Query() {
+		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
 	}
-	for k, v := range params {
+	for k, v := range mux.Vars(req) {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: v})
 	}
 
