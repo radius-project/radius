@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -167,7 +168,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			"context":     cluster.ContextName,
 			"clustername": cluster.ClusterName,
 			"namespace":   sharedArgs.Namespace,
-			"enableucp": featureflag.EnableUnifiedControlPlane.IsActive(),
+			"enableucp":   featureflag.EnableUnifiedControlPlane.IsActive(),
 			"registry": &environments.Registry{
 				PushEndpoint: cluster.RegistryPushEndpoint,
 				PullEndpoint: cluster.RegistryPullEndpoint,
@@ -188,8 +189,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	}
 
-	
-
 	step := output.BeginStep("Installing Radius...")
 	if helm.InstallOnCluster(cmd.Context(), clusterOptions, k8sGoClient, runtimeClient) != nil {
 		return err
@@ -197,14 +196,18 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
 		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
-		ucpRGName := fmt.Sprintf("%s-rg", environmentName)
-		env.Items[environmentName]["ucpresourcegroupname"] = ucpRGName
-		if createUCPResourceGroup(contextName, ucpRGName) != nil {
+		ucpRgName := fmt.Sprintf("%s-rg", environmentName)
+		env.Items[environmentName]["ucpresourcegroupname"] = ucpRgName
+		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName)
+		if err != nil {
 			return err
 		}
-		if createEnvironmentResource(contextName, ucpRGName, environmentName) != nil {
+		env.Items[environmentName]["scope"] = ucpRgId
+		ucpEnvId, err := createEnvironmentResource(contextName, ucpRgName, environmentName)
+		if err != nil {
 			return err
 		}
+		env.Items[environmentName]["id"] = ucpEnvId
 	}
 
 	output.CompleteStep(step)
@@ -228,7 +231,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	return nil
 }
 
-func createUCPResourceGroup(kubeCtxName, resourceGroupName string) error {
+func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, error) {
 	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		"",
 		"",
@@ -236,7 +239,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) error {
 		featureflag.EnableUnifiedControlPlane.IsActive(),
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	createRgRequest, err := http.NewRequest(
@@ -245,20 +248,26 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) error {
 		strings.NewReader(`{}`),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
 	}
-	res, err := rt.RoundTrip(createRgRequest)
+	resp, err := rt.RoundTrip(createRgRequest)
 	if err != nil {
-		return fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
 	}
 
-	if res.StatusCode != http.StatusCreated {
-		return fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", res.StatusCode, res)
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
 	}
-	return nil
+	defer resp.Body.Close()
+	var jsonBody map[string]interface{}
+	if json.NewDecoder(resp.Body).Decode(jsonBody) != nil {
+		return "", nil
+	}
+
+	return jsonBody["id"].(string), nil
 }
 
-func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName string) error {
+func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName string) (string, error) {
 	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		"",
 		"",
@@ -266,7 +275,7 @@ func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName s
 		featureflag.EnableUnifiedControlPlane.IsActive(),
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	createEnvRequest, err := http.NewRequest(
@@ -276,17 +285,23 @@ func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName s
 	)
 	createEnvRequest.Header.Add("Content-Type", "application/json")
 	if err != nil {
-		return fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
+		return "", fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
 	}
-	res, err := rt.RoundTrip(createEnvRequest)
+	resp, err := rt.RoundTrip(createEnvRequest)
 	if err != nil {
-		return fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
+		return "", fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
 	}
 
-	if res.StatusCode != http.StatusOK { //shouldn't it be http.StatusCreated for consistency with rg?
-		return fmt.Errorf("request to create Applications.Core/environments resource failed with status: %d, request: %+v", res.StatusCode, res)
+	if resp.StatusCode != http.StatusOK { //shouldn't it be http.StatusCreated for consistency with rg?
+		return "", fmt.Errorf("request to create Applications.Core/environments resource failed with status: %d, request: %+v", resp.StatusCode, resp)
 	}
-	return nil
+	defer resp.Body.Close()
+	var jsonBody map[string]interface{}
+	if json.NewDecoder(resp.Body).Decode(jsonBody) != nil {
+		return "", nil
+	}
+
+	return jsonBody["id"].(string), nil
 }
 
 func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
