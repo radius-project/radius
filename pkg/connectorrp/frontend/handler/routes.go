@@ -102,7 +102,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			HandlerFactory: mongo_ctrl.NewDeleteMongoDatabase,
 		},
 		{
-			ParentRouter:   mongoResourceRouter.Path("/listsecrets").Subrouter(),
+			ParentRouter:   mongoResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType:   mongo_ctrl.ResourceTypeName,
 			Method:         mongo_ctrl.OperationListSecret,
 			HandlerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
@@ -258,7 +258,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			HandlerFactory: redis_ctrl.NewDeleteRedisCache,
 		},
 		{
-			ParentRouter:   redisResourceRouter.Path("/listsecrets").Subrouter(),
+			ParentRouter:   redisResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType:   redis_ctrl.ResourceTypeName,
 			Method:         redis_ctrl.OperationListSecret,
 			HandlerFactory: redis_ctrl.NewListSecretsRedisCache,
@@ -294,7 +294,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			HandlerFactory: rabbitmq_ctrl.NewDeleteRabbitMQMessageQueue,
 		},
 		{
-			ParentRouter:   rabbitmqResourceRouter.Path("/listsecrets").Subrouter(),
+			ParentRouter:   rabbitmqResourceRouter.PathPrefix("/listsecrets").Subrouter(),
 			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
 			Method:         rabbitmq_ctrl.OperationListSecret,
 			HandlerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
