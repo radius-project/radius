@@ -131,7 +131,7 @@ func getValidatorKey(resourceType, version string) string {
 func parseSpecFilePath(path string) map[string]string {
 	// OpenAPI specs are stored under swagger/ directory structure based on this spec - https://github.com/Azure/azure-rest-api-specs/wiki#directory-structure
 	// This regex extracts the information from the filepath.
-	re := regexp.MustCompile(".*specification\\/(?P<productname>.+)\\/resource-manager\\/(?P<provider>.+)\\/(?P<state>.+)\\/(?P<version>.+)\\/(?P<resourcetype>.+)\\.json$")
+	re := regexp.MustCompile(`.*specification\/(?P<productname>.+)\/resource-manager\/(?P<provider>.+)\/(?P<state>.+)\/(?P<version>.+)\/(?P<resourcetype>.+)\.json$`)
 	values := re.FindStringSubmatch(path)
 	keys := re.SubexpNames()
 	d := map[string]string{}
