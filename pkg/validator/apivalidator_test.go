@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	envRoute = "/{rootScope:.*}/providers/applications.core/environments/{environmentName}"
-	armIDUrl = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	ucpIDUrl = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	envRoute  = "/{rootScope:.*}/providers/applications.core/environments/{environmentName}"
+	armIDUrl  = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	ucpIDUrl  = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	skipRoute = "/providers/applications.core/operations"
 )
 
 func TestAPIValidator_ARMID(t *testing.T) {
@@ -52,6 +53,15 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		responseCode    int
 		validationErr   *armerrors.ErrorResponse
 	}{
+		{
+			desc:          "skip validation of /providers/applications.core/operations",
+			method:        http.MethodGet,
+			route:         skipRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           "http://localhost:8080/providers/applications.core/operations",
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
 		{
 			desc:          "valid get-environment with azure resource id",
 			method:        http.MethodGet,
@@ -207,7 +217,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			r := mux.NewRouter()
 
 			// Add API validator middleware
-			r.Use(APIValidator(l, nil))
+			r.Use(APIValidator(l, []string{skipRoute}))
 			r.Path(tc.route).Methods(tc.method).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusAccepted)
 			})

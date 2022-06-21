@@ -9,8 +9,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -22,12 +24,24 @@ func APIValidator(loader *Loader, skipRoutes []string) func(h http.Handler) http
 	skipRouteSet := map[string]bool{}
 	if skipRoutes != nil {
 		for _, p := range skipRoutes {
-			skipRouteSet[p] = true
+			skipRouteSet[strings.ToLower(p)] = true
 		}
 	}
 
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
+			// Skip validation if route path exists in skipRouteSet
+			route := mux.CurrentRoute(r)
+			pathTemplate, err := route.GetPathTemplate()
+			if err != nil {
+				InvalidRouteHandler(w, r)
+				return
+			}
+			if _, ok := skipRouteSet[pathTemplate]; ok {
+				h.ServeHTTP(w, r)
+				return
+			}
+
 			rID, err := resources.Parse(r.URL.Path)
 			if err != nil {
 				resp := invalidResourceIDResponse(r.URL.Path)
