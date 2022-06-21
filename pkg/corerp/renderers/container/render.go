@@ -22,11 +22,11 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -53,7 +53,7 @@ type Renderer struct {
 	RoleAssignmentMap map[datamodel.Kind]RoleAssignmentData
 }
 
-func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []azresources.ResourceID, azureResourceIDs []azresources.ResourceID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	resource, ok := dm.(datamodel.ContainerResource)
 	if !ok {
 		return nil, nil, conv.ErrInvalidModelConversion
@@ -65,7 +65,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	for _, connection := range properties.Connections {
-		resourceID, err := azresources.Parse(connection.Source)
+		resourceID, err := resources.Parse(connection.Source)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -85,7 +85,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 			continue
 		}
 
-		resourceID, err := azresources.Parse(provides)
+		resourceID, err := resources.Parse(provides)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -95,7 +95,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	for _, volume := range properties.Container.Volumes {
 		switch v := volume.(type) {
 		case datamodel.PersistentVolume:
-			resourceID, err := azresources.Parse(v.Source)
+			resourceID, err := resources.Parse(v.Source)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -346,7 +346,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
-			Namespace: applicationName,
+			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
 		},
 		Spec: appsv1.DeploymentSpec{

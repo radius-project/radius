@@ -15,16 +15,16 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -60,15 +60,17 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) datamo
 	return resource
 }
 
-func makeResourceID(t *testing.T, resourceType string, resourceName string) azresources.ResourceID {
-	id, err := azresources.Parse(azresources.MakeID(
-		"test-subscription",
-		"test-resourcegroup",
-		azresources.ResourceType{
+func makeResourceID(t *testing.T, resourceType string, resourceName string) resources.ID {
+	id, err := resources.Parse(resources.MakeRelativeID(
+		[]resources.ScopeSegment{
+			{Type: "subscriptions", Name: "test-subscription"},
+			{Type: "resourceGroups", Name: "test-resourcegroup"},
+		},
+		resources.TypeSegment{
 			Type: "radius.dev/Application",
 			Name: applicationName,
 		},
-		azresources.ResourceType{
+		resources.TypeSegment{
 			Type: resourceType,
 			Name: resourceName,
 		}))
@@ -84,21 +86,21 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source: makeResourceID(t, "HttpRoute", "A").ID,
+				Source: makeResourceID(t, "HttpRoute", "A").String(),
 				Iam: datamodel.IamProperties{
 					Kind:  datamodel.KindHTTP,
 					Roles: []string{"administrator"},
 				},
 			},
 			"B": {
-				Source: makeResourceID(t, "HttpRoute", "B").ID,
+				Source: makeResourceID(t, "HttpRoute", "B").String(),
 				Iam: datamodel.IamProperties{
 					Kind:  datamodel.KindHTTP,
 					Roles: []string{"administrator"},
 				},
 			},
 			"testAzureConnection": {
-				Source: testAzureResourceID.ID,
+				Source: testAzureResourceID.String(),
 				Iam: datamodel.IamProperties{
 					Kind:  datamodel.KindAzure,
 					Roles: []string{"administrator"},
@@ -110,7 +112,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			Ports: map[string]datamodel.ContainerPort{
 				"web": {
 					ContainerPort: 5000,
-					Provides:      makeResourceID(t, "HttpRoute", "C").ID,
+					Provides:      makeResourceID(t, "HttpRoute", "C").String(),
 				},
 			},
 			Volumes: map[string]datamodel.VolumeClassification{
@@ -131,23 +133,25 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	require.Len(t, radiusResourceIDs, 4)
 	require.Len(t, azureResourceIDs, 1)
 
-	storageID, _ := azresources.Parse(azresources.MakeID(
-		"test-sub-id",
-		"test-rg",
-		azresources.ResourceType{
+	storageID, _ := resources.Parse(resources.MakeRelativeID(
+		[]resources.ScopeSegment{
+			{Type: "subscriptions", Name: "test-sub-id"},
+			{Type: "resourceGroups", Name: "test-rg"},
+		},
+		resources.TypeSegment{
 			Type: "Microsoft.Storage/storageaccounts",
 			Name: "testaccount",
 		},
-		azresources.ResourceType{
+		resources.TypeSegment{
 			Type: "fileservices",
 			Name: "default",
 		},
-		azresources.ResourceType{
+		resources.TypeSegment{
 			Type: "shares",
 			Name: "testShareName",
 		}))
 
-	expectedRadiusResourceIDs := []azresources.ResourceID{
+	expectedRadiusResourceIDs := []resources.ID{
 		makeResourceID(t, "HttpRoute", "A"),
 		makeResourceID(t, "HttpRoute", "B"),
 		makeResourceID(t, "HttpRoute", "C"),
@@ -155,7 +159,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	}
 	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
 
-	expectedAzureResourceIDs := []azresources.ResourceID{
+	expectedAzureResourceIDs := []resources.ID{
 		testAzureResourceID,
 	}
 	require.ElementsMatch(t, expectedAzureResourceIDs, azureResourceIDs)
@@ -186,9 +190,11 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 
 func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	properties := datamodel.ContainerProperties{
+		// Simulating error code path
+		// Revert this once TODO: https://github.com/project-radius/core-team/issues/238 is done.
 		Connections: map[string]datamodel.ConnectionProperties{
 			"AzureResourceTest": {
-				Source: "/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace",
+				Source: "/subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace",
 				Iam: datamodel.IamProperties{
 					Kind: datamodel.KindAzure,
 				},
@@ -203,7 +209,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	renderer := Renderer{}
 	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "'subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
+	require.Equal(t, err.Error(), "'subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
 }
@@ -315,7 +321,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 				"web": {
 					ContainerPort: 5000,
 					Protocol:      datamodel.ProtocolTCP,
-					Provides:      makeResourceID(t, "HttpRoute", "A").ID,
+					Provides:      makeResourceID(t, "HttpRoute", "A").String(),
 				},
 			},
 		},
@@ -364,7 +370,7 @@ func Test_Render_Connections(t *testing.T) {
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source: makeResourceID(t, "ResourceType", "A").ID,
+				Source: makeResourceID(t, "ResourceType", "A").String(),
 				Iam: datamodel.IamProperties{
 					Kind: datamodel.KindHTTP,
 				},
@@ -380,7 +386,7 @@ func Test_Render_Connections(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").ID): {
+		(makeResourceID(t, "ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
@@ -463,7 +469,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source: makeResourceID(t, "ResourceType", "A").ID,
+				Source: makeResourceID(t, "ResourceType", "A").String(),
 				Iam: datamodel.IamProperties{
 					Kind: datamodel.KindHTTP,
 				},
@@ -475,7 +481,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").ID): {
+		(makeResourceID(t, "ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
@@ -489,7 +495,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 						Type:     "dummy",
 						Provider: providers.ProviderAzure,
 					},
-					makeResourceID(t, "TargetResourceType", "TargetResource").ID,
+					makeResourceID(t, "TargetResourceType", "TargetResource").String(),
 					"2020-01-01"),
 			},
 		},
@@ -526,11 +532,11 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: providers.ProviderAzure,
 			},
-			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole1"),
+			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole1"),
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole1",
-				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
+				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").String(),
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -543,11 +549,11 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: providers.ProviderAzure,
 			},
-			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole2"),
+			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole2"),
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole2",
-				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").ID,
+				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").String(),
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -596,10 +602,10 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 				},
 				{
-					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole1"),
+					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole1"),
 				},
 				{
-					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").ID, "TestRole2"),
+					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole2"),
 				},
 			},
 		},
@@ -608,7 +614,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 }
 
 func Test_Render_AzureConnection(t *testing.T) {
-	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").ID
+	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").String()
 	expectedRole := "administrator"
 	properties := datamodel.ContainerProperties{
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
@@ -676,7 +682,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 }
 
 func Test_Render_AzureConnectionMissingRoleError(t *testing.T) {
-	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").ID
+	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").String()
 	properties := datamodel.ContainerProperties{
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Connections: map[string]datamodel.ConnectionProperties{
@@ -727,7 +733,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").ID): {
+		(makeResourceID(t, "ResourceType", "A").String()): {
 			ResourceID:     makeResourceID(t, "ResourceType", "A"),
 			Definition:     map[string]interface{}{},
 			ComputedValues: map[string]interface{}{},
@@ -794,7 +800,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 		},
 	}
 	resource := makeResource(t, properties)
-	resourceID, _ := azresources.Parse(testResourceID)
+	resourceID, _ := resources.Parse(testResourceID)
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
@@ -848,7 +854,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		},
 	}
 	resource := makeResource(t, properties)
-	resourceID, _ := azresources.Parse(testResourceID)
+	resourceID, _ := resources.Parse(testResourceID)
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
@@ -951,7 +957,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").ID): {
+		(makeResourceID(t, "ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
@@ -1021,7 +1027,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").ID): {
+		(makeResourceID(t, "ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
@@ -1084,7 +1090,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").ID): {
+		(makeResourceID(t, "ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
@@ -1138,7 +1144,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").ID): {
+		(makeResourceID(t, "ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
