@@ -12,34 +12,15 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // APIValidator is the middleware to validate incoming request with OpenAPI spec.
-func APIValidator(loader *Loader, skipRoutes []string) func(h http.Handler) http.Handler {
-	// Create map to create disallow list to skip the validation.
-	skipRouteSet := map[string]bool{}
-	for _, p := range skipRoutes {
-		skipRouteSet[strings.ToLower(p)] = true
-	}
-
+func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			// Skip validation if route path exists in skipRouteSet
-			route := mux.CurrentRoute(r)
-			pathTemplate, err := route.GetPathTemplate()
-			if err != nil {
-				InvalidRouteHandler(w, r)
-				return
-			}
-			if _, ok := skipRouteSet[pathTemplate]; ok {
-				h.ServeHTTP(w, r)
-				return
-			}
-
 			rID, err := resources.Parse(r.URL.Path)
 			if err != nil {
 				resp := invalidResourceIDResponse(r.URL.Path)
@@ -112,22 +93,36 @@ func validationFailedResponse(qualifiedName string, valErrs []ValidationError) r
 	return resp
 }
 
-// InvalidRouteHandler is the handler when the request url route does not exist or method does not match the route.
-//
-//     r := mux.NewRouter()
-//
-//     r.NotFoundHandler(InvalidRouteHandler)
-//     r.MethodNotAllowedHandler(InvalidRouteHandler)
-//
-func InvalidRouteHandler(w http.ResponseWriter, r *http.Request) {
-	restResponse := rest.NewBadRequestResponse(fmt.Sprintf("The request url '%s %s' is invalid.", r.Method, r.URL.Path))
-	if err := restResponse.Apply(r.Context(), w, r); err != nil {
-		handleError(r.Context(), w, err)
-	}
-}
-
 func handleError(ctx context.Context, w http.ResponseWriter, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	w.WriteHeader(http.StatusInternalServerError)
 	logger.Error(err, "error writing marshaled data to output")
+}
+
+// APINotFoundHandler is the handler when the request url route does not exist
+//     r := mux.NewRouter()
+//     r.NotFoundHandler = APINotFoundHandler()
+func APINotFoundHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		restResponse := rest.NewNotFoundMessageResponse(fmt.Sprintf("The request '%s %s' is invalid.", r.Method, r.URL.Path))
+		if err := restResponse.Apply(r.Context(), w, r); err != nil {
+			handleError(r.Context(), w, err)
+		}
+	}
+}
+
+// APIMethodNotAllowedHandler is the handler when the request method does not match the route.
+//     r := mux.NewRouter()
+//     r.MethodNotAllowedHandler = APIMethodNotAllowedHandler()
+func APIMethodNotAllowedHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		target := ""
+		if rID, err := resources.Parse(r.URL.Path); err != nil {
+			target = rID.Type() + "/" + rID.Name()
+		}
+		restResponse := rest.NewMethodNotAllowedResponse(target, fmt.Sprintf("The request method '%s' is invalid.", r.Method))
+		if err := restResponse.Apply(r.Context(), w, r); err != nil {
+			handleError(r.Context(), w, err)
+		}
+	}
 }

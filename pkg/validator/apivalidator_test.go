@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	envRoute  = "/{rootScope:.*}/providers/applications.core/environments/{environmentName}"
-	armIDUrl  = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	ucpIDUrl  = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	skipRoute = "/providers/applications.core/operations"
+	envRoute             = "/providers/applications.core/environments/{environmentName}"
+	armIDUrl             = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	ucpIDUrl             = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	operationGetRoute    = "/providers/applications.core/operations"
+	subscriptionPUTRoute = "/subscriptions/{subscriptions}"
 )
 
 func TestAPIValidator_ARMID(t *testing.T) {
@@ -44,6 +45,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 	validatorTests := []struct {
 		desc       string
 		method     string
+		rootScope  string
 		route      string
 		apiVersion string
 
@@ -53,17 +55,60 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		validationErr   *armerrors.ErrorResponse
 	}{
 		{
+			desc:         "not found route",
+			method:       http.MethodGet,
+			rootScope:    "",
+			route:        operationGetRoute,
+			apiVersion:   "2022-03-15-privatepreview",
+			url:          "http://localhost:8080/providers/applications.core/notfound",
+			responseCode: http.StatusNotFound,
+			validationErr: &armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    "NotFound",
+					Message: "The request 'GET /providers/applications.core/notfound' is invalid.",
+				},
+			},
+		},
+		{
+			desc:         "invalid http method",
+			method:       http.MethodPut,
+			rootScope:    "",
+			route:        operationGetRoute,
+			apiVersion:   "2022-03-15-privatepreview",
+			url:          "http://localhost:8080/providers/applications.core/operations",
+			responseCode: http.StatusMethodNotAllowed,
+			validationErr: &armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    "BadRequest",
+					Message: "The request method 'PUT' is invalid.",
+				},
+			},
+		},
+		{
 			desc:          "skip validation of /providers/applications.core/operations",
 			method:        http.MethodGet,
-			route:         skipRoute,
+			rootScope:     "",
+			route:         operationGetRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           "http://localhost:8080/providers/applications.core/operations",
 			responseCode:  http.StatusAccepted,
 			validationErr: nil,
 		},
 		{
+			desc:            "skip validation of /providers/applications.core/operations",
+			method:          http.MethodPut,
+			rootScope:       "",
+			route:           subscriptionPUTRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid.json",
+			url:             "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000",
+			responseCode:    http.StatusAccepted,
+			validationErr:   nil,
+		},
+		{
 			desc:          "valid get-environment with azure resource id",
 			method:        http.MethodGet,
+			rootScope:     "/{rootScope:.*}",
 			route:         envRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
@@ -73,6 +118,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:          "valid delete-environment with azure resource id",
 			method:        http.MethodDelete,
+			rootScope:     "/{rootScope:.*}",
 			route:         envRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
@@ -82,6 +128,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with invalid api-version",
 			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
 			route:           envRoute,
 			apiVersion:      "2022-06-20-privatepreview", // unsupported api version
 			contentFilePath: "put-environments-valid.json",
@@ -97,6 +144,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with missing location property bag",
 			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-location.json",
@@ -119,6 +167,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with missing kind property",
 			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-kind.json",
@@ -141,6 +190,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with multiple errors",
 			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-locationandkind.json",
@@ -167,6 +217,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with invalid enum item",
 			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-enum.json",
@@ -189,6 +240,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with invalid json doc",
 			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-json.json",
@@ -215,11 +267,28 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			w := httptest.NewRecorder()
 			r := mux.NewRouter()
 
-			// Add API validator middleware
-			r.Use(APIValidator(l, []string{skipRoute}))
-			r.Path(tc.route).Methods(tc.method).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.NotFoundHandler = APINotFoundHandler()
+			r.MethodNotAllowedHandler = APIMethodNotAllowedHandler()
+
+			// APIs undocumented in OpenAPI spec.
+			r.Path(operationGetRoute).Methods(http.MethodGet).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusAccepted)
 			})
+			r.Path("/subscriptions/{subscriptions}").Methods(http.MethodPut).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusAccepted)
+			})
+
+			if tc.rootScope != "" {
+				// Add API validator middleware
+				validator := APIValidator(l)
+				router := r.PathPrefix(tc.rootScope).Subrouter()
+				// Register validator at {rootScope} level
+				router.Use(validator)
+
+				router.Path(tc.route).Methods(tc.method).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusAccepted)
+				})
+			}
 
 			// Load test fixture.
 			var body []byte = []byte("")
