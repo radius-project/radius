@@ -1306,7 +1306,7 @@ type RabbitMQMessageQueueProperties struct {
 	Queue *string `json:"queue,omitempty"`
 
 	// Secrets provided by resources,
-	Secrets *RabbitMQMessageQueuePropertiesSecrets `json:"secrets,omitempty"`
+	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -1360,12 +1360,6 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
-}
-
-// RabbitMQMessageQueuePropertiesSecrets - Secrets provided by resources,
-type RabbitMQMessageQueuePropertiesSecrets struct {
-	// The connection string used to connect to this RabbitMQ instance
-	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
 // RabbitMQMessageQueueResource - RabbitMQMessageQueue connector
@@ -1433,6 +1427,17 @@ type RabbitMQMessageQueuesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// RabbitMQMessageQueuesListSecretsOptions contains the optional parameters for the RabbitMQMessageQueues.ListSecrets method.
+type RabbitMQMessageQueuesListSecretsOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQSecrets - The secret values for the given RabbitMQMessageQueue resource
+type RabbitMQSecrets struct {
+	// The connection string used to connect to this RabbitMQ instance
+	ConnectionString *string `json:"connectionString,omitempty"`
+}
+
 // RedisCacheList - Object that includes an array of RedisCache and a possible link for next set
 type RedisCacheList struct {
 	// The link used to fetch the next page of RedisCache list.
@@ -1464,7 +1469,9 @@ type RedisCacheProperties struct {
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
-	Secrets *RedisCachePropertiesSecrets `json:"secrets,omitempty"`
+
+	// The secret values for the given RedisCache resource
+	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -1528,14 +1535,6 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type RedisCachePropertiesSecrets struct {
-	// The Redis connection string used to connect to the redis cache
-	ConnectionString *string `json:"connectionString,omitempty"`
-
-	// The password for this Redis instance
-	Password *string `json:"password,omitempty"`
-}
-
 // RedisCacheResource - RedisCache connector
 type RedisCacheResource struct {
 	TrackedResource
@@ -1581,6 +1580,15 @@ func (r *RedisCacheResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// RedisCacheSecrets - The secret values for the given RedisCache resource
+type RedisCacheSecrets struct {
+	// The connection string used to connect to the redis cache
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// The password for this Redis instance
+	Password *string `json:"password,omitempty"`
+}
+
 // RedisCachesCreateOrUpdateOptions contains the optional parameters for the RedisCaches.CreateOrUpdate method.
 type RedisCachesCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -1601,9 +1609,14 @@ type RedisCachesListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// RedisCachesListSecretsOptions contains the optional parameters for the RedisCaches.ListSecrets method.
+type RedisCachesListSecretsOptions struct {
+	// placeholder for future optional parameters
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /{rootScope}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty" azure:"ro"`
 
 	// READ-ONLY; The name of the resource

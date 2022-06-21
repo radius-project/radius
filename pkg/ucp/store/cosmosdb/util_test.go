@@ -169,7 +169,7 @@ func TestGenerateCosmosDBKey(t *testing.T) {
 		},
 		{
 			"ucp-success",
-			"ucp:/planes/radius/local/resourcegroups/radius-westus/providers/Applications.Core/applications/todoapp",
+			"/planes/radius/local/resourcegroups/radius-westus/providers/Applications.Core/applications/todoapp",
 			"-RADIUS:2DWESTUS-APPLICATIONS:2ECORE:2FAPPLICATIONS:2FTODOAPP",
 			nil,
 		},

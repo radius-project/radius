@@ -1,6 +1,7 @@
 # This is an example of configuration file.
 environment:
   name: Dev
+  roleLocation: "global"
 storageProvider:
   provider: "etcd"
   etcd:

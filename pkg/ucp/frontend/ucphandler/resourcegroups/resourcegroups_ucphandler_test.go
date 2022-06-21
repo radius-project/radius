@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -37,8 +36,7 @@ func Test_CreateResourceGroup(t *testing.T) {
 
 	var o store.Object
 	o.Metadata.ContentType = "application/json"
-	id := resources.UCPPrefix + resourceGroup.ID
-	o.Metadata.ID = id
+	o.Metadata.ID = resourceGroup.ID
 	o.Data = &resourceGroup
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
@@ -55,7 +53,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	var testHandler = NewResourceGroupsUCPHandler()
 
 	var query store.Query
-	query.RootScope = resources.UCPPrefix + path
+	query.RootScope = path
 	query.ScopeRecursive = false
 	query.IsScopeQuery = true
 

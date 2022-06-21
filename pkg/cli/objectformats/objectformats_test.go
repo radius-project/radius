@@ -46,7 +46,7 @@ test-app     Provisioned         Healthy
 }
 
 func Test_FormatResourceTable(t *testing.T) {
-	options := GetResourceTableFormat()
+	options := GetResourceTableFormatOld()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
 	obj := []radclient.RadiusResource{

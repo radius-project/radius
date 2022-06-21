@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/ucp"
 )
 
 func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
@@ -41,6 +42,7 @@ type AzureCloudEnvironment struct {
 	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
 	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
 	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
+	UCPResourceGroupName     string `mapstructure:"ucpresourcegroupname,omitempty"`
 
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain" yaml:",omitempty"`
@@ -77,7 +79,12 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 }
 
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
+		e.DeploymentEngineLocalURL,
+		e.UCPLocalURL,
+		e.Context,
+		e.EnableUCP,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -146,16 +153,29 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	}, nil
 }
 
-func (e *AzureCloudEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
+func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
 	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &azure.ARMManagementClient{
+	return &azure.LegacyARMManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
 		ResourceGroup:   e.ResourceGroup,
 		SubscriptionID:  e.SubscriptionID,
+	}, nil
+}
+
+func (e *AzureCloudEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ucp.ARMApplicationsManagementClient{
+		EnvironmentName: e.Name,
+		Connection:      connection,
+		RootScope:       "/Subscriptions/" + e.SubscriptionID + "/ResourceGroups/" + e.ResourceGroup,
 	}, nil
 }

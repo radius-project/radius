@@ -9,6 +9,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
@@ -19,6 +21,11 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/featureflag"
+)
+
+const (
+	CORE_RP_API_VERSION = "2022-03-15-privatepreview"
 )
 
 var envInitKubernetesCmd = &cobra.Command{
@@ -96,18 +103,92 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	output.CompleteStep(step)
-
 	env.Items[environmentName] = map[string]interface{}{
 		"kind":      environments.KindKubernetes,
 		"context":   contextName,
 		"namespace": sharedArgs.Namespace,
+		"enableucp": featureflag.EnableUnifiedControlPlane.IsActive(),
 	}
+
+	if featureflag.EnableUnifiedControlPlane.IsActive() {
+		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
+		ucpRGName := fmt.Sprintf("%s-rg", environmentName)
+		env.Items[environmentName]["ucpresourcegroupname"] = ucpRGName
+		if createUCPResourceGroup(contextName, ucpRGName) != nil {
+			return err
+		}
+		if createEnvironmentResource(contextName, ucpRGName, environmentName) != nil {
+			return err
+		}
+	}
+
+	output.CompleteStep(step)
 
 	if err := cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(environmentName))); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func createUCPResourceGroup(kubeCtxName, resourceGroupName string) error {
+	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
+		"",
+		"",
+		kubeCtxName,
+		featureflag.EnableUnifiedControlPlane.IsActive(),
+	)
+	if err != nil {
+		return err
+	}
+
+	createRgRequest, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", baseUrl, resourceGroupName),
+		strings.NewReader(`{}`),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+	}
+	res, err := rt.RoundTrip(createRgRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+	}
+
+	if res.StatusCode != http.StatusCreated {
+		return fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", res.StatusCode, res)
+	}
+	return nil
+}
+
+func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName string) error {
+	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
+		"",
+		"",
+		kubeCtxName,
+		featureflag.EnableUnifiedControlPlane.IsActive(),
+	)
+	if err != nil {
+		return err
+	}
+
+	createEnvRequest, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s?api-version=%s", baseUrl, resourceGroupName, environmentName, CORE_RP_API_VERSION),
+		strings.NewReader(`{"properties":{"compute":{"kind":""}}}`),
+	)
+	createEnvRequest.Header.Add("Content-Type", "application/json")
+	if err != nil {
+		return fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
+	}
+	res, err := rt.RoundTrip(createEnvRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
+	}
+
+	if res.StatusCode != http.StatusOK { //shouldn't it be http.StatusCreated for consistency with rg?
+		return fmt.Errorf("request to create Applications.Core/environments resource failed with status: %d, request: %+v", res.StatusCode, res)
+	}
 	return nil
 }
 

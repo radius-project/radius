@@ -1,6 +1,9 @@
 package v20220315privatepreview
 
 import (
+	"errors"
+	"reflect"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -10,11 +13,14 @@ import (
 
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) {
-	var converted *datamodel.DaprStateStore
+	outputResources := v1.ResourceStatus{}.OutputResources
+	if src.Properties.GetDaprStateStoreProperties().Status != nil {
+		outputResources = src.Properties.GetDaprStateStoreProperties().Status.OutputResources
+	}
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Status: v1.ResourceStatus{
-				OutputResources: src.Properties.GetDaprStateStoreProperties().Status.OutputResources,
+				OutputResources: outputResources,
 			},
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
@@ -22,74 +28,39 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		Application:       to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		Kind:              to.String(src.Properties.GetDaprStateStoreProperties().Kind),
 	}
+	trackedResource := v1.TrackedResource{
+		ID:       to.String(src.ID),
+		Name:     to.String(src.Name),
+		Type:     to.String(src.Type),
+		Location: to.String(src.Location),
+		Tags:     to.StringMap(src.Tags),
+	}
+	internalMetadata := v1.InternalMetadata{
+		UpdatedAPIVersion: Version,
+	}
+	converted := &datamodel.DaprStateStore{}
+	converted.TrackedResource = trackedResource
+	converted.InternalMetadata = internalMetadata
 	switch v := src.Properties.(type) {
 	case *DaprStateStoreAzureTableStorageResourceProperties:
-		converted = &datamodel.DaprStateStore{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			Properties: &datamodel.DaprStateStoreAzureTableStorageResourceProperties{
-				DaprStateStoreProperties: daprStateStoreProperties,
-				Resource:                 to.String(v.Resource),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+		converted.Properties = &datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+			DaprStateStoreProperties: daprStateStoreProperties,
+			Resource:                 to.String(v.Resource),
 		}
 	case *DaprStateStoreSQLServerResourceProperties:
-		converted = &datamodel.DaprStateStore{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			Properties: &datamodel.DaprStateStoreSQLServerResourceProperties{
-				DaprStateStoreProperties: daprStateStoreProperties,
-				Resource:                 to.String(v.Resource),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+		converted.Properties = &datamodel.DaprStateStoreSQLServerResourceProperties{
+			DaprStateStoreProperties: daprStateStoreProperties,
+			Resource:                 to.String(v.Resource),
 		}
 	case *DaprStateStoreGenericResourceProperties:
-		converted = &datamodel.DaprStateStore{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			Properties: &datamodel.DaprStateStoreGenericResourceProperties{
-				DaprStateStoreProperties: daprStateStoreProperties,
-				Type:                     to.String(v.Type),
-				Version:                  to.String(v.Version),
-				Metadata:                 v.Metadata,
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+		converted.Properties = &datamodel.DaprStateStoreGenericResourceProperties{
+			DaprStateStoreProperties: daprStateStoreProperties,
+			Type:                     to.String(v.Type),
+			Version:                  to.String(v.Version),
+			Metadata:                 v.Metadata,
 		}
 	default:
-		converted = &datamodel.DaprStateStore{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			Properties: &daprStateStoreProperties,
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
-		}
+		return nil, errors.New("Kind of DaprStateStore is not specified.")
 	}
 	return converted, nil
 }
@@ -107,10 +78,14 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	dst.SystemData = fromSystemDataModel(daprStateStore.SystemData)
 	dst.Location = to.StringPtr(daprStateStore.Location)
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
+	var outputresources []map[string]interface{}
+	if !(reflect.DeepEqual(daprStateStore.Properties.GetDaprStateStoreProperties().Status, v1.ResourceStatus{})) {
+		outputresources = daprStateStore.Properties.GetDaprStateStoreProperties().Status.OutputResources
+	}
 	props := &DaprStateStoreProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: daprStateStore.Properties.GetDaprStateStoreProperties().Status.OutputResources,
+				OutputResources: outputresources,
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.GetDaprStateStoreProperties().ProvisioningState),
@@ -136,7 +111,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Metadata:                 v.Metadata,
 		}
 	default:
-		dst.Properties = props
+		return errors.New("Kind of DaprStateStore is not specified.")
 	}
 
 	return nil
