@@ -22,10 +22,19 @@ import (
 
 const (
 	envRoute = "/{rootScope:.*}/providers/applications.core/environments/{environmentName}"
-	baseUrl  = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	armIDUrl = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	ucpIDUrl = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
 )
 
-func TestAPIValidator(t *testing.T) {
+func TestAPIValidator_ARMID(t *testing.T) {
+	runTest(t, armIDUrl)
+}
+
+func TestAPIValidator_UCPID(t *testing.T) {
+	runTest(t, ucpIDUrl)
+}
+
+func runTest(t *testing.T, resourceIDUrl string) {
 	// Load OpenAPI Spec for applications.core provider.
 	l := NewLoader("applications.core", swagger.SpecFiles)
 	err := l.LoadSpec()
@@ -33,10 +42,10 @@ func TestAPIValidator(t *testing.T) {
 	require.NoError(t, err)
 
 	validatorTests := []struct {
-		method       string
-		route        string
-		resourceType string
-		apiVersion   string
+		desc       string
+		method     string
+		route      string
+		apiVersion string
 
 		contentFilePath string
 		url             string
@@ -44,48 +53,45 @@ func TestAPIValidator(t *testing.T) {
 		validationErr   *armerrors.ErrorResponse
 	}{
 		{
-			method:          http.MethodPut,
-			route:           envRoute,
-			apiVersion:      "2022-03-15-privatepreview",
-			contentFilePath: "put-environments-valid.json",
-			url:             baseUrl,
-			responseCode:    http.StatusAccepted,
-			validationErr:   nil,
+			desc:          "valid get-environment with azure resource id",
+			method:        http.MethodGet,
+			route:         envRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           resourceIDUrl,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
 		},
 		{
-			method:          http.MethodPut,
-			route:           envRoute,
-			apiVersion:      "2022-03-15-privatepreview",
-			contentFilePath: "put-environments-valid.json",
-			url:             "http://localhost/invalid/path",
-			responseCode:    http.StatusAccepted,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
-					Code:    "BadRequest",
-					Message: "Invalid Resource ID: ",
-				},
-			},
+			desc:          "valid delete-environment with azure resource id",
+			method:        http.MethodDelete,
+			route:         envRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           resourceIDUrl,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
 		},
 		{
+			desc:            "invalid put-environment with invalid api-version",
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-06-20-privatepreview", // unsupported api version
 			contentFilePath: "put-environments-valid.json",
-			url:             baseUrl,
+			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &armerrors.ErrorResponse{
 				Error: armerrors.ErrorDetails{
-					Code:    "BadRequest",
+					Code:    "InvalidApiVersionParameter",
 					Message: "API version '2022-06-20-privatepreview' for type 'applications.core/environments' is not supported.",
 				},
 			},
 		},
 		{
+			desc:            "invalid put-environment with missing location property bag",
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-location.json",
-			url:             baseUrl,
+			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &armerrors.ErrorResponse{
 				Error: armerrors.ErrorDetails{
@@ -102,11 +108,12 @@ func TestAPIValidator(t *testing.T) {
 			},
 		},
 		{
+			desc:            "invalid put-environment with missing kind property",
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-property.json",
-			url:             baseUrl,
+			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &armerrors.ErrorResponse{
 				Error: armerrors.ErrorDetails{
@@ -123,11 +130,12 @@ func TestAPIValidator(t *testing.T) {
 			},
 		},
 		{
+			desc:            "invalid put-environment with multiple errors",
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing2.json",
-			url:             baseUrl,
+			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &armerrors.ErrorResponse{
 				Error: armerrors.ErrorDetails{
@@ -148,11 +156,12 @@ func TestAPIValidator(t *testing.T) {
 			},
 		},
 		{
+			desc:            "invalid put-environment with invalid enum item",
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-enum.json",
-			url:             baseUrl,
+			url:             resourceIDUrl,
 			responseCode:    400,
 			validationErr: &armerrors.ErrorResponse{
 				Error: armerrors.ErrorDetails{
@@ -169,11 +178,12 @@ func TestAPIValidator(t *testing.T) {
 			},
 		},
 		{
+			desc:            "invalid put-environment with invalid json doc",
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-json.json",
-			url:             baseUrl,
+			url:             resourceIDUrl,
 			responseCode:    400,
 			validationErr: &armerrors.ErrorResponse{
 				Error: armerrors.ErrorDetails{
@@ -192,7 +202,7 @@ func TestAPIValidator(t *testing.T) {
 	}
 
 	for _, tc := range validatorTests {
-		t.Run(tc.route, func(t *testing.T) {
+		t.Run(tc.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := mux.NewRouter()
 
@@ -203,7 +213,7 @@ func TestAPIValidator(t *testing.T) {
 			})
 
 			// Load test fixture.
-			var body []byte
+			var body []byte = []byte("")
 			if tc.contentFilePath != "" {
 				body = radiustesting.ReadFixture(tc.contentFilePath)
 			}

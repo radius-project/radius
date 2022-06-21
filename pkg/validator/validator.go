@@ -68,8 +68,9 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 		return nil, err
 	}
 
+	templateKey := req.Method + "-" + pathTemplate
 	v.paramCacheMu.RLock()
-	p, ok := v.paramCache[pathTemplate]
+	p, ok := v.paramCache[templateKey]
 	v.paramCacheMu.RUnlock()
 	if ok {
 		return p, nil
@@ -78,7 +79,7 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 	v.paramCacheMu.Lock()
 	defer v.paramCacheMu.Unlock()
 	// Return immediately if the previous call fills the cache.
-	p, ok = v.paramCache[pathTemplate]
+	p, ok = v.paramCache[templateKey]
 	if ok {
 		return p, nil
 	}
@@ -93,8 +94,8 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 		}
 	}
 	if param != nil {
-		v.paramCache[pathTemplate] = param
-		return v.paramCache[pathTemplate], nil
+		v.paramCache[templateKey] = param
+		return v.paramCache[templateKey], nil
 	}
 	return nil, ErrUndefinedRoute
 }
