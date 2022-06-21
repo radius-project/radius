@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
 	tcpProbe := ct.Properties.Container.LivenessProbe.(*datamodel.TCPHealthProbeProperties)
 	require.Equal(t, "tcp", tcpProbe.Kind)
-	require.Equal(t, float32(5), tcpProbe.InitialDelaySeconds)
+	require.Equal(t, to.Float32Ptr(5), tcpProbe.InitialDelaySeconds)
 	require.Equal(t, int32(8080), tcpProbe.ContainerPort)
 	require.Equal(t, "Deployment", ct.Properties.Status.OutputResources[0]["LocalID"])
 	require.Equal(t, resourceType, ct.Properties.Status.OutputResources[0]["ResourceType"])

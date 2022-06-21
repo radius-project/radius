@@ -120,10 +120,10 @@ type HealthProbePropertiesClassification interface {
 
 // HealthProbeProperties - Properties for readiness/liveness probe
 type HealthProbeProperties struct {
-	Kind                string  `json:"kind,omitempty"`
-	FailureThreshold    float32 `json:"failureThreshold,omitempty"`
-	InitialDelaySeconds float32 `json:"initialDelaySeconds,omitempty"`
-	PeriodSeconds       float32 `json:"periodSeconds,omitempty"`
+	Kind                string   `json:"kind,omitempty"`
+	FailureThreshold    *float32 `json:"failureThreshold,omitempty"`
+	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       *float32 `json:"periodSeconds,omitempty"`
 }
 
 // ExecHealthProbeProperties - Specifies the properties for readiness/liveness probe using an executable
@@ -186,8 +186,96 @@ func (e Extension) GetExtension() Extension { return e }
 type Kind string
 
 const (
-	KindAzure Kind = "azure"
+	KindAzure                   Kind = "azure"
+	KindAzureComKeyVault        Kind = "azure.com/KeyVault"
+	KindAzureComServiceBusQueue Kind = "azure.com/ServiceBusQueue"
+	KindDaprIoInvokeHTTP        Kind = "dapr.io/InvokeHttp"
+	KindDaprIoPubSubTopic       Kind = "dapr.io/PubSubTopic"
+	KindDaprIoSecretStore       Kind = "dapr.io/SecretStore"
+	KindDaprIoStateStore        Kind = "dapr.io/StateStore"
+	KindGrpc                    Kind = "Grpc"
+	KindHTTP                    Kind = "Http"
+	KindMicrosoftComSQL         Kind = "microsoft.com/SQL"
+	KindMongoComMongoDB         Kind = "mongo.com/MongoDB"
+	KindRabbitmqComMessageQueue Kind = "rabbitmq.com/MessageQueue"
+	KindRedislabsComRedis       Kind = "redislabs.com/Redis"
 )
+
+// Kinds returns the possible values for the Kind const type.
+func Kinds() []Kind {
+	return []Kind{
+		KindAzure,
+		KindAzureComKeyVault,
+		KindAzureComServiceBusQueue,
+		KindDaprIoInvokeHTTP,
+		KindDaprIoPubSubTopic,
+		KindDaprIoSecretStore,
+		KindDaprIoStateStore,
+		KindGrpc,
+		KindHTTP,
+		KindMicrosoftComSQL,
+		KindMongoComMongoDB,
+		KindRabbitmqComMessageQueue,
+		KindRedislabsComRedis,
+	}
+}
+
+func (k Kind) IsValid() bool {
+	s := Kinds()
+	for _, v := range s {
+		if v == k {
+			return true
+		}
+	}
+	return false
+}
+
+func (k Kind) IsKind(kind Kind) bool {
+	return k == kind
+}
+
+type SecretObjectProperties struct {
+	// REQUIRED; The name of the secret
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *SecretObjectPropertiesEncoding `json:"encoding,omitempty"`
+
+	// Secret version
+	Version *string `json:"version,omitempty"`
+}
+
+// SecretObjectPropertiesEncoding - Encoding format. Default utf-8
+type SecretObjectPropertiesEncoding string
+
+const (
+	SecretObjectPropertiesEncodingBase64 SecretObjectPropertiesEncoding = "base64"
+	SecretObjectPropertiesEncodingHex    SecretObjectPropertiesEncoding = "hex"
+	SecretObjectPropertiesEncodingUTF8   SecretObjectPropertiesEncoding = "utf-8"
+)
+
+// SecretObjectPropertiesEncodingValues returns the possible values for the SecretObjectPropertiesEncoding const type.
+func SecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEncoding {
+	return []SecretObjectPropertiesEncoding{
+		SecretObjectPropertiesEncodingBase64,
+		SecretObjectPropertiesEncodingHex,
+		SecretObjectPropertiesEncodingUTF8,
+	}
+}
+
+type KeyObjectProperties struct {
+	// REQUIRED; The name of the key
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Key version
+	Version *string `json:"version,omitempty"`
+}
 
 // IamProperties represents the properties of IAM provider.
 type IamProperties struct {
