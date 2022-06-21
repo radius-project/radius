@@ -11,6 +11,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/spf13/cobra"
+
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/builders"
@@ -20,7 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/stages"
 	"github.com/project-radius/radius/pkg/cli/tools"
 	"github.com/project-radius/radius/pkg/version"
-	"github.com/spf13/cobra"
 )
 
 // appRunCmd command deploys an application interactively based on a rad.yaml
@@ -136,7 +137,7 @@ func runApplication(cmd *cobra.Command, args []string) error {
 
 	if dev, ok := env.(*environments.LocalEnvironment); ok {
 		output.LogInfo("Launching log stream...")
-		err = tools.SternStart(cmd.Context(), dev.Context, dev.Namespace, manifest.Name)
+		err = tools.SternStart(cmd.Context(), dev.KubeContext, dev.Namespace, manifest.Name)
 		if errors.As(err, &tools.ErrToolNotFound{}) {
 			output.LogInfo(err.Error()) // Tolerate missing tool
 		} else if err != nil {

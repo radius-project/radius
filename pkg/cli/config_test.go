@@ -9,9 +9,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/pkg/cli/environments"
 )
 
 func Test_ReadEnvironmentSection_NoContent(t *testing.T) {
@@ -151,7 +152,7 @@ environment:
 	require.Equal(t, "testsub", aenv.SubscriptionID)
 	require.Equal(t, "testrg", aenv.ResourceGroup)
 	require.Equal(t, "default", aenv.Namespace)
-	require.Equal(t, "my-context", aenv.Context)
+	require.Equal(t, "my-context", aenv.KubeContext)
 	require.Equal(t, map[string]interface{}{"extra": "testextra"}, aenv.Properties)
 }
 

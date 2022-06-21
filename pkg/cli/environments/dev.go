@@ -24,28 +24,10 @@ import (
 
 // LocalEnvironment represents a local test setup for Azure Cloud Radius environment.
 type LocalEnvironment struct {
-	Name               string `mapstructure:"name" validate:"required"`
-	Kind               string `mapstructure:"kind" validate:"required"`
-	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
-
-	Context     string `mapstructure:"context" validate:"required"`
-	Namespace   string `mapstructure:"namespace" validate:"required"`
-	ClusterName string `mapstructure:"clustername" validate:"required"`
-
+	RadiusEnvironment
 	// Registry is the docker/OCI registry we're using for images.
 	Registry *Registry `mapstructure:"registry,omitempty"`
-
-	// RadiusRPLocalURL is an override for local debugging. This allows us us to run the controller + API Service outside the
-	// cluster.
-	RadiusRPLocalURL         string     `mapstructure:"radiusrplocalurl,omitempty"`
-	DeploymentEngineLocalURL string     `mapstructure:"deploymentenginelocalurl,omitempty"`
-	UCPLocalURL              string     `mapstructure:"ucplocalurl,omitempty"`
-	Providers                *Providers `mapstructure:"providers"`
-	EnableUCP                bool       `mapstructure:"enableucp,omitempty"`
-	UCPResourceGroupName     string     `mapstructure:"ucpresourcegroupname,omitempty"`
-
-	// We tolerate and allow extra fields - this helps with forwards compat.
-	Properties map[string]interface{} `mapstructure:",remain"`
+	Providers *Providers `mapstructure:"providers"`
 }
 
 func (e *LocalEnvironment) GetName() string {
@@ -65,7 +47,7 @@ func (e *LocalEnvironment) GetStatusLink() string {
 }
 
 func (e *LocalEnvironment) GetKubeContext() string {
-	return e.Context
+	return e.KubeContext
 }
 
 func (e *LocalEnvironment) GetContainerRegistry() *Registry {
@@ -96,7 +78,7 @@ func (s *devsender) Do(request *http.Request) (*http.Response, error) {
 }
 
 func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.KubeContext, e.EnableUCP)
 
 	if err != nil {
 		return nil, err
@@ -153,17 +135,17 @@ func (e *LocalEnvironment) CreateDeploymentClient(ctx context.Context) (clients.
 }
 
 func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
+	k8sClient, config, err := kubernetes.CreateTypedClient(e.KubeContext)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+	client, err := kubernetes.CreateRuntimeClient(e.KubeContext, kubernetes.Scheme)
 	if err != nil {
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +162,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 }
 
 func (e *LocalEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +184,7 @@ func (e *LocalEnvironment) CreateServerLifecycleClient(ctx context.Context) (cli
 }
 
 func (e *LocalEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.KubeContext, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}
