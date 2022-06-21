@@ -52,13 +52,10 @@ func Test_Render_WithPort(t *testing.T) {
 	var port int32 = 6379
 
 	dependencies := map[string]renderers.RendererDependency{}
-	properties := datamodel.HTTPRouteProperties{}
-	properties.Port = port
-	dm := datamodel.HTTPRoute{Properties: properties}
-
+	properties := makeHTTPRouteProperties(port)
 	resource := makeResource(t, properties)
 
-	output, err := r.Render(context.Background(), dm, renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}})
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{}})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
