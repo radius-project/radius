@@ -400,6 +400,18 @@ func NewLegacyNotFoundResponse(id azresources.ResourceID) Response {
 	}
 }
 
+// NewNotFoundMessageResponse represents an HTTP 404 with string message.
+func NewNotFoundMessageResponse(message string) Response {
+	return &NotFoundResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.NotFound,
+				Message: message,
+			},
+		},
+	}
+}
+
 func NewNotFoundResponse(id resources.ID) Response {
 	return &NotFoundResponse{
 		Body: armerrors.ErrorResponse{
@@ -725,6 +737,43 @@ func (r *AsyncOperationResultResponse) Apply(ctx context.Context, w http.Respons
 	}
 
 	w.WriteHeader(http.StatusAccepted)
+
+	return nil
+}
+
+// MethodNotAllowedResponse represents an HTTP 405 with an ARM error payload.
+type MethodNotAllowedResponse struct {
+	Body armerrors.ErrorResponse
+}
+
+// NewMethodNotAllowedResponse creates MethodNotAllowedResponse instance.
+func NewMethodNotAllowedResponse(target string, message string) Response {
+	return &MethodNotAllowedResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: message,
+				Target:  target,
+			},
+		},
+	}
+}
+
+func (r *MethodNotAllowedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusMethodNotAllowed), radlogger.LogHTTPStatusCode, http.StatusMethodNotAllowed)
+
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
 
 	return nil
 }
