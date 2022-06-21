@@ -100,7 +100,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
-			contentFilePath: "put-environments-invalid-location.json",
+			contentFilePath: "put-environments-invalid-missing-location.json",
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &armerrors.ErrorResponse{
@@ -122,7 +122,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
-			contentFilePath: "put-environments-invalid-kind.json",
+			contentFilePath: "put-environments-invalid-missing-kind.json",
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &armerrors.ErrorResponse{
@@ -144,7 +144,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			method:          http.MethodPut,
 			route:           envRoute,
 			apiVersion:      "2022-03-15-privatepreview",
-			contentFilePath: "put-environments-invalid-locationandkind.json",
+			contentFilePath: "put-environments-invalid-missing-locationandkind.json",
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
 			validationErr: &armerrors.ErrorResponse{
