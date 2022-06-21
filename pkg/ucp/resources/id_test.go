@@ -486,7 +486,7 @@ func Test_ValidateResourceType_Valid(t *testing.T) {
 			Name: "*",
 		},
 		{
-			Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+			Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Name: "*",
 		},
 	}})
@@ -515,7 +515,7 @@ func Test_ValidateResourceType_Invalid(t *testing.T) {
 					Name: "*",
 				},
 				{
-					Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+					Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 					Name: "*",
 				},
 			}},
@@ -538,7 +538,7 @@ func Test_ValidateResourceType_Invalid(t *testing.T) {
 					Name: "*",
 				},
 				{
-					Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+					Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 					Name: "*",
 				},
 			}},

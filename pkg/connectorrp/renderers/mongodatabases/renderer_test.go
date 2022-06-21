@@ -71,7 +71,7 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, expectedDatabase, databaseResource.Resource)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"database": {
+		renderers.DatabaseNameValue: {
 			Value: "test-database",
 		},
 	}
@@ -105,7 +105,11 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 0)
 
-	expectedComputedValues := map[string]renderers.ComputedValueReference{}
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		renderers.DatabaseNameValue: {
+			Value: mongoDBResource.Name,
+		},
+	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
 	expectedSecretValues := map[string]renderers.SecretValueReference{

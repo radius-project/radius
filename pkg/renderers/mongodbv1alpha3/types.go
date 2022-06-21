@@ -8,7 +8,7 @@ package mongodbv1alpha3
 import "github.com/project-radius/radius/pkg/azure/azresources"
 
 const (
-	ResourceType          = "mongo.com.MongoDatabase"
+	ResourceType = "mongo.com.MongoDatabase"
 )
 
 var CosmosMongoResourceType = azresources.KnownType{
@@ -18,7 +18,7 @@ var CosmosMongoResourceType = azresources.KnownType{
 			Name: "*",
 		},
 		{
-			Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+			Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Name: "*",
 		},
 	},

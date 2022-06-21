@@ -17,7 +17,7 @@ var AzureCosmosMongoResourceType = resources.KnownType{
 			Name: "*",
 		},
 		{
-			Type: azresources.DocumentDBDatabaseAccountsMongodDBDatabases,
+			Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Name: "*",
 		},
 	},

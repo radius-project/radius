@@ -134,7 +134,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretVal
 
 func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[string]renderers.SecretValueReference {
 	secretValues := map[string]renderers.SecretValueReference{}
-	if properties.Secrets.IsEmpty() {
+	if !properties.Secrets.IsEmpty() {
 		if properties.Secrets.Username != "" {
 			secretValues[renderers.UsernameStringValue] = renderers.SecretValueReference{Value: properties.Secrets.Username}
 		}
