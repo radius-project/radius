@@ -34,4 +34,5 @@ const (
 	AzureRedis                       = "azure.redis"
 	AzureFileShare                   = "azure.fileshare"
 	AzureFileShareStorageAccount     = "azure.fileshare.account"
+	TrafficSplit                     = "TrafficSplit"
 )

@@ -158,7 +158,7 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *
 		}
 		trafficsplit.Spec.Backends = append(trafficsplit.Spec.Backends, tsBackend)
 	}
-	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, trafficsplit, trafficsplit.ObjectMeta)
+	return outputresource.NewKubernetesOutputResource(resourcekinds.TrafficSplit, outputresource.LocalIDTrafficSplit, trafficsplit, trafficsplit.ObjectMeta)
 }
 
 func (r Renderer) convert(resource renderers.RendererResource) (*radclient.HTTPRouteProperties, error) {
