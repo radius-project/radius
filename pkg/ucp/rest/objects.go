@@ -6,8 +6,9 @@
 package rest
 
 type PlaneProperties struct {
-	ResourceProviders map[string]string `json:"resourceProviders" yaml:"resourceProviders"`
+	ResourceProviders map[string]string `json:"resourceProviders" yaml:"resourceProviders"` // Used only for UCP native planes
 	Kind              string            `json:"kind" yaml:"kind"`
+	URL               string            `json:"url" yaml:"url"` // Used only for non UCP native planes
 }
 
 // Plane kinds

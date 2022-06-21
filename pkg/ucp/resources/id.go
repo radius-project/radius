@@ -343,10 +343,6 @@ func Parse(id string) (ID, error) {
 			return ID{}, invalid(id)
 		}
 
-		// if isUCPForwarded && i == 0 {
-		// 	// Add the planes segment to the scope
-		// 	segments[i] = PlanesSegment + SegmentSeparator + segments[i]
-		// }
 		scopes = append(scopes, ScopeSegment{Type: segments[i], Name: segments[i+1]})
 		i += 2
 	}

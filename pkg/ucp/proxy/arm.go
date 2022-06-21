@@ -6,7 +6,6 @@
 package proxy
 
 import (
-	"net/http"
 	"net/url"
 )
 
@@ -22,8 +21,8 @@ func NewARMProxy(options ReverseProxyOptions, downstream *url.URL, configure fun
 		ProxyAddress: options.ProxyAddress,
 	}
 
-	directors := []func(r *http.Request){}
-	if !options.UCPNativeProxy {
+	directors := []DirectorFunc{}
+	if options.TrimPlanesPrefix {
 		// Remove the UCP Planes prefix for non-native planes that do not
 		// understand UCP IDs
 		directors = []DirectorFunc{trimPlanesPrefix}

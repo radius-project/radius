@@ -58,6 +58,60 @@ func Test_CreatePlane(t *testing.T) {
 
 }
 
+func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+	var testHandler = NewPlanesUCPHandler(Options{})
+
+	body := []byte(`{
+		"properties": {
+			"kind": "UCPNative"
+		}
+	}`)
+	path := "/planes/radius/local"
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+
+	response, _ := testHandler.CreateOrUpdate(ctx, mockStorageClient, body, path)
+	badResponse := &rest.BadRequestResponse{
+		Body: rest.ErrorResponse{
+			Error: rest.ErrorDetails{
+				Code:    rest.Invalid,
+				Message: "At least one resource provider must be configured for UCP native plane: local",
+			},
+		},
+	}
+	assert.DeepEqual(t, badResponse, response)
+}
+
+func Test_CreateAzurePlane_NoURL(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+	var testHandler = NewPlanesUCPHandler(Options{})
+
+	body := []byte(`{
+		"properties": {
+			"kind": "Azure"
+		}
+	}`)
+	path := "/planes/azure/azurecloud"
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+
+	response, _ := testHandler.CreateOrUpdate(ctx, mockStorageClient, body, path)
+	badResponse := &rest.BadRequestResponse{
+		Body: rest.ErrorResponse{
+			Error: rest.ErrorDetails{
+				Code:    rest.Invalid,
+				Message: "URL must be specified for plane: azurecloud",
+			},
+		},
+	}
+	assert.DeepEqual(t, badResponse, response)
+}
+
 func Test_ListPlane(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()

@@ -42,7 +42,7 @@ func NewClient(httpClient *http.Client, baseURL string) Client {
 const (
 	rpURL                     = "127.0.0.1:7443"
 	azureURL                  = "127.0.0.1:9443"
-	testProxyRequestPath      = "/resourceGroups/rg1/providers/Applications.Core/applications"
+	testProxyRequestPath      = "/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications"
 	testProxyRequestAzurePath = "/subscriptions/sid/resourceGroups/rg1/providers/Microsoft.Network/virtualNetworks/vnet1"
 	apiVersionQueyParam       = "api-version=2022-03-15-privatepreview"
 	testUCPNativePlaneID      = "/planes/radius/local"
@@ -76,10 +76,8 @@ var testAzurePlane = rest.Plane{
 	Name: "azurecloud",
 	Type: "System.Planes/azure",
 	Properties: rest.PlaneProperties{
-		ResourceProviders: map[string]string{
-			"*": "http://" + azureURL,
-		},
 		Kind: rest.PlaneKindAzure,
+		URL:  "http://" + azureURL,
 	},
 }
 
@@ -92,7 +90,7 @@ func Test_ProxyToRP(t *testing.T) {
 	body, err := json.Marshal(applicationList)
 	require.NoError(t, err)
 	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/planes/radius/local"+testProxyRequestPath, r.URL.Path)
+		require.Equal(t, testProxyRequestPath, r.URL.Path)
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Location", "http://"+rpURL+testProxyRequestPath)
 		w.WriteHeader(http.StatusOK)
@@ -182,10 +180,8 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	} else {
 		requestBody = map[string]interface{}{
 			"properties": map[string]interface{}{
-				"resourceProviders": map[string]string{
-					"*": "http://" + azureURL,
-				},
 				"kind": rest.PlaneKindAzure,
+				"url":  "http://" + azureURL,
 			},
 		}
 	}
@@ -250,13 +246,13 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 		return &data, nil
 	})
 
-	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+"/planes/radius/local"+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
+	proxyRequest, err := http.NewRequest("GET", ucp.URL+basePath+testProxyRequestPath+"?"+apiVersionQueyParam, nil)
 	require.NoError(t, err)
 	proxyRequestResponse, err := ucpClient.httpClient.Do(proxyRequest)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
 	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
-	assert.Equal(t, "http://"+proxyRequest.Host+basePath+testUCPNativePlaneID+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
+	assert.Equal(t, "http://"+proxyRequest.Host+basePath+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
 	proxyRequestResponseBody, err := ioutil.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)

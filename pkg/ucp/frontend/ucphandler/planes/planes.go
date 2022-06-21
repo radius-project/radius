@@ -71,6 +71,17 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	}
 
 	// At least one provider needs to be configured
+	if plane.Properties.Kind == rest.PlaneKindUCPNative {
+		if plane.Properties.ResourceProviders == nil || len(plane.Properties.ResourceProviders) == 0 {
+			err = fmt.Errorf("At least one resource provider must be configured for UCP native plane: %s", plane.Name)
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
+	} else {
+		if plane.Properties.URL == "" {
+			err = fmt.Errorf("URL must be specified for plane: %s", plane.Name)
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
+	}
 
 	_, err = planesdb.GetByID(ctx, db, ID)
 	if err != nil {
@@ -193,9 +204,9 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 			}
 		}
 	} else {
-		// For a non UCP-native plane, the configuration should have a single RP with key = "*"
-		// and all the requests will be forwarded to that URL
-		proxyURL = plane.Properties.ResourceProviders["*"]
+		// For a non UCP-native plane, the configuration should have a URL to which
+		// all the requests will be forwarded
+		proxyURL = plane.Properties.URL
 	}
 
 	downstream, err := url.Parse(proxyURL)
@@ -204,9 +215,9 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	options := proxy.ReverseProxyOptions{
-		RoundTripper:   http.DefaultTransport,
-		ProxyAddress:   ucp.options.Address,
-		UCPNativeProxy: (plane.Properties.Kind == rest.PlaneKindUCPNative),
+		RoundTripper:     http.DefaultTransport,
+		ProxyAddress:     ucp.options.Address,
+		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
 	}
 
 	// As per https://github.com/golang/go/issues/28940#issuecomment-441749380, the way to check
@@ -218,6 +229,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
+		PlaneKind:  plane.Properties.Kind,
 		PlaneID:    planePath,
 		HTTPScheme: httpScheme,
 		// The Host field in the request that the client makes to UCP contains the UCP Host address
