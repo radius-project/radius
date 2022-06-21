@@ -36,7 +36,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	outputResources := []outputresource.OutputResource{}
-	//resource := options.Resource
+	application := route.Properties.Application
 
 	// What values do we check for to see if route.Properties.Port does not exist??
 	if route.Properties.Port == 0 {
@@ -45,13 +45,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: kubernetes.MakeResourceName(route.Properties.Application, route.Name),
+			Value: kubernetes.MakeResourceName(application, route.Name),
 		},
 		"port": {
 			Value: route.Properties.Port,
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(route.Properties.Application, route.Name), route.Properties.Port),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(application, route.Name), route.Properties.Port),
 		},
 		"scheme": {
 			Value: "http",
@@ -77,7 +77,7 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute) outputresource.Output
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(application, route.Name),
-			Namespace: route.Properties.Application,
+			Namespace: application,
 			Labels:    kubernetes.MakeDescriptiveLabels(application, route.Name),
 		},
 		Spec: corev1.ServiceSpec{
