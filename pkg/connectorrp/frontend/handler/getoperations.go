@@ -226,6 +226,16 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/listsecrets",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "List extender secrets",
+					Description: "Lists extender secrets.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }

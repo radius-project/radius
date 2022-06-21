@@ -18,20 +18,20 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*ListSecretsExtender)(nil)
+var _ ctrl.Controller = (*ListExtenderSecrets)(nil)
 
 // ListSecretsExtender is the controller implementation to list secrets for the to access the connected extender resource resource id passed in the request body.
-type ListSecretsExtender struct {
+type ListExtenderSecrets struct {
 	ctrl.BaseController
 }
 
 // NewListSecretsExtender creates a new instance of ListSecretsExtender.
-func NewListSecretsExtender(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &ListSecretsExtender{ctrl.NewBaseController(ds, sm)}, nil
+func NewListExtenderSecrets(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &ListExtenderSecrets{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 // Run returns secrets values for the specified Extender resource
-func (ctrl *ListSecretsExtender) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (ctrl *ListExtenderSecrets) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.Extender{}

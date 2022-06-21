@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -22,27 +23,34 @@ import (
 )
 
 func TestListSecrets_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+		mctrl := gomock.NewController(t)
+		mds := store.NewMockStorageClient(mctrl)
+		msm := statusmanager.NewMockStatusManager(mctrl)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mds, msm
+	}
 	ctx := context.Background()
 
 	_, extenderDataModel, _ := getTestModels20220315privatepreview()
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
+		teardownTest, mds, msm := setupTest(t)
+		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
-		mStorageClient.
+		mds.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewListSecretsExtender(mStorageClient, nil)
+		ctl, err := NewListExtenderSecrets(mds, msm)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -52,11 +60,13 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
+		teardownTest, mds, msm := setupTest(t)
+		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
-		mStorageClient.
+		mds.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -66,7 +76,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListSecretsExtender(mStorageClient, nil)
+		ctl, err := NewListExtenderSecrets(mds, msm)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -83,17 +93,19 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
+		teardownTest, mds, msm := setupTest(t)
+		defer teardownTest(t)
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
-		mStorageClient.
+		mds.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		ctl, err := NewListSecretsExtender(mStorageClient, nil)
+		ctl, err := NewListExtenderSecrets(mds, msm)
 
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, req)

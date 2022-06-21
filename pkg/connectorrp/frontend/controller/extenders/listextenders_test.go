@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -23,20 +24,27 @@ import (
 )
 
 func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+		mctrl := gomock.NewController(t)
+		mds := store.NewMockStorageClient(mctrl)
+		msm := statusmanager.NewMockStatusManager(mctrl)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mds, msm
+	}
 	ctx := context.Background()
 
 	_, extenderDataModel, expectedOutput := getTestModels20220315privatepreview()
 
 	t.Run("empty list", func(t *testing.T) {
+		teardownTest, mds, msm := setupTest(t)
+		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
-		mStorageClient.
+		mds.
 			EXPECT().
 			Query(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -45,7 +53,7 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListExtenders(mStorageClient, nil)
+		ctl, err := NewListExtenders(mds, msm)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -73,6 +81,8 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(fmt.Sprint(testCase.description), func(t *testing.T) {
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 
@@ -98,7 +108,7 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 				items = append(items, item)
 			}
 
-			mStorageClient.
+			mds.
 				EXPECT().
 				Query(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -108,7 +118,7 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListExtenders(mStorageClient, nil)
+			ctl, err := NewListExtenders(mds, msm)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

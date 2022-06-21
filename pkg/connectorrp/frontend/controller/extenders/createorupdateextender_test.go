@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -20,11 +21,15 @@ import (
 )
 
 func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+		mctrl := gomock.NewController(t)
+		mds := store.NewMockStorageClient(mctrl)
+		msm := statusmanager.NewMockStatusManager(mctrl)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mds, msm
+	}
 
 	createNewResourceTestCases := []struct {
 		desc               string
@@ -42,13 +47,15 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
+			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
-			mStorageClient.
+			mds.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -60,7 +67,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
 
 			if !testcase.shouldFail {
-				mStorageClient.
+				mds.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
@@ -70,7 +77,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateExtender(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateExtender(mds, msm)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -104,13 +111,15 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
+			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
-			mStorageClient.
+			mds.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -121,7 +130,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mStorageClient.
+				mds.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
@@ -131,7 +140,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateExtender(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateExtender(mds, msm)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

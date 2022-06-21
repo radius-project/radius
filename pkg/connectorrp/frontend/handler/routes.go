@@ -228,7 +228,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ParentRouter:   extenderResourceRouter.Path("/listsecrets").Subrouter(),
 			ResourceType:   extender_ctrl.ResourceTypeName,
 			Method:         extender_ctrl.OperationListSecret,
-			HandlerFactory: extender_ctrl.NewListSecretsExtender,
+			HandlerFactory: extender_ctrl.NewListExtenderSecrets,
 		},
 	}
 

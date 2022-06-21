@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -21,27 +22,33 @@ import (
 )
 
 func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+		mctrl := gomock.NewController(t)
+		mds := store.NewMockStorageClient(mctrl)
+		msm := statusmanager.NewMockStatusManager(mctrl)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mds, msm
+	}
 
 	t.Parallel()
 
 	t.Run("delete non-existing resource", func(t *testing.T) {
+		teardownTest, mds, msm := setupTest(t)
+		defer teardownTest(t)
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
-		mStorageClient.
+		mds.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewDeleteExtender(mStorageClient, nil)
+		ctl, err := NewDeleteExtender(mds, msm)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -76,15 +83,17 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range existingResourceDeleteTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
 			req.Header.Set("If-Match", testcase.ifMatchETag)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 			_, extenderDataModel, _ := getTestModels20220315privatepreview()
 
-			mStorageClient.
+			mds.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -95,7 +104,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mStorageClient.
+				mds.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, id string, _ ...store.DeleteOptions) error {
@@ -103,7 +112,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewDeleteExtender(mStorageClient, nil)
+			ctl, err := NewDeleteExtender(mds, msm)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)

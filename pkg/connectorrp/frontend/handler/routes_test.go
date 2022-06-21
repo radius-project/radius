@@ -139,8 +139,8 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
+		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender/listsecrets?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPost,
 		isAzureAPI: false,
 	},
 }
