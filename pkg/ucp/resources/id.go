@@ -224,7 +224,7 @@ func (ri ID) ValidateResourceType(t KnownType) error {
 			return invalidType(ri.id)
 		}
 
-		// A resource was expected and this a collection.
+		// A resource was expected and this is a collection.
 		if rt.Name != "" && ri.typeSegments[i].Name == "" {
 			return invalidType(ri.id)
 		}

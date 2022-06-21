@@ -10,10 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-const (
-	ResourceType = "Applications.Connector/mongoDatabases" // use controller.ResourceTypeName instead
-)
-
 var AzureCosmosMongoResourceType = resources.KnownType{
 	Types: []resources.TypeSegment{
 		{
