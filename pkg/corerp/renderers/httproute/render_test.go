@@ -7,6 +7,7 @@ package httproute
 
 import (
 	"context"
+<<<<<<< HEAD
 	"fmt"
 	"strings"
 	"testing"
@@ -17,6 +18,20 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
+=======
+	"encoding/json"
+	"fmt"
+	"testing"
+
+	"github.com/go-logr/logr"
+	//"github.com/project-radius/radius/pkg/azure/radclient"
+
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/renderers"
+>>>>>>> 7b2d8678 (updates to align with changes in main container renderer)
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +41,10 @@ import (
 const (
 	applicationName = "test-application"
 	resourceName    = "test-route"
+<<<<<<< HEAD
 	applicationPath = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
+=======
+>>>>>>> 7b2d8678 (updates to align with changes in main container renderer)
 )
 
 func createContext(t *testing.T) context.Context {
@@ -41,7 +59,12 @@ func createContext(t *testing.T) context.Context {
 func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
 
+<<<<<<< HEAD
 	dependencies, _, err := r.GetDependencyIDs(createContext(t), datamodel.HTTPRoute{})
+=======
+	resource := renderers.RendererResource{}
+	dependencies, _, err := r.GetDependencyIDs(createContext(t), resource)
+>>>>>>> 7b2d8678 (updates to align with changes in main container renderer)
 	require.NoError(t, err)
 	require.Empty(t, dependencies)
 }
@@ -51,10 +74,20 @@ func Test_Render_WithPort(t *testing.T) {
 	var port int32 = 6379
 
 	dependencies := map[string]renderers.RendererDependency{}
+<<<<<<< HEAD
 	properties := makeHTTPRouteProperties(port)
 	resource := makeResource(t, &properties)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{}})
+=======
+	properties := datamodel.HTTPRouteProperties{}
+	properties.Port = port
+	dm := datamodel.HTTPRoute{Properties: properties}
+
+	resource := makeResource(t, properties)
+
+	output, err := r.Render(context.Background(), renderers.RenderOptions{Resource: resource, Dependencies: dependencies, Runtime: renderers.RuntimeOptions{}}, dm)
+>>>>>>> 7b2d8678 (updates to align with changes in main container renderer)
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
