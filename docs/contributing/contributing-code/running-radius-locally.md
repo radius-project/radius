@@ -180,7 +180,9 @@ OR opening VSCode inside of the DeploymentEngine repo and adding the following c
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"
-            }
+            },
+            "launchSettingsProfile": "DeploymentEngine",
+            "launchSettingsFilePath": "${workspaceFolder}/src/DeploymentEngine/Properties/launchSettings.json"
         }
     ]
 ```
