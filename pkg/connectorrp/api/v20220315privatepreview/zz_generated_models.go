@@ -1100,6 +1100,112 @@ type ExtendersListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// GenericResource - Generic resource
+type GenericResource struct {
+	TrackedResource
+	// Any object
+	ResourceProperties map[string]interface{} `json:"resourceProperties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GenericResource.
+func (g GenericResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	g.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "resourceProperties", g.ResourceProperties)
+	populate(objectMap, "systemData", g.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type GenericResource.
+func (g *GenericResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "resourceProperties":
+				err = unpopulate(val, &g.ResourceProperties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &g.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := g.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+type GenericResourceProperties struct {
+	PropertyKey *string `json:"propertyKey,omitempty"`
+
+	// Any object
+	PropertyValue map[string]interface{} `json:"propertyValue,omitempty"`
+}
+
+// GenericResourceSecrets - The secret values for the given generic resource
+type GenericResourceSecrets struct {
+	// Connection string used to connect to the target generic resource
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target generic resource
+	Password *string `json:"password,omitempty"`
+
+	// Username to use when connecting to the target generic resource
+	Username *string `json:"username,omitempty"`
+}
+
+// GenericResourcesCreateOrUpdateOptions contains the optional parameters for the GenericResources.CreateOrUpdate method.
+type GenericResourcesCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GenericResourcesDeleteOptions contains the optional parameters for the GenericResources.Delete method.
+type GenericResourcesDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GenericResourcesGetOptions contains the optional parameters for the GenericResources.Get method.
+type GenericResourcesGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GenericResourcesList - Object that includes an array of GenericResources and a possible link for next set
+type GenericResourcesList struct {
+	// The link used to fetch the next page of resource list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// List of GenericResources resources
+	Value []*GenericResource `json:"value,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GenericResourcesList.
+func (g GenericResourcesList) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "nextLink", g.NextLink)
+	populate(objectMap, "value", g.Value)
+	return json.Marshal(objectMap)
+}
+
+// GenericResourcesListByRootScopeOptions contains the optional parameters for the GenericResources.ListByRootScope method.
+type GenericResourcesListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GenericResourcesListSecretsOptions contains the optional parameters for the GenericResources.ListSecrets method.
+type GenericResourcesListSecretsOptions struct {
+	// placeholder for future optional parameters
+}
+
 // MongoDatabaseList - Object that includes an array of MongoDatabase and a possible link for next set
 type MongoDatabaseList struct {
 	// The link used to fetch the next page of MongoDatabase list.
