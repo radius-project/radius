@@ -18,11 +18,15 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
 const (
-	InvalidRequestContentCode   = "InvalidRequestContent"
-	InvalidObjectPropertiesCode = "InvalidObjectProperties"
+	APIVersionQueryKey = "api-version"
+)
+
+var (
+	ErrUndefinedRoute = errors.New("undefined route path")
 )
 
 // ValidationError represents a validation error.
@@ -49,19 +53,16 @@ type validator struct {
 	paramCacheMu *sync.RWMutex
 }
 
-// getParam looks up the correct spec.Parameter which a unique parameter is defined by a combination
+// findParam looks up the correct spec.Parameter which a unique parameter is defined by a combination
 // of a [name](#parameterName) and [location](#parameterIn). This spec.Parameter are loaded from swagger
 // file and consumed by middleware.NewUntypedRequestBinder. To fetch spec.Parameter, we need to get
-// the case-sensitive route path which is defined in swagger file. getParam first gets route defined
+// the case-sensitive route path which is defined in swagger file. findParam first gets route defined
 // by gorilla mux, replace {rootScope:.*} in gorilla mux route with {rootScope} and iterate the loaded
 // parameters from swagger file to find the matched route path defined in swagger file. Then it caches
-// spec.Parameter for the next lookup.
-func (v *validator) getParam(req *http.Request) (map[string]spec.Parameter, error) {
-	route := mux.CurrentRoute(req)
-	if route == nil {
-		return nil, errors.New("route is nil")
-	}
+// spec.Parameter for the next lookup to improve the performance.
+func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, error) {
 	// Fetch gorilla mux route path from the current request.
+	route := mux.CurrentRoute(req)
 	pathTemplate, err := route.GetPathTemplate()
 	if err != nil {
 		return nil, err
@@ -76,6 +77,11 @@ func (v *validator) getParam(req *http.Request) (map[string]spec.Parameter, erro
 
 	v.paramCacheMu.Lock()
 	defer v.paramCacheMu.Unlock()
+	// Return immediately if the previous call fills the cache.
+	p, ok = v.paramCache[pathTemplate]
+	if ok {
+		return p, nil
+	}
 
 	// Gorilla mux route path should start with {rootScope:.*} to handle UCP and Azure root scope.
 	scopePath := strings.Replace(pathTemplate, "{rootScope:.*}", "{rootScope}", 1)
@@ -90,7 +96,7 @@ func (v *validator) getParam(req *http.Request) (map[string]spec.Parameter, erro
 		v.paramCache[pathTemplate] = param
 		return v.paramCache[pathTemplate], nil
 	}
-	return nil, ErrUndefinedAPI
+	return nil, ErrUndefinedRoute
 }
 
 // toRouteParams converts gorilla mux params to go-openapi RouteParams to validate parameters.
@@ -98,6 +104,10 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	params := mux.Vars(req)
 
 	routeParams := middleware.RouteParams{}
+	apiVersion := req.URL.Query().Get(APIVersionQueryKey)
+	if apiVersion != "" {
+		routeParams = append(routeParams, middleware.RouteParam{Name: APIVersionQueryKey, Value: apiVersion})
+	}
 	for k, v := range params {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: v})
 	}
@@ -108,7 +118,7 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 // ValidateRequest validates http.Request and returns ValidationError if the request is invalid.
 func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	routeParams := v.toRouteParams(req)
-	params, err := v.getParam(req)
+	params, err := v.findParam(req)
 	if err != nil {
 		return routePathParseError(err)
 	}
@@ -126,7 +136,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 
 func routePathParseError(err error) []ValidationError {
 	return []ValidationError{{
-		Code:    InvalidRequestContentCode,
+		Code:    armerrors.InvalidRequestContent,
 		Message: "failed to parse route: " + err.Error(),
 	}}
 }
@@ -138,17 +148,23 @@ func parseResult(result error) []ValidationError {
 		valErr, ok := e.(*oai_errors.Validation)
 		if ok {
 			ve := ValidationError{
+				Code:    armerrors.InvalidRequestContent,
 				Message: valErr.Error(),
 			}
 
 			if valErr.In == "body" {
 				period := strings.Index(valErr.Name, ".")
 				if period < 0 {
-					ve.Code = InvalidRequestContentCode
-					ve.Message = "The request content was invalid and could not be deserialized."
+					// invalid json body.
+					if valErr.Code() == oai_errors.InvalidTypeCode {
+						ve.Message = "The request content was invalid and could not be deserialized."
+					}
 				} else {
+					// go-openapi returns the error position "EnvironmentResource.properties.compute.kind" starting with
+					// definition name of the body schema. This replaces the definition name with $ to avoid the confusion.
+					// For example, "EnvironmentResource.properties.compute.kind" -> "$.properties.compute.kind"
 					name := valErr.Name[:period]
-					ve.Code = InvalidObjectPropertiesCode
+					ve.Code = armerrors.InvalidProperties
 					ve.Message = strings.ReplaceAll(ve.Message, name, "$")
 				}
 			}

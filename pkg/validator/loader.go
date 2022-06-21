@@ -19,23 +19,24 @@ import (
 
 var (
 	ErrSpecDocumentNotFound = errors.New("not found OpenAPI specification document")
-	ErrUndefinedAPI         = errors.New("undefined API")
 )
 
 // NewLoader creates OpenAPI spec loader.
 func NewLoader(providerName string, specs fs.FS) *Loader {
 	return &Loader{
-		providerName: providerName,
-		validators:   map[string]validator{},
-		specFiles:    specs,
+		providerName:      providerName,
+		validators:        map[string]validator{},
+		supportedVersions: map[string][]string{},
+		specFiles:         specs,
 	}
 }
 
 // Loader is the OpenAPI spec loader implementation.
 type Loader struct {
-	validators   map[string]validator
-	providerName string
-	specFiles    fs.FS
+	validators        map[string]validator
+	supportedVersions map[string][]string
+	providerName      string
+	specFiles         fs.FS
 }
 
 // Name returns the name of loader.
@@ -43,12 +44,17 @@ func (l *Loader) Name() string {
 	return l.providerName
 }
 
+// SupportedVersions returns supported api version for resource type
+func (l *Loader) SupportedVersions(resourceType string) []string {
+	return l.supportedVersions[resourceType]
+}
+
 // GetValidator returns the cached validator.
 func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 	// ARM types are compared case-insensitively
-	validator, ok := l.validators[getValidatorKey(resourceType, version)]
+	v, ok := l.validators[getValidatorKey(resourceType, version)]
 	if ok {
-		return &validator, true
+		return &v, true
 	}
 	return nil, false
 }
@@ -97,14 +103,16 @@ func (l *Loader) LoadSpec() error {
 			return err
 		}
 
-		key := getValidatorKey(parsed["resourcetype"], parsed["version"])
+		qualifiedType := parsed["provider"] + "/" + parsed["resourcetype"]
+		key := getValidatorKey(qualifiedType, parsed["version"])
 		l.validators[key] = validator{
-			TypeName:     parsed["provider"] + "/" + parsed["resourcetype"],
+			TypeName:     qualifiedType,
 			APIVersion:   parsed["version"],
 			specDoc:      wDoc,
 			paramCache:   make(map[string]map[string]spec.Parameter),
 			paramCacheMu: &sync.RWMutex{},
 		}
+		l.supportedVersions[qualifiedType] = append(l.supportedVersions[qualifiedType], parsed["version"])
 
 		return nil
 	})
@@ -117,7 +125,7 @@ func (l *Loader) LoadSpec() error {
 }
 
 func getValidatorKey(resourceType, version string) string {
-	return strings.ToLower(strings.Join([]string{resourceType, version}, "-"))
+	return strings.ToLower(resourceType + "-" + version)
 }
 
 func parseSpecFilePath(path string) map[string]string {

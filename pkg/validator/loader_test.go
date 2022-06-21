@@ -18,9 +18,9 @@ func TestGetValidatorKey(t *testing.T) {
 		version      string
 		expected     string
 	}{
-		{"applications.core", "2022-03-15-privatepreview", "applications.core-2022-03-15-privatepreview"},
-		{"applications.Core", "2022-03-15-privatepreview", "applications.core-2022-03-15-privatepreview"},
-		{"Applications.Core", "2022-03-15-privatepreview", "applications.core-2022-03-15-privatepreview"},
+		{"applications.core/environments", "2022-03-15-privatepreview", "applications.core/environments-2022-03-15-privatepreview"},
+		{"applications.Core/environments", "2022-03-15-privatepreview", "applications.core/environments-2022-03-15-privatepreview"},
+		{"Applications.Core/environments", "2022-03-15-privatepreview", "applications.core/environments-2022-03-15-privatepreview"},
 	}
 
 	for _, tt := range keyTests {
@@ -40,7 +40,7 @@ func TestParseSpecFilePath(t *testing.T) {
 				"provider":     "applications.core",
 				"state":        "preview",
 				"version":      "2022-03-15-privatepreview",
-				"resourcetype": "environments",
+				"resourcetype": "applications.core/environments",
 			},
 		},
 		{
@@ -50,7 +50,7 @@ func TestParseSpecFilePath(t *testing.T) {
 				"provider":     "applications.core",
 				"state":        "stable",
 				"version":      "2022-03-15",
-				"resourcetype": "gateways",
+				"resourcetype": "applications.core/gateways",
 			},
 		},
 	}
