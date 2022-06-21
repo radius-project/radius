@@ -9,8 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"strings"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -70,8 +68,6 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions, d
 }
 
 func (r *Renderer) makeService(resource renderers.RendererResource, routeProp *datamodel.HTTPRouteProperties) outputresource.OutputResource {
-	typeParts := strings.Split(resource.ResourceType, "/")
-	resourceType := typeParts[len(typeParts)-1]
 
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -84,13 +80,13 @@ func (r *Renderer) makeService(resource renderers.RendererResource, routeProp *d
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, resourceType, resource.ResourceName),
+			Selector: kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, resource.ResourceType, resource.ResourceName),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       resource.ResourceName,
 					Port:       routeProp.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName)),
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resource.ResourceType + resource.ResourceName)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
