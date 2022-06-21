@@ -87,6 +87,7 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	// Check if trafficsplit properties are configured for this HttpRoute. If yes, a TrafficSplit object will be created.
 	if len(route.Routes) > 0 {
 		trafficsplit = r.makeTrafficSplit(resource, route, options)
+		trafficsplit.LocalID = "TrafficSplit"
 		outputs = append(outputs, trafficsplit)
 	}
 	return renderers.RendererOutput{
