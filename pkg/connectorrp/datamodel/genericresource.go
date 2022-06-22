@@ -9,8 +9,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
-// GenericResource represents Generic resource
-type GenericResource struct {
+// GenericResourceVersionAgnostic represents Generic resource
+type GenericResourceVersionAgnostic struct {
 	v1.TrackedResource
 	// Any object
 	ResourceProperties map[string]interface{} `json:"resourceProperties,omitempty"`
@@ -19,6 +19,6 @@ type GenericResource struct {
 	SystemData v1.SystemData `json:"systemData,omitempty" azure:"ro"`
 }
 
-func (gr GenericResource) ResourceTypeName() string {
+func (gr GenericResourceVersionAgnostic) ResourceTypeName() string {
 	return "Generic Resource"
 }
