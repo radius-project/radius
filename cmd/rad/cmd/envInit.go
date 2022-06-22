@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/featureflag"
 )
 
@@ -194,7 +196,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	step := output.BeginStep("Installing Radius...")
-	if helm.InstallOnCluster(cmd.Context(), clusterOptions, k8sGoClient, runtimeClient) != nil {
+	if err := helm.InstallOnCluster(cmd.Context(), clusterOptions, k8sGoClient, runtimeClient); err != nil {
 		return err
 	}
 
@@ -207,7 +209,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			return err
 		}
 		env.Items[environmentName]["scope"] = ucpRgId
-		ucpEnvId, err := createEnvironmentResource(contextName, ucpRgName, environmentName)
+		ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName)
 		if err != nil {
 			return err
 		}
@@ -271,41 +273,27 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, erro
 	return jsonBody["id"].(string), nil
 }
 
-func createEnvironmentResource(kubeCtxName, resourceGroupName, environmentName string) (string, error) {
-	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
-		"",
-		"",
-		kubeCtxName,
-		featureflag.EnableUnifiedControlPlane.IsActive(),
-	)
+func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string) (string, error) {
+	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "")
 	if err != nil {
 		return "", err
 	}
 
-	createEnvRequest, err := http.NewRequest(
-		http.MethodPut,
-		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s?api-version=%s", baseUrl, resourceGroupName, environmentName, CORE_RP_API_VERSION),
-		strings.NewReader(`{"properties":{"compute":{"kind":""}}}`),
-	)
-	createEnvRequest.Header.Add("Content-Type", "application/json")
+	toCreate := coreRpApps.EnvironmentResource{
+		Properties: &coreRpApps.EnvironmentProperties{
+			Compute: &coreRpApps.EnvironmentCompute{
+				Kind: coreRpApps.EnvironmentComputeKindKubernetes.ToPtr(),
+			},
+		},
+	}
+
+	rootScope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", resourceGroupName)
+	c := coreRpApps.NewEnvironmentsClient(conn, rootScope)
+	resp, err := c.CreateOrUpdate(ctx, environmentName, toCreate, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
 	}
-	resp, err := rt.RoundTrip(createEnvRequest)
-	if err != nil {
-		return "", fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK { //shouldn't it be http.StatusCreated for consistency with rg?
-		return "", fmt.Errorf("request to create Applications.Core/environments resource failed with status: %d, request: %+v", resp.StatusCode, resp)
-	}
-	defer resp.Body.Close()
-	var jsonBody map[string]interface{}
-	if json.NewDecoder(resp.Body).Decode(&jsonBody) != nil {
-		return "", nil
-	}
-
-	return jsonBody["id"].(string), nil
+	return *resp.ID, nil
 }
 
 func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {

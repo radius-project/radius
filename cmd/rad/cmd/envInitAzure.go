@@ -492,7 +492,7 @@ func connect(ctx context.Context, environmentName string, subscriptionID string,
 			return err
 		}
 		scope = ucpRgId
-		ucpEnvId, err = createEnvironmentResource(clusterName, ucpRgName, environmentName)
+		ucpEnvId, err = createEnvironmentResource(ctx, clusterName, ucpRgName, environmentName)
 		if err != nil {
 			return err
 		}
