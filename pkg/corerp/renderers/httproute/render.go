@@ -42,9 +42,11 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 	applicationName := appId.Name()
 
-	// What values do we check for to see if route.Properties.Port does not exist??
-	if route.Properties.Port == 0 {
-		route.Properties.Port = kubernetes.GetDefaultPort()
+	if route.Properties == nil || route.Properties.Port == 0 {
+		defaultPort := kubernetes.GetDefaultPort()
+		route.Properties = &datamodel.HTTPRouteProperties{
+			Port: defaultPort,
+		}
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
@@ -62,7 +64,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		},
 	}
 
-	service, err := r.makeService(&route)
+	service, err := r.makeService(&route, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -74,7 +76,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}, nil
 }
 
-func (r *Renderer) makeService(route *datamodel.HTTPRoute) (outputresource.OutputResource, error) {
+func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
 
 	appId, err := resources.Parse(route.Properties.Application)
 	if err != nil {
@@ -89,7 +91,7 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute) (outputresource.Outpu
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, route.Name),
-			Namespace: applicationName,
+			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
 		},
 		Spec: corev1.ServiceSpec{
