@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -119,6 +120,7 @@ type LegacyManagementClient interface {
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error)
+	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

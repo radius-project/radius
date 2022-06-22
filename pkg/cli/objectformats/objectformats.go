@@ -90,10 +90,6 @@ func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 				Heading:  "KIND",
 				JSONPath: "{ .Kind }",
 			},
-			{
-				Heading:  "DEFAULT APPLICATION",
-				JSONPath: "{ .DefaultApplication }",
-			},
 		},
 	}
 }

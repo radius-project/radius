@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azureresources"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 type ARMApplicationsManagementClient struct {
@@ -55,4 +56,20 @@ func (um *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx con
 		resourceListByApplication = append(resourceListByApplication, resourceList...)
 	}
 	return resourceListByApplication, nil
+}
+
+func (um *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
+
+	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	envListPager := envClient.ListByScope(&corerp.EnvironmentsListByScopeOptions{})
+	envResourceList := []corerp.EnvironmentResource{}
+	for envListPager.NextPage(ctx) {
+		currEnvPage := envListPager.PageResponse().EnvironmentResourceList.Value
+		for _, env := range currEnvPage {
+			envResourceList = append(envResourceList, *env)
+		}
+	}
+
+	return envResourceList, nil
+
 }
