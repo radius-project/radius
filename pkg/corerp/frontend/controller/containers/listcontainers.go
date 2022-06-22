@@ -26,7 +26,7 @@ type ListContainers struct {
 	ctrl.BaseController
 }
 
-// NewListContainers creates a new instance of ListContainer.
+// NewListContainers creates a new instance of ListContainers.
 func NewListContainers(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
 	return &ListContainers{ctrl.NewBaseController(ds, sm)}, nil
 }
