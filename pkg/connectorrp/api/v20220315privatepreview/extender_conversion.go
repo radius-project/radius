@@ -6,8 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"reflect"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -17,10 +15,6 @@ import (
 
 // ConvertTo converts from the versioned Extender resource to version-agnostic datamodel.
 func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
-	outputResources := v1.ResourceStatus{}.OutputResources
-	if src.Properties.Status != nil {
-		outputResources = src.Properties.Status.OutputResources
-	}
 	converted := &datamodel.Extender{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -32,7 +26,7 @@ func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
 		Properties: datamodel.ExtenderProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: v1.ResourceStatus{
-					OutputResources: outputResources,
+					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
 				},
 			},
 			ProvisioningState:    toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -61,14 +55,10 @@ func (dst *ExtenderResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.SystemData = fromSystemDataModel(extender.SystemData)
 	dst.Location = to.StringPtr(extender.Location)
 	dst.Tags = *to.StringMapPtr(extender.Tags)
-	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(extender.Properties.Status, v1.ResourceStatus{})) {
-		outputresources = extender.Properties.Status.OutputResources
-	}
 	dst.Properties = &ExtenderProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresources,
+				OutputResources: GetOutputResourcesForDatamodel(&extender.Properties.Status),
 			},
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),

@@ -6,8 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"reflect"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -17,10 +15,6 @@ import (
 
 // ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel.
 func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
-	outputResources := v1.ResourceStatus{}.OutputResources
-	if src.Properties.Status != nil {
-		outputResources = src.Properties.Status.OutputResources
-	}
 	converted := &datamodel.SqlDatabase{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -32,7 +26,7 @@ func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: v1.ResourceStatus{
-					OutputResources: outputResources,
+					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
 				},
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -62,14 +56,10 @@ func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.SystemData = fromSystemDataModel(sql.SystemData)
 	dst.Location = to.StringPtr(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
-	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(sql.Properties.Status, v1.ResourceStatus{})) {
-		outputresources = sql.Properties.Status.OutputResources
-	}
 	dst.Properties = &SQLDatabaseProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresources,
+				OutputResources: GetOutputResourcesForDatamodel(&sql.Properties.Status),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
