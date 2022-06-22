@@ -144,7 +144,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resourceName),
-			Namespace: applicationName,
+			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 		},
 		Spec: contourv1.HTTPProxySpec{
