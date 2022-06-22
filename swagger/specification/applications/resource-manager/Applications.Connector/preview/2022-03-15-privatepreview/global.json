@@ -95,14 +95,6 @@
       "type": "string",
       "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
       "minLength": 1
-    },
-    "ResourceType": {
-      "name": "resourceType",
-      "in": "path",
-      "required": true,
-      "type": "string",
-      "description": "The azure resource type. For example RedisCache, RabbitMQ and other",
-      "minLength": 1
     }
   },
   "paths": {
