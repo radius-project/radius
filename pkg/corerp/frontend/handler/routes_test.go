@@ -71,6 +71,10 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/gateways?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
 		url:        "/providers/applications.core/operations?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: true,
@@ -78,6 +82,18 @@ var handlerTests = []struct {
 		url:        "/subscriptions/00000000-0000-0000-0000-000000000000?api-version=2.0",
 		method:     http.MethodPut,
 		isAzureAPI: true,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
 	},
 }
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,9 +23,8 @@ func Test_ParseInvalidIDs(t *testing.T) {
 		"/subscriptions/{%s}/resourceGroups/{%s}/ddproviders/Microsoft.CustomProviders/resourceProviders",
 		"/subscriptions/{%s}/resourceGroups//providers/Microsoft.CustomProviders/resourceProviders",
 		"/subscriptions/{%s}/resourceGroups/providers/Microsoft.CustomProviders/resourceProviders",
-		"ucp:/",
-		"ucp:/planes/radius",
-		"ucp:/planes/radius/local/resourceGroups//providers/Microsoft.CustomProviders/resourceProviders",
+		"/planes/radius",
+		"/planes/radius/local/resourceGroups//providers/Microsoft.CustomProviders/resourceProviders",
 	}
 
 	for i, v := range values {
@@ -56,8 +56,8 @@ func Test_ParseValidIDs(t *testing.T) {
 			provider: "Microsoft.CustomProviders/resourceProviders",
 		},
 		{
-			id:       "ucp:/planes",
-			expected: "ucp:/planes",
+			id:       "/planes",
+			expected: "/planes",
 			scopes:   []ScopeSegment{},
 			types:    []TypeSegment{},
 			provider: "",
@@ -202,8 +202,8 @@ func Test_ParseValidIDs(t *testing.T) {
 			provider: "Microsoft.CustomProviders/resourceProviders",
 		},
 		{
-			id:       "ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers/test",
-			expected: "ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers/test",
+			id:       "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers/test",
+			expected: "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers/test",
 			scopes: []ScopeSegment{
 				{Type: "azure", Name: "azurecloud"},
 				{Type: "subscriptions", Name: "s1"},
@@ -217,8 +217,8 @@ func Test_ParseValidIDs(t *testing.T) {
 			provider: "Microsoft.CustomProviders/resourceProviders",
 		},
 		{
-			id:       "ucp:/planes/radius/local/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
-			expected: "ucp:/planes/radius/local/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
+			id:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
+			expected: "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
 			scopes: []ScopeSegment{
 				{Type: "radius", Name: "local"},
 				{Type: "resourceGroups", Name: "r1"},
@@ -229,8 +229,8 @@ func Test_ParseValidIDs(t *testing.T) {
 			provider: "Applications.Core",
 		},
 		{
-			id:       "ucp:/planes/radius/local/",
-			expected: "ucp:/planes/radius/local",
+			id:       "/planes/radius/local/",
+			expected: "/planes/radius/local",
 			scopes: []ScopeSegment{
 				{Type: "radius", Name: "local"},
 			},
@@ -238,8 +238,8 @@ func Test_ParseValidIDs(t *testing.T) {
 			provider: "",
 		},
 		{
-			id:       "ucp:/planes/radius/local/resourceGroups/r1",
-			expected: "ucp:/planes/radius/local/resourceGroups/r1",
+			id:       "/planes/radius/local/resourceGroups/r1",
+			expected: "/planes/radius/local/resourceGroups/r1",
 			scopes: []ScopeSegment{
 				{Type: "radius", Name: "local"},
 				{Type: "resourceGroups", Name: "r1"},
@@ -349,11 +349,11 @@ func Test_Append_Collection(t *testing.T) {
 }
 
 func Test_Append_Collection_UCP(t *testing.T) {
-	id, err := Parse("ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	id, err := Parse("/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)
 
 	appended := id.Append(TypeSegment{Name: "", Type: "test-resource"})
-	require.Equal(t, "ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/test-resource", appended.id)
+	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/test-resource", appended.id)
 }
 
 func Test_Append_NamedResource(t *testing.T) {
@@ -365,11 +365,11 @@ func Test_Append_NamedResource(t *testing.T) {
 }
 
 func Test_Append_NamedResource_UCP(t *testing.T) {
-	id, err := Parse("ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	id, err := Parse("/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)
 
 	appended := id.Append(TypeSegment{Name: "test-name", Type: "test-resource"})
-	require.Equal(t, "ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/test-resource/test-name", appended.id)
+	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/test-resource/test-name", appended.id)
 }
 
 func Test_Truncate_Success(t *testing.T) {
@@ -381,11 +381,11 @@ func Test_Truncate_Success(t *testing.T) {
 }
 
 func Test_Truncate_Success_UCP(t *testing.T) {
-	id, err := Parse("ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	id, err := Parse("/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)
 
 	truncated := id.Truncate()
-	require.Equal(t, "ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius", truncated.id)
+	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius", truncated.id)
 }
 
 func Test_Truncate_ReturnsSelfForTopLevelResource(t *testing.T) {
@@ -397,15 +397,15 @@ func Test_Truncate_ReturnsSelfForTopLevelResource(t *testing.T) {
 }
 
 func Test_Truncate_ReturnsSelfForTopLevelResource_UCP(t *testing.T) {
-	id, err := Parse("ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius")
+	id, err := Parse("/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius")
 	require.NoError(t, err)
 
 	truncated := id.Truncate()
-	require.Equal(t, "ucp:/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius", truncated.id)
+	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius", truncated.id)
 }
 
 func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
-	idStr := "ucp:/planes/radius/local/"
+	idStr := "/planes/radius/local/"
 	id, err := Parse(idStr)
 	require.NoError(t, err, "URL parsing failed")
 
@@ -414,4 +414,177 @@ func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
 
 	routingScope := id.RoutingScope()
 	require.Equal(t, "", routingScope)
+}
+
+func TestPlaneNamespace(t *testing.T) {
+	tests := []struct {
+		desc     string
+		id       string
+		parseErr bool
+		plane    string
+	}{
+		{
+			"empty-id",
+			"",
+			true,
+			"",
+		},
+		{
+			"arm-container-resource",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/test-container-0",
+			false,
+			"",
+		},
+		{
+			"ucp-invalid-resource",
+			"/planes/radius",
+			true,
+			"",
+		},
+		{
+			"ucp-valid-resource",
+			"/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/containers/test-container-0",
+			false,
+			"radius/local",
+		},
+		{
+			"ucp-missing-plane-name",
+			"/planes/radius/resourceGroups/radius-test-rg/providers/Applications.Core/containers/test-container-0",
+			true,
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			rID, err := Parse(tt.id)
+			if tt.parseErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.plane, rID.PlaneNamespace())
+		})
+	}
+}
+
+func Test_ValidateResourceType_Valid(t *testing.T) {
+	testID := ID{
+		id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-db",
+		scopeSegments: []ScopeSegment{
+			{Type: "subscriptions", Name: "s1"},
+			{Type: "resourceGroups", Name: "r1"},
+		},
+		typeSegments: []TypeSegment{
+			{Type: "Microsoft.DocumentDB/databaseAccounts", Name: "test-account"},
+			{Type: "mongodbDatabases", Name: "test-db"},
+		},
+	}
+
+	err := testID.ValidateResourceType(KnownType{Types: []TypeSegment{
+		{
+			Type: azresources.DocumentDBDatabaseAccounts,
+			Name: "*",
+		},
+		{
+			Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+			Name: "*",
+		},
+	}})
+	require.NoError(t, err)
+}
+
+func Test_ValidateResourceType_Invalid(t *testing.T) {
+	values := []struct {
+		testID        ID
+		testKnownType KnownType
+	}{
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Microsoft.DocumentDB", Name: "test-account"},
+				},
+			},
+			testKnownType: KnownType{Types: []TypeSegment{
+				{
+					Type: azresources.DocumentDBDatabaseAccounts,
+					Name: "*",
+				},
+				{
+					Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+					Name: "*",
+				},
+			}},
+		},
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/mongodbDatabases/test-db",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Microsoft.DocumentDB", Name: ""},
+					{Type: "mongodbDatabases", Name: "test-db"},
+				},
+			},
+			testKnownType: KnownType{Types: []TypeSegment{
+				{
+					Type: azresources.DocumentDBDatabaseAccounts,
+					Name: "*",
+				},
+				{
+					Type: azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+					Name: "*",
+				},
+			}},
+		},
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Microsoft.DocumentDB/databaseAccounts", Name: "test-account"},
+				},
+			},
+			testKnownType: KnownType{Types: []TypeSegment{
+				{
+					Type: azresources.DocumentDBDatabaseAccounts,
+					Name: "",
+				},
+			}},
+		},
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.DocumentDB/databaseAccounts/",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Microsoft.DocumentDB/databaseAccounts", Name: ""},
+				},
+			},
+			testKnownType: KnownType{Types: []TypeSegment{
+				{
+					Type: azresources.DocumentDBDatabaseAccounts,
+					Name: "test-account",
+				},
+			}},
+		},
+	}
+
+	for i, v := range values {
+		t.Run(fmt.Sprintf("%d: %v", i, v.testID.id), func(t *testing.T) {
+			err := v.testID.ValidateResourceType(v.testKnownType)
+			require.Errorf(t, err, "resource '%s' does not match the expected resource type %s", v.testID.id)
+		})
+	}
 }

@@ -30,7 +30,7 @@ func GetApplicationTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetApplicationStatusTableFormat() output.FormatterOptions {
+func GetApplicationStatusTableFormatOld() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
@@ -53,7 +53,7 @@ func GetApplicationStatusTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetApplicationGatewaysTableFormat() output.FormatterOptions {
+func GetApplicationGatewaysTableFormatOld() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
@@ -68,7 +68,7 @@ func GetApplicationGatewaysTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetResourceTableFormat() output.FormatterOptions {
+func GetResourceTableFormatOld() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
@@ -97,6 +97,21 @@ func GetResourceTableFormat() output.FormatterOptions {
 			{
 				Heading:  "HEALTH_STATE",
 				JSONPath: "{ .properties.status.healthState }",
+			},
+		},
+	}
+}
+
+func GetResourceTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "RESOURCE",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "TYPE",
+				JSONPath: "{ .Type }",
 			},
 		},
 	}

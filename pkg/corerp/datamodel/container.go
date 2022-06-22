@@ -6,6 +6,8 @@
 package datamodel
 
 import (
+	"encoding/json"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
@@ -120,10 +122,10 @@ type HealthProbePropertiesClassification interface {
 
 // HealthProbeProperties - Properties for readiness/liveness probe
 type HealthProbeProperties struct {
-	Kind                string  `json:"kind,omitempty"`
-	FailureThreshold    float32 `json:"failureThreshold,omitempty"`
-	InitialDelaySeconds float32 `json:"initialDelaySeconds,omitempty"`
-	PeriodSeconds       float32 `json:"periodSeconds,omitempty"`
+	Kind                string   `json:"kind,omitempty"`
+	FailureThreshold    *float32 `json:"failureThreshold,omitempty"`
+	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       *float32 `json:"periodSeconds,omitempty"`
 }
 
 // ExecHealthProbeProperties - Specifies the properties for readiness/liveness probe using an executable
@@ -148,6 +150,109 @@ type TCPHealthProbeProperties struct {
 
 func (h *HealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties {
 	return h
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type Container.
+func (c *Container) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "env":
+			err = unpopulate(val, &c.Env)
+			delete(rawMsg, key)
+		case "image":
+			err = unpopulate(val, &c.Image)
+			delete(rawMsg, key)
+		case "livenessProbe":
+			c.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+			delete(rawMsg, key)
+		case "ports":
+			err = unpopulate(val, &c.Ports)
+			delete(rawMsg, key)
+		case "readinessProbe":
+			c.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+			delete(rawMsg, key)
+		case "volumes":
+			c.Volumes, err = unmarshalVolumeClassificationMap(val)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func unmarshalVolumeClassification(rawMsg json.RawMessage) (VolumeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b VolumeClassification
+	switch m["kind"] {
+	case "ephemeral":
+		b = &EphemeralVolume{}
+	case "persistent":
+		b = &PersistentVolume{}
+	default:
+		b = &Volume{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalVolumeClassificationMap(rawMsg json.RawMessage) (map[string]VolumeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]VolumeClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalVolumeClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
+func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (HealthProbePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b HealthProbePropertiesClassification
+	switch m["kind"] {
+	case "exec":
+		b = &ExecHealthProbeProperties{}
+	case "httpGet":
+		b = &HTTPGetHealthProbeProperties{}
+	case "tcp":
+		b = &TCPHealthProbeProperties{}
+	default:
+		b = &HealthProbeProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unpopulate(data json.RawMessage, v interface{}) error {
+	if data == nil {
+		return nil
+	}
+	return json.Unmarshal(data, v)
 }
 
 // ExtensionClassification provides polymorphic access to related types.
@@ -186,8 +291,96 @@ func (e Extension) GetExtension() Extension { return e }
 type Kind string
 
 const (
-	KindAzure Kind = "azure"
+	KindAzure                   Kind = "azure"
+	KindAzureComKeyVault        Kind = "azure.com/KeyVault"
+	KindAzureComServiceBusQueue Kind = "azure.com/ServiceBusQueue"
+	KindDaprIoInvokeHTTP        Kind = "dapr.io/InvokeHttp"
+	KindDaprIoPubSubTopic       Kind = "dapr.io/PubSubTopic"
+	KindDaprIoSecretStore       Kind = "dapr.io/SecretStore"
+	KindDaprIoStateStore        Kind = "dapr.io/StateStore"
+	KindGrpc                    Kind = "Grpc"
+	KindHTTP                    Kind = "Http"
+	KindMicrosoftComSQL         Kind = "microsoft.com/SQL"
+	KindMongoComMongoDB         Kind = "mongo.com/MongoDB"
+	KindRabbitmqComMessageQueue Kind = "rabbitmq.com/MessageQueue"
+	KindRedislabsComRedis       Kind = "redislabs.com/Redis"
 )
+
+// Kinds returns the possible values for the Kind const type.
+func Kinds() []Kind {
+	return []Kind{
+		KindAzure,
+		KindAzureComKeyVault,
+		KindAzureComServiceBusQueue,
+		KindDaprIoInvokeHTTP,
+		KindDaprIoPubSubTopic,
+		KindDaprIoSecretStore,
+		KindDaprIoStateStore,
+		KindGrpc,
+		KindHTTP,
+		KindMicrosoftComSQL,
+		KindMongoComMongoDB,
+		KindRabbitmqComMessageQueue,
+		KindRedislabsComRedis,
+	}
+}
+
+func (k Kind) IsValid() bool {
+	s := Kinds()
+	for _, v := range s {
+		if v == k {
+			return true
+		}
+	}
+	return false
+}
+
+func (k Kind) IsKind(kind Kind) bool {
+	return k == kind
+}
+
+type SecretObjectProperties struct {
+	// REQUIRED; The name of the secret
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *SecretObjectPropertiesEncoding `json:"encoding,omitempty"`
+
+	// Secret version
+	Version *string `json:"version,omitempty"`
+}
+
+// SecretObjectPropertiesEncoding - Encoding format. Default utf-8
+type SecretObjectPropertiesEncoding string
+
+const (
+	SecretObjectPropertiesEncodingBase64 SecretObjectPropertiesEncoding = "base64"
+	SecretObjectPropertiesEncodingHex    SecretObjectPropertiesEncoding = "hex"
+	SecretObjectPropertiesEncodingUTF8   SecretObjectPropertiesEncoding = "utf-8"
+)
+
+// SecretObjectPropertiesEncodingValues returns the possible values for the SecretObjectPropertiesEncoding const type.
+func SecretObjectPropertiesEncodingValues() []SecretObjectPropertiesEncoding {
+	return []SecretObjectPropertiesEncoding{
+		SecretObjectPropertiesEncodingBase64,
+		SecretObjectPropertiesEncodingHex,
+		SecretObjectPropertiesEncodingUTF8,
+	}
+}
+
+type KeyObjectProperties struct {
+	// REQUIRED; The name of the key
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Key version
+	Version *string `json:"version,omitempty"`
+}
 
 // IamProperties represents the properties of IAM provider.
 type IamProperties struct {

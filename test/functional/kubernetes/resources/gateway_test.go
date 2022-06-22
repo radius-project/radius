@@ -70,10 +70,8 @@ func Test_Gateway(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetes.ApplicationTest) {
-				// Get hostname from root HTTPProxy
-				// Note: this just gets the hostname from the first root proxy
-				// that it finds. Testing multiple gateways here will not work.
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client)
+				// Get hostname from root HTTPProxy in 'application' namespace
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, at.Options.Client, application)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
@@ -123,17 +121,20 @@ func testGatewayWithPortforward(t *testing.T, ctx context.Context, at kubernetes
 		baseURL := fmt.Sprintf("http://%s:%d", localHostname, localPort)
 		t.Logf("Portforward session active at %s", baseURL)
 
-		if err := testGatewayAvailability(t, hostname, baseURL+"/healthz", 200); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200); err != nil {
+			close(stopChan)
 			return err
 		}
 
 		// Both of these URLs route to the same backend service,
 		// but /backend2 maps to / which allows it to access /healthz
-		if err := testGatewayAvailability(t, hostname, baseURL+"/backend2/healthz", 200); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "backend2/healthz", 200); err != nil {
+			close(stopChan)
 			return err
 		}
 
-		if err := testGatewayAvailability(t, hostname, baseURL+"/backend1/healthz", 404); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "backend1/healthz", 404); err != nil {
+			close(stopChan)
 			return err
 		}
 
@@ -144,8 +145,10 @@ func testGatewayWithPortforward(t *testing.T, ctx context.Context, at kubernetes
 
 }
 
-func testGatewayAvailability(t *testing.T, hostname, url string, expectedStatusCode int) error {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
+	req, err := autorest.Prepare(&http.Request{},
+		autorest.WithBaseURL(baseURL),
+		autorest.WithPath(path))
 	if err != nil {
 		return err
 	}
@@ -153,7 +156,10 @@ func testGatewayAvailability(t *testing.T, hostname, url string, expectedStatusC
 	req.Host = hostname
 
 	// Send requests to backing container via port-forward
-	response, err := autorest.Send(req, autorest.DoErrorUnlessStatusCode(expectedStatusCode), autorest.DoRetryForDuration(retryTimeout, retryBackoff), autorest.WithLogging(functional.NewTestLogger(t)))
+	response, err := autorest.Send(req,
+		autorest.WithLogging(functional.NewTestLogger(t)),
+		autorest.DoErrorUnlessStatusCode(expectedStatusCode),
+		autorest.DoRetryForDuration(retryTimeout, retryBackoff))
 	if err != nil {
 		return err
 	}

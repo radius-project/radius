@@ -27,16 +27,16 @@ const (
 	AzureConnectionARMResourceType = "AzureConnection"
 )
 
-type ARMManagementClient struct {
+type LegacyARMManagementClient struct {
 	Connection      *arm.Connection
 	ResourceGroup   string
 	SubscriptionID  string
 	EnvironmentName string
 }
 
-var _ clients.ManagementClient = (*ARMManagementClient)(nil)
+var _ clients.LegacyManagementClient = (*LegacyARMManagementClient)(nil)
 
-func (dm *ARMManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error) {
+func (dm *LegacyARMManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error) {
 	radiusResourceClient := radclient.NewRadiusResourceClient(dm.Connection, dm.SubscriptionID)
 
 	response, err := radiusResourceClient.List(ctx, dm.ResourceGroup, applicationName, nil)
@@ -73,7 +73,7 @@ func SortResourceList(list radclient.RadiusResourceList) (radclient.RadiusResour
 	return list, nil
 }
 
-func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient.ApplicationList, error) {
+func (dm *LegacyARMManagementClient) ListApplications(ctx context.Context) (*radclient.ApplicationList, error) {
 	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.List(ctx, dm.ResourceGroup, nil)
 	if err != nil {
@@ -90,7 +90,7 @@ func (dm *ARMManagementClient) ListApplications(ctx context.Context) (*radclient
 	return &response.ApplicationList, nil
 }
 
-func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error) {
+func (dm *LegacyARMManagementClient) ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error) {
 	ac := radclient.NewApplicationClient(dm.Connection, dm.SubscriptionID)
 	response, err := ac.Get(ctx, dm.ResourceGroup, applicationName, nil)
 	if err != nil {
@@ -103,7 +103,7 @@ func (dm *ARMManagementClient) ShowApplication(ctx context.Context, applicationN
 	return &response.ApplicationResource, err
 }
 
-func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName string) error {
+func (dm *LegacyARMManagementClient) DeleteApplication(ctx context.Context, appName string) error {
 	con, sub, rg := dm.Connection, dm.SubscriptionID, dm.ResourceGroup
 	radiusResourceClient := radclient.NewRadiusResourceClient(con, sub)
 	resp, err := radiusResourceClient.List(ctx, dm.ResourceGroup, appName, nil)
@@ -165,7 +165,7 @@ func (dm *ARMManagementClient) DeleteApplication(ctx context.Context, appName st
 	return err
 }
 
-func (dm *ARMManagementClient) ShowApplicationStatus(ctx context.Context, applicationName string) (*clients.ApplicationStatus, error) {
+func (dm *LegacyARMManagementClient) ShowApplicationStatus(ctx context.Context, applicationName string) (*clients.ApplicationStatus, error) {
 	applicationStatus := &clients.ApplicationStatus{}
 
 	// Get Application Status
@@ -222,7 +222,7 @@ func (dm *ARMManagementClient) ShowApplicationStatus(ctx context.Context, applic
 	return applicationStatus, nil
 }
 
-func (dm *ARMManagementClient) ShowResource(ctx context.Context, appName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error) {
+func (dm *LegacyARMManagementClient) ShowResource(ctx context.Context, appName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error) {
 	var options radclient.RadiusResourceGetOptions
 
 	if KnownAzureResourceType(resourceType) {

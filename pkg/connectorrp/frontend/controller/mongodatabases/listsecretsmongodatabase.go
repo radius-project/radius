@@ -36,7 +36,8 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, req *http.Request
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.MongoDatabase{}
-	_, err := ctrl.GetResource(ctx, sCtx.ResourceID.String(), resource)
+	parsedResourceID := sCtx.ResourceID.Truncate()
+	_, err := ctrl.GetResource(ctx, parsedResourceID.String(), resource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNotFoundResponse(sCtx.ResourceID), nil

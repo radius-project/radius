@@ -41,9 +41,15 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 
-	livenessProbe := toHealthProbePropertiesClassificationDataModel(src.Properties.Container.LivenessProbe)
+	var livenessProbe datamodel.HealthProbePropertiesClassification
+	var readinessProbe datamodel.HealthProbePropertiesClassification
+	if src.Properties.Container.LivenessProbe != nil {
+		livenessProbe = toHealthProbePropertiesClassificationDataModel(src.Properties.Container.LivenessProbe)
+	}
 
-	readinessProbe := toHealthProbePropertiesClassificationDataModel(src.Properties.Container.ReadinessProbe)
+	if src.Properties.Container.ReadinessProbe != nil {
+		readinessProbe = toHealthProbePropertiesClassificationDataModel(src.Properties.Container.ReadinessProbe)
+	}
 
 	ports := make(map[string]datamodel.ContainerPort)
 	for key, val := range src.Properties.Container.Ports {
@@ -54,14 +60,19 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 
-	volumes := make(map[string]datamodel.VolumeClassification)
-	for key, val := range src.Properties.Container.Volumes {
-		volumes[key] = toVolumeClassificationDataModel(val)
+	var volumes map[string]datamodel.VolumeClassification
+	if src.Properties.Container.Volumes != nil {
+		volumes = make(map[string]datamodel.VolumeClassification)
+		for key, val := range src.Properties.Container.Volumes {
+			volumes[key] = toVolumeClassificationDataModel(val)
+		}
 	}
 
-	extensions := []datamodel.ExtensionClassification{}
-	for _, e := range src.Properties.Extensions {
-		extensions = append(extensions, toExtensionClassificationDataModel(e))
+	var extensions []datamodel.ExtensionClassification
+	if src.Properties.Extensions != nil {
+		for _, e := range src.Properties.Extensions {
+			extensions = append(extensions, toExtensionClassificationDataModel(e))
+		}
 	}
 
 	resourceStatus := v1.ResourceStatus{}
@@ -131,9 +142,15 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 		}
 	}
 
-	livenessProbe := fromHealthProbePropertiesClassificationDataModel(c.Properties.Container.LivenessProbe)
+	var livenessProbe HealthProbePropertiesClassification
+	var readinessProbe HealthProbePropertiesClassification
+	if c.Properties.Container.LivenessProbe != nil {
+		livenessProbe = fromHealthProbePropertiesClassificationDataModel(c.Properties.Container.LivenessProbe)
+	}
 
-	readinessProbe := fromHealthProbePropertiesClassificationDataModel(c.Properties.Container.ReadinessProbe)
+	if c.Properties.Container.ReadinessProbe != nil {
+		readinessProbe = fromHealthProbePropertiesClassificationDataModel(c.Properties.Container.ReadinessProbe)
+	}
 
 	ports := make(map[string]*ContainerPort)
 	for key, val := range c.Properties.Container.Ports {
@@ -144,14 +161,19 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 		}
 	}
 
-	volumes := make(map[string]VolumeClassification)
-	for key, val := range c.Properties.Container.Volumes {
-		volumes[key] = fromVolumeClassificationDataModel(val)
+	var volumes map[string]VolumeClassification
+	if c.Properties.Container.Volumes != nil {
+		volumes = make(map[string]VolumeClassification)
+		for key, val := range c.Properties.Container.Volumes {
+			volumes[key] = fromVolumeClassificationDataModel(val)
+		}
 	}
 
-	extensions := []ExtensionClassification{}
-	for _, e := range c.Properties.Extensions {
-		extensions = append(extensions, fromExtensionClassificationDataModel(e))
+	var extensions []ExtensionClassification
+	if c.Properties.Extensions != nil {
+		for _, e := range c.Properties.Extensions {
+			extensions = append(extensions, fromExtensionClassificationDataModel(e))
+		}
 	}
 
 	dst.ID = to.StringPtr(c.ID)
@@ -452,18 +474,18 @@ func fromExtensionClassificationDataModel(e datamodel.ExtensionClassification) E
 func toHealthProbeDataModelProperties(h HealthProbeProperties) datamodel.HealthProbeProperties {
 	return datamodel.HealthProbeProperties{
 		Kind:                to.String(h.Kind),
-		FailureThreshold:    to.Float32(h.FailureThreshold),
-		InitialDelaySeconds: to.Float32(h.InitialDelaySeconds),
-		PeriodSeconds:       to.Float32(h.PeriodSeconds),
+		FailureThreshold:    h.FailureThreshold,
+		InitialDelaySeconds: h.InitialDelaySeconds,
+		PeriodSeconds:       h.PeriodSeconds,
 	}
 }
 
 func fromHealthProbeDataModelProperties(h datamodel.HealthProbeProperties) HealthProbeProperties {
 	return HealthProbeProperties{
 		Kind:                to.StringPtr(h.Kind),
-		FailureThreshold:    to.Float32Ptr(h.FailureThreshold),
-		InitialDelaySeconds: to.Float32Ptr(h.InitialDelaySeconds),
-		PeriodSeconds:       to.Float32Ptr(h.PeriodSeconds),
+		FailureThreshold:    h.FailureThreshold,
+		InitialDelaySeconds: h.InitialDelaySeconds,
+		PeriodSeconds:       h.PeriodSeconds,
 	}
 }
 

@@ -430,7 +430,7 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 
 // GetPartitionKey function returns the partition key for a resource
 // Examples:
-// ucp:/planes/radius/local/... - Partition Key: radius/local
+// /planes/radius/local/... - Partition Key: radius/local
 // subscriptions/{guid}/... - Partition Key: {guid}
 func GetPartitionKey(id resources.ID) (string, error) {
 	partitionKey := NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))

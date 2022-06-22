@@ -53,11 +53,11 @@ type Query struct {
 
 	// IsScopeQuery is used to determine whether to query scopes (true) or resources (false).
 	// Example: To query all "plane"
-	// 	set RootScope to ucp://planes and both ScopeRecursive and IsScopeQuery to True.
+	// 	set RootScope to /planes and both ScopeRecursive and IsScopeQuery to True.
 	// If ScopeQuery is False, we would be querying for resources that match RootScope and other optional
 	// query field values.
 	// Example: To query all resources in a radius local plane scope
-	// 	set RootScope to ucp://planes/radius/local and ScopeRecursive = True and IsScopeQuery to False.
+	// 	set RootScope to /planes/radius/local and ScopeRecursive = True and IsScopeQuery to False.
 	IsScopeQuery bool
 
 	// TODO: Revisit filter design

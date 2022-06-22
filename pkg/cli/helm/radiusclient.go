@@ -11,13 +11,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+
+	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 const (
@@ -48,7 +50,7 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 		Namespace: &namespace,
 	}
 
-	helmConf, err := HelmConfig(helmOutput, &flags)
+	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -94,7 +96,7 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 
 		err = runRadiusHelmInstall(helmConf, helmChart)
 		if err != nil {
-			return fmt.Errorf("failed to run radius helm install, err: %w, helm output: %s", err, helmOutput.String())
+			return fmt.Errorf("failed to run radius helm install, err: \n%w\nhelm output:\n%s", err, helmOutput.String())
 		}
 	} else if err == nil {
 		output.LogInfo("Found existing Radius Kubernetes environment")
@@ -157,6 +159,10 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	if options.AppCoreTag != "" {
 		appcorerp["tag"] = options.AppCoreTag
 	}
+
+	// Set feature flags in chart
+	global["rad_ff_enable_bicep_extensibility"] = featureflag.EnableBicepExtensibility.IsActive()
+	global["rad_ff_enable_ucp"] = featureflag.EnableUnifiedControlPlane.IsActive()
 
 	_, ok = global["ucp"]
 	if !ok {

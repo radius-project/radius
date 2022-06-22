@@ -36,7 +36,7 @@ func showApplicationStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, err := environments.CreateManagementClient(cmd.Context(), env)
+	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}
@@ -51,13 +51,13 @@ func showApplicationStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = output.Write(format, applicationStatus, cmd.OutOrStdout(), objectformats.GetApplicationStatusTableFormat())
+	err = output.Write(format, applicationStatus, cmd.OutOrStdout(), objectformats.GetApplicationStatusTableFormatOld())
 	if err != nil {
 		return err
 	}
 
 	if format == output.FormatTable && len(applicationStatus.Gateways) > 0 {
-		err = output.Write(format, applicationStatus.Gateways, cmd.OutOrStdout(), objectformats.GetApplicationGatewaysTableFormat())
+		err = output.Write(format, applicationStatus.Gateways, cmd.OutOrStdout(), objectformats.GetApplicationGatewaysTableFormatOld())
 		if err != nil {
 			return err
 		}

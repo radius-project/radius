@@ -98,7 +98,13 @@ const (
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
 	ProvisioningStateFailed       ProvisioningState = "Failed"
 	ProvisioningStateCanceled     ProvisioningState = "Canceled"
+	ProvisioningStateUndefined    ProvisioningState = "Undefined"
 )
+
+// IsTerminal returns true if given Provisioning State is in a terminal state.
+func (state ProvisioningState) IsTerminal() bool {
+	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled
+}
 
 // TrackedResource represents the common tracked resource.
 type TrackedResource struct {
@@ -122,6 +128,9 @@ type InternalMetadata struct {
 	CreatedAPIVersion string `json:"createdApiVersion"`
 	// UpdatedAPIVersion is an api-version used when updating this model.
 	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
+
+	// Any resource values that will be needed for more operations. For example database name to generate secrets for cosmos DB
+	ComputedValues map[string]interface{} `json:"computedValues,omitempty"`
 
 	// TODO: will add more properties.
 }

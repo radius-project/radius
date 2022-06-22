@@ -60,7 +60,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	client, err := environments.CreateManagementClient(cmd.Context(), env)
+	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 }
 
 // appDeleteInner deletes an application without argument/flag validation.
-func appDeleteInner(ctx context.Context, client clients.ManagementClient, applicationName string, env environments.Environment) error {
+func appDeleteInner(ctx context.Context, client clients.LegacyManagementClient, applicationName string, env environments.Environment) error {
 	err := client.DeleteApplication(ctx, applicationName)
 	if err != nil {
 		return fmt.Errorf("delete application error: %w", err)
