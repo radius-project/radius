@@ -43,6 +43,19 @@ func RabbitMQMessageQueueDataModelFromVersioned(content []byte, version string) 
 	}
 }
 
+// RabbitMQMessageQueueResponseDataModelFromVersioned converts version agnostic RabbitMQMessageQueue datamodel to versioned model.
+func RabbitMQMessageQueueResponseDataModelToVersioned(model *datamodel.RabbitMQMessageQueueResponse, version string) (conv.VersionedModelInterface, error) {
+	switch version {
+	case v20220315privatepreview.Version:
+		versioned := &v20220315privatepreview.RabbitMQMessageQueueResponseResource{}
+		err := versioned.ConvertFrom(model)
+		return versioned, err
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
 // RabbitMQSecretsDataModelFromVersioned converts version agnostic RabbitMQSecrets datamodel to versioned model.
 func RabbitMQSecretsDataModelToVersioned(model *datamodel.RabbitMQSecrets, version string) (conv.VersionedModelInterface, error) {
 	switch version {

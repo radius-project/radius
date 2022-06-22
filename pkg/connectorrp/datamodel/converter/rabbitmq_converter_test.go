@@ -54,6 +54,43 @@ func TestRabbitMQMessageQueueDataModelToVersioned(t *testing.T) {
 	}
 }
 
+func TestRabbitMQMessageQueueResponseDataModelToVersioned(t *testing.T) {
+	testset := []struct {
+		dataModelFile string
+		apiVersion    string
+		apiModelType  interface{}
+		err           error
+	}{
+		{
+			"../../api/v20220315privatepreview/testdata/rabbitmqresponseresourcedatamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.RabbitMQMessageQueueResponseResource{},
+			nil,
+		},
+		{
+			"",
+			"unsupported",
+			nil,
+			v1.ErrUnsupportedAPIVersion,
+		},
+	}
+
+	for _, tc := range testset {
+		t.Run(tc.apiVersion, func(t *testing.T) {
+			c := loadTestData(tc.dataModelFile)
+			dm := &datamodel.RabbitMQMessageQueueResponse{}
+			_ = json.Unmarshal(c, dm)
+			am, err := RabbitMQMessageQueueResponseDataModelToVersioned(dm, tc.apiVersion)
+			if tc.err != nil {
+				require.ErrorAs(t, tc.err, &err)
+			} else {
+				require.NoError(t, err)
+				require.IsType(t, tc.apiModelType, am)
+			}
+		})
+	}
+}
+
 func TestRabbitMQMessageQueueDataModelFromVersioned(t *testing.T) {
 	testset := []struct {
 		versionedModelFile string

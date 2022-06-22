@@ -22,18 +22,39 @@ type RabbitMQMessageQueue struct {
 	v1.InternalMetadata
 }
 
+type RabbitMQMessageQueueResponse struct {
+	v1.TrackedResource
+
+	// SystemData is the systemdata which includes creation/modified dates.
+	SystemData v1.SystemData `json:"systemData,omitempty"`
+	// Properties is the properties of the resource.
+	Properties RabbitMQMessageQueueResponseProperties `json:"properties"`
+
+	// InternalMetadata is the internal metadata which is used for conversion.
+	v1.InternalMetadata
+}
+
 func (rabbitmq RabbitMQMessageQueue) ResourceTypeName() string {
 	return "Applications.Connector/rabbitMQMessageQueues"
 }
 
-// RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue resource.
-type RabbitMQMessageQueueProperties struct {
+func (rabbitmq RabbitMQMessageQueueResponse) ResourceTypeName() string {
+	return "Applications.Connector/rabbitMQMessageQueues"
+}
+
+// RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
+type RabbitMQMessageQueueResponseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
 	Environment       string               `json:"environment"`
 	Application       string               `json:"application,omitempty"`
 	Queue             string               `json:"queue"`
-	Secrets           RabbitMQSecrets      `json:"secrets,omitempty"`
+}
+
+// RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue resource.
+type RabbitMQMessageQueueProperties struct {
+	RabbitMQMessageQueueResponseProperties
+	Secrets RabbitMQSecrets `json:"secrets,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
