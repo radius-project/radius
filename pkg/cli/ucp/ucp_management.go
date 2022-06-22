@@ -145,3 +145,15 @@ func (um *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corer
 	return envResourceList, nil
 
 }
+
+func (um *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error) {
+
+	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	envGetResp, err := envClient.Get(ctx, envName, &corerp.EnvironmentsGetOptions{})
+	if err == nil {
+		return envGetResp.EnvironmentsGetResult.EnvironmentResource, nil
+	}
+
+	return corerp.EnvironmentResource{}, err
+
+}
