@@ -412,11 +412,11 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 							t.Logf("skipped pod watch expiration error: %s", status.Message)
 							continue
 						}
-						require.Fail(t, "pod watch error with status reason: %s, message: %s", status.Reason, status.Message)
+						require.Fail(t, fmt.Sprintf("pod watch error with status reason: %s, message: %s", status.Reason, status.Message))
 					}
-					require.Fail(t, "object %T is not a status", event.Object)
+					require.Fail(t, fmt.Sprintf("object %T is not a status", event.Object))
 				}
-				require.Fail(t, "object %T is not a pod", event.Object)
+				require.Fail(t, fmt.Sprintf("object %T is not a pod, event type is %v", event.Object, event.Type))
 			}
 
 			if pod.Status.Phase == corev1.PodRunning {
