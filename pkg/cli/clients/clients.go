@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -124,6 +125,7 @@ type ApplicationsManagementClient interface {
 	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)
 	ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error)
+	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

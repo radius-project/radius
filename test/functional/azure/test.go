@@ -37,10 +37,10 @@ func NewTestOptions(t *testing.T) TestOptions {
 	az, err := environments.RequireAzureCloud(env)
 	require.NoError(t, err, "environment was not azure cloud")
 
-	_, radiusConnection, err := kubernetes.CreateLegacyAPIServerConnection(az.Context, az.RadiusRPLocalURL)
+	_, radiusConnection, err := kubernetes.CreateAPIServerConnection(az.Context, az.RadiusRPLocalURL, false)
 	require.NoError(t, err, "failed to create API Server connection")
 
-	radiusBaseURL, radiusRoundTripper, err := kubernetes.GetLegacyBaseUrlAndRoundTripper(az.RadiusRPLocalURL, "api.radius.dev", az.Context)
+	radiusBaseURL, radiusRoundTripper, err := kubernetes.GetBaseUrlAndRoundTripper(az.RadiusRPLocalURL, "api.radius.dev", az.Context, false)
 	require.NoError(t, err, "failed to create API Server round-tripper")
 
 	return TestOptions{

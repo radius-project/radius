@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -24,6 +25,67 @@ var envListCmd = &cobra.Command{
 }
 
 func getEnvConfigs(cmd *cobra.Command, args []string) error {
+	config := ConfigFromContext(cmd.Context())
+	env, err := cli.RequireEnvironment(cmd, config)
+	if err != nil {
+		return err
+	}
+
+	isUCPEnabled := false
+	if env.GetKind() == environments.KindKubernetes {
+		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
+	}
+
+	if isUCPEnabled {
+		client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+		if err != nil {
+			return err
+		}
+		envList, err := client.ListEnv(cmd.Context())
+		if err != nil {
+			return err
+		}
+		return displayEnvListUCP(envList, cmd)
+	} else {
+		return displayEnvList(cmd)
+	}
+}
+
+func displayEnvListUCP(envList []v20220315privatepreview.EnvironmentResource, cmd *cobra.Command) error {
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+
+	if format == "table" {
+		err = output.Write(format, envList, cmd.OutOrStdout(), objectformats.GetGenericEnvironmentTableFormat())
+		if err != nil {
+			return err
+		}
+	} else if format == "json" {
+		err = output.Write(format, envList, cmd.OutOrStdout(), output.FormatterOptions{Columns: []output.Column{}})
+		if err != nil {
+			return err
+		}
+	} else if format == "list" {
+		b, err := yaml.Marshal(envList)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(b))
+
+	} else {
+		err = output.Write(format, envList, cmd.OutOrStdout(), objectformats.GetGenericEnvironmentTableFormat())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func displayEnvList(cmd *cobra.Command) error {
+
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.ReadEnvironmentSection(config)
 
@@ -91,6 +153,7 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+
 }
 
 func init() {
