@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"reflect"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -53,7 +55,10 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			Password:         to.String(src.Properties.Secrets.Password),
 		}
 	}
-
+	outputResources := v1.ResourceStatus{}.OutputResources
+	if src.Properties.Status != nil {
+		outputResources = src.Properties.Status.OutputResources
+	}
 	converted := &datamodel.MongoDatabase{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -66,7 +71,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
 					Status: v1.ResourceStatus{
-						OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
+						OutputResources: outputResources,
 					},
 				},
 				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -127,11 +132,15 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 	dst.SystemData = fromSystemDataModel(mongo.SystemData)
 	dst.Location = to.StringPtr(mongo.Location)
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
+	var outputresources []map[string]interface{}
+	if !(reflect.DeepEqual(mongo.Properties.Status, v1.ResourceStatus{})) {
+		outputresources = mongo.Properties.Status.OutputResources
+	}
 	dst.Properties = &MongoDatabaseProperties{
 		MongoDatabaseResponseProperties: MongoDatabaseResponseProperties{
 			BasicResourceProperties: BasicResourceProperties{
 				Status: &ResourceStatus{
-					OutputResources: mongo.Properties.BasicResourceProperties.Status.OutputResources,
+					OutputResources: outputresources,
 				},
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),

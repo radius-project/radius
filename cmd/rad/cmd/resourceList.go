@@ -31,13 +31,31 @@ func listResources(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	isUCPEnabled := false
+	if env.GetKind() == environments.KindKubernetes {
+		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
+	}
+	if isUCPEnabled {
+		err := listResourcesUCP(cmd, args, env)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := listResourcesLegacy(cmd, args, env)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
+func listResourcesLegacy(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
 	if err != nil {
 		return err
 	}
 
-	client, err := environments.CreateManagementClient(cmd.Context(), env)
+	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}
@@ -47,15 +65,40 @@ func listResources(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	return printOutput(cmd, resourceList.Value, true)
+}
+
+func listResourcesUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
+	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
+	if err != nil {
+		return err
+	}
+
+	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	if err != nil {
+		return err
+	}
+	resourceList, err := client.ListAllResourcesByApplication(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
+
+	return printOutput(cmd, resourceList, false)
+}
+
+func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
 	}
 
-	err = output.Write(format, resourceList.Value, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	if !isLegacy {
+		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	} else {
+		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormatOld())
+	}
 	if err != nil {
 		return err
 	}
-
 	return nil
 }

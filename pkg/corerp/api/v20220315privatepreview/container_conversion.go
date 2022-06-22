@@ -452,18 +452,18 @@ func fromExtensionClassificationDataModel(e datamodel.ExtensionClassification) E
 func toHealthProbeDataModelProperties(h HealthProbeProperties) datamodel.HealthProbeProperties {
 	return datamodel.HealthProbeProperties{
 		Kind:                to.String(h.Kind),
-		FailureThreshold:    to.Float32(h.FailureThreshold),
-		InitialDelaySeconds: to.Float32(h.InitialDelaySeconds),
-		PeriodSeconds:       to.Float32(h.PeriodSeconds),
+		FailureThreshold:    h.FailureThreshold,
+		InitialDelaySeconds: h.InitialDelaySeconds,
+		PeriodSeconds:       h.PeriodSeconds,
 	}
 }
 
 func fromHealthProbeDataModelProperties(h datamodel.HealthProbeProperties) HealthProbeProperties {
 	return HealthProbeProperties{
 		Kind:                to.StringPtr(h.Kind),
-		FailureThreshold:    to.Float32Ptr(h.FailureThreshold),
-		InitialDelaySeconds: to.Float32Ptr(h.InitialDelaySeconds),
-		PeriodSeconds:       to.Float32Ptr(h.PeriodSeconds),
+		FailureThreshold:    h.FailureThreshold,
+		InitialDelaySeconds: h.InitialDelaySeconds,
+		PeriodSeconds:       h.PeriodSeconds,
 	}
 }
 

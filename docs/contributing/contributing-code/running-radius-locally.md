@@ -137,7 +137,7 @@ The simplest is to use your local configuration for Kubernetes (assuming it's al
 Use `go run` to launch the RP from the same terminal where you configured the environment variables.
 
 ```sh
-go run cmd/rp/main.go
+go run cmd/radius-rp/main.go
 ```
 
 Or you can also run the RP from VSCode:
@@ -180,7 +180,9 @@ OR opening VSCode inside of the DeploymentEngine repo and adding the following c
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"
-            }
+            },
+            "launchSettingsProfile": "DeploymentEngine",
+            "launchSettingsFilePath": "${workspaceFolder}/src/DeploymentEngine/Properties/launchSettings.json"
         }
     ]
 ```

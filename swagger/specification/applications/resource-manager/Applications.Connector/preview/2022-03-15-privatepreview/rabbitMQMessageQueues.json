@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -97,7 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
@@ -137,7 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
@@ -192,7 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
@@ -207,6 +207,48 @@
           },
           "204": {
             "description": "The RabbitMQMessageQueue connector does not exist."
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
+      "post": {
+        "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
+        "operationId": "RabbitMQMessageQueues_listSecrets",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "MongoDatabasesGet": {
+            "$ref": "./examples/RabbitMQMessageQueuesListSecrets.json"
+          }
+        },
+        "tags": [
+          "MongoDatabases"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "#/parameters/RabbitMQMessageQueueNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RabbitMQMessageQueue resource",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQListSecretsResult"
+            }
           },
           "default": {
             "description": "Error response describing the reason for operation failure",
@@ -257,6 +299,19 @@
         }
       }
     },
+    "RabbitMQListSecretsResult" :{
+      "description": "The secret values for the given RabbitMQMessageQueue resource",
+      "$ref": "#/definitions/RabbitMQSecrets"
+    },
+    "RabbitMQSecrets":{
+      "description": "The secret values for the given RabbitMQMessageQueue resource",
+      "properties": {
+        "connectionString": {
+          "description": "The connection string used to connect to this RabbitMQ instance",
+          "type": "string"
+        }
+      }
+    },
     "RabbitMQMessageQueueProperties": {
       "description": "RabbitMQMessageQueue connector properties",
       "type": "object",
@@ -286,12 +341,7 @@
           "type": "object",
           "description": "Secrets provided by resources,",
           "additionalProperties": false,
-          "properties": {
-            "connectionString": {
-              "description": "The connection string used to connect to this RabbitMQ instance",
-              "type": "string"
-            }
-          }
+          "$ref": "#/definitions/RabbitMQSecrets"
         }
       },
       "required": ["environment","queue"]

@@ -67,8 +67,8 @@ func TestListApplicationsRun_20220315PrivatePreview(t *testing.T) {
 		skipToken  bool
 	}{
 		{"list-apps-more-items-than-top", 10, 5, "5", true},
-		{"list-appss-less-items-than-top", 5, 5, "10", false},
-		{"list-appss-no-top", 5, 5, "", false},
+		{"list-apps-less-items-than-top", 5, 5, "10", false},
+		{"list-apps-no-top", 5, 5, "", false},
 	}
 
 	for _, tt := range listAppsCases {
