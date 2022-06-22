@@ -185,6 +185,7 @@ func Test_Render_DevEnvironment(t *testing.T) {
 			PublicEndpointOverride: true,
 			PublicIP:               publicIP,
 		},
+		Namespace: applicationName,
 	}
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
@@ -211,6 +212,7 @@ func Test_Render_PublicEndpointOverride(t *testing.T) {
 			PublicEndpointOverride: true,
 			PublicIP:               publicIP,
 		},
+		Namespace: applicationName,
 	}
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
@@ -238,6 +240,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 			PublicEndpointOverride: false,
 			PublicIP:               "",
 		},
+		Namespace: applicationName,
 	}
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
