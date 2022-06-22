@@ -220,48 +220,6 @@ type ExtendersListByRootScopeResult struct {
 	ExtenderList
 }
 
-// GenericResourcesCreateOrUpdateResponse contains the response from method GenericResources.CreateOrUpdate.
-type GenericResourcesCreateOrUpdateResponse struct {
-	GenericResourcesCreateOrUpdateResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// GenericResourcesCreateOrUpdateResult contains the result from method GenericResources.CreateOrUpdate.
-type GenericResourcesCreateOrUpdateResult struct {
-	GenericResource
-}
-
-// GenericResourcesDeleteResponse contains the response from method GenericResources.Delete.
-type GenericResourcesDeleteResponse struct {
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// GenericResourcesGetResponse contains the response from method GenericResources.Get.
-type GenericResourcesGetResponse struct {
-	GenericResourcesGetResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// GenericResourcesGetResult contains the result from method GenericResources.Get.
-type GenericResourcesGetResult struct {
-	GenericResource
-}
-
-// GenericResourcesListByRootScopeResponse contains the response from method GenericResources.ListByRootScope.
-type GenericResourcesListByRootScopeResponse struct {
-	GenericResourcesListByRootScopeResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// GenericResourcesListByRootScopeResult contains the result from method GenericResources.ListByRootScope.
-type GenericResourcesListByRootScopeResult struct {
-	GenericResourcesList
-}
-
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
 type MongoDatabasesCreateOrUpdateResponse struct {
 	MongoDatabasesCreateOrUpdateResult

@@ -286,60 +286,6 @@ func (p *ExtendersListByRootScopePager) PageResponse() ExtendersListByRootScopeR
 	return p.current
 }
 
-// GenericResourcesListByRootScopePager provides operations for iterating over paged responses.
-type GenericResourcesListByRootScopePager struct {
-	client *GenericResourcesClient
-	current GenericResourcesListByRootScopeResponse
-	err error
-	requester func(context.Context) (*policy.Request, error)
-	advancer func(context.Context, GenericResourcesListByRootScopeResponse) (*policy.Request, error)
-}
-
-// Err returns the last error encountered while paging.
-func (p *GenericResourcesListByRootScopePager) Err() error {
-	return p.err
-}
-
-// NextPage returns true if the pager advanced to the next page.
-// Returns false if there are no more pages or an error occurred.
-func (p *GenericResourcesListByRootScopePager) NextPage(ctx context.Context) bool {
-	var req *policy.Request
-	var err error
-	if !reflect.ValueOf(p.current).IsZero() {
-		if p.current.GenericResourcesList.NextLink == nil || len(*p.current.GenericResourcesList.NextLink) == 0 {
-			return false
-		}
-		req, err = p.advancer(ctx, p.current)
-	} else {
-		req, err = p.requester(ctx)
-	}
-	if err != nil {
-		p.err = err
-		return false
-	}
-	resp, err := p.	client.pl.Do(req)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		p.err = p.client.listByRootScopeHandleError(resp)
-		return false
-	}
-	result, err := p.client.listByRootScopeHandleResponse(resp)
-	if err != nil {
-		p.err = err
-		return false
-	}
-	p.current = result
-	return true
-}
-
-// PageResponse returns the current GenericResourcesListByRootScopeResponse page.
-func (p *GenericResourcesListByRootScopePager) PageResponse() GenericResourcesListByRootScopeResponse {
-	return p.current
-}
-
 // MongoDatabasesListByRootScopePager provides operations for iterating over paged responses.
 type MongoDatabasesListByRootScopePager struct {
 	client *MongoDatabasesClient
