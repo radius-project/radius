@@ -1152,18 +1152,6 @@ type GenericResourceProperties struct {
 	PropertyValue map[string]interface{} `json:"propertyValue,omitempty"`
 }
 
-// GenericResourceSecrets - The secret values for the given generic resource
-type GenericResourceSecrets struct {
-	// Connection string used to connect to the target generic resource
-	ConnectionString *string `json:"connectionString,omitempty"`
-
-	// Password to use when connecting to the target generic resource
-	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target generic resource
-	Username *string `json:"username,omitempty"`
-}
-
 // GenericResourcesCreateOrUpdateOptions contains the optional parameters for the GenericResources.CreateOrUpdate method.
 type GenericResourcesCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -1198,11 +1186,6 @@ func (g GenericResourcesList) MarshalJSON() ([]byte, error) {
 
 // GenericResourcesListByRootScopeOptions contains the optional parameters for the GenericResources.ListByRootScope method.
 type GenericResourcesListByRootScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
-// GenericResourcesListSecretsOptions contains the optional parameters for the GenericResources.ListSecrets method.
-type GenericResourcesListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 

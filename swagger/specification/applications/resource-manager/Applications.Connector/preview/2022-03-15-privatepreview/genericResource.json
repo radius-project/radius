@@ -228,51 +228,6 @@
             }
           }
         }
-      },
-      "/{rootScope}/providers/{resourceType}/{resourceName}/listSecrets": {
-        "post": {
-          "description": "Lists secrets specified resource of specified type within the root scope",
-          "operationId": "GenericResources_listSecrets",
-          "produces": [
-            "application/json"
-          ],
-          "x-ms-examples": {
-            "GenericResourceDatabasesGet": {
-              "$ref": "./examples/GenericResourcesListSecrets.json"
-            }
-          },
-          "tags": [
-            "GenericResources"
-          ],
-          "parameters": [
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            },
-            {
-              "$ref": "global.json#/parameters/RootScopeParameter"
-            },
-            {
-              "$ref": "global.json#/parameters/ResourceType"
-            },
-            {
-              "$ref": "#/parameters/GenericResourceNameParameter"
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "Generic resource",
-              "schema": {
-                "$ref": "#/definitions/GenericResourceListSecretsResult"
-              }
-            },
-            "default": {
-              "description": "Error response describing the reason for operation failure",
-              "schema": {
-                "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
-              }
-            }
-          }
-        }
       }
     },
     "definitions": {
@@ -321,27 +276,6 @@
           },
           "propertyValue": {
             "type":"object"
-          }
-        }
-      },
-      "GenericResourceListSecretsResult": {
-        "description": "The secret values for the given generic resource",
-        "$ref": "#/definitions/GenericResourceSecrets"
-      },
-      "GenericResourceSecrets": {
-        "description": "The secret values for the given generic resource",
-        "properties": {
-          "username": {
-            "description": "Username to use when connecting to the target generic resource",
-            "type": "string"
-          },
-          "password": {
-            "description": "Password to use when connecting to the target generic resource",
-            "type": "string"
-          },
-          "connectionString": {
-            "description": "Connection string used to connect to the target generic resource",
-            "type": "string"
           }
         }
       }

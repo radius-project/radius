@@ -262,18 +262,6 @@ type GenericResourcesListByRootScopeResult struct {
 	GenericResourcesList
 }
 
-// GenericResourcesListSecretsResponse contains the response from method GenericResources.ListSecrets.
-type GenericResourcesListSecretsResponse struct {
-	GenericResourcesListSecretsResult
-	// RawResponse contains the underlying HTTP response.
-	RawResponse *http.Response
-}
-
-// GenericResourcesListSecretsResult contains the result from method GenericResources.ListSecrets.
-type GenericResourcesListSecretsResult struct {
-	GenericResourceSecrets
-}
-
 // MongoDatabasesCreateOrUpdateResponse contains the response from method MongoDatabases.CreateOrUpdate.
 type MongoDatabasesCreateOrUpdateResponse struct {
 	MongoDatabasesCreateOrUpdateResult
