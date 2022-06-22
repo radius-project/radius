@@ -22,7 +22,7 @@ import (
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
 type KubernetesEnvironment struct {
-	RadiusEnvironment
+	RadiusEnvironment `mapstructure:",squash"`
 }
 
 func (e *KubernetesEnvironment) GetName() string {

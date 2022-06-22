@@ -24,7 +24,7 @@ import (
 
 // LocalEnvironment represents a local test setup for Azure Cloud Radius environment.
 type LocalEnvironment struct {
-	RadiusEnvironment
+	RadiusEnvironment `mapstructure:",squash"`
 	// Registry is the docker/OCI registry we're using for images.
 	Registry  *Registry  `mapstructure:"registry,omitempty"`
 	Providers *Providers `mapstructure:"providers"`
