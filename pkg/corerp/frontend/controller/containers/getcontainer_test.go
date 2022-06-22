@@ -42,9 +42,8 @@ func TestGetContainerRun_20220315PrivatePreview(t *testing.T) {
 
 		msc.EXPECT().
 			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{}
-			})
+			Return(nil, &store.ErrNotFound{}).
+			Times(1)
 
 		ctl, err := NewGetContainer(msc, nil)
 
