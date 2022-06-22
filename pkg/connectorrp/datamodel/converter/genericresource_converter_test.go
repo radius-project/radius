@@ -7,7 +7,7 @@ package converter
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -65,22 +65,18 @@ func TestGenericResourceDataModelFromVersioned(t *testing.T) {
 			"2022-03-15-privatepreview",
 			nil,
 		},
-		{
-			"",
-			"unsupported",
-			v1.ErrUnsupportedAPIVersion,
-		},
 	}
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
 			c := loadTestData(tc.versionedModelFile)
 			dm, err := GenericResourceDataModelFromVersioned(c, tc.apiVersion)
+			fmt.Print(dm)
+			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/rabbitMQMessageQueues/rabbitmq0", dm.TrackedResource.ID)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
 				require.NoError(t, err)
-				require.IsType(t, tc.apiVersion, dm.InternalMetadata.UpdatedAPIVersion)
 			}
 		})
 	}
