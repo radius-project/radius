@@ -42,8 +42,24 @@
                     "protocol": "http",
                     "provides": "/"
                 }
+            },
+            "livenessProbe": {
+                "containerPort": 8080,
+                "initialDelaySeconds": 5,
+                "kind": "tcp"
             }
         },
-        "provisioningState": "Updating"
+        "provisioningState": "Updating",
+        "status": {
+            "outputResources": [
+                {
+                    "LocalID": "Deployment",
+                    "ResourceType": {
+                        "Provider": "azure",
+                        "Type": "aks"
+                    }
+                }
+            ]
+        }
     }
 }
