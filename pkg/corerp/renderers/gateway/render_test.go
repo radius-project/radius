@@ -25,8 +25,6 @@ import (
 )
 
 const (
-	subscriptionID  = "default"
-	resourceGroup   = "default"
 	applicationName = "test-application"
 	resourceName    = "test-gateway"
 	publicIP        = "86.753.099.99"
