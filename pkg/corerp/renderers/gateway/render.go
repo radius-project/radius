@@ -28,7 +28,7 @@ type Renderer struct {
 }
 
 // GetDependencyIDs fetches all the httproutes used by the gateway
-func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, resourceIDs []resources.ID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	// Need all httproutes that are used by this gateway
 	gateway, ok := dm.(datamodel.Gateway)
 	if !ok {
@@ -45,7 +45,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 		radiusResourceIDs = append(radiusResourceIDs, resourceID)
 	}
 
-	return radiusResourceIDs, resourceIDs, nil
+	return radiusResourceIDs, azureResourceIDs, nil
 }
 
 // Render creates the kubernetes output resource for the gateway and its dependency - httproute
