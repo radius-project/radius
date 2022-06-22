@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 type Renderer struct {
@@ -36,7 +37,11 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	outputResources := []outputresource.OutputResource{}
-	application := route.Properties.Application
+	appId, err := resources.Parse(route.Properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
+	}
+	applicationName := appId.Name()
 
 	// What values do we check for to see if route.Properties.Port does not exist??
 	if route.Properties.Port == 0 {
@@ -45,20 +50,23 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
-			Value: kubernetes.MakeResourceName(application, route.Name),
+			Value: kubernetes.MakeResourceName(applicationName, route.Name),
 		},
 		"port": {
 			Value: route.Properties.Port,
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(application, route.Name), route.Properties.Port),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(applicationName, route.Name), route.Properties.Port),
 		},
 		"scheme": {
 			Value: "http",
 		},
 	}
 
-	service := r.makeService(&route)
+	service, err := r.makeService(&route)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	outputResources = append(outputResources, service)
 
 	return renderers.RendererOutput{
@@ -67,32 +75,37 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}, nil
 }
 
-func (r *Renderer) makeService(route *datamodel.HTTPRoute) outputresource.OutputResource {
+func (r *Renderer) makeService(route *datamodel.HTTPRoute) (outputresource.OutputResource, error) {
 
-	application := route.Properties.Application
+	appId, err := resources.Parse(route.Properties.Application)
+	if err != nil {
+		return outputresource.OutputResource{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
+	}
+	applicationName := appId.Name()
+
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(application, route.Name),
-			Namespace: application,
-			Labels:    kubernetes.MakeDescriptiveLabels(application, route.Name),
+			Name:      kubernetes.MakeResourceName(applicationName, route.Name),
+			Namespace: applicationName,
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(application, ResourceTypeName, route.Name),
+			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, ResourceTypeName, route.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       route.Name,
 					Port:       route.Properties.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(application + ResourceTypeName + route.Name)),
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceTypeName + route.Name)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
+	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta), nil
 }

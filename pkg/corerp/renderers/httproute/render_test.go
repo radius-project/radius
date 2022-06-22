@@ -8,6 +8,7 @@ package httproute
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -25,6 +26,7 @@ import (
 const (
 	applicationName = "test-application"
 	resourceName    = "test-route"
+	applicationPath = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
 )
 
 func createContext(t *testing.T) context.Context {
@@ -70,7 +72,7 @@ func Test_Render_WithPort(t *testing.T) {
 	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, kubernetes.MakeResourceName(resource.Properties.Application, resource.Name), service.Name)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resource.Name), service.Name)
 	require.Equal(t, applicationName, service.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
 
@@ -83,7 +85,7 @@ func Test_Render_WithPort(t *testing.T) {
 	expectedServicePort := corev1.ServicePort{
 		Name:       resourceName,
 		Port:       port,
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.Properties.Application + ResourceTypeName + resource.Name)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceTypeName + resource.Name)),
 		Protocol:   "TCP",
 	}
 	require.Equal(t, expectedServicePort, servicePort)
@@ -115,7 +117,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 	require.Equal(t, expectedOutputResource, outputResource)
 
-	require.Equal(t, kubernetes.MakeResourceName(resource.Properties.Application, resource.Name), service.Name)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resource.Name), service.Name)
 	require.Equal(t, applicationName, service.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
 
@@ -128,7 +130,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	expectedPort := corev1.ServicePort{
 		Name:       resourceName,
 		Port:       defaultPort,
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.Properties.Application + ResourceTypeName + resource.Name)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceTypeName + resource.Name)),
 		Protocol:   "TCP",
 	}
 	require.Equal(t, expectedPort, port)
@@ -136,7 +138,8 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 
 func makeHTTPRouteProperties(port int32) datamodel.HTTPRouteProperties {
 	properties := datamodel.HTTPRouteProperties{}
-	properties.Application = applicationName
+	str := []string{applicationPath, applicationName}
+	properties.Application = strings.Join(str, "")
 	if port > 0 {
 		properties.Port = port
 	}
