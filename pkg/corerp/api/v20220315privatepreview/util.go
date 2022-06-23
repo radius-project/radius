@@ -6,7 +6,9 @@
 package v20220315privatepreview
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -88,16 +90,19 @@ func HealthProbePropertiesClassificationHookFunc() mapstructure.DecodeHookFunc {
 			return f.Interface(), nil
 		}
 
-		switch probe["kind"].(string) {
+		k := probe["kind"].(string)
+		switch strings.ToLower(k) {
 		case "tcp":
 			tcp := &TCPHealthProbeProperties{}
 			t.Set(reflect.ValueOf(tcp))
 		case "exec":
 			exec := &ExecHealthProbeProperties{}
 			t.Set(reflect.ValueOf(exec))
-		case "httpGet":
+		case "httpget":
 			httpget := &HTTPGetHealthProbeProperties{}
 			t.Set(reflect.ValueOf(httpget))
+		default:
+			return nil, fmt.Errorf("unsupported health probe kind: %s", k)
 		}
 
 		return f.Interface(), nil
