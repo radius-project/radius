@@ -39,6 +39,7 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 // to create an environment succeeds. This test can be deleted once all the RP
 // tests have been migrated to use the CoreRP
 func Test_EnvironmentWithCoreRP(t *testing.T) {
+	t.SkipNow()
 	ctx := context.Background()
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "", "", true)
 
