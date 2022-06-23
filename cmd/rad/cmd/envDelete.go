@@ -139,7 +139,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if err = helm.UninstallOnCluster(cmd.Context()); err != nil {
+		if err = helm.UninstallOnCluster(kub.Context); err != nil {
 			return err
 		}
 	}
@@ -156,7 +156,7 @@ func deleteEnv(cmd *cobra.Command, args []string) error {
 
 // deleteAllApplications deletes all applications from a resource group.
 func deleteAllApplications(ctx context.Context, env environments.Environment) error {
-	client, err := environments.CreateManagementClient(ctx, env)
+	client, err := environments.CreateLegacyManagementClient(ctx, env)
 	if err != nil {
 		return err
 	}

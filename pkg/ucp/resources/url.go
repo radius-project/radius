@@ -12,10 +12,6 @@ import (
 )
 
 func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error) {
-	if strings.HasPrefix(path, UCPPrefix) {
-		return "", "", "", fmt.Errorf("URL paths should not start with %s", UCPPrefix)
-	}
-
 	// Remove the /planes/foo/bar/ prefix from the URL with the minimum amount of
 	// garbage allocated during parsing.
 	splitCount := 5
@@ -51,4 +47,3 @@ func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error)
 
 	return segments[1], segments[2], remainder, nil
 }
-

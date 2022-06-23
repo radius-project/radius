@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -97,7 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RedisCacheNameParameter"
@@ -137,7 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RedisCacheNameParameter"
@@ -192,7 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/RootScopeParameter"
+            "$ref": "global.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/RedisCacheNameParameter"
@@ -207,6 +207,48 @@
           },
           "204": {
             "description": "The RedisCache connector does not exist."
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets": {
+      "post": {
+        "description": "Lists secrets values for the specified RedisCache resource",
+        "operationId": "RedisCaches_listSecrets",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RedisCachesGet": {
+            "$ref": "./examples/RedisCachesListSecrets.json"
+          }
+        },
+        "tags": [
+          "RedisCaches"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "#/parameters/RedisCacheNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RedisCache secrets",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheListSecretsResult"
+            }
           },
           "default": {
             "description": "Error response describing the reason for operation failure",
@@ -257,6 +299,27 @@
         }
       }
     },
+    "RedisCacheListSecretsResult": {
+      "description": "The secret values for the given RedisCache resource",
+      "$ref": "#/definitions/RedisCacheSecrets"
+    },
+    "RedisCacheSecrets": {
+      "description": "The secret values for the given RedisCache resource",
+      "properties": {
+        "connectionString": {
+          "description": "The connection string used to connect to the redis cache",
+          "type": "string",
+          "example": [
+            "myrediscache.redis.cache.windows.net:6380",
+            "redis.default.svc.cluster.local:6379"
+          ]
+        },
+        "password": {
+          "description": "The password for this Redis instance",
+          "type": "string"
+        }
+      }
+    },
     "RedisCacheProperties": {
       "description": "RedisCache connector properties",
       "type": "object",
@@ -304,20 +367,7 @@
         "secrets": {
           "type": "object",
           "additionalProperties": false,
-          "properties": {
-            "connectionString": {
-              "description": "The Redis connection string used to connect to the redis cache",
-              "type": "string",
-              "example": [
-                "myrediscache.redis.cache.windows.net:6380",
-                "redis.default.svc.cluster.local:6379"
-              ]
-            },
-            "password": {
-              "description": "The password for this Redis instance",
-              "type": "string"
-            }
-          }
+          "$ref": "#/definitions/RedisCacheSecrets"
         }
       },
       "required": ["environment"]

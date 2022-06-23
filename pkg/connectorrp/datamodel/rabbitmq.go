@@ -40,3 +40,7 @@ type RabbitMQMessageQueueProperties struct {
 type RabbitMQSecrets struct {
 	ConnectionString string `json:"connectionString"`
 }
+
+func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
+	return "Applications.Connector/rabbitMQMessageQueues"
+}

@@ -30,7 +30,8 @@ var envInitLocalCmd = &cobra.Command{
 	Use:   "dev",
 	Short: "Initializes a local development environment",
 	Long:  `Initializes a local development environment`,
+	// RunE:  initDevRadEnvironment,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return initStandalone(cmd, args, dev)
+		return initSelfHosted(cmd, args, Dev)
 	},
 }

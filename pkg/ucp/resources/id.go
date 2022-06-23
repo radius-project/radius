@@ -14,7 +14,6 @@ const (
 	SegmentSeparator      = "/"
 	PlanesSegment         = "planes"
 	ProvidersSegment      = "providers"
-	UCPPrefix             = "ucp:"
 	ResourceGroupsSegment = "resourcegroups"
 	SubscriptionsSegment  = "subscriptions"
 	LocationsSegment      = "locations"
@@ -53,6 +52,10 @@ type TypeSegment struct {
 	Name string
 }
 
+type KnownType struct {
+	Types []TypeSegment
+}
+
 // IsEmpty returns true if the ID is empty.
 func (ri ID) IsEmpty() bool {
 	return ri.id == ""
@@ -72,9 +75,9 @@ func (ri ID) IsScope() bool {
 	return !ri.IsEmpty() && len(ri.typeSegments) == 0
 }
 
-// IsUCPQualfied returns true if the ID has a UCP qualifier ('ucp:/').
+// IsUCPQualfied returns true if the ID is a UCP id.
 func (ri ID) IsUCPQualfied() bool {
-	return strings.HasPrefix(ri.id, UCPPrefix)
+	return strings.HasPrefix(ri.id, SegmentSeparator+PlanesSegment)
 }
 
 // ScopeSegments gets the slice of root-scope segments.
@@ -117,7 +120,7 @@ func (ri ID) RootScope() string {
 
 	joined := strings.Join(segments, SegmentSeparator)
 	if ri.IsUCPQualfied() {
-		return UCPPrefix + SegmentSeparator + PlanesSegment + SegmentSeparator + joined
+		return SegmentSeparator + PlanesSegment + SegmentSeparator + joined
 	}
 
 	return SegmentSeparator + joined
@@ -133,6 +136,27 @@ func (ri ID) ProviderNamespace() string {
 	}
 	segments := strings.Split(ri.typeSegments[0].Type, SegmentSeparator)
 	return segments[0]
+}
+
+// PlaneNamespace returns the plane part of the UCP ID
+//
+// Note: This function does NOT handle invalid IDs.
+// If an invalid ID calls this function then there is
+// a chance that it is going to trigger a panic.
+//
+// Examples:
+//	radius
+func (ri ID) PlaneNamespace() string {
+	if !ri.IsUCPQualfied() {
+		return ""
+	}
+
+	scopeSegment := ri.ScopeSegments()[0]
+	keys := []string{
+		scopeSegment.Type,
+		scopeSegment.Name,
+	}
+	return strings.Join(keys, "/")
 }
 
 // RoutingScope returns the routing-scope (the part after 'providers').
@@ -182,6 +206,37 @@ func (ri ID) Name() string {
 	return ri.typeSegments[len(ri.typeSegments)-1].Name
 }
 
+// ValidateResourceType validates that the resource ID type segment matches the expected type.
+func (ri ID) ValidateResourceType(t KnownType) error {
+
+	if len(ri.typeSegments) != len(t.Types) {
+		return invalidType(ri.id)
+	}
+
+	for i, rt := range t.Types {
+		// Mismatched type
+		if !strings.EqualFold(rt.Type, ri.typeSegments[i].Type) {
+			return invalidType(ri.id)
+		}
+
+		// A collection was expected and this has a name.
+		if rt.Name == "" && ri.typeSegments[i].Name != "" {
+			return invalidType(ri.id)
+		}
+
+		// A resource was expected and this is a collection.
+		if rt.Name != "" && ri.typeSegments[i].Name == "" {
+			return invalidType(ri.id)
+		}
+	}
+
+	return nil
+}
+
+func invalidType(id string) error {
+	return fmt.Errorf("resource '%v' does not match the expected resource type", id)
+}
+
 // Append appends a type/name pair to the ResourceID.
 func (ri ID) Append(resourceType TypeSegment) ID {
 	types := append(ri.typeSegments, resourceType)
@@ -229,9 +284,9 @@ func (ri ID) Truncate() ID {
 // Parse parses a resource ID.
 func Parse(id string) (ID, error) {
 	isUCPQualified := false
-	if strings.HasPrefix(id, UCPPrefix+SegmentSeparator+PlanesSegment) {
+	if strings.HasPrefix(id, SegmentSeparator+PlanesSegment) {
 		isUCPQualified = true
-		id = strings.TrimPrefix(id, UCPPrefix+SegmentSeparator+PlanesSegment)
+		id = strings.TrimPrefix(id, SegmentSeparator+PlanesSegment)
 	}
 
 	scopes := []ScopeSegment{}
@@ -381,7 +436,7 @@ func MakeUCPID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
 		}
 	}
 
-	return UCPPrefix + SegmentSeparator + strings.Join(segments, SegmentSeparator)
+	return SegmentSeparator + strings.Join(segments, SegmentSeparator)
 }
 
 // MakeRelativeID makes a plane-relative resource ID (ARM style).

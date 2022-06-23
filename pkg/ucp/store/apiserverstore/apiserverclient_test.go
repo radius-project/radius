@@ -606,7 +606,7 @@ func Test_AssignLabels_Resource_NoConflicts(t *testing.T) {
 	resource := ucpv1alpha1.Resource{
 		Entries: []ucpv1alpha1.ResourceEntry{
 			{
-				ID: "ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
 			},
 		},
 	}
@@ -626,7 +626,7 @@ func Test_AssignLabels_Scope_NoConflicts(t *testing.T) {
 	resource := ucpv1alpha1.Resource{
 		Entries: []ucpv1alpha1.ResourceEntry{
 			{
-				ID: "ucp:/planes/radius/local/resourceGroups/cool-group",
+				ID: "/planes/radius/local/resourceGroups/cool-group",
 			},
 		},
 	}
@@ -646,10 +646,10 @@ func Test_AssignLabels_PartialConflict(t *testing.T) {
 	resource := ucpv1alpha1.Resource{
 		Entries: []ucpv1alpha1.ResourceEntry{
 			{
-				ID: "ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
 			},
 			{
-				ID: "ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/containers/backend",
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/containers/backend",
 			},
 		},
 	}
@@ -669,10 +669,10 @@ func Test_AssignLabels_AllConflict(t *testing.T) {
 	resource := ucpv1alpha1.Resource{
 		Entries: []ucpv1alpha1.ResourceEntry{
 			{
-				ID: "ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
 			},
 			{
-				ID: "ucp:/planes/azure/azurecloud/subscriptions/my-sub/resourceGroups/azure-group/providers/Applications.Core/containers/backend",
+				ID: "/planes/azure/azurecloud/subscriptions/my-sub/resourceGroups/azure-group/providers/Applications.Core/containers/backend",
 			},
 		},
 	}
@@ -690,9 +690,9 @@ func Test_AssignLabels_AllConflict(t *testing.T) {
 	require.Equal(t, expected, set)
 }
 
-func Test_CreateLabelSelector(t *testing.T) {
+func Test_CreateLabelSelector_UCPID(t *testing.T) {
 	query := store.Query{
-		RootScope:    "ucp:/planes/radius/local/resourceGroups/cool-group",
+		RootScope:    "/planes/radius/local/resourceGroups/cool-group",
 		ResourceType: "Applications.Core/containers",
 	}
 
@@ -703,7 +703,7 @@ func Test_CreateLabelSelector(t *testing.T) {
 		Entries: []ucpv1alpha1.ResourceEntry{
 			{
 				// Wrong resource type
-				ID: "ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
 			},
 		},
 	}
@@ -714,7 +714,7 @@ func Test_CreateLabelSelector(t *testing.T) {
 		Entries: []ucpv1alpha1.ResourceEntry{
 			{
 				// Different scope
-				ID: "ucp:/planes/radius/local/resourceGroups/another-group/providers/Applications.Core/containers/backend",
+				ID: "/planes/radius/local/resourceGroups/another-group/providers/Applications.Core/containers/backend",
 			},
 		},
 	}
@@ -725,7 +725,50 @@ func Test_CreateLabelSelector(t *testing.T) {
 		Entries: []ucpv1alpha1.ResourceEntry{
 			{
 				// Match!
-				ID: "ucp:/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/containers/backend",
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/containers/backend",
+			},
+		},
+	}
+	set = assignLabels(&resource)
+	require.True(t, selector.Matches(set))
+}
+
+func Test_CreateLabelSelector(t *testing.T) {
+	query := store.Query{
+		RootScope:    "/planes/radius/local/resourceGroups/cool-group",
+		ResourceType: "Applications.Core/containers",
+	}
+
+	selector, err := createLabelSelector(query)
+	require.NoError(t, err)
+
+	resource := ucpv1alpha1.Resource{
+		Entries: []ucpv1alpha1.ResourceEntry{
+			{
+				// Wrong resource type
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
+			},
+		},
+	}
+	set := assignLabels(&resource)
+	require.False(t, selector.Matches(set))
+
+	resource = ucpv1alpha1.Resource{
+		Entries: []ucpv1alpha1.ResourceEntry{
+			{
+				// Different scope
+				ID: "/planes/radius/local/resourceGroups/another-group/providers/Applications.Core/containers/backend",
+			},
+		},
+	}
+	set = assignLabels(&resource)
+	require.False(t, selector.Matches(set))
+
+	resource = ucpv1alpha1.Resource{
+		Entries: []ucpv1alpha1.ResourceEntry{
+			{
+				// Match!
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/containers/backend",
 			},
 		},
 	}

@@ -9,9 +9,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/pkg/cli/environments"
 )
 
 func Test_ReadEnvironmentSection_NoContent(t *testing.T) {
