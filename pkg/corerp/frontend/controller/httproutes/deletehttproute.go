@@ -9,7 +9,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
@@ -18,7 +20,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*DeleteHTTPRoute)(nil)
+var (
+	_ ctrl.Controller = (*DeleteHTTPRoute)(nil)
+	// AsyncDeleteContainerOperationTimeout is the default timeout duration of async delete container operation.
+	AsyncDeleteContainerOperationTimeout = time.Duration(120) * time.Second
+)
 
 // DeleteHTTPRoute is the controller implementation to delete HTTPRoute resource.
 type DeleteHTTPRoute struct {
@@ -40,8 +46,12 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return nil, err
 	}
 
-	if etag == "" {
+	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNoContentResponse(), nil
+	}
+
+	if !existingResource.Properties.ProvisioningState.IsTerminal() {
+		return rest.NewConflictResponse(OngoingAsyncOperationOnResourceMessage), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -49,14 +59,18 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	// TODO: handle async deletion later.
-	err = e.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
+	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteContainerOperationTimeout)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
+		existingResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
+		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), existingResource, etag)
+		if rbErr != nil {
+			return nil, rbErr
 		}
 		return nil, err
 	}
 
-	return rest.NewOKResponse(nil), nil
+	existingResource.Properties.ProvisioningState = v1.ProvisioningStateDeleting
+
+	return rest.NewAsyncOperationResponse(existingResource, existingResource.TrackedResource.Location, http.StatusAccepted,
+		serviceCtx.ResourceID, serviceCtx.OperationID), nil
 }

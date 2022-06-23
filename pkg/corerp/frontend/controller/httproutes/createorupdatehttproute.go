@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -20,7 +21,12 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdateHTTPRoute)(nil)
+var (
+	_ ctrl.Controller = (*CreateOrUpdateHTTPRoute)(nil)
+
+	// AsyncPutHTTPRouteOperationTimeout is the default timeout duration of async put httproute operation.
+	AsyncPutHTTPRouteOperationTimeout = time.Duration(120) * time.Second
+)
 
 // CreateOrUpdateHTTPRoute is the controller implementation to create or update HTTPRoute resource.
 type CreateOrUpdateHTTPRoute struct {
@@ -42,11 +48,21 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 
 	existingResource := &datamodel.HTTPRoute{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
-	if req.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
-	}
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
+
+	}
+	exists := true
+	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
+		exists = false
+	}
+
+	if req.Method == http.MethodPatch && !exists {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+	}
+
+	if exists && !existingResource.Properties.ProvisioningState.IsTerminal() {
+		return rest.NewConflictResponse(OngoingAsyncOperationOnResourceMessage), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -61,14 +77,22 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	versioned, err := converter.HTTPRouteDataModelToVersioned(newResource, serviceCtx.APIVersion)
+	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncPutHTTPRouteOperationTimeout)
 	if err != nil {
+		newResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
+		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, nr.ETag)
+		if rbErr != nil {
+			return nil, rbErr
+		}
 		return nil, err
 	}
 
-	headers := map[string]string{"ETag": nr.ETag}
+	respCode := http.StatusCreated
+	if req.Method == http.MethodPatch {
+		respCode = http.StatusAccepted
+	}
 
-	return rest.NewOKResponseWithHeaders(versioned, headers), nil
+	return rest.NewAsyncOperationResponse(newResource, newResource.TrackedResource.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID), nil
 }
 
 // Validate extracts versioned resource from request and validate the properties.
@@ -86,8 +110,6 @@ func (e *CreateOrUpdateHTTPRoute) Validate(ctx context.Context, req *http.Reques
 
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
-	// TODO: Update the state.
-	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
 	return dm, err
 }
@@ -100,4 +122,5 @@ func UpdateExistingResourceData(ctx context.Context, er *datamodel.HTTPRoute, nr
 		nr.CreatedAPIVersion = er.CreatedAPIVersion
 	}
 	nr.TenantID = sc.HomeTenantID
+	nr.Properties.ProvisioningState = v1.ProvisioningStateAccepted
 }
