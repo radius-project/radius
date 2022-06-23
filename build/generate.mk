@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-arm-json generate-radclient generate-rad-corerp-client generate-go generate-bicep-types ## Generates all targets.
+generate: generate-arm-json generate-radclient generate-genericcliclient generate-rad-corerp-client generate-go generate-bicep-types ## Generates all targets.
 
 .PHONY: generate-arm-json
 generate-arm-json: generate-jq-installed ## Generates ARM-JSON from our environment creation Bicep files
@@ -58,6 +58,11 @@ generate-radclient: generate-node-installed generate-autorest-installed generate
 		--file-prefix=zz_generated_ \
 		--azure-arm \
 		--verbose
+
+.PHONY: generate-genericcliclient
+generate-genericcliclient: generate-node-installed generate-autorest-installed
+	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	autorest pkg/cli/clients_new/README.md --tag=2022-03-15-privatepreview
 
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
