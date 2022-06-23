@@ -7,7 +7,6 @@ package cosmosdb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -436,15 +435,7 @@ func GetPartitionKey(id resources.ID) (string, error) {
 	partitionKey := NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))
 
 	if id.IsUCPQualfied() {
-		if len(id.ScopeSegments()) < 1 {
-			return "", errors.New("invalid UCP resource id")
-		}
-		scopeSegment := id.ScopeSegments()[0]
-		storageKeys, err := CombineStorageKeys(scopeSegment.Type, scopeSegment.Name)
-		if err != nil {
-			return "", err
-		}
-		partitionKey = NormalizeLetterOrDigitToUpper(storageKeys)
+		partitionKey = NormalizeLetterOrDigitToUpper(id.PlaneNamespace())
 	}
 
 	return partitionKey, nil
