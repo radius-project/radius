@@ -154,6 +154,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 		req, middleware.RouteParams(routeParams),
 		// Pass content to the validator marshaler to prevent from reading body from buffer.
 		runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
+			fmt.Println(string(content))
 			return json.Unmarshal(content, data)
 		}), bindData)
 	if result != nil {
