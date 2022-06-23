@@ -91,12 +91,13 @@ func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
 	if err != nil {
 		return err
 	}
-
+	formatterOptions := output.FormatterOptions{}
 	if !isLegacy {
-		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+		formatterOptions = objectformats.GetResourceTableFormat()
 	} else {
-		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormatOld())
+		formatterOptions = objectformats.GetResourceTableFormatOld()
 	}
+	err = output.Write(format, obj, cmd.OutOrStdout(), formatterOptions)
 	if err != nil {
 		return err
 	}
