@@ -30,10 +30,3 @@ var envInitKubernetesCmd = &cobra.Command{
 		return initSelfHosted(cmd, args, Kubernetes)
 	},
 }
-
-func init() {
-	envInitCmd.AddCommand(envInitKubernetesCmd)
-	registerAzureProviderFlags(envInitKubernetesCmd)
-	envInitKubernetesCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
-	envInitKubernetesCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
-}
