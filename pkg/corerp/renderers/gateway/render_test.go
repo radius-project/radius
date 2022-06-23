@@ -704,7 +704,7 @@ func makeResource(t *testing.T, properties datamodel.GatewayProperties) datamode
 	}
 }
 func makeDependentResource(t *testing.T, properties datamodel.HTTPRouteProperties) datamodel.HTTPRoute {
-	dm := datamodel.HTTPRoute{Properties: properties}
+	dm := datamodel.HTTPRoute{Properties: &properties}
 	dm.Name = resourceName
 
 	return dm
