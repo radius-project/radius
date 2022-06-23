@@ -35,36 +35,39 @@ var (
 		"Applications.Connector/daprInvokeHttpRoutes",
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
+		"Applications.Core/containers",
 	}
 )
 
-///{rootScope}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}
 // ListAllResourcesByApplication lists the resources of a particular application
 func (um *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
-	resourceListByApplication := []generated.GenericResource{}
+	results := []generated.GenericResource{}
 	for _, resourceType := range resourceTypesList {
 		client := generated.NewGenericResourcesClient(um.Connection, um.RootScope, resourceType)
 		pager := client.ListByRootScope(nil)
 		for pager.NextPage(ctx) {
 			resourceList := pager.PageResponse().GenericResourcesList.Value
 			for _, resource := range resourceList {
-				resourceListByApplication = append(resourceListByApplication, *resource)
+				isResourceWithApplication, err := isResourceWithApplication(*resource, applicationName)
+				if err != nil {
+					return nil, err
+				}
+				if isResourceWithApplication {
+					results = append(results, *resource)
+				}
 			}
 		}
 	}
-	return resourceListByApplication, nil
+	return results, nil
 }
 
-func filterByApplicationName(resourceList []generated.GenericResource, applicationName string) ([]generated.GenericResource, error) {
-	filteredResourceList := []generated.GenericResource{}
-	for _, resource := range resourceList {
-		IdParsed, err := resources.Parse(*resource.ID)
-		if err != nil {
-			return nil, err
-		}
-		if IdParsed.Name() == applicationName {
-			filteredResourceList = append(filteredResourceList, resource)
-		}
+func isResourceWithApplication(resource generated.GenericResource, applicationName string) (bool, error) {
+	IdParsed, err := resources.Parse(*resource.ID)
+	if err != nil {
+		return false, err
 	}
-	return filteredResourceList, nil
+	if IdParsed.Name() == applicationName {
+		return true, nil
+	}
+	return false, nil
 }

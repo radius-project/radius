@@ -91,7 +91,7 @@ func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
 	if err != nil {
 		return err
 	}
-	formatterOptions := output.FormatterOptions{}
+	var formatterOptions output.FormatterOptions
 	if !isLegacy {
 		formatterOptions = objectformats.GetResourceTableFormat()
 	} else {
