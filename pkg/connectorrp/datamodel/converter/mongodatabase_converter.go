@@ -15,7 +15,7 @@ import (
 )
 
 // MongoDatabaseDataModelFromVersioned converts version agnostic MongoDatabase datamodel to versioned model.
-func MongoDatabaseDataModelToVersioned(model interface{}, version string, includeSecrets bool) (conv.VersionedModelInterface, error) {
+func MongoDatabaseDataModelToVersioned(model conv.DataModelInterface, version string, includeSecrets bool) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		if includeSecrets {
