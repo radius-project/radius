@@ -25,7 +25,7 @@ func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 			Location: to.String(src.Location),
 			Tags:     to.StringMap(src.Tags),
 		},
-		Properties: datamodel.HTTPRouteProperties{
+		Properties: &datamodel.HTTPRouteProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: v1.ResourceStatus{
 					OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,

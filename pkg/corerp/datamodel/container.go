@@ -6,6 +6,8 @@
 package datamodel
 
 import (
+	"encoding/json"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
@@ -148,6 +150,109 @@ type TCPHealthProbeProperties struct {
 
 func (h *HealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties {
 	return h
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type Container.
+func (c *Container) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "env":
+			err = unpopulate(val, &c.Env)
+			delete(rawMsg, key)
+		case "image":
+			err = unpopulate(val, &c.Image)
+			delete(rawMsg, key)
+		case "livenessProbe":
+			c.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+			delete(rawMsg, key)
+		case "ports":
+			err = unpopulate(val, &c.Ports)
+			delete(rawMsg, key)
+		case "readinessProbe":
+			c.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
+			delete(rawMsg, key)
+		case "volumes":
+			c.Volumes, err = unmarshalVolumeClassificationMap(val)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func unmarshalVolumeClassification(rawMsg json.RawMessage) (VolumeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b VolumeClassification
+	switch m["kind"] {
+	case "ephemeral":
+		b = &EphemeralVolume{}
+	case "persistent":
+		b = &PersistentVolume{}
+	default:
+		b = &Volume{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalVolumeClassificationMap(rawMsg json.RawMessage) (map[string]VolumeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]VolumeClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalVolumeClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
+func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (HealthProbePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b HealthProbePropertiesClassification
+	switch m["kind"] {
+	case "exec":
+		b = &ExecHealthProbeProperties{}
+	case "httpGet":
+		b = &HTTPGetHealthProbeProperties{}
+	case "tcp":
+		b = &TCPHealthProbeProperties{}
+	default:
+		b = &HealthProbeProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unpopulate(data json.RawMessage, v interface{}) error {
+	if data == nil {
+		return nil
+	}
+	return json.Unmarshal(data, v)
 }
 
 // ExtensionClassification provides polymorphic access to related types.
