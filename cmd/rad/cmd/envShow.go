@@ -57,9 +57,6 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if err != nil {
-			return err
-		}
 		if envName == "" && envconfig.Default == "" {
 			return errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
 		}
@@ -69,7 +66,6 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 		}
 
 		envResource, err := client.GetEnvDetails(cmd.Context(), envName)
-
 		if err != nil {
 			return err
 		}

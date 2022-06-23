@@ -152,6 +152,6 @@ func (e *KubernetesEnvironment) CreateApplicationsManagementClient(ctx context.C
 	return &ucp.ARMApplicationsManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		RootScope:       "ResourceGroups/default", // Temporarily set to this value before rootScope is generated in kubernetes environment
+		RootScope:       "planes/radius/local/ResourceGroups/default", // Temporarily set to this value before rootScope is generated in kubernetes environment
 	}, nil
 }
