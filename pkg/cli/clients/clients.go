@@ -127,6 +127,7 @@ type ApplicationsManagementClient interface {
 	DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error)
 	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
+	DeleteEnv(ctx context.Context, envName string) error
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
