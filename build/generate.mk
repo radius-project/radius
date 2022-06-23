@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-arm-json generate-radclient generate-rad-corerp-client generate-go generate-bicep-types ## Generates all targets.
+generate: generate-arm-json generate-radclient generate-genericcliclient generate-rad-corerp-client generate-go generate-bicep-types ## Generates all targets.
 
 .PHONY: generate-arm-json
 generate-arm-json: generate-jq-installed ## Generates ARM-JSON from our environment creation Bicep files
