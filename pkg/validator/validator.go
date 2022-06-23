@@ -19,10 +19,13 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
 	APIVersionQueryKey = "api-version"
+
+	rootScopeParam = "rootScope"
 )
 
 var (
@@ -41,16 +44,17 @@ type ValidationError struct {
 // Validator validates HTTP request.
 type Validator interface {
 	// ValidateRequest validates a http request and returns all the errors.
-	ValidateRequest(req *http.Request) []ValidationError
+	ValidateRequest(req *http.Request, bindData map[string]interface{}) []ValidationError
 }
 
 type validator struct {
 	TypeName   string
 	APIVersion string
 
-	specDoc      *loads.Document
-	paramCache   map[string]map[string]spec.Parameter
-	paramCacheMu *sync.RWMutex
+	rootScopePrefix string
+	specDoc         *loads.Document
+	paramCache      map[string]map[string]spec.Parameter
+	paramCacheMu    *sync.RWMutex
 }
 
 // findParam looks up the correct spec.Parameter which a unique parameter is defined by a combination
@@ -85,17 +89,14 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 	}
 
 	// Gorilla mux route path should start with {rootScope:.*} to handle UCP and Azure root scope.
-	scopePath := strings.Replace(pathTemplate, "{rootScope:.*}", "{rootScope}", 1)
-	var param map[string]spec.Parameter = nil
+	scopePath := strings.Replace(pathTemplate, v.rootScopePrefix, "/{"+rootScopeParam+"}", 1)
+
 	// Iterate loaded paths to find the matched route.
 	for k := range v.specDoc.Analyzer.AllPaths() {
 		if strings.EqualFold(k, scopePath) {
-			param = v.specDoc.Analyzer.ParamsFor(req.Method, k)
+			v.paramCache[templateKey] = v.specDoc.Analyzer.ParamsFor(req.Method, k)
+			return v.paramCache[templateKey], nil
 		}
-	}
-	if param != nil {
-		v.paramCache[templateKey] = param
-		return v.paramCache[templateKey], nil
 	}
 	return nil, ErrUndefinedRoute
 }
@@ -104,6 +105,9 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	routeParams := middleware.RouteParams{}
 
+	if rID, err := resources.Parse(req.URL.Path); err == nil {
+		routeParams = append(routeParams, middleware.RouteParam{Name: rootScopeParam, Value: rID.RootScope()})
+	}
 	for k := range req.URL.Query() {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
 	}
@@ -119,7 +123,7 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 //  - readonly property: go-openapi/middleware doesn't support "readonly" property even though
 //    go-openapi/validate has readonly property check used only for go-swagger.
 //    (xeipuuv/gojsonschema and kin-openapi doesn't support readonly either)
-func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
+func (v *validator) ValidateRequest(req *http.Request, bindData map[string]interface{}) []ValidationError {
 	routeParams := v.toRouteParams(req)
 	params, err := v.findParam(req)
 	if err != nil {
@@ -127,9 +131,8 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	}
 
 	binder := middleware.NewUntypedRequestBinder(params, v.specDoc.Spec(), strfmt.Default)
-	data := map[string]interface{}{}
 	var errs []ValidationError
-	result := binder.Bind(req, middleware.RouteParams(routeParams), runtime.JSONConsumer(), &data)
+	result := binder.Bind(req, middleware.RouteParams(routeParams), runtime.JSONConsumer(), bindData)
 	if result != nil {
 		errs = parseResult(result)
 	}

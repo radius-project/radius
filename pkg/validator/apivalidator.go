@@ -17,6 +17,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+var bindDataContextKey = &contextKey{"validatorContextKey"}
+
 // APIValidator is the middleware to validate incoming request with OpenAPI spec.
 func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
@@ -40,7 +42,8 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 				return
 			}
 
-			errs := v.ValidateRequest(r)
+			requestParams := map[string]interface{}{}
+			errs := v.ValidateRequest(r, requestParams)
 			if errs != nil {
 				resp := validationFailedResponse(rID.Type()+"/"+rID.Name(), errs)
 				if err := resp.Apply(r.Context(), w, r); err != nil {
@@ -49,11 +52,22 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 				return
 			}
 
-			h.ServeHTTP(w, r)
+			bindCtx := WithRequestParams(r.Context(), requestParams)
+			h.ServeHTTP(w, r.WithContext(bindCtx))
 		}
 
 		return http.HandlerFunc(fn)
 	}
+}
+
+// WithRequestParams injects request parameters into context.
+func WithRequestParams(ctx context.Context, requestParams map[string]interface{}) context.Context {
+	return context.WithValue(ctx, bindDataContextKey, requestParams)
+}
+
+// FromRequestParams extracts request parameters from context.
+func FromRequestParams(ctx context.Context) map[string]interface{} {
+	return ctx.Value(bindDataContextKey).(map[string]interface{})
 }
 
 func invalidResourceIDResponse(id string) rest.Response {
