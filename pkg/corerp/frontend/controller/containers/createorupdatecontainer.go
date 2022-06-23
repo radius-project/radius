@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/validator"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateContainer)(nil)
@@ -100,12 +101,8 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.ContainerResource, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	content, err := ctrl.ReadJSONBody(req)
-	if err != nil {
-		return nil, err
-	}
-
-	dm, err := converter.ContainerDataModelFromVersioned(content, apiVersion)
+	content := validator.FromRequestParams(req.Context())
+	dm, err := converter.ContainerDataModelFromVersioned(content["ContainerResource"], apiVersion)
 	if err != nil {
 		return nil, err
 	}

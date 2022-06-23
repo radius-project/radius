@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/validator"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateHTTPRoute)(nil)
@@ -74,12 +75,8 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 // Validate extracts versioned resource from request and validate the properties.
 func (e *CreateOrUpdateHTTPRoute) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.HTTPRoute, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content, err := ctrl.ReadJSONBody(req)
-	if err != nil {
-		return nil, err
-	}
-
-	dm, err := converter.HTTPRouteDataModelFromVersioned(content, apiVersion)
+	content := validator.FromRequestParams(req.Context())
+	dm, err := converter.HTTPRouteDataModelFromVersioned(content["HttpRouteResource"], apiVersion)
 	if err != nil {
 		return nil, err
 	}

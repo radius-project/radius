@@ -17,6 +17,7 @@ import (
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/validator"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +26,6 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
 
 	createNewResourceCases := []struct {
 		desc               string
@@ -45,9 +45,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
+			ctx := validator.WithRequestParams(context.Background(), map[string]interface{}{
+				"ApplicationResource": appInput,
+			})
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx = radiustesting.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -105,9 +108,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
+			ctx := validator.WithRequestParams(context.Background(), map[string]interface{}{
+				"ApplicationResource": appInput,
+			})
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx = radiustesting.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -164,9 +170,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			appInput, _, _ := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
+			ctx := validator.WithRequestParams(context.Background(), map[string]interface{}{
+				"ApplicationResource": appInput,
+			})
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx = radiustesting.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().
@@ -202,9 +211,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
+			ctx := validator.WithRequestParams(context.Background(), map[string]interface{}{
+				"ApplicationResource": appInput,
+			})
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx = radiustesting.ARMTestContextFromRequest(req)
 
 			mStorageClient.
 				EXPECT().

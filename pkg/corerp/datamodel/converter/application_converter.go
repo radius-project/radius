@@ -6,12 +6,11 @@
 package converter
 
 import (
-	"encoding/json"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // ApplicationDataModelToVersioned converts version agnostic application datamodel to versioned model.
@@ -28,11 +27,11 @@ func ApplicationDataModelToVersioned(model *datamodel.Application, version strin
 }
 
 // ApplicationDataModelFromVersioned converts versioned application model to datamodel.
-func ApplicationDataModelFromVersioned(content []byte, version string) (*datamodel.Application, error) {
+func ApplicationDataModelFromVersioned(content interface{}, version string) (*datamodel.Application, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		am := &v20220315privatepreview.ApplicationResource{}
-		if err := json.Unmarshal(content, am); err != nil {
+		if err := store.DecodeMap(content, am); err != nil {
 			return nil, err
 		}
 		dm, err := am.ConvertTo()

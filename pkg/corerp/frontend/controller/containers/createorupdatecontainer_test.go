@@ -21,6 +21,7 @@ import (
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/validator"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,10 +92,13 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			containerInput, containerDataModel, _ := getTestModels20220315privatepreview()
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, containerInput)
+			ctx := validator.WithRequestParams(context.Background(), map[string]interface{}{
+				"ContainerResource": containerInput,
+			})
+			req, err := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPut, testHeaderfile, containerInput)
 			require.NoError(t, err)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx = radiustesting.ARMTestContextFromRequest(req)
 			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
@@ -201,12 +205,14 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 
 			containerInput, containerDataModel, _ := getTestModels20220315privatepreview()
 			containerDataModel.Properties.ProvisioningState = tt.curState
-
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, containerInput)
+			ctx := validator.WithRequestParams(context.Background(), map[string]interface{}{
+				"ContainerResource": containerInput,
+			})
+			req, err := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, containerInput)
 			require.NoError(t, err)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx = radiustesting.ARMTestContextFromRequest(req)
 			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 			so := &store.Object{

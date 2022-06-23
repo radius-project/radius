@@ -86,7 +86,9 @@ func TestEnvironmentDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.versionedModelFile)
+			content := loadTestData(tc.versionedModelFile)
+			c := map[string]interface{}{}
+			_ = json.Unmarshal(content, &c)
 			dm, err := EnvironmentDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)

@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/validator"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
@@ -74,12 +75,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 // Validate extracts versioned resource from request and validate the properties.
 func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Environment, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content, err := ctrl.ReadJSONBody(req)
-	if err != nil {
-		return nil, err
-	}
-
-	dm, err := converter.EnvironmentDataModelFromVersioned(content, apiVersion)
+	content := validator.FromRequestParams(req.Context())
+	dm, err := converter.EnvironmentDataModelFromVersioned(content["EnvironmentResource"], apiVersion)
 	if err != nil {
 		return nil, err
 	}
