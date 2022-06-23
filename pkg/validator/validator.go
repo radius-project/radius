@@ -142,7 +142,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 
 	// Read content for validation and recover later.
 	content, err := io.ReadAll(req.Body)
-	fmt.Println(string(content))
+	fmt.Println("outside:" + string(content))
 	if err != nil {
 		return []ValidationError{{
 			Code:    armerrors.InvalidRequestContent,
@@ -154,7 +154,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 		req, middleware.RouteParams(routeParams),
 		// Pass content to the validator marshaler to prevent from reading body from buffer.
 		runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
-			fmt.Println(string(content))
+			fmt.Println("consumerfunc:" + string(content))
 			return json.Unmarshal(content, data)
 		}), bindData)
 	if result != nil {
