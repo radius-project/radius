@@ -25,7 +25,6 @@ var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(
 var (
 	resourceTypesList = []string{
 		"Applications.Connector/mongoDatabases",
-		"Applications.Connector/mongoDatabases",
 		"Applications.Connector/rabbitMQMessageQueues",
 		"Applications.Connector/redisCaches",
 		"Applications.Connector/sqlDatabases",
@@ -33,6 +32,7 @@ var (
 		"Applications.Connector/daprSecretStores",
 		"Applications.Connector/daprPubSubBrokers",
 		"Applications.Connector/daprInvokeHttpRoutes",
+		"Applications.Connector/extenders",
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
