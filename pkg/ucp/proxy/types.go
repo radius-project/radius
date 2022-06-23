@@ -12,10 +12,13 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+
+	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
 type UCPRequestInfo struct {
 	PlaneURL   string
+	PlaneKind  string
 	PlaneID    string
 	HTTPScheme string
 	UCPHost    string
@@ -42,8 +45,9 @@ type ReverseProxy interface {
 }
 
 type ReverseProxyOptions struct {
-	RoundTripper http.RoundTripper
-	ProxyAddress string
+	RoundTripper     http.RoundTripper
+	ProxyAddress     string
+	TrimPlanesPrefix bool
 }
 
 type ReverseProxyBuilder struct {
@@ -142,17 +146,28 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	if requestInfo.UCPHost == "" {
 		return fmt.Errorf("UCP Host Address unknown. Cannot convert response header")
 	}
-	// Make sure we only have the base URL here
-	if requestInfo.PlaneID == "" {
-		return fmt.Errorf("Could not find plane ID data in %s header", headerName)
+
+	if requestInfo.PlaneKind == "" {
+		return fmt.Errorf("Plane Kind unknown. Cannot convert response header")
+	}
+
+	var planeID string
+	if requestInfo.PlaneKind != rest.PlaneKindUCPNative {
+		if requestInfo.PlaneID == "" {
+			return fmt.Errorf("Could not find plane ID data in %s header", headerName)
+		}
+		// Doing this only for non UCP Native planes. For UCP Native planes, the request URL will have the plane ID in it and therefore no need to
+		// add the plane ID
+		planeID = requestInfo.PlaneID
 	}
 
 	if requestInfo.HTTPScheme == "" {
 		return fmt.Errorf("Could not find http scheme data in %s header", headerName)
 	}
+
 	// Found a plane matching the URL in the location header
 	// Convert to UCP ID using the planeID corresponding to the URL of the server from where the response was received
-	val := requestInfo.HTTPScheme + "://" + requestInfo.UCPHost + requestInfo.PlaneID + "/" + strings.Join(segments[3:], "/")
+	val := requestInfo.HTTPScheme + "://" + requestInfo.UCPHost + planeID + "/" + strings.Join(segments[3:], "/")
 
 	// Replace the header with the computed value.
 	// Do not use the Del/Set methods on header as it can change the header casing to canonical form

@@ -8,16 +8,17 @@ package kubernetes
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/textproto"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/project-radius/radius/pkg/azure/radclient"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -36,6 +37,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 const (
@@ -270,8 +274,17 @@ func CreateRuntimeClient(context string, scheme *runtime.Scheme) (client.Client,
 		return nil, err
 	}
 
-	c, err := client.New(merged, client.Options{Scheme: scheme})
+	var c client.Client
+	for i := 0; i < 2; i++ {
+		output.LogInfo("Attempting to get a kubernetes client...")
+		c, err = client.New(merged, client.Options{Scheme: scheme})
+		if err != nil {
+			output.LogInfo(fmt.Errorf("failed to get a kubernetes client: %w", err).Error())
+			time.Sleep(15 * time.Second)
+		}
+	}
 	if err != nil {
+		output.LogInfo("aborting runtime client creation after 3 retries")
 		return nil, err
 	}
 
