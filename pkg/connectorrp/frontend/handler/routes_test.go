@@ -231,9 +231,13 @@ func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovid
 			continue
 		}
 
-		uri := "http://localhost" + pathBase + tt.url
-		if isARM && !tt.isAzureAPI {
-			uri = "http://localhost" + pathBase + "/subscriptions/00000000-0000-0000-0000-000000000000" + tt.url
+		uri := "http://localhost" + pathBase + "/planes/radius/{planeName}" + tt.url
+		if isARM {
+			if tt.isAzureAPI {
+				uri = "http://localhost" + pathBase + tt.url
+			} else {
+				uri = "http://localhost" + pathBase + "/subscriptions/00000000-0000-0000-0000-000000000000" + tt.url
+			}
 		}
 		if !isARM {
 			uri = "http://localhost" + pathBase + "/planes/radius/local" + tt.url
