@@ -31,6 +31,7 @@ func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
 // AzureCloudEnvironment represents an Azure Cloud Radius environment.
 type AzureCloudEnvironment struct {
 	RadiusEnvironment `mapstructure:",squash"`
+	ClusterName       string `mapstructure:"clustername" validate:"required"`
 	SubscriptionID    string `mapstructure:"subscriptionid" validate:"required"`
 	ResourceGroup     string `mapstructure:"resourcegroup" validate:"required"`
 }
