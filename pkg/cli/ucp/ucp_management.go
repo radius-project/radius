@@ -85,3 +85,15 @@ func (um *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, en
 	return corerp.EnvironmentResource{}, err
 
 }
+
+func (um *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
+
+	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	_, err := envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
