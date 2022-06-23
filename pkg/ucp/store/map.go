@@ -13,13 +13,17 @@ import (
 )
 
 // DecodeMap decodes map[string]interface{} structure to the type of out.
-func DecodeMap(in interface{}, out interface{}) error {
+func DecodeMap(in interface{}, out interface{}, decodeHookFunc ...mapstructure.DecodeHookFunc) error {
+	hooks := []mapstructure.DecodeHookFunc{toTimeHookFunc()}
+	for _, hookFn := range decodeHookFunc {
+		hooks = append(hooks, hookFn)
+	}
+
 	cfg := &mapstructure.DecoderConfig{
-		TagName: "json", // Use the JSON config for conversions.
-		Result:  out,
-		Squash:  true,
-		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			toTimeHookFunc()),
+		TagName:    "json", // Use the JSON config for conversions.
+		Result:     out,
+		Squash:     true,
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(hooks...),
 	}
 	decoder, err := mapstructure.NewDecoder(cfg)
 	if err != nil {

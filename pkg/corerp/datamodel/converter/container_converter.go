@@ -31,7 +31,7 @@ func ContainerDataModelFromVersioned(content interface{}, version string) (*data
 	switch version {
 	case v20220315privatepreview.Version:
 		am := &v20220315privatepreview.ContainerResource{}
-		if err := store.DecodeMap(content, am); err != nil {
+		if err := store.DecodeMap(content, am, v20220315privatepreview.HealthProbePropertiesClassificationHookFunc()); err != nil {
 			return nil, err
 		}
 		dm, err := am.ConvertTo()

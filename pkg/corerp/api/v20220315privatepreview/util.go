@@ -6,9 +6,11 @@
 package v20220315privatepreview
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/mitchellh/mapstructure"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
@@ -71,5 +73,33 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 		LastModifiedBy:     to.StringPtr(s.LastModifiedBy),
 		LastModifiedByType: (*CreatedByType)(to.StringPtr(s.LastModifiedByType)),
 		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
+	}
+}
+
+// HealthProbePropertiesClassificationHookFunc is the decode hook function to deserialize polymorphic types.
+func HealthProbePropertiesClassificationHookFunc() mapstructure.DecodeHookFunc {
+	return func(f reflect.Value, t reflect.Value) (interface{}, error) {
+		if t.Type().Name() != "HealthProbePropertiesClassification" {
+			return f.Interface(), nil
+		}
+
+		probe, ok := f.Interface().(map[string]interface{})
+		if !ok {
+			return f.Interface(), nil
+		}
+
+		switch probe["kind"].(string) {
+		case "tcp":
+			tcp := &TCPHealthProbeProperties{}
+			t.Set(reflect.ValueOf(tcp))
+		case "exec":
+			exec := &ExecHealthProbeProperties{}
+			t.Set(reflect.ValueOf(exec))
+		case "httpGet":
+			httpget := &HTTPGetHealthProbeProperties{}
+			t.Set(reflect.ValueOf(httpget))
+		}
+
+		return f.Interface(), nil
 	}
 }
