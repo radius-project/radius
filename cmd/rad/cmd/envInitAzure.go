@@ -34,6 +34,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/featureflag"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/version"
@@ -372,7 +373,7 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 	return name, nil
 }
 
-func connect(ctx context.Context, name string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string, clusterOptions helm.ClusterOptions) error {
+func connect(ctx context.Context, environmentName string, subscriptionID string, resourceGroup, location string, deploymentTemplate string, registryName string, logAnalyticsWorkspaceID string, clusterOptions helm.ClusterOptions) error {
 	armauth, err := armauth.GetArmAuthorizer()
 	if err != nil {
 		return err
@@ -393,8 +394,10 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 	if exists {
 		// We already have a provider in this resource group
 		output.LogInfo("Found existing environment...\n\n"+
-			"Environment '%v' available at:\n%v\n", name, envUrl)
-		err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
+			"Environment '%v' available at:\n%v\n", environmentName, envUrl)
+
+		//TODO: Need to figure out here how to fetch the environment's resource group and scope
+		err = storeEnvironment(ctx, armauth, environmentName, subscriptionID, resourceGroup, clusterName, fmt.Sprintf("%s-rg", environmentName), "", "")
 		if err != nil {
 			return err
 		}
@@ -447,7 +450,7 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		RegistryName:            registryName,
 		LogAnalyticsWorkspaceID: logAnalyticsWorkspaceID,
 	}
-	deployment, err := deployEnvironment(ctx, armauth, name, subscriptionID, params)
+	deployment, err := deployEnvironment(ctx, armauth, environmentName, subscriptionID, params)
 	if err != nil {
 		return err
 	}
@@ -480,7 +483,22 @@ func connect(ctx context.Context, name string, subscriptionID string, resourceGr
 		return err
 	}
 
-	err = storeEnvironment(ctx, armauth, name, subscriptionID, resourceGroup, clusterName)
+	// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
+	ucpRgName := fmt.Sprintf("%s-rg", environmentName)
+	var scope, ucpEnvId string
+	if featureflag.EnableUnifiedControlPlane.IsActive() {
+		ucpRgId, err := createUCPResourceGroup(clusterName, ucpRgName)
+		if err != nil {
+			return err
+		}
+		scope = ucpRgId
+		ucpEnvId, err = createEnvironmentResource(ctx, clusterName, ucpRgName, environmentName)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = storeEnvironment(ctx, armauth, environmentName, subscriptionID, resourceGroup, clusterName, ucpRgName, scope, ucpEnvId)
 	if err != nil {
 		return err
 	}
@@ -724,7 +742,7 @@ func findClusterInDeployment(ctx context.Context, deployment resources.Deploymen
 	return clusterName, nil
 }
 
-func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name string, subscriptionID string, resourceGroup string, clusterName string) error {
+func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, envName, subId, azureRg, clusterName, ucpRgName, scope, ucpEnvId string) error {
 	step := output.BeginStep("Updating Config...")
 
 	config := ConfigFromContext(ctx)
@@ -733,16 +751,22 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, name 
 		return err
 	}
 
-	env.Items[name] = map[string]interface{}{
+	env.Items[envName] = map[string]interface{}{
 		"kind":           "azure",
-		"subscriptionId": subscriptionID,
-		"resourceGroup":  resourceGroup,
+		"subscriptionId": subId,
+		"resourceGroup":  azureRg,
 		"clusterName":    clusterName,
 		"context":        clusterName,
 		"namespace":      "default",
+		"enableucp":      featureflag.EnableUnifiedControlPlane.IsActive(),
+	}
+	if featureflag.EnableUnifiedControlPlane.IsActive() {
+		env.Items[envName]["ucpresourcegroupname"] = ucpRgName
+		env.Items[envName]["scope"] = scope
+		env.Items[envName]["id"] = ucpEnvId
 	}
 
-	err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(name)))
+	err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(envName)))
 	if err != nil {
 		return err
 	}

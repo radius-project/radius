@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -105,14 +106,19 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
-// ManagementClient is used to interface with management features like listing applications and resources.
-type ManagementClient interface {
+// LegacyManagementClient is used to interface with management features like listing applications and resources.
+type LegacyManagementClient interface {
 	ListApplications(ctx context.Context) (*radclient.ApplicationList, error)
 	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) error
 
 	ShowResource(ctx context.Context, applicationName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
+}
+
+// ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
+type ApplicationsManagementClient interface {
+	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

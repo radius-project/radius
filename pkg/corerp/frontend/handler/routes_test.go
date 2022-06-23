@@ -39,8 +39,40 @@ var handlerTests = []struct {
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.core/httproutes?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/applications?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/gateways?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
 		url:        "/providers/applications.core/operations?api-version=2022-03-15-privatepreview",
@@ -50,6 +82,18 @@ var handlerTests = []struct {
 		url:        "/subscriptions/00000000-0000-0000-0000-000000000000?api-version=2.0",
 		method:     http.MethodPut,
 		isAzureAPI: true,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
 	},
 }
 
@@ -78,9 +122,13 @@ func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovid
 			continue
 		}
 
-		uri := "http://localhost" + pathBase + tt.url
-		if isARM && !tt.isAzureAPI {
-			uri = "http://localhost" + pathBase + "/subscriptions/00000000-0000-0000-0000-000000000000" + tt.url
+		uri := "http://localhost" + pathBase + "/planes/radius/{planeName}" + tt.url
+		if isARM {
+			if tt.isAzureAPI {
+				uri = "http://localhost" + pathBase + tt.url
+			} else {
+				uri = "http://localhost" + pathBase + "/subscriptions/00000000-0000-0000-0000-000000000000" + tt.url
+			}
 		}
 
 		t.Run(uri, func(t *testing.T) {

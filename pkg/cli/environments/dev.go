@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
+
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/radclient"
@@ -18,31 +19,16 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/ucp"
 )
 
 // LocalEnvironment represents a local test setup for Azure Cloud Radius environment.
 type LocalEnvironment struct {
-	Name               string `mapstructure:"name" validate:"required"`
-	Kind               string `mapstructure:"kind" validate:"required"`
-	DefaultApplication string `mapstructure:"defaultapplication,omitempty"`
-
-	Context     string `mapstructure:"context" validate:"required"`
-	Namespace   string `mapstructure:"namespace" validate:"required"`
-	ClusterName string `mapstructure:"clustername" validate:"required"`
-
+	RadiusEnvironment `mapstructure:",squash"`
 	// Registry is the docker/OCI registry we're using for images.
-	Registry *Registry `mapstructure:"registry,omitempty"`
-
-	// RadiusRPLocalURL is an override for local debugging. This allows us us to run the controller + API Service outside the
-	// cluster.
-	RadiusRPLocalURL         string     `mapstructure:"radiusrplocalurl,omitempty"`
-	DeploymentEngineLocalURL string     `mapstructure:"deploymentenginelocalurl,omitempty"`
-	UCPLocalURL              string     `mapstructure:"ucplocalurl,omitempty"`
-	Providers                *Providers `mapstructure:"providers"`
-	EnableUCP                bool       `mapstructure:"enableucp,omitempty"`
-
-	// We tolerate and allow extra fields - this helps with forwards compat.
-	Properties map[string]interface{} `mapstructure:",remain"`
+	ClusterName string     `mapstructure:"clustername" validate:"required"`
+	Registry    *Registry  `mapstructure:"registry,omitempty"`
+	Providers   *Providers `mapstructure:"providers"`
 }
 
 func (e *LocalEnvironment) GetName() string {
@@ -59,6 +45,10 @@ func (e *LocalEnvironment) GetDefaultApplication() string {
 
 func (e *LocalEnvironment) GetStatusLink() string {
 	return ""
+}
+
+func (e *LocalEnvironment) GetKubeContext() string {
+	return e.Context
 }
 
 func (e *LocalEnvironment) GetContainerRegistry() *Registry {
@@ -156,7 +146,7 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -172,15 +162,15 @@ func (e *LocalEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients
 	}, nil
 }
 
-func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.ManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+func (e *LocalEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
+	_, connection, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
 
 	subscriptionID, resourceGroup := e.GetAzureProviderDetails()
 
-	return &azure.ARMManagementClient{
+	return &azure.LegacyARMManagementClient{
 		Connection:      connection,
 		SubscriptionID:  subscriptionID,
 		ResourceGroup:   resourceGroup,
@@ -191,5 +181,21 @@ func (e *LocalEnvironment) CreateManagementClient(ctx context.Context) (clients.
 func (e *LocalEnvironment) CreateServerLifecycleClient(ctx context.Context) (clients.ServerLifecycleClient, error) {
 	return &k3d.ServerLifecycleClient{
 		ClusterName: e.ClusterName,
+	}, nil
+}
+
+func (e *LocalEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
+	_, connection, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.UCPLocalURL)
+	if err != nil {
+		return nil, err
+	}
+
+	//ignore subscription Id as it is not required for dev environment
+	_, resourceGroup := e.GetAzureProviderDetails()
+
+	return &ucp.ARMApplicationsManagementClient{
+		EnvironmentName: e.Name,
+		Connection:      connection,
+		RootScope:       "/ResourceGroups/" + resourceGroup,
 	}, nil
 }

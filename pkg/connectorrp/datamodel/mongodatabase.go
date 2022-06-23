@@ -45,6 +45,10 @@ type MongoDatabaseSecrets struct {
 	ConnectionString string `json:"connectionString"`
 }
 
-func (mongo MongoDatabaseSecrets) ResourceTypeName() string {
+func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
+	return mongoSecrets == MongoDatabaseSecrets{}
+}
+
+func (mongoSecrets MongoDatabaseSecrets) ResourceTypeName() string {
 	return "Applications.Connector/mongoDatabases"
 }

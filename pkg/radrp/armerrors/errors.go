@@ -24,7 +24,7 @@ const (
 	// Used for InvalidResourceType.
 	InvalidResourceType = "InvalidResourceType"
 
-	// Used for InvalidResourceType.
+	// Used for InvalidAuthenticationInfo.
 	InvalidAuthenticationInfo = "InvalidAuthenticationInfo"
 
 	// Used for the cases when the precondition of a request fails.
@@ -32,6 +32,18 @@ const (
 
 	// Used for OperationCanceled.
 	OperationCanceled = "OperationCanceled"
+
+	// Used for invalid api version parameter
+	InvalidApiVersionParameter = "InvalidApiVersionParameter"
+
+	// Used for invalid request content.
+	InvalidRequestContent = "InvalidRequestContent"
+
+	// Used for invalid object properties.
+	InvalidProperties = "InvalidProperties"
+
+	// Used for failed invalid spec api validation.
+	HTTPRequestPayloadAPISpecValidationFailed = "HttpRequestPayloadAPISpecValidationFailed"
 )
 
 // see : https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#error-response-content

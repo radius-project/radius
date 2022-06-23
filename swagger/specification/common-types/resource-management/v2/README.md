@@ -1,0 +1,2 @@
+DO NOT modify swagger/specification/common-types/resource-management/v2/types.json. 
+It should match https://github.com/Azure/azure-rest-api-specs/blob/main/specification/common-types/resource-management/v2/types.json

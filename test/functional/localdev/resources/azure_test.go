@@ -7,7 +7,9 @@ package resources
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/stretchr/testify/require"
@@ -52,7 +54,8 @@ func Test_Deploy_AzureResources(t *testing.T) {
 	template := "testdata/azure-resources-storage-account.bicep"
 	ctx := context.TODO()
 	opt := NewLocalDevTestOptions(t)
-	de := step.NewDeployExecutor(template, "storageAccountName=asilverman123445")
+	params := fmt.Sprintf("storageAccountName=test%d", time.Now().Nanosecond())
+	de := step.NewDeployExecutor(template, params)
 	t.Run(de.GetDescription(), func(t *testing.T) {
 		de.Execute(ctx, t, opt.TestOptions)
 

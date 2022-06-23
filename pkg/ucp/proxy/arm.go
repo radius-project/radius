@@ -20,10 +20,18 @@ func NewARMProxy(options ReverseProxyOptions, downstream *url.URL, configure fun
 	p := armProxy{
 		ProxyAddress: options.ProxyAddress,
 	}
+
+	directors := []DirectorFunc{}
+	if options.TrimPlanesPrefix {
+		// Remove the UCP Planes prefix for non-native planes that do not
+		// understand UCP IDs
+		directors = []DirectorFunc{trimPlanesPrefix}
+	}
+
 	builder := ReverseProxyBuilder{
 		Downstream:    downstream,
 		EnableLogging: true,
-		Directors:     []DirectorFunc{trimPlanesPrefix},
+		Directors:     directors,
 		Transport: Transport{
 			roundTripper: options.RoundTripper,
 		},

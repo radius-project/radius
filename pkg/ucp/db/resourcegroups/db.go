@@ -29,8 +29,7 @@ func Save(ctx context.Context, db store.StorageClient, rg rest.ResourceGroup) (r
 	var storedResourceGroup rest.ResourceGroup
 	//TODO: set the right API version and ETag
 	o.Metadata.ContentType = "application/json"
-	id := resources.UCPPrefix + rg.ID
-	o.Metadata.ID = id
+	o.Metadata.ID = rg.ID
 	o.Data = &rg
 	err := db.Save(ctx, &o)
 	if err == nil {
