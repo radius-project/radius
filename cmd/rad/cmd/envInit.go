@@ -287,7 +287,7 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 		},
 	}
 
-	rootScope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", resourceGroupName)
+	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName)
 	c := coreRpApps.NewEnvironmentsClient(conn, rootScope)
 	resp, err := c.CreateOrUpdate(ctx, environmentName, toCreate, nil)
 	if err != nil {

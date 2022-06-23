@@ -31,8 +31,8 @@ func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
 // AzureCloudEnvironment represents an Azure Cloud Radius environment.
 type AzureCloudEnvironment struct {
 	RadiusEnvironment `mapstructure:",squash"`
-	SubscriptionID string `mapstructure:"subscriptionid" validate:"required"`
-	ResourceGroup  string `mapstructure:"resourcegroup" validate:"required"`
+	SubscriptionID    string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup     string `mapstructure:"resourcegroup" validate:"required"`
 }
 
 func (e *AzureCloudEnvironment) GetName() string {
@@ -125,7 +125,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context
 }
 
 func (e *AzureCloudEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}
