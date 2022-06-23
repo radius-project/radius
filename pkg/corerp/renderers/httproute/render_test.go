@@ -41,7 +41,6 @@ func createContext(t *testing.T) context.Context {
 func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
 
-	resource := renderers.RendererResource{}
 	dependencies, _, err := r.GetDependencyIDs(createContext(t), datamodel.HTTPRoute{})
 	require.NoError(t, err)
 	require.Empty(t, dependencies)
@@ -53,7 +52,7 @@ func Test_Render_WithPort(t *testing.T) {
 
 	dependencies := map[string]renderers.RendererDependency{}
 	properties := makeHTTPRouteProperties(port)
-	resource := makeResource(t, properties)
+	resource := makeResource(t, &properties)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{}})
 	require.NoError(t, err)

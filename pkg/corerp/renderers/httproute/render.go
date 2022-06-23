@@ -84,7 +84,6 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 	}
 	applicationName := appId.Name()
 
-	application := route.Properties.Application
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
