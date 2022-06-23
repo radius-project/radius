@@ -395,7 +395,9 @@ func connect(ctx context.Context, environmentName string, subscriptionID string,
 		// We already have a provider in this resource group
 		output.LogInfo("Found existing environment...\n\n"+
 			"Environment '%v' available at:\n%v\n", environmentName, envUrl)
-		err = storeEnvironment(ctx, armauth, environmentName, subscriptionID, resourceGroup, clusterName, fmt.Sprintf("%s-rg", environmentName))
+
+		//TODO: Need to figure out here how to fetch the environment's resource group and scope
+		err = storeEnvironment(ctx, armauth, environmentName, subscriptionID, resourceGroup, clusterName, fmt.Sprintf("%s-rg", environmentName), "", "")
 		if err != nil {
 			return err
 		}
@@ -480,19 +482,23 @@ func connect(ctx context.Context, environmentName string, subscriptionID string,
 	if err != nil {
 		return err
 	}
-	
+
 	// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
 	ucpRgName := fmt.Sprintf("%s-rg", environmentName)
+	var scope, ucpEnvId string
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
-		if createUCPResourceGroup(clusterName, ucpRgName) != nil {
+		ucpRgId, err := createUCPResourceGroup(clusterName, ucpRgName)
+		if err != nil {
 			return err
 		}
-		if createEnvironmentResource(clusterName, ucpRgName, environmentName) != nil {
+		scope = ucpRgId
+		ucpEnvId, err = createEnvironmentResource(ctx, clusterName, ucpRgName, environmentName)
+		if err != nil {
 			return err
 		}
 	}
 
-	err = storeEnvironment(ctx, armauth, environmentName, subscriptionID, resourceGroup, clusterName, ucpRgName)
+	err = storeEnvironment(ctx, armauth, environmentName, subscriptionID, resourceGroup, clusterName, ucpRgName, scope, ucpEnvId)
 	if err != nil {
 		return err
 	}
@@ -736,7 +742,7 @@ func findClusterInDeployment(ctx context.Context, deployment resources.Deploymen
 	return clusterName, nil
 }
 
-func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, envName, subId, azureRg, clusterName, ucpRgName string) error {
+func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, envName, subId, azureRg, clusterName, ucpRgName, scope, ucpEnvId string) error {
 	step := output.BeginStep("Updating Config...")
 
 	config := ConfigFromContext(ctx)
@@ -756,6 +762,8 @@ func storeEnvironment(ctx context.Context, authorizer autorest.Authorizer, envNa
 	}
 	if featureflag.EnableUnifiedControlPlane.IsActive() {
 		env.Items[envName]["ucpresourcegroupname"] = ucpRgName
+		env.Items[envName]["scope"] = scope
+		env.Items[envName]["id"] = ucpEnvId
 	}
 
 	err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(envName)))
