@@ -140,8 +140,10 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	binder := middleware.NewUntypedRequestBinder(params, v.specDoc.Spec(), strfmt.Default)
 	var errs []ValidationError
 
+	fmt.Printf("contentlength1: %d", req.ContentLength)
 	// Read content for validation and recover later.
 	content, err := io.ReadAll(req.Body)
+	fmt.Printf("contentlength2: %d", req.ContentLength)
 	fmt.Println("outside:" + string(content))
 	if err != nil {
 		return []ValidationError{{
@@ -149,7 +151,6 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 			Message: "failed to read body content: " + err.Error(),
 		}}
 	}
-	req.ContentLength = (int64)(len(content))
 	bindData := make(map[string]interface{})
 	result := binder.Bind(
 		req, middleware.RouteParams(routeParams),
