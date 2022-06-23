@@ -607,7 +607,8 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 
 	dependencies := map[string]renderers.RendererDependency{}
 	properties := datamodel.HTTPRouteProperties{
-		Port: port,
+		Port:        port,
+		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 	}
 	resource := makeDependentResource(t, properties)
 
