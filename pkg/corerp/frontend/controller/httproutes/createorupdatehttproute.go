@@ -70,7 +70,7 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	UpdateExistingResourceData(ctx, existingResource, newResource)
+	enrichMetadata(ctx, existingResource, newResource)
 
 	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
@@ -114,8 +114,8 @@ func (e *CreateOrUpdateHTTPRoute) Validate(ctx context.Context, req *http.Reques
 	return dm, err
 }
 
-// UpdateExistingResourceData updates the HTTPRoute resource before it is saved to the DB.
-func UpdateExistingResourceData(ctx context.Context, er *datamodel.HTTPRoute, nr *datamodel.HTTPRoute) {
+// enrichMetadata updates the HTTPRoute resource before it is saved to the DB.
+func enrichMetadata(ctx context.Context, er *datamodel.HTTPRoute, nr *datamodel.HTTPRoute) {
 	sc := servicecontext.ARMRequestContextFromContext(ctx)
 	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *sc.SystemData())
 	if er.CreatedAPIVersion != "" {
