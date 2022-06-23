@@ -341,10 +341,8 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 		case <-time.After(IntervalForPodShutdown):
 			t.Logf("at %s waiting for pods in namespace %s for application %s to shut down.. ", time.Now().Format("2006-01-02 15:04:05"), namespace, application)
 
-			actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
-				LabelSelector: labels.SelectorFromSet(labelset).String(),
-			})
-			assert.NoErrorf(t, err, "failed to list pods in namespace %s for application %s", namespace, application)
+			actualPods, err := listPodsWithRetries(t, k8s, labelset, namespace, application)
+			assert.NoError(t, err)
 
 			logPods(t, actualPods.Items)
 			if len(actualPods.Items) == 0 {
@@ -353,6 +351,24 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 			}
 		}
 	}
+}
+
+func listPodsWithRetries(t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
+	// Need to retry because of AKS error: https://github.com/project-radius/radius/issues/2484
+	retries := 3
+	for i := 1; i <= 3; i++ {
+		actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labelset).String(),
+		})
+		if err == nil {
+			return actualPods, nil
+		}
+
+		t.Logf("failed to list pods in namespace %s for application %s. retrying in %fs... (%d/%d)", namespace, application, IntervalForPodShutdown.Seconds(), i, retries)
+		time.Sleep(IntervalForPodShutdown)
+	}
+
+	return nil, fmt.Errorf("failed to list pods in namespace %s for application %s after %d retries", namespace, application, retries)
 }
 
 type PodMonitor struct {
@@ -396,11 +412,11 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 							t.Logf("skipped pod watch expiration error: %s", status.Message)
 							continue
 						}
-						require.Fail(t, "pod watch error with status reason: %s, message: %s", status.Reason, status.Message)
+						require.Fail(t, fmt.Sprintf("pod watch error with status reason: %s, message: %s", status.Reason, status.Message))
 					}
-					require.Fail(t, "object %T is not a status", event.Object)
+					require.Fail(t, fmt.Sprintf("object %T is not a status", event.Object))
 				}
-				require.Fail(t,"object %T is not a pod", event.Object)
+				require.Fail(t, fmt.Sprintf("object %T is not a pod, event type is %v", event.Object, event.Type))
 			}
 
 			if pod.Status.Phase == corev1.PodRunning {
