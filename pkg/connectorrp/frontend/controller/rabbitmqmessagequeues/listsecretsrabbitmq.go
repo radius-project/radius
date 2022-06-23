@@ -36,7 +36,8 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, req *http.
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.RabbitMQMessageQueue{}
-	_, err := ctrl.GetResource(ctx, sCtx.ResourceID.String(), resource)
+	parsedResourceID := sCtx.ResourceID.Truncate()
+	_, err := ctrl.GetResource(ctx, parsedResourceID.String(), resource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNotFoundResponse(sCtx.ResourceID), nil

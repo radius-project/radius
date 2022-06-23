@@ -63,7 +63,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	if exists && !existingResource.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(ErrOngoingAsyncOperationOnResource.Error()), nil
+		return rest.NewConflictResponse(OngoingAsyncOperationOnResourceMessage), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)

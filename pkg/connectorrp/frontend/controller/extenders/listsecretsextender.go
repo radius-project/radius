@@ -18,24 +18,25 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*ListExtenderSecrets)(nil)
+var _ ctrl.Controller = (*ListSecretsExtender)(nil)
 
 // ListSecretsExtender is the controller implementation to list secrets for the to access the connected extender resource resource id passed in the request body.
-type ListExtenderSecrets struct {
+type ListSecretsExtender struct {
 	ctrl.BaseController
 }
 
 // NewListSecretsExtender creates a new instance of ListSecretsExtender.
-func NewListExtenderSecrets(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &ListExtenderSecrets{ctrl.NewBaseController(ds, sm)}, nil
+func NewListSecretsExtender(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &ListSecretsExtender{ctrl.NewBaseController(ds, sm)}, nil
 }
 
 // Run returns secrets values for the specified Extender resource
-func (ctrl *ListExtenderSecrets) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (ctrl *ListSecretsExtender) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.Extender{}
-	_, err := ctrl.GetResource(ctx, sCtx.ResourceID.String(), resource)
+	parsedResourceID := sCtx.ResourceID.Truncate()
+	_, err := ctrl.GetResource(ctx, parsedResourceID.String(), resource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNotFoundResponse(sCtx.ResourceID), nil

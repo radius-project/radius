@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -172,7 +173,12 @@ func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
 	description := "rad " + strings.Join(args, " ")
 	args = cli.appendStandardArgs(args)
 
-	cmd := exec.CommandContext(ctx, "rad", args...)
+	radExecutable := "rad"
+	if v, found := os.LookupEnv("RAD_PATH"); found {
+		radExecutable = path.Join(v, radExecutable)
+	}
+
+	cmd := exec.CommandContext(ctx, radExecutable, args...)
 	if cli.WorkingDirectory != "" {
 		cmd.Dir = cli.WorkingDirectory
 	}

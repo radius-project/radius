@@ -120,11 +120,36 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			Method:         v1.OperationDelete,
 			HandlerFactory: hrt_ctrl.NewDeleteHTTPRoute,
 		},
+		// Container resource handlers
+		{
+			ParentRouter:   ctrRTSubrouter,
+			ResourceType:   ctr_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: ctr_ctrl.NewListContainers,
+		},
+		{
+			ParentRouter:   ctrRTSubrouter,
+			ResourceType:   ctr_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: ctr_ctrl.NewGetContainer,
+		},
 		{
 			ParentRouter:   ctrResourceRouter,
 			ResourceType:   ctr_ctrl.ResourceTypeName,
 			Method:         v1.OperationPut,
 			HandlerFactory: ctr_ctrl.NewCreateOrUpdateContainer,
+		},
+		{
+			ParentRouter:   ctrResourceRouter,
+			ResourceType:   ctr_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: ctr_ctrl.NewCreateOrUpdateContainer,
+		},
+		{
+			ParentRouter:   ctrResourceRouter,
+			ResourceType:   ctr_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: ctr_ctrl.NewDeleteContainer,
 		},
 		// Applications resource handler registration.
 		{
