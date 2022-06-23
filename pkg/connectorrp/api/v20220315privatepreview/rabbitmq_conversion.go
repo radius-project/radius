@@ -6,8 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"reflect"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -23,10 +21,6 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
 		}
 	}
-	outputResources := v1.ResourceStatus{}.OutputResources
-	if src.Properties.Status != nil {
-		outputResources = src.Properties.Status.OutputResources
-	}
 	converted := &datamodel.RabbitMQMessageQueue{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -38,7 +32,7 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: v1.ResourceStatus{
-					OutputResources: outputResources,
+					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
 				},
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -67,14 +61,10 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	dst.SystemData = fromSystemDataModel(rabbitmq.SystemData)
 	dst.Location = to.StringPtr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
-	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(rabbitmq.Properties.Status, v1.ResourceStatus{})) {
-		outputresources = rabbitmq.Properties.Status.OutputResources
-	}
 	dst.Properties = &RabbitMQMessageQueueProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresources,
+				OutputResources: GetOutputResourcesForDatamodel(&rabbitmq.Properties.Status),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),

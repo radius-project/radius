@@ -1106,7 +1106,7 @@ type MongoDatabaseList struct {
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of MongoDatabase resources
-	Value []*MongoDatabaseResource `json:"value,omitempty"`
+	Value []*MongoDatabaseResponseResource `json:"value,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type MongoDatabaseList.
@@ -1117,8 +1117,91 @@ func (m MongoDatabaseList) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// MongoDatabaseProperties - MongoDatabse connector properties
+// MongoDatabaseProperties - MongoDatabase connector properties
 type MongoDatabaseProperties struct {
+	MongoDatabaseResponseProperties
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseProperties.
+func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	m.MongoDatabaseResponseProperties.marshalInternal(objectMap)
+	populate(objectMap, "secrets", m.Secrets)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseProperties.
+func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "secrets":
+				err = unpopulate(val, &m.Secrets)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := m.MongoDatabaseResponseProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MongoDatabaseResource - MongoDatabase connector
+type MongoDatabaseResource struct {
+	TrackedResource
+	// REQUIRED; MongoDatabase connector properties
+	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResource.
+func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	m.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", m.Properties)
+	populate(objectMap, "systemData", m.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResource.
+func (m *MongoDatabaseResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &m.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &m.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := m.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MongoDatabaseResponseProperties - MongoDatabase connector properties
+type MongoDatabaseResponseProperties struct {
 	BasicResourceProperties
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1132,9 +1215,6 @@ type MongoDatabaseProperties struct {
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
 
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
 
@@ -1142,9 +1222,23 @@ type MongoDatabaseProperties struct {
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseProperties.
-func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResponseProperties.
+func (m MongoDatabaseResponseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	m.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResponseProperties.
+func (m *MongoDatabaseResponseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return m.unmarshalInternal(rawMsg)
+}
+
+func (m MongoDatabaseResponseProperties) marshalInternal(objectMap map[string]interface{}) {
 	m.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", m.Application)
 	populate(objectMap, "environment", m.Environment)
@@ -1152,16 +1246,9 @@ func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "port", m.Port)
 	populate(objectMap, "provisioningState", m.ProvisioningState)
 	populate(objectMap, "resource", m.Resource)
-	populate(objectMap, "secrets", m.Secrets)
-	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseProperties.
-func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
+func (m *MongoDatabaseResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
@@ -1183,9 +1270,6 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 		case "resource":
 				err = unpopulate(val, &m.Resource)
 				delete(rawMsg, key)
-		case "secrets":
-				err = unpopulate(val, &m.Secrets)
-				delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1197,18 +1281,18 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MongoDatabaseResource - MongoDatabse connector
-type MongoDatabaseResource struct {
+// MongoDatabaseResponseResource - MongoDatabase connector
+type MongoDatabaseResponseResource struct {
 	TrackedResource
-	// REQUIRED; MongoDatabse connector properties
-	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
+	// REQUIRED; MongoDatabase connector properties
+	Properties *MongoDatabaseResponseProperties `json:"properties,omitempty"`
 
 	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResource.
-func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResponseResource.
+func (m MongoDatabaseResponseResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	m.TrackedResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", m.Properties)
@@ -1216,8 +1300,8 @@ func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResource.
-func (m *MongoDatabaseResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResponseResource.
+func (m *MongoDatabaseResponseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err

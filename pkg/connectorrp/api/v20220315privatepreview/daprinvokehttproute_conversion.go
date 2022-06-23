@@ -6,8 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"reflect"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -17,10 +15,6 @@ import (
 
 // ConvertTo converts from the versioned DaprInvokeHttpRoute resource to version-agnostic datamodel.
 func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
-	outputResources := v1.ResourceStatus{}.OutputResources
-	if src.Properties.Status != nil {
-		outputResources = src.Properties.Status.OutputResources
-	}
 	converted := &datamodel.DaprInvokeHttpRoute{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -32,7 +26,7 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: v1.ResourceStatus{
-					OutputResources: outputResources,
+					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
 				},
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -60,14 +54,10 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 	dst.SystemData = fromSystemDataModel(daprHttpRoute.SystemData)
 	dst.Location = to.StringPtr(daprHttpRoute.Location)
 	dst.Tags = *to.StringMapPtr(daprHttpRoute.Tags)
-	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(daprHttpRoute.Properties.Status, v1.ResourceStatus{})) {
-		outputresources = daprHttpRoute.Properties.Status.OutputResources
-	}
 	dst.Properties = &DaprInvokeHTTPRouteProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresources,
+				OutputResources: GetOutputResourcesForDatamodel(&daprHttpRoute.Properties.Status),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),

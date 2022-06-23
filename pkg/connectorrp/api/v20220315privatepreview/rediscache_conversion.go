@@ -6,8 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"reflect"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -24,10 +22,6 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 			Password:         to.String(src.Properties.Secrets.Password),
 		}
 	}
-	outputResources := v1.ResourceStatus{}.OutputResources
-	if src.Properties.Status != nil {
-		outputResources = src.Properties.Status.OutputResources
-	}
 	converted := &datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -39,7 +33,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: v1.ResourceStatus{
-					OutputResources: outputResources,
+					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
 				},
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -70,14 +64,10 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.SystemData = fromSystemDataModel(redis.SystemData)
 	dst.Location = to.StringPtr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
-	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(redis.Properties.Status, v1.ResourceStatus{})) {
-		outputresources = redis.Properties.Status.OutputResources
-	}
 	dst.Properties = &RedisCacheProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresources,
+				OutputResources: GetOutputResourcesForDatamodel(&redis.Properties.Status),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
