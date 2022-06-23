@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package containers
+package gateway
 
 import (
 	"context"
@@ -22,25 +22,23 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdateContainer)(nil)
+var _ ctrl.Controller = (*CreateOrUpdateGateway)(nil)
 
-var (
-	// AsyncPutContainerOperationTimeout is the default timeout duration of async put container operation.
-	AsyncPutContainerOperationTimeout = time.Duration(120) * time.Second
-)
+// AsyncPutGatewayOperationTimeout is the default timeout duration of async put gateway operation.
+var AsyncPutGatewayOperationTimeout = time.Duration(120) * time.Second
 
-// CreateOrUpdateContainer is the controller implementation to create or update a container resource.
-type CreateOrUpdateContainer struct {
+// CreateOrUpdateGateway is the controller implementation to create or update a gateway resource.
+type CreateOrUpdateGateway struct {
 	ctrl.BaseController
 }
 
-// NewCreateOrUpdateContainer creates a new CreateOrUpdateContainer.
-func NewCreateOrUpdateContainer(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateContainer{ctrl.NewBaseController(ds, sm)}, nil
+// NewCreateOrUpdateGateway creates a new CreateOrUpdateGateway.
+func NewCreateOrUpdateGateway(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &CreateOrUpdateGateway{ctrl.NewBaseController(ds, sm)}, nil
 }
 
-// Run executes CreateOrUpdateContainer operation.
-func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+// Run executes CreateOrUpdateGateway operation.
+func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	newResource, err := e.Validate(ctx, req, serviceCtx.APIVersion)
@@ -48,7 +46,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	existingResource := &datamodel.ContainerResource{}
+	existingResource := &datamodel.Gateway{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
@@ -72,14 +70,14 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	enrichMetadata(ctx, existingResource, newResource)
+	updateExistingResourceData(serviceCtx, existingResource, newResource)
 
 	obj, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
 
-	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncPutContainerOperationTimeout)
+	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncPutGatewayOperationTimeout)
 	if err != nil {
 		newResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
 		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, obj.ETag)
@@ -95,10 +93,11 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	return rest.NewAsyncOperationResponse(newResource, newResource.TrackedResource.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID), nil
+
 }
 
 // Validate extracts versioned resource from request and validate the properties.
-func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.ContainerResource, error) {
+func (e *CreateOrUpdateGateway) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Gateway, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	content, err := ctrl.ReadJSONBody(req)
@@ -106,7 +105,7 @@ func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Reques
 		return nil, err
 	}
 
-	dm, err := converter.ContainerDataModelFromVersioned(content, apiVersion)
+	dm, err := converter.GatewayDataModelFromVersioned(content, apiVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -117,17 +116,12 @@ func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Reques
 	return dm, err
 }
 
-// enrichMetadata updates necessary metadata of the resource.
-func enrichMetadata(ctx context.Context, er *datamodel.ContainerResource, nr *datamodel.ContainerResource) {
-	sc := servicecontext.ARMRequestContextFromContext(ctx)
-
-	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *sc.SystemData())
-
-	if er.CreatedAPIVersion != "" {
-		nr.CreatedAPIVersion = er.CreatedAPIVersion
+// updateExistingResourceData updates the gateway resource before it is saved to the DB.
+func updateExistingResourceData(serviceCtx *servicecontext.ARMRequestContext, er *datamodel.Gateway, nr *datamodel.Gateway) {
+	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *serviceCtx.SystemData())
+	if er.InternalMetadata.CreatedAPIVersion != "" {
+		nr.InternalMetadata.CreatedAPIVersion = er.InternalMetadata.CreatedAPIVersion
 	}
-
-	nr.TenantID = sc.HomeTenantID
-
+	nr.InternalMetadata.TenantID = serviceCtx.HomeTenantID
 	nr.Properties.ProvisioningState = v1.ProvisioningStateAccepted
 }

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package containers
+package gateway
 
 import (
 	"context"
@@ -21,28 +21,28 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*DeleteContainer)(nil)
+var _ ctrl.Controller = (*DeleteGateway)(nil)
 
 var (
-	// AsyncDeleteContainerOperationTimeout is the default timeout duration of async delete container operation.
-	AsyncDeleteContainerOperationTimeout = time.Duration(120) * time.Second
+	// AsyncDeleteGatewayOperationTimeout is the default timeout duration of async delete gateway operation.
+	AsyncDeleteGatewayOperationTimeout = time.Duration(120) * time.Second
 )
 
-// DeleteContainer is the controller implementation to delete container resource.
-type DeleteContainer struct {
+// DeleteGateway is the controller implementation to delete gateway resource.
+type DeleteGateway struct {
 	ctrl.BaseController
 }
 
-// NewDeleteContainer creates a new DeleteContainer.
-func NewDeleteContainer(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &DeleteContainer{ctrl.NewBaseController(ds, sm)}, nil
+// NewDeleteGateway creates a new DeleteGateway.
+func NewDeleteGateway(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
+	return &DeleteGateway{ctrl.NewBaseController(ds, sm)}, nil
 }
 
-func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingContainer := &datamodel.ContainerResource{}
-	etag, err := dc.GetResource(ctx, serviceCtx.ResourceID.String(), existingContainer)
+	existingGateway := &datamodel.Gateway{}
+	etag, err := dc.GetResource(ctx, serviceCtx.ResourceID.String(), existingGateway)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if !existingContainer.Properties.ProvisioningState.IsTerminal() {
+	if !existingGateway.Properties.ProvisioningState.IsTerminal() {
 		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
 	}
 
@@ -60,18 +60,18 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	err = dc.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteContainerOperationTimeout)
+	err = dc.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteGatewayOperationTimeout)
 	if err != nil {
-		existingContainer.Properties.ProvisioningState = v1.ProvisioningStateFailed
-		_, rbErr := dc.SaveResource(ctx, serviceCtx.ResourceID.String(), existingContainer, etag)
+		existingGateway.Properties.ProvisioningState = v1.ProvisioningStateFailed
+		_, rbErr := dc.SaveResource(ctx, serviceCtx.ResourceID.String(), existingGateway, etag)
 		if rbErr != nil {
 			return nil, rbErr
 		}
 		return nil, err
 	}
 
-	existingContainer.Properties.ProvisioningState = v1.ProvisioningStateDeleting
+	existingGateway.Properties.ProvisioningState = v1.ProvisioningStateDeleting
 
-	return rest.NewAsyncOperationResponse(existingContainer, existingContainer.TrackedResource.Location, http.StatusAccepted,
+	return rest.NewAsyncOperationResponse(existingGateway, existingGateway.TrackedResource.Location, http.StatusAccepted,
 		serviceCtx.ResourceID, serviceCtx.OperationID), nil
 }
