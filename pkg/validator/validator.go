@@ -7,6 +7,7 @@ package validator
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -148,12 +149,11 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 			Message: "failed to read body content: " + err.Error(),
 		}}
 	}
+	req.ContentLength = (int64)(len(content))
 	bindData := make(map[string]interface{})
-	req.Body = io.NopCloser(bytes.NewBuffer(content))
 	result := binder.Bind(
 		req, middleware.RouteParams(routeParams),
-		// Pass content to the validator marshaler to prevent from reading body from buffer.
-		runtime.JSONConsumer(), bindData)
+		jsonMarshaller(content), bindData)
 	if result != nil {
 		errs = parseResult(result)
 	}
@@ -162,6 +162,14 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	req.Body = io.NopCloser(bytes.NewBuffer(content))
 
 	return errs
+}
+
+func jsonMarshaller(content []byte) runtime.ConsumerFunc {
+	// Pass content to the validator marshaler to prevent from reading body from buffer.
+	return runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
+		fmt.Println("consumerfunc:" + string(content))
+		return json.Unmarshal(content, data)
+	})
 }
 
 func parseResult(result error) []ValidationError {
