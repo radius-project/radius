@@ -148,7 +148,12 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 		}}
 	}
 	bindData := make(map[string]interface{})
-	result := binder.Bind(req, middleware.RouteParams(routeParams), JSONMarshaller(content), bindData)
+	result := binder.Bind(
+		req, middleware.RouteParams(routeParams),
+		// Pass content to the validator marshaler to prevent from reading body from buffer.
+		runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
+			return json.Unmarshal(content, data)
+		}), bindData)
 	if result != nil {
 		errs = parseResult(result)
 	}
@@ -211,10 +216,4 @@ func flattenComposite(errs *oai_errors.CompositeError) *oai_errors.CompositeErro
 		}
 	}
 	return oai_errors.CompositeValidationError(res...)
-}
-
-func JSONMarshaller(content []byte) runtime.Consumer {
-	return runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
-		return json.Unmarshal(content, data)
-	})
 }
