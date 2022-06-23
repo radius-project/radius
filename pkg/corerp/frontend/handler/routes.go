@@ -28,6 +28,8 @@ const (
 func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, router *mux.Router, pathBase string, isARM bool) error {
 	if isARM {
 		pathBase += "/subscriptions/{subscriptionID}"
+	} else {
+		pathBase += "/planes/radius/{planeName}"
 	}
 
 	// Configure the default ARM handlers.

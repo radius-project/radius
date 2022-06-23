@@ -27,7 +27,7 @@ func TestSaveValidPlane(t *testing.T) {
 				"Applications.Core":       "http://localhost:9080/",
 				"Applications.Connection": "http://localhost:9081/",
 			},
-			Kind: "UCPNative",
+			Kind: rest.PlaneKindUCPNative,
 		},
 	}
 
