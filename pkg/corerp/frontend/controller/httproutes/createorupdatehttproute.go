@@ -75,8 +75,8 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 // Validate extracts versioned resource from request and validate the properties.
 func (e *CreateOrUpdateHTTPRoute) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.HTTPRoute, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content := validator.FromRequestParams(req.Context())
-	dm, err := converter.HTTPRouteDataModelFromVersioned(content["HttpRouteResource"], apiVersion)
+	params := validator.FromRequestParams(req.Context())
+	dm, err := converter.HTTPRouteDataModelFromVersioned(params["HttpRouteResource"], apiVersion)
 	if err != nil {
 		return nil, err
 	}

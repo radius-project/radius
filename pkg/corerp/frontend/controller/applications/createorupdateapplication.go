@@ -77,8 +77,8 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) 
 // Validate extracts versioned resource from request and validates the properties.
 func (a *CreateOrUpdateApplication) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Application, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content := validator.FromRequestParams(req.Context())
-	dm, err := converter.ApplicationDataModelFromVersioned(content["ApplicationResource"], apiVersion)
+	params := validator.FromRequestParams(req.Context())
+	dm, err := converter.ApplicationDataModelFromVersioned(params["ApplicationResource"], apiVersion)
 	if err != nil {
 		return nil, err
 	}

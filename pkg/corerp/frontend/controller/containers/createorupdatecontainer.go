@@ -101,8 +101,8 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.ContainerResource, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	content := validator.FromRequestParams(req.Context())
-	dm, err := converter.ContainerDataModelFromVersioned(content["ContainerResource"], apiVersion)
+	params := validator.FromRequestParams(req.Context())
+	dm, err := converter.ContainerDataModelFromVersioned(params["ContainerResource"], apiVersion)
 	if err != nil {
 		return nil, err
 	}

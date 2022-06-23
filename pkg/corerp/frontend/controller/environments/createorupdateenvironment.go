@@ -75,8 +75,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 // Validate extracts versioned resource from request and validate the properties.
 func (e *CreateOrUpdateEnvironment) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Environment, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content := validator.FromRequestParams(req.Context())
-	dm, err := converter.EnvironmentDataModelFromVersioned(content["EnvironmentResource"], apiVersion)
+	params := validator.FromRequestParams(req.Context())
+	dm, err := converter.EnvironmentDataModelFromVersioned(params["EnvironmentResource"], apiVersion)
 	if err != nil {
 		return nil, err
 	}
