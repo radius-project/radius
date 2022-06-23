@@ -13,8 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/environments"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // resourceShowCmd command to show details of a resource
@@ -40,6 +38,26 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	isUCPEnabled := false
+	if env.GetKind() == environments.KindKubernetes {
+		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
+	}
+	if isUCPEnabled {
+		err := showResourceUCP(cmd, args, env)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := showResourceLegacy(cmd, args, env)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func showResourceLegacy(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplication(cmd, env)
 	if err != nil {
 		return err
@@ -76,17 +94,31 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	format, err := cli.RequireOutput(cmd)
+	return printOutput(cmd, resource, true)
+}
+
+func showResourceUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
+	applicationName, err := cli.RequireApplication(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	err = output.Write(format, resource, cmd.OutOrStdout(), objectformats.GetResourceTableFormatOld())
+	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	resourceType, err := cli.RequireResourceType(args)
+	if err != nil {
+		return err
+	}
+	
+	resourceList, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType)
+	if err != nil {
+		return err
+	}
+
+	return printOutput(cmd, resourceList, false)
 }
 
 func isAzureConnectionResource(cmd *cobra.Command, args []string) (bool, error) {

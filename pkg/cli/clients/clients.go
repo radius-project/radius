@@ -119,6 +119,7 @@ type LegacyManagementClient interface {
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error)
+	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

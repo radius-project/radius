@@ -6,10 +6,13 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -108,6 +111,20 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 		return "", "", err
 	}
 	return results[0], results[1], nil
+}
+
+//example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
+func RequireResourceType(args []string) (string, error) {
+	if len(args) < 1 {
+		return "", errors.New("No resource Type provided")
+	}
+	resourceTypeName := args[0]
+	for _, resourceType := range ucp.ResourceTypesList {
+		if strings.Split(resourceType, "/")[1] == resourceTypeName {
+			return resourceType, nil
+		}
+	}
+	return "", errors.New("Not a valid resource Type")
 }
 
 func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource AzureResource, err error) {

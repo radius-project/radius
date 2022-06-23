@@ -25,7 +25,7 @@ type ARMApplicationsManagementClient struct {
 var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(nil)
 
 var (
-	resourceTypesList = []string{
+	ResourceTypesList = []string{
 		"Applications.Connector/mongoDatabases",
 		"Applications.Connector/rabbitMQMessageQueues",
 		"Applications.Connector/redisCaches",
@@ -44,7 +44,7 @@ var (
 // ListAllResourcesByApplication lists the resources of a particular application
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
-	for _, resourceType := range resourceTypesList {
+	for _, resourceType := range ResourceTypesList {
 		client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 		pager := client.ListByRootScope(nil)
 		for pager.NextPage(ctx) {
@@ -57,6 +57,25 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 				if isResourceWithApplication {
 					results = append(results, *resource)
 				}
+			}
+		}
+	}
+	return results, nil
+}
+
+func (amc *ARMApplicationsManagementClient) ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error) {
+	results := []generated.GenericResource{}
+	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
+	pager := client.ListByRootScope(nil)
+	for pager.NextPage(ctx) {
+		resourceList := pager.PageResponse().GenericResourcesList.Value
+		for _, resource := range resourceList {
+			isResourceWithApplication, err := isResourceWithApplication(ctx, *resource, applicationName)
+			if err != nil {
+				return nil, err
+			}
+			if isResourceWithApplication {
+				results = append(results, *resource)
 			}
 		}
 	}
