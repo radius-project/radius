@@ -9,15 +9,10 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-<<<<<<< HEAD
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/radlogger"
-=======
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
->>>>>>> eb8af818 (Use generic clients for new management client)
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -46,7 +41,6 @@ var (
 	}
 )
 
-///{rootScope}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}
 // ListAllResourcesByApplication lists the resources of a particular application
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
@@ -90,18 +84,4 @@ func isResourceWithApplication(ctx context.Context, resource generated.GenericRe
 		return true, nil
 	}
 	return false, nil
-}
-
-func filterByApplicationName(resourceList []generated.GenericResource, applicationName string) ([]generated.GenericResource, error) {
-	filteredResourceList := []generated.GenericResource{}
-	for _, resource := range resourceList {
-		IdParsed, err := resources.Parse(*resource.ID)
-		if err != nil {
-			return nil, err
-		}
-		if IdParsed.Name() == applicationName {
-			filteredResourceList = append(filteredResourceList, resource)
-		}
-	}
-	return filteredResourceList, nil
 }
