@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-logr/logr"
 	oai_errors "github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
@@ -127,6 +128,7 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 //    go-openapi/validate has readonly property check used only for go-swagger.
 //    (xeipuuv/gojsonschema and kin-openapi doesn't support readonly either)
 func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
+	log := logr.FromContextOrDiscard(req.Context())
 	routeParams := v.toRouteParams(req)
 	params, err := v.findParam(req)
 	if err != nil {
@@ -141,6 +143,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 
 	// Read content for validation and recover later.
 	content, err := io.ReadAll(req.Body)
+	log.Info(string(content))
 	if err != nil {
 		return []ValidationError{{
 			Code:    armerrors.InvalidRequestContent,
