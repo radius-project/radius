@@ -1,0 +1,10 @@
+{
+  "parameters": {
+    "rootScope": "/planes/radius/local",
+    "planeName": "local"
+  },
+  "responses": {
+    "200": {},
+    "204": {}
+  }
+}

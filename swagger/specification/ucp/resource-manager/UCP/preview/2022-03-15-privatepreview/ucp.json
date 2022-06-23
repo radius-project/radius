@@ -1,0 +1,576 @@
+{
+    "swagger": "2.0",
+    "info": {
+      "title": "UCP APIs",
+      "description": "REST API for UCP Plane Resource",
+      "version": "2022-03-15-privatepreview"
+    },
+    "host": "api.ucp.dev",
+    "schemes": [
+      "https"
+    ],
+    "consumes": [
+      "application/json"
+    ],
+    "produces": [
+      "application/json"
+    ],
+    "security": [
+      {
+        "basicAuth": []
+      }
+    ],
+    "securityDefinitions": {
+      "basicAuth": {
+        "type": "basic"
+      }
+    },
+    "paths": {
+      "/planes": {
+        "get": {
+          "description": "List all planes.",
+          "operationId": "Planes_List",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "RadiusPlanesList": {
+              "$ref": "./examples/PlanesList.json"
+            }
+          },
+          "tags": [
+            "Planes"
+          ],
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": "Plane list.",
+              "schema": {
+                "$ref": "#/definitions/PlaneResourceList"
+              }
+            },
+            "default": {
+              "description": "Error response describing why the operation failed.",
+              "schema": {
+                "$ref": "#/definitions/ErrorResponse"
+              }
+            }
+          },
+          "deprecated": false
+        }
+      },
+      "/planes/{planeType}/{planeName}": {
+        "get": {
+          "description": "Gets the properties of a UCP Plane.",
+          "operationId": "Planes_Get",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "RadiusPlanesGet": {
+              "$ref": "./examples/PlanesGetPlaneLocal.json"
+            }
+          },
+          "tags": [
+            "Planes"
+          ],
+          "parameters": [
+            {
+              "$ref": "#/parameters/PlaneTypeParameter"
+            },
+            {
+              "$ref": "#/parameters/PlaneNameParameter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Plane details.",
+              "schema": {
+                "$ref": "#/definitions/PlaneResource"
+              }
+            },
+            "default": {
+              "description": "Error response describing why the operation failed.",
+              "schema": {
+                "$ref": "#/definitions/ErrorResponse"
+              }
+            }
+          }
+        },
+        "put": {
+          "description": "Create or update a Plane.",
+          "operationId": "Planes_CreateOrUpdate",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "RadiusPlanesPut": {
+              "$ref": "./examples/PlanesPutPlaneLocal.json"
+            }
+          },
+          "tags": [
+            "Planes"
+          ],
+          "parameters": [
+            {
+              "$ref": "#/parameters/PlaneTypeParameter"
+            },
+            {
+              "$ref": "#/parameters/PlaneNameParameter"
+            },
+            {
+              "name": "Plane",
+              "description": "plane details",
+              "in": "body",
+              "required": true,
+              "schema": {
+                "$ref": "#/definitions/PlaneResource"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "The resource was updated successfully.",
+              "schema": {
+                "$ref": "#/definitions/PlaneResource"
+              }
+            },
+            "201": {
+              "description": "The resource was created successfully.",
+              "schema": {
+                "$ref": "#/definitions/PlaneResource"
+              }
+            },
+            "default": {
+              "description": "Error response describing why the operation failed.",
+              "schema": {
+                "$ref": "#/definitions/ErrorResponse"
+              }
+            }
+          }
+        },
+        "delete": {
+          "description": "Delete a Plane.",
+          "operationId": "Planes_Delete",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "RadiusPlanesDelete": {
+              "$ref": "./examples/PlanesDeletePlaneLocal.json"
+            }
+          },
+          "tags": [
+            "Planes"
+          ],
+          "parameters": [
+            {
+              "$ref": "#/parameters/PlaneTypeParameter"
+            },
+            {
+              "$ref": "#/parameters/PlaneNameParameter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "The plane was successfully deleted."
+            },
+            "204": {
+              "description": "The plane does not exist."
+            },
+            "default": {
+              "description": "Error response describing why the operation failed.",
+              "schema": {
+                "$ref": "#/definitions/ErrorResponse"
+              }
+            }
+          }
+        }
+      },
+      "/planes/{planeType}/{planeName}/resourcegroups": {
+        "get": {
+          "description": "List all resource groups.",
+          "operationId": "ResourceGroups_List",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "UCPResourceGroupsList": {
+              "$ref": "./examples/ResourceGroupsList.json"
+            }
+          },
+          "tags": [
+            "ResourceGroups"
+          ],
+          "parameters": [
+            {
+              "$ref": "#/parameters/PlaneTypeParameter"
+            },
+            {
+              "$ref": "#/parameters/PlaneNameParameter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "ResourceGroup list.",
+              "schema": {
+                "$ref": "#/definitions/ResourceGroupResourceList"
+              }
+            },
+            "default": {
+              "description": "Error response describing why the operation failed.",
+              "schema": {
+                "$ref": "#/definitions/ErrorResponse"
+              }
+            }
+          },
+          "deprecated": false
+        }
+      },
+      "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}": {
+        "get": {
+          "description": "Gets the properties of a UCP ResourceGroup.",
+          "operationId": "ResourceGroups_Get",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "UCPResourceGroupsGet": {
+              "$ref": "./examples/ResourceGroupsGetResourceGroupRG1.json"
+            }
+          },
+          "tags": [
+            "Planes"
+          ],
+          "parameters": [
+            {
+              "$ref": "#/parameters/PlaneTypeParameter"
+            },
+            {
+              "$ref": "#/parameters/PlaneNameParameter"
+            },
+            {
+              "$ref": "#/parameters/ResourceGroupNameParameter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "ResourceGroup details.",
+              "schema": {
+                "$ref": "#/definitions/ResourceGroupResource"
+              }
+            },
+            "default": {
+              "description": "Error response describing why the operation failed.",
+              "schema": {
+                "$ref": "#/definitions/ErrorResponse"
+              }
+            }
+          }
+        },
+        "put": {
+          "description": "Create or update a ResourceGroup.",
+          "operationId": "ResourceGroups_CreateOrUpdate",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "UCPResourceGroupsPut": {
+              "$ref": "./examples/ResourceGroupsPutResourceGroupRG1.json"
+            }
+          },
+          "tags": [
+            "ResourceGroup"
+          ],
+          "parameters": [
+            {
+              "$ref": "#/parameters/PlaneTypeParameter"
+            },
+            {
+              "$ref": "#/parameters/PlaneNameParameter"
+            },
+            {
+              "$ref": "#/parameters/ResourceGroupNameParameter"
+            },
+            {
+              "name": "ResourceGroup",
+              "description": "ResourceGroup details",
+              "in": "body",
+              "required": true,
+              "schema": {
+                "$ref": "#/definitions/ResourceGroupResource"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "The resource was updated successfully.",
+              "schema": {
+                "$ref": "#/definitions/ResourceGroupResource"
+              }
+            },
+            "201": {
+              "description": "The resource was created successfully.",
+              "schema": {
+                "$ref": "#/definitions/ResourceGroupResource"
+              }
+            },
+            "default": {
+              "description": "Error response describing why the operation failed.",
+              "schema": {
+                "$ref": "#/definitions/ErrorResponse"
+              }
+            }
+          }
+        },
+        "delete": {
+          "description": "Delete a ResourceGroup.",
+          "operationId": "ResourceGroups_Delete",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "RadiusEnvironmentsDelete": {
+              "$ref": "./examples/ResourceGroupsDeleteResourceGroupRG1.json"
+            }
+          },
+          "tags": [
+            "ResourceGroup"
+          ],
+          "parameters": [
+            {
+              "$ref": "#/parameters/PlaneTypeParameter"
+            },
+            {
+              "$ref": "#/parameters/PlaneNameParameter"
+            },
+            {
+              "$ref": "#/parameters/ResourceGroupNameParameter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "The resource group was successfully deleted."
+            },
+            "204": {
+              "description": "The resource group does not exist."
+            },
+            "default": {
+              "description": "Error response describing why the operation failed.",
+              "schema": {
+                "$ref": "#/definitions/ErrorResponse"
+              }
+            }
+          }
+        }
+      }
+    },
+    "definitions": {
+      "PlaneResourceList": {
+        "description": "The list of planes.",
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "The list of planes.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/PlaneResource"
+            }
+          }
+        }
+      },
+      "PlaneResource": {
+        "description": "UCP Plane.",
+        "type": "object",
+        "required": [
+          "properties"
+        ],
+        "properties": {
+          "properties": {
+            "x-ms-client-flatten": true,
+            "$ref": "#/definitions/PlaneResourceProperties"
+          }
+        }
+      },
+      "PlaneResourceProperties": {
+        "description": "UCP Plane properties",
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/definitions/PlaneKind"
+          },
+          "url": {
+            "description": "URL to forward requests to for non UCP Native Plane",
+            "type": "string"
+          },
+          "resourceProviders": {
+            "description": "Resource Providers for UCP Native Plane",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+              
+          }
+        }
+      },
+      "PlaneKind": {
+        "type": "string",
+        "description": "Plane kinds supported.",
+        "enum": [
+          "UCPNative",
+          "Azure"
+        ],
+        "x-ms-enum": {
+          "name": "PlaneKind",
+          "modelAsString": true
+        }
+      },
+      "ResourceGroupResourceList": {
+        "description": "The list of resource groups.",
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "The list of resource groups.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ResourceGroupResource"
+            }
+          }
+        }
+      },
+      "ResourceGroupResource": {
+        "description": "UCP ResourceGroup.",
+        "type": "object",
+        "properties": {
+          "properties": {
+            "x-ms-client-flatten": true,
+            "$ref": "#/definitions/ResourceGroupResourceProperties"
+          }
+        }
+      },
+      "ResourceGroupResourceProperties": {
+        "description": "UCP ResourceGroup properties",
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/ResourceGroupName",
+            "readOnly": true
+          }
+        }
+      },
+      "ResourceGroupName": {
+        "type": "string",
+        "description": "The name of the resource group",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+        "maxLength": 128
+      },
+      "ErrorDetail": {
+        "description": "The error detail.",
+        "type": "object",
+        "properties": {
+          "code": {
+            "readOnly": true,
+            "type": "string",
+            "description": "The error code."
+          },
+          "message": {
+            "readOnly": true,
+            "type": "string",
+            "description": "The error message."
+          },
+          "target": {
+            "readOnly": true,
+            "type": "string",
+            "description": "The error target."
+          },
+          "details": {
+            "readOnly": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ErrorDetail"
+            },
+            "x-ms-identifiers": [
+              "message",
+              "target"
+            ],
+            "description": "The error details."
+          },
+          "additionalInfo": {
+            "readOnly": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ErrorAdditionalInfo"
+            },
+            "x-ms-identifiers": [],
+            "description": "The error additional info."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "title": "Error response",
+        "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations. (This also follows the OData error response format.).",
+        "type": "object",
+        "properties": {
+          "error": {
+            "description": "The error object.",
+            "$ref": "#/definitions/ErrorDetail"
+          }
+        }
+      },
+      "ErrorAdditionalInfo": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "readOnly": true,
+            "type": "string",
+            "description": "The additional info type."
+          },
+          "info": {
+            "readOnly": true,
+            "type": "object",
+            "description": "The additional info."
+          }
+        },
+        "description": "The resource management error additional info."
+      }
+    },
+    "parameters": {
+      "PlaneTypeParameter": {
+        "name": "planeType",
+        "in": "path",
+        "required": true,
+        "type": "string",
+        "description": "The type of the plane",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+        "maxLength": 128,
+        "x-ms-parameter-location": "method"
+      },
+      "PlaneNameParameter": {
+          "name": "planeName",
+          "in": "path",
+          "required": true,
+          "type": "string",
+          "description": "The name of the plane",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+          "maxLength": 128,
+          "x-ms-parameter-location": "method"
+      },
+      "ResourceGroupNameParameter": {
+        "name": "resourceGroupName",
+        "in": "path",
+        "required": true,
+        "type": "string",
+        "description": "The name of the resource group",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+        "maxLength": 128,
+        "x-ms-parameter-location": "method"
+      }
+    }
+  }
+  
