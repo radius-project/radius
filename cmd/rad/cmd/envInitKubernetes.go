@@ -15,13 +15,6 @@ const (
 	CORE_RP_API_VERSION = "2022-03-15-privatepreview"
 )
 
-type envType string
-
-const (
-	k8s envType = "kubernetes"
-	dev envType = "dev"
-)
-
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 	registerAzureProviderFlags(envInitKubernetesCmd)
