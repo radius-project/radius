@@ -132,7 +132,7 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *
 	numBackends := len(dependencies)
 	var backends []tsv1.TrafficSplitBackend
 	routeName := resource.ResourceName
-	rootService := namespace + "." + routeName
+	rootService := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName) + "." + namespace + ".svc.cluster.local"
 	trafficsplit := &tsv1.TrafficSplit{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TrafficSplit",
@@ -153,7 +153,7 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *
 		destination := *route.Routes[i].Destination
 		httpRouteName := dependencies[destination].ResourceID.Name()
 		tsBackend := tsv1.TrafficSplitBackend{
-			Service: httpRouteName,
+			Service: kubernetes.MakeResourceName(resource.ApplicationName, httpRouteName),
 			Weight:  (int)(*(route.Routes[i].Weight)),
 		}
 		trafficsplit.Spec.Backends = append(trafficsplit.Spec.Backends, tsBackend)
