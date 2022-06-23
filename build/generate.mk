@@ -59,6 +59,11 @@ generate-radclient: generate-node-installed generate-autorest-installed generate
 		--azure-arm \
 		--verbose
 
+.PHONY: generate-genericcliclient
+generate-genericcliclient: generate-node-installed generate-autorest-installed
+	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	autorest pkg/cli/clients_new/README.md --tag=2022-03-15-privatepreview
+
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
