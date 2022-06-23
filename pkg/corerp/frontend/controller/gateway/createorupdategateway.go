@@ -70,7 +70,7 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (res
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	updateExistingResourceData(serviceCtx, existingResource, newResource)
+	enrichMetadata(serviceCtx, existingResource, newResource)
 
 	obj, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
@@ -117,7 +117,7 @@ func (e *CreateOrUpdateGateway) Validate(ctx context.Context, req *http.Request,
 }
 
 // updateExistingResourceData updates the gateway resource before it is saved to the DB.
-func updateExistingResourceData(serviceCtx *servicecontext.ARMRequestContext, er *datamodel.Gateway, nr *datamodel.Gateway) {
+func enrichMetadata(serviceCtx *servicecontext.ARMRequestContext, er *datamodel.Gateway, nr *datamodel.Gateway) {
 	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *serviceCtx.SystemData())
 	if er.InternalMetadata.CreatedAPIVersion != "" {
 		nr.InternalMetadata.CreatedAPIVersion = er.InternalMetadata.CreatedAPIVersion
