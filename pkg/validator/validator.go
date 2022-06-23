@@ -149,7 +149,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	}
 
 	// WORKAROUND: https://github.com/project-radius/radius/issues/2683
-	// UCP or DE sends the invalid request which has invalid content type so validator treats it as empty content.
+	// UCP or DE sends the invalid request which has -1 ContentLength header so validator treats it as empty content.
 	if req.ContentLength < 0 && len(content) > 0 {
 		req.ContentLength = (int64)(len(content))
 	}
