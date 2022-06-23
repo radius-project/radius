@@ -77,6 +77,7 @@ func Test_EnvironmentWithCoreRP(t *testing.T) {
 						"import": "radius",
 						"type":   "Applications.Core/environments@2022-03-15-privatepreview",
 						"properties": map[string]interface{}{
+							"name":     envName,
 							"location": "WEST US",
 							"properties": map[string]interface{}{
 								"compute": map[string]interface{}{
