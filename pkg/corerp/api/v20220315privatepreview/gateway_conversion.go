@@ -44,7 +44,7 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Application:       to.String(src.Properties.Application),
-			Hostname: datamodel.GatewayPropertiesHostname{
+			Hostname: &datamodel.GatewayPropertiesHostname{
 				FullyQualifiedHostname: to.String(src.Properties.Hostname.FullyQualifiedHostname),
 				Prefix:                 to.String(src.Properties.Hostname.Prefix),
 			},
