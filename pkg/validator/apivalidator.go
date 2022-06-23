@@ -48,7 +48,6 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 				}
 				return
 			}
-
 			h.ServeHTTP(w, r)
 		}
 

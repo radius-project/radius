@@ -6,7 +6,10 @@
 package validator
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -19,10 +22,13 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
 	APIVersionQueryKey = "api-version"
+
+	rootScopeParam = "rootScope"
 )
 
 var (
@@ -48,9 +54,10 @@ type validator struct {
 	TypeName   string
 	APIVersion string
 
-	specDoc      *loads.Document
-	paramCache   map[string]map[string]spec.Parameter
-	paramCacheMu *sync.RWMutex
+	rootScopePrefix string
+	specDoc         *loads.Document
+	paramCache      map[string]map[string]spec.Parameter
+	paramCacheMu    *sync.RWMutex
 }
 
 // findParam looks up the correct spec.Parameter which a unique parameter is defined by a combination
@@ -85,17 +92,14 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 	}
 
 	// Gorilla mux route path should start with {rootScope:.*} to handle UCP and Azure root scope.
-	scopePath := strings.Replace(pathTemplate, "{rootScope:.*}", "{rootScope}", 1)
-	var param map[string]spec.Parameter = nil
+	scopePath := strings.Replace(pathTemplate, v.rootScopePrefix, "/{"+rootScopeParam+"}", 1)
+
 	// Iterate loaded paths to find the matched route.
 	for k := range v.specDoc.Analyzer.AllPaths() {
 		if strings.EqualFold(k, scopePath) {
-			param = v.specDoc.Analyzer.ParamsFor(req.Method, k)
+			v.paramCache[templateKey] = v.specDoc.Analyzer.ParamsFor(req.Method, k)
+			return v.paramCache[templateKey], nil
 		}
-	}
-	if param != nil {
-		v.paramCache[templateKey] = param
-		return v.paramCache[templateKey], nil
 	}
 	return nil, ErrUndefinedRoute
 }
@@ -104,6 +108,9 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	routeParams := middleware.RouteParams{}
 
+	if rID, err := resources.Parse(req.URL.Path); err == nil {
+		routeParams = append(routeParams, middleware.RouteParam{Name: rootScopeParam, Value: rID.RootScope()})
+	}
 	for k := range req.URL.Query() {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
 	}
@@ -123,25 +130,33 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	routeParams := v.toRouteParams(req)
 	params, err := v.findParam(req)
 	if err != nil {
-		return routePathParseError(err)
+		return []ValidationError{{
+			Code:    armerrors.InvalidRequestContent,
+			Message: "failed to parse route: " + err.Error(),
+		}}
 	}
 
 	binder := middleware.NewUntypedRequestBinder(params, v.specDoc.Spec(), strfmt.Default)
-	data := map[string]interface{}{}
 	var errs []ValidationError
-	result := binder.Bind(req, middleware.RouteParams(routeParams), runtime.JSONConsumer(), &data)
+
+	// Read content for validation and recover later.
+	content, err := io.ReadAll(req.Body)
+	if err != nil {
+		return []ValidationError{{
+			Code:    armerrors.InvalidRequestContent,
+			Message: "failed to read body content: " + err.Error(),
+		}}
+	}
+	bindData := make(map[string]interface{})
+	result := binder.Bind(req, middleware.RouteParams(routeParams), JSONMarshaller(content), bindData)
 	if result != nil {
 		errs = parseResult(result)
 	}
 
-	return errs
-}
+	// Recover body after validation is done.
+	req.Body = io.NopCloser(bytes.NewBuffer(content))
 
-func routePathParseError(err error) []ValidationError {
-	return []ValidationError{{
-		Code:    armerrors.InvalidRequestContent,
-		Message: "failed to parse route: " + err.Error(),
-	}}
+	return errs
 }
 
 func parseResult(result error) []ValidationError {
@@ -196,4 +211,10 @@ func flattenComposite(errs *oai_errors.CompositeError) *oai_errors.CompositeErro
 		}
 	}
 	return oai_errors.CompositeValidationError(res...)
+}
+
+func JSONMarshaller(content []byte) runtime.Consumer {
+	return runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
+		return json.Unmarshal(content, data)
+	})
 }
