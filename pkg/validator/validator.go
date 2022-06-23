@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -140,21 +139,28 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	binder := middleware.NewUntypedRequestBinder(params, v.specDoc.Spec(), strfmt.Default)
 	var errs []ValidationError
 
-	fmt.Printf("contentlength1: %d", req.ContentLength)
 	// Read content for validation and recover later.
 	content, err := io.ReadAll(req.Body)
-	fmt.Printf("contentlength2: %d", req.ContentLength)
-	fmt.Println("outside:" + string(content))
 	if err != nil {
 		return []ValidationError{{
 			Code:    armerrors.InvalidRequestContent,
 			Message: "failed to read body content: " + err.Error(),
 		}}
 	}
+
+	// WORKAROUND: https://github.com/project-radius/radius/issues/2683
+	// UCP or DE sends the invalid request which has invalid content type so validator treats it as empty content.
+	if req.ContentLength < 0 && len(content) > 0 {
+		req.ContentLength = (int64)(len(content))
+	}
+
 	bindData := make(map[string]interface{})
 	result := binder.Bind(
 		req, middleware.RouteParams(routeParams),
-		jsonMarshaller(content), bindData)
+		// Pass content to the validator marshaler to prevent from reading body from buffer.
+		runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
+			return json.Unmarshal(content, data)
+		}), bindData)
 	if result != nil {
 		errs = parseResult(result)
 	}
@@ -163,14 +169,6 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	req.Body = io.NopCloser(bytes.NewBuffer(content))
 
 	return errs
-}
-
-func jsonMarshaller(content []byte) runtime.ConsumerFunc {
-	// Pass content to the validator marshaler to prevent from reading body from buffer.
-	return runtime.ConsumerFunc(func(reader io.Reader, data interface{}) error {
-		fmt.Println("consumerfunc:" + string(content))
-		return json.Unmarshal(content, data)
-	})
 }
 
 func parseResult(result error) []ValidationError {
