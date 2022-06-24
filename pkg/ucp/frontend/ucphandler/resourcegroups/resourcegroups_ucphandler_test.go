@@ -32,7 +32,8 @@ func Test_CreateResourceGroup(t *testing.T) {
 	testResourceGroupName := "test-rg"
 
 	resourceGroup := rest.ResourceGroup{
-		ID: testResourceGroupID,
+		ID:   testResourceGroupID,
+		Name: testResourceGroupName,
 	}
 
 	var o store.Object
@@ -63,7 +64,7 @@ func Test_ListResourceGroups(t *testing.T) {
 
 	var query store.Query
 	query.RootScope = path
-	query.ScopeRecursive = false
+	query.ScopeRecursive = true
 	query.IsScopeQuery = true
 
 	testResourceGroupID := "/planes/radius/local/resourceGroups/test-rg"

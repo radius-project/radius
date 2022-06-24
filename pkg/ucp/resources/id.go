@@ -329,6 +329,21 @@ func Parse(id string) (ID, error) {
 	for i < len(segments) {
 		if len(segments)-i < 2 {
 			// odd number of non-providers segments remaining, this is invalid.
+			if strings.EqualFold(segments[len(segments)-1], ResourceGroupsSegment) {
+				// This could be a scope query for resourcegroups
+				normalized := ""
+				if isUCPQualified {
+					normalized = MakeUCPID(scopes, []TypeSegment{}...) + SegmentSeparator + segments[len(segments)-1]
+				} else {
+					normalized = MakeRelativeID(scopes, []TypeSegment{}...) + SegmentSeparator + segments[len(segments)-1]
+				}
+
+				return ID{
+					id:            normalized,
+					scopeSegments: scopes,
+					typeSegments:  []TypeSegment{},
+				}, nil
+			}
 			return ID{}, invalid(id)
 		}
 

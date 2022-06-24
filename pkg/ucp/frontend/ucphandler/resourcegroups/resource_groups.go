@@ -75,13 +75,13 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
 	var query store.Query
 	query.RootScope = path
-	query.ScopeRecursive = false
+	query.ScopeRecursive = true
 	query.IsScopeQuery = true
-	listOfPlanes, err := resourcegroupsdb.GetScope(ctx, db, query)
+	listOfResourceGroups, err := resourcegroupsdb.GetScope(ctx, db, query)
 	if err != nil {
 		return nil, err
 	}
-	var ok = rest.NewOKResponse(listOfPlanes)
+	var ok = rest.NewOKResponse(listOfResourceGroups)
 	return ok, nil
 }
 

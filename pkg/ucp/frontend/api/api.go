@@ -49,7 +49,7 @@ func Register(router *mux.Router, client store.StorageClient, ucp ucphandler.UCP
 	subrouter.Methods(http.MethodDelete).HandlerFunc(h.DeletePlaneByID)
 
 	p = fmt.Sprintf("%s%s", baseURL, resourceGroupCollectionPath)
-	router.Path(p).Methods("GET").HandlerFunc(h.ListResourceGroups)
+	subrouter = router.Path(p).Subrouter()
 	subrouter.Methods(http.MethodGet).HandlerFunc(h.ListResourceGroups)
 	p = fmt.Sprintf("%s%s", baseURL, resourceGroupItemPath)
 	subrouter = router.Path(p).Subrouter()
