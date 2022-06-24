@@ -16,6 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+
+	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -40,8 +43,28 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	// TODO Integrate with renderer/deployment processor to validate associated resource existence (if fromResource is defined)
-	// and store resource properties and secrets reference
+	dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, nil, nil, nil)
+	rendererOutput, err := dp.Render(ctx, serviceCtx.ResourceID, newResource)
+	if err != nil {
+		return nil, err
+	}
+	deploymentOutput, err := dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	deployedOuputResources := deploymentOutput.Resources
+	var outputResources []map[string]interface{}
+	for _, deployedOutputResource := range deployedOuputResources {
+		outputResource := map[string]interface{}{
+			deployedOutputResource.LocalID: deployedOutputResource,
+		}
+		outputResources = append(outputResources, outputResource)
+	}
+
+	newResource.Properties.BasicResourceProperties.Status.OutputResources = outputResources
+	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
+	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.MongoDatabase{}

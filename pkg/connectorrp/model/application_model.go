@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/providers"
@@ -57,7 +56,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		// 	Renderer:     &microsoftsqlv1alpha3.Renderer{},
 		// },
 		{
-			ResourceType: mongo_ctrl.ResourceTypeName,
+			ResourceType: mongodatabases.ResourceType,
 			Renderer:     &mongodatabases.Renderer{},
 		},
 		// {
