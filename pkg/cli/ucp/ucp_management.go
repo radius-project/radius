@@ -7,6 +7,7 @@ package ucp
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -62,11 +63,20 @@ func (um *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx con
 }
 
 func isResourceWithApplication(resource generated.GenericResource, applicationName string) (bool, error) {
-	IdParsed, err := resources.Parse(*resource.ID)
+
+	obj, found := resource.Properties["application"]
+	if !found {
+		return false, errors.New("Resource isn't associated to an application")
+	}
+	associatedAppName, ok := obj.(string)
+	if !ok {
+		return false, errors.New("Invalid app")
+	}
+	idParsed, err := resources.Parse(associatedAppName)
 	if err != nil {
 		return false, err
 	}
-	if IdParsed.Name() == applicationName {
+	if idParsed.Name() == applicationName {
 		return true, nil
 	}
 	return false, nil
