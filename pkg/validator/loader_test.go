@@ -62,7 +62,7 @@ func TestParseSpecFilePath(t *testing.T) {
 }
 
 func TestLoader(t *testing.T) {
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles)
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "{rootScope:.*}")
 	require.NoError(t, err)
 	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
 	require.True(t, ok)

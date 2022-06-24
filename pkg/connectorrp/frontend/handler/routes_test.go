@@ -23,27 +23,27 @@ var handlerTests = []struct {
 	isAzureAPI bool
 }{
 	{
-		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/planes/radius/{planeName}/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo/listsecrets?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	}, {
@@ -251,9 +251,16 @@ func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovid
 			continue
 		}
 
-		uri := "http://localhost" + pathBase + tt.url
-		if isARM && !tt.isAzureAPI {
-			uri = "http://localhost" + pathBase + "/subscriptions/00000000-0000-0000-0000-000000000000" + tt.url
+		uri := "http://localhost" + pathBase + "/planes/radius/{planeName}" + tt.url
+		if isARM {
+			if tt.isAzureAPI {
+				uri = "http://localhost" + pathBase + tt.url
+			} else {
+				uri = "http://localhost" + pathBase + "/subscriptions/00000000-0000-0000-0000-000000000000" + tt.url
+			}
+		}
+		if !isARM {
+			uri = "http://localhost" + pathBase + "/planes/radius/local" + tt.url
 		}
 
 		t.Run(uri, func(t *testing.T) {
