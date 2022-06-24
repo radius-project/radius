@@ -9,9 +9,12 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/vmware/vmware-go-kcl/logger"
 )
 
 type ARMApplicationsManagementClient struct {
@@ -48,7 +51,7 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 		for pager.NextPage(ctx) {
 			resourceList := pager.PageResponse().GenericResourcesList.Value
 			for _, resource := range resourceList {
-				isResourceWithApplication, err := isResourceWithApplication(*resource, applicationName)
+				isResourceWithApplication, err := isResourceWithApplication(ctx, *resource, applicationName)
 				if err != nil {
 					return nil, err
 				}
@@ -61,8 +64,8 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 	return results, nil
 }
 
-func isResourceWithApplication(resource generated.GenericResource, applicationName string) (bool, error) {
-
+func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
+	log := logr.FromContextOrDiscard(ctx)
 	obj, found := resource.Properties["application"]
 	// A resource will always have an application associated.
 	// This is a required field while creating a resource.
@@ -72,9 +75,11 @@ func isResourceWithApplication(resource generated.GenericResource, applicationNa
 	}
 	associatedAppId, ok := obj.(string)
 	if !ok {
-		return true, nil
+		log.V(radlogger.Warn).Info("Failed to list resources in the application. Resource with invalid application id found.")
+		return false, nil
 	}
 	idParsed, err := resources.Parse(associatedAppId)
+
 	if err != nil {
 		return false, err
 	}
