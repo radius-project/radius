@@ -26,5 +26,4 @@ const (
 type ResourceHandler interface {
 	Put(ctx context.Context, resource outputresource.OutputResource) error
 	GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error)
-	GetResourceProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error)
 }
