@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 func workaround28169(r *http.Request) {
@@ -17,6 +18,19 @@ func workaround28169(r *http.Request) {
 	// The built-in support will get the Host header wrong, which is a big problem. Almost every
 	// significant service validates its Host header.
 	r.Host = r.URL.Host
+}
+
+func trimPlanesPrefix(r *http.Request) {
+	_, _, remainder, err := resources.ExtractPlanesPrefixFromURLPath(r.URL.Path)
+	if err != nil {
+		// Invalid case like path: /planes/foo - do nothing
+		// If we see an invalid URL here we don't have a good way to report an error at this point
+		// we expect the error to have been handled before calling into this code.
+		return
+	}
+
+	// Success -- truncate the planes prefix
+	r.URL.Path = remainder
 }
 
 func defaultErrorHandler(w http.ResponseWriter, r *http.Request, err error) {

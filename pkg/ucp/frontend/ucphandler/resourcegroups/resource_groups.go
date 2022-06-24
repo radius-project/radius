@@ -25,12 +25,6 @@ type ResourceGroupsUCPHandler interface {
 	DeleteByID(ctx context.Context, db store.StorageClient, path string, request *http.Request) (rest.Response, error)
 }
 
-const (
-	APIVersionQueryParam         = "api-version"
-	DefaultAPIVersionForRadiusRP = "2022-03-15-privatepreview" // For now, hardcoding the API version for the RP.
-	ResourceGroupsIdentifier     = "/resourcegroups"
-)
-
 type Options struct {
 	Address  string
 	BasePath string
@@ -65,19 +59,13 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 
 	// TODO: Validate resource group name
 
-	existing, err := resourcegroupsdb.GetByID(ctx, db, ID)
+	_, err = resourcegroupsdb.GetByID(ctx, db, ID)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			rgExists = false
 		} else {
 			return nil, err
 		}
-	}
-
-	if rgExists {
-		// Copy over the read only properties
-		rg.ID = existing.ID
-		rg.Name = existing.Name
 	}
 
 	rg.Name = ID.Name()
@@ -148,7 +136,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 	return restResponse, nil
 }
 
-func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string, request *http.Request) (rest.Response, error) {
 	resourceID, err := resources.Parse(path)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
