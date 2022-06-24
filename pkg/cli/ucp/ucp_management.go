@@ -12,6 +12,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -82,14 +83,31 @@ func (amc *ARMApplicationsManagementClient) ShowResourceByApplication(ctx contex
 	return results, nil
 }
 
-func (um *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error) {
-	client := generated.NewGenericResourcesClient(um.Connection, um.RootScope, resourceType)
+func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error) {
+	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 	return client.Delete(ctx, resourceName, nil)
+}
+
+func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error) {
+	results := []v20220315privatepreview.ApplicationResource{}
+	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
+	pager := client.ListByScope(nil)
+	for pager.NextPage(ctx) {
+		applicationList := pager.PageResponse().ApplicationResourceList.Value
+		for _, application := range applicationList {
+			results = append(results, *application)
+		}
+	}
+	return results, nil
+}
+
+func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
+	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
+	return client.Delete(ctx, applicationName, nil)
 }
 
 func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
 	log := logr.FromContextOrDiscard(ctx)
-
 	obj, found := resource.Properties["application"]
 	// A resource may not have an application associated with it.
 	if !found {

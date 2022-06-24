@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -121,6 +122,8 @@ type ApplicationsManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error)
 	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
 	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)
+	ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error)
+	DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
