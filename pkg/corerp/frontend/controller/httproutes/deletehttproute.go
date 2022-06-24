@@ -51,7 +51,7 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 	}
 
 	if !existingResource.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(OngoingAsyncOperationOnResourceMessage), nil
+		return rest.NewConflictResponse(ctrl.OngoingAsyncOperationOnResourceMessage), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)

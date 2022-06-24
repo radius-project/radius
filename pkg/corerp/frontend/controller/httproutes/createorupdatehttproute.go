@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -62,7 +63,7 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	if exists && !existingResource.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(OngoingAsyncOperationOnResourceMessage), nil
+		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
