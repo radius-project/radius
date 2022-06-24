@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/vmware/vmware-go-kcl/logger"
 )
 
 type ARMApplicationsManagementClient struct {
@@ -67,9 +66,7 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
 	log := logr.FromContextOrDiscard(ctx)
 	obj, found := resource.Properties["application"]
-	// A resource will always have an application associated.
-	// This is a required field while creating a resource.
-	// Additionally in case of connectors the resources are not required to have an application attached
+	// A resource may not have an application associated with it.
 	if !found {
 		return false, nil
 	}
