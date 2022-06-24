@@ -41,10 +41,10 @@ var (
 )
 
 // ListAllResourcesByApplication lists the resources of a particular application
-func (um *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
+func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range resourceTypesList {
-		client := generated.NewGenericResourcesClient(um.Connection, um.RootScope, resourceType)
+		client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 		pager := client.ListByRootScope(nil)
 		for pager.NextPage(ctx) {
 			resourceList := pager.PageResponse().GenericResourcesList.Value
@@ -66,13 +66,13 @@ func isResourceWithApplication(resource generated.GenericResource, applicationNa
 
 	obj, found := resource.Properties["application"]
 	if !found {
-		return false, errors.New("Resource isn't associated to an application")
+		return false, nil
 	}
-	associatedAppName, ok := obj.(string)
+	associatedAppId, ok := obj.(string)
 	if !ok {
-		return false, errors.New("Invalid app")
+		return false, errors.New("Failed to list resources in the application. Resource with invalid application id found")
 	}
-	idParsed, err := resources.Parse(associatedAppName)
+	idParsed, err := resources.Parse(associatedAppId)
 	if err != nil {
 		return false, err
 	}
