@@ -7,13 +7,10 @@ package ucp
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/go-autorest/logger"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
