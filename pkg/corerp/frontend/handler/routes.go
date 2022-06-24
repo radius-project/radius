@@ -192,7 +192,6 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			HandlerFactory: app_ctrl.NewDeleteApplication,
 		},
 		// Gateway resource handler registration.
-		// TODO: Add async registration for createorupdate and delete handler
 		{
 			ParentRouter:   gtwyRTSubrouter,
 			ResourceType:   gtwy_ctrl.ResourceTypeName,
@@ -204,6 +203,24 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ResourceType:   gtwy_ctrl.ResourceTypeName,
 			Method:         v1.OperationGet,
 			HandlerFactory: gtwy_ctrl.NewGetGateway,
+		},
+		{
+			ParentRouter:   gtwyResourceRouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: gtwy_ctrl.NewCreateOrUpdateGateway,
+		},
+		{
+			ParentRouter:   gtwyResourceRouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: gtwy_ctrl.NewCreateOrUpdateGateway,
+		},
+		{
+			ParentRouter:   gtwyResourceRouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: gtwy_ctrl.NewDeleteGateway,
 		},
 	}
 	for _, h := range handlerOptions {
