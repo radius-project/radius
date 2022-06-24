@@ -57,6 +57,7 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 			return nil, err
 		}
 	}
+	rg.Name = ID.Name()
 	rg, err = resourcegroupsdb.Save(ctx, db, rg)
 	if err != nil {
 		return nil, err
