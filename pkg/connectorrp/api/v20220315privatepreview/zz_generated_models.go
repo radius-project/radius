@@ -1369,7 +1369,7 @@ type RabbitMQMessageQueueList struct {
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of RabbitMQMessageQueue resources
-	Value []*RabbitMQMessageQueueResource `json:"value,omitempty"`
+	Value []*RabbitMQMessageQueueResponseResource `json:"value,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueList.
@@ -1382,31 +1382,15 @@ func (r RabbitMQMessageQueueList) MarshalJSON() ([]byte, error) {
 
 // RabbitMQMessageQueueProperties - RabbitMQMessageQueue connector properties
 type RabbitMQMessageQueueProperties struct {
-	BasicResourceProperties
-	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
+	RabbitMQMessageQueueResponseProperties
 	// Secrets provided by resources,
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueProperties.
 func (r RabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	r.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "application", r.Application)
-	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "provisioningState", r.ProvisioningState)
-	populate(objectMap, "queue", r.Queue)
+	r.RabbitMQMessageQueueResponseProperties.marshalInternal(objectMap)
 	populate(objectMap, "secrets", r.Secrets)
 	return json.Marshal(objectMap)
 }
@@ -1420,18 +1404,6 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "application":
-				err = unpopulate(val, &r.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, &r.Environment)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, &r.ProvisioningState)
-				delete(rawMsg, key)
-		case "queue":
-				err = unpopulate(val, &r.Queue)
-				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, &r.Secrets)
 				delete(rawMsg, key)
@@ -1440,7 +1412,7 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := r.RabbitMQMessageQueueResponseProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
@@ -1467,6 +1439,118 @@ func (r RabbitMQMessageQueueResource) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResource.
 func (r *RabbitMQMessageQueueResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &r.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RabbitMQMessageQueueResponseProperties - RabbitMQMessageQueue connector response properties
+type RabbitMQMessageQueueResponseProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResponseProperties.
+func (r RabbitMQMessageQueueResponseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResponseProperties.
+func (r *RabbitMQMessageQueueResponseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return r.unmarshalInternal(rawMsg)
+}
+
+func (r RabbitMQMessageQueueResponseProperties) marshalInternal(objectMap map[string]interface{}) {
+	r.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "environment", r.Environment)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "queue", r.Queue)
+}
+
+func (r *RabbitMQMessageQueueResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &r.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &r.Environment)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "queue":
+				err = unpopulate(val, &r.Queue)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RabbitMQMessageQueueResponseResource - RabbitMQMessageQueue connector
+type RabbitMQMessageQueueResponseResource struct {
+	TrackedResource
+	// REQUIRED; RabbitMQMessageQueue connector response properties
+	Properties *RabbitMQMessageQueueResponseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResponseResource.
+func (r RabbitMQMessageQueueResponseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", r.Properties)
+	populate(objectMap, "systemData", r.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResponseResource.
+func (r *RabbitMQMessageQueueResponseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -1528,7 +1612,7 @@ type RedisCacheList struct {
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of RedisCache resources
-	Value []*RedisCacheResource `json:"value,omitempty"`
+	Value []*RedisCacheResponseResource `json:"value,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisCacheList.
@@ -1541,39 +1625,15 @@ func (r RedisCacheList) MarshalJSON() ([]byte, error) {
 
 // RedisCacheProperties - RedisCache connector properties
 type RedisCacheProperties struct {
-	BasicResourceProperties
-	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// The host name of the target redis cache
-	Host *string `json:"host,omitempty"`
-
-	// The port value of the target redis cache
-	Port *int32 `json:"port,omitempty"`
-
-	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
-	Resource *string `json:"resource,omitempty"`
-
+	RedisCacheResponseProperties
 	// The secret values for the given RedisCache resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisCacheProperties.
 func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	r.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "application", r.Application)
-	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "host", r.Host)
-	populate(objectMap, "port", r.Port)
-	populate(objectMap, "provisioningState", r.ProvisioningState)
-	populate(objectMap, "resource", r.Resource)
+	r.RedisCacheResponseProperties.marshalInternal(objectMap)
 	populate(objectMap, "secrets", r.Secrets)
 	return json.Marshal(objectMap)
 }
@@ -1587,24 +1647,6 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "application":
-				err = unpopulate(val, &r.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, &r.Environment)
-				delete(rawMsg, key)
-		case "host":
-				err = unpopulate(val, &r.Host)
-				delete(rawMsg, key)
-		case "port":
-				err = unpopulate(val, &r.Port)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, &r.ProvisioningState)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, &r.Resource)
-				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, &r.Secrets)
 				delete(rawMsg, key)
@@ -1613,7 +1655,7 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := r.RedisCacheResponseProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
@@ -1640,6 +1682,132 @@ func (r RedisCacheResource) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheResource.
 func (r *RedisCacheResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &r.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RedisCacheResponseProperties - RedisCache connector properties
+type RedisCacheResponseProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The host name of the target redis cache
+	Host *string `json:"host,omitempty"`
+
+	// The port value of the target redis cache
+	Port *int32 `json:"port,omitempty"`
+
+	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
+	Resource *string `json:"resource,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheResponseProperties.
+func (r RedisCacheResponseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheResponseProperties.
+func (r *RedisCacheResponseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return r.unmarshalInternal(rawMsg)
+}
+
+func (r RedisCacheResponseProperties) marshalInternal(objectMap map[string]interface{}) {
+	r.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "environment", r.Environment)
+	populate(objectMap, "host", r.Host)
+	populate(objectMap, "port", r.Port)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "resource", r.Resource)
+}
+
+func (r *RedisCacheResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &r.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &r.Environment)
+				delete(rawMsg, key)
+		case "host":
+				err = unpopulate(val, &r.Host)
+				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, &r.Port)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &r.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RedisCacheResponseResource - RedisCache connector
+type RedisCacheResponseResource struct {
+	TrackedResource
+	// REQUIRED; RedisCache connector properties
+	Properties *RedisCacheResponseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheResponseResource.
+func (r RedisCacheResponseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", r.Properties)
+	populate(objectMap, "systemData", r.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheResponseResource.
+func (r *RedisCacheResponseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err

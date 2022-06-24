@@ -27,7 +27,7 @@ func TestGetRedisCache_20220315PrivatePreview(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, redisDataModel, expectedOutput := getTestModels20220315privatepreview()
+	_, redisDataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -73,7 +73,7 @@ func TestGetRedisCache_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.RedisCacheResource{}
+		actualOutput := &v20220315privatepreview.RedisCacheResponseResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedOutput, actualOutput)

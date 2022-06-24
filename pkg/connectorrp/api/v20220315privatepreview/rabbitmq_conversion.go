@@ -30,6 +30,37 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
+			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Status: v1.ResourceStatus{
+						OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
+					},
+				},
+				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+				Environment:       to.String(src.Properties.Environment),
+				Application:       to.String(src.Properties.Application),
+				Queue:             to.String(src.Properties.Queue),
+			},
+			Secrets: secrets,
+		},
+		InternalMetadata: v1.InternalMetadata{
+			UpdatedAPIVersion: Version,
+		},
+	}
+	return converted, nil
+}
+
+// ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel.
+func (src *RabbitMQMessageQueueResponseResource) ConvertTo() (conv.DataModelInterface, error) {
+	converted := &datamodel.RabbitMQMessageQueueResponse{
+		TrackedResource: v1.TrackedResource{
+			ID:       to.String(src.ID),
+			Name:     to.String(src.Name),
+			Type:     to.String(src.Type),
+			Location: to.String(src.Location),
+			Tags:     to.StringMap(src.Tags),
+		},
+		Properties: datamodel.RabbitMQMessageQueueResponseProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: v1.ResourceStatus{
 					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
@@ -39,7 +70,6 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
 			Queue:             to.String(src.Properties.Queue),
-			Secrets:           secrets,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -62,6 +92,41 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	dst.Location = to.StringPtr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQMessageQueueProperties{
+		RabbitMQMessageQueueResponseProperties: RabbitMQMessageQueueResponseProperties{
+			BasicResourceProperties: BasicResourceProperties{
+				Status: &ResourceStatus{
+					OutputResources: GetOutputResourcesForDatamodel(&rabbitmq.Properties.Status),
+				},
+			},
+			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
+			Environment:       to.StringPtr(rabbitmq.Properties.Environment),
+			Application:       to.StringPtr(rabbitmq.Properties.Application),
+			Queue:             to.StringPtr(rabbitmq.Properties.Queue),
+		},
+	}
+	if (rabbitmq.Properties.Secrets != datamodel.RabbitMQSecrets{}) {
+		dst.Properties.Secrets = &RabbitMQSecrets{
+			ConnectionString: to.StringPtr(rabbitmq.Properties.Secrets.ConnectionString),
+		}
+	}
+
+	return nil
+}
+
+// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitMQMessageQueue respones resource.
+func (dst *RabbitMQMessageQueueResponseResource) ConvertFrom(src conv.DataModelInterface) error {
+	rabbitmq, ok := src.(*datamodel.RabbitMQMessageQueueResponse)
+	if !ok {
+		return conv.ErrInvalidModelConversion
+	}
+
+	dst.ID = to.StringPtr(rabbitmq.ID)
+	dst.Name = to.StringPtr(rabbitmq.Name)
+	dst.Type = to.StringPtr(rabbitmq.Type)
+	dst.SystemData = fromSystemDataModel(rabbitmq.SystemData)
+	dst.Location = to.StringPtr(rabbitmq.Location)
+	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
+	dst.Properties = &RabbitMQMessageQueueResponseProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
 				OutputResources: GetOutputResourcesForDatamodel(&rabbitmq.Properties.Status),
@@ -72,12 +137,6 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 		Application:       to.StringPtr(rabbitmq.Properties.Application),
 		Queue:             to.StringPtr(rabbitmq.Properties.Queue),
 	}
-	if (rabbitmq.Properties.Secrets != datamodel.RabbitMQSecrets{}) {
-		dst.Properties.Secrets = &RabbitMQSecrets{
-			ConnectionString: to.StringPtr(rabbitmq.Properties.Secrets.ConnectionString),
-		}
-	}
-
 	return nil
 }
 
@@ -96,28 +155,6 @@ func (dst *RabbitMQSecrets) ConvertFrom(src conv.DataModelInterface) error {
 func (src *RabbitMQSecrets) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{
 		ConnectionString: to.String(src.ConnectionString),
-	}
-	return converted, nil
-}
-
-// ConvertFrom converts from version-agnostic datamodel to the versioned RedisCacheSecrets instance.
-func (dst *RedisCacheSecrets) ConvertFrom(src conv.DataModelInterface) error {
-	redisSecrets, ok := src.(*datamodel.RedisCacheSecrets)
-	if !ok {
-		return conv.ErrInvalidModelConversion
-	}
-
-	dst.ConnectionString = to.StringPtr(redisSecrets.ConnectionString)
-	dst.Password = to.StringPtr(redisSecrets.Password)
-
-	return nil
-}
-
-// ConvertTo converts from the versioned RedisCacheSecrets instance to version-agnostic datamodel.
-func (src *RedisCacheSecrets) ConvertTo() (conv.DataModelInterface, error) {
-	converted := &datamodel.RedisCacheSecrets{
-		ConnectionString: to.String(src.ConnectionString),
-		Password:         to.String(src.Password),
 	}
 	return converted, nil
 }

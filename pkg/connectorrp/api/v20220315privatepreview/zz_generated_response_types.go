@@ -301,7 +301,7 @@ type RabbitMQMessageQueuesGetResponse struct {
 
 // RabbitMQMessageQueuesGetResult contains the result from method RabbitMQMessageQueues.Get.
 type RabbitMQMessageQueuesGetResult struct {
-	RabbitMQMessageQueueResource
+	RabbitMQMessageQueueResponseResource
 }
 
 // RabbitMQMessageQueuesListByRootScopeResponse contains the response from method RabbitMQMessageQueues.ListByRootScope.
@@ -355,7 +355,7 @@ type RedisCachesGetResponse struct {
 
 // RedisCachesGetResult contains the result from method RedisCaches.Get.
 type RedisCachesGetResult struct {
-	RedisCacheResource
+	RedisCacheResponseResource
 }
 
 // RedisCachesListByRootScopeResponse contains the response from method RedisCaches.ListByRootScope.
