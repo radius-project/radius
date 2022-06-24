@@ -10,8 +10,10 @@ import (
 	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/go-autorest/logger"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -65,12 +67,15 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 func isResourceWithApplication(resource generated.GenericResource, applicationName string) (bool, error) {
 
 	obj, found := resource.Properties["application"]
+	// A resource will always have an application associated.
+	// This is a required field while creating a resource.
+	// Additionally in case of connectors the resources are not required to have an application attached
 	if !found {
 		return false, nil
 	}
 	associatedAppId, ok := obj.(string)
 	if !ok {
-		return false, errors.New("Failed to list resources in the application. Resource with invalid application id found")
+		return true, nil
 	}
 	idParsed, err := resources.Parse(associatedAppId)
 	if err != nil {
