@@ -52,6 +52,9 @@ func deleteResource(cmd *cobra.Command, args []string) error {
 	}
 
 	deleteResponse, err := client.DeleteResource(cmd.Context(), resourceType, resourceName)
+	if err != nil {
+		return err
+	}
 
 	return printOutput(cmd, deleteResponse, false)
 }
