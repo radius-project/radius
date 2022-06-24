@@ -9,9 +9,11 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/project-radius/radius/pkg/cli/azureresources"
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 type ARMApplicationsManagementClient struct {
@@ -23,36 +25,63 @@ type ARMApplicationsManagementClient struct {
 var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(nil)
 
 var (
-	resourceOperationList = []azureresources.AzureResourceOperationsModel{
-		{
-			ResourceType:       azureresources.MongoResource,
-			ResourceOperations: &azureresources.MongoResourceOperations{},
-		},
-		{
-			ResourceType:       azureresources.RabbitMQResource,
-			ResourceOperations: &azureresources.RabbitResourceOperations{},
-		},
-		{
-			ResourceType:       azureresources.RedisResource,
-			ResourceOperations: &azureresources.RedisResourceOperations{},
-		},
-		{
-			ResourceType:       azureresources.SQLResource,
-			ResourceOperations: &azureresources.SQLResourceOperations{},
-		},
+	resourceTypesList = []string{
+		"Applications.Connector/mongoDatabases",
+		"Applications.Connector/rabbitMQMessageQueues",
+		"Applications.Connector/redisCaches",
+		"Applications.Connector/sqlDatabases",
+		"Applications.Connector/daprStateStores",
+		"Applications.Connector/daprSecretStores",
+		"Applications.Connector/daprPubSubBrokers",
+		"Applications.Connector/daprInvokeHttpRoutes",
+		"Applications.Connector/extenders",
+		"Applications.Core/gateways",
+		"Applications.Core/httpRoutes",
+		"Applications.Core/containers",
 	}
 )
 
 // ListAllResourcesByApplication lists the resources of a particular application
-func (um *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error) {
-	rootScope := um.RootScope
-	resourceListByApplication := make([]v20220315privatepreview.Resource, 0)
-	for _, resourceOperation := range resourceOperationList {
-		resourceList, err := resourceOperation.ResourceOperations.GetResourcesByApplication(um.Connection, ctx, rootScope, applicationName)
-		if err != nil {
-			return nil, err
+func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
+	results := []generated.GenericResource{}
+	for _, resourceType := range resourceTypesList {
+		client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
+		pager := client.ListByRootScope(nil)
+		for pager.NextPage(ctx) {
+			resourceList := pager.PageResponse().GenericResourcesList.Value
+			for _, resource := range resourceList {
+				isResourceWithApplication, err := isResourceWithApplication(ctx, *resource, applicationName)
+				if err != nil {
+					return nil, err
+				}
+				if isResourceWithApplication {
+					results = append(results, *resource)
+				}
+			}
 		}
-		resourceListByApplication = append(resourceListByApplication, resourceList...)
 	}
-	return resourceListByApplication, nil
+	return results, nil
+}
+
+func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
+	log := logr.FromContextOrDiscard(ctx)
+	obj, found := resource.Properties["application"]
+	// A resource may not have an application associated with it.
+	if !found {
+		return false, nil
+	}
+	associatedAppId, ok := obj.(string)
+	if !ok {
+		log.V(radlogger.Warn).Info("Failed to list resources in the application. Resource with invalid application id found.")
+		return false, nil
+	}
+	idParsed, err := resources.Parse(associatedAppId)
+
+	if err != nil {
+		return false, err
+	}
+	if idParsed.Name() == applicationName {
+		return true, nil
+	}
+	return false, nil
 }

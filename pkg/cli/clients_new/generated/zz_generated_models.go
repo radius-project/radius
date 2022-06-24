@@ -71,8 +71,8 @@ func (e ErrorResponse) Error() string {
 // GenericResource - Generic resource
 type GenericResource struct {
 	TrackedResource
-	// Any object
-	ResourceProperties map[string]interface{} `json:"resourceProperties,omitempty"`
+	// REQUIRED; Any object
+	Properties map[string]interface{} `json:"properties,omitempty"`
 
 	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
@@ -82,7 +82,7 @@ type GenericResource struct {
 func (g GenericResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	g.TrackedResource.marshalInternal(objectMap)
-	populate(objectMap, "resourceProperties", g.ResourceProperties)
+	populate(objectMap, "properties", g.Properties)
 	populate(objectMap, "systemData", g.SystemData)
 	return json.Marshal(objectMap)
 }

@@ -248,7 +248,7 @@
           "systemData": {
             "$ref": "#/definitions/systemData"
           },
-          "resourceProperties": {
+          "properties": {
             "type": "object"
           }
         }
