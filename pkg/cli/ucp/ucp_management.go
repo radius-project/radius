@@ -82,8 +82,14 @@ func (amc *ARMApplicationsManagementClient) ShowResourceByApplication(ctx contex
 	return results, nil
 }
 
+func (um *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error) {
+	client := generated.NewGenericResourcesClient(um.Connection, um.RootScope, resourceType)
+	return client.Delete(ctx, resourceName, nil)
+}
+
 func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
 	log := logr.FromContextOrDiscard(ctx)
+
 	obj, found := resource.Properties["application"]
 	// A resource may not have an application associated with it.
 	if !found {

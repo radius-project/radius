@@ -120,6 +120,7 @@ type LegacyManagementClient interface {
 type ApplicationsManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error)
 	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
+	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

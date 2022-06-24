@@ -113,6 +113,18 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 	return results[0], results[1], nil
 }
 
+func RequireResourceTypeAndName(args []string) (string, string, error) {
+	if len(args) < 2 {
+		return "", "", errors.New("No resource Type or Name provided")
+	}
+	resourceType, err := RequireResourceType(args)
+	if err != nil {
+		return "", "", err
+	}
+	resourceName := args[1]
+	return resourceType, resourceName, nil
+}
+
 //example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
