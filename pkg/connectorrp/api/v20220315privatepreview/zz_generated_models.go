@@ -962,7 +962,7 @@ type ExtenderProperties struct {
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]interface{}
 
-	// Dictionary of
+	// The secret values for the given Extender resource
 	Secrets map[string]interface{} `json:"secrets,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
@@ -1097,6 +1097,11 @@ type ExtendersGetOptions struct {
 
 // ExtendersListByRootScopeOptions contains the optional parameters for the Extenders.ListByRootScope method.
 type ExtendersListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersListSecretsOptions contains the optional parameters for the Extenders.ListSecrets method.
+type ExtendersListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
