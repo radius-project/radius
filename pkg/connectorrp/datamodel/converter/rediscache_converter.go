@@ -15,13 +15,18 @@ import (
 )
 
 // RedisCacheDataModelFromVersioned converts version agnostic RedisCache datamodel to versioned model.
-func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string) (conv.VersionedModelInterface, error) {
+func RedisCacheDataModelToVersioned(model conv.DataModelInterface, version string, includeSecrets bool) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.RedisCacheResource{}
-		err := versioned.ConvertFrom(model)
-		return versioned, err
-
+		if includeSecrets {
+			versioned := &v20220315privatepreview.RedisCacheResource{}
+			err := versioned.ConvertFrom(model.(*datamodel.RedisCache))
+			return versioned, err
+		} else {
+			versioned := &v20220315privatepreview.RedisCacheResponseResource{}
+			err := versioned.ConvertFrom(model.(*datamodel.RedisCacheResponse))
+			return versioned, err
+		}
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion
 	}
@@ -37,19 +42,6 @@ func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamode
 		}
 		dm, err := versioned.ConvertTo()
 		return dm.(*datamodel.RedisCache), err
-
-	default:
-		return nil, v1.ErrUnsupportedAPIVersion
-	}
-}
-
-// RedisCacheResponseDataModelFromVersioned converts version agnostic RedisCache datamodel to versioned model.
-func RedisCacheResponseDataModelToVersioned(model *datamodel.RedisCacheResponse, version string) (conv.VersionedModelInterface, error) {
-	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.RedisCacheResponseResource{}
-		err := versioned.ConvertFrom(model)
-		return versioned, err
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

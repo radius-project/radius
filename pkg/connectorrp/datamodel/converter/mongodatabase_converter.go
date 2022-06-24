@@ -15,13 +15,18 @@ import (
 )
 
 // MongoDatabaseDataModelFromVersioned converts version agnostic MongoDatabase datamodel to versioned model.
-func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version string) (conv.VersionedModelInterface, error) {
+func MongoDatabaseDataModelToVersioned(model conv.DataModelInterface, version string, includeSecrets bool) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.MongoDatabaseResource{}
-		err := versioned.ConvertFrom(model)
-		return versioned, err
-
+		if includeSecrets {
+			versioned := &v20220315privatepreview.MongoDatabaseResource{}
+			err := versioned.ConvertFrom(model.(*datamodel.MongoDatabase))
+			return versioned, err
+		} else {
+			versioned := &v20220315privatepreview.MongoDatabaseResponseResource{}
+			err := versioned.ConvertFrom(model.(*datamodel.MongoDatabaseResponse))
+			return versioned, err
+		}
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion
 	}

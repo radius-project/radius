@@ -16,7 +16,7 @@ type HTTPRoute struct {
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
-	Properties HTTPRouteProperties `json:"properties"`
+	Properties *HTTPRouteProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata

@@ -43,6 +43,6 @@ func (redis *GetRedisCache) Run(ctx context.Context, req *http.Request) (rest.Re
 		return nil, err
 	}
 
-	versioned, _ := converter.RedisCacheResponseDataModelToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := converter.RedisCacheDataModelToVersioned(existingResource, serviceCtx.APIVersion, false)
 	return rest.NewOKResponse(versioned), nil
 }

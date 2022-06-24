@@ -40,12 +40,9 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		return renderers.RendererOutput{}, err
 	}
 
-	resources := []outputresource.OutputResource{}
+	var resources []outputresource.OutputResource
 
-	if properties.Resource == nil || *properties.Resource == "" {
-		// No resource specified
-		resources = []outputresource.OutputResource{}
-	} else {
+	if properties.Resource != nil && *properties.Resource != "" {
 		results, err := RenderResource(resource.ResourceName, properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
@@ -118,7 +115,8 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 			Value: name,
 		},
 	}
-	if properties.Secrets == nil {
+	if properties.Secrets == nil && properties.Resource != nil {
+		// An Azure resource has been specified
 		secretValues := map[string]renderers.SecretValueReference{
 			renderers.ConnectionStringValue: {
 				LocalID: cosmosAccountDependency.LocalID,
@@ -138,10 +136,17 @@ func MakeSecretsAndValues(name string, properties radclient.MongoDBResourcePrope
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
-	secretValues := map[string]renderers.SecretValueReference{
-		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
-		renderers.UsernameStringValue:   {Value: *properties.Secrets.Username},
-		renderers.PasswordStringHolder:  {Value: *properties.Secrets.Password},
+	secretValues := map[string]renderers.SecretValueReference{}
+	if properties.Secrets != nil {
+		if properties.Secrets.ConnectionString != nil {
+			secretValues[renderers.ConnectionStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.ConnectionString}
+		}
+		if properties.Secrets.Username != nil {
+			secretValues[renderers.UsernameStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.Username}
+		}
+		if properties.Secrets.Password != nil {
+			secretValues[renderers.PasswordStringHolder] = renderers.SecretValueReference{Value: *properties.Secrets.Password}
+		}
 	}
 
 	return computedValues, secretValues

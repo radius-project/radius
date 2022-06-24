@@ -18,14 +18,10 @@ import (
 
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
 func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error) {
-	outputResources := v1.ResourceStatus{}.OutputResources
-	if src.Properties.GetDaprPubSubBrokerProperties().Status != nil {
-		outputResources = src.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources
-	}
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Status: v1.ResourceStatus{
-				OutputResources: outputResources,
+				OutputResources: GetOutputResourcesForVersionedResource(src.Properties.GetDaprPubSubBrokerProperties().Status),
 			},
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),

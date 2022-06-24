@@ -20,10 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTestContext(ctx context.Context, planeURL string, planeID string, httpScheme string, ucpHost string) context.Context {
+func createTestContext(ctx context.Context, planeURL string, planeID string, planeKind string, httpScheme string, ucpHost string) context.Context {
 	ctx = context.WithValue(ctx, UCPRequestInfoField, UCPRequestInfo{
-		PlaneID:    planeID,
 		PlaneURL:   planeURL,
+		PlaneID:    planeID,
+		PlaneKind:  planeKind,
 		HTTPScheme: httpScheme,
 		UCPHost:    ucpHost,
 	})
@@ -54,7 +55,7 @@ func Test_ARM_Baselines(t *testing.T) {
 			pp := NewARMProxy(options, downstream, nil)
 
 			w := httptest.NewRecorder()
-			ctx = createTestContext(ctx, "http://example.com", "/planes/example/local", "http", "localhost:9443")
+			ctx = createTestContext(ctx, "http://example.com", "/planes/example/local", "Azure", "http", "localhost:9443")
 			req := baseline.UpstreamRequest.ToTestRequest(ctx)
 
 			// Send the request

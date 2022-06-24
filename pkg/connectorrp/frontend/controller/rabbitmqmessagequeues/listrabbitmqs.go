@@ -60,7 +60,7 @@ func (rabbitmq *ListRabbitMQMessageQueues) createPaginatedList(ctx context.Conte
 			return nil, err
 		}
 
-		versioned, err := converter.RabbitMQMessageQueueResponseDataModelToVersioned(dm, serviceCtx.APIVersion)
+		versioned, err := converter.RabbitMQMessageQueueDataModelToVersioned(dm, serviceCtx.APIVersion, false)
 		if err != nil {
 			return nil, err
 		}

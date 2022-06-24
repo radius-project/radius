@@ -60,7 +60,7 @@ func (redis *ListRedisCaches) createPaginatedList(ctx context.Context, req *http
 			return nil, err
 		}
 
-		versioned, err := converter.RedisCacheResponseDataModelToVersioned(dm, serviceCtx.APIVersion)
+		versioned, err := converter.RedisCacheDataModelToVersioned(dm, serviceCtx.APIVersion, false)
 		if err != nil {
 			return nil, err
 		}

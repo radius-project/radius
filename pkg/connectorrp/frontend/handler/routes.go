@@ -39,7 +39,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		return err
 	}
 
-	mongoRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/mongodatabases").
+	mongoRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/planes/radius/{planeName}/resourcegroups/{resourceGroup}/providers/applications.connector/mongodatabases").
 		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
 	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabases}").Subrouter()
 

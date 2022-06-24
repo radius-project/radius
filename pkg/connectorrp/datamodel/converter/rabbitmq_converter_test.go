@@ -43,7 +43,7 @@ func TestRabbitMQMessageQueueDataModelToVersioned(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
 			dm := &datamodel.RabbitMQMessageQueue{}
 			_ = json.Unmarshal(c, dm)
-			am, err := RabbitMQMessageQueueDataModelToVersioned(dm, tc.apiVersion)
+			am, err := RabbitMQMessageQueueDataModelToVersioned(dm, tc.apiVersion, true)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
@@ -80,7 +80,7 @@ func TestRabbitMQMessageQueueResponseDataModelToVersioned(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
 			dm := &datamodel.RabbitMQMessageQueueResponse{}
 			_ = json.Unmarshal(c, dm)
-			am, err := RabbitMQMessageQueueResponseDataModelToVersioned(dm, tc.apiVersion)
+			am, err := RabbitMQMessageQueueDataModelToVersioned(dm, tc.apiVersion, false)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
