@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// resourceDeleteCmd command to show details of a resource
+// resourceDeleteCmd is the command to delete a resource
 var resourceDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a RAD resource",
