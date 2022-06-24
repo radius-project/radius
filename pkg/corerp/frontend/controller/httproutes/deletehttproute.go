@@ -22,8 +22,8 @@ import (
 
 var (
 	_ ctrl.Controller = (*DeleteHTTPRoute)(nil)
-	// AsyncDeleteContainerOperationTimeout is the default timeout duration of async delete container operation.
-	AsyncDeleteContainerOperationTimeout = time.Duration(120) * time.Second
+	// AsyncDeleteHTTPRouteOperationTimeout is the default timeout duration of async delete httproute operation.
+	AsyncDeleteHTTPRouteOperationTimeout = time.Duration(120) * time.Second
 )
 
 // DeleteHTTPRoute is the controller implementation to delete HTTPRoute resource.
@@ -59,7 +59,7 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteContainerOperationTimeout)
+	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteHTTPRouteOperationTimeout)
 	if err != nil {
 		existingResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
 		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), existingResource, etag)
