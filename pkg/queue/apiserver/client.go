@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package apiserverstore
+package apiserver
 
 import (
 	"context"
@@ -13,7 +13,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/project-radius/radius/pkg/queue"
+	"github.com/project-radius/radius/pkg/queue/client"
+
+	"github.com/go-logr/logr"
 	v1alpha1 "github.com/project-radius/radius/pkg/queue/apiserver/api/ucp.dev/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,51 +27,57 @@ import (
 )
 
 const (
+	LabelQueueName     = "ucp.dev/queuename"
 	LabelNextVisibleAt = "ucp.dev/nextvisibleat"
-	LabelExpireAt      = "ucp.dev/expireat"
 
 	dequeueInterval     = 5 * time.Millisecond
 	messageLockDuration = 5 * time.Minute
 )
 
-var _ queue.Client = (*Client)(nil)
+var _ client.Client = (*Client)(nil)
 
 // Client is the queue client used for dev and test purpose.
 type Client struct {
 	client    runtimeclient.Client
 	namespace string
+
+	name string
 }
 
-// New creates the in-memory queue Client instance. Client will use the default global queue if queue is nil.
-func New(client runtimeclient.Client, namespace string) *Client {
-	return &Client{client: client, namespace: namespace}
-}
-
-func Int64toa(i int64) string {
+func int64toa(i int64) string {
 	return strconv.FormatInt(int64(i), 10)
 }
 
-// Enqueue enqueues message to the in-memory queue.
-func (c *Client) Enqueue(ctx context.Context, msg *queue.Message, options ...queue.EnqueueOptions) error {
+func getTimeFromString(s string) time.Time {
+	nsec, _ := strconv.ParseInt(s, 10, 64)
+	return time.Unix(0, nsec)
+}
+
+// New creates the queue backed by Kubernetes API server KV store. name is unique name for each service which will consume the queue.
+func New(client runtimeclient.Client, namespace string, name string) *Client {
+	return &Client{client: client, namespace: namespace, name: name}
+}
+
+func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
 	raw, err := json.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
-	resourceName := fmt.Sprintf("operationqueue.applicationscore.%d", time.Now().UnixMicro())
+	id := fmt.Sprintf("%s.%d", c.name, time.Now().UnixNano())
 	now := time.Now().UTC()
 	resource := &v1alpha1.OperationQueue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      resourceName,
+			Name:      id,
 			Namespace: c.namespace,
 			Labels: map[string]string{
-				LabelExpireAt:      Int64toa(now.Add(time.Duration(5) * time.Hour).UnixNano()),
-				LabelNextVisibleAt: Int64toa(now.UnixNano()),
+				LabelNextVisibleAt: int64toa(now.UnixNano()),
+				LabelQueueName:     c.name,
 			},
 		},
 		Spec: v1alpha1.OperationQueueSpec{
 			DequeueCount: 0,
-			EnqueueAt:    metav1.Time{time.Now().UTC()},
-			ExpireAt:     metav1.Time{time.Now().UTC()},
+			EnqueueAt:    metav1.Time{Time: time.Now().UTC()},
+			ExpireAt:     metav1.Time{Time: time.Now().UTC()},
 			Data:         &runtime.RawExtension{Raw: raw},
 		},
 	}
@@ -104,11 +112,11 @@ func (c *Client) getFirstItem(ctx context.Context) (*v1alpha1.OperationQueue, er
 	if len(ql.Items) > 0 {
 		return &ql.Items[0], nil
 	}
-	return nil, errors.New("not found")
+	return nil, client.ErrMessageNotFound
 }
 
-func (c *Client) extendItem(ctx context.Context, item *v1alpha1.OperationQueue) (*v1alpha1.OperationQueue, error) {
-	nextVisibleAt := Int64toa(time.Now().UTC().Add(messageLockDuration).UnixNano())
+func (c *Client) extendItem(ctx context.Context, item *v1alpha1.OperationQueue, duration time.Duration) (*v1alpha1.OperationQueue, error) {
+	nextVisibleAt := int64toa(time.Now().UTC().Add(duration).UnixNano())
 	result := &v1alpha1.OperationQueue{}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -117,10 +125,13 @@ func (c *Client) extendItem(ctx context.Context, item *v1alpha1.OperationQueue) 
 			return getErr
 		}
 
-		result.Labels[LabelNextVisibleAt] = nextVisibleAt
+		nsec, _ := strconv.ParseInt(result.Labels[LabelNextVisibleAt], 10, 64)
+		if nsec > time.Now().UTC().UnixNano() {
+			return client.ErrDeqeueudMessage
+		}
 
-		updateErr := c.client.Update(ctx, result)
-		return updateErr
+		result.Labels[LabelNextVisibleAt] = nextVisibleAt
+		return c.client.Update(ctx, result)
 	})
 
 	if retryErr != nil {
@@ -130,60 +141,42 @@ func (c *Client) extendItem(ctx context.Context, item *v1alpha1.OperationQueue) 
 	return result, nil
 }
 
-func (c *Client) dequeueItem(ctx context.Context) (*v1alpha1.OperationQueue, error) {
+func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*client.Message, error) {
 	item, err := c.getFirstItem(ctx)
 	if err != nil {
 		return nil, err
 	}
+	result, err := c.extendItem(ctx, item, messageLockDuration)
+	if err != nil {
+		return nil, err
+	}
 
-	return c.extendItem(ctx, item)
+	return &client.Message{
+		Metadata: client.Metadata{
+			ID:            result.Name,
+			DequeueCount:  result.Spec.DequeueCount,
+			EnqueueAt:     result.Spec.EnqueueAt.Time,
+			ExpireAt:      result.Spec.ExpireAt.Time,
+			NextVisibleAt: getTimeFromString(result.Labels[LabelNextVisibleAt]),
+		},
+		ContentType: client.JSONContentType,
+		Data:        result.Spec.Data.Raw,
+	}, nil
 }
 
-// Dequeue dequeues message from the in-memory queue.
-func (c *Client) Dequeue(ctx context.Context, options ...queue.DequeueOptions) (<-chan *queue.Message, error) {
-	out := make(chan *queue.Message, 1)
+func (c *Client) StartDequeuer(ctx context.Context, opts ...client.DequeueOptions) (<-chan *client.Message, error) {
+	log := logr.FromContextOrDiscard(ctx)
+	out := make(chan *client.Message, 1)
 
 	go func() {
 		for {
-			q, err := c.dequeueItem(ctx)
-			if err != nil || q != nil {
-				msg := &queue.Message{
-					Metadata: queue.Metadata{
-						ID:            q.Name,
-						DequeueCount:  q.Spec.DequeueCount,
-						EnqueueAt:     q.Spec.EnqueueAt.Time,
-						ExpireAt:      q.Spec.ExpireAt.Time,
-						NextVisibleAt: time.Now().UTC().Add(messageLockDuration),
-					},
-					Data: q.Spec.Data.Raw,
-				}
-
-				msg.WithFinish(func(err error) error {
-					result := &v1alpha1.OperationQueue{}
-					getErr := c.client.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: c.namespace, Name: q.Name}, result)
-					if getErr != nil {
-						return getErr
-					}
-
-					options := &runtimeclient.DeleteOptions{
-						Preconditions: &metav1.Preconditions{
-							UID:             &q.UID,
-							ResourceVersion: &q.ResourceVersion,
-						},
-					}
-					return c.client.Delete(context.TODO(), result, options)
-				})
-
-				msg.WithExtend(func() error {
-					result := &v1alpha1.OperationQueue{}
-					getErr := c.client.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: c.namespace, Name: q.Name}, result)
-					if getErr != nil {
-						return getErr
-					}
-					_, err := c.extendItem(context.TODO(), result)
-					return err
-				})
+			msg, err := c.Dequeue(ctx, opts...)
+			if err == nil {
 				out <- msg
+			}
+
+			if err != nil && (errors.Is(err, client.ErrDeqeueudMessage) || errors.Is(err, client.ErrMessageNotFound)) {
+				log.Error(err, "fails to dequeue the message")
 			}
 
 			select {
@@ -196,4 +189,34 @@ func (c *Client) Dequeue(ctx context.Context, options ...queue.DequeueOptions) (
 	}()
 
 	return out, nil
+}
+
+func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
+	result := &v1alpha1.OperationQueue{}
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: msg.ID}, result)
+		if getErr != nil {
+			return getErr
+		}
+
+		options := &runtimeclient.DeleteOptions{
+			Preconditions: &metav1.Preconditions{
+				UID:             &result.UID,
+				ResourceVersion: &result.ResourceVersion,
+			},
+		}
+		return c.client.Delete(ctx, result, options)
+	})
+
+	return retryErr
+}
+
+func (c *Client) ExtendMessage(ctx context.Context, msg *client.Message) error {
+	result := &v1alpha1.OperationQueue{}
+	getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: msg.ID}, result)
+	if getErr != nil {
+		return getErr
+	}
+	_, err := c.extendItem(ctx, result, messageLockDuration)
+	return err
 }
