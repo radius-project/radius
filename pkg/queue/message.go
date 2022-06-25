@@ -27,7 +27,8 @@ type Metadata struct {
 type Message struct {
 	Metadata
 
-	Data interface{}
+	ContentType string
+	Data        interface{}
 
 	finishFunc func(err error) error
 	extendFunc func() error
