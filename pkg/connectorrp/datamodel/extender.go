@@ -99,3 +99,10 @@ func unmarshalInternal(b *v1.BasicResourceProperties, rawMsg map[string]json.Raw
 	}
 	return nil
 }
+
+func unpopulate(data json.RawMessage, v interface{}) error {
+	if data == nil {
+		return nil
+	}
+	return json.Unmarshal(data, v)
+}

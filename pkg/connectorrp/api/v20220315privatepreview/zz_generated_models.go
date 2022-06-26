@@ -206,7 +206,7 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubAzureServiceBusResourceProperties.
 func (d DaprPubSubAzureServiceBusResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, "pubsub.azure.servicebus")
+	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, DaprPubSubBrokerPropertiesKindPubsubAzureServicebus)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -267,7 +267,7 @@ type DaprPubSubBrokerProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The DaprPubSubProperties kind
-	Kind *string `json:"kind,omitempty"`
+	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -288,7 +288,7 @@ func (d *DaprPubSubBrokerProperties) UnmarshalJSON(data []byte) error {
 	return d.unmarshalInternal(rawMsg)
 }
 
-func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
+func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interface{}, discValue DaprPubSubBrokerPropertiesKind) {
 	d.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "environment", d.Environment)
@@ -404,7 +404,7 @@ type DaprPubSubGenericResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubGenericResourceProperties.
 func (d DaprPubSubGenericResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, "generic")
+	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, DaprPubSubBrokerPropertiesKindGeneric)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -611,7 +611,7 @@ type DaprStateStoreAzureTableStorageResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreAzureTableStorageResourceProperties.
 func (d DaprStateStoreAzureTableStorageResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "state.azure.tablestorage")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindStateAzureTablestorage)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -654,7 +654,7 @@ type DaprStateStoreGenericResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreGenericResourceProperties.
 func (d DaprStateStoreGenericResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "generic")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindGeneric)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -724,7 +724,7 @@ type DaprStateStoreProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The Dapr StateStore kind
-	Kind *string `json:"kind,omitempty"`
+	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -745,7 +745,7 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 	return d.unmarshalInternal(rawMsg)
 }
 
-func (d DaprStateStoreProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
+func (d DaprStateStoreProperties) marshalInternal(objectMap map[string]interface{}, discValue DaprStateStorePropertiesKind) {
 	d.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "environment", d.Environment)
@@ -835,7 +835,7 @@ type DaprStateStoreSQLServerResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreSQLServerResourceProperties.
 func (d DaprStateStoreSQLServerResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "state.sqlserver")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindStateSqlserver)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
