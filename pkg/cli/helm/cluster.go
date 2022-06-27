@@ -23,6 +23,11 @@ const (
 	DaprDefaultVersion         = "1.6.0"
 )
 
+type CLIClusterOptions struct {
+	Namespace string
+	Radius    RadiusOptions
+}
+
 type ClusterOptions struct {
 	Namespace string
 	Dapr      DaprOptions
@@ -58,7 +63,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 }
 
-func NewClusterOptions(cliOptions ClusterOptions) ClusterOptions {
+func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
 
 	// If any of the CLI options are provided, override the default options.
