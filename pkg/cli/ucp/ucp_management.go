@@ -12,6 +12,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -25,7 +26,7 @@ type ARMApplicationsManagementClient struct {
 var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(nil)
 
 var (
-	resourceTypesList = []string{
+	ResourceTypesList = []string{
 		"Applications.Connector/mongoDatabases",
 		"Applications.Connector/rabbitMQMessageQueues",
 		"Applications.Connector/redisCaches",
@@ -44,7 +45,7 @@ var (
 // ListAllResourcesByApplication lists the resources of a particular application
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
-	for _, resourceType := range resourceTypesList {
+	for _, resourceType := range ResourceTypesList {
 		client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 		pager := client.ListByRootScope(nil)
 		for pager.NextPage(ctx) {
@@ -61,6 +62,48 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 		}
 	}
 	return results, nil
+}
+
+func (amc *ARMApplicationsManagementClient) ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error) {
+	results := []generated.GenericResource{}
+	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
+	pager := client.ListByRootScope(nil)
+	for pager.NextPage(ctx) {
+		resourceList := pager.PageResponse().GenericResourcesList.Value
+		for _, resource := range resourceList {
+			isResourceWithApplication, err := isResourceWithApplication(ctx, *resource, applicationName)
+			if err != nil {
+				return nil, err
+			}
+			if isResourceWithApplication {
+				results = append(results, *resource)
+			}
+		}
+	}
+	return results, nil
+}
+
+func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error) {
+	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
+	return client.Delete(ctx, resourceName, nil)
+}
+
+func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error) {
+	results := []v20220315privatepreview.ApplicationResource{}
+	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
+	pager := client.ListByScope(nil)
+	for pager.NextPage(ctx) {
+		applicationList := pager.PageResponse().ApplicationResourceList.Value
+		for _, application := range applicationList {
+			results = append(results, *application)
+		}
+	}
+	return results, nil
+}
+
+func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
+	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
+	return client.Delete(ctx, applicationName, nil)
 }
 
 func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
