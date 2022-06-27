@@ -28,7 +28,7 @@ spec:
         - name: kubernetes
           value: "true"
         - name: RADIUSBACKENDURL
-          value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3/planes/radius/local
+          value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
         - name: ASPNETCORE_Logging__LogLevel__Default
           value: "Debug"
         image: {{ .Values.global.engine.image }}:{{ .Values.global.engine.tag }}
