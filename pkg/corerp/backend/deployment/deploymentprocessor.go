@@ -215,13 +215,14 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, dependency
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, dependencyResourceID := range dependencyResourceIDs {
 		// Fetch resource from db
-		res, err := dp.db.Get(ctx, dependencyResourceID.String())
+		// TODO: type switch
+		// get the resource type from dependencyResourceID parsing
+		dbDependencyResource := &datamodel.ContainerResource{}
+		_, err := dp.getResource(ctx, dependencyResourceID.String(), dbDependencyResource)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch dependency resource %q: %w", dependencyResourceID, err)
 		}
 
-		// TODO: type switch
-		dbDependencyResource, ok := res.(datamodel.ContainerResource)
 		dependencyOutputResources := map[string]resourcemodel.ResourceIdentity{}
 		for _, outputResource := range dbDependencyResource.Status.OutputResources {
 			dependencyOutputResources[outputResource.LocalID] = outputResource.Identity
@@ -358,4 +359,17 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.Env
 	}
 
 	return renderers.EnvironmentOptions{}, nil
+}
+
+// getResource is the helper to get the resource via storage client.
+func (dp *deploymentProcessor) getResource(ctx context.Context, id string, out interface{}) (etag string, err error) {
+	etag = ""
+	var res *store.Object
+	if res, err = dp.db.Get(ctx, id); err == nil {
+		if err = res.As(out); err == nil {
+			etag = res.ETag
+			return
+		}
+	}
+	return
 }
