@@ -81,6 +81,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 		ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 		Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 		Application:       to.StringPtr(daprStateStore.Properties.Application),
+		Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
 	}
 	switch daprStateStore.Properties.Kind {
 	case datamodel.DaprStateStoreKindAzureTableStorage:
