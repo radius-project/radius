@@ -100,6 +100,10 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.UCPTag = cliOptions.Radius.UCPTag
 	}
 
+	if cliOptions.Radius.AzureProvider != nil {
+		options.Radius.AzureProvider = cliOptions.Radius.AzureProvider
+	}
+
 	return options
 }
 
