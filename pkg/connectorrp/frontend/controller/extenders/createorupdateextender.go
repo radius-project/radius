@@ -68,7 +68,7 @@ func (extender *CreateOrUpdateExtender) Run(ctx context.Context, req *http.Reque
 		return nil, err
 	}
 
-	versioned, err := converter.ExtenderDataModelToVersioned(newResource, serviceCtx.APIVersion)
+	versioned, err := converter.ExtenderDataModelToVersioned(newResource, serviceCtx.APIVersion, true)
 	if err != nil {
 		return nil, err
 	}

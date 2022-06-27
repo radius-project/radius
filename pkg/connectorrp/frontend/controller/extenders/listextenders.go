@@ -55,12 +55,12 @@ func (extender *ListExtenders) createPaginatedList(ctx context.Context, req *htt
 
 	items := []interface{}{}
 	for _, item := range result.Items {
-		dm := &datamodel.Extender{}
+		dm := &datamodel.ExtenderResponse{}
 		if err := item.As(dm); err != nil {
 			return nil, err
 		}
 
-		versioned, err := converter.ExtenderDataModelToVersioned(dm, serviceCtx.APIVersion)
+		versioned, err := converter.ExtenderDataModelToVersioned(dm, serviceCtx.APIVersion, false)
 		if err != nil {
 			return nil, err
 		}

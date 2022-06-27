@@ -33,7 +33,7 @@ func TestGetExtender_20220315PrivatePreview(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	_, extenderDataModel, expectedOutput := getTestModels20220315privatepreview()
+	_, extenderDataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		teardownTest, mds, msm := setupTest(t)
@@ -83,7 +83,7 @@ func TestGetExtender_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.ExtenderResource{}
+		actualOutput := &v20220315privatepreview.ExtenderResponseResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedOutput, actualOutput)

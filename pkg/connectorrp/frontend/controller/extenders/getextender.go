@@ -34,7 +34,7 @@ func NewGetExtender(ds store.StorageClient, sm manager.StatusManager) (ctrl.Cont
 func (extender *GetExtender) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.Extender{}
+	existingResource := &datamodel.ExtenderResponse{}
 	_, err := extender.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
@@ -43,6 +43,6 @@ func (extender *GetExtender) Run(ctx context.Context, req *http.Request) (rest.R
 		return nil, err
 	}
 
-	versioned, _ := converter.ExtenderDataModelToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := converter.ExtenderDataModelToVersioned(existingResource, serviceCtx.APIVersion, false)
 	return rest.NewOKResponse(versioned), nil
 }
