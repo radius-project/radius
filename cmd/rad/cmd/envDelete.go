@@ -83,11 +83,11 @@ func deleteEnvResource(cmd *cobra.Command, args []string) error {
 		return err
 
 	} else {
-		return deleteEnv(cmd, args)
+		return deleteEnvLegacy(cmd, args)
 	}
 }
 
-func deleteEnv(cmd *cobra.Command, args []string) error {
+func deleteEnvLegacy(cmd *cobra.Command, args []string) error {
 	yes, err := cmd.Flags().GetBool("yes")
 	if err != nil {
 		return err
