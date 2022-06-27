@@ -281,10 +281,16 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 		return "", err
 	}
 
+	loc := "global"
+	id := "self"
 	toCreate := coreRpApps.EnvironmentResource{
+		TrackedResource: coreRpApps.TrackedResource{
+			Location: &loc,
+		},
 		Properties: &coreRpApps.EnvironmentProperties{
 			Compute: &coreRpApps.EnvironmentCompute{
-				Kind: coreRpApps.EnvironmentComputeKindKubernetes.ToPtr(),
+				Kind:       coreRpApps.EnvironmentComputeKindKubernetes.ToPtr(),
+				ResourceID: &id,
 			},
 		},
 	}
