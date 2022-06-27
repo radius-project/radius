@@ -20,6 +20,7 @@ import (
 	daprPubSub_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/daprpubsubbrokers"
 	daprSecretStore_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/daprsecretstores"
 	daprStateStore_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/daprstatestores"
+	extender_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/extenders"
 	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rediscaches"
@@ -67,6 +68,9 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	daprStateStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprstatestores").Subrouter()
 	daprStateStoreResourceRouter := daprStateStoreRTSubrouter.PathPrefix("/{daprStateStoreName}").Subrouter()
 
+	extenderRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/extenders").Subrouter()
+	extenderResourceRouter := extenderRTSubrouter.PathPrefix("/{extenderName}").Subrouter()
+
 	redisRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/rediscaches").Subrouter()
 	redisResourceRouter := redisRTSubrouter.PathPrefix("/{redisCacheName}").Subrouter()
 
@@ -75,6 +79,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 
 	sqlRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/sqldatabases").Subrouter()
 	sqlResourceRouter := sqlRTSubrouter.PathPrefix("/{sqlDatabaseName}").Subrouter()
+
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:   mongoRTSubrouter,
@@ -332,6 +337,42 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ResourceType:   sql_ctrl.ResourceTypeName,
 			Method:         v1.OperationDelete,
 			HandlerFactory: sql_ctrl.NewDeleteSqlDatabase,
+		},
+		{
+			ParentRouter:   extenderRTSubrouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: extender_ctrl.NewListExtenders,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: extender_ctrl.NewGetExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: extender_ctrl.NewDeleteExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         extender_ctrl.OperationListSecret,
+			HandlerFactory: extender_ctrl.NewListSecretsExtender,
 		},
 	}
 

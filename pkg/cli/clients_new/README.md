@@ -1,4 +1,3 @@
-## Generate new models
 ### Prerequisites
 1. Install [NodeJS](https://nodejs.org/)
 2. Install [AutoRest](http://aka.ms/autorest)
@@ -44,3 +43,6 @@ These settings apply only when `--tag=2022-03-15-privatepreview` is specified on
 ```yaml $(tag) == '2022-03-15-privatepreview'
 output-folder: ./generated
 ```
+
+### Adding ResourceTypes:
+All resource types are tracked in resourceTypesList in ucp package. Whenever a new core-rp or connectors type is added this list has to be updated.

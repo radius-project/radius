@@ -122,6 +122,26 @@ var handlerTests = []struct {
 		url:        "/resourcegroups/testrg/providers/applications.connector/sqldatabases/sql?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/extenders?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPut,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPatch,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender?api-version=2022-03-15-privatepreview",
+		method:     http.MethodDelete,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender/listsecrets?api-version=2022-03-15-privatepreview",
+		method:     http.MethodPost,
+		isAzureAPI: false,
 	},
 	{
 		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores?api-version=2022-03-15-privatepreview",

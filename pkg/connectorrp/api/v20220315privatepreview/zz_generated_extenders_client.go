@@ -261,3 +261,64 @@ func (client *ExtendersClient) listByRootScopeHandleError(resp *http.Response) e
 	return runtime.NewResponseError(&errType, resp)
 }
 
+// ListSecrets - Lists secrets values for the specified Extender resource
+// If the operation fails it returns the *ErrorResponse error type.
+func (client *ExtendersClient) ListSecrets(ctx context.Context, extenderName string, options *ExtendersListSecretsOptions) (ExtendersListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, extenderName, options)
+	if err != nil {
+		return ExtendersListSecretsResponse{}, err
+	}
+	resp, err := 	client.pl.Do(req)
+	if err != nil {
+		return ExtendersListSecretsResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return ExtendersListSecretsResponse{}, client.listSecretsHandleError(resp)
+	}
+	return client.listSecretsHandleResponse(resp)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *ExtendersClient) listSecretsCreateRequest(ctx context.Context, extenderName string, options *ExtendersListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}/listSecrets"
+	if client.rootScope == "" {
+		return nil, errors.New("parameter client.rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	if extenderName == "" {
+		return nil, errors.New("parameter extenderName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{extenderName}", url.PathEscape(extenderName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	client.ep, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *ExtendersClient) listSecretsHandleResponse(resp *http.Response) (ExtendersListSecretsResponse, error) {
+	result := ExtendersListSecretsResponse{RawResponse: resp}
+	if err := runtime.UnmarshalAsJSON(resp, &result.Value); err != nil {
+		return ExtendersListSecretsResponse{}, err
+	}
+	return result, nil
+}
+
+// listSecretsHandleError handles the ListSecrets error response.
+func (client *ExtendersClient) listSecretsHandleError(resp *http.Response) error {
+	body, err := runtime.Payload(resp)
+	if err != nil {
+		return runtime.NewResponseError(err, resp)
+	}
+		errType := ErrorResponse{raw: string(body)}
+	if err := runtime.UnmarshalAsJSON(resp, &errType); err != nil {
+		return runtime.NewResponseError(fmt.Errorf("%s\n%s", string(body), err), resp)
+	}
+	return runtime.NewResponseError(&errType, resp)
+}
+
