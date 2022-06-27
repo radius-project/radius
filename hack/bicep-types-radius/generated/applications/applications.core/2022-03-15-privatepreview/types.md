@@ -217,7 +217,7 @@
 ## EnvironmentCompute
 ### Properties
 * **kind**: 'kubernetes' (Required): Type of compute resource.
-* **resourceId**: string (Required): The resource id of the compute resource for application environment.
+* **resourceId**: string: The resource id of the compute resource for application environment.
 
 ## TrackedResourceTags
 ### Properties
