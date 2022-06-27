@@ -1,0 +1,595 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "(title)",
+    "version": "0000-00-00",
+    "x-cadl-generated": [
+      {
+        "emitter": "@azure-tools/cadl-autorest"
+      }
+    ]
+  },
+  "schemes": [
+    "https"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "tags": [],
+  "paths": {
+    "/{rootScope}/providers/Applications.Core/environments": {
+      "get": {
+        "operationId": "Environments_ListByScope",
+        "parameters": [
+          {
+            "name": "apiVersion",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "rootScope",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "$ref": "#/definitions/EnvironmentResourceList"
+                }
+              },
+              "required": [
+                "schema"
+              ],
+              "x-cadl-name": "Environments.(anonymous model)"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/environments/{environmentName}": {
+      "get": {
+        "operationId": "Environments_Get",
+        "parameters": [
+          {
+            "name": "apiVersion",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "rootScope",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+            "maxLength": 128
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "$ref": "#/definitions/EnvironmentResource"
+                }
+              },
+              "required": [
+                "schema"
+              ],
+              "x-cadl-name": "Environments.(anonymous model)"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "Environments_CreateOrUpdate",
+        "parameters": [
+          {
+            "name": "apiVersion",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "rootScope",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+            "maxLength": 128
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "$ref": "#/definitions/EnvironmentResource"
+                }
+              },
+              "required": [
+                "schema"
+              ],
+              "x-cadl-name": "Environments.(anonymous model)"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "$ref": "#/definitions/EnvironmentResource"
+                }
+              },
+              "required": [
+                "schema"
+              ],
+              "x-cadl-name": "Environments.(anonymous model)"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "Environments_Update",
+        "parameters": [
+          {
+            "name": "apiVersion",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "rootScope",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+            "maxLength": 128
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "$ref": "#/definitions/EnvironmentResource"
+                }
+              },
+              "required": [
+                "schema"
+              ],
+              "x-cadl-name": "Environments.(anonymous model)"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "schema": {
+                  "$ref": "#/definitions/EnvironmentResource"
+                }
+              },
+              "required": [
+                "schema"
+              ],
+              "x-cadl-name": "Environments.(anonymous model)"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Environments_Delete",
+        "parameters": [
+          {
+            "name": "apiVersion",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "rootScope",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+            "maxLength": 128
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "202": {
+            "description": "Accepted"
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "Error response describing why the operation failed",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ApiVersionParameter": {
+      "type": "string",
+      "minLength": 1
+    },
+    "EnvironmentCompute": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "kubernetes"
+          ]
+        },
+        "resourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "resourceId"
+      ]
+    },
+    "EnvironmentNameParameter": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+      "maxLength": 128
+    },
+    "EnvironmentProperties": {
+      "type": "object",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState"
+        },
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      },
+      "required": [
+        "compute"
+      ]
+    },
+    "EnvironmentResource": {
+      "type": "object",
+      "properties": {
+        "systemData": {
+          "$ref": "#/definitions/systemData"
+        },
+        "properties": {
+          "$ref": "#/definitions/EnvironmentProperties"
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "EnvironmentResourceList": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EnvironmentResource"
+          },
+          "x-cadl-name": "EnvironmentResource[]"
+        },
+        "nextLink": {
+          "type": "string"
+        }
+      }
+    },
+    "ErrorAdditionalInfo": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "info": {
+          "type": "object",
+          "properties": {},
+          "x-cadl-name": "(anonymous model)"
+        }
+      },
+      "required": [
+        "type",
+        "info"
+      ]
+    },
+    "ErrorDetail": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ErrorDetail"
+          },
+          "x-ms-identifiers": [],
+          "x-cadl-name": "ErrorDetail[]"
+        },
+        "additionalInfo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ErrorAdditionalInfo"
+          },
+          "x-ms-identifiers": [],
+          "x-cadl-name": "ErrorAdditionalInfo[]"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "target",
+        "details",
+        "additionalInfo"
+      ]
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/ErrorDetail"
+        }
+      },
+      "description": "Error response describing why the operation failed",
+      "required": [
+        "error"
+      ]
+    },
+    "ProvisioningState": {
+      "type": "string",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Accepted",
+        "Updating",
+        "Deleting",
+        "Provisioning"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded"
+          },
+          {
+            "name": "Failed",
+            "value": "Failed"
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting"
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning"
+          }
+        ]
+      }
+    },
+    "Resource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "readOnly": true
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type"
+      ]
+    },
+    "RootScopeParameter": {
+      "type": "string",
+      "minLength": 1
+    },
+    "TrackedResource": {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "location"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        }
+      ]
+    },
+    "systemData": {
+      "type": "object",
+      "properties": {
+        "createdBy": {
+          "type": "string",
+          "readOnly": true
+        },
+        "createdByType": {
+          "type": "string",
+          "enum": [
+            "User",
+            "Application",
+            "ManagedIdentity",
+            "Key"
+          ],
+          "x-cadl-name": "User | Application | ManagedIdentity | Key"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "lastModifiedBy": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastModifiedByType": {
+          "type": "string",
+          "enum": [
+            "User",
+            "Application",
+            "ManagedIdentity",
+            "Key"
+          ],
+          "x-cadl-name": "User | Application | ManagedIdentity | Key"
+        },
+        "lastModifiedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "createdBy",
+        "createdByType",
+        "createdAt",
+        "lastModifiedBy",
+        "lastModifiedByType",
+        "lastModifiedAt"
+      ]
+    }
+  },
+  "parameters": {}
+}

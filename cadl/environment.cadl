@@ -1,0 +1,71 @@
+import "./models.cadl";
+
+import "@cadl-lang/rest";
+import "@cadl-lang/openapi3";
+// import "@azure-tools/cadl-autorest";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Cadl.Rest.Resource;
+
+@route("/{rootScope}/providers/Applications.Core/environments")
+namespace Environments {
+  @get op ListByScope(
+    @query apiVersion: ApiVersionParameter,
+    @path rootScope: RootScopeParameter
+  ): {
+    @statusCode statusCode: 200;
+    schema: EnvironmentResourceList;
+  } | ErrorResponse;
+
+  @get op Get(
+    @query apiVersion: ApiVersionParameter,
+    @path rootScope: RootScopeParameter,
+    @path environmentName: EnvironmentNameParameter
+  ): {
+    @statusCode statusCode: 200;
+    schema: EnvironmentResource;
+  } | ErrorResponse;
+
+  @put op CreateOrUpdate(
+    @query apiVersion: ApiVersionParameter,
+    @path rootScope: RootScopeParameter,
+    @path environmentName: EnvironmentNameParameter,
+    @body body: EnvironmentResource
+  ): {
+    @statusCode statusCode: 200;
+    schema: EnvironmentResource;
+  } | {
+    @statusCode statusCode: 201;
+    schema: EnvironmentResource;
+  } | ErrorResponse;
+
+  @patch op Update(
+    @query apiVersion: ApiVersionParameter,
+    @path rootScope: RootScopeParameter,
+    @path environmentName: EnvironmentNameParameter,
+    @body body: EnvironmentResource
+  ): {
+    @statusCode statusCode: 200;
+    schema: EnvironmentResource;
+  } | {
+    @statusCode statusCode: 201;
+    schema: EnvironmentResource;
+  } | ErrorResponse;
+
+  @delete op Delete(
+    @query apiVersion: ApiVersionParameter,
+    @path rootScope: RootScopeParameter,
+    @path environmentName: EnvironmentNameParameter
+  ):
+    | {
+        @statusCode statusCode: 200;
+      }
+    | {
+        @statusCode statusCode: 202;
+      }
+    | {
+        @statusCode statusCode: 204;
+      }
+    | ErrorResponse;
+}
