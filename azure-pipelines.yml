@@ -116,6 +116,10 @@ stages:
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-corerp
+    - publish: $(Build.SourcesDirectory)/dist/container_logs
+      displayName: Publish container logs
+      condition: always()
+  - job: Azure
   - job: Kubernetes
     pool:
       vmImage: 'ubuntu-latest'
