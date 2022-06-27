@@ -45,5 +45,5 @@ type EnvironmentProperties struct {
 // EnvironmentCompute represents the compute resource of Environment.
 type EnvironmentCompute struct {
 	Kind       EnvironmentComputeKind `json:"kind"`
-	ResourceID string                 `json:"resourceId"`
+	ResourceID string                 `json:"resourceId,omitempty"`
 }
