@@ -136,7 +136,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", params.Name, params.Name)
 	}
 
-	clusterOptions := helm.ClusterOptions{
+	cliOptions := helm.CLIClusterOptions{
 		Namespace: sharedArgs.Namespace,
 		Radius: helm.RadiusOptions{
 			ChartPath:     sharedArgs.ChartPath,
@@ -149,6 +149,8 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			AzureProvider: azureProvider,
 		},
 	}
+
+	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
 	var k8sGoClient client_go.Interface
 	var runtimeClient runtime_client.Client
