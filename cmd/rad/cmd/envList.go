@@ -57,30 +57,10 @@ func displayEnvListUCP(envList []v20220315privatepreview.EnvironmentResource, cm
 		return err
 	}
 
-	if format == "table" {
-		err = output.Write(format, envList, cmd.OutOrStdout(), objectformats.GetGenericEnvironmentTableFormat())
-		if err != nil {
-			return err
-		}
-	} else if format == "json" {
-		err = output.Write(format, envList, cmd.OutOrStdout(), output.FormatterOptions{Columns: []output.Column{}})
-		if err != nil {
-			return err
-		}
-	} else if format == "list" {
-		b, err := yaml.Marshal(envList)
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(b))
-
-	} else {
-		err = output.Write(format, envList, cmd.OutOrStdout(), objectformats.GetGenericEnvironmentTableFormat())
-		if err != nil {
-			return err
-		}
+	err = output.Write(format, envList, cmd.OutOrStdout(), objectformats.GetGenericEnvironmentTableFormat())
+	if err != nil {
+		return err
 	}
-
 	return nil
 }
 
