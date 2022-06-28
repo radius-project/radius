@@ -17,8 +17,8 @@ var (
 	// ErrMessageNotFound represents the error when queue is empty or all messages are leased by clients.
 	ErrMessageNotFound = errors.New("queue is empty or messages are leased")
 
-	// ErrRequeuedMessage represents the error when the message has already been requeued.
-	ErrRequeuedMessage = errors.New("this message has been requeued")
+	// ErrInvalidMessage represents the error when the message has already been requeued.
+	ErrInvalidMessage = errors.New("this message has been requeued or deleted")
 )
 
 //go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/queue/client github.com/project-radius/radius/pkg/queue/client Client

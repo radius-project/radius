@@ -34,7 +34,7 @@ type testQueueMessage struct {
 	Message string `json:"msg"`
 }
 
-func dequeueAllMessages(c runtimeclient.Client, namespace string) {
+func drainMessages(c runtimeclient.Client, namespace string) {
 	ctx := context.Background()
 	ql := &v1alpha1.OperationQueueList{}
 	err := c.List(ctx, ql, runtimeclient.InNamespace(namespace))
@@ -64,6 +64,60 @@ func queueTestMessage(cli *Client, num int) error {
 	return nil
 }
 
+func TestMustParseInt64(t *testing.T) {
+	result := mustParseInt64("100")
+	require.Equal(t, int64(100), result)
+
+	result = mustParseInt64("abc")
+	require.Equal(t, int64(0), result)
+}
+
+func TestInt64toa(t *testing.T) {
+	result := int64toa(int64(12345))
+	require.Equal(t, "12345", result)
+}
+
+func TestGetTimeFromString(t *testing.T) {
+	now := time.Now().UnixNano()
+	unixString := fmt.Sprintf("%d", now)
+	result := getTimeFromString(unixString)
+	require.Equal(t, now, result.UnixNano())
+}
+
+func TestCopyMessage(t *testing.T) {
+	msg := &client.Message{
+		Metadata: client.Metadata{ID: "testid"},
+	}
+	now := time.Now()
+	queueM := &v1alpha1.OperationQueue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "applications.core.10101010",
+			Namespace: "radius-test",
+			Labels: map[string]string{
+				LabelNextVisibleAt: int64toa(now.UnixNano()),
+				LabelQueueName:     "applications.core",
+			},
+		},
+		Spec: v1alpha1.OperationQueueSpec{
+			DequeueCount: 2,
+			EnqueueAt:    metav1.Time{Time: now.UTC()},
+			ExpireAt:     metav1.Time{Time: now.Add(10 * time.Second).UTC()},
+			ContentType:  client.JSONContentType, // RawExtension supports only JSON seralized data
+			Data:         &runtime.RawExtension{Raw: []byte("hello world")},
+		},
+	}
+
+	copyMessage(msg, queueM)
+
+	require.Equal(t, queueM.ObjectMeta.Name, msg.ID)
+	require.Equal(t, client.JSONContentType, msg.ContentType)
+	require.Equal(t, queueM.Spec.DequeueCount, msg.DequeueCount)
+	require.Equal(t, queueM.Spec.Data.Raw, msg.Data)
+	require.Equal(t, queueM.Spec.ExpireAt.Time, msg.ExpireAt)
+	require.Equal(t, queueM.Spec.EnqueueAt.Time, msg.EnqueueAt)
+	require.Equal(t, getTimeFromString(queueM.ObjectMeta.Labels[LabelNextVisibleAt]), msg.NextVisibleAt)
+}
+
 func TestClient(t *testing.T) {
 	rc, env, err := startEnvironment()
 	require.NoError(t, err, "If this step is failing for you, run `make test` inside the repository and try again. If you are still stuck then ask for help.")
@@ -83,8 +137,9 @@ func TestClient(t *testing.T) {
 	cli := New(rc, Options{Name: "applications.core", Namespace: ns, MessageLockDuration: testLockTime})
 	require.NotNil(t, cli)
 
+	// TODO: Move the below subtests to shared test package when inmemory queue impl uses new client interface.
 	t.Run("enqueue and dequeue messages", func(t *testing.T) {
-		dequeueAllMessages(rc, ns)
+		drainMessages(rc, ns)
 
 		num := 10
 
@@ -110,7 +165,7 @@ func TestClient(t *testing.T) {
 	})
 
 	t.Run("message lock is expired", func(t *testing.T) {
-		dequeueAllMessages(rc, ns)
+		drainMessages(rc, ns)
 
 		err := queueTestMessage(cli, 2)
 		require.NoError(t, err)
@@ -142,9 +197,8 @@ func TestClient(t *testing.T) {
 		require.Equal(t, msg1.ID, msg3.ID)
 	})
 
-	t.Run("extend message lock", func(t *testing.T) {
-		dequeueAllMessages(rc, ns)
-		dequeueAllMessages(rc, ns)
+	t.Run("extend valid message lock", func(t *testing.T) {
+		drainMessages(rc, ns)
 
 		err := queueTestMessage(cli, 2)
 		require.NoError(t, err)
@@ -176,6 +230,73 @@ func TestClient(t *testing.T) {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
+	})
+
+	t.Run("extend invalid message lock", func(t *testing.T) {
+		drainMessages(rc, ns)
+
+		err := queueTestMessage(cli, 2)
+		require.NoError(t, err)
+
+		msg1, err := cli.Dequeue(ctx)
+		require.NoError(t, err)
+		t.Logf("%s %v", msg1.ID, msg1.NextVisibleAt)
+
+		time.Sleep(10 * time.Millisecond)
+
+		msg2, err := cli.Dequeue(ctx)
+		require.NoError(t, err)
+		t.Logf("%s %v", msg2.ID, msg2.NextVisibleAt)
+
+		for {
+			msg3, err := cli.Dequeue(ctx)
+			if err == nil {
+				t.Logf("%s %v", msg3.ID, msg3.NextVisibleAt)
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		err = cli.ExtendMessage(ctx, msg2)
+		require.ErrorIs(t, err, client.ErrInvalidMessage)
+	})
+
+	t.Run("StartDequeuer dequeues message via channel", func(t *testing.T) {
+		drainMessages(rc, ns)
+		msgCh, err := cli.StartDequeuer(ctx)
+		require.NoError(t, err)
+
+		recvCnt := 0
+		done := make(chan struct{})
+
+		msgCount := 10
+
+		// Consumer
+		go func(msgCh <-chan *client.Message) {
+			for msg := range msgCh {
+				require.Equal(t, 1, msg.DequeueCount)
+				t.Logf("Dequeued Message ID: %s", msg.ID)
+				recvCnt++
+
+				if recvCnt == msgCount {
+					done <- struct{}{}
+				}
+			}
+		}(msgCh)
+
+		// Producer
+		for i := 0; i < msgCount; i++ {
+			msg := &testQueueMessage{ID: fmt.Sprintf("%d", i), Message: fmt.Sprintf("hello world %d", i)}
+			data, err := json.Marshal(msg)
+			require.NoError(t, err)
+			err = cli.Enqueue(ctx, &client.Message{Data: data})
+			require.NoError(t, err)
+		}
+
+		<-done
+		cancel()
+
+		require.Equal(t, msgCount, recvCnt)
 	})
 }
 

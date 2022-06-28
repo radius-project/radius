@@ -71,6 +71,19 @@ func getTimeFromString(s string) time.Time {
 	return time.Unix(0, nsec)
 }
 
+func copyMessage(msg *client.Message, queueMessage *v1alpha1.OperationQueue) {
+	msg.Metadata = client.Metadata{
+		ID:            queueMessage.Name,
+		DequeueCount:  queueMessage.Spec.DequeueCount,
+		EnqueueAt:     queueMessage.Spec.EnqueueAt.Time,
+		ExpireAt:      queueMessage.Spec.ExpireAt.Time,
+		NextVisibleAt: getTimeFromString(queueMessage.Labels[LabelNextVisibleAt]),
+	}
+	msg.ContentType = client.JSONContentType
+	msg.Data = make([]byte, len(queueMessage.Spec.Data.Raw))
+	copy(msg.Data, queueMessage.Spec.Data.Raw)
+}
+
 // New creates the queue backed by Kubernetes API server KV store. name is unique name for each service which will consume the queue.
 func New(client runtimeclient.Client, options Options) *Client {
 	if options.Name == "" || options.Namespace == "" {
@@ -214,17 +227,10 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 		return nil, retryErr
 	}
 
-	return &client.Message{
-		Metadata: client.Metadata{
-			ID:            result.Name,
-			DequeueCount:  result.Spec.DequeueCount,
-			EnqueueAt:     result.Spec.EnqueueAt.Time,
-			ExpireAt:      result.Spec.ExpireAt.Time,
-			NextVisibleAt: getTimeFromString(result.Labels[LabelNextVisibleAt]),
-		},
-		ContentType: client.JSONContentType,
-		Data:        result.Spec.Data.Raw,
-	}, nil
+	msg := &client.Message{}
+	copyMessage(msg, result)
+
+	return msg, nil
 }
 
 func (c *Client) StartDequeuer(ctx context.Context, opts ...client.DequeueOptions) (<-chan *client.Message, error) {
@@ -285,9 +291,10 @@ func (c *Client) ExtendMessage(ctx context.Context, msg *client.Message) error {
 	// Check if the message is already requeued.
 	nsec := mustParseInt64(result.Labels[LabelNextVisibleAt])
 	if nsec < now.UnixNano() {
-		return client.ErrRequeuedMessage
+		return client.ErrInvalidMessage
 	}
 
-	_, err := c.extendItem(ctx, result, now, c.opts.MessageLockDuration)
+	result, err := c.extendItem(ctx, result, now, c.opts.MessageLockDuration)
+	copyMessage(msg, result)
 	return err
 }
