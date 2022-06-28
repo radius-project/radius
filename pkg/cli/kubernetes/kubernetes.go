@@ -44,7 +44,6 @@ import (
 
 const (
 	LegacyAPIServerBasePath  = "/apis/api.radius.dev/v1alpha3"
-	APIServerBasePath        = "/apis/api.ucp.dev/v1alpha3"
 	DeploymentEngineBasePath = "/apis/api.bicep.dev/v1alpha3"
 	Location                 = "Location"
 	AzureAsyncOperation      = "Azure-AsyncOperation"
@@ -192,7 +191,7 @@ func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string,
 		if enableUCP {
 			baseURL = strings.TrimSuffix(overrideURL, "/") + UCPAPIServerBasePath
 		} else {
-			baseURL = strings.TrimSuffix(overrideURL, "/") + APIServerBasePath
+			baseURL = strings.TrimSuffix(overrideURL, "/") + LegacyAPIServerBasePath
 		}
 		roundTripper = NewLocationRewriteRoundTripper(overrideURL, http.DefaultTransport)
 	} else {
@@ -207,7 +206,7 @@ func GetBaseUrlAndRoundTripper(overrideURL string, group string, context string,
 		if enableUCP {
 			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + UCPAPIServerBasePath
 		} else {
-			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + APIServerBasePath
+			baseURL = strings.TrimSuffix(restConfig.Host+restConfig.APIPath, "/") + LegacyAPIServerBasePath
 		}
 		roundTripper = NewLocationRewriteRoundTripper(restConfig.Host, roundTripper)
 	}
