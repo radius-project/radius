@@ -68,7 +68,8 @@ func (d *TempCoreRPExecutor) Execute(ctx context.Context, t *testing.T, options 
 	deploymentsClient.Sender = &sender{RoundTripper: roundTripper}
 
 	var templateObject interface{}
-	_ = json.Unmarshal([]byte(template), &templateObject)
+	err = json.Unmarshal([]byte(template), &templateObject)
+	require.NoError(t, err)
 
 	future, err := deploymentsClient.CreateOrUpdate(ctx, "/planes/deployments/local/resourceGroups/default/providers/Microsoft.Resources/deployments/my-deployment", resources.Deployment{
 		Properties: &resources.DeploymentProperties{

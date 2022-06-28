@@ -22,10 +22,6 @@ test: test-get-envtools ## Runs unit tests, excluding kubernetes controller test
 test-get-envtools:
 	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 
-.PHONY: test-functional-corerp
-test-functional-corerp: ## Runs Applications.Core functional tests
-	CGO_ENABLED=1 go test ./test/functional/corerp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
-
 .PHONY: test-functional-azure
 test-functional-azure: ## Runs Azure functional tests
 	CGO_ENABLED=1 go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20 $(GOTEST_OPTS)
@@ -35,6 +31,9 @@ test-functional-localdev: ## Runs Local Dev functional tests
 
 test-functional-kubernetes: ## Runs Kubernetes functional tests
 	CGO_ENABLED=1 go test ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+test-functional-corerp: ## Runs Applications.Core functional tests
+	CGO_ENABLED=1 go test ./test/functional/corerp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh

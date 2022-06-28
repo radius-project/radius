@@ -24,6 +24,7 @@ import (
 
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
+	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
@@ -44,13 +45,12 @@ type TestStep struct {
 	Resources []validation.Resource
 }
 
-type ApplicationTest struct {
+type CoreRPTest struct {
 	Options          TestOptions
-	Application      string
+	Name             string
 	Description      string
-	InitialResources []unstructured.Unstructured
 	Steps            []TestStep
-	PostDeleteVerify func(ctx context.Context, t *testing.T, at ApplicationTest)
+	PostDeleteVerify func(ctx context.Context, t *testing.T, ct CoreRPTest)
 }
 
 type TestOptions struct {
@@ -62,17 +62,16 @@ func NewTestOptions(t *testing.T) TestOptions {
 	return TestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
-func NewApplicationTest(t *testing.T, application string, steps []TestStep, initialResources ...unstructured.Unstructured) ApplicationTest {
-	return ApplicationTest{
-		Options:          NewTestOptions(t),
-		Application:      application,
-		Description:      application,
-		InitialResources: initialResources,
-		Steps:            steps,
+func NewCoreRPTest(t *testing.T, name string, steps []TestStep, initialResources ...unstructured.Unstructured) CoreRPTest {
+	return CoreRPTest{
+		Options:     NewTestOptions(t),
+		Name:        name,
+		Description: name,
+		Steps:       steps,
 	}
 }
 
-func (at ApplicationTest) Test(t *testing.T) {
+func (ct CoreRPTest) Test(t *testing.T) {
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
@@ -90,41 +89,45 @@ func (at ApplicationTest) Test(t *testing.T) {
 
 	// Only start capturing controller logs once.
 	radiusControllerLogSync.Do(func() {
-		err := validation.SaveLogsForController(ctx, at.Options.K8sClient, "radius-system", logPrefix)
+		err := validation.SaveLogsForController(ctx, ct.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
 			t.Errorf("failed to capture logs from radius controller: %v", err)
 		}
 	})
 
-	err := validation.SaveLogsForApplication(ctx, at.Options.K8sClient, at.Application, logPrefix+"/"+at.Application, at.Application)
+	err := validation.SaveLogsForApplication(ctx, ct.Options.K8sClient, ct.Name, logPrefix+"/"+ct.Name, ct.Name)
 	if err != nil {
 		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
 
+	cli := radcli.NewCLI(t, ct.Options.ConfigFilePath)
+
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
-	require.GreaterOrEqual(t, len(at.Steps), 1, "at least one step is required")
+	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
 
 	success := true
-	for i, step := range at.Steps {
+	for i, step := range ct.Steps {
 		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
 			if !success {
 				t.Skip("skipping due to previous step failure")
 				return
 			}
 
-			t.Logf("running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
-			step.Executor.Execute(ctx, t, at.Options.TestOptions)
-			t.Logf("finished running step %d of %d: %s", i, len(at.Steps), step.Executor.GetDescription())
-
-			// TODO: re-enable resource validation
-			// For now, test this manually by setting up a kubectl proxy
-			// and querying UCP to see if these resources were created
+			t.Logf("running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
+			step.Executor.Execute(ctx, t, ct.Options.TestOptions)
+			t.Logf("finished running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
 
 			go setupProxy(t)
 			time.Sleep(100 * time.Millisecond)
 
+			// rad app list
+			validation.VerifyResources()
+			apps, err := cli.ApplicationList(ctx)
+			envs, err := cli.EnvList(ctx)
+			// rsrs, err := cli.ResourceList(ctx, apps)
+			fmt.Println(apps, envs, err)
 			for _, resource := range step.Resources {
 				path := fmt.Sprintf("apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/%s/providers/Applications.Core/%s/%s?api-version=%s", ResourceGroup, resource.Type, resource.Name, APIVersion)
 				testHTTPEndpoint(t, "http://127.0.0.1:8001", path, 200)
@@ -134,6 +137,7 @@ func (at ApplicationTest) Test(t *testing.T) {
 	}
 
 	// TODO: re-enable cleanup of application
+	validation.DeleteResources()
 }
 
 func setupProxy(t *testing.T) {

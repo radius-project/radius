@@ -17,12 +17,12 @@ func Test_Environment(t *testing.T) {
 	template := "testdata/corerp-resources-environment.bicep"
 	name := "corerp-resources-environment"
 
-	test := corerp.NewApplicationTest(t, name, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewTempCoreRPExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "corerp-resources-environment",
+					Name: "corerp-resources-environment-env",
 					Type: validation.EnvironmentsResource,
 				},
 			},
