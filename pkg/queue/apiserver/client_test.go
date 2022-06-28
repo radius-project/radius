@@ -149,6 +149,7 @@ func TestClient(t *testing.T) {
 		checked := map[string]*client.Message{}
 		for i := 0; i < num; i++ {
 			msg, err := cli.Dequeue(ctx)
+			require.NoError(t, err)
 			result := &testQueueMessage{}
 			err = json.Unmarshal(msg.Data, result)
 			require.NoError(t, err)
