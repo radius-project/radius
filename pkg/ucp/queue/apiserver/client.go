@@ -4,8 +4,8 @@
 // ------------------------------------------------------------
 
 // Package apiserver is Kuberentes CRD based queue implementation. To implement the distributed queue using CRD,
-// we define QueueMessage Custom Resource and leverage Kuberentes CRD optimistic consistency to achieve the consistency of
-// QueueMessage resource. We need four operations for the queue:
+// we define QueueMessage Custom Resource and leverage Kuberentes CRD optimistic concurrency.
+// We need four operations for the queue:
 //
 // 1. Enqueue: Creates QueueMessage CR to mimic the queue enqueue operation
 // 2. Dequeue: Implements message lease and lock (which is invisible for the other client once message leased).
