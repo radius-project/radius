@@ -3,6 +3,31 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+//
+// Package apiserver is Kuberentes CRD based queue implementation. To implement the distributed queue using CRD,
+// we define QueueMessage Custom Resource and leverage Kuberentes CRD optimistic consistency to support the consistency of
+// QueueMessage resource. In order to implement Queue using K8s CRD, we need to implement four operations:
+//
+// 1. Enqueue: Creates QueueMessage CR to mimic the queue enqueue operation
+// 2. Dequeue: Implements message lease and lock (which is invisible for the other client once message leased).
+//             After message lock duration, the leased message must be re-queued.
+// 3. FinishMessage: Deletes the leased message CR to delete message in the queue completely if the message is not re-queued.
+// 4. ExtendMessage: Extends the leased message to postpone the re-queue operation.
+//
+// We generate the below unique id to save new message without the conflict.
+//
+//         applications.core.
+//             <name>       .<epoch time><random number>
+//
+// We also maintain NextVisibleAt in CR label to implement message `lease` operation. NextVisibleAt is stored in CR label
+// `ucp.dev/nextvisibleat` and represents the time when the message is visible for the other clients. Thanks to Kubernetes
+// Resource query API, we can use `<` and `>` operation to query resource items by label. Therefore, when client calls
+// Dequeue() API, the APIs queries the first item of which `ucp.dev/nextvisibleat` label value is less than current epoch
+// time. It will get the item which is re-queued or never dequeued message. Then it will increase DequeueCount and
+// `ucp.dev/nextvisibleat` timestamp and try to update the item. If the other client already fetched message, then Update()
+// API would return conflict error by optimistic consistency and retry to query and update it again until conflict is resolved.
+//
+
 package apiserver
 
 import (
@@ -173,7 +198,9 @@ func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.
 
 	err = c.client.List(
 		ctx, ql,
-		runtimeclient.InNamespace(c.opts.Namespace), runtimeclient.MatchingLabelsSelector{Selector: selector}, runtimeclient.Limit(1))
+		runtimeclient.InNamespace(c.opts.Namespace),
+		runtimeclient.MatchingLabelsSelector{Selector: selector},
+		runtimeclient.Limit(1))
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +232,7 @@ func (c *Client) extendItem(ctx context.Context, item *v1alpha1.QueueMessage, af
 		result.Labels[LabelNextVisibleAt] = int64toa(nextVisibleAt)
 		result.Spec.DequeueCount += 1
 
-		// Update supports optimistic concurrency. Retry until conflict is solved.
+		// Update supports optimistic concurrency. Retry until conflict is resolved.
 		// Reference: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
 		return c.client.Update(ctx, result)
 	})
@@ -226,9 +253,9 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 
 	now := time.Now()
 
-	// Retry only if the other instance or client already dequeue the message.
+	// Retry only if the other instances or clients already dequeue the message.
 	retryErr := retry.OnError(retry.DefaultRetry, DequeuedMessageError, func() error {
-		// Since multiple client can get the same message, we tried to get the next queue
+		// Since multiple clients can get the same message, it tries to get the next queue
 		// message whenever extendItem is failed.
 		item, err := c.getQueueMessage(ctx, now)
 		if err != nil {
