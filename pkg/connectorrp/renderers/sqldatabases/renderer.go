@@ -26,13 +26,12 @@ var sqlServerDependency outputresource.Dependency = outputresource.Dependency{
 	LocalID: outputresource.LocalIDAzureSqlServer,
 }
 
-var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
-
 var _ renderers.Renderer = (*Renderer)(nil)
 
 type Renderer struct {
 }
 
+// Render creates the output resource for the sqlDatabase resource.
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
 	resource, ok := dm.(datamodel.SqlDatabase)
 	if !ok {
@@ -43,7 +42,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 
 	if resource.Properties.Resource == "" {
 		if properties.Server == "" || properties.Database == "" {
-			return renderers.RendererOutput{}, ErrorResourceOrServerNameMissingFromResource
+			return renderers.RendererOutput{}, renderers.ErrorResourceOrServerNameMissingFromResource
 		}
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
@@ -61,7 +60,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 		}, nil
 	} else {
 		// Source resource identifier is provided, currently only Azure resources are expected with non empty resource id
-		rendererOutput, err := RenderAzureResource(properties)
+		rendererOutput, err := renderAzureResource(properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -70,7 +69,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 	}
 }
 
-func RenderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.RendererOutput, error) {
+func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	databaseID, err := resources.Parse(properties.Resource)
 	if err != nil {
@@ -83,7 +82,7 @@ func RenderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	}
 
 	// Build output resources
-	// Truncate the database part of the ID to get ID for the account
+	// Truncate the database part of the ID to get ID for the server
 	serverID := databaseID.Truncate()
 
 	serverResourceType := resourcemodel.ResourceType{
@@ -120,12 +119,9 @@ func RenderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 
 	// We don't provide any secret values here because SQL requires the USER to manage
 	// the usernames and passwords. We don't have access!
-	secretValues := map[string]renderers.SecretValueReference{}
-
 	return renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{serverResource, databaseResource},
 		ComputedValues: computedValues,
-		SecretValues:   secretValues,
+		SecretValues:   map[string]renderers.SecretValueReference{},
 	}, nil
-
 }

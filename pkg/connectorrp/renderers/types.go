@@ -7,6 +7,7 @@ package renderers
 
 import (
 	"context"
+	"errors"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -19,6 +20,8 @@ const (
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
 )
+
+var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
 
 type Renderer interface {
 	Render(ctx context.Context, resource conv.DataModelInterface) (RendererOutput, error)

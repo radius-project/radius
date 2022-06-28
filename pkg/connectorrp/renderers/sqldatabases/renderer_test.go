@@ -53,11 +53,11 @@ func Test_Render_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 2)
-	accountResource := output.Resources[0]
+	serverResource := output.Resources[0]
 	databaseResource := output.Resources[1]
 
-	require.Equal(t, outputresource.LocalIDAzureSqlServer, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureSqlServer, accountResource.ResourceType.Type)
+	require.Equal(t, outputresource.LocalIDAzureSqlServer, serverResource.LocalID)
+	require.Equal(t, resourcekinds.AzureSqlServer, serverResource.ResourceType.Type)
 	require.Equal(t, resourcemodel.NewARMIdentity(
 		&resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureSqlServer,
@@ -65,7 +65,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 		"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server",
 		clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
-		accountResource.Identity)
+		serverResource.Identity)
 
 	require.Equal(t, outputresource.LocalIDAzureSqlServerDatabase, databaseResource.LocalID)
 	require.Equal(t, resourcekinds.AzureSqlServerDatabase, databaseResource.ResourceType.Type)
@@ -108,7 +108,7 @@ func Test_Render_MissingResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, resource)
 	require.Error(t, err)
-	require.Equal(t, ErrorResourceOrServerNameMissingFromResource.Error(), err.Error())
+	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.Error())
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {

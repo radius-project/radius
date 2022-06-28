@@ -10,11 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-const (
-	ResourceType          = "microsoft.com.SQLDatabase"
-	ConnectionStringValue = "connectionString"
-)
-
 var AzureSQLResourceType = resources.KnownType{
 	Types: []resources.TypeSegment{
 		{
