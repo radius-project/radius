@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	// JSONContentType represents the json content type of queue message.
 	JSONContentType = "application/json"
 )
 
