@@ -125,7 +125,7 @@ func TestGenerateID(t *testing.T) {
 	require.NoError(t, err)
 
 	id, _ := cli.generateID()
-	require.Equal(t, 60, len(id))
+	require.Equal(t, 61, len(id))
 }
 
 func TestClient(t *testing.T) {
@@ -320,7 +320,7 @@ func startEnvironment() (runtimeclient.Client, *envtest.Environment, error) {
 	}
 
 	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "deploy", "Chart", "crds", "ucpd")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "..", "deploy", "Chart", "crds", "ucpd")},
 		ErrorIfCRDPathMissing: true,
 		BinaryAssetsDirectory: assetDir,
 	}
