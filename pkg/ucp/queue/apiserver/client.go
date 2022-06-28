@@ -4,7 +4,11 @@
 // ------------------------------------------------------------
 
 // Package apiserver is Kuberentes CRD based queue implementation. To implement the distributed queue using CRD,
-// we define QueueMessage Custom Resource and leverage Kuberentes CRD optimistic concurrency.
+// we define QueueMessage Custom Resource and leverage Kuberentes optimistic concurrency.
+//
+// Kubernetes Concurrency control and consistency:
+// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+//
 // We need four operations for the queue:
 //
 // 1. Enqueue: Creates QueueMessage CR to mimic the queue enqueue operation
@@ -19,9 +23,9 @@
 //         ----------------- ---------- --------------------------------
 //              name         epoch time         random number
 //
-// We maintain NextVisibleAt in CR label to implement message `lease` operation. NextVisibleAt is stored in CR label
+// We maintain NextVisibleAt in CR label to implement message `lease` operation. NextVisibleAt is stored as CR label
 // `ucp.dev/nextvisibleat` and represents the time when the message is visible for the other clients. Thanks to Kubernetes
-// Resource List API, we can use `<` and `>` operation to query resource items for labels. Therefore, when client calls
+// Resource List API, we can use `<` and `>` operation to query resource items by label. Therefore, when client calls
 // Dequeue() API, the API queries the first item of which `ucp.dev/nextvisibleat` label value is less than current epoch
 // time. It will get the item which was re-queued or was not dequeued message. Then it will increase DequeueCount and update
 // `ucp.dev/nextvisibleat` timestamp (current time + 5 mins(default)) and try to update the item. If the other clients already
