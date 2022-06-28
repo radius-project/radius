@@ -19,14 +19,14 @@
 //         ----------------- ---------- --------------------------------
 //              name         epoch time         random number
 //
-// We also maintain NextVisibleAt in CR label to implement message `lease` operation. NextVisibleAt is stored in CR label
+// We maintain NextVisibleAt in CR label to implement message `lease` operation. NextVisibleAt is stored in CR label
 // `ucp.dev/nextvisibleat` and represents the time when the message is visible for the other clients. Thanks to Kubernetes
-// Resource query API, we can use `<` and `>` operation to query resource items by label. Therefore, when client calls
-// Dequeue() API, the APIs queries the first item of which `ucp.dev/nextvisibleat` label value is less than current epoch
-// time. It will get the item which is re-queued or never dequeued message. Then it will increase DequeueCount and update
-// `ucp.dev/nextvisibleat` timestamp (current time + 5 mins(default)) and try to update the item. If the other client already
-// fetched message, then Update() API would return conflict error by optimistic consistency and retry to query and update
-// it again until conflict is resolved.
+// Resource List API, we can use `<` and `>` operation to query resource items for labels. Therefore, when client calls
+// Dequeue() API, the API queries the first item of which `ucp.dev/nextvisibleat` label value is less than current epoch
+// time. It will get the item which was re-queued or was not dequeued message. Then it will increase DequeueCount and update
+// `ucp.dev/nextvisibleat` timestamp (current time + 5 mins(default)) and try to update the item. If the other clients already
+// fetched message, then Update() API would return conflict error by optimistic concurrency and retry to query new message
+// and update it again until the conflict is resolved.
 //
 
 package apiserver
