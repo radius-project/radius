@@ -120,6 +120,14 @@ func TestCopyMessage(t *testing.T) {
 	require.Equal(t, getTimeFromString(queueM.ObjectMeta.Labels[LabelNextVisibleAt]), msg.NextVisibleAt)
 }
 
+func TestGenerateID(t *testing.T) {
+	cli, err := New(nil, Options{Name: "applications.core", Namespace: "test"})
+	require.NoError(t, err)
+
+	id, _ := cli.generateID()
+	require.Equal(t, 60, len(id))
+}
+
 func TestClient(t *testing.T) {
 	rc, env, err := startEnvironment()
 	require.NoError(t, err, "If this step is failing for you, run `make test` inside the repository and try again. If you are still stuck then ask for help.")

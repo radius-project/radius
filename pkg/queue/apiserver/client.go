@@ -7,6 +7,7 @@ package apiserver
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"strconv"
@@ -25,7 +26,9 @@ import (
 )
 
 const (
-	LabelQueueName     = "ucp.dev/queuename"
+	// LabelQueueName is the label representing queue name.
+	LabelQueueName = "ucp.dev/queuename"
+	// LabelNextVisibleAt is the label representing the time when message is visible in the queue or requeued.
 	LabelNextVisibleAt = "ucp.dev/nextvisibleat"
 
 	dequeueInterval = time.Duration(5) * time.Millisecond
@@ -100,9 +103,21 @@ func New(client runtimeclient.Client, options Options) (*Client, error) {
 	return &Client{client: client, opts: options}, nil
 }
 
+func (c *Client) generateID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s.%d%x", c.opts.Name, time.Now().Unix(), b), nil
+}
+
 func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
 	now := time.Now()
-	id := fmt.Sprintf("%s.%d", c.opts.Name, now.UnixNano())
+	id, err := c.generateID()
+	if err != nil {
+		return err
+	}
+
 	resource := &v1alpha1.QueueMessage{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      id,
