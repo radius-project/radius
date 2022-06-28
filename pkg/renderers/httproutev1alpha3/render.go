@@ -108,7 +108,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *radcl
 	if portNum != 0 {
 		target = intstr.FromInt(portNum)
 	} else {
-		intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName))
+		target = intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName))
 	}
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
