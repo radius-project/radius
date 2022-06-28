@@ -127,7 +127,7 @@ func CreateAPIServerConnection(context string, overrideURL string, enableUCP boo
 	var roundTripper http.RoundTripper
 
 	if enableUCP {
-		baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.ucp.dev/v1alpha3/planes/radius/local", context, enableUCP)
+		baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.ucp.dev", context, enableUCP)
 	} else {
 		baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.radius.dev", context, enableUCP)
 	}
