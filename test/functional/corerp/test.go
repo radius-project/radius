@@ -17,14 +17,12 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
-
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/discovery"
 
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
@@ -34,7 +32,6 @@ var radiusControllerLogSync sync.Once
 const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 	APIVersion             = "2022-03-15-privatepreview"
-	ResourceGroup          = "default"
 
 	retryTimeout = 2 * time.Minute
 	retryBackoff = 1 * time.Second
@@ -80,6 +77,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	// This way we can catch deletion failures and report them as test failures.
 
 	// Each of our tests are isolated to a single application, so they can run in parallel.
+	// TODO: not sure if this is true for corerp tests
 	t.Parallel()
 
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
@@ -99,8 +97,6 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
-
-	cli := radcli.NewCLI(t, ct.Options.ConfigFilePath)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
@@ -122,27 +118,22 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			go setupProxy(t)
 			time.Sleep(100 * time.Millisecond)
 
-			// rad app list
-			validation.VerifyResources()
-			apps, err := cli.ApplicationList(ctx)
-			envs, err := cli.EnvList(ctx)
-			// rsrs, err := cli.ResourceList(ctx, apps)
-			fmt.Println(apps, envs, err)
+			// Validate resources
 			for _, resource := range step.Resources {
-				path := fmt.Sprintf("apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/%s/providers/Applications.Core/%s/%s?api-version=%s", ResourceGroup, resource.Type, resource.Name, APIVersion)
-				testHTTPEndpoint(t, "http://127.0.0.1:8001", path, 200)
+				path := fmt.Sprintf("apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/%s/providers/Applications.Core/%s/%s?api-version=%s", validation.ResourceGroup, resource.Type, resource.Name, APIVersion)
+				testHTTPEndpoint(t, "http://127.0.0.1:8002", path, 200)
 			}
 
 		})
 	}
 
-	// TODO: re-enable cleanup of application
-	validation.DeleteResources()
+	// Clean up resources
+	// TODO: re-enable cleanup of application (and environments)
 }
 
 func setupProxy(t *testing.T) {
 	t.Log("Setting up kubectl proxy")
-	proxyCmd := exec.Command("kubectl", "proxy", "--port", "8001")
+	proxyCmd := exec.Command("kubectl", "proxy", "--port", "8002")
 	// Not checking the return value since ignore if already running proxy
 	err := proxyCmd.Run()
 	if err != nil {

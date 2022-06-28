@@ -14,6 +14,8 @@ import (
 )
 
 func Test_Container(t *testing.T) {
+	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+
 	template := "testdata/corerp-resources-container.bicep"
 	name := "corerp-resources-container"
 

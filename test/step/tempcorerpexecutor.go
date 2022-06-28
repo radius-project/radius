@@ -15,12 +15,12 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/stretchr/testify/require"
-
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/validation"
+	"github.com/stretchr/testify/require"
 )
 
 type sender struct {
@@ -39,8 +39,6 @@ type TempCoreRPExecutor struct {
 	Parameters  []string
 }
 
-// TempCoreRPExecutor is a temporary test executor that bypasses the CLI and
-// uses a deployment client manually for testing
 func NewTempCoreRPExecutor(template string, parameters ...string) *TempCoreRPExecutor {
 	return &TempCoreRPExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
@@ -67,14 +65,16 @@ func (d *TempCoreRPExecutor) Execute(ctx context.Context, t *testing.T, options 
 	deploymentsClient := clients.NewResourceDeploymentClientWithBaseURI(url)
 	deploymentsClient.Sender = &sender{RoundTripper: roundTripper}
 
-	var templateObject interface{}
-	err = json.Unmarshal([]byte(template), &templateObject)
+	var templateJObject interface{}
+	err = json.Unmarshal([]byte(template), &templateJObject)
 	require.NoError(t, err)
 
-	future, err := deploymentsClient.CreateOrUpdate(ctx, "/planes/deployments/local/resourceGroups/default/providers/Microsoft.Resources/deployments/my-deployment", resources.Deployment{
+	deploymentURL := fmt.Sprintf("/planes/deployments/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/my-deployment", validation.ResourceGroup)
+
+	future, err := deploymentsClient.CreateOrUpdate(ctx, deploymentURL, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Mode:       resources.DeploymentModeIncremental,
-			Template:   templateObject,
+			Template:   templateJObject,
 			Parameters: map[string]interface{}{},
 		},
 	})

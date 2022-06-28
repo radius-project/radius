@@ -5,6 +5,8 @@
 package validation
 
 const (
+	ResourceGroup = "default"
+
 	EnvironmentsResource = "environments"
 	ApplicationsResource = "applications"
 	HttpRoutesResource   = "httpRoutes"
@@ -14,11 +16,4 @@ const (
 type Resource struct {
 	Type string
 	Name string
-}
-
-func VerifyResources() {
-}
-
-func DeleteResources() {
-
 }
