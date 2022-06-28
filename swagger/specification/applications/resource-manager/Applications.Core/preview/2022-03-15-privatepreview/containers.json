@@ -691,7 +691,6 @@
         "type": "object",
         "required": [
           "application",
-          "connections",
           "container"
         ],
         "properties": {

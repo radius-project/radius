@@ -126,7 +126,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context
 }
 
 func (e *AzureCloudEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
