@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
-  name: operationqueues.ucp.dev
+  name: queuemessages.ucp.dev
 spec:
   group: ucp.dev
   names:
-    kind: OperationQueue
-    listKind: OperationQueueList
-    plural: operationqueues
-    singular: operationqueue
+    kind: QueueMessage
+    listKind: QueueMessageList
+    plural: queuemessages
+    singular: queuemessage
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: OperationQueue is the Schema for OperationQueue API.
+        description: QueueMessage is the Schema for QueueMessage API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation

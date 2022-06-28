@@ -16,7 +16,6 @@ import (
 
 	"github.com/go-logr/logr"
 	v1alpha1 "github.com/project-radius/radius/pkg/queue/apiserver/api/ucp.dev/v1alpha1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -71,7 +70,7 @@ func getTimeFromString(s string) time.Time {
 	return time.Unix(0, nsec)
 }
 
-func copyMessage(msg *client.Message, queueMessage *v1alpha1.OperationQueue) {
+func copyMessage(msg *client.Message, queueMessage *v1alpha1.QueueMessage) {
 	msg.Metadata = client.Metadata{
 		ID:            queueMessage.Name,
 		DequeueCount:  queueMessage.Spec.DequeueCount,
@@ -85,9 +84,9 @@ func copyMessage(msg *client.Message, queueMessage *v1alpha1.OperationQueue) {
 }
 
 // New creates the queue backed by Kubernetes API server KV store. name is unique name for each service which will consume the queue.
-func New(client runtimeclient.Client, options Options) *Client {
+func New(client runtimeclient.Client, options Options) (*Client, error) {
 	if options.Name == "" || options.Namespace == "" {
-		return nil
+		return nil, errors.New("Name and Namespace are required")
 	}
 
 	if options.MessageLockDuration == time.Duration(0) {
@@ -98,13 +97,13 @@ func New(client runtimeclient.Client, options Options) *Client {
 		options.ExpiryDuration = defaultExpiryDuration
 	}
 
-	return &Client{client: client, opts: options}
+	return &Client{client: client, opts: options}, nil
 }
 
 func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
 	now := time.Now()
 	id := fmt.Sprintf("%s.%d", c.opts.Name, now.UnixNano())
-	resource := &v1alpha1.OperationQueue{
+	resource := &v1alpha1.QueueMessage{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      id,
 			Namespace: c.opts.Namespace,
@@ -113,7 +112,7 @@ func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...cl
 				LabelQueueName:     c.opts.Name,
 			},
 		},
-		Spec: v1alpha1.OperationQueueSpec{
+		Spec: v1alpha1.QueueMessageSpec{
 			DequeueCount: 0,
 			EnqueueAt:    metav1.Time{Time: now.UTC()},
 			ExpireAt:     metav1.Time{Time: now.Add(c.opts.ExpiryDuration).UTC()},
@@ -122,17 +121,16 @@ func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...cl
 		},
 	}
 
-	err := c.client.Create(ctx, resource)
-	if err != nil && !(apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)) {
-		return err
-	}
-
-	return nil
+	return c.client.Create(ctx, resource)
 }
 
 func newMessageLabelSelector(now time.Time, name string) (labels.Selector, error) {
 	selector := labels.NewSelector()
 
+	// To determine whether the message is currently leased by client or not, it uses NextVisibleAt timestamp.
+	// For example, if NextVisibleAt time is less than current time, the message has been requeued or never
+	// leased by the client. We use Label to compare the timestamp since List() supports GreaterThan and
+	// LessThan Operator for Label.
 	nextVisibleLabel, err := labels.NewRequirement(LabelNextVisibleAt, selection.LessThan, []string{int64toa(now.UnixNano())})
 	if err != nil {
 		return nil, err
@@ -150,8 +148,8 @@ func newMessageLabelSelector(now time.Time, name string) (labels.Selector, error
 // getQueueMessage fetches the first item which is the message in the current queue. We can
 // determine whether the message is leased by another client by checking if `NextVisibleAt``
 // value is less than `now`.
-func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.OperationQueue, error) {
-	ql := &v1alpha1.OperationQueueList{}
+func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.QueueMessage, error) {
+	ql := &v1alpha1.QueueMessageList{}
 
 	selector, err := newMessageLabelSelector(now, c.opts.Name)
 	if err != nil {
@@ -172,9 +170,9 @@ func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.
 	return nil, client.ErrMessageNotFound
 }
 
-func (c *Client) extendItem(ctx context.Context, item *v1alpha1.OperationQueue, afterTime time.Time, duration time.Duration) (*v1alpha1.OperationQueue, error) {
+func (c *Client) extendItem(ctx context.Context, item *v1alpha1.QueueMessage, afterTime time.Time, duration time.Duration) (*v1alpha1.QueueMessage, error) {
 	nextVisibleAt := afterTime.Add(duration).UnixNano()
-	result := &v1alpha1.OperationQueue{}
+	result := &v1alpha1.QueueMessage{}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: item.Name}, result)
@@ -191,6 +189,9 @@ func (c *Client) extendItem(ctx context.Context, item *v1alpha1.OperationQueue, 
 
 		result.Labels[LabelNextVisibleAt] = int64toa(nextVisibleAt)
 		result.Spec.DequeueCount += 1
+
+		// Update supports optimistic concurrency. Retry until conflict is solved.
+		// Reference: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
 		return c.client.Update(ctx, result)
 	})
 
@@ -202,7 +203,7 @@ func (c *Client) extendItem(ctx context.Context, item *v1alpha1.OperationQueue, 
 }
 
 func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*client.Message, error) {
-	var result *v1alpha1.OperationQueue
+	var result *v1alpha1.QueueMessage
 
 	DequeuedMessageError := func(err error) bool {
 		return errors.Is(err, client.ErrDeqeueudMessage)
@@ -212,6 +213,8 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 
 	// Retry only if the other instance or client already dequeue the message.
 	retryErr := retry.OnError(retry.DefaultRetry, DequeuedMessageError, func() error {
+		// Since multiple client can get the same message, we tried to get the next queue
+		// message whenever extendItem is failed.
 		item, err := c.getQueueMessage(ctx, now)
 		if err != nil {
 			return err
@@ -261,7 +264,7 @@ func (c *Client) StartDequeuer(ctx context.Context, opts ...client.DequeueOption
 }
 
 func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
-	result := &v1alpha1.OperationQueue{}
+	result := &v1alpha1.QueueMessage{}
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: msg.ID}, result)
 		if getErr != nil {
@@ -282,7 +285,7 @@ func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
 
 func (c *Client) ExtendMessage(ctx context.Context, msg *client.Message) error {
 	now := time.Now()
-	result := &v1alpha1.OperationQueue{}
+	result := &v1alpha1.QueueMessage{}
 	getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: msg.ID}, result)
 	if getErr != nil {
 		return getErr

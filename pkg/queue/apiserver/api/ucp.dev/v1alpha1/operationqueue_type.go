@@ -10,10 +10,10 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// controller-gen object paths=./api/ucp.dev/v1alpha1/... object:headerFile=../../boilerplate.go.txt
-// controller-gen rbac:roleName=manager-role crd paths=./api/ucp.dev/v1alpha1/... output:crd:dir=../../deploy/Chart/crds/ucpd
+// controller-gen object paths=./api/ucp.dev/v1alpha1/... object:headerFile=../../../boilerplate.go.txt
+// controller-gen rbac:roleName=manager-role crd paths=./api/ucp.dev/v1alpha1/... output:crd:dir=../../../deploy/Chart/crds/ucpd
 
-type OperationQueueSpec struct {
+type QueueMessageSpec struct {
 	// DequeueCount represents the number of dequeue.
 	DequeueCount int `json:"dequeueCount"`
 	// EnqueueAt represents the time when enqueuing the message
@@ -35,24 +35,24 @@ type OperationQueueSpec struct {
 
 //+kubebuilder:object:root=true
 
-// OperationQueue is the Schema for OperationQueue API.
+// QueueMessage is the Schema for QueueMessage API.
 // +k8s:openapi-gen=true
-type OperationQueue struct {
+type QueueMessage struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec OperationQueueSpec `json:"spec,omitempty"`
+	Spec QueueMessageSpec `json:"spec,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// OperationQueueList contains a list of OperationQueue
-type OperationQueueList struct {
+// QueueMessageList contains a list of OperationQueue
+type QueueMessageList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []OperationQueue `json:"items"`
+	Items           []QueueMessage `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&OperationQueue{}, &OperationQueueList{})
+	SchemeBuilder.Register(&QueueMessage{}, &QueueMessageList{})
 }

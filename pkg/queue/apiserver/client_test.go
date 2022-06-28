@@ -29,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
+const pollingInterval = time.Duration(100) * time.Millisecond
+
 type testQueueMessage struct {
 	ID      string `json:"id"`
 	Message string `json:"msg"`
@@ -36,7 +38,7 @@ type testQueueMessage struct {
 
 func drainMessages(c runtimeclient.Client, namespace string) {
 	ctx := context.Background()
-	ql := &v1alpha1.OperationQueueList{}
+	ql := &v1alpha1.QueueMessageList{}
 	err := c.List(ctx, ql, runtimeclient.InNamespace(namespace))
 	if err != nil {
 		return
@@ -89,7 +91,7 @@ func TestCopyMessage(t *testing.T) {
 		Metadata: client.Metadata{ID: "testid"},
 	}
 	now := time.Now()
-	queueM := &v1alpha1.OperationQueue{
+	queueM := &v1alpha1.QueueMessage{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "applications.core.10101010",
 			Namespace: "radius-test",
@@ -98,7 +100,7 @@ func TestCopyMessage(t *testing.T) {
 				LabelQueueName:     "applications.core",
 			},
 		},
-		Spec: v1alpha1.OperationQueueSpec{
+		Spec: v1alpha1.QueueMessageSpec{
 			DequeueCount: 2,
 			EnqueueAt:    metav1.Time{Time: now.UTC()},
 			ExpireAt:     metav1.Time{Time: now.Add(10 * time.Second).UTC()},
@@ -134,8 +136,8 @@ func TestClient(t *testing.T) {
 
 	testLockTime := time.Duration(1) * time.Second
 
-	cli := New(rc, Options{Name: "applications.core", Namespace: ns, MessageLockDuration: testLockTime})
-	require.NotNil(t, cli)
+	cli, err := New(rc, Options{Name: "applications.core", Namespace: ns, MessageLockDuration: testLockTime})
+	require.NoError(t, err)
 
 	// TODO: Move the below subtests to shared test package when inmemory queue impl uses new client interface.
 	t.Run("enqueue and dequeue messages", func(t *testing.T) {
@@ -192,7 +194,7 @@ func TestClient(t *testing.T) {
 			if err == nil {
 				break
 			}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(pollingInterval)
 		}
 
 		require.Equal(t, msg1.ID, msg3.ID)
@@ -229,7 +231,7 @@ func TestClient(t *testing.T) {
 				require.Equal(t, msg2.ID, msg3.ID)
 				break
 			}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(pollingInterval)
 		}
 	})
 
@@ -243,7 +245,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("%s %v", msg1.ID, msg1.NextVisibleAt)
 
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(testLockTime / 2)
 
 		msg2, err := cli.Dequeue(ctx)
 		require.NoError(t, err)
@@ -255,9 +257,11 @@ func TestClient(t *testing.T) {
 				t.Logf("%s %v", msg3.ID, msg3.NextVisibleAt)
 				break
 			}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(pollingInterval)
 		}
 
+		// Wait until message lock is released.
+		time.Sleep(testLockTime)
 		err = cli.ExtendMessage(ctx, msg2)
 		require.ErrorIs(t, err, client.ErrInvalidMessage)
 	})
