@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/project-radius/radius/pkg/queue/client"
+	"github.com/project-radius/radius/pkg/ucp/queue/client"
 
 	"github.com/go-logr/logr"
 	v1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"

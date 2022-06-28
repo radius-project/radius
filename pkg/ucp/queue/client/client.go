@@ -21,7 +21,7 @@ var (
 	ErrInvalidMessage = errors.New("this message has been requeued or deleted")
 )
 
-//go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/queue/client github.com/project-radius/radius/pkg/queue/client Client
+//go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/ucp/queue/client github.com/project-radius/radius/pkg/ucp/queue/client Client
 
 // Client is an interface to implement queue operations.
 type Client interface {

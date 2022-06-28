@@ -34,13 +34,13 @@ generate-autorest-installed:
 
 .PHONY: generate-controller-gen-installed
 generate-controller-gen-installed:
-	@echo "$(ARROW) Detecting autorest..."
+	@echo "$(ARROW) Detecting controller-gen..."
 	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0'"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-ucp-crd
 generate-ucp-crd: generate-controller-gen-installed
-	@echo "$(ARROW) Generating CRD for ucp.dev..."
+	@echo "$(ARROW) Generating CRDs for ucp.dev..."
 	controller-gen object paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... object:headerFile=./boilerplate.go.txt
 	controller-gen rbac:roleName=manager-role crd paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
 
