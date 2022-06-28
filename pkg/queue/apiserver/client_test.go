@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	v1alpha1 "github.com/project-radius/radius/pkg/queue/apiserver/api/ucp.dev/v1alpha1"
 	"github.com/project-radius/radius/pkg/queue/client"
+	v1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
