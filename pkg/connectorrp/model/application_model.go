@@ -29,6 +29,10 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 	}
 
 	radiusResourceModel := []RadiusResourceModel{
+		{
+			ResourceType: mongodatabases.ResourceType,
+			Renderer:     &mongodatabases.Renderer{},
+		},
 		// {
 		// 	ResourceType: daprhttproutev1alpha3.ResourceType,
 		// 	Renderer:     &daprhttproutev1alpha3.Renderer{},
@@ -55,10 +59,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		// 	ResourceType: microsoftsqlv1alpha3.ResourceType,
 		// 	Renderer:     &microsoftsqlv1alpha3.Renderer{},
 		// },
-		{
-			ResourceType: mongodatabases.ResourceType,
-			Renderer:     &mongodatabases.Renderer{},
-		},
 		// {
 		// 	ResourceType: redisv1alpha3.ResourceType,
 		// 	Renderer:     &redisv1alpha3.Renderer{},
@@ -127,19 +127,19 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
 			SecretValueTransformer: &mongodatabases.AzureTransformer{},
 		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureCosmosAccountHandler(arm),
+		},
 		// {
 		// 	ResourceType: resourcemodel.ResourceType{
 		// 		Type:     resourcekinds.DaprStateStoreAzureStorage,
 		// 		Provider: providers.ProviderAzure,
 		// 	},
 		// 	ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.AzureCosmosAccount,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewAzureCosmosAccountHandler(arm),
 		// },
 		// {
 		// 	ResourceType: resourcemodel.ResourceType{

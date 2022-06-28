@@ -31,7 +31,7 @@ type azureCosmosDBMongoHandler struct {
 	azureCosmosDBBaseHandler
 }
 
-// Currently it mainly validates resource exists since Radius does not create underlying Azure resources.
+// Validates resource exists since Radius does not create underlying Azure resources currently.
 func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, resource outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
 	properties, ok := resource.Resource.(map[string]string)
 	if !ok {

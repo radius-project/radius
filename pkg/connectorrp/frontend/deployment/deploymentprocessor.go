@@ -91,7 +91,6 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 // returns updated outputresource properties and computed values
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.String())
-
 	// Deploy
 	logger.Info("Deploying radius resource")
 
@@ -109,9 +108,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 			return DeploymentOutput{}, err
 		}
 
-		outputResource.Identity = resourceIdentity
+		if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
+			outputResource.Identity = resourceIdentity
+		}
+
 		if outputResource.Identity.ResourceType == nil {
-			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
+			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler or renderer", outputResource.LocalID)
 			return DeploymentOutput{}, err
 		}
 		updatedOutputResources = append(updatedOutputResources, outputResource)
@@ -135,7 +137,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Deploying output resource: %v, LocalID: %s, resource type: %q\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType))
+	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
 	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 	if err != nil {
