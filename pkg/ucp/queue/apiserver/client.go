@@ -260,9 +260,7 @@ func (c *Client) StartDequeuer(ctx context.Context, opts ...client.DequeueOption
 			msg, err := c.Dequeue(ctx, opts...)
 			if err == nil {
 				out <- msg
-			}
-
-			if err != nil && !errors.Is(err, client.ErrMessageNotFound) {
+			} else if !errors.Is(err, client.ErrMessageNotFound) {
 				log.Error(err, "fails to dequeue the message")
 			}
 
