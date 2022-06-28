@@ -3,29 +3,30 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-//
 // Package apiserver is Kuberentes CRD based queue implementation. To implement the distributed queue using CRD,
-// we define QueueMessage Custom Resource and leverage Kuberentes CRD optimistic consistency to support the consistency of
-// QueueMessage resource. In order to implement Queue using K8s CRD, we need to implement four operations:
+// we define QueueMessage Custom Resource and leverage Kuberentes CRD optimistic consistency to achieve the consistency of
+// QueueMessage resource. We need four operations for the queue:
 //
 // 1. Enqueue: Creates QueueMessage CR to mimic the queue enqueue operation
 // 2. Dequeue: Implements message lease and lock (which is invisible for the other client once message leased).
 //             After message lock duration, the leased message must be re-queued.
-// 3. FinishMessage: Deletes the leased message CR to delete message in the queue completely if the message is not re-queued.
+// 3. FinishMessage: Deletes the leased message CR to remove message in the queue completely if the message is not re-queued.
 // 4. ExtendMessage: Extends the leased message to postpone the re-queue operation.
 //
-// We generate the below unique id to save new message without the conflict.
+// To create new QueueMessage resource, we generate the below unique id to avoid the conflict.
 //
-//         applications.core.
-//             <name>       .<epoch time><random number>
+//         applications.core.1656452659.70a6f0f8003943a6abe3319c5a4f1b9d
+//         ----------------- ---------- --------------------------------
+//              name         epoch time         random number
 //
 // We also maintain NextVisibleAt in CR label to implement message `lease` operation. NextVisibleAt is stored in CR label
 // `ucp.dev/nextvisibleat` and represents the time when the message is visible for the other clients. Thanks to Kubernetes
 // Resource query API, we can use `<` and `>` operation to query resource items by label. Therefore, when client calls
 // Dequeue() API, the APIs queries the first item of which `ucp.dev/nextvisibleat` label value is less than current epoch
-// time. It will get the item which is re-queued or never dequeued message. Then it will increase DequeueCount and
-// `ucp.dev/nextvisibleat` timestamp and try to update the item. If the other client already fetched message, then Update()
-// API would return conflict error by optimistic consistency and retry to query and update it again until conflict is resolved.
+// time. It will get the item which is re-queued or never dequeued message. Then it will increase DequeueCount and update
+// `ucp.dev/nextvisibleat` timestamp (current time + 5 mins(default)) and try to update the item. If the other client already
+// fetched message, then Update() API would return conflict error by optimistic consistency and retry to query and update
+// it again until conflict is resolved.
 //
 
 package apiserver
@@ -133,7 +134,7 @@ func (c *Client) generateID() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s.%d%x", c.opts.Name, time.Now().Unix(), b), nil
+	return fmt.Sprintf("%s.%10d.%32x", c.opts.Name, time.Now().Unix(), b), nil
 }
 
 func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
