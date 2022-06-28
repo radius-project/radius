@@ -411,7 +411,7 @@ type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
 	Kind *EnvironmentComputeKind `json:"kind,omitempty"`
 
-	// REQUIRED; The resource id of the compute resource for application environment.
+	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
 
