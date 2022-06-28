@@ -18,6 +18,8 @@ const (
 	DatabaseNameValue     = "database"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
+	Host                  = "host"
+	Port                  = "port"
 )
 
 type Renderer interface {
