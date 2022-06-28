@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/telemetry/metrics"
+	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -43,6 +44,9 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 			return nil, err
 		}
 	}
+
+	r.NotFoundHandler = validator.APINotFoundHandler()
+	r.MethodNotAllowedHandler = validator.APIMethodNotAllowedHandler()
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AppendLogValues)

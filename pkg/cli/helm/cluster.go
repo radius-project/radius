@@ -23,6 +23,11 @@ const (
 	DaprDefaultVersion         = "1.6.0"
 )
 
+type CLIClusterOptions struct {
+	Namespace string
+	Radius    RadiusOptions
+}
+
 type ClusterOptions struct {
 	Namespace string
 	Dapr      DaprOptions
@@ -58,7 +63,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 }
 
-func NewClusterOptions(cliOptions ClusterOptions) ClusterOptions {
+func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
 
 	// If any of the CLI options are provided, override the default options.
@@ -93,6 +98,10 @@ func NewClusterOptions(cliOptions ClusterOptions) ClusterOptions {
 
 	if cliOptions.Radius.UCPTag != "" {
 		options.Radius.UCPTag = cliOptions.Radius.UCPTag
+	}
+
+	if cliOptions.Radius.AzureProvider != nil {
+		options.Radius.AzureProvider = cliOptions.Radius.AzureProvider
 	}
 
 	return options

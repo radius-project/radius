@@ -34,7 +34,7 @@ func NewGetRabbitMQMessageQueue(ds store.StorageClient, sm manager.StatusManager
 func (rabbitmq *GetRabbitMQMessageQueue) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.RabbitMQMessageQueue{}
+	existingResource := &datamodel.RabbitMQMessageQueueResponse{}
 	_, err := rabbitmq.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
@@ -43,6 +43,6 @@ func (rabbitmq *GetRabbitMQMessageQueue) Run(ctx context.Context, req *http.Requ
 		return nil, err
 	}
 
-	versioned, _ := converter.RabbitMQMessageQueueDataModelToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := converter.RabbitMQMessageQueueDataModelToVersioned(existingResource, serviceCtx.APIVersion, false)
 	return rest.NewOKResponse(versioned), nil
 }

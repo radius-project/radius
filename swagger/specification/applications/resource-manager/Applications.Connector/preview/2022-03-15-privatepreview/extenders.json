@@ -216,6 +216,48 @@
             }
           }
         }
+      },
+      "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}/listSecrets": {
+        "post": {
+          "description": "Lists secrets values for the specified Extender resource",
+          "operationId": "Extenders_listSecrets",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "ExtendersGet": {
+              "$ref": "./examples/ExtendersListSecrets.json"
+            }
+          },
+          "tags": [
+            "Extenders"
+          ],
+          "parameters": [
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            },
+            {
+              "$ref": "global.json#/parameters/RootScopeParameter"
+            },
+            {
+              "$ref": "#/parameters/ExtenderNameParameter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Extender secrets",
+              "schema": {
+                "$ref": "#/definitions/ExtenderListSecretsResult"
+              }
+            },
+            "default": {
+              "description": "Error response describing the reason for operation failure",
+              "schema": {
+                "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+              }
+            }
+          }
+        }
       }
     },
     "definitions": {
@@ -257,6 +299,15 @@
           }
         }
       },
+      "ExtenderListSecretsResult": {
+        "description": "The secret values for the given Extender resource",
+        "$ref": "#/definitions/ExtenderSecrets"
+      },
+      "ExtenderSecrets": {
+        "description": "The secret values for the given Extender resource",
+        "additionalProperties": true,
+        "properties": {}
+      },
       "ExtenderProperties": {
         "description": "Extender connector properties",
         "type": "object",
@@ -281,8 +332,7 @@
           },
           "secrets": {
             "additionalProperties": true,
-            "properties": {},
-            "type": "object"
+            "$ref": "#/definitions/ExtenderSecrets"
           }
         },
         "required": ["environment"]

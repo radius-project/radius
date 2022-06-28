@@ -219,11 +219,11 @@ type ContainerProperties struct {
 	// REQUIRED; Specifies resource id of the application
 	Application *string `json:"application,omitempty"`
 
-	// REQUIRED; Dictionary of
-	Connections map[string]*ConnectionProperties `json:"connections,omitempty"`
-
 	// REQUIRED; Definition of a container.
 	Container *Container `json:"container,omitempty"`
+
+	// Dictionary of
+	Connections map[string]*ConnectionProperties `json:"connections,omitempty"`
 
 	// Extensions spec of the resource
 	Extensions []ExtensionClassification `json:"extensions,omitempty"`
@@ -411,7 +411,7 @@ type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
 	Kind *EnvironmentComputeKind `json:"kind,omitempty"`
 
-	// REQUIRED; The resource id of the compute resource for application environment.
+	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
 

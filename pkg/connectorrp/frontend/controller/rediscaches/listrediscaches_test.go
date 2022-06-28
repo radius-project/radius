@@ -29,7 +29,7 @@ func TestListRedisCachesRun_20220315PrivatePreview(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, redisDataModel, expectedOutput := getTestModels20220315privatepreview()
+	_, redisDataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 
 	t.Run("empty list", func(t *testing.T) {
 		w := httptest.NewRecorder()

@@ -34,7 +34,7 @@ func NewGetRedisCache(ds store.StorageClient, sm manager.StatusManager) (ctrl.Co
 func (redis *GetRedisCache) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.RedisCache{}
+	existingResource := &datamodel.RedisCacheResponse{}
 	_, err := redis.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
@@ -43,6 +43,6 @@ func (redis *GetRedisCache) Run(ctx context.Context, req *http.Request) (rest.Re
 		return nil, err
 	}
 
-	versioned, _ := converter.RedisCacheDataModelToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := converter.RedisCacheDataModelToVersioned(existingResource, serviceCtx.APIVersion, false)
 	return rest.NewOKResponse(versioned), nil
 }

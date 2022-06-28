@@ -1,0 +1,8 @@
+{
+	"location": "West US",
+	"properties": {
+		"compute": {
+			"kind": "kubernetes"
+		}
+	}
+}
