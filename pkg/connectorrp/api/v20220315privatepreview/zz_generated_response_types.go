@@ -205,7 +205,7 @@ type ExtendersGetResponse struct {
 
 // ExtendersGetResult contains the result from method Extenders.Get.
 type ExtendersGetResult struct {
-	ExtenderResource
+	ExtenderResponseResource
 }
 
 // ExtendersListByRootScopeResponse contains the response from method Extenders.ListByRootScope.
