@@ -82,7 +82,7 @@
 ## ContainerProperties
 ### Properties
 * **application**: string (Required): Specifies resource id of the application
-* **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections) (Required): Dictionary of <ConnectionProperties>
+* **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Dictionary of <ConnectionProperties>
 * **container**: [Container](#container) (Required): Definition of a container.
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
