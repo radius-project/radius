@@ -276,15 +276,22 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, erro
 }
 
 func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string) (string, error) {
-	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "")
+	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "", true)
 	if err != nil {
 		return "", err
 	}
 
+	loc := "global"
+	id := "self"
+
 	toCreate := coreRpApps.EnvironmentResource{
+		TrackedResource: coreRpApps.TrackedResource{
+			Location: &loc,
+		},
 		Properties: &coreRpApps.EnvironmentProperties{
 			Compute: &coreRpApps.EnvironmentCompute{
-				Kind: coreRpApps.EnvironmentComputeKindKubernetes.ToPtr(),
+				Kind:       coreRpApps.EnvironmentComputeKindKubernetes.ToPtr(),
+				ResourceID: &id,
 			},
 		},
 	}

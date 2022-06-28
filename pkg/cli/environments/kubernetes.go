@@ -100,7 +100,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *KubernetesEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -130,14 +130,16 @@ func (e *KubernetesEnvironment) CreateLegacyManagementClient(ctx context.Context
 }
 
 func (e *KubernetesEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateLegacyAPIServerConnection(e.Context, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
 
+	//TODO: add support to rad env init to write resourcegroup to config.yaml as scope
+	// and use that as RootScope value
 	return &ucp.ARMApplicationsManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		RootScope:       e.Namespace, // Temporarily set to namespace before rootScope is generated in kubernetes environment
+		RootScope:       "planes/radius/local/ResourceGroups/" + e.UCPResourceGroupName,
 	}, nil
 }

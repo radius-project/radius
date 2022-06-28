@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -127,4 +128,44 @@ func isResourceWithApplication(ctx context.Context, resource generated.GenericRe
 		return true, nil
 	}
 	return false, nil
+}
+
+func (um *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
+
+	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	envListPager := envClient.ListByScope(&corerp.EnvironmentsListByScopeOptions{})
+	envResourceList := []corerp.EnvironmentResource{}
+	for envListPager.NextPage(ctx) {
+		currEnvPage := envListPager.PageResponse().EnvironmentResourceList.Value
+		for _, env := range currEnvPage {
+			envResourceList = append(envResourceList, *env)
+		}
+	}
+
+	return envResourceList, nil
+
+}
+
+func (um *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error) {
+
+	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	envGetResp, err := envClient.Get(ctx, envName, &corerp.EnvironmentsGetOptions{})
+	if err == nil {
+		return envGetResp.EnvironmentsGetResult.EnvironmentResource, nil
+	}
+
+	return corerp.EnvironmentResource{}, err
+
+}
+
+func (um *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
+
+	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	_, err := envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
