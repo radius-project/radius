@@ -110,7 +110,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *radcl
 	// this value as the TargetPort. Otherwise, we will use a hash string.
 	var target intstr.IntOrString
 	if specifiedTargetPort != 0 {
-		target = intstr.FromInt(specifiedTargetPort)
+		target = intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName))
 	} else {
 		target = intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName))
 	}
