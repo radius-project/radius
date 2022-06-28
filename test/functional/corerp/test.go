@@ -121,7 +121,8 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			// Validate resources
 			for _, resource := range step.Resources {
 				path := fmt.Sprintf("apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/%s/providers/Applications.Core/%s/%s?api-version=%s", validation.ResourceGroup, resource.Type, resource.Name, APIVersion)
-				testHTTPEndpoint(t, "http://127.0.0.1:8002", path, 200)
+				err := testHTTPEndpoint(t, "http://127.0.0.1:8002", path, 200)
+				require.NoError(t, err)
 			}
 
 		})
