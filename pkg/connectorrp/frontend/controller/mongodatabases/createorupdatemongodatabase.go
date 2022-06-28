@@ -43,6 +43,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
+	// TODO replace this will real values once app model and arm options are passed to controllers
 	dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, nil, nil, nil)
 	rendererOutput, err := dp.Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {

@@ -26,8 +26,6 @@ import (
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
-	// Delete(ctx context.Context, id resources.ID, dm conv.DataModelInterface) error
-	// FetchSecrets(ctx context.Context, id resources.ID, dm conv.DataModelInterface) (map[string]interface{}, error)
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, storageClient store.StorageClient, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
