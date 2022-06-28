@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	userName         = "admin"
 	password         = "testpassword"
 	connectionString = "test-connection-string"
 )
