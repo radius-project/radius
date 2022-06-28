@@ -35,7 +35,7 @@ generate-autorest-installed:
 .PHONY: generate-controller-gen-installed
 generate-controller-gen-installed:
 	@echo "$(ARROW) Detecting controller-gen..."
-	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0'"; exit 1; }
+	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1'"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-ucp-crd
