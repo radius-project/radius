@@ -50,9 +50,9 @@ type GatewayOptions struct {
 }
 
 type RendererOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]ComputedValueReference
-	SecretValues   map[string]SecretValueReference
+	OutputResources []outputresource.OutputResource
+	ComputedValues  map[string]ComputedValueReference
+	SecretValues    map[string]SecretValueReference
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources

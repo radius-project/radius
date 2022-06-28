@@ -13,11 +13,10 @@ import (
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/db"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/model"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -31,6 +30,7 @@ import (
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, operationID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
+	FetchSecrets(ctx context.Context, id resources.ID, resource db.RadiusResource) (map[string]interface{}, error)
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, db store.StorageClient, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
@@ -47,9 +47,9 @@ type deploymentProcessor struct {
 }
 
 type DeploymentOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]interface{}
-	SecretValues   map[string]renderers.SecretValueReference
+	DeployedOutputResources []outputresource.OutputResource
+	ComputedValues          map[string]interface{}
+	SecretValues            map[string]renderers.SecretValueReference
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -168,7 +168,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
 
 	// Order output resources in deployment dependency order
-	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
+	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.OutputResources)
 	if err != nil {
 		return DeploymentOutput{}, err
 	}
@@ -192,6 +192,16 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 			return DeploymentOutput{}, err
 		}
 
+		// Build database resource - copy updated properties to Resource field
+		outputResource := outputresource.OutputResource{
+			LocalID:      outputResource.LocalID,
+			ResourceType: outputResource.ResourceType,
+			Identity:     outputResource.Identity,
+			Status: outputresource.OutputResourceStatus{
+				ProvisioningState:        db.Provisioned,
+				ProvisioningErrorDetails: "",
+			},
+		}
 		deployedOutputResources = append(deployedOutputResources, outputResource)
 		computedValues = deployedComputedValues
 	}
@@ -204,9 +214,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}
 
 	return DeploymentOutput{
-		Resources:      deployedOutputResources,
-		ComputedValues: computedValues,
-		SecretValues:   rendererOutput.SecretValues,
+		DeployedOutputResources: deployedOutputResources,
+		ComputedValues:          computedValues,
+		SecretValues:            rendererOutput.SecretValues,
 	}, nil
 }
 
@@ -215,9 +225,7 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, dependency
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, dependencyResourceID := range dependencyResourceIDs {
 		// Fetch resource from db
-		// TODO: type switch
-		// get the resource type from dependencyResourceID parsing
-		dbDependencyResource := &datamodel.ContainerResource{}
+		dbDependencyResource := db.RadiusResource{}
 		_, err := dp.getResource(ctx, dependencyResourceID.String(), dbDependencyResource)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch dependency resource %q: %w", dependencyResourceID, err)
@@ -251,13 +259,13 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, dependency
 			OutputResources: dependencyOutputResources,
 		}
 
-		rendererDependencies[dependencyResourceID.ID] = rendererDependency
+		rendererDependencies[dependencyResourceID.String()] = rendererDependency
 	}
 
 	return rendererDependencies, nil
 }
 
-func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (map[string]interface{}, error) {
+func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id resources.ID, resource db.RadiusResource) (map[string]interface{}, error) {
 	// We already have all of the computed values (stored in our database), but we need to look secrets
 	// (not stored in our database) and add them to the computed values.
 	computedValues := map[string]interface{}{}
