@@ -101,12 +101,16 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}, nil
 }
 
-func (r *Renderer) makeService(resource renderers.RendererResource, route *radclient.HTTPRouteProperties, portNum int) outputresource.OutputResource {
+func (r *Renderer) makeService(resource renderers.RendererResource, route *radclient.HTTPRouteProperties, specifiedTargetPort int) outputresource.OutputResource {
 	typeParts := strings.Split(resource.ResourceType, "/")
 	resourceType := typeParts[len(typeParts)-1]
+
+	// The variable 'target' will be used as the designated value for the TargetPort of this Kuberentes service
+	// if specifiedTargetPort is not zero, we are currently working with a TrafficSplit service, and we should use
+	// this value as the TargetPort. Otherwise, we will use a hash string.
 	var target intstr.IntOrString
-	if portNum != 0 {
-		target = intstr.FromInt(portNum)
+	if specifiedTargetPort != 0 {
+		target = intstr.FromInt(specifiedTargetPort)
 	} else {
 		target = intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName))
 	}
@@ -163,11 +167,13 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *
 	var err error
 	for i := 0; i < numBackends; i++ {
 		destination := *route.Routes[i].Destination
-		destPort := (int)(dependencies[destination].ComputedValues["port"].(int32))
-		if portNum != -1 && destPort != portNum {
-			err = fmt.Errorf("backend services have different port values")
+		if _, ok := dependencies[destination].ComputedValues["port"]; ok {
+			destPort := (int)(dependencies[destination].ComputedValues["port"].(int32))
+			if portNum != -1 && destPort != portNum {
+				err = fmt.Errorf("backend services have different port values")
+			}
+			portNum = destPort
 		}
-		portNum = destPort
 		httpRouteName := dependencies[destination].ResourceID.Name()
 		tsBackend := tsv1.TrafficSplitBackend{
 			Service: kubernetes.MakeResourceName(resource.ApplicationName, httpRouteName),
