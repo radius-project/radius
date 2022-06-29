@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 )
 
 // HTTPRoute represents HTTPRoute resource.
@@ -25,7 +26,7 @@ type HTTPRoute struct {
 	ComputedValues map[string]interface{} `json:"computedValues,omitempty"`
 
 	// Stores action to retrieve secret values. For Azure, connectionstring is accessed through cosmos listConnectionString operation, if secrets are not provided as input
-	SecretValues map[string]interface{} `json:"secretValues,omitempty"`
+	SecretValues map[string]renderers.SecretValueReference `json:"secretValues,omitempty"`
 }
 
 // ResourceTypeName returns the qualified name of the resource
