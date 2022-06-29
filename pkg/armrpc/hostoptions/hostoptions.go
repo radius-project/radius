@@ -19,8 +19,10 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/radrp/k8sauth"
 	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HostOptions defines all of the settings that our RP's execution environment provides.
