@@ -76,6 +76,9 @@ rad resource logs Container orders --application icecream-store --container dapr
 		} else {
 			client, err = environments.CreateLegacyDiagnosticsClient(cmd.Context(), env)
 		}
+		if err != nil {
+			return err
+		}
 
 		streams, err := client.Logs(cmd.Context(), clients.LogsOptions{
 			Application: application,
