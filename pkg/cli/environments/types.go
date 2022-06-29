@@ -92,6 +92,8 @@ func CreateLegacyManagementClient(ctx context.Context, env Environment) (clients
 
 type ApplicationsManagementEnvironment interface {
 	CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error)
+	// TODO: delete this after https://github.com/project-radius/radius/issues/2726
+	CreateApplicationsManagementClientWithScope(ctx context.Context, scope string) (clients.ApplicationsManagementClient, error)
 }
 
 func CreateApplicationsManagementClient(ctx context.Context, env Environment) (clients.ApplicationsManagementClient, error) {
@@ -101,6 +103,16 @@ func CreateApplicationsManagementClient(ctx context.Context, env Environment) (c
 	}
 
 	return me.CreateApplicationsManagementClient(ctx)
+}
+
+// TODO: delete this after https://github.com/project-radius/radius/issues/2726
+func CreateApplicationsManagementClientWithScope(ctx context.Context, env Environment, scope string) (clients.ApplicationsManagementClient, error) {
+	me, ok := env.(ApplicationsManagementEnvironment)
+	if !ok {
+		return nil, fmt.Errorf("an environment of kind '%s' does not support management operations", env.GetKind())
+	}
+
+	return me.CreateApplicationsManagementClientWithScope(ctx, scope)
 }
 
 type ServerLifecycleEnvironment interface {

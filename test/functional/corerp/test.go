@@ -6,170 +6,35 @@
 package corerp
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"net/http"
-	"os"
-	"os/exec"
-	"sync"
 	"testing"
-	"time"
 
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/discovery"
 
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
 )
 
-var radiusControllerLogSync sync.Once
+func NewCoreRPTestOptions(t *testing.T) CoreRPTestOptions {
+	ctx, _ := test.GetContext(t)
 
-const (
-	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
-	APIVersion             = "2022-03-15-privatepreview"
+	config, err := cli.LoadConfig("")
+	require.NoError(t, err, "failed to read radius config")
 
-	retryTimeout = 2 * time.Minute
-	retryBackoff = 1 * time.Second
-)
+	env, err := cli.GetEnvironment(config, "")
+	require.NoError(t, err, "failed to read default environment")
 
-type TestStep struct {
-	Executor  step.Executor
-	Resources []validation.Resource
+	client, err := environments.CreateApplicationsManagementClientWithScope(ctx, env, "default")
+	require.NoError(t, err, "failed to create ApplicationsManagementClientWithScope")
+
+	return CoreRPTestOptions{
+		TestOptions:      test.NewTestOptions(t),
+		ManagementClient: client,
+	}
 }
 
-type CoreRPTest struct {
-	Options          TestOptions
-	Name             string
-	Description      string
-	Steps            []TestStep
-	PostDeleteVerify func(ctx context.Context, t *testing.T, ct CoreRPTest)
-}
-
-type TestOptions struct {
+type CoreRPTestOptions struct {
 	test.TestOptions
-	DiscoveryClient discovery.DiscoveryInterface
-}
-
-func NewTestOptions(t *testing.T) TestOptions {
-	return TestOptions{TestOptions: test.NewTestOptions(t)}
-}
-
-func NewCoreRPTest(t *testing.T, name string, steps []TestStep, initialResources ...unstructured.Unstructured) CoreRPTest {
-	return CoreRPTest{
-		Options:     NewTestOptions(t),
-		Name:        name,
-		Description: name,
-		Steps:       steps,
-	}
-}
-
-func (ct CoreRPTest) Test(t *testing.T) {
-	ctx, cancel := test.GetContext(t)
-	defer cancel()
-
-	// Capture all logs from all pods (only run one of these as it will monitor everything)
-	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
-	// This way we can catch deletion failures and report them as test failures.
-
-	// Each of our tests are isolated to a single application, so they can run in parallel.
-	// TODO: not sure if this is true for corerp tests
-	// t.Parallel()
-
-	logPrefix := os.Getenv(ContainerLogPathEnvVar)
-	if logPrefix == "" {
-		logPrefix = "./logs"
-	}
-
-	// Only start capturing controller logs once.
-	radiusControllerLogSync.Do(func() {
-		err := validation.SaveLogsForController(ctx, ct.Options.K8sClient, "radius-system", logPrefix)
-		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %v", err)
-		}
-	})
-
-	err := validation.SaveLogsForApplication(ctx, ct.Options.K8sClient, ct.Name, logPrefix+"/"+ct.Name, ct.Name)
-	if err != nil {
-		t.Errorf("failed to capture logs from radius pods %v", err)
-	}
-
-	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
-	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
-
-	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
-
-	success := true
-	for i, step := range ct.Steps {
-		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
-			if !success {
-				t.Skip("skipping due to previous step failure")
-				return
-			}
-
-			t.Logf("running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
-			step.Executor.Execute(ctx, t, ct.Options.TestOptions)
-			t.Logf("finished running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
-
-			port := "8001"
-			go setupProxy(t, port)
-			time.Sleep(100 * time.Millisecond)
-
-			// Validate resources
-			for _, resource := range step.Resources {
-				path := fmt.Sprintf("apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/%s/providers/Applications.Core/%s/%s?api-version=%s", validation.ResourceGroup, resource.Type, resource.Name, APIVersion)
-				err := testHTTPEndpoint(t, fmt.Sprintf("http://127.0.0.1:%s", port), path, 200)
-				require.NoError(t, err)
-			}
-		})
-	}
-
-	// Clean up resources
-	// TODO: re-enable cleanup of application (and environments)
-}
-
-func setupProxy(t *testing.T, port string) {
-	t.Log("Setting up kubectl proxy")
-	proxyCmd := exec.Command("kubectl", "proxy", "--port", port)
-	// Not checking the return value since ignore if already running proxy
-	err := proxyCmd.Run()
-	if err != nil {
-		t.Logf("Failed to setup proxy with error: %v", err)
-	}
-	t.Log("Done setting up kubectl proxy")
-}
-
-// testHTTPEndpoint makes requests to the given baseURL/path with retries
-// until it finds the desired status code (expectedStatusCode) or times out (retryTimeout)
-func testHTTPEndpoint(t *testing.T, baseURL, path string, expectedStatusCode int) error {
-	req, err := autorest.Prepare(&http.Request{},
-		autorest.WithBaseURL(baseURL),
-		autorest.WithPath(path))
-	if err != nil {
-		return err
-	}
-
-	// Send requests to backing container via port-forward
-	response, err := autorest.Send(req,
-		autorest.WithLogging(functional.NewTestLogger(t)),
-		autorest.DoErrorUnlessStatusCode(expectedStatusCode),
-		autorest.DoRetryForDuration(retryTimeout, retryBackoff))
-	if err != nil {
-		return err
-	}
-
-	if response.Body != nil {
-		defer response.Body.Close()
-	}
-
-	if response.StatusCode != expectedStatusCode {
-		return errors.New("did not encounter correct status code")
-	}
-
-	// Encountered the correct status code
-	return nil
+	ManagementClient clients.ApplicationsManagementClient
 }

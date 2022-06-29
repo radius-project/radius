@@ -143,3 +143,19 @@ func (e *KubernetesEnvironment) CreateApplicationsManagementClient(ctx context.C
 		RootScope:       "planes/radius/local/ResourceGroups/" + e.UCPResourceGroupName,
 	}, nil
 }
+
+// TODO: delete this after https://github.com/project-radius/radius/issues/2726
+func (e *KubernetesEnvironment) CreateApplicationsManagementClientWithScope(ctx context.Context, scope string) (clients.ApplicationsManagementClient, error) {
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL, e.EnableUCP)
+	if err != nil {
+		return nil, err
+	}
+
+	//TODO: add support to rad env init to write resourcegroup to config.yaml as scope
+	// and use that as RootScope value
+	return &ucp.ARMApplicationsManagementClient{
+		EnvironmentName: e.Name,
+		Connection:      connection,
+		RootScope:       "planes/radius/local/ResourceGroups/" + scope,
+	}, nil
+}

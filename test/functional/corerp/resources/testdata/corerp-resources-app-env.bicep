@@ -1,7 +1,7 @@
 import radius as radius
 
 @description('Specifies the location for resources.')
-param location string = 'westus2'
+param location string = 'global'
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-app-env-env'
@@ -9,7 +9,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   properties: {
     compute: {
       kind: 'kubernetes'
-      resourceId: 'cluster'
+      resourceId: 'self'
     }
   }
 }

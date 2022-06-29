@@ -19,7 +19,7 @@ func Test_Application(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewTempCoreRPExecutor(template),
+			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
 					Name: "corerp-resources-application-app",

@@ -1,23 +1,15 @@
 import radius as radius
 
 @description('Specifies the location for resources.')
-param location string = 'westus2'
+param location string = 'global'
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-mechanics-nestedmodules-env'
-  location: location
-  properties: {
-    compute:{
-      kind: 'kubernetes'
-      resourceId: ''
-    }
-  }
-}
+@description('Specifies the environment for the resource.')
+param environment string = 'test'
 
 module outerApp 'modules/app-outer.bicep' = {
   name: 'corerp-mechanics-nestedmodules-outerapp'
   params: {
     location: location
-    environment: 'test'
+    environment: environment
   }
 }
