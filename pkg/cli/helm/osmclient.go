@@ -34,7 +34,7 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &namespace,
 	}
-	helmConf, err := HelmConfig(helmOutput, &flags)
+	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
@@ -71,7 +71,6 @@ func ApplyOSMHelmChart(options OSMOptions) error {
 	return err
 
 }
-
 
 func runOSMHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, helmOutput strings.Builder) error {
 	installClient := helm.NewInstall(helmConf)
