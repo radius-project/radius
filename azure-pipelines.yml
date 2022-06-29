@@ -119,7 +119,7 @@ stages:
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
-        echo ##[debug]dist/rad env install kubernetes \
+        echo "##[debug]dist/rad env install kubernetes \
           --chart ${{ variables.RADIUS_CHART_LOCATION }} \
           --image ${{ variables.DOCKER_REGISTRY }}/radius-rp \
           --tag ${{ variables.REL_VERSION }} \
@@ -132,7 +132,7 @@ stages:
           --provider-azure-client-id=$(INTEGRATION_TEST_SP_APP_ID) \
           --provider-azure-client-secret=$(INTEGRATION_TEST_SP_PASSWORD) \
           --provider-azure-tenant-id=$(INTEGRATION_TEST_TENANT_ID) \
-          --provider-azure-subscription=${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}  
+          --provider-azure-subscription=${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}" 
         dist/rad env install kubernetes \
           --chart ${{ variables.RADIUS_CHART_LOCATION }} \
           --image ${{ variables.DOCKER_REGISTRY }}/radius-rp \
