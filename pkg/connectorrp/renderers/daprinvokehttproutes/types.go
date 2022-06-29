@@ -3,13 +3,8 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package daprsecretstores
+package daprinvokehttproutes
 
 const (
-	ResourceType = "Applications.Connector/daprStateStores"
+	ResourceType = "Applications.Connector/daprInvokeHttpRoutes"
 )
-
-type Properties struct {
-	Kind     string `json:"kind"`
-	Resource string `json:"resource"`
-}
