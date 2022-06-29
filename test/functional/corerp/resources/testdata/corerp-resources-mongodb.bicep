@@ -5,7 +5,7 @@ param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'azure-resources-mongodb'
+  name: 'corerp-resources-mongodb'
   location: 'global'
   properties: {
     environment: environment
@@ -47,7 +47,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   location: resourceGroup().location
   kind: 'MongoDB'
   tags: {
-    radiustest: 'azure-resources-mongodb'
+    radiustest: 'corerp-resources-mongodb'
   }
   properties: {
     consistencyPolicy: {

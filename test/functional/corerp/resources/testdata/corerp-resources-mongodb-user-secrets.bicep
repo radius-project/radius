@@ -12,7 +12,7 @@ param environment string
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'azure-resources-mongodb-user-secretsr'
+  name: 'corerp-resources-mongodb-user-secrets'
   location: 'global'
   properties: {
     environment: environment
