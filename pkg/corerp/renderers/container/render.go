@@ -158,7 +158,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		outputResources = append(outputResources, r.makePodIdentity(ctx, resource, applicationName, roles))
 	}
 
-	return renderers.RendererOutput{Resources: outputResources}, nil
+	return renderers.RendererOutput{OutputResources: outputResources}, nil
 }
 
 func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.ContainerResource, applicationName string, options renderers.RenderOptions) ([]outputresource.OutputResource, map[string][]byte, error) {
