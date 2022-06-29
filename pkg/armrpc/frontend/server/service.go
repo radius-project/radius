@@ -14,8 +14,8 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	qprovider "github.com/project-radius/radius/pkg/queue/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 )
 
 // Service is the base worker service implementation to initialize and start web service.
@@ -37,8 +37,8 @@ func (s *Service) Init(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
 
-	if s.Options.Config.QueueProvider.Provider == qprovider.TypeInmemory {
-		s.Options.Config.QueueProvider.InMemory = &qprovider.InMemoryQueueOptions{Name: s.ProviderName}
+	if s.Options.Config.QueueProvider.Name == "" {
+		s.Options.Config.QueueProvider.Name = s.ProviderName
 	}
 
 	qp := qprovider.New(s.Options.Config.QueueProvider)
