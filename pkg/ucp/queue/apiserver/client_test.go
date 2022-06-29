@@ -276,7 +276,7 @@ func TestClient(t *testing.T) {
 
 	t.Run("StartDequeuer dequeues message via channel", func(t *testing.T) {
 		drainMessages(rc, ns)
-		msgCh, err := cli.StartDequeuer(ctx)
+		msgCh, err := client.StartDequeuer(ctx, cli)
 		require.NoError(t, err)
 
 		recvCnt := 0

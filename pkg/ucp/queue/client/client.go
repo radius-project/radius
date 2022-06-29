@@ -8,6 +8,9 @@ package client
 import (
 	"context"
 	"errors"
+	"time"
+
+	"github.com/go-logr/logr"
 )
 
 var (
@@ -19,6 +22,8 @@ var (
 
 	// ErrInvalidMessage represents the error when the message has already been requeued.
 	ErrInvalidMessage = errors.New("this message has been requeued or deleted")
+
+	dequeueInterval = time.Duration(5) * time.Millisecond
 )
 
 //go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/ucp/queue/client github.com/project-radius/radius/pkg/ucp/queue/client Client
@@ -31,12 +36,35 @@ type Client interface {
 	// Dequeue dequeues message from queue.
 	Dequeue(ctx context.Context, opts ...DequeueOptions) (*Message, error)
 
-	// StartDequeuer starts a dequeuer to consume the message from the queue and return the consumer channel.
-	StartDequeuer(ctx context.Context, opts ...DequeueOptions) (<-chan *Message, error)
-
 	// FinishMessage finishes or deletes the message in the queue.
 	FinishMessage(ctx context.Context, msg *Message) error
 
 	// ExtendMessage extends the message lock.
 	ExtendMessage(ctx context.Context, msg *Message) error
+}
+
+// StartDequeuer starts a dequeuer to consume the message from the queue and return the output channel.
+func StartDequeuer(ctx context.Context, cli Client, opts ...DequeueOptions) (<-chan *Message, error) {
+	log := logr.FromContextOrDiscard(ctx)
+	out := make(chan *Message, 1)
+
+	go func() {
+		for {
+			msg, err := cli.Dequeue(ctx, opts...)
+			if err == nil {
+				out <- msg
+			} else if !errors.Is(err, ErrMessageNotFound) {
+				log.Error(err, "fails to dequeue the message")
+			}
+
+			select {
+			case <-ctx.Done():
+				close(out)
+				return
+			case <-time.After(dequeueInterval):
+			}
+		}
+	}()
+
+	return out, nil
 }

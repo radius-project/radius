@@ -45,7 +45,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/ucp/queue/client"
 
-	"github.com/go-logr/logr"
 	v1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -281,31 +280,6 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 	copyMessage(msg, result)
 
 	return msg, nil
-}
-
-func (c *Client) StartDequeuer(ctx context.Context, opts ...client.DequeueOptions) (<-chan *client.Message, error) {
-	log := logr.FromContextOrDiscard(ctx)
-	out := make(chan *client.Message, 1)
-
-	go func() {
-		for {
-			msg, err := c.Dequeue(ctx, opts...)
-			if err == nil {
-				out <- msg
-			} else if !errors.Is(err, client.ErrMessageNotFound) {
-				log.Error(err, "fails to dequeue the message")
-			}
-
-			select {
-			case <-ctx.Done():
-				close(out)
-				return
-			case <-time.After(dequeueInterval):
-			}
-		}
-	}()
-
-	return out, nil
 }
 
 func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
