@@ -8,12 +8,9 @@ package inmemory
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/project-radius/radius/pkg/ucp/queue/client"
 )
-
-const dequeueInterval = 5 * time.Millisecond
 
 var namedQueue = &sync.Map{}
 var _ client.Client = (*Client)(nil)
