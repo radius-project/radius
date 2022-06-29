@@ -69,8 +69,8 @@ func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		outputResources = append(outputResources, outputResource)
 	}
 	existingResource.Properties.BasicResourceProperties.Status.OutputResources = outputResources
-	existingResource.ComputedValues = deploymentOutput.ComputedValues
-	existingResource.SecretValues = deploymentOutput.SecretValues
+	existingResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
+	existingResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
 	// Save the resource
 	_, err = c.SaveResource(ctx, request.ResourceID, existingResource, etag)
