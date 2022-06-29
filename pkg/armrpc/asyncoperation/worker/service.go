@@ -35,9 +35,7 @@ type Service struct {
 // Init initializes worker service.
 func (s *Service) Init(ctx context.Context) error {
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
-	s.Options.Config.QueueProvider.Name = s.ProviderName
-
-	qp := qprovider.New(s.Options.Config.QueueProvider)
+	qp := qprovider.New(s.ProviderName, s.Options.Config.QueueProvider)
 	opSC, err := s.StorageProvider.GetStorageClient(ctx, s.ProviderName+"/operationstatuses")
 	if err != nil {
 		return err

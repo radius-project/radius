@@ -7,9 +7,6 @@ package provider
 
 // QueueProviderOptions represents the data storage provider options.
 type QueueProviderOptions struct {
-	// Name configures the name of the queue.
-	Name string `yaml:"name,omitempty"`
-
 	// Provider configures the storage provider.
 	Provider QueueProviderType `yaml:"provider"`
 
