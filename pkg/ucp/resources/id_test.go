@@ -259,15 +259,6 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 			provider: "Applications.Core",
 		},
-		{
-			id:       "/planes/radius/local/resourceGroups",
-			expected: "/planes/radius/local/resourceGroups",
-			scopes: []ScopeSegment{
-				{Type: "radius", Name: "local"},
-			},
-			types:    []TypeSegment{},
-			provider: "",
-		},
 	}
 
 	for i, v := range values {

@@ -63,9 +63,10 @@ func Test_ListResourceGroups(t *testing.T) {
 	var testHandler = NewResourceGroupsUCPHandler()
 
 	var query store.Query
-	query.RootScope = path
+	query.RootScope = "/planes/radius/local"
 	query.ScopeRecursive = true
 	query.IsScopeQuery = true
+	query.ResourceType = "resourcegroups"
 
 	testResourceGroupID := "/planes/radius/local/resourceGroups/test-rg"
 	testResourceGroupName := "test-rg"

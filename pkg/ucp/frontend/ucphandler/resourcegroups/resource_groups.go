@@ -74,9 +74,17 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
 	var query store.Query
-	query.RootScope = path
+	planeType, planeName, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
+	if err != nil {
+		return nil, err
+	}
+	query.RootScope = resources.SegmentSeparator + resources.PlanesSegment + resources.SegmentSeparator + planeType + resources.SegmentSeparator + planeName
+
+	// TODO: This is a temporary workaround till #2740 is fixed.
 	query.ScopeRecursive = true
+
 	query.IsScopeQuery = true
+	query.ResourceType = "resourcegroups"
 	listOfResourceGroups, err := resourcegroupsdb.GetScope(ctx, db, query)
 	if err != nil {
 		return nil, err
