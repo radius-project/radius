@@ -11,17 +11,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/db"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -99,21 +95,6 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	return rest.NewAsyncOperationResponse(newResource, newResource.TrackedResource.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID), nil
-}
-
-func convertSecretValues(input map[string]renderers.SecretValueReference) map[string]db.SecretValueReference {
-	output := map[string]db.SecretValueReference{}
-	for k, v := range input {
-		output[k] = db.SecretValueReference{
-			LocalID:       v.LocalID,
-			Action:        v.Action,
-			ValueSelector: v.ValueSelector,
-			Value:         to.StringPtr(v.Value),
-			Transformer:   v.Transformer,
-		}
-	}
-
-	return output
 }
 
 // Validate extracts versioned resource from request and validate the properties.
