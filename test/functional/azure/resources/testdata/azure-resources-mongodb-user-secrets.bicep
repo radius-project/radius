@@ -7,23 +7,26 @@ param password string = newGuid()
 
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
 
+
+resource webapp 'Container' = {
+  name: 'todoapp'
+  properties: {
+    connections: {
+      mongodb: {
+        kind: 'mongo.com/MongoDB'
+        source: mongo.id
+      }
+    }
+    container: {
+      image: magpieimage
+    }
+  }
+}
+
+
 resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-resources-mongodb-user-secrets'
 
-  resource webapp 'Container' = {
-    name: 'todoapp'
-    properties: {
-      connections: {
-        mongodb: {
-          kind: 'mongo.com/MongoDB'
-          source: mongo.id
-        }
-      }
-      container: {
-        image: magpieimage
-      }
-    }
-  }
 
   // https://hub.docker.com/_/mongo/
   resource mongoContainer 'Container' = {

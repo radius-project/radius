@@ -1,62 +1,82 @@
+import radius as radius
+
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
 
-resource app 'radius.dev/Application@v1alpha3' = {
+param environment string
+
+resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
   name: 'azure-resources-redis-user-secrets'
+  location: 'global'
+  properties:{
+    environment: environment
+  }
+}
 
-  resource webapp 'Container' = {
-    name: 'todoapp'
-    properties: {
-      container: {
-        image: magpieimage
-        env: {
-          DBCONNECTION: redis.connectionString()
-        }
-        readinessProbe:{
-          kind:'httpGet'
-          containerPort:3000
-          path: '/healthz'
-        }
+resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'todoapp'
+  location: 'global'
+
+  properties: {
+    application: app.id
+    container: {
+      image: magpieimage
+      env: {
+        DBCONNECTION: redis.connectionString()
       }
-      connections: {
+      readinessProbe:{
+        kind:'httpGet'
+        containerPort:3000
+        path: '/healthz'
+      }
+    }
+    connections: {
+      redis: {
+        source: redis.id
+      }
+    }
+  }
+}
+
+resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'redis'
+  location: 'global'
+
+  properties: {
+    application: app.id
+    container: {
+      image: 'redis:6.2'
+      ports: {
         redis: {
-          kind: 'redislabs.com/Redis'
-          source: redis.id
+          containerPort: 6379
+          provides: redisRoute.id
         }
       }
     }
+    connections: {}
   }
+}
 
-  resource redisContainer 'Container' = {
-    name: 'redis'
-    properties: {
-      container: {
-        image: 'redis:6.2'
-        ports: {
-          redis: {
-            containerPort: 6379
-            provides: redisRoute.id
-          }
-        }
-      }
-    }
+resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
+  name: 'redis-route'
+  location: 'global'
+
+  properties: {
+    application: app.id
+    port: 80
   }
+}
 
-  resource redisRoute 'HttpRoute' = {
-    name: 'redis-route'
-    properties: {
-      port: 80
-    }
-  }
+resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = {
+  name: 'redis'
+  location: 'global'
 
-  resource redis 'redislabs.com.RedisCache@v1alpha3' = {
-    name: 'redis'
-    properties: {
-      host: redisRoute.properties.host
-      port: redisRoute.properties.port
-      secrets: {
-        connectionString: '${redisRoute.properties.host}:${redisRoute.properties.port}'
-        password: ''
-      }
+  properties: {
+    environment: environment
+    host: redisRoute.properties.host
+    port: redisRoute.properties.port
+    secrets: {
+      connectionString: '${redisRoute.properties.host}:${redisRoute.properties.port}'
+      password: ''
     }
   }
 }

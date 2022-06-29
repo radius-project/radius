@@ -1,33 +1,44 @@
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
+import radius as radius
 
-resource app 'radius.dev/Application@v1alpha3' = {
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+
+param environment string
+
+resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'azure-resources-mongodb'
-  
-  resource webapp 'Container' = {
-    name: 'todoapp'
-    properties: {
-      connections: {
-        mongodb: {
-          kind: 'mongo.com/MongoDB'
-          source: db.id
-        }
+  location: 'global'
+  properties: {
+    environment: environment
+  }
+}
+
+resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'todoapp'
+  location: 'global'
+  properties: {
+    application: app.id
+    connections: {
+      mongodb: {
+        source: db.id
       }
-      container: {
-        image: magpieimage
-        readinessProbe:{
-          kind:'httpGet'
-          containerPort:3000
-          path: '/healthz'
-        }
+    }
+    container: {
+      image: magpieimage
+      readinessProbe:{
+        kind:'httpGet'
+        containerPort:3000
+        path: '/healthz'
       }
     }
   }
+}
 
-  resource db 'mongo.com.MongoDatabase' = {
-    name: 'db'
-    properties: {
-      resource: account::dbinner.id
-    }
+resource db 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = {
+  name: 'db'
+  location: 'global'
+  properties: {
+    environment: environment
+    resource: account::dbinner.id
   }
 }
 
