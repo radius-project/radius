@@ -33,6 +33,8 @@ type Environment interface {
 	// GetContainerRegistry provides an optional container registry override. The registry is used
 	// by the 'rad app ...' family of commands for development purposes.
 	GetContainerRegistry() *Registry
+
+	GetEnableUCP() bool
 }
 
 // Registry represent the configuration for a container registry.
@@ -53,6 +55,7 @@ type Providers struct {
 
 type DeploymentEnvironment interface {
 	CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error)
+	CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error)
 }
 
 func CreateDeploymentClient(ctx context.Context, env Environment) (clients.DeploymentClient, error) {
@@ -64,8 +67,18 @@ func CreateDeploymentClient(ctx context.Context, env Environment) (clients.Deplo
 	return de.CreateDeploymentClient(ctx)
 }
 
+func CreateLegacyDeploymentClient(ctx context.Context, env Environment) (clients.DeploymentClient, error) {
+	de, ok := env.(DeploymentEnvironment)
+	if !ok {
+		return nil, fmt.Errorf("an environment of kind '%s' does not support deployment", env.GetKind())
+	}
+
+	return de.CreateLegacyDeploymentClient(ctx)
+}
+
 type DiagnosticsEnvironment interface {
 	CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error)
+	CreateLegacyDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error)
 }
 
 func CreateDiagnosticsClient(ctx context.Context, env Environment) (clients.DiagnosticsClient, error) {
@@ -75,6 +88,15 @@ func CreateDiagnosticsClient(ctx context.Context, env Environment) (clients.Diag
 	}
 
 	return de.CreateDiagnosticsClient(ctx)
+}
+
+func CreateLegacyDiagnosticsClient(ctx context.Context, env Environment) (clients.DiagnosticsClient, error) {
+	de, ok := env.(DiagnosticsEnvironment)
+	if !ok {
+		return nil, fmt.Errorf("an environment of kind '%s' does not support diagnostics operations", env.GetKind())
+	}
+
+	return de.CreateLegacyDiagnosticsClient(ctx)
 }
 
 type LegacyManagementEnvironment interface {

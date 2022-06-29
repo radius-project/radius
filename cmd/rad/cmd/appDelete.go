@@ -60,11 +60,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	isUCPEnabled := false
-	if env.GetKind() == environments.KindKubernetes {
-		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
-	}
-	if isUCPEnabled {
+	if env.GetEnableUCP() {
 		err := DeleteApplicationUCP(cmd, args, env, applicationName, config)
 		if err != nil {
 			return err
