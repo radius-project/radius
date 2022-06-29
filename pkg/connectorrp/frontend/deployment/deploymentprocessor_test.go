@@ -8,6 +8,7 @@ package deployment
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -29,13 +30,13 @@ import (
 )
 
 func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
-	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0"
+	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
 	testResource = datamodel.MongoDatabase{
 		TrackedResource: v1.TrackedResource{
 			ID:   id,
 			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+			Type: "applications.connector/mongodatabases",
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -109,7 +110,7 @@ func setup(t *testing.T) SharedMocks {
 	model := model.NewModel(
 		[]model.RadiusResourceModel{
 			{
-				ResourceType: mongodatabases.ResourceType,
+				ResourceType: strings.ToLower(mongodatabases.ResourceType),
 				Renderer:     mockRenderer,
 			},
 		},

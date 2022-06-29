@@ -7,6 +7,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
@@ -31,7 +32,7 @@ func (m ApplicationModel) GetOutputResources() []OutputResourceModel {
 }
 
 func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*RadiusResourceModel, error) {
-	resource, ok := m.radiusResourceLookup[resourceType]
+	resource, ok := m.radiusResourceLookup[strings.ToLower(resourceType)]
 	if !ok {
 		return nil, fmt.Errorf("radius resource type '%s' is unsupported", resourceType)
 	}

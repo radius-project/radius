@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	ResourceType = "Applications.Connector/mongoDatabases"
+	ResourceType = "applications.connector/mongodatabases"
 )
 
 var AzureCosmosMongoResourceType = resources.KnownType{
