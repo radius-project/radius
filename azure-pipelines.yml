@@ -107,9 +107,9 @@ stages:
     - script: |
         az group create \
           --location westus \
-          --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
+          --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME) \
           --subscription${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}  
-        while [ $(az group exists --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }}) = false ]; do sleep 2; done
+        while [ $(az group exists --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)) = false ]; do sleep 2; done
       displayName: Create the resource group
     - script: | 
         mkdir -p kind/
@@ -128,7 +128,7 @@ stages:
           --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd \
           --ucp-tag ${{ variables.REL_VERSION }} \
           --provider-azure \
-          --provider-azure-resource-group=${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
+          --provider-azure-resource-group=$(INTEGRATION_TEST_RESOURCE_GROUP_NAME) \
           --provider-azure-client-id=$(INTEGRATION_TEST_SP_APP_ID) \
           --provider-azure-client-secret=$(INTEGRATION_TEST_SP_PASSWORD) \
           --provider-azure-tenant-id=$(INTEGRATION_TEST_TENANT_ID) \
@@ -142,7 +142,7 @@ stages:
           --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd \
           --ucp-tag ${{ variables.REL_VERSION }} \
           --provider-azure \
-          --provider-azure-resource-group=${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
+          --provider-azure-resource-group=$(INTEGRATION_TEST_RESOURCE_GROUP_NAME) \
           --provider-azure-client-id=$(INTEGRATION_TEST_SP_APP_ID) \
           --provider-azure-client-secret=$(INTEGRATION_TEST_SP_PASSWORD) \
           --provider-azure-tenant-id=$(INTEGRATION_TEST_TENANT_ID) \
