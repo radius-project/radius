@@ -72,10 +72,10 @@ resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = 
 
   properties: {
     environment: environment
-    host: redisRoute.properties.host
+    host: redisRoute.properties.hostname
     port: redisRoute.properties.port
     secrets: {
-      connectionString: '${redisRoute.properties.host}:${redisRoute.properties.port}'
+      connectionString: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'
       password: ''
     }
   }
