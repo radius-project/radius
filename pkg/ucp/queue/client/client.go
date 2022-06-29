@@ -23,6 +23,12 @@ var (
 	// ErrInvalidMessage represents the error when the message has already been requeued.
 	ErrInvalidMessage = errors.New("this message has been requeued or deleted")
 
+	// ErrUnsupportedContentType represents the error when the content type is unsupported.
+	ErrUnsupportedContentType = errors.New("this message content type is unsupported")
+
+	// ErrEmptyMessage represents nil or empty Message.
+	ErrEmptyMessage = errors.New("message must not be nil or message is empty")
+
 	dequeueInterval = time.Duration(5) * time.Millisecond
 )
 

@@ -6,9 +6,9 @@
 package hostoptions
 
 import (
-	qprovider "github.com/project-radius/radius/pkg/queue/provider"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 )
 
 // ProviderConfig includes the resource provider configuration.
