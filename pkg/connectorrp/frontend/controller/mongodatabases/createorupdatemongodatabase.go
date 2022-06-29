@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 
-	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -28,11 +27,12 @@ var _ ctrl.Controller = (*CreateOrUpdateMongoDatabase)(nil)
 // CreateOrUpdateMongoDatabase is the controller implementation to create or update MongoDatabase connector resource.
 type CreateOrUpdateMongoDatabase struct {
 	ctrl.BaseController
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateMongoDatabase creates a new instance of CreateOrUpdateMongoDatabase.
-func NewCreateOrUpdateMongoDatabase(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateMongoDatabase{ctrl.NewBaseController(ds, sm)}, nil
+func NewCreateOrUpdateMongoDatabase(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &CreateOrUpdateMongoDatabase{ctrl.NewBaseController(ds, sm), dp}, nil
 }
 
 // Run executes CreateOrUpdateMongoDatabase operation.
@@ -43,20 +43,17 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	// TODO replace this will real values once app model and arm options are passed to controllers
-	dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, nil, nil, nil)
-	rendererOutput, err := dp.Render(ctx, serviceCtx.ResourceID, newResource)
+	rendererOutput, err := mongo.dp.Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := mongo.dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
 	if err != nil {
 		return nil, err
 	}
 
-	deployedOuputResources := deploymentOutput.Resources
 	var outputResources []map[string]interface{}
-	for _, deployedOutputResource := range deployedOuputResources {
+	for _, deployedOutputResource := range deploymentOutput.Resources {
 		outputResource := map[string]interface{}{
 			deployedOutputResource.LocalID: deployedOutputResource,
 		}
