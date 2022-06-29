@@ -78,7 +78,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 	// Each of our tests are isolated to a single application, so they can run in parallel.
 	// TODO: not sure if this is true for corerp tests
-	t.Parallel()
+	// t.Parallel()
 
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
 	if logPrefix == "" {
@@ -116,9 +116,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			t.Logf("finished running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
 
 			port := "8001"
-			proxyContext, cancelProxy := context.WithCancel(ctx)
-			defer cancelProxy()
-			go setupProxy(proxyContext, t, port)
+			go setupProxy(t, port)
 			time.Sleep(100 * time.Millisecond)
 
 			// Validate resources
@@ -134,9 +132,9 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	// TODO: re-enable cleanup of application (and environments)
 }
 
-func setupProxy(ctx context.Context, t *testing.T, port string) {
+func setupProxy(t *testing.T, port string) {
 	t.Log("Setting up kubectl proxy")
-	proxyCmd := exec.CommandContext(ctx, "kubectl", "proxy", "--port", port)
+	proxyCmd := exec.Command("kubectl", "proxy", "--port", port)
 	// Not checking the return value since ignore if already running proxy
 	err := proxyCmd.Run()
 	if err != nil {
