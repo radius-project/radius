@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-// package storetest contains SHARED testing logic that is common to our data-store implementations.
+// package storetest contains SHARED tests for /pkg/ucp/queue
 package storetest
 
 import (
