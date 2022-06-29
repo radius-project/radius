@@ -22,7 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/renderers/gateway"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -95,7 +94,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// Check if the output resources have the corresponding provider supported in Radius
-	for _, or := range rendererOutput.OutputResources {
+	for _, or := range rendererOutput.Resources {
 		if or.ResourceType.Provider == "" {
 			err = fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
 			return renderers.RendererOutput{}, err
@@ -180,7 +179,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
 
 	// Order output resources in deployment dependency order
-	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.OutputResources)
+	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
 		return DeploymentOutput{}, err
 	}
@@ -388,14 +387,13 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 					}
 					lst = append(lst, mp)
 				}
-				if sv, ok := convertSecretValues(cont.SecretValues); ok {
-					return ResourceDependency{
-						ID:              resourceID,
-						OutputResources: lst,
-						ComputedValues:  cont.ComputedValues,
-						SecretValues:    sv,
-					}, nil
-				}
+
+				return ResourceDependency{
+					ID:              resourceID,
+					OutputResources: lst,
+					ComputedValues:  cont.ComputedValues,
+					SecretValues:    cont.SecretValues,
+				}, nil
 			}
 		}
 	case gateway.ResourceType:
@@ -410,14 +408,13 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 					}
 					lst = append(lst, mp)
 				}
-				if sv, ok := convertSecretValues(cont.SecretValues); ok {
-					return ResourceDependency{
-						ID:              resourceID,
-						OutputResources: lst,
-						ComputedValues:  cont.ComputedValues,
-						SecretValues:    sv,
-					}, nil
-				}
+
+				return ResourceDependency{
+					ID:              resourceID,
+					OutputResources: lst,
+					ComputedValues:  cont.ComputedValues,
+					SecretValues:    cont.SecretValues,
+				}, nil
 			}
 		}
 	case httproute.ResourceType:
@@ -432,14 +429,13 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 					}
 					lst = append(lst, mp)
 				}
-				if sv, ok := convertSecretValues(cont.SecretValues); ok {
-					return ResourceDependency{
-						ID:              resourceID,
-						OutputResources: lst,
-						ComputedValues:  cont.ComputedValues,
-						SecretValues:    sv,
-					}, nil
-				}
+
+				return ResourceDependency{
+					ID:              resourceID,
+					OutputResources: lst,
+					ComputedValues:  cont.ComputedValues,
+					SecretValues:    cont.SecretValues,
+				}, nil
 			}
 		}
 	}
@@ -481,18 +477,4 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	}
 
 	return rendererDependency, nil
-}
-
-func convertSecretValues(input map[string]interface{}) (map[string]renderers.SecretValueReference, bool) {
-	output := map[string]renderers.SecretValueReference{}
-	for k, v := range input {
-		c, ok := v.(renderers.SecretValueReference)
-		if ok {
-			output[k] = c
-		} else {
-			return output, false
-		}
-	}
-
-	return output, true
 }
