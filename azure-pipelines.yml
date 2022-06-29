@@ -89,8 +89,7 @@ stages:
         cp ./dist/linux_amd64/release/rad ./dist/
         chmod +x ./dist/rad
       displayName: Build and copy rad exe
-    - displayName: az CLI login
-      script: |
+    - script: |
         az login --service-principal \
           --username $(INTEGRATION_TEST_SP_APP_ID) \
           --password $(INTEGRATION_TEST_SP_PASSWORD) \
@@ -99,18 +98,19 @@ stages:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
-    - displayName: Define a resource group name
-      script:  |
+      displayName: az CLI login
+    - script: |
         echo "##vso[task.setvariable variable=INTEGRATION_TEST_RESOURCE_GROUP_NAME]radius-$(date +%s%N)"
-    - displayName: az account set
-      script: az account set --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}  
-    - displayName: Create the resource group
-      script: |
+      displayName: Define a resource group name
+    - script: az account set --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+      displayName: az account set 
+    - script: |
         az group create \
           --location westus \
           --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
           --subscription${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}  
         while [ $(az group exists --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }}) = false ]; do sleep 2; done
+      displayName: Create the resource group
     - script: | 
         mkdir -p kind/
         curl -sSLo "kind/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v0.11.0/kind-linux-amd64"
