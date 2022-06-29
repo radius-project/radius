@@ -21,7 +21,8 @@ type ContainerResource struct {
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
 
-	// Any resource values that will be needed for more operations. For example database name to generate secrets for cosmos DB
+	// ComputedValues map is any resource values that will be needed for more operations.
+	// For example; database name to generate secrets for cosmos DB.
 	ComputedValues map[string]interface{} `json:"computedValues,omitempty"`
 }
 
@@ -33,18 +34,20 @@ func (c ContainerResource) ResourceTypeName() string {
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
 	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState            `json:"provisioningState,omitempty"`
-	Application       string                          `json:"application,omitempty"`
-	Connections       map[string]ConnectionProperties `json:"connections,omitempty"`
-	Container         Container                       `json:"container,omitempty"`
-	Extensions        []ExtensionClassification       `json:"extensions,omitempty"`
+	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Application       string               `json:"application,omitempty"`
+
+	// DONE
+	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
+	Container   Container                       `json:"container,omitempty"`
+	Extensions  []Extension                     `json:"extensions,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.
 type ConnectionProperties struct {
 	Source                string        `json:"source,omitempty"`
 	DisableDefaultEnvVars bool          `json:"disableDefaultEnvVars,omitempty"`
-	Iam                   IAMProperties `json:"iam,omitempty"`
+	IAM                   IAMProperties `json:"iam,omitempty"`
 }
 
 // Container - Definition of a container.
@@ -74,9 +77,16 @@ const (
 	ProtocolUDP  Protocol = "UDP"
 )
 
+type VolumeKind string
+
+const (
+	Ephemeral  VolumeKind = "ephemeral"
+	Persistent VolumeKind = "persistent"
+)
+
 // VolumeProperties - Specifies a volume for a container
 type VolumeProperties struct {
-	Kind       string            `json:"kind,omitempty"`
+	Kind       VolumeKind        `json:"kind,omitempty"`
 	Ephemeral  *EphemeralVolume  `json:"ephemeralVolume,omitempty"`
 	Persistent *PersistentVolume `json:"persistentVolume,omitempty"`
 }
@@ -131,6 +141,11 @@ type HealthProbeProperties struct {
 	TCP     *TCPHealthProbeProperties     `json:"tcp,omitempty"`
 }
 
+// IsEmpty checks if the HealthProbeProperties is empty and returns true or false.
+func (h HealthProbeProperties) IsEmpty() bool {
+	return h == HealthProbeProperties{}
+}
+
 // HealthProbeBase - Properties for readiness/liveness probe
 type HealthProbeBase struct {
 	FailureThreshold    *float32 `json:"failureThreshold,omitempty"`
@@ -158,20 +173,28 @@ type TCPHealthProbeProperties struct {
 	ContainerPort int32 `json:"containerPort,omitempty"`
 }
 
+// ExtensionKind
+type ExtensionKind string
+
+const (
+	ManualScaling ExtensionKind = "manualScaling"
+	DaprSidecar   ExtensionKind = "daprSidecar"
+)
+
 // Extension of a resource.
 type Extension struct {
-	Kind string `json:"kind,omitempty"`
+	Kind          ExtensionKind           `json:"kind,omitempty"`
+	ManualScaling *ManualScalingExtension `json:"manualScaling,omitempty"`
+	DaprSidecar   *DaprSidecarExtension   `json:"daprSidecar,omitempty"`
 }
 
 // ManualScalingExtension - ManualScaling Extension
 type ManualScalingExtension struct {
-	Extension
 	Replicas int32 `json:"replicas,omitempty"`
 }
 
 // DaprSidecarExtension - Specifies the resource should have a Dapr sidecar injected
 type DaprSidecarExtension struct {
-	Extension
 	AppID    string   `json:"appId,omitempty"`
 	AppPort  int32    `json:"appPort,omitempty"`
 	Config   string   `json:"config,omitempty"`
@@ -219,6 +242,20 @@ type IAMProperties struct {
 	Roles []string `json:"roles,omitempty"`
 }
 
+func (k IAMKind) IsValid() bool {
+	s := Kinds()
+	for _, v := range s {
+		if v == k {
+			return true
+		}
+	}
+	return false
+}
+
+func (k IAMKind) IsKind(kind IAMKind) bool {
+	return k == kind
+}
+
 // Kind - The kind of IAM provider to configure
 type IAMKind string
 
@@ -237,3 +274,21 @@ const (
 	KindRabbitmqComMessageQueue IAMKind = "rabbitmq.com/MessageQueue"
 	KindRedislabsComRedis       IAMKind = "redislabs.com/Redis"
 )
+
+func Kinds() []IAMKind {
+	return []IAMKind{
+		KindAzure,
+		KindAzureComKeyVault,
+		KindAzureComServiceBusQueue,
+		KindDaprIoInvokeHTTP,
+		KindDaprIoPubSubTopic,
+		KindDaprIoSecretStore,
+		KindDaprIoStateStore,
+		KindGrpc,
+		KindHTTP,
+		KindMicrosoftComSQL,
+		KindMongoComMongoDB,
+		KindRabbitmqComMessageQueue,
+		KindRedislabsComRedis,
+	}
+}
