@@ -140,6 +140,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *radcl
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
+
 func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *radclient.HTTPRouteProperties, options renderers.RenderOptions) (outputresource.OutputResource, int, error) {
 	namespace := resource.ApplicationName
 	dependencies := options.Dependencies
