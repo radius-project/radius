@@ -143,11 +143,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", params.Name, params.Name)
 	}
 
-<<<<<<< HEAD
 	cliOptions := helm.CLIClusterOptions{
-=======
-	cliOptions := helm.ClusterOptions{
->>>>>>> b3c8b3e2 (Add default values for cluster options)
 		Namespace: sharedArgs.Namespace,
 		Radius: helm.RadiusOptions{
 			ChartPath:     sharedArgs.ChartPath,
