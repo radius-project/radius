@@ -80,25 +80,40 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 	}
 
 	outputs := []outputresource.OutputResource{}
-
-	service := r.makeService(resource, route)
-	outputs = append(outputs, service)
-	var trafficsplit outputresource.OutputResource
+	var portNum int
 	// Check if trafficsplit properties are configured for this HttpRoute. If yes, a TrafficSplit object will be created.
 	if len(route.Routes) > 0 {
-		trafficsplit = r.makeTrafficSplit(resource, route, options)
+		trafficsplit, pNum, err := r.makeTrafficSplit(resource, route, options)
+		if err != nil {
+			return renderers.RendererOutput{
+				Resources:      outputs,
+				ComputedValues: computedValues,
+			}, err
+		}
 		outputs = append(outputs, trafficsplit)
+		portNum = pNum
 	}
+	service := r.makeService(resource, route, portNum)
+	outputs = append(outputs, service)
 	return renderers.RendererOutput{
 		Resources:      outputs,
 		ComputedValues: computedValues,
 	}, nil
 }
 
-func (r *Renderer) makeService(resource renderers.RendererResource, route *radclient.HTTPRouteProperties) outputresource.OutputResource {
+func (r *Renderer) makeService(resource renderers.RendererResource, route *radclient.HTTPRouteProperties, specifiedTargetPort int) outputresource.OutputResource {
 	typeParts := strings.Split(resource.ResourceType, "/")
 	resourceType := typeParts[len(typeParts)-1]
 
+	// The variable 'target' will be used as the designated value for the TargetPort of this Kuberentes service
+	// if specifiedTargetPort is not zero, we are currently working with a TrafficSplit service, and we should use
+	// this value as the TargetPort. Otherwise, we will use a hash string.
+	var target intstr.IntOrString
+	if specifiedTargetPort != 0 {
+		target = intstr.FromInt(specifiedTargetPort)
+	} else {
+		target = intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName))
+	}
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -116,23 +131,23 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *radcl
 				{
 					Name:       resource.ResourceName,
 					Port:       *route.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resource.ApplicationName + resourceType + resource.ResourceName)),
+					TargetPort: target,
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
 		},
 	}
-
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 }
 
-func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *radclient.HTTPRouteProperties, options renderers.RenderOptions) outputresource.OutputResource {
+
+func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *radclient.HTTPRouteProperties, options renderers.RenderOptions) (outputresource.OutputResource, int, error) {
 	namespace := resource.ApplicationName
 	dependencies := options.Dependencies
 	numBackends := len(dependencies)
 	var backends []tsv1.TrafficSplitBackend
 	routeName := resource.ResourceName
-	rootService := namespace + "." + routeName
+	rootService := kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName) + "." + namespace + ".svc.cluster.local"
 	trafficsplit := &tsv1.TrafficSplit{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TrafficSplit",
@@ -148,17 +163,29 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *
 			Backends: backends,
 		},
 	}
-	// populating the values in the backends array
+	// populating the values in the backends array && retrieve the port vlaues
+	portNum := -1
+	var err error
 	for i := 0; i < numBackends; i++ {
 		destination := *route.Routes[i].Destination
+		if _, ok := dependencies[destination].ComputedValues["port"]; ok {
+			destPort := (int)(dependencies[destination].ComputedValues["port"].(int32))
+			if portNum != -1 && destPort != portNum {
+				err = fmt.Errorf("backend services have different port values")
+			}
+			portNum = destPort
+		}
 		httpRouteName := dependencies[destination].ResourceID.Name()
 		tsBackend := tsv1.TrafficSplitBackend{
-			Service: httpRouteName,
+			Service: kubernetes.MakeResourceName(resource.ApplicationName, httpRouteName),
 			Weight:  (int)(*(route.Routes[i].Weight)),
 		}
 		trafficsplit.Spec.Backends = append(trafficsplit.Spec.Backends, tsBackend)
 	}
-	return outputresource.NewKubernetesOutputResource(resourcekinds.TrafficSplit, outputresource.LocalIDTrafficSplit, trafficsplit, trafficsplit.ObjectMeta)
+	if portNum == -1 {
+		err = fmt.Errorf("backend services have invalid port values")
+	}
+	return outputresource.NewKubernetesOutputResource(resourcekinds.TrafficSplit, outputresource.LocalIDTrafficSplit, trafficsplit, trafficsplit.ObjectMeta), portNum, err
 }
 
 func (r Renderer) convert(resource renderers.RendererResource) (*radclient.HTTPRouteProperties, error) {
