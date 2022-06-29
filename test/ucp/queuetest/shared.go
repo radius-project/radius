@@ -33,12 +33,8 @@ func queueTestMessage(cli client.Client, num int) error {
 	// Enqueue multiple message and dequeue them
 	for i := 0; i < num; i++ {
 		msg := &testQueueMessage{ID: fmt.Sprintf("%d", i), Message: fmt.Sprintf("hello world %d", i)}
-		data, err := json.Marshal(msg)
-		if err != nil {
-			return err
-		}
 
-		err = cli.Enqueue(context.Background(), &client.Message{Data: data})
+		err := cli.Enqueue(context.Background(), client.NewMessage(msg))
 		if err != nil {
 			return err
 		}
@@ -52,12 +48,16 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 	defer cancel()
 
 	t.Run("nil message", func(t *testing.T) {
-		err := cli.Enqueue(ctx, nil)
-		require.ErrorIs(t, err, client.ErrNilMessage)
+		err := cli.Enqueue(ctx, &client.Message{Data: []byte("")})
+		require.ErrorIs(t, err, client.ErrEmptyMessage)
+		err = cli.Enqueue(ctx, &client.Message{Data: nil})
+		require.ErrorIs(t, err, client.ErrEmptyMessage)
+		err = cli.Enqueue(ctx, nil)
+		require.ErrorIs(t, err, client.ErrEmptyMessage)
 		err = cli.FinishMessage(ctx, nil)
-		require.ErrorIs(t, err, client.ErrNilMessage)
+		require.ErrorIs(t, err, client.ErrEmptyMessage)
 		err = cli.ExtendMessage(ctx, nil)
-		require.ErrorIs(t, err, client.ErrNilMessage)
+		require.ErrorIs(t, err, client.ErrEmptyMessage)
 	})
 
 	t.Run("enqueue and dequeue messages", func(t *testing.T) {
@@ -212,9 +212,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		// Producer
 		for i := 0; i < msgCount; i++ {
 			msg := &testQueueMessage{ID: fmt.Sprintf("%d", i), Message: fmt.Sprintf("hello world %d", i)}
-			data, err := json.Marshal(msg)
-			require.NoError(t, err)
-			err = cli.Enqueue(ctx, &client.Message{Data: data})
+			err = cli.Enqueue(ctx, client.NewMessage(msg))
 			require.NoError(t, err)
 		}
 

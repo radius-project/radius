@@ -37,6 +37,7 @@ type Metadata struct {
 	NextVisibleAt time.Time
 }
 
+// NewMessage creates Message.
 func NewMessage(data interface{}) *Message {
 	msg := &Message{
 		// Support only JSONContentType.

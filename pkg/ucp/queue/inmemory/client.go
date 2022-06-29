@@ -41,8 +41,8 @@ func NewNamedQueue(name string) *Client {
 
 // Enqueue enqueues message to the in-memory queue.
 func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
-	if msg == nil {
-		return client.ErrNilMessage
+	if msg == nil || msg.Data == nil || len(msg.Data) == 0 {
+		return client.ErrEmptyMessage
 	}
 	c.queue.Enqueue(msg)
 	return nil
@@ -60,7 +60,7 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 // FinishMessage finishes or deletes the message in the queue.
 func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
 	if msg == nil {
-		return client.ErrNilMessage
+		return client.ErrEmptyMessage
 	}
 
 	return c.queue.Complete(msg)
@@ -69,7 +69,7 @@ func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
 // ExtendMessage extends the message lock.
 func (c *Client) ExtendMessage(ctx context.Context, msg *client.Message) error {
 	if msg == nil {
-		return client.ErrNilMessage
+		return client.ErrEmptyMessage
 	}
 
 	err := c.queue.Extend(msg)
