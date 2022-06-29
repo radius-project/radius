@@ -115,8 +115,10 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			step.Executor.Execute(ctx, t, ct.Options.TestOptions)
 			t.Logf("finished running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
 
-			port := "8323"
-			go setupProxy(t, port)
+			port := "8001"
+			proxyContext, cancelProxy := context.WithCancel(ctx)
+			defer cancelProxy()
+			go setupProxy(proxyContext, t, port)
 			time.Sleep(100 * time.Millisecond)
 
 			// Validate resources
@@ -125,7 +127,6 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				err := testHTTPEndpoint(t, fmt.Sprintf("http://127.0.0.1:%s", port), path, 200)
 				require.NoError(t, err)
 			}
-
 		})
 	}
 
@@ -133,9 +134,9 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	// TODO: re-enable cleanup of application (and environments)
 }
 
-func setupProxy(t *testing.T, port string) {
+func setupProxy(ctx context.Context, t *testing.T, port string) {
 	t.Log("Setting up kubectl proxy")
-	proxyCmd := exec.Command("kubectl", "proxy", "--port", port)
+	proxyCmd := exec.CommandContext(ctx, "kubectl", "proxy", "--port", port)
 	// Not checking the return value since ignore if already running proxy
 	err := proxyCmd.Run()
 	if err != nil {

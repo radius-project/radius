@@ -14,8 +14,6 @@ import (
 )
 
 func Test_NestedModules(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-mechanics-nestedmodules.bicep"
 	name := "corerp-mechanics-nestedmodules"
 
