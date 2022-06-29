@@ -23,13 +23,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type k8sOptions struct {
+type radiusOptions struct {
 	test.TestOptions
 	ARMAuthorizer autorest.Authorizer
 	Environment   *environments.RadiusEnvironment
 }
 
-func NewK8sTestOptions(t *testing.T) k8sOptions {
+func NewK8sTestOptions(t *testing.T) radiusOptions {
 	auth, err := armauth.GetArmAuthorizer()
 	require.NoError(t, err, "failed to authenticate with azure")
 
@@ -39,13 +39,13 @@ func NewK8sTestOptions(t *testing.T) k8sOptions {
 	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
 
-	k8sEnv, ok := env.(*environments.RadiusEnvironment)
+	radiusEnv, ok := env.(*environments.RadiusEnvironment)
 	require.Truef(t, ok, "a standalone environment is required but the kind was '%v'", env.GetKind())
 
-	return k8sOptions{
+	return radiusOptions{
 		TestOptions:   test.NewTestOptions(t),
 		ARMAuthorizer: auth,
-		Environment:   k8sEnv,
+		Environment:   radiusEnv,
 	}
 }
 
