@@ -121,8 +121,8 @@ func (e *KubernetesEnvironment) CreateLegacyDeploymentClient(ctx context.Context
 	return &azure.ResouceDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
-		SubscriptionID:   e.Namespace,
-		ResourceGroup:    e.Namespace,
+		SubscriptionID:   subscriptionId,
+		ResourceGroup:    resourceGroup,
 		Tags:             tags,
 		EnableUCP:        e.EnableUCP,
 	}, nil
