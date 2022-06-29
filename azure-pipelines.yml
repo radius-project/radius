@@ -123,7 +123,6 @@ stages:
       condition: always()
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
-      name: '$(Build.BuildNumber)'
       condition: always()
       continueOnError: 'true'
   - job: Azure
