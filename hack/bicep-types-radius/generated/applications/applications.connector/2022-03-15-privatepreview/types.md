@@ -232,7 +232,7 @@
 * **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **secrets**: [ExtenderSecrets](#extendersecrets): The secret values for the given Extender resource
+* **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any

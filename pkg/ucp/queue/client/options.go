@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package queue
+package client
 
 type (
 	// EnqueueOptions applies an option to Enqueue().

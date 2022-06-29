@@ -179,6 +179,7 @@ stages:
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
       condition: always()
+      continueOnError: 'true'
   - job: Azure
     pool:
       vmImage: 'ubuntu-latest'

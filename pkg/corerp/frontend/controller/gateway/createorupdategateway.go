@@ -116,8 +116,9 @@ func (e *CreateOrUpdateGateway) Validate(ctx context.Context, req *http.Request,
 	return dm, err
 }
 
-// updateExistingResourceData updates the gateway resource before it is saved to the DB.
+// enrichMetadata updates the gateway resource before it is saved to the DB.
 func enrichMetadata(serviceCtx *servicecontext.ARMRequestContext, er *datamodel.Gateway, nr *datamodel.Gateway) {
+
 	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *serviceCtx.SystemData())
 	if er.InternalMetadata.CreatedAPIVersion != "" {
 		nr.InternalMetadata.CreatedAPIVersion = er.InternalMetadata.CreatedAPIVersion

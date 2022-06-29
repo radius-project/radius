@@ -331,7 +331,8 @@
         },
         "kind": {
           "description": "The DaprPubSubProperties kind",
-          "type": "string"
+          "type": "string",
+          "enum": ["pubsub.azure.servicebus","generic"]
         }
       },
       "required": [

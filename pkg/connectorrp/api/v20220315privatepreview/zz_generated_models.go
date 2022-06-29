@@ -206,7 +206,7 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubAzureServiceBusResourceProperties.
 func (d DaprPubSubAzureServiceBusResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, "pubsub.azure.servicebus")
+	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, DaprPubSubBrokerPropertiesKindPubsubAzureServicebus)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -267,7 +267,7 @@ type DaprPubSubBrokerProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The DaprPubSubProperties kind
-	Kind *string `json:"kind,omitempty"`
+	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -288,7 +288,7 @@ func (d *DaprPubSubBrokerProperties) UnmarshalJSON(data []byte) error {
 	return d.unmarshalInternal(rawMsg)
 }
 
-func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
+func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interface{}, discValue DaprPubSubBrokerPropertiesKind) {
 	d.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "environment", d.Environment)
@@ -404,7 +404,7 @@ type DaprPubSubGenericResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubGenericResourceProperties.
 func (d DaprPubSubGenericResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, "generic")
+	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, DaprPubSubBrokerPropertiesKindGeneric)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -611,7 +611,7 @@ type DaprStateStoreAzureTableStorageResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreAzureTableStorageResourceProperties.
 func (d DaprStateStoreAzureTableStorageResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "state.azure.tablestorage")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindStateAzureTablestorage)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -654,7 +654,7 @@ type DaprStateStoreGenericResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreGenericResourceProperties.
 func (d DaprStateStoreGenericResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "generic")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindGeneric)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -724,7 +724,7 @@ type DaprStateStoreProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The Dapr StateStore kind
-	Kind *string `json:"kind,omitempty"`
+	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -745,7 +745,7 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 	return d.unmarshalInternal(rawMsg)
 }
 
-func (d DaprStateStoreProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
+func (d DaprStateStoreProperties) marshalInternal(objectMap map[string]interface{}, discValue DaprStateStorePropertiesKind) {
 	d.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "environment", d.Environment)
@@ -835,7 +835,7 @@ type DaprStateStoreSQLServerResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreSQLServerResourceProperties.
 func (d DaprStateStoreSQLServerResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "state.sqlserver")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindStateSqlserver)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -942,7 +942,7 @@ type ExtenderList struct {
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of Extender resources
-	Value []*ExtenderResource `json:"value,omitempty"`
+	Value []*ExtenderResponseResource `json:"value,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ExtenderList.
@@ -955,36 +955,16 @@ func (e ExtenderList) MarshalJSON() ([]byte, error) {
 
 // ExtenderProperties - Extender connector properties
 type ExtenderProperties struct {
-	BasicResourceProperties
-	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
-	AdditionalProperties map[string]interface{}
-
+	ExtenderResponseProperties
 	// The secret values for the given Extender resource
 	Secrets map[string]interface{} `json:"secrets,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the extender connector at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ExtenderProperties.
 func (e ExtenderProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	e.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "application", e.Application)
-	populate(objectMap, "environment", e.Environment)
-	populate(objectMap, "provisioningState", e.ProvisioningState)
+	e.ExtenderResponseProperties.marshalInternal(objectMap)
 	populate(objectMap, "secrets", e.Secrets)
-	if e.AdditionalProperties != nil {
-		for key, val := range e.AdditionalProperties {
-			objectMap[key] = val
-		}
-	}
 	return json.Marshal(objectMap)
 }
 
@@ -997,6 +977,113 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "secrets":
+				err = unpopulate(val, &e.Secrets)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := e.ExtenderResponseProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ExtenderResource - Extender connector
+type ExtenderResource struct {
+	TrackedResource
+	// REQUIRED; Extender connector properties
+	Properties *ExtenderProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderResource.
+func (e ExtenderResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	e.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", e.Properties)
+	populate(objectMap, "systemData", e.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderResource.
+func (e *ExtenderResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &e.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &e.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := e.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ExtenderResponseProperties - Extender connector properties
+type ExtenderResponseProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]interface{}
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the extender connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderResponseProperties.
+func (e ExtenderResponseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	e.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderResponseProperties.
+func (e *ExtenderResponseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return e.unmarshalInternal(rawMsg)
+}
+
+func (e ExtenderResponseProperties) marshalInternal(objectMap map[string]interface{}) {
+	e.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", e.Application)
+	populate(objectMap, "environment", e.Environment)
+	populate(objectMap, "provisioningState", e.ProvisioningState)
+	if e.AdditionalProperties != nil {
+		for key, val := range e.AdditionalProperties {
+			objectMap[key] = val
+		}
+	}
+}
+
+func (e *ExtenderResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
 		case "application":
 				err = unpopulate(val, &e.Application)
 				delete(rawMsg, key)
@@ -1005,9 +1092,6 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &e.ProvisioningState)
-				delete(rawMsg, key)
-		case "secrets":
-				err = unpopulate(val, &e.Secrets)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1035,18 +1119,18 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ExtenderResource - Extender connector
-type ExtenderResource struct {
+// ExtenderResponseResource - Extender connector
+type ExtenderResponseResource struct {
 	TrackedResource
 	// REQUIRED; Extender connector properties
-	Properties *ExtenderProperties `json:"properties,omitempty"`
+	Properties *ExtenderResponseProperties `json:"properties,omitempty"`
 
 	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ExtenderResource.
-func (e ExtenderResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ExtenderResponseResource.
+func (e ExtenderResponseResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	e.TrackedResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", e.Properties)
@@ -1054,8 +1138,8 @@ func (e ExtenderResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderResource.
-func (e *ExtenderResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderResponseResource.
+func (e *ExtenderResponseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err

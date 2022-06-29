@@ -35,7 +35,7 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	_, extenderDataModel, expectedOutput := getTestModels20220315privatepreview()
+	_, extenderDataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 
 	t.Run("empty list", func(t *testing.T) {
 		teardownTest, mds, msm := setupTest(t)

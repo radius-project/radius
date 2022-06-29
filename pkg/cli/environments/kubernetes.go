@@ -64,7 +64,7 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 	return s.RoundTripper.RoundTrip(request)
 }
 
-func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+func (e *KubernetesEnvironment) CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 
 	if err != nil {
@@ -90,7 +90,32 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	}, nil
 }
 
-func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
+func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
+
+	if err != nil {
+		return nil, err
+	}
+
+	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
+
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
+
+	dc.Sender = &sender{RoundTripper: roundTripper}
+
+	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
+	op.PollingDelay = 5 * time.Second
+	op.Sender = &sender{RoundTripper: roundTripper}
+	return &azure.ResouceDeploymentClient{
+		Client:           dc,
+		OperationsClient: op,
+		ResourceGroup:    e.UCPResourceGroupName,
+		EnableUCP:        e.EnableUCP,
+	}, nil
+}
+
+func (e *KubernetesEnvironment) CreateLegacyDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
 	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
@@ -112,6 +137,30 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.Namespace),
 		ResourceGroup:    e.Namespace,
 		SubscriptionID:   e.Namespace,
+	}, nil
+}
+
+func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
+	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
+	if err != nil {
+		return nil, err
+	}
+
+	return &azure.ARMDiagnosticsClient{
+		K8sTypedClient:   k8sClient,
+		RestConfig:       config,
+		K8sRuntimeClient: client,
+		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.Namespace),
+		ResourceGroup:    e.UCPResourceGroupName,
 	}, nil
 }
 

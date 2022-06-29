@@ -36,11 +36,6 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isUCPEnabled := false
-	if env.GetKind() == environments.KindKubernetes {
-		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
-	}
-
 	envName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return err
@@ -51,7 +46,7 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if isUCPEnabled {
+	if env.GetEnableUCP() {
 		client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 		if err != nil {
 			return err

@@ -188,7 +188,7 @@ func (client *ExtendersClient) getCreateRequest(ctx context.Context, extenderNam
 // getHandleResponse handles the Get response.
 func (client *ExtendersClient) getHandleResponse(resp *http.Response) (ExtendersGetResponse, error) {
 	result := ExtendersGetResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResponseResource); err != nil {
 		return ExtendersGetResponse{}, err
 	}
 	return result, nil
