@@ -17,11 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	applicationName = "test-app"
-	resourceName    = "test-rabbitmq"
-)
-
 func createContext(t *testing.T) context.Context {
 	logger, err := radlogger.NewTestLogger(t)
 	if err != nil {
