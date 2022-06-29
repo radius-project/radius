@@ -24,7 +24,6 @@ import (
 // KubernetesEnvironment represents a Kubernetes Radius environment.
 type KubernetesEnvironment struct {
 	RadiusEnvironment `mapstructure:",squash"`
-	Providers         *Providers `mapstructure:"providers"`
 }
 
 func (e *KubernetesEnvironment) GetName() string {

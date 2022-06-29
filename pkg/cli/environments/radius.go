@@ -21,4 +21,35 @@ type RadiusEnvironment struct {
 	// Capture arbitrary other properties
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
+
+	Providers *Providers `mapstructure:"providers"`
+}
+
+func (e *RadiusEnvironment) GetName() string {
+	return e.Name
+}
+
+func (e *RadiusEnvironment) GetKind() string {
+	return e.Kind
+}
+
+func (e *RadiusEnvironment) GetEnableUCP() bool {
+	return e.EnableUCP
+}
+
+func (e *RadiusEnvironment) GetDefaultApplication() string {
+	return e.DefaultApplication
+}
+
+func (e *RadiusEnvironment) GetKubeContext() string {
+	return e.Context
+}
+
+func (e *RadiusEnvironment) GetContainerRegistry() *Registry {
+	return nil
+}
+
+// No Status Link for kubernetes
+func (e *RadiusEnvironment) GetStatusLink() string {
+	return ""
 }

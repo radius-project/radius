@@ -26,9 +26,8 @@ import (
 type LocalEnvironment struct {
 	RadiusEnvironment `mapstructure:",squash"`
 	// Registry is the docker/OCI registry we're using for images.
-	ClusterName string     `mapstructure:"clustername" validate:"required"`
-	Registry    *Registry  `mapstructure:"registry,omitempty"`
-	Providers   *Providers `mapstructure:"providers"`
+	ClusterName string    `mapstructure:"clustername" validate:"required"`
+	Registry    *Registry `mapstructure:"registry,omitempty"`
 }
 
 func (e *LocalEnvironment) GetName() string {

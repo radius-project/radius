@@ -26,7 +26,7 @@ import (
 type k8sOptions struct {
 	test.TestOptions
 	ARMAuthorizer autorest.Authorizer
-	Environment   *environments.KubernetesEnvironment
+	Environment   *environments.RadiusEnvironment
 }
 
 func NewK8sTestOptions(t *testing.T) k8sOptions {
@@ -39,7 +39,7 @@ func NewK8sTestOptions(t *testing.T) k8sOptions {
 	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
 
-	k8sEnv, ok := env.(*environments.KubernetesEnvironment)
+	k8sEnv, ok := env.(*environments.RadiusEnvironment)
 	require.Truef(t, ok, "a standalone environment is required but the kind was '%v'", env.GetKind())
 
 	return k8sOptions{
