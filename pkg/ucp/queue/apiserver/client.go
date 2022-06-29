@@ -60,8 +60,6 @@ const (
 	// LabelNextVisibleAt is the label representing the time when message is visible in the queue or requeued.
 	LabelNextVisibleAt = "ucp.dev/nextvisibleat"
 
-	dequeueInterval = time.Duration(5) * time.Millisecond
-
 	defaultMessageLockDuration = time.Duration(5) * time.Minute
 	defaultExpiryDuration      = time.Duration(10) * time.Hour
 )
