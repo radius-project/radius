@@ -30,11 +30,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/radrp/backend/deployment github.com/project-radius/radius/pkg/radrp/backend/deployment DeploymentProcessor
+//go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, operationID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
-	FetchSecrets(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (map[string]interface{}, error)
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
@@ -73,12 +72,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// Get resources that the resource being deployed has connection with.
-	radiusDependencyResourceIDs, _, err := renderer.GetDependencyIDs(ctx, resource)
+	requiredResources, _, err := renderer.GetDependencyIDs(ctx, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererDependencies, err := dp.fetchDependencies(ctx, radiusDependencyResourceIDs)
+	rendererDependencies, err := dp.fetchDependencies(ctx, requiredResources)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -100,7 +99,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			return renderers.RendererOutput{}, err
 		}
 		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			err := fmt.Errorf("Provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
+			err := fmt.Errorf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
 			return renderers.RendererOutput{}, err
 		}
 	}
@@ -249,18 +248,6 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceID
 	}
 
 	return rendererDependencies, nil
-}
-
-func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (map[string]interface{}, error) {
-	rd, err := dp.getRequiredResourceDependencies(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	secretValues, err := dp.fetchSecretsInternal(ctx, rd)
-	if err != nil {
-		return nil, err
-	}
-	return secretValues, nil
 }
 
 func (dp *deploymentProcessor) fetchSecretsInternal(ctx context.Context, dependency ResourceDependency) (map[string]interface{}, error) {

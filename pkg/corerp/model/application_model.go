@@ -75,19 +75,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 	}
 
-	if arm != nil {
-		azureModel := []RadiusResourceModel{}
-		// TODO: Adding azureModel next after this changelist
-		/* 			// Azure
-		   			{
-		   				ResourceType: volume.ResourceType,
-		   				Renderer:     &volume.Renderer{VolumeRenderers: volume.GetSupportedRenderers(), Arm: arm},
-		   			},
-		   		} */
-
-		radiusResourceModel = append(radiusResourceModel, azureModel...)
-	}
-
 	outputResourceModel := []OutputResourceModel{
 		{
 			ResourceType: resourcemodel.ResourceType{
