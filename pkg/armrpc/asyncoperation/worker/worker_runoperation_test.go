@@ -90,7 +90,7 @@ func (c *testContext) cancellable(timeout time.Duration) (context.Context, conte
 
 func newTestContext(t *testing.T) (*testContext, *gomock.Controller) {
 	mctrl := gomock.NewController(t)
-	inmemQ := inmemory.NewInMemQueue(minMessageLockDuration)
+	inmemQ := inmemory.NewInMemQueue(minMessageLockDuration * 2)
 	return &testContext{
 		ctx:       context.Background(),
 		mockSC:    store.NewMockStorageClient(mctrl),
@@ -113,7 +113,7 @@ func genTestMessage(opID uuid.UUID, opTimeout time.Duration) *queue.Message {
 
 	testMessage.Metadata = queue.Metadata{
 		DequeueCount:  0,
-		NextVisibleAt: time.Now().Add(time.Duration(120) * time.Second),
+		NextVisibleAt: time.Now(),
 	}
 
 	return testMessage
@@ -384,7 +384,8 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 	testCtrl := &testAsyncController{
 		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
-			time.Sleep(minMessageLockDuration + time.Duration(1)*time.Second)
+			// Sleep for longer than minimum message lock time to call client.ExtendMessage
+			time.Sleep(minMessageLockDuration * 2)
 			return ctrl.Result{}, nil
 		},
 	}
