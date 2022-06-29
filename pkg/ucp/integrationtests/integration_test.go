@@ -194,10 +194,12 @@ func Test_ProxyToRP_ResourceGroupDoesNotExist(t *testing.T) {
 
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
-	api.Register(router, db, ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
+	ctx := context.Background()
+	err = api.Register(ctx, router, db, ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
 		Address:  rpURL,
 		BasePath: basePath,
 	}))
+	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
 

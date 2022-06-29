@@ -88,7 +88,7 @@ func Test_EnvironmentWithCoreRP(t *testing.T) {
 	getRgRequestRadius, err := http.NewRequest(
 		http.MethodGet,
 		rgRadius,
-		strings.NewReader(`{}`),
+		nil,
 	)
 	require.NoError(t, err, "")
 
