@@ -1,0 +1,48 @@
+{
+    "id": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource",
+    "name": "test-resource",
+    "type": "Applications.Core/containers",
+    "systemData": {
+        "createdBy": "fakeid@live.com",
+        "createdByType": "User",
+        "createdAt": "2021-09-24T19:09:54.2403864Z",
+        "lastModifiedBy": "fakeid@live.com",
+        "lastModifiedByType": "User",
+        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+    },
+    "tags": {
+        "env": "dev"
+    },
+    "properties": {
+        "status": {
+          "outputResources": [{
+            "LocalID": "Deployment",
+            "ResourceType": {
+              "Type": "containers",
+              "Provider": "aks"
+            }
+          }]
+        },
+        "provisioningState": "Succeeded",
+        "application": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+        "connections": { 
+            "inventory": { 
+              "source": "inventory_route_id", 
+              "iam": {
+                "kind": "azure",
+                "roles": [
+                  "read"
+                ]
+              }
+            } 
+          },
+        "container": { 
+            "image": "radius.azurecr.io/webapptutorial-todoapp",
+            "livenessProbe": {
+              "kind": "tcp",
+              "initialDelaySeconds": 5,
+              "containerPort": 8080
+            }
+        }
+    }
+}
