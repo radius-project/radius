@@ -48,6 +48,12 @@ func (q *InmemQueue) Len() int {
 	return q.v.Len()
 }
 
+func (q *InmemQueue) DeleteAll() {
+	q.vMu.Lock()
+	defer q.vMu.Unlock()
+	_ = q.v.Init()
+}
+
 func (q *InmemQueue) Enqueue(msg *client.Message) {
 	q.updateQueue()
 
@@ -101,12 +107,18 @@ func (q *InmemQueue) Complete(msg *client.Message) error {
 
 func (q *InmemQueue) Extend(msg *client.Message) error {
 	found := false
+	now := time.Now()
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
-			found = true
-			elem.val.NextVisibleAt = elem.val.NextVisibleAt.Add(q.lockDuration)
-			msg.NextVisibleAt = elem.val.NextVisibleAt
-			return true
+			if elem.val.NextVisibleAt.UnixNano() <= now.UnixNano() {
+				elem.visible = false
+				return false
+			} else {
+				found = true
+				elem.val.NextVisibleAt = elem.val.NextVisibleAt.Add(q.lockDuration)
+				msg.NextVisibleAt = elem.val.NextVisibleAt
+				return true
+			}
 		}
 		return false
 	})

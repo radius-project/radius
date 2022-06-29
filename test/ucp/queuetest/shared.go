@@ -19,8 +19,9 @@ import (
 )
 
 const (
+	TestMessageLockTime = time.Duration(1) * time.Second
+
 	pollingInterval = time.Duration(100) * time.Millisecond
-	testLockTime    = time.Duration(1) * time.Second
 )
 
 type testQueueMessage struct {
@@ -137,7 +138,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		_, err = cli.Dequeue(ctx)
 		require.ErrorIs(t, err, client.ErrMessageNotFound)
 		// Extend msg1 after sometime
-		time.Sleep(testLockTime / 2)
+		time.Sleep(TestMessageLockTime / 2)
 		err = cli.ExtendMessage(ctx, msg1)
 		t.Logf("%s %v", msg1.ID, msg1.NextVisibleAt)
 		require.NoError(t, err)
@@ -164,7 +165,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		require.NoError(t, err)
 		t.Logf("%s %v", msg1.ID, msg1.NextVisibleAt)
 
-		time.Sleep(testLockTime / 2)
+		time.Sleep(TestMessageLockTime / 2)
 
 		msg2, err := cli.Dequeue(ctx)
 		require.NoError(t, err)
@@ -180,7 +181,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		}
 
 		// Wait until message lock is released.
-		time.Sleep(testLockTime)
+		time.Sleep(TestMessageLockTime * 2)
 		err = cli.ExtendMessage(ctx, msg2)
 		require.ErrorIs(t, err, client.ErrInvalidMessage)
 	})

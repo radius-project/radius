@@ -6,7 +6,6 @@
 package apiserver
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -22,18 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func drainMessages(c runtimeclient.Client, namespace string) {
-	ctx := context.Background()
-	ql := &v1alpha1.QueueMessageList{}
-	err := c.List(ctx, ql, runtimeclient.InNamespace(namespace))
-	if err != nil {
-		return
-	}
-	for i := range ql.Items {
-		_ = c.Delete(ctx, &ql.Items[i])
-	}
-}
 
 func TestMustParseInt64(t *testing.T) {
 	result := mustParseInt64("100")
@@ -112,9 +99,7 @@ func TestClient(t *testing.T) {
 	err = kubeenv.EnsureNamespace(ctx, rc, ns)
 	require.NoError(t, err)
 
-	testLockTime := time.Duration(1) * time.Second
-
-	cli, err := New(rc, Options{Name: "applications.core", Namespace: ns, MessageLockDuration: testLockTime})
+	cli, err := New(rc, Options{Name: "applications.core", Namespace: ns, MessageLockDuration: sharedtest.TestMessageLockTime})
 	require.NoError(t, err)
 
 	clear := func(t *testing.T) {
