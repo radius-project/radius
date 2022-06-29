@@ -4,7 +4,7 @@
 // ------------------------------------------------------------
 
 // package storetest contains SHARED tests for /pkg/ucp/queue
-package storetest
+package queuetest
 
 import (
 	"context"
