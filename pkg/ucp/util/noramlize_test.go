@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package dataprovider
+package util
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNormalizeResourceType(t *testing.T) {
+func TestNormalizeString(t *testing.T) {
 	testrt := []struct {
 		in  string
 		out string
@@ -23,7 +23,7 @@ func TestNormalizeResourceType(t *testing.T) {
 
 	for _, tc := range testrt {
 		t.Run(tc.in, func(t *testing.T) {
-			normalized := normalizeResourceType(tc.in)
+			normalized := NormalizeString(tc.in)
 			require.Equal(t, tc.out, normalized)
 		})
 	}
