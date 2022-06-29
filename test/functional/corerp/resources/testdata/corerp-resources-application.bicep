@@ -4,7 +4,7 @@ import radius as radius
 param location string = 'local'
 
 @description('Specifies the environment for resources.')
-param environment string = '/planes/radius/local/resourcegroups/kind-kind-rg/providers/applications.core/environments/kind-kind'
+param environment string = 'test'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-application-app'

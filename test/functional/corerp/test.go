@@ -25,8 +25,8 @@ func NewCoreRPTestOptions(t *testing.T) CoreRPTestOptions {
 	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
 
-	client, err := environments.CreateApplicationsManagementClientWithScope(ctx, env, "default")
-	require.NoError(t, err, "failed to create ApplicationsManagementClientWithScope")
+	client, err := environments.CreateApplicationsManagementClient(ctx, env)
+	require.NoError(t, err, "failed to create ApplicationsManagementClient")
 
 	return CoreRPTestOptions{
 		TestOptions:      test.NewTestOptions(t),
