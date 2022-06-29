@@ -185,6 +185,7 @@ func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *
 		err = fmt.Errorf("backend services have invalid port values")
 	}
 	return outputresource.NewKubernetesOutputResource(resourcekinds.TrafficSplit, outputresource.LocalIDTrafficSplit, trafficsplit, trafficsplit.ObjectMeta), portNum, err
+}
 
 func (r Renderer) convert(resource renderers.RendererResource) (*radclient.HTTPRouteProperties, error) {
 	properties := &radclient.HTTPRouteProperties{}
