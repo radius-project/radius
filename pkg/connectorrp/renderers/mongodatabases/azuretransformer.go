@@ -41,7 +41,7 @@ func (t *AzureTransformer) Transform(ctx context.Context, resource conv.DataMode
 		return "", fmt.Errorf("failed to parse connection string as a URL: %w", err)
 	}
 
-	databaseName, ok := mongoResource.ComputedValues[renderers.DatabaseNameValue].(string)
+	databaseName, ok := mongoResource.InternalMetadata.ComputedValues[renderers.DatabaseNameValue].(string)
 	if !ok {
 		return nil, errors.New("expected the databaseName to be a string")
 	}

@@ -20,10 +20,6 @@ type ContainerResource struct {
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
-
-	// ComputedValues map is any resource values that will be needed for more operations.
-	// For example; database name to generate secrets for cosmos DB.
-	ComputedValues map[string]interface{} `json:"computedValues,omitempty"`
 }
 
 // ResourceTypeName returns the qualified name of the resource
@@ -34,13 +30,11 @@ func (c ContainerResource) ResourceTypeName() string {
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
 	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Application       string               `json:"application,omitempty"`
-
-	// DONE
-	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
-	Container   Container                       `json:"container,omitempty"`
-	Extensions  []Extension                     `json:"extensions,omitempty"`
+	ProvisioningState v1.ProvisioningState            `json:"provisioningState,omitempty"`
+	Application       string                          `json:"application,omitempty"`
+	Connections       map[string]ConnectionProperties `json:"connections,omitempty"`
+	Container         Container                       `json:"container,omitempty"`
+	Extensions        []Extension                     `json:"extensions,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.
