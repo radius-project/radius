@@ -7,7 +7,6 @@ package containers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -17,14 +16,12 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/db"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 
-	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -81,104 +78,15 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 
 	enrichMetadata(ctx, existingResource, newResource)
 
-	// save start
-	b, err := json.Marshal(newResource.Properties)
+	obj, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
 
-	var properties map[string]interface{}
-	err = json.Unmarshal(b, &properties)
-	if err != nil {
-		return nil, err
-	}
-
-	item := db.NewDBRadiusResource(newResource.ID, properties)
-	item.ProvisioningState = string(rest.DeployingStatus)
-
-	obj, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), item, etag)
-	if err != nil {
-		return nil, err
-	}
-	// save end
-
-	// deploy and render - start
-	dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, nil, nil, nil)
-	rendererOutput, err := dp.Render(ctx, serviceCtx.ResourceID, newResource)
-	if err != nil {
-		return nil, err
-	}
-	deploymentOutput, err := dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
-	if err != nil {
-		return nil, err
-	}
-
-	deployedOuputResources := deploymentOutput.DeployedOutputResources
-	var outputResources []map[string]interface{}
-	for _, deployedOutputResource := range deployedOuputResources {
-		outputResource := map[string]interface{}{
-			deployedOutputResource.LocalID: deployedOutputResource,
-		}
-		outputResources = append(outputResources, outputResource)
-	}
-
-	newResource.Properties.BasicResourceProperties.Status.OutputResources = outputResources
-	newResource.ComputedValues = deploymentOutput.ComputedValues
-	newResource.SecretValues = deploymentOutput.SecretValues
-
-	// create db resource
-	var dbdeployedOutputResources []db.OutputResource
-	for _, deployedOutputResource := range deployedOuputResources {
-		// Build database resource - copy updated properties to Resource field
-		dbOutputResource := db.OutputResource{
-			LocalID:      deployedOutputResource.LocalID,
-			ResourceType: deployedOutputResource.ResourceType,
-			Identity:     deployedOutputResource.Identity,
-			Status: db.OutputResourceStatus{
-				ProvisioningState:        db.Provisioned,
-				ProvisioningErrorDetails: "",
-			},
-		}
-		dbdeployedOutputResources = append(dbdeployedOutputResources, dbOutputResource)
-	}
-
-	resourceStatus := db.RadiusResourceStatus{
-		ProvisioningState: db.Provisioned,
-		OutputResources:   dbdeployedOutputResources,
-	}
-
-	b1, err := json.Marshal(newResource.Properties)
-	if err != nil {
-		return nil, err
-	}
-
-	var properties1 map[string]interface{}
-	err = json.Unmarshal(b1, &properties1)
-	if err != nil {
-		return nil, err
-	}
-
-	deployedRadiusResource := db.RadiusResource{
-		ID:             newResource.ID,
-		Definition:     properties1,
-		ComputedValues: deploymentOutput.ComputedValues,
-		SecretValues:   convertSecretValues(deploymentOutput.SecretValues),
-
-		Status: resourceStatus,
-
-		ProvisioningState: string(rest.SuccededStatus),
-	}
-
-	obj1, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), deployedRadiusResource, obj.ETag)
-	if err != nil {
-		return nil, err
-	}
-
-	// end
 	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncPutContainerOperationTimeout)
 	if err != nil {
 		newResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
-		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, obj1.ETag)
+		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, obj.ETag)
 		if rbErr != nil {
 			return nil, rbErr
 		}
