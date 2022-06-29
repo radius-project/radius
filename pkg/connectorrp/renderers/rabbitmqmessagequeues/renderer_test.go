@@ -18,14 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-<<<<<<< HEAD
-=======
-const (
-	applicationName = "test-app"
-	resourceName    = "test-rabbitmq"
-)
-
->>>>>>> a28a48bf (Initial commit for rabbitmqmessagequeues renderer)
 func createContext(t *testing.T) context.Context {
 	logger, err := radlogger.NewTestLogger(t)
 	if err != nil {
