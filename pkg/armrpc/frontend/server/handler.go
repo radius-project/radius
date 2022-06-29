@@ -16,6 +16,8 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -27,7 +29,7 @@ const (
 	APIVersionParam = "api-version"
 )
 
-type ControllerFunc func(store.StorageClient, manager.StatusManager) (ctrl.Controller, error)
+type ControllerFunc func(store.StorageClient, manager.StatusManager, deployment.DeploymentProcessor) (ctrl.Controller, error)
 
 type HandlerOptions struct {
 	ParentRouter   *mux.Router
@@ -42,7 +44,9 @@ func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, s
 		return err
 	}
 
-	ctrl, err := opts.HandlerFactory(sc, sm)
+	// TODO replace this with real values once app model and arm options are passed here
+	dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, nil, nil, nil)
+	ctrl, err := opts.HandlerFactory(sc, sm, dp)
 	if err != nil {
 		return err
 	}

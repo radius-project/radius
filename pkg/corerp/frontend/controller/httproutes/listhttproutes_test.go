@@ -45,7 +45,7 @@ func TestListHTTPRoutesRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListHTTPRoutes(mStorageClient, nil)
+		ctl, err := NewListHTTPRoutes(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -108,7 +108,7 @@ func TestListHTTPRoutesRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListHTTPRoutes(mStorageClient, nil)
+			ctl, err := NewListHTTPRoutes(mStorageClient, nil, nil)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

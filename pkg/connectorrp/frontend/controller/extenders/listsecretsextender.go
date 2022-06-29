@@ -14,6 +14,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -26,8 +27,8 @@ type ListSecretsExtender struct {
 }
 
 // NewListSecretsExtender creates a new instance of ListSecretsExtender.
-func NewListSecretsExtender(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &ListSecretsExtender{ctrl.NewBaseController(ds, sm)}, nil
+func NewListSecretsExtender(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &ListSecretsExtender{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run returns secrets values for the specified Extender resource

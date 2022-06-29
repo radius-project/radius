@@ -13,6 +13,7 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -27,8 +28,8 @@ type ListContainers struct {
 }
 
 // NewListContainers creates a new instance of ListContainers.
-func NewListContainers(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &ListContainers{ctrl.NewBaseController(ds, sm)}, nil
+func NewListContainers(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &ListContainers{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 func (e *ListContainers) Run(ctx context.Context, req *http.Request) (rest.Response, error) {

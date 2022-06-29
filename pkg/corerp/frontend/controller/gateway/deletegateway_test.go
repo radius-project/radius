@@ -83,7 +83,7 @@ func TestDeleteGatewayRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			ctl, err := NewDeleteGateway(mds, msm)
+			ctl, err := NewDeleteGateway(mds, msm, nil)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)

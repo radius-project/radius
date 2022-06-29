@@ -27,12 +27,11 @@ var _ ctrl.Controller = (*CreateOrUpdateMongoDatabase)(nil)
 // CreateOrUpdateMongoDatabase is the controller implementation to create or update MongoDatabase connector resource.
 type CreateOrUpdateMongoDatabase struct {
 	ctrl.BaseController
-	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateMongoDatabase creates a new instance of CreateOrUpdateMongoDatabase.
 func NewCreateOrUpdateMongoDatabase(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &CreateOrUpdateMongoDatabase{ctrl.NewBaseController(ds, sm), dp}, nil
+	return &CreateOrUpdateMongoDatabase{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run executes CreateOrUpdateMongoDatabase operation.
@@ -43,11 +42,11 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	rendererOutput, err := mongo.dp.Render(ctx, serviceCtx.ResourceID, newResource)
+	rendererOutput, err := mongo.DeploymentProcessor.Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := mongo.dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := mongo.DeploymentProcessor.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
 	if err != nil {
 		return nil, err
 	}

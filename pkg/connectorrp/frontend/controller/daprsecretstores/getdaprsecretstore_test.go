@@ -41,7 +41,7 @@ func TestGetDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewGetDaprSecretStore(mStorageClient, nil)
+		ctl, err := NewGetDaprSecretStore(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -65,7 +65,7 @@ func TestGetDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewGetDaprSecretStore(mStorageClient, nil)
+		ctl, err := NewGetDaprSecretStore(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
