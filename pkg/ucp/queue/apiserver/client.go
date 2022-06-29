@@ -230,7 +230,7 @@ func (c *Client) extendItem(ctx context.Context, item *v1alpha1.QueueMessage, af
 		// If it is greater than now, then the other instance or client already dequeued the message.
 		nsec := mustParseInt64(result.Labels[LabelNextVisibleAt])
 		if nsec >= nextVisibleAt {
-			return client.ErrDeqeueudMessage
+			return client.ErrDequeuedMessage
 		}
 
 		result.Labels[LabelNextVisibleAt] = int64toa(nextVisibleAt)
@@ -252,7 +252,7 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 	var result *v1alpha1.QueueMessage
 
 	DequeuedMessageError := func(err error) bool {
-		return errors.Is(err, client.ErrDeqeueudMessage)
+		return errors.Is(err, client.ErrDequeuedMessage)
 	}
 
 	now := time.Now()

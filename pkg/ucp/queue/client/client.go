@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	// ErrDeqeueudMessage represents the error when message has already been dequeued.
-	ErrDeqeueudMessage = errors.New("message was dequeued by the other client")
+	// ErrDequeuedMessage represents the error when message has already been dequeued.
+	ErrDequeuedMessage = errors.New("message was dequeued by the other client")
 
 	// ErrMessageNotFound represents the error when queue is empty or all messages are leased by clients.
 	ErrMessageNotFound = errors.New("queue is empty or messages are leased")
