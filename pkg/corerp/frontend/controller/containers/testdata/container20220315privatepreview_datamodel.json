@@ -36,17 +36,19 @@
                 "env-variable-0": "test-env-variable-0",
                 "env-variable-1": "test-env-variable-1"
             },
+            "livenessProbe": {
+                "kind": "tcp",
+                "tcp": {
+                    "containerPort": 8080,
+                    "initialDelaySeconds": 5
+                }
+            },
             "ports": {
                 "default": {
                     "containerPort": 80,
                     "protocol": "http",
                     "provides": "/"
                 }
-            },
-            "livenessProbe": {
-                "containerPort": 8080,
-                "initialDelaySeconds": 5,
-                "kind": "tcp"
             }
         },
         "provisioningState": "Updating",

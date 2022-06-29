@@ -129,7 +129,8 @@ type InternalMetadata struct {
 	// UpdatedAPIVersion is an api-version used when updating this model.
 	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
 
-	// Any resource values that will be needed for more operations. For example database name to generate secrets for cosmos DB
+	// ComputedValues map is any resource values that will be needed for more operations.
+	// For example; database name to generate secrets for cosmos DB.
 	ComputedValues map[string]interface{} `json:"computedValues,omitempty"`
 
 	// TODO: will add more properties.
