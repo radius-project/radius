@@ -39,6 +39,9 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 
 	outputResources := []outputresource.OutputResource{}
 
+	var computedValues map[string]renderers.ComputedValueReference
+	var secretValues map[string]renderers.SecretValueReference
+
 	if properties.Resource != nil && *properties.Resource != "" {
 		redisCacheOutputResource, err := RenderResource(resource.ResourceName, properties)
 		if err != nil {
@@ -47,9 +50,10 @@ func (r *Renderer) Render(ctx context.Context, options renderers.RenderOptions) 
 		if redisCacheOutputResource != nil {
 			outputResources = append(outputResources, *redisCacheOutputResource)
 		}
+		computedValues, secretValues = MakeSecretsAndValuesWithResource(resource.ResourceName, properties)
+	} else {
+		computedValues, secretValues = MakeSecretsAndValuesNoResource(resource.ResourceName, properties)
 	}
-
-	computedValues, secretValues := MakeSecretsAndValues(resource.ResourceName, properties)
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,
@@ -89,7 +93,7 @@ func RenderResource(resourceName string, properties radclient.RedisCacheResource
 	return &redisCacheOutputResource, nil
 }
 
-func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+func MakeSecretsAndValuesWithResource(name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
 			Value: to.String(properties.Host),
@@ -116,10 +120,36 @@ func MakeSecretsAndValues(name string, properties radclient.RedisCacheResourcePr
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
-	secretValues := map[string]renderers.SecretValueReference{
-		renderers.ConnectionStringValue: {Value: *properties.Secrets.ConnectionString},
-		renderers.PasswordStringHolder:  {Value: *properties.Secrets.Password},
-		//TODO(#2050): Add support for redis username
-	}
+	secretValues := addSecrets(properties)
 	return computedValues, secretValues
+}
+
+func MakeSecretsAndValuesNoResource(name string, properties radclient.RedisCacheResourceProperties) (map[string]renderers.ComputedValueReference, map[string]renderers.SecretValueReference) {
+	computedValues := map[string]renderers.ComputedValueReference{
+		"host": {
+			Value: to.String(properties.Host),
+		},
+		"port": {
+			Value: strconv.Itoa(int(to.Int32(properties.Port))),
+		},
+		"username": {
+			Value: "",
+		},
+	}
+	// TODO(#1767): We need to store these in a secret store.
+	secretValues := addSecrets(properties)
+	return computedValues, secretValues
+}
+
+func addSecrets(properties radclient.RedisCacheResourceProperties) map[string]renderers.SecretValueReference {
+	secretValues := make(map[string]renderers.SecretValueReference)
+	if properties.Secrets != nil {
+		if properties.Secrets.ConnectionString != nil {
+			secretValues[renderers.ConnectionStringValue] = renderers.SecretValueReference{Value: *properties.Secrets.ConnectionString}
+		}
+		if properties.Secrets.Password != nil {
+			secretValues[renderers.PasswordStringHolder] = renderers.SecretValueReference{Value: *properties.Secrets.Password}
+		}
+	}
+	return secretValues
 }

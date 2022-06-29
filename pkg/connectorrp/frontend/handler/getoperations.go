@@ -87,6 +87,16 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
+				Name: "Applications.Connector/mongoDatabases/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "mongoDatabases",
+					Operation:   "List secrets",
+					Description: "Lists mongoDatabase secrets.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
 				Name: "Applications.Connector/register/action",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
@@ -167,6 +177,16 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
+				Name: "Applications.Connector/redisCaches/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "redisCaches",
+					Operation:   "List secrets",
+					Description: "Lists redisCache secrets.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
 				Name: "Applications.Connector/rabbitMQMessageQueues/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
@@ -193,6 +213,56 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    "rabbitMQMessageQueues",
 					Operation:   "Delete rabbitMQMessageQueue",
 					Description: "Deletes a rabbitMQMessageQueue connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/rabbitMQMessageQueues/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "rabbitMQMessageQueues",
+					Operation:   "List secrets",
+					Description: "Lists rabbitMQMessageQueue secrets.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Get/List extenders",
+					Description: "Gets/Lists extender connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Create/Update extenders",
+					Description: "Creates or updates a extender connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Delete extender",
+					Description: "Deletes a extender connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "List secrets",
+					Description: "Lists extender secrets.",
 				},
 				IsDataAction: false,
 			},

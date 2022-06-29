@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/db"
+	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 
 	"github.com/project-radius/radius/pkg/corerp/model"
@@ -70,7 +71,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	if exists && !existingResource.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(OngoingAsyncOperationOnResourceMessage), nil
+		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -122,8 +123,8 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = outputResources
-	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
-	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+	newResource.ComputedValues = deploymentOutput.ComputedValues
+	newResource.SecretValues = deploymentOutput.SecretValues
 
 	// create db resource
 	var dbdeployedOutputResources []db.OutputResource

@@ -6,8 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"reflect"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -17,10 +15,6 @@ import (
 
 // ConvertTo converts from the versioned DaprSecretStore resource to version-agnostic datamodel.
 func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error) {
-	outputResources := v1.ResourceStatus{}.OutputResources
-	if src.Properties.Status != nil {
-		outputResources = src.Properties.Status.OutputResources
-	}
 	converted := &datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -32,7 +26,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Status: v1.ResourceStatus{
-					OutputResources: outputResources,
+					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
 				},
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -63,14 +57,10 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	dst.SystemData = fromSystemDataModel(daprSecretStore.SystemData)
 	dst.Location = to.StringPtr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
-	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(daprSecretStore.Properties.Status, v1.ResourceStatus{})) {
-		outputresources = daprSecretStore.Properties.Status.OutputResources
-	}
 	dst.Properties = &DaprSecretStoreProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresources,
+				OutputResources: GetOutputResourcesForDatamodel(&daprSecretStore.Properties.Status),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),

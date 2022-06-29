@@ -312,8 +312,7 @@
           }
         },
         "required": [
-          "kind",
-          "resourceId"
+          "kind"
         ]
       },
       "EnvironmentResource": {

@@ -7,241 +7,265 @@ package httproutes
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateOrUpdateHttpRouteRun_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+		mctrl := gomock.NewController(t)
+		mds := store.NewMockStorageClient(mctrl)
+		msm := statusmanager.NewMockStatusManager(mctrl)
 
-	createNewResourceCases := []struct {
-		desc               string
-		headerKey          string
-		headerValue        string
-		resourceETag       string
-		expectedStatusCode int
-		shouldFail         bool
-	}{
-		{"create-new-resource-no-if-match", "If-Match", "", "", http.StatusOK, false},
-		{"create-new-resource-*-if-match", "If-Match", "*", "", http.StatusPreconditionFailed, true},
-		{"create-new-resource-etag-if-match", "If-Match", "random-etag", "", http.StatusPreconditionFailed, true},
-		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", http.StatusOK, false},
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mds, msm
 	}
 
-	for _, tt := range createNewResourceCases {
+	/*
+		Creating a httproute resource in an async way has multiple operations with branching:
+		1. Get Resource
+		2. [Conditional] If resource exists, check if there is an ongoing operation on it
+		3. Save Resource
+		4. Queue Resource
+		5. [Conditional] If Queue has an error then Rollback changes
+		6. [Conditional] Update the record state to Failed
+	*/
+	createCases := []struct {
+		desc    string
+		getErr  error
+		saveErr error
+		qErr    error
+		rbErr   error
+		rCode   int
+		rErr    error
+	}{
+		{
+			"async-create-new-httproute-success",
+			&store.ErrNotFound{},
+			nil,
+			nil,
+			nil,
+			http.StatusCreated,
+			nil,
+		},
+		{
+			"async-create-new-httproute-concurrency-error",
+			&store.ErrConcurrency{},
+			nil,
+			nil,
+			nil,
+			http.StatusCreated,
+			&store.ErrConcurrency{},
+		},
+		{
+			"async-create-new-httproute-enqueue-error",
+			&store.ErrNotFound{},
+			nil,
+			errors.New("enqueuer client is unset"),
+			nil,
+			http.StatusInternalServerError,
+			errors.New("enqueuer client is unset"),
+		},
+	}
+
+	for _, tt := range createCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			hrtInput, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
+
+			httprouteInput, httprouteDataModel, _ := getTestModels20220315privatepreview()
+
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, hrtInput)
-			req.Header.Set(tt.headerKey, tt.headerValue)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, httprouteInput)
+			require.NoError(t, err)
+
 			ctx := radiustesting.ARMTestContextFromRequest(req)
+			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-			mStorageClient.
-				EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return nil, &store.ErrNotFound{}
-				})
+			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
+				Return(&store.Object{}, tt.getErr).
+				Times(1)
 
-			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
-			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
-			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
+			if tt.getErr == nil || errors.Is(&store.ErrNotFound{}, tt.getErr) {
+				mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(tt.saveErr).
+					Times(1)
 
-			if !tt.shouldFail {
-				mStorageClient.
-					EXPECT().
-					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-						obj.ETag = "new-resource-etag"
-						obj.Data = hrtDataModel
-						return nil
-					})
+				if tt.saveErr == nil {
+					msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(tt.qErr).
+						Times(1)
+
+					if tt.qErr != nil {
+						mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+							Return(tt.rbErr).
+							Times(1)
+					}
+				}
 			}
 
-			ctl, err := NewCreateOrUpdateHTTPRoute(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateHTTPRoute(mds, msm)
 			require.NoError(t, err)
+
 			resp, err := ctl.Run(ctx, req)
-			require.NoError(t, err)
-			_ = resp.Apply(ctx, w, req)
-			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
+			if tt.rErr != nil {
+				require.Error(t, tt.rErr)
+			} else {
+				require.NoError(t, err)
 
-			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.HTTPRouteResource{}
-				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-				require.Equal(t, expectedOutput, actualOutput)
+				_ = resp.Apply(ctx, w, req)
+				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				require.Equal(t, "new-resource-etag", w.Header().Get("ETag"))
+				locationHeader := getAsyncLocationPath(sCtx.ResourceID, httprouteDataModel.TrackedResource.Location, "operationResults", sCtx.OperationID)
+				require.NotNil(t, w.Header().Get("Location"))
+				require.Equal(t, locationHeader, w.Header().Get("Location"))
+
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, httprouteDataModel.TrackedResource.Location, "operationStatuses", sCtx.OperationID)
+				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
+				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
 		})
 	}
 
-	updateExistingResourceCases := []struct {
-		desc               string
-		headerKey          string
-		headerValue        string
-		resourceETag       string
-		expectedStatusCode int
-		shouldFail         bool
+	updateCases := []struct {
+		desc     string
+		curState v1.ProvisioningState
+		getErr   error
+		saveErr  error
+		qErr     error
+		rbErr    error
+		rCode    int
+		rErr     error
 	}{
-		{"update-resource-no-if-match", "If-Match", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-*-if-match", "If-Match", "*", "resource-etag", http.StatusOK, false},
-		{"update-resource-matching-if-match", "If-Match", "matching-etag", "matching-etag", http.StatusOK, false},
-		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "another-etag", http.StatusPreconditionFailed, true},
-		{"update-resource-*-if-none-match", "If-None-Match", "*", "another-etag", http.StatusPreconditionFailed, true},
+		{
+			"async-update-existing-httproute-success",
+			v1.ProvisioningStateSucceeded,
+			nil,
+			nil,
+			nil,
+			nil,
+			http.StatusAccepted,
+			nil,
+		},
+		{
+			"async-update-existing-httproute-concurrency-error",
+			v1.ProvisioningStateSucceeded,
+			&store.ErrConcurrency{},
+			nil,
+			nil,
+			nil,
+			http.StatusAccepted,
+			&store.ErrConcurrency{},
+		},
+		{
+			"async-update-existing-httproute-save-error",
+			v1.ProvisioningStateSucceeded,
+			nil,
+			errors.New("testing initial save err"),
+			nil,
+			nil,
+			http.StatusInternalServerError,
+			errors.New("testing initial save err"),
+		},
+		{
+			"async-update-existing-httproute-enqueue-error",
+			v1.ProvisioningStateSucceeded,
+			nil,
+			nil,
+			errors.New("enqueuer client is unset"),
+			nil,
+			http.StatusInternalServerError,
+			errors.New("enqueuer client is unset"),
+		},
 	}
 
-	for _, tt := range updateExistingResourceCases {
+	for _, tt := range updateCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			hrtInput, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
+
+			httprouteInput, httprouteDataModel, _ := getTestModels20220315privatepreview()
+			httprouteDataModel.Properties.ProvisioningState = tt.curState
+
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, hrtInput)
-			req.Header.Set(tt.headerKey, tt.headerValue)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, httprouteInput)
+			require.NoError(t, err)
+
 			ctx := radiustesting.ARMTestContextFromRequest(req)
+			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-			mStorageClient.
-				EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
-						Data:     hrtDataModel,
-					}, nil
-				})
-
-			if !tt.shouldFail {
-				mStorageClient.
-					EXPECT().
-					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-						obj.ETag = "updated-resource-etag"
-						obj.Data = hrtDataModel
-						return nil
-					})
+			so := &store.Object{
+				Metadata: store.Metadata{ID: sCtx.ResourceID.String()},
+				Data:     httprouteDataModel,
 			}
 
-			ctl, err := NewCreateOrUpdateHTTPRoute(mStorageClient, nil)
+			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
+				Return(so, tt.getErr).
+				Times(1)
+
+			if tt.getErr == nil {
+				mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(tt.saveErr).
+					Times(1)
+
+				if tt.saveErr == nil {
+					msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(tt.qErr).
+						Times(1)
+
+					if tt.qErr != nil {
+						mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+							Return(tt.rbErr).
+							Times(1)
+					}
+				}
+			}
+
+			ctl, err := NewCreateOrUpdateHTTPRoute(mds, msm)
 			require.NoError(t, err)
+
 			resp, err := ctl.Run(ctx, req)
-			_ = resp.Apply(ctx, w, req)
-			require.NoError(t, err)
-			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
+			if tt.rErr != nil {
+				require.Error(t, tt.rErr)
+			} else {
+				require.NoError(t, err)
 
-			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.HTTPRouteResource{}
-				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-				require.Equal(t, expectedOutput, actualOutput)
+				_ = resp.Apply(ctx, w, req)
+				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				require.Equal(t, "updated-resource-etag", w.Header().Get("ETag"))
+				locationHeader := getAsyncLocationPath(sCtx.ResourceID, httprouteDataModel.TrackedResource.Location, "operationResults", sCtx.OperationID)
+				require.NotNil(t, w.Header().Get("Location"))
+				require.Equal(t, locationHeader, w.Header().Get("Location"))
+
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, httprouteDataModel.TrackedResource.Location, "operationStatuses", sCtx.OperationID)
+				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
+				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
 		})
 	}
+}
 
-	patchNonExistingResourceCases := []struct {
-		desc               string
-		headerKey          string
-		headerValue        string
-		resourceEtag       string
-		expectedStatusCode int
-		shouldFail         bool
-	}{
-		{"patch-non-existing-resource-no-if-match", "If-Match", "", "", http.StatusNotFound, true},
-		{"patch-non-existing-resource-*-if-match", "If-Match", "*", "", http.StatusNotFound, true},
-		{"patch-non-existing-resource-random-if-match", "If-Match", "randome-etag", "", http.StatusNotFound, true},
+func getAsyncLocationPath(resourceID resources.ID, location string, resourceType string, operationID uuid.UUID) string {
+	root := fmt.Sprintf("/subscriptions/%s", resourceID.FindScope(resources.SubscriptionsSegment))
+
+	if resourceID.IsUCPQualfied() {
+		root = fmt.Sprintf("/planes/%s", resourceID.PlaneNamespace())
 	}
 
-	for _, tt := range patchNonExistingResourceCases {
-		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			hrtInput, _, _ := getTestModels20220315privatepreview()
-			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, hrtInput)
-			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
-
-			mStorageClient.
-				EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return nil, &store.ErrNotFound{}
-				})
-
-			ctl, err := NewCreateOrUpdateHTTPRoute(mStorageClient, nil)
-			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
-			require.NoError(t, err)
-			_ = resp.Apply(ctx, w, req)
-			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
-		})
-	}
-
-	patchExistingResourceCases := []struct {
-		desc               string
-		headerKey          string
-		headerValue        string
-		resourceEtag       string
-		expectedStatusCode int
-		shouldFail         bool
-	}{
-		{"patch-existing-resource-no-if-match", "If-Match", "", "resource-etag", http.StatusOK, false},
-		{"patch-existing-resource-*-if-match", "If-Match", "*", "resource-etag", http.StatusOK, false},
-		{"patch-existing-resource-matching-if-match", "If-Match", "matching-etag", "matching-etag", http.StatusOK, false},
-		{"patch-existing-resource-not-matching-if-match", "If-Match", "not-matching-etag", "another-etag", http.StatusPreconditionFailed, true},
-	}
-
-	for _, tt := range patchExistingResourceCases {
-		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			hrtInput, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
-			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, hrtInput)
-			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
-
-			mStorageClient.
-				EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: tt.resourceEtag},
-						Data:     hrtDataModel,
-					}, nil
-				})
-
-			if !tt.shouldFail {
-				mStorageClient.
-					EXPECT().
-					Save(gomock.Any(), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
-						cfg := store.NewSaveConfig(opts...)
-						obj.ETag = cfg.ETag
-						obj.Data = hrtDataModel
-						return nil
-					})
-			}
-
-			ctl, err := NewCreateOrUpdateHTTPRoute(mStorageClient, nil)
-			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
-			_ = resp.Apply(ctx, w, req)
-			require.NoError(t, err)
-			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
-
-			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.HTTPRouteResource{}
-				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-				require.Equal(t, expectedOutput, actualOutput)
-			}
-		})
-	}
+	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String())
 }

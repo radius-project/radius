@@ -36,11 +36,11 @@ func (g Gateway) ResourceTypeName() string {
 // GatewayProperties represents the properties of Gateway.
 type GatewayProperties struct {
 	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState      `json:"provisioningState,omitempty"`
-	Application       string                    `json:"application,omitempty"`
-	Internal          bool                      `json:"internal,omitempty"`
-	Hostname          GatewayPropertiesHostname `json:"hostname,omitempty"`
-	Routes            []GatewayRoute            `json:"routes,omitempty"`
+	ProvisioningState v1.ProvisioningState       `json:"provisioningState,omitempty"`
+	Application       string                     `json:"application,omitempty"`
+	Internal          bool                       `json:"internal,omitempty"`
+	Hostname          *GatewayPropertiesHostname `json:"hostname,omitempty"`
+	Routes            []GatewayRoute             `json:"routes,omitempty"`
 }
 
 // GatewayRoute represents the route attached to Gateway.

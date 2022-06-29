@@ -107,7 +107,7 @@
             "200": {
               "description": "Extender resource",
               "schema": {
-                "$ref": "#/definitions/ExtenderResource"
+                "$ref": "#/definitions/ExtenderResponseResource"
               }
             },
             "default": {
@@ -216,6 +216,48 @@
             }
           }
         }
+      },
+      "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}/listSecrets": {
+        "post": {
+          "description": "Lists secrets values for the specified Extender resource",
+          "operationId": "Extenders_listSecrets",
+          "produces": [
+            "application/json"
+          ],
+          "x-ms-examples": {
+            "ExtendersGet": {
+              "$ref": "./examples/ExtendersListSecrets.json"
+            }
+          },
+          "tags": [
+            "Extenders"
+          ],
+          "parameters": [
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            },
+            {
+              "$ref": "global.json#/parameters/RootScopeParameter"
+            },
+            {
+              "$ref": "#/parameters/ExtenderNameParameter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Extender secrets",
+              "schema": {
+                "$ref": "#/definitions/ExtenderListSecretsResult"
+              }
+            },
+            "default": {
+              "description": "Error response describing the reason for operation failure",
+              "schema": {
+                "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+              }
+            }
+          }
+        }
       }
     },
     "definitions": {
@@ -227,7 +269,7 @@
             "description": "List of Extender resources",
             "type": "array",
             "items": {
-              "$ref": "#/definitions/ExtenderResource"
+              "$ref": "#/definitions/ExtenderResponseResource"
             }
           },
           "nextLink": {
@@ -257,7 +299,37 @@
           }
         }
       },
-      "ExtenderProperties": {
+      "ExtenderResponseResource": {
+        "description": "Extender connector",
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+          }
+        ],
+        "required": [
+          "properties"
+        ],
+        "properties": {
+          "systemData": {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+          },
+          "properties": {
+            "x-ms-client-flatten": true,
+            "$ref": "#/definitions/ExtenderResponseProperties"
+          }
+        }
+      },
+      "ExtenderListSecretsResult": {
+        "description": "The secret values for the given Extender resource",
+        "$ref": "#/definitions/ExtenderSecrets"
+      },
+      "ExtenderSecrets": {
+        "description": "The secret values for the given Extender resource",
+        "additionalProperties": true,
+        "properties": {}
+      },
+      "ExtenderResponseProperties": {
         "description": "Extender connector properties",
         "type": "object",
         "allOf": [
@@ -278,14 +350,24 @@
           "application": {
             "$ref": "global.json#/definitions/Application",
             "description": "Fully qualified resource ID for the application that the connector is consumed by"
-          },
-          "secrets": {
-            "additionalProperties": true,
-            "properties": {},
-            "type": "object"
           }
         },
         "required": ["environment"]
+      },
+      "ExtenderProperties": {
+        "description": "Extender connector properties",
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/definitions/ExtenderResponseProperties"
+          }
+        ],
+        "properties": {
+          "secrets": {
+            "additionalProperties": true,
+            "$ref": "#/definitions/ExtenderSecrets"
+          }
+        }
       }
     },
     "parameters": {

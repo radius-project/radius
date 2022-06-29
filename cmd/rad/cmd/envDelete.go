@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -31,7 +32,7 @@ var envDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete environment",
 	Long:  `Delete the specified Radius environment`,
-	RunE:  deleteEnv,
+	RunE:  deleteEnvResource,
 }
 
 func init() {
@@ -40,7 +41,53 @@ func init() {
 	envDeleteCmd.Flags().BoolP("yes", "y", false, "Use this flag to prevent prompt for confirmation")
 }
 
-func deleteEnv(cmd *cobra.Command, args []string) error {
+func deleteEnvResource(cmd *cobra.Command, args []string) error {
+
+	config := ConfigFromContext(cmd.Context())
+	env, err := cli.RequireEnvironment(cmd, config)
+	if err != nil {
+		return err
+	}
+
+	isUCPEnabled := false
+	if env.GetKind() == environments.KindKubernetes {
+		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
+	}
+
+	if isUCPEnabled {
+		envName, err := cmd.Flags().GetString("environment")
+		if err != nil {
+			return err
+		}
+
+		envconfig, err := cli.ReadEnvironmentSection(config)
+		if err != nil {
+			return err
+		}
+
+		if envName == "" && envconfig.Default == "" {
+			return errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
+		}
+
+		if envName == "" {
+			envName = envconfig.Default
+		}
+		client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+		if err != nil {
+			return err
+		}
+		err = client.DeleteEnv(cmd.Context(), envName)
+		if err == nil {
+			output.LogInfo("Environment deleted")
+		}
+		return err
+
+	} else {
+		return deleteEnvLegacy(cmd, args)
+	}
+}
+
+func deleteEnvLegacy(cmd *cobra.Command, args []string) error {
 	yes, err := cmd.Flags().GetBool("yes")
 	if err != nil {
 		return err

@@ -13,11 +13,14 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	"github.com/project-radius/radius/pkg/validator"
+	"github.com/project-radius/radius/swagger"
 
 	daprHttpRoute_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/daprinvokehttproutes"
 	daprPubSub_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/daprpubsubbrokers"
 	daprSecretStore_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/daprsecretstores"
 	daprStateStore_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/daprstatestores"
+	extender_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/extenders"
 	mongo_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rediscaches"
@@ -31,7 +34,10 @@ const (
 func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, router *mux.Router, pathBase string, isARM bool) error {
 	if isARM {
 		pathBase += "/subscriptions/{subscriptionID}"
+	} else {
+		pathBase += "/planes/radius/{planeName}"
 	}
+	resourceGroupPath := "/resourcegroups/{resourceGroupName}"
 
 	// Configure the default ARM handlers.
 	err := server.ConfigureDefaultHandlers(ctx, sp, sm, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
@@ -39,37 +45,41 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		return err
 	}
 
-	mongoRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/mongodatabases").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabases}").Subrouter()
+	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath)
+	if err != nil {
+		return err
+	}
 
-	daprHttpRouteRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/daprinvokehttproutes").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	daprHttpRouteResourceRouter := daprHttpRouteRTSubrouter.PathPrefix("/{daprInvokeHttpRoutes}").Subrouter()
+	rootScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	rootScopeRouter.Use(validator.APIValidator(specLoader))
 
-	daprPubSubRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/daprpubsubbrokers").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	daprPubSubResourceRouter := daprPubSubRTSubrouter.PathPrefix("/{daprPubSubBrokers}").Subrouter()
+	mongoRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/mongodatabases").Subrouter()
+	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabaseName}").Subrouter()
 
-	daprSecretStoreRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/daprsecretstores").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	daprSecretStoreResourceRouter := daprSecretStoreRTSubrouter.PathPrefix("/{daprSecretStores}").Subrouter()
+	daprHttpRouteRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprinvokehttproutes").Subrouter()
+	daprHttpRouteResourceRouter := daprHttpRouteRTSubrouter.PathPrefix("/{daprInvokeHttpRouteName}").Subrouter()
 
-	daprStateStoreRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/daprstatestores").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	daprStateStoreResourceRouter := daprStateStoreRTSubrouter.PathPrefix("/{daprStateStores}").Subrouter()
+	daprPubSubRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprpubsubbrokers").Subrouter()
+	daprPubSubResourceRouter := daprPubSubRTSubrouter.PathPrefix("/{daprPubSubBrokerName}").Subrouter()
 
-	redisRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/rediscaches").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	redisResourceRouter := redisRTSubrouter.PathPrefix("/{redisDatabases}").Subrouter()
+	daprSecretStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprsecretstores").Subrouter()
+	daprSecretStoreResourceRouter := daprSecretStoreRTSubrouter.PathPrefix("/{daprSecretStoreName}").Subrouter()
 
-	rabbitmqRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/rabbitmqmessagequeues").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	rabbitmqResourceRouter := rabbitmqRTSubrouter.PathPrefix("/{rabbitmqmessagequeues}").Subrouter()
+	daprStateStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprstatestores").Subrouter()
+	daprStateStoreResourceRouter := daprStateStoreRTSubrouter.PathPrefix("/{daprStateStoreName}").Subrouter()
 
-	sqlRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.connector/sqldatabases").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	sqlResourceRouter := sqlRTSubrouter.PathPrefix("/{sqlDatabases}").Subrouter()
+	extenderRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/extenders").Subrouter()
+	extenderResourceRouter := extenderRTSubrouter.PathPrefix("/{extenderName}").Subrouter()
+
+	redisRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/rediscaches").Subrouter()
+	redisResourceRouter := redisRTSubrouter.PathPrefix("/{redisCacheName}").Subrouter()
+
+	rabbitmqRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/rabbitmqmessagequeues").Subrouter()
+	rabbitmqResourceRouter := rabbitmqRTSubrouter.PathPrefix("/{rabbitMQMessageQueueName}").Subrouter()
+
+	sqlRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/sqldatabases").Subrouter()
+	sqlResourceRouter := sqlRTSubrouter.PathPrefix("/{sqlDatabaseName}").Subrouter()
+
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:   mongoRTSubrouter,
@@ -327,6 +337,42 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ResourceType:   sql_ctrl.ResourceTypeName,
 			Method:         v1.OperationDelete,
 			HandlerFactory: sql_ctrl.NewDeleteSqlDatabase,
+		},
+		{
+			ParentRouter:   extenderRTSubrouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationList,
+			HandlerFactory: extender_ctrl.NewListExtenders,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationGet,
+			HandlerFactory: extender_ctrl.NewGetExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter,
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: extender_ctrl.NewDeleteExtender,
+		},
+		{
+			ParentRouter:   extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType:   extender_ctrl.ResourceTypeName,
+			Method:         extender_ctrl.OperationListSecret,
+			HandlerFactory: extender_ctrl.NewListSecretsExtender,
 		},
 	}
 

@@ -38,6 +38,27 @@ func (c CreatedByType) ToPtr() *CreatedByType {
 	return &c
 }
 
+// DaprPubSubBrokerPropertiesKind - The DaprPubSubProperties kind
+type DaprPubSubBrokerPropertiesKind string
+
+const (
+	DaprPubSubBrokerPropertiesKindGeneric DaprPubSubBrokerPropertiesKind = "generic"
+	DaprPubSubBrokerPropertiesKindPubsubAzureServicebus DaprPubSubBrokerPropertiesKind = "pubsub.azure.servicebus"
+)
+
+// PossibleDaprPubSubBrokerPropertiesKindValues returns the possible values for the DaprPubSubBrokerPropertiesKind const type.
+func PossibleDaprPubSubBrokerPropertiesKindValues() []DaprPubSubBrokerPropertiesKind {
+	return []DaprPubSubBrokerPropertiesKind{	
+		DaprPubSubBrokerPropertiesKindGeneric,
+		DaprPubSubBrokerPropertiesKindPubsubAzureServicebus,
+	}
+}
+
+// ToPtr returns a *DaprPubSubBrokerPropertiesKind pointing to the current value.
+func (c DaprPubSubBrokerPropertiesKind) ToPtr() *DaprPubSubBrokerPropertiesKind {
+	return &c
+}
+
 // DaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
 type DaprSecretStorePropertiesKind string
 
@@ -54,6 +75,29 @@ func PossibleDaprSecretStorePropertiesKindValues() []DaprSecretStorePropertiesKi
 
 // ToPtr returns a *DaprSecretStorePropertiesKind pointing to the current value.
 func (c DaprSecretStorePropertiesKind) ToPtr() *DaprSecretStorePropertiesKind {
+	return &c
+}
+
+// DaprStateStorePropertiesKind - The Dapr StateStore kind
+type DaprStateStorePropertiesKind string
+
+const (
+	DaprStateStorePropertiesKindGeneric DaprStateStorePropertiesKind = "generic"
+	DaprStateStorePropertiesKindStateAzureTablestorage DaprStateStorePropertiesKind = "state.azure.tablestorage"
+	DaprStateStorePropertiesKindStateSqlserver DaprStateStorePropertiesKind = "state.sqlserver"
+)
+
+// PossibleDaprStateStorePropertiesKindValues returns the possible values for the DaprStateStorePropertiesKind const type.
+func PossibleDaprStateStorePropertiesKindValues() []DaprStateStorePropertiesKind {
+	return []DaprStateStorePropertiesKind{	
+		DaprStateStorePropertiesKindGeneric,
+		DaprStateStorePropertiesKindStateAzureTablestorage,
+		DaprStateStorePropertiesKindStateSqlserver,
+	}
+}
+
+// ToPtr returns a *DaprStateStorePropertiesKind pointing to the current value.
+func (c DaprStateStorePropertiesKind) ToPtr() *DaprStateStorePropertiesKind {
 	return &c
 }
 

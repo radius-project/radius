@@ -6,15 +6,29 @@
 package cmd
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
+	client_go "k8s.io/client-go/kubernetes"
+	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/k3d"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 var envInitCmd = &cobra.Command{
@@ -52,6 +66,275 @@ const (
 	Dev
 )
 
+func (k EnvKind) String() string {
+	return [...]string{"Azure", "Kubernetes", "Dev"}[k]
+}
+
+func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
+	config := ConfigFromContext(cmd.Context())
+	env, err := cli.ReadEnvironmentSection(config)
+	if err != nil {
+		return err
+	}
+
+	sharedArgs, err := parseArgs(cmd)
+	if err != nil {
+		return err
+	}
+
+	ucpImage, err := cmd.Flags().GetString("ucp-image")
+	if err != nil {
+		return err
+	}
+
+	ucpTag, err := cmd.Flags().GetString("ucp-tag")
+	if err != nil {
+		return err
+	}
+
+	// Configure Azure provider for cloud resources if specified
+	azureProvider, err := parseAzureProviderFromArgs(cmd, sharedArgs.Interactive)
+	if err != nil {
+		return err
+	}
+
+	if kind == Kubernetes {
+		sharedArgs.Namespace, err = selectNamespace(cmd, "default", sharedArgs.Interactive)
+		if err != nil {
+			return err
+		}
+	}
+
+	var defaultEnvName string
+
+	switch kind {
+	case Dev:
+		defaultEnvName = "dev"
+	case Kubernetes:
+		k8sConfig, err := kubernetes.ReadKubeConfig()
+		if err != nil {
+			return err
+		}
+		defaultEnvName = k8sConfig.CurrentContext
+
+	default:
+		return fmt.Errorf("unknown environment type: %s", kind)
+	}
+
+	environmentName, err := selectEnvironment(cmd, defaultEnvName, sharedArgs.Interactive)
+	if err != nil {
+		return err
+	}
+
+	params := &DevEnvironmentParams{
+		Name:      environmentName,
+		Providers: &environments.Providers{AzureProvider: azureProvider},
+	}
+
+	_, foundConflict := env.Items[environmentName]
+	if foundConflict {
+		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", params.Name, params.Name)
+	}
+
+	cliOptions := helm.CLIClusterOptions{
+		Namespace: sharedArgs.Namespace,
+		Radius: helm.RadiusOptions{
+			ChartPath:     sharedArgs.ChartPath,
+			Image:         sharedArgs.Image,
+			Tag:           sharedArgs.Tag,
+			UCPImage:      ucpImage,
+			UCPTag:        ucpTag,
+			AppCoreImage:  sharedArgs.AppCoreImage,
+			AppCoreTag:    sharedArgs.AppCoreTag,
+			AzureProvider: azureProvider,
+		},
+	}
+
+	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
+
+	var k8sGoClient client_go.Interface
+	var runtimeClient runtime_client.Client
+	var contextName string
+
+	switch kind {
+	case Dev:
+		// Create environment
+		step := output.BeginStep("Creating Cluster...")
+		cluster, err := k3d.CreateCluster(cmd.Context(), params.Name)
+		if err != nil {
+			return err
+		}
+		output.CompleteStep(step)
+		k8sGoClient, runtimeClient, _, err = createKubernetesClients(cluster.ContextName)
+		if err != nil {
+			return err
+		}
+		clusterOptions.Contour.HostNetwork = true
+		clusterOptions.Radius.PublicEndpointOverride = cluster.HTTPEndpoint
+		env.Items[params.Name] = map[string]interface{}{
+			"kind":        "dev",
+			"context":     cluster.ContextName,
+			"clustername": cluster.ClusterName,
+			"namespace":   sharedArgs.Namespace,
+			"enableucp":   featureflag.EnableUnifiedControlPlane.IsActive(),
+			"registry": &environments.Registry{
+				PushEndpoint: cluster.RegistryPushEndpoint,
+				PullEndpoint: cluster.RegistryPullEndpoint,
+			},
+		}
+
+	case Kubernetes:
+		k8sGoClient, runtimeClient, contextName, err = createKubernetesClients("")
+		if err != nil {
+			return err
+		}
+		env.Items[params.Name] = map[string]interface{}{
+			"kind":      environments.KindKubernetes,
+			"context":   contextName,
+			"namespace": sharedArgs.Namespace,
+			"enableucp": featureflag.EnableUnifiedControlPlane.IsActive(),
+		}
+
+	}
+
+	step := output.BeginStep("Installing Radius...")
+	if err := helm.InstallOnCluster(cmd.Context(), clusterOptions, k8sGoClient, runtimeClient); err != nil {
+		return err
+	}
+
+	if featureflag.EnableUnifiedControlPlane.IsActive() {
+		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
+		ucpRgName := fmt.Sprintf("%s-rg", environmentName)
+		env.Items[environmentName]["ucpresourcegroupname"] = ucpRgName
+		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName)
+		if err != nil {
+			return err
+		}
+		env.Items[environmentName]["scope"] = ucpRgId
+		ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName)
+		if err != nil {
+			return err
+		}
+		env.Items[environmentName]["id"] = ucpEnvId
+	}
+
+	output.CompleteStep(step)
+
+	// Persist settings
+
+	if params.Providers != nil {
+		providerData := map[string]interface{}{}
+		err = mapstructure.Decode(params.Providers, &providerData)
+		if err != nil {
+			return err
+		}
+
+		env.Items[params.Name]["providers"] = providerData
+	}
+	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(params.Name)))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, error) {
+	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
+		"",
+		"",
+		kubeCtxName,
+		featureflag.EnableUnifiedControlPlane.IsActive(),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	createRgRequest, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", baseUrl, resourceGroupName),
+		strings.NewReader(`{}`),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+	}
+	resp, err := rt.RoundTrip(createRgRequest)
+	if err != nil {
+		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
+	}
+	defer resp.Body.Close()
+	var jsonBody map[string]interface{}
+	if json.NewDecoder(resp.Body).Decode(&jsonBody) != nil {
+		return "", nil
+	}
+
+	return jsonBody["id"].(string), nil
+}
+
+func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string) (string, error) {
+	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "", true)
+	if err != nil {
+		return "", err
+	}
+
+	loc := "global"
+	id := "self"
+
+	toCreate := coreRpApps.EnvironmentResource{
+		TrackedResource: coreRpApps.TrackedResource{
+			Location: &loc,
+		},
+		Properties: &coreRpApps.EnvironmentProperties{
+			Compute: &coreRpApps.EnvironmentCompute{
+				Kind:       coreRpApps.EnvironmentComputeKindKubernetes.ToPtr(),
+				ResourceID: &id,
+			},
+		},
+	}
+
+	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName)
+	c := coreRpApps.NewEnvironmentsClient(conn, rootScope)
+	resp, err := c.CreateOrUpdate(ctx, environmentName, toCreate, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
+	}
+	return *resp.ID, nil
+}
+
+func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
+	k8sConfig, err := kubernetes.ReadKubeConfig()
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	if contextName == "" && k8sConfig.CurrentContext == "" {
+		return nil, nil, "", errors.New("no kubernetes context is set")
+	} else if contextName == "" {
+		contextName = k8sConfig.CurrentContext
+	}
+
+	context := k8sConfig.Contexts[contextName]
+	if context == nil {
+		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+	}
+
+	client, _, err := kubernetes.CreateTypedClient(contextName)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	return client, runtimeClient, contextName, nil
+}
+
 func parseArgs(cmd *cobra.Command) (sharedArgs, error) {
 	// the below function call should never errors given a default is defined
 	interactive, err := cmd.Flags().GetBool("interactive")
@@ -85,13 +368,13 @@ func parseArgs(cmd *cobra.Command) (sharedArgs, error) {
 	}
 
 	return sharedArgs{
-		Interactive: interactive,
-		Namespace:   namespace,
-		ChartPath:   chartPath,
-		Image:       image,
-		Tag:         tag,
+		Interactive:  interactive,
+		Namespace:    namespace,
+		ChartPath:    chartPath,
+		Image:        image,
+		Tag:          tag,
 		AppCoreImage: appcoreImage,
-		AppCoreTag: appcoreTag,
+		AppCoreTag:   appcoreTag,
 	}, nil
 }
 

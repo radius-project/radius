@@ -19,7 +19,7 @@ type HTTPRoute struct {
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
-	Properties HTTPRouteProperties `json:"properties"`
+	Properties *HTTPRouteProperties `json:"properties"`
 
 	// Any resource values that will be needed for more operations. For example database name to generate secrets for cosmos DB
 	ComputedValues map[string]interface{} `json:"computedValues,omitempty"`

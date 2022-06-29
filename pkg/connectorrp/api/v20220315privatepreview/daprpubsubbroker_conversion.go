@@ -7,7 +7,6 @@ package v20220315privatepreview
 
 import (
 	"errors"
-	"reflect"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -18,20 +17,16 @@ import (
 
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
 func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error) {
-	outputResources := v1.ResourceStatus{}.OutputResources
-	if src.Properties.GetDaprPubSubBrokerProperties().Status != nil {
-		outputResources = src.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources
-	}
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Status: v1.ResourceStatus{
-				OutputResources: outputResources,
+				OutputResources: GetOutputResourcesForVersionedResource(src.Properties.GetDaprPubSubBrokerProperties().Status),
 			},
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),
 		Environment:       to.String(src.Properties.GetDaprPubSubBrokerProperties().Environment),
 		Application:       to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
-		Kind:              to.String(src.Properties.GetDaprPubSubBrokerProperties().Kind),
+		Kind:              toDaprPubSubBrokerKindDataModel(src.Properties.GetDaprPubSubBrokerProperties().Kind),
 	}
 	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
@@ -46,18 +41,17 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 	converted := &datamodel.DaprPubSubBroker{}
 	converted.TrackedResource = trackedResource
 	converted.InternalMetadata = internalMetadata
+	converted.Properties = daprPubSubproperties
 	switch v := src.Properties.(type) {
 	case *DaprPubSubAzureServiceBusResourceProperties:
-		converted.Properties = &datamodel.DaprPubSubAzureServiceBusResourceProperties{
-			DaprPubSubBrokerProperties: daprPubSubproperties,
-			Resource:                   to.String(v.Resource),
+		converted.Properties.DaprPubSubAzureServiceBus = datamodel.DaprPubSubAzureServiceBusResourceProperties{
+			Resource: to.String(v.Resource),
 		}
 	case *DaprPubSubGenericResourceProperties:
-		converted.Properties = &datamodel.DaprPubSubGenericResourceProperties{
-			DaprPubSubBrokerProperties: daprPubSubproperties,
-			Type:                       to.String(v.Type),
-			Version:                    to.String(v.Version),
-			Metadata:                   v.Metadata,
+		converted.Properties.DaprPubSubGeneric = datamodel.DaprPubSubGenericResourceProperties{
+			Type:     to.String(v.Type),
+			Version:  to.String(v.Version),
+			Metadata: v.Metadata,
 		}
 	default:
 		return nil, errors.New("Kind of DaprPubSubBroker is not specified.")
@@ -78,36 +72,58 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	dst.SystemData = fromSystemDataModel(daprPubSub.SystemData)
 	dst.Location = to.StringPtr(daprPubSub.Location)
 	dst.Tags = *to.StringMapPtr(daprPubSub.Tags)
-	var outputresources []map[string]interface{}
-	if !(reflect.DeepEqual(daprPubSub.Properties.GetDaprPubSubBrokerProperties().Status, v1.ResourceStatus{})) {
-		outputresources = daprPubSub.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources
-	}
 	props := &DaprPubSubBrokerProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: outputresources,
+				OutputResources: GetOutputResourcesForDatamodel(&daprPubSub.Properties.Status),
 			},
 		},
-		ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),
-		Environment:       to.StringPtr(daprPubSub.Properties.GetDaprPubSubBrokerProperties().Environment),
-		Application:       to.StringPtr(daprPubSub.Properties.GetDaprPubSubBrokerProperties().Application),
+		ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
+		Environment:       to.StringPtr(daprPubSub.Properties.Environment),
+		Application:       to.StringPtr(daprPubSub.Properties.Application),
+		Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
 	}
-	switch v := daprPubSub.Properties.(type) {
-	case *datamodel.DaprPubSubAzureServiceBusResourceProperties:
+	switch daprPubSub.Properties.Kind {
+	case datamodel.DaprPubSubBrokerKindAzureServiceBus:
 		dst.Properties = &DaprPubSubAzureServiceBusResourceProperties{
 			DaprPubSubBrokerProperties: *props,
-			Resource:                   to.StringPtr(v.Resource),
+			Resource:                   to.StringPtr(daprPubSub.Properties.DaprPubSubAzureServiceBus.Resource),
 		}
-	case *datamodel.DaprPubSubGenericResourceProperties:
+	case datamodel.DaprPubSubBrokerKindGeneric:
 		dst.Properties = &DaprPubSubGenericResourceProperties{
 			DaprPubSubBrokerProperties: *props,
-			Type:                       to.StringPtr(v.Type),
-			Version:                    to.StringPtr(v.Version),
-			Metadata:                   v.Metadata,
+			Type:                       to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Type),
+			Version:                    to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Version),
+			Metadata:                   daprPubSub.Properties.DaprPubSubGeneric.Metadata,
 		}
 	default:
 		return errors.New("Kind of DaprPubSubBroker is not specified.")
 	}
 
 	return nil
+}
+
+func toDaprPubSubBrokerKindDataModel(kind *DaprPubSubBrokerPropertiesKind) datamodel.DaprPubSubBrokerKind {
+	switch *kind {
+	case DaprPubSubBrokerPropertiesKindPubsubAzureServicebus:
+		return datamodel.DaprPubSubBrokerKindAzureServiceBus
+	case DaprPubSubBrokerPropertiesKindGeneric:
+		return datamodel.DaprPubSubBrokerKindGeneric
+	default:
+		return datamodel.DaprPubSubBrokerKindUnknown
+	}
+
+}
+
+func fromDaprPubSubBrokerKindDataModel(kind datamodel.DaprPubSubBrokerKind) *DaprPubSubBrokerPropertiesKind {
+	var convertedKind DaprPubSubBrokerPropertiesKind
+	switch kind {
+	case datamodel.DaprPubSubBrokerKindAzureServiceBus:
+		convertedKind = DaprPubSubBrokerPropertiesKindPubsubAzureServicebus
+	case datamodel.DaprPubSubBrokerKindGeneric:
+		convertedKind = DaprPubSubBrokerPropertiesKindGeneric
+	default:
+		convertedKind = DaprPubSubBrokerPropertiesKindGeneric
+	}
+	return &convertedKind
 }
