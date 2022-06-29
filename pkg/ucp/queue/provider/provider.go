@@ -10,7 +10,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/project-radius/radius/pkg/queue"
+	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 )
 
 var (

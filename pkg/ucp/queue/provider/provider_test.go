@@ -14,8 +14,9 @@ import (
 
 func TestGetClient_ValidQueue(t *testing.T) {
 	p := New(QueueProviderOptions{
+		Name:     "Applications.Core",
 		Provider: TypeInmemory,
-		InMemory: &InMemoryQueueOptions{Name: "Applications.Core"},
+		InMemory: &InMemoryQueueOptions{},
 	})
 
 	oldcli, err := p.GetClient(context.TODO())

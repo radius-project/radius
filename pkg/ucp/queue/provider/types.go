@@ -11,4 +11,7 @@ type QueueProviderType string
 const (
 	// TypeInmemory represents inmemory queue provider.
 	TypeInmemory QueueProviderType = "inmemory"
+
+	// TypeAPIServer represents the Kubernetes APIServer provider.
+	TypeAPIServer QueueProviderType = "apiserver"
 )

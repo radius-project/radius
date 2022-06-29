@@ -139,6 +139,10 @@ func (c *Client) generateID() (string, error) {
 }
 
 func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
+	if msg == nil {
+		return client.ErrNilMessage
+	}
+
 	now := time.Now()
 	id, err := c.generateID()
 	if err != nil {
@@ -281,6 +285,10 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 }
 
 func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
+	if msg == nil {
+		return client.ErrNilMessage
+	}
+
 	result := &v1alpha1.QueueMessage{}
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: msg.ID}, result)
@@ -301,6 +309,10 @@ func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
 }
 
 func (c *Client) ExtendMessage(ctx context.Context, msg *client.Message) error {
+	if msg == nil {
+		return client.ErrNilMessage
+	}
+
 	now := time.Now()
 	result := &v1alpha1.QueueMessage{}
 	getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: msg.ID}, result)

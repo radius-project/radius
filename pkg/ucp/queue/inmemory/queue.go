@@ -7,25 +7,22 @@ package inmemory
 
 import (
 	"container/list"
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/queue"
+	"github.com/project-radius/radius/pkg/ucp/queue/client"
 )
 
 var (
 	messageLockDuration   = 5 * time.Minute
 	messageExpireDuration = 24 * time.Hour
 
-	ErrAlreadyCompletedMessage = errors.New("message has already completed")
-
 	defaultQueue = NewInMemQueue(messageLockDuration)
 )
 
 type element struct {
-	val *queue.Message
+	val *client.Message
 
 	visible bool
 }
@@ -51,7 +48,7 @@ func (q *InmemQueue) Len() int {
 	return q.v.Len()
 }
 
-func (q *InmemQueue) Enqueue(msg *queue.Message) {
+func (q *InmemQueue) Enqueue(msg *client.Message) {
 	q.updateQueue()
 
 	q.vMu.Lock()
@@ -65,10 +62,10 @@ func (q *InmemQueue) Enqueue(msg *queue.Message) {
 	q.v.PushBack(&element{val: msg, visible: true})
 }
 
-func (q *InmemQueue) Dequeue() *queue.Message {
+func (q *InmemQueue) Dequeue() *client.Message {
 	q.updateQueue()
 
-	var found *queue.Message
+	var found *client.Message
 
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.visible {
@@ -84,7 +81,7 @@ func (q *InmemQueue) Dequeue() *queue.Message {
 	return found
 }
 
-func (q *InmemQueue) Complete(msg *queue.Message) error {
+func (q *InmemQueue) Complete(msg *client.Message) error {
 	found := false
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
@@ -96,25 +93,26 @@ func (q *InmemQueue) Complete(msg *queue.Message) error {
 	})
 
 	if !found {
-		return ErrAlreadyCompletedMessage
+		return client.ErrInvalidMessage
 	}
 
 	return nil
 }
 
-func (q *InmemQueue) Extend(msg *queue.Message) error {
+func (q *InmemQueue) Extend(msg *client.Message) error {
 	found := false
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
 			found = true
-			elem.val.NextVisibleAt.Add(q.lockDuration)
+			elem.val.NextVisibleAt = elem.val.NextVisibleAt.Add(q.lockDuration)
+			msg.NextVisibleAt = elem.val.NextVisibleAt
 			return true
 		}
 		return false
 	})
 
 	if !found {
-		return ErrAlreadyCompletedMessage
+		return client.ErrInvalidMessage
 	}
 
 	return nil

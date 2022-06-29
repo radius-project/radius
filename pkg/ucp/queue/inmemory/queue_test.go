@@ -11,21 +11,21 @@ import (
 
 	"time"
 
-	"github.com/project-radius/radius/pkg/queue"
+	"github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEnqueueDequeueMulti(t *testing.T) {
 	q := NewInMemQueue(messageLockDuration)
 	for i := 0; i < 10; i++ {
-		q.Enqueue(&queue.Message{
-			Data: fmt.Sprintf("test%d", i),
+		q.Enqueue(&client.Message{
+			Data: []byte(fmt.Sprintf("test%d", i)),
 		})
 	}
 
 	for i := 0; i < 10; i++ {
 		msg := q.Dequeue()
-		require.Equal(t, fmt.Sprintf("test%d", i), msg.Data)
+		require.Equal(t, []byte(fmt.Sprintf("test%d", i)), msg.Data)
 
 		err := q.Complete(msg)
 		require.NoError(t, err)
@@ -37,15 +37,15 @@ func TestEnqueueDequeueMulti(t *testing.T) {
 func TestMessageLock(t *testing.T) {
 	q := NewInMemQueue(2 * time.Millisecond)
 
-	q.Enqueue(&queue.Message{
-		Data: "test",
+	q.Enqueue(&client.Message{
+		Data: []byte("test"),
 	})
 
 	msg := q.Dequeue()
-	require.Equal(t, "test", msg.Data)
+	require.Equal(t, []byte("test"), msg.Data)
 	require.Equal(t, 1, msg.DequeueCount)
 
-	// Message Lock duration is 2 ms, after 10 ms, mesage will be visible on the queue.
+	// Message Lock duration is 2 ms, after 10 ms, mesage will be visible on the client.
 	time.Sleep(10 * time.Millisecond)
 
 	msg2 := q.Dequeue()
@@ -56,12 +56,12 @@ func TestMessageLock(t *testing.T) {
 func TestExpiry(t *testing.T) {
 	q := NewInMemQueue(messageLockDuration)
 
-	q.Enqueue(&queue.Message{
-		Data: "test",
+	q.Enqueue(&client.Message{
+		Data: []byte("test"),
 	})
 
 	msg := q.Dequeue()
-	require.Equal(t, "test", msg.Data)
+	require.Equal(t, []byte("test"), msg.Data)
 	require.Equal(t, 1, msg.DequeueCount)
 
 	// Override expiry to the current time.
@@ -75,8 +75,8 @@ func TestExpiry(t *testing.T) {
 func TestComplete(t *testing.T) {
 	q := NewInMemQueue(messageLockDuration)
 
-	q.Enqueue(&queue.Message{
-		Data: "test",
+	q.Enqueue(&client.Message{
+		Data: []byte("test"),
 	})
 
 	msg := q.Dequeue()
@@ -85,7 +85,7 @@ func TestComplete(t *testing.T) {
 
 	// Try to complete the message again.
 	err = q.Complete(msg)
-	require.ErrorIs(t, ErrAlreadyCompletedMessage, err)
+	require.ErrorIs(t, client.ErrInvalidMessage, err)
 
 	msg2 := q.Dequeue()
 	require.Nil(t, msg2)

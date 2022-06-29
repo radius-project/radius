@@ -23,6 +23,9 @@ var (
 	// ErrInvalidMessage represents the error when the message has already been requeued.
 	ErrInvalidMessage = errors.New("this message has been requeued or deleted")
 
+	// ErrNilMessage represents nil Message.
+	ErrNilMessage = errors.New("message must not be nil")
+
 	dequeueInterval = time.Duration(5) * time.Millisecond
 )
 
