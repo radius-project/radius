@@ -29,9 +29,9 @@
             "inventory": { 
               "source": "inventory_route_id", 
               "iam": {
-                "kind": "azure",
+                "kind": "Http",
                 "roles": [
-                  "read"
+                  "administrator"
                 ]
               }
             } 
@@ -42,6 +42,12 @@
               "kind": "tcp",
               "initialDelaySeconds": 5,
               "containerPort": 8080
+            },
+            "ports": {
+              "web":{
+                "containerPort": 5000,
+                "provides": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application/HttpRoute/B"
+              }
             }
         }
     }

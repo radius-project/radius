@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	connectorrp_renderer "github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -77,6 +78,7 @@ func setup(t *testing.T) SharedMocks {
 		},
 		map[string]bool{
 			providers.ProviderKubernetes: true,
+			providers.ProviderAzure:      true,
 		})
 
 	return SharedMocks{
@@ -180,6 +182,26 @@ func Test_Render(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+
+		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
+		depId2, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/B")
+		radiusResourceIDs := []resources.ID{depId1, depId2}
+
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Return(radiusResourceIDs, nil, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(mocks.db, nil)
+		httprouteA := datamodel.HTTPRoute{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			},
+			Properties: &datamodel.HTTPRouteProperties{},
+		}
+		nr := store.Object{
+			Metadata: store.Metadata{
+				ID: httprouteA.ID,
+			},
+			Data: httprouteA,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Return(&nr, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
 		require.NoError(t, err)

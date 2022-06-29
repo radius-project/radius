@@ -6,5 +6,5 @@
 package httproute
 
 const (
-	ResourceType = "Applications.Core/httproutes"
+	ResourceType = "Applications.Core/httpRoutes"
 )

@@ -374,9 +374,10 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 		return ResourceDependency{}, err
 	}
 
-	switch resourceID.Type() {
+	resourceType := resourceID.Type()
+	switch resourceType {
 	case container.ResourceType:
-		cont := datamodel.ContainerResource{}
+		cont := &datamodel.ContainerResource{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(cont); err == nil {
 				lst := []map[string]outputresource.OutputResource{}
@@ -397,7 +398,7 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 			}
 		}
 	case gateway.ResourceType:
-		cont := datamodel.Gateway{}
+		cont := &datamodel.Gateway{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(cont); err == nil {
 				lst := []map[string]outputresource.OutputResource{}
@@ -418,7 +419,7 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 			}
 		}
 	case httproute.ResourceType:
-		cont := datamodel.HTTPRoute{}
+		cont := &datamodel.HTTPRoute{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(cont); err == nil {
 				lst := []map[string]outputresource.OutputResource{}
