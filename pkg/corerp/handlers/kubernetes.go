@@ -74,6 +74,23 @@ func (handler *kubernetesHandler) GetResourceIdentity(ctx context.Context, resou
 	return identity, err
 }
 
+func (handler *kubernetesHandler) GetResourceNativeIdentityKeyProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error) {
+	item, err := convertToUnstructured(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	// For a Kubernetes resource we only need to store the ObjectMeta and TypeMeta data
+	properties := map[string]string{
+		KubernetesKindKey:       item.GetKind(),
+		KubernetesAPIVersionKey: item.GetAPIVersion(),
+		KubernetesNamespaceKey:  item.GetNamespace(),
+		ResourceName:            item.GetName(),
+	}
+
+	return properties, err
+}
+
 func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {
 	// Ensure that the namespace exists that we're able to operate upon.
 	ns := &unstructured.Unstructured{

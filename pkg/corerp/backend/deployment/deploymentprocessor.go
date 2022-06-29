@@ -136,7 +136,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	properties, err := outputResourceModel.ResourceHandler.GetResourceNativeIdentityKey(ctx, outputResource)
+	properties, err := outputResourceModel.ResourceHandler.GetResourceNativeIdentityKeyProperties(ctx, outputResource)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}

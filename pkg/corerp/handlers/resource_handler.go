@@ -35,5 +35,5 @@ const (
 type ResourceHandler interface {
 	Put(ctx context.Context, resource outputresource.OutputResource) error
 	GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error)
-	GetResourceNativeIdentityKey(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error)
+	GetResourceNativeIdentityKeyProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error)
 }
