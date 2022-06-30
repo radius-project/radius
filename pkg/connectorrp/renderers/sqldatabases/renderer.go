@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -56,7 +57,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 			},
 			// We don't provide any secret values here because SQL requires the USER to manage
 			// the usernames and passwords. We don't have access!
-			SecretValues: map[string]renderers.SecretValueReference{},
+			SecretValues: map[string]rp.SecretValueReference{},
 		}, nil
 	} else {
 		// Source resource identifier is provided, currently only Azure resources are expected with non empty resource id
@@ -122,6 +123,6 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	return renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{serverResource, databaseResource},
 		ComputedValues: computedValues,
-		SecretValues:   map[string]renderers.SecretValueReference{},
+		SecretValues:   map[string]rp.SecretValueReference{},
 	}, nil
 }
