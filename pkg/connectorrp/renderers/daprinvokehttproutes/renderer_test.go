@@ -17,11 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	applicationName = "test-app"
-	resourceName    = "test-route"
-)
-
 func createContext(t *testing.T) context.Context {
 	logger, err := radlogger.NewTestLogger(t)
 	if err != nil {
@@ -37,9 +32,9 @@ func Test_Render_Success(t *testing.T) {
 
 	resource := datamodel.DaprInvokeHttpRoute{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
-			Name: "test-secret-store",
-			Type: "Applications.Connector/daprSecretStores",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprInvokeHttpRoutes/test-http-route",
+			Name: "test-http-route",
+			Type: "Applications.Connector/daprInvokeHttpRoutes",
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",

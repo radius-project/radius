@@ -23,6 +23,8 @@ const (
 
 var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
 
+var ErrResourceMissingForResource = errors.New("the 'resource' field is required")
+
 type Renderer interface {
 	Render(ctx context.Context, resource conv.DataModelInterface) (RendererOutput, error)
 }

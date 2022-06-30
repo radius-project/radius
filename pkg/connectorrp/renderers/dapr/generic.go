@@ -25,7 +25,7 @@ type DaprGeneric struct {
 	Metadata map[string]interface{}
 }
 
-func validateDaprGenericObject(daprGeneric DaprGeneric) error {
+func ValidateDaprGenericObject(daprGeneric DaprGeneric) error {
 	if daprGeneric.Type == nil || *daprGeneric.Type == "" {
 		return errors.New("No type specified for generic Dapr component")
 	}
@@ -74,7 +74,7 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName 
 }
 
 func GetDaprGeneric(daprGeneric DaprGeneric, dm conv.DataModelInterface) ([]outputresource.OutputResource, error) {
-	err := validateDaprGenericObject(daprGeneric)
+	err := ValidateDaprGenericObject(daprGeneric)
 	if err != nil {
 		return nil, err
 	}
