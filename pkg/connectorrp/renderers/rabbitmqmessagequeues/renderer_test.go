@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,7 +57,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 			Value: "abc",
 		},
 	}
-	expectedSecretValues := map[string]renderers.SecretValueReference{
+	expectedSecretValues := map[string]rp.SecretValueReference{
 		"connectionString": {
 			Value: "admin:deadbeef@localhost:42",
 		},
