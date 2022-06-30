@@ -83,7 +83,11 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 			"metadata": map[string]interface{}{
 				"name": namespace,
 				"labels": map[string]interface{}{
-					kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+					kubernetes.LabelManagedBy:         kubernetes.LabelManagedByRadiusRP,
+					"openservicemesh.io/monitored-by": "osm",
+				},
+				"annotations": map[string]interface{}{
+					"openservicemesh.io/sidecar-injection": "enabled",
 				},
 			},
 		},
