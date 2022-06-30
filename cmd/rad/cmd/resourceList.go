@@ -31,11 +31,8 @@ func listResources(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	isUCPEnabled := false
-	if env.GetKind() == environments.KindKubernetes {
-		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
-	}
-	if isUCPEnabled {
+
+	if env.GetEnableUCP() {
 		err := listResourcesUCP(cmd, args, env)
 		if err != nil {
 			return err
@@ -91,12 +88,13 @@ func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
 	if err != nil {
 		return err
 	}
-
+	var formatterOptions output.FormatterOptions
 	if !isLegacy {
-		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+		formatterOptions = objectformats.GetResourceTableFormat()
 	} else {
-		err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormatOld())
+		formatterOptions = objectformats.GetResourceTableFormatOld()
 	}
+	err = output.Write(format, obj, cmd.OutOrStdout(), formatterOptions)
 	if err != nil {
 		return err
 	}

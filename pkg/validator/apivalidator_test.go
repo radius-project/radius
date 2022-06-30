@@ -25,7 +25,7 @@ const (
 	armIDUrl             = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
 	ucpIDUrl             = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
 	operationGetRoute    = "/providers/applications.core/operations"
-	subscriptionPUTRoute = "/subscriptions/{subscriptions}"
+	subscriptionPUTRoute = "/subscriptions/{subscriptions}/resourceGroups/{resourceGroup}"
 )
 
 func TestAPIValidator_ARMID(t *testing.T) {
@@ -38,7 +38,7 @@ func TestAPIValidator_UCPID(t *testing.T) {
 
 func runTest(t *testing.T, resourceIDUrl string) {
 	// Load OpenAPI Spec for applications.core provider.
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles)
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "/{rootScope:.*}")
 
 	require.NoError(t, err)
 
@@ -95,13 +95,35 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr: nil,
 		},
 		{
-			desc:            "skip validation of /providers/applications.core/operations",
+			desc:            "skip validation of /subscriptions/{subscriptionID}",
 			method:          http.MethodPut,
 			rootScope:       "",
 			route:           subscriptionPUTRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
 			url:             "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000",
+			responseCode:    http.StatusAccepted,
+			validationErr:   nil,
+		},
+		{
+			desc:            "valid environment resource",
+			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
+			route:           envRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid.json",
+			url:             resourceIDUrl,
+			responseCode:    http.StatusAccepted,
+			validationErr:   nil,
+		},
+		{
+			desc:            "valid environment resource for selfhost",
+			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
+			route:           envRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid-selfhost.json",
+			url:             resourceIDUrl,
 			responseCode:    http.StatusAccepted,
 			validationErr:   nil,
 		},

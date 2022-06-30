@@ -42,7 +42,13 @@ type Options struct {
 // DeployWithProgress run a deployment and displays progress to the user. This is intended to be used
 // from the CLI and thus logs to the console.
 func DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
-	deploymentClient, err := environments.CreateDeploymentClient(ctx, options.Environment)
+	var deploymentClient clients.DeploymentClient
+	var err error
+	if options.Environment.GetEnableUCP() {
+		deploymentClient, err = environments.CreateDeploymentClient(ctx, options.Environment)
+	} else {
+		deploymentClient, err = environments.CreateLegacyDeploymentClient(ctx, options.Environment)
+	}
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
@@ -86,8 +92,12 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 				output.LogInfo("    " + output.FormatResourceForDisplay(resource))
 			}
 		}
-
-		diagnosticsClient, err := environments.CreateDiagnosticsClient(ctx, options.Environment)
+		var diagnosticsClient clients.DiagnosticsClient
+		if options.Environment.GetEnableUCP() {
+			diagnosticsClient, err = environments.CreateDiagnosticsClient(ctx, options.Environment)
+		} else {
+			diagnosticsClient, err = environments.CreateLegacyDiagnosticsClient(ctx, options.Environment)
+		}
 		if err != nil {
 			return clients.DeploymentResult{}, err
 		}

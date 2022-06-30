@@ -6,11 +6,6 @@
 package apiserverstore
 
 import (
-	"bytes"
-	"context"
-	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -19,23 +14,22 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
+	"github.com/project-radius/radius/test/ucp/kubeenv"
 	shared "github.com/project-radius/radius/test/ucp/storetest"
 )
 
+//
 func Test_APIServer_Client(t *testing.T) {
 	// The APIServer tests require installation of the Kubernetes test environment binaries.
 	// Our Makefile knows how to download the the amd64 version of these on MacOS.
-	rc, env, err := startEnvironment()
+	rc, env, err := kubeenv.StartEnvironment([]string{filepath.Join("..", "..", "..", "..", "deploy", "Chart", "crds", "ucpd")})
+
 	require.NoError(t, err, "If this step is failing for you, run `make test` inside the repository and try again. If you are still stuck then ask for help.")
 	defer func() {
 		_ = env.Stop()
@@ -45,7 +39,7 @@ func Test_APIServer_Client(t *testing.T) {
 	defer cancel()
 
 	ns := "radius-test"
-	err = ensureNamespace(ctx, rc, ns)
+	err = kubeenv.EnsureNamespace(ctx, rc, ns)
 	require.NoError(t, err)
 
 	client := NewAPIServerClient(rc, ns)
@@ -541,67 +535,6 @@ func Test_APIServer_Client(t *testing.T) {
 	})
 }
 
-func startEnvironment() (runtimeclient.Client, *envtest.Environment, error) {
-	assetDir, err := getKubeAssetsDir()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	testEnv := &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "..", "deploy", "Chart", "crds", "ucpd")},
-		ErrorIfCRDPathMissing: true,
-		BinaryAssetsDirectory: assetDir,
-	}
-
-	scheme := runtime.NewScheme()
-
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(ucpv1alpha1.AddToScheme(scheme))
-
-	cfg, err := testEnv.Start()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize environment: %w", err)
-	}
-
-	client, err := runtimeclient.New(cfg, runtimeclient.Options{
-		Scheme: scheme,
-	})
-	if err != nil {
-		_ = testEnv.Stop()
-		return nil, nil, fmt.Errorf("failed to create kubernetes client: %w", err)
-	}
-
-	return client, testEnv, nil
-}
-
-func getKubeAssetsDir() (string, error) {
-	assetsDirectory := os.Getenv("KUBEBUILDER_ASSETS")
-	if assetsDirectory != "" {
-		return assetsDirectory, nil
-	}
-
-	// We require one or more versions of the test assets to be installed already. This
-	// will use whatever's latest of the installed versions.
-	cmd := exec.Command("setup-envtest", "use", "-i", "-p", "path", "--arch", "amd64")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("failed to call setup-envtest to find path: %w", err)
-	} else {
-		return out.String(), err
-	}
-}
-
-func ensureNamespace(ctx context.Context, client runtimeclient.Client, namespace string) error {
-	nsObject := v1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
-		},
-	}
-	return client.Create(ctx, &nsObject, &runtimeclient.CreateOptions{})
-}
-
 func Test_AssignLabels_Resource_NoConflicts(t *testing.T) {
 	resource := ucpv1alpha1.Resource{
 		Entries: []ucpv1alpha1.ResourceEntry{
@@ -688,6 +621,49 @@ func Test_AssignLabels_AllConflict(t *testing.T) {
 
 	set := assignLabels(&resource)
 	require.Equal(t, expected, set)
+}
+
+func Test_CreateLabelSelector_UCPID(t *testing.T) {
+	query := store.Query{
+		RootScope:    "/planes/radius/local/resourceGroups/cool-group",
+		ResourceType: "Applications.Core/containers",
+	}
+
+	selector, err := createLabelSelector(query)
+	require.NoError(t, err)
+
+	resource := ucpv1alpha1.Resource{
+		Entries: []ucpv1alpha1.ResourceEntry{
+			{
+				// Wrong resource type
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app",
+			},
+		},
+	}
+	set := assignLabels(&resource)
+	require.False(t, selector.Matches(set))
+
+	resource = ucpv1alpha1.Resource{
+		Entries: []ucpv1alpha1.ResourceEntry{
+			{
+				// Different scope
+				ID: "/planes/radius/local/resourceGroups/another-group/providers/Applications.Core/containers/backend",
+			},
+		},
+	}
+	set = assignLabels(&resource)
+	require.False(t, selector.Matches(set))
+
+	resource = ucpv1alpha1.Resource{
+		Entries: []ucpv1alpha1.ResourceEntry{
+			{
+				// Match!
+				ID: "/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/containers/backend",
+			},
+		},
+	}
+	set = assignLabels(&resource)
+	require.True(t, selector.Matches(set))
 }
 
 func Test_CreateLabelSelector(t *testing.T) {

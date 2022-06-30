@@ -87,21 +87,21 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeResourceID(t, "HttpRoute", "A").String(),
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind:  datamodel.KindHTTP,
 					Roles: []string{"administrator"},
 				},
 			},
 			"B": {
 				Source: makeResourceID(t, "HttpRoute", "B").String(),
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind:  datamodel.KindHTTP,
 					Roles: []string{"administrator"},
 				},
 			},
 			"testAzureConnection": {
 				Source: testAzureResourceID.String(),
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind:  datamodel.KindAzure,
 					Roles: []string{"administrator"},
 				},
@@ -115,11 +115,14 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 					Provides:      makeResourceID(t, "HttpRoute", "C").String(),
 				},
 			},
-			Volumes: map[string]datamodel.VolumeClassification{
-				"vol1": datamodel.PersistentVolume{
-					Source: testResourceID,
-					Volume: datamodel.Volume{
-						MountPath: "/tmpfs",
+			Volumes: map[string]datamodel.VolumeProperties{
+				"vol1": datamodel.VolumeProperties{
+					Kind: datamodel.Persistent,
+					Persistent: &datamodel.PersistentVolume{
+						VolumeBase: datamodel.VolumeBase{
+							MountPath: "/tmpfs",
+						},
+						Source: testResourceID,
 					},
 				},
 			},
@@ -170,7 +173,7 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: "not a resource id obviously...",
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
 			},
@@ -195,7 +198,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"AzureResourceTest": {
 				Source: "/subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace",
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindAzure,
 				},
 			},
@@ -371,7 +374,7 @@ func Test_Render_Connections(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeResourceID(t, "ResourceType", "A").String(),
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
 			},
@@ -470,7 +473,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeResourceID(t, "ResourceType", "A").String(),
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
 			},
@@ -502,7 +505,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	}
 
 	renderer := Renderer{
-		RoleAssignmentMap: map[datamodel.Kind]RoleAssignmentData{
+		RoleAssignmentMap: map[datamodel.IAMKind]RoleAssignmentData{
 			datamodel.KindHTTP: {
 				LocalID:   "TargetLocalID",
 				RoleNames: []string{"TestRole1", "TestRole2"},
@@ -621,7 +624,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"testAzureResourceConnection": {
 				Source: testARMID,
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind:  datamodel.KindAzure,
 					Roles: []string{expectedRole},
 				},
@@ -635,7 +638,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 
 	renderer := Renderer{
-		RoleAssignmentMap: map[datamodel.Kind]RoleAssignmentData{
+		RoleAssignmentMap: map[datamodel.IAMKind]RoleAssignmentData{
 			datamodel.KindAzure: {},
 		},
 	}
@@ -688,7 +691,7 @@ func Test_Render_AzureConnectionMissingRoleError(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"testAzureResourceConnection": {
 				Source: testARMID,
-				Iam: datamodel.IamProperties{
+				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindAzure,
 				},
 			},
@@ -701,7 +704,7 @@ func Test_Render_AzureConnectionMissingRoleError(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 
 	renderer := Renderer{
-		RoleAssignmentMap: map[datamodel.Kind]RoleAssignmentData{
+		RoleAssignmentMap: map[datamodel.IAMKind]RoleAssignmentData{
 			datamodel.KindAzure: {},
 		},
 	}
@@ -721,12 +724,15 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 				envVarName1: envVarValue1,
 				envVarName2: envVarValue2,
 			},
-			Volumes: map[string]datamodel.VolumeClassification{
-				tempVolName: datamodel.EphemeralVolume{
-					Volume: datamodel.Volume{
-						MountPath: tempVolMountPath,
+			Volumes: map[string]datamodel.VolumeProperties{
+				tempVolName: datamodel.VolumeProperties{
+					Kind: datamodel.Ephemeral,
+					Ephemeral: &datamodel.EphemeralVolume{
+						VolumeBase: datamodel.VolumeBase{
+							MountPath: tempVolMountPath,
+						},
+						ManagedStore: datamodel.ManagedStoreMemory,
 					},
-					ManagedStore: datamodel.ManagedStoreMemory,
 				},
 			},
 		},
@@ -789,12 +795,15 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Volumes: map[string]datamodel.VolumeClassification{
-				tempVolName: datamodel.PersistentVolume{
-					Volume: datamodel.Volume{
-						MountPath: tempVolMountPath,
+			Volumes: map[string]datamodel.VolumeProperties{
+				tempVolName: datamodel.VolumeProperties{
+					Kind: datamodel.Persistent,
+					Persistent: &datamodel.PersistentVolume{
+						VolumeBase: datamodel.VolumeBase{
+							MountPath: tempVolMountPath,
+						},
+						Source: testResourceID,
 					},
-					Source: testResourceID,
 				},
 			},
 		},
@@ -843,12 +852,15 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			Volumes: map[string]datamodel.VolumeClassification{
-				tempVolName: datamodel.PersistentVolume{
-					Volume: datamodel.Volume{
-						MountPath: tempVolMountPath,
+			Volumes: map[string]datamodel.VolumeProperties{
+				tempVolName: datamodel.VolumeProperties{
+					Kind: datamodel.Persistent,
+					Persistent: &datamodel.PersistentVolume{
+						VolumeBase: datamodel.VolumeBase{
+							MountPath: tempVolMountPath,
+						},
+						Source: testResourceID,
 					},
-					Source: testResourceID,
 				},
 			},
 		},
@@ -863,12 +875,12 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 				"resource": testResourceID,
 				"secrets": map[string]datamodel.SecretObjectProperties{
 					"mysecret": {
-						Name: to.StringPtr("secret1"),
+						Name: "secret1",
 					},
 				},
 				"keys": map[string]datamodel.KeyObjectProperties{
 					"mykey": {
-						Name: to.StringPtr("key1"),
+						Name: "key1",
 					},
 				},
 			},
@@ -943,14 +955,17 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 				envVarName1: envVarValue1,
 				envVarName2: envVarValue2,
 			},
-			ReadinessProbe: &datamodel.HTTPGetHealthProbeProperties{
-				Path:          "/healthz",
-				ContainerPort: 8080,
-				Headers:       map[string]string{"header1": "value1"},
-				HealthProbeProperties: datamodel.HealthProbeProperties{
-					InitialDelaySeconds: to.Float32Ptr(30),
-					FailureThreshold:    to.Float32Ptr(10),
-					PeriodSeconds:       to.Float32Ptr(2),
+			ReadinessProbe: datamodel.HealthProbeProperties{
+				Kind: datamodel.HTTPGetHealthProbe,
+				HTTPGet: &datamodel.HTTPGetHealthProbeProperties{
+					HealthProbeBase: datamodel.HealthProbeBase{
+						InitialDelaySeconds: to.Float32Ptr(30),
+						FailureThreshold:    to.Float32Ptr(10),
+						PeriodSeconds:       to.Float32Ptr(2),
+					},
+					Path:          "/healthz",
+					ContainerPort: 8080,
+					Headers:       map[string]string{"header1": "value1"},
 				},
 			},
 		},
@@ -1015,12 +1030,15 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 				envVarName1: envVarValue1,
 				envVarName2: envVarValue2,
 			},
-			ReadinessProbe: &datamodel.TCPHealthProbeProperties{
-				ContainerPort: 8080,
-				HealthProbeProperties: datamodel.HealthProbeProperties{
-					InitialDelaySeconds: to.Float32Ptr(30),
-					FailureThreshold:    to.Float32Ptr(10),
-					PeriodSeconds:       to.Float32Ptr(2),
+			ReadinessProbe: datamodel.HealthProbeProperties{
+				Kind: datamodel.TCPHealthProbe,
+				TCP: &datamodel.TCPHealthProbeProperties{
+					HealthProbeBase: datamodel.HealthProbeBase{
+						InitialDelaySeconds: to.Float32Ptr(30),
+						FailureThreshold:    to.Float32Ptr(10),
+						PeriodSeconds:       to.Float32Ptr(2),
+					},
+					ContainerPort: 8080,
 				},
 			},
 		},
@@ -1078,12 +1096,15 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 				envVarName1: envVarValue1,
 				envVarName2: envVarValue2,
 			},
-			LivenessProbe: &datamodel.ExecHealthProbeProperties{
-				Command: "a b c",
-				HealthProbeProperties: datamodel.HealthProbeProperties{
-					InitialDelaySeconds: to.Float32Ptr(30),
-					FailureThreshold:    to.Float32Ptr(10),
-					PeriodSeconds:       to.Float32Ptr(2),
+			LivenessProbe: datamodel.HealthProbeProperties{
+				Kind: datamodel.ExecHealthProbe,
+				Exec: &datamodel.ExecHealthProbeProperties{
+					HealthProbeBase: datamodel.HealthProbeBase{
+						InitialDelaySeconds: to.Float32Ptr(30),
+						FailureThreshold:    to.Float32Ptr(10),
+						PeriodSeconds:       to.Float32Ptr(2),
+					},
+					Command: "a b c",
 				},
 			},
 		},
@@ -1137,8 +1158,11 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Container: datamodel.Container{
 			Image: "someimage:latest",
-			LivenessProbe: &datamodel.ExecHealthProbeProperties{
-				Command: "a b c",
+			LivenessProbe: datamodel.HealthProbeProperties{
+				Kind: datamodel.ExecHealthProbe,
+				Exec: &datamodel.ExecHealthProbeProperties{
+					Command: "a b c",
+				},
 			},
 		},
 	}

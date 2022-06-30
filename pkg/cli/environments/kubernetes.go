@@ -22,19 +22,7 @@ import (
 
 // KubernetesEnvironment represents a Kubernetes Radius environment.
 type KubernetesEnvironment struct {
-	Name                     string `mapstructure:"name" validate:"required"`
-	Kind                     string `mapstructure:"kind" validate:"required"`
-	Context                  string `mapstructure:"context" validate:"required"`
-	Namespace                string `mapstructure:"namespace" validate:"required"`
-	DefaultApplication       string `mapstructure:"defaultapplication,omitempty"`
-	RadiusRPLocalURL         string `mapstructure:"radiusrplocalurl,omitempty"`
-	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
-	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
-	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
-	UCPResourceGroupName     string `mapstructure:"ucpresourcegroupname,omitempty"`
-
-	// We tolerate and allow extra fields - this helps with forwards compat.
-	Properties map[string]interface{} `mapstructure:",remain"`
+	RadiusEnvironment `mapstructure:",squash"`
 }
 
 func (e *KubernetesEnvironment) GetName() string {
@@ -76,7 +64,7 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 	return s.RoundTripper.RoundTrip(request)
 }
 
-func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+func (e *KubernetesEnvironment) CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
 
 	if err != nil {
@@ -102,7 +90,32 @@ func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	}, nil
 }
 
-func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
+func (e *KubernetesEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(e.DeploymentEngineLocalURL, e.UCPLocalURL, e.Context, e.EnableUCP)
+
+	if err != nil {
+		return nil, err
+	}
+
+	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
+
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
+
+	dc.Sender = &sender{RoundTripper: roundTripper}
+
+	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
+	op.PollingDelay = 5 * time.Second
+	op.Sender = &sender{RoundTripper: roundTripper}
+	return &azure.ResouceDeploymentClient{
+		Client:           dc,
+		OperationsClient: op,
+		ResourceGroup:    e.UCPResourceGroupName,
+		EnableUCP:        e.EnableUCP,
+	}, nil
+}
+
+func (e *KubernetesEnvironment) CreateLegacyDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
 	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
@@ -112,7 +125,7 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +140,32 @@ func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	}, nil
 }
 
+func (e *KubernetesEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
+	k8sClient, config, err := kubernetes.CreateTypedClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
+	client, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
+	if err != nil {
+		return nil, err
+	}
+
+	return &azure.ARMDiagnosticsClient{
+		K8sTypedClient:   k8sClient,
+		RestConfig:       config,
+		K8sRuntimeClient: client,
+		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.Namespace),
+		ResourceGroup:    e.UCPResourceGroupName,
+	}, nil
+}
+
 func (e *KubernetesEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -142,14 +179,16 @@ func (e *KubernetesEnvironment) CreateLegacyManagementClient(ctx context.Context
 }
 
 func (e *KubernetesEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
 
+	//TODO: add support to rad env init to write resourcegroup to config.yaml as scope
+	// and use that as RootScope value
 	return &ucp.ARMApplicationsManagementClient{
 		EnvironmentName: e.Name,
 		Connection:      connection,
-		RootScope:       e.Namespace, // Temporarily set to namespace before rootScope is generated in kubernetes environment
+		RootScope:       "planes/radius/local/ResourceGroups/" + e.UCPResourceGroupName,
 	}, nil
 }

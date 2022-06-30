@@ -29,7 +29,7 @@ func TestListMongoDatabasesRun_20220315PrivatePreview(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, mongoDataModel, expectedOutput := getTestModels20220315privatepreview()
+	_, mongoDataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 
 	t.Run("empty list", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -45,7 +45,7 @@ func TestListMongoDatabasesRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListMongoDatabases(mStorageClient, nil)
+		ctl, err := NewListMongoDatabases(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -108,7 +108,7 @@ func TestListMongoDatabasesRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListMongoDatabases(mStorageClient, nil)
+			ctl, err := NewListMongoDatabases(mStorageClient, nil, nil)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

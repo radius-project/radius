@@ -15,26 +15,27 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*GetMongoDatabase)(nil)
 
-// GetMongoDatabase is the controller implementation to get the mongoDatabse conenctor resource.
+// GetMongoDatabase is the controller implementation to get the mongoDatabase conenctor resource.
 type GetMongoDatabase struct {
 	ctrl.BaseController
 }
 
 // NewGetMongoDatabase creates a new instance of GetMongoDatabase.
-func NewGetMongoDatabase(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &GetMongoDatabase{ctrl.NewBaseController(ds, sm)}, nil
+func NewGetMongoDatabase(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &GetMongoDatabase{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 func (mongo *GetMongoDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.MongoDatabase{}
+	existingResource := &datamodel.MongoDatabaseResponse{}
 	_, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
@@ -43,6 +44,6 @@ func (mongo *GetMongoDatabase) Run(ctx context.Context, req *http.Request) (rest
 		return nil, err
 	}
 
-	versioned, _ := converter.MongoDatabaseDataModelToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := converter.MongoDatabaseDataModelToVersioned(existingResource, serviceCtx.APIVersion, false)
 	return rest.NewOKResponse(versioned), nil
 }

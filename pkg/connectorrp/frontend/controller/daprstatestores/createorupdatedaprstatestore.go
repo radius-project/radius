@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -28,8 +29,8 @@ type CreateOrUpdateDaprStateStore struct {
 }
 
 // NewCreateOrUpdateDaprStateStore creates a new instance of CreateOrUpdateDaprStateStore.
-func NewCreateOrUpdateDaprStateStore(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateDaprStateStore{ctrl.NewBaseController(ds, sm)}, nil
+func NewCreateOrUpdateDaprStateStore(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &CreateOrUpdateDaprStateStore{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run executes CreateOrUpdateDaprStateStore operation.
@@ -93,28 +94,6 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Validate(ctx context.Context
 
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
-	daprStateStoreProperties := dm.Properties.GetDaprStateStoreProperties()
-	daprStateStoreProperties.ProvisioningState = v1.ProvisioningStateSucceeded
-	switch v := dm.Properties.(type) {
-	case *datamodel.DaprStateStoreAzureTableStorageResourceProperties:
-		dm.Properties = &datamodel.DaprStateStoreAzureTableStorageResourceProperties{
-			DaprStateStoreProperties: daprStateStoreProperties,
-			Resource:                 v.Resource,
-		}
-	case *datamodel.DaprStateStoreSQLServerResourceProperties:
-		dm.Properties = &datamodel.DaprStateStoreSQLServerResourceProperties{
-			DaprStateStoreProperties: daprStateStoreProperties,
-			Resource:                 v.Resource,
-		}
-	case *datamodel.DaprStateStoreGenericResourceProperties:
-		dm.Properties = &datamodel.DaprStateStoreGenericResourceProperties{
-			DaprStateStoreProperties: daprStateStoreProperties,
-			Type:                     v.Type,
-			Version:                  v.Version,
-			Metadata:                 v.Metadata,
-		}
-	default:
-		dm.Properties = daprStateStoreProperties
-	}
+	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 	return dm, nil
 }

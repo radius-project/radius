@@ -23,6 +23,10 @@ func (e *GenericEnvironment) GetKind() string {
 	return e.Kind
 }
 
+func (e *GenericEnvironment) GetEnableUCP() bool {
+	return false
+}
+
 func (e *GenericEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }

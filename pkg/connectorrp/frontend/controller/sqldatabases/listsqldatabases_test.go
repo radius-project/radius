@@ -45,7 +45,7 @@ func TestListSqlDatabasesRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListSqlDatabases(mStorageClient, nil)
+		ctl, err := NewListSqlDatabases(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -108,7 +108,7 @@ func TestListSqlDatabasesRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListSqlDatabases(mStorageClient, nil)
+			ctl, err := NewListSqlDatabases(mStorageClient, nil, nil)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

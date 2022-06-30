@@ -30,22 +30,10 @@ func RequireAzureCloud(e Environment) (*AzureCloudEnvironment, error) {
 
 // AzureCloudEnvironment represents an Azure Cloud Radius environment.
 type AzureCloudEnvironment struct {
-	Name                     string `mapstructure:"name" validate:"required"`
-	Kind                     string `mapstructure:"kind" validate:"required"`
-	SubscriptionID           string `mapstructure:"subscriptionid" validate:"required"`
-	ResourceGroup            string `mapstructure:"resourcegroup" validate:"required"`
-	ClusterName              string `mapstructure:"clustername" validate:"required"`
-	DefaultApplication       string `mapstructure:"defaultapplication" yaml:",omitempty"`
-	Context                  string `mapstructure:"context" validate:"required"`
-	Namespace                string `mapstructure:"namespace" validate:"required"`
-	RadiusRPLocalURL         string `mapstructure:"radiusrplocalurl,omitempty"`
-	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
-	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
-	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
-	UCPResourceGroupName     string `mapstructure:"ucpresourcegroupname,omitempty"`
-
-	// We tolerate and allow extra fields - this helps with forwards compat.
-	Properties map[string]interface{} `mapstructure:",remain" yaml:",omitempty"`
+	RadiusEnvironment `mapstructure:",squash"`
+	ClusterName       string `mapstructure:"clustername" validate:"required"`
+	SubscriptionID    string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup     string `mapstructure:"resourcegroup" validate:"required"`
 }
 
 func (e *AzureCloudEnvironment) GetName() string {
@@ -54,6 +42,10 @@ func (e *AzureCloudEnvironment) GetName() string {
 
 func (e *AzureCloudEnvironment) GetKind() string {
 	return e.Kind
+}
+
+func (e *AzureCloudEnvironment) GetEnableUCP() bool {
+	return e.EnableUCP
 }
 
 func (e *AzureCloudEnvironment) GetDefaultApplication() string {
@@ -78,7 +70,7 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 	return url
 }
 
-func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+func (e *AzureCloudEnvironment) CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		e.DeploymentEngineLocalURL,
 		e.UCPLocalURL,
@@ -127,7 +119,56 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	}, nil
 }
 
-func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
+func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
+		e.DeploymentEngineLocalURL,
+		e.UCPLocalURL,
+		e.Context,
+		e.EnableUCP,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := armauth.GetArmAuthorizer()
+	if err != nil {
+		return nil, err
+	}
+
+	tags := map[string]*string{}
+
+	tags["azureSubscriptionID"] = &e.SubscriptionID
+	tags["azureResourceGroup"] = &e.ResourceGroup
+
+	rgClient := azclients.NewGroupsClient(e.SubscriptionID, auth)
+	resp, err := rgClient.Get(ctx, e.ResourceGroup)
+	if err != nil {
+		return nil, err
+	}
+	tags["azureLocation"] = resp.Location
+
+	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
+
+	// Poll faster than the default, many deployments are quick
+	dc.PollingDelay = 5 * time.Second
+
+	dc.Sender = &sender{RoundTripper: roundTripper}
+
+	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
+	op.PollingDelay = 5 * time.Second
+	op.Sender = &sender{RoundTripper: roundTripper}
+
+	return &azure.ResouceDeploymentClient{
+		Client:           dc,
+		OperationsClient: op,
+		SubscriptionID:   e.SubscriptionID,
+		ResourceGroup:    e.UCPResourceGroupName,
+		Tags:             tags,
+		EnableUCP:        e.EnableUCP,
+	}, nil
+}
+
+func (e *AzureCloudEnvironment) CreateLegacyDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
 	k8sTypedClient, config, err := kubernetes.CreateTypedClient(e.Context)
 	if err != nil {
 		return nil, err
@@ -138,7 +179,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -153,8 +194,34 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	}, nil
 }
 
+func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
+	k8sTypedClient, config, err := kubernetes.CreateTypedClient(e.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	k8sRuntimeclient, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
+	if err != nil {
+		return nil, err
+	}
+
+	return &azure.ARMDiagnosticsClient{
+		K8sTypedClient:   k8sTypedClient,
+		RestConfig:       config,
+		K8sRuntimeClient: k8sRuntimeclient,
+		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
+		ResourceGroup:    e.UCPResourceGroupName,
+		SubscriptionID:   e.SubscriptionID,
+	}, nil
+}
+
 func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +235,7 @@ func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context
 }
 
 func (e *AzureCloudEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL, e.EnableUCP)
 	if err != nil {
 		return nil, err
 	}

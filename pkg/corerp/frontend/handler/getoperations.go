@@ -13,6 +13,7 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -26,8 +27,8 @@ type GetOperations struct {
 }
 
 // NewGetOperations creates a new GetOperations.
-func NewGetOperations(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &GetOperations{ctrl.NewBaseController(ds, sm)}, nil
+func NewGetOperations(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &GetOperations{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run returns the list of available operations/permission for the resource provider at tenant level.
@@ -176,7 +177,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
-			// TODO: add CREATE, UPDATE and DELETE operations for gateway resource after async implementation
 			&v1.Operation{
 				Name: "Applications.Core/gateways/read",
 				Display: &v1.OperationDisplayProperties{
@@ -184,6 +184,26 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    "gateways",
 					Operation:   "List gateways",
 					Description: "Get the list of gateways.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/gateways/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "gateways",
+					Operation:   "Create/Update gateway",
+					Description: "Create or Updateg a gateway.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/gateways/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "gateways",
+					Operation:   "delete gateway",
+					Description: "Delete a gateway.",
 				},
 				IsDataAction: false,
 			},

@@ -15,8 +15,10 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -34,8 +36,8 @@ type CreateOrUpdateContainer struct {
 }
 
 // NewCreateOrUpdateContainer creates a new CreateOrUpdateContainer.
-func NewCreateOrUpdateContainer(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateContainer{ctrl.NewBaseController(ds, sm)}, nil
+func NewCreateOrUpdateContainer(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &CreateOrUpdateContainer{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run executes CreateOrUpdateContainer operation.
@@ -63,7 +65,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	if exists && !existingResource.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(OngoingAsyncOperationOnResourceMessage), nil
+		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)

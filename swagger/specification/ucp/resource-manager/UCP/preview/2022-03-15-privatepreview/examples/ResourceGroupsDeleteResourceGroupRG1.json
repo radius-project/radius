@@ -1,0 +1,10 @@
+{
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourcegroups/rg1",
+    "resourceGroupName": "rg1"
+  },
+  "responses": {
+    "200": {},
+    "204": {}
+  }
+}

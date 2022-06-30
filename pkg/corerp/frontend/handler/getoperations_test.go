@@ -19,7 +19,7 @@ import (
 
 func TestRunWith20220315PrivatePreview(t *testing.T) {
 	// arrange
-	op, err := NewGetOperations(nil, nil)
+	op, err := NewGetOperations(nil, nil, nil)
 	require.NoError(t, err)
 	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
 		APIVersion: v20220315privatepreview.Version,
@@ -34,7 +34,7 @@ func TestRunWith20220315PrivatePreview(t *testing.T) {
 	case *rest.OKResponse:
 		pagination, ok := v.Body.(*v1.PaginatedList)
 		require.True(t, ok)
-		require.Equal(t, 17, len(pagination.Value))
+		require.Equal(t, 19, len(pagination.Value))
 	default:
 		require.Truef(t, false, "should not return error")
 	}
@@ -42,7 +42,7 @@ func TestRunWith20220315PrivatePreview(t *testing.T) {
 
 func TestRunWithUnsupportedAPIVersion(t *testing.T) {
 	// arrange
-	op, err := NewGetOperations(nil, nil)
+	op, err := NewGetOperations(nil, nil, nil)
 	require.NoError(t, err)
 	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
 		APIVersion: "unknownversion",

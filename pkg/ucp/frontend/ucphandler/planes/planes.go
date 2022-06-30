@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	planesdb "github.com/project-radius/radius/pkg/ucp/db/planes"
+	resourcegroupsdb "github.com/project-radius/radius/pkg/ucp/db/resourcegroups"
 	"github.com/project-radius/radius/pkg/ucp/planes"
 	"github.com/project-radius/radius/pkg/ucp/proxy"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -71,6 +72,17 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	}
 
 	// At least one provider needs to be configured
+	if plane.Properties.Kind == rest.PlaneKindUCPNative {
+		if plane.Properties.ResourceProviders == nil || len(plane.Properties.ResourceProviders) == 0 {
+			err = fmt.Errorf("At least one resource provider must be configured for UCP native plane: %s", plane.Name)
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
+	} else {
+		if plane.Properties.URL == "" {
+			err = fmt.Errorf("URL must be specified for plane: %s", plane.Name)
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
+	}
 
 	_, err = planesdb.GetByID(ctx, db, ID)
 	if err != nil {
@@ -169,6 +181,26 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		return rest.InternalServerError(err), err
 	}
 
+	if plane.Properties.Kind == rest.PlaneKindUCPNative {
+		// Check if the resource group exists
+		id, err := resources.Parse(incomingURL.Path)
+		if err != nil {
+			return rest.InternalServerError(err), err
+		}
+		rgPath := id.RootScope()
+		rgID, err := resources.Parse(rgPath)
+		if err != nil {
+			return nil, err
+		}
+		_, err = resourcegroupsdb.GetByID(ctx, db, rgID)
+		if err != nil {
+			if errors.Is(err, &store.ErrNotFound{}) {
+				return rest.NewNotFoundResponse(rgID.String()), err
+			}
+			return nil, err
+		}
+	}
+
 	// Get the resource provider
 	resourceID, err := resources.Parse(incomingURL.Path)
 	if err != nil {
@@ -185,11 +217,17 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	// We need to preserve the case while storing data in DB and therefore iterating for case
 	// insensitive comparisons
 	var proxyURL string
-	for k, v := range plane.Properties.ResourceProviders {
-		if strings.EqualFold(k, resourceID.ProviderNamespace()) {
-			proxyURL = v
-			break
+	if plane.Properties.Kind == rest.PlaneKindUCPNative {
+		for k, v := range plane.Properties.ResourceProviders {
+			if strings.EqualFold(k, resourceID.ProviderNamespace()) {
+				proxyURL = v
+				break
+			}
 		}
+	} else {
+		// For a non UCP-native plane, the configuration should have a URL to which
+		// all the requests will be forwarded
+		proxyURL = plane.Properties.URL
 	}
 
 	downstream, err := url.Parse(proxyURL)
@@ -198,8 +236,9 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	options := proxy.ReverseProxyOptions{
-		RoundTripper: http.DefaultTransport,
-		ProxyAddress: ucp.options.Address,
+		RoundTripper:     http.DefaultTransport,
+		ProxyAddress:     ucp.options.Address,
+		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
 	}
 
 	// As per https://github.com/golang/go/issues/28940#issuecomment-441749380, the way to check
@@ -211,6 +250,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
+		PlaneKind:  plane.Properties.Kind,
 		PlaneID:    planePath,
 		HTTPScheme: httpScheme,
 		// The Host field in the request that the client makes to UCP contains the UCP Host address
@@ -218,10 +258,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		UCPHost: r.Host + ucp.options.BasePath,
 	}
 
-	// Remove the /planes/<plane-type>/<plane-name> prefix
-	segments := strings.Split(incomingURL.Path, "/")
-	p := strings.Join(segments[4:], "/")
-	url, err := url.Parse(p)
+	url, err := url.Parse(incomingURL.Path)
 	if err != nil {
 		return nil, err
 	}

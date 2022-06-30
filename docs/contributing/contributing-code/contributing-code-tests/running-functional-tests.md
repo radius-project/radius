@@ -25,13 +25,13 @@ For each PR we run the following set of steps:
 
 ## Configuration
 
-These tests use your local Azure credentials, and Radius environment for testing. In a GitHub workflow, our automation makes the CI environment resemble a dev scenario.
+These tests use your local Kubernetes credentials, and Radius environment for testing. In a GitHub workflow, our automation makes the CI environment resemble a dev scenario.
 
 The tests use our product functionality (the Radius config file) to configure the environment.
 
 ## Running the tests locally
 
-1. Create an environment (`rad env init azure -i`)
+1. Create an environment
 2. Place `rad` on your path
 3. Make sure `rad-bicep` is downloaded (`rad bicep download`)
 4. Run:

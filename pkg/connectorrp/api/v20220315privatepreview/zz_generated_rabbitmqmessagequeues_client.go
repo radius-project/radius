@@ -188,7 +188,7 @@ func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context,
 // getHandleResponse handles the Get response.
 func (client *RabbitMQMessageQueuesClient) getHandleResponse(resp *http.Response) (RabbitMQMessageQueuesGetResponse, error) {
 	result := RabbitMQMessageQueuesGetResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResponseResource); err != nil {
 		return RabbitMQMessageQueuesGetResponse{}, err
 	}
 	return result, nil

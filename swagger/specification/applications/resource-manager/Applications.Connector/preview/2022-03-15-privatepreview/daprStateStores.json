@@ -341,6 +341,7 @@
         "discriminator": "kind",
         "properties": {
           "provisioningState": {
+            "readOnly": true,
             "$ref": "global.json#/definitions/ProvisioningState",
             "description": "Provisioning state of the daprStateStore connector at the time the operation was called"
           },
@@ -354,7 +355,8 @@
           },
           "kind": {
             "description": "The Dapr StateStore kind",
-            "type": "string"
+            "type": "string",
+            "enum": ["state.sqlserver","state.azure.tablestorage","generic"]
           }
         },
         "required": [

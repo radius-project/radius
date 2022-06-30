@@ -13,6 +13,8 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	"github.com/project-radius/radius/pkg/validator"
+	"github.com/project-radius/radius/swagger"
 
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
@@ -28,7 +30,11 @@ const (
 func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, router *mux.Router, pathBase string, isARM bool) error {
 	if isARM {
 		pathBase += "/subscriptions/{subscriptionID}"
+	} else {
+		pathBase += "/planes/radius/{planeName}"
 	}
+
+	resourceGroupPath := "/resourcegroups/{resourceGroupName}"
 
 	// Configure the default ARM handlers.
 	err := server.ConfigureDefaultHandlers(ctx, sp, sm, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
@@ -36,27 +42,30 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 		return err
 	}
 
-	envRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/environments").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	envResourceRouter := envRTSubrouter.PathPrefix("/{environment}").Subrouter()
+	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath)
+	if err != nil {
+		return err
+	}
 
-	hrtSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/httproutes").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	hrtResourceRouter := hrtSubrouter.PathPrefix("/{httproute}").Subrouter()
+	rootScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
+	rootScopeRouter.Use(validator.APIValidator(specLoader))
 
-	ctrRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/containers").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	ctrResourceRouter := ctrRTSubrouter.PathPrefix("/{container}").Subrouter()
+	envRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/environments").Subrouter()
+	envResourceRouter := envRTSubrouter.Path("/{environmentName}").Subrouter()
+
+	hrtSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/httproutes").Subrouter()
+	hrtResourceRouter := hrtSubrouter.Path("/{httpRouteName}").Subrouter()
+
+	ctrRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/containers").Subrouter()
+	ctrResourceRouter := ctrRTSubrouter.Path("/{containerName}").Subrouter()
 
 	// Adds application resource type routes
-	appRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/applications").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	appResourceRouter := appRTSubrouter.PathPrefix("/{application}").Subrouter()
+	appRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/applications").Subrouter()
+	appResourceRouter := appRTSubrouter.Path("/{applicationName}").Subrouter()
 
 	// Adds gateway resource type routes
-	gtwyRTSubrouter := router.NewRoute().PathPrefix(pathBase+"/resourcegroups/{resourceGroup}/providers/applications.core/gateways").
-		Queries(server.APIVersionParam, "{"+server.APIVersionParam+"}").Subrouter()
-	gtwyResourceRouter := gtwyRTSubrouter.PathPrefix("/{application}").Subrouter()
+	gtwyRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/gateways").Subrouter()
+	gtwyResourceRouter := gtwyRTSubrouter.Path("/{gatewayName}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{
 		// Environments resource handler registration.
@@ -183,7 +192,6 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			HandlerFactory: app_ctrl.NewDeleteApplication,
 		},
 		// Gateway resource handler registration.
-		// TODO: Add async registration for createorupdate and delete handler
 		{
 			ParentRouter:   gtwyRTSubrouter,
 			ResourceType:   gtwy_ctrl.ResourceTypeName,
@@ -195,6 +203,24 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 			ResourceType:   gtwy_ctrl.ResourceTypeName,
 			Method:         v1.OperationGet,
 			HandlerFactory: gtwy_ctrl.NewGetGateway,
+		},
+		{
+			ParentRouter:   gtwyResourceRouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationPatch,
+			HandlerFactory: gtwy_ctrl.NewCreateOrUpdateGateway,
+		},
+		{
+			ParentRouter:   gtwyResourceRouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationPut,
+			HandlerFactory: gtwy_ctrl.NewCreateOrUpdateGateway,
+		},
+		{
+			ParentRouter:   gtwyResourceRouter,
+			ResourceType:   gtwy_ctrl.ResourceTypeName,
+			Method:         v1.OperationDelete,
+			HandlerFactory: gtwy_ctrl.NewDeleteGateway,
 		},
 	}
 	for _, h := range handlerOptions {

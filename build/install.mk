@@ -5,7 +5,7 @@
 
 ##@ Install
 
-RAD_LOCATION := $(shell which rad)
+RAD_LOCATION := /usr/local/bin/rad
 
 .PHONY: install
 install: build-binaries ## Installs a local build for development

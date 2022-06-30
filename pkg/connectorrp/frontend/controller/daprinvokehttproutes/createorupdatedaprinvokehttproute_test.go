@@ -70,7 +70,7 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)
