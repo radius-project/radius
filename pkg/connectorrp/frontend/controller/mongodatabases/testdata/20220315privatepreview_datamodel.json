@@ -13,13 +13,29 @@
     },
     "properties": {
         "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
+          "outputResources": [{
+            "AzureCosmosAccount": {
+              "LocalID": "AzureCosmosAccount",
+              "Dependencies": null,
+              "Deployed": false,
               "ResourceType": {
-                "Type": "azure.cosmosdb.mongo",
-                "Provider": "azure"
+                "type": "azure.cosmosdb.account",
+                "provider": "azure"
+              },
+              "Resource": null,
+              "Identity": {
+                "data": null,
+                "resourceType": null
+              },
+              "Status": {
+                "HealthErrorDetails": "",
+                "HealthState": "",
+                "ProvisioningErrorDetails": "",
+                "ProvisioningState": "",
+                "Replicas": null
               }
-            }]
+            }
+          }]
         },
         "provisioningState": "Succeeded",
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",

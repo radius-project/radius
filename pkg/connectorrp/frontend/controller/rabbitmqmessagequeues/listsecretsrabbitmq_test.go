@@ -42,7 +42,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewListSecretsRabbitMQMessageQueue(mStorageClient, nil)
+		ctl, err := NewListSecretsRabbitMQMessageQueue(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -66,7 +66,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListSecretsRabbitMQMessageQueue(mStorageClient, nil)
+		ctl, err := NewListSecretsRabbitMQMessageQueue(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -93,7 +93,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		ctl, err := NewListSecretsRabbitMQMessageQueue(mStorageClient, nil)
+		ctl, err := NewListSecretsRabbitMQMessageQueue(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, req)

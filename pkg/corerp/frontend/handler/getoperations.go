@@ -13,6 +13,7 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -26,8 +27,8 @@ type GetOperations struct {
 }
 
 // NewGetOperations creates a new GetOperations.
-func NewGetOperations(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &GetOperations{ctrl.NewBaseController(ds, sm)}, nil
+func NewGetOperations(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &GetOperations{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run returns the list of available operations/permission for the resource provider at tenant level.

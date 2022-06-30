@@ -15,6 +15,7 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -33,8 +34,8 @@ type DeleteHTTPRoute struct {
 }
 
 // NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
-func NewDeleteHTTPRoute(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &DeleteHTTPRoute{ctrl.NewBaseController(ds, sm)}, nil
+func NewDeleteHTTPRoute(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &DeleteHTTPRoute{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run executes DeleteHTTPRoute operation

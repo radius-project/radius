@@ -40,7 +40,7 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 		req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
 
 		// arrange
-		op, _ := NewCreateOrUpdateSubscription(nil, nil)
+		op, _ := NewCreateOrUpdateSubscription(nil, nil, nil)
 		ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
 			APIVersion: v1.SubscriptionAPIVersion,
 		})
@@ -60,7 +60,7 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 
 func TestSubscriptionsRunWithUnsupportedAPIVersion(t *testing.T) {
 	// arrange
-	op, _ := NewCreateOrUpdateSubscription(nil, nil)
+	op, _ := NewCreateOrUpdateSubscription(nil, nil, nil)
 	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
 		APIVersion: "unknownversion",
 	})
