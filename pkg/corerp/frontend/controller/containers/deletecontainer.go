@@ -15,6 +15,7 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -34,8 +35,8 @@ type DeleteContainer struct {
 }
 
 // NewDeleteContainer creates a new DeleteContainer.
-func NewDeleteContainer(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &DeleteContainer{ctrl.NewBaseController(ds, sm)}, nil
+func NewDeleteContainer(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &DeleteContainer{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Response, error) {

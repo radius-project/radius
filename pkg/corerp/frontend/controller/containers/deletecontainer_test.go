@@ -83,7 +83,7 @@ func TestDeleteContainerRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			ctl, err := NewDeleteContainer(mds, msm)
+			ctl, err := NewDeleteContainer(mds, msm, nil)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)

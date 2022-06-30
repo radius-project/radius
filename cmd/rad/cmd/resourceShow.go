@@ -38,11 +38,7 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isUCPEnabled := false
-	if env.GetKind() == environments.KindKubernetes {
-		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
-	}
-	if isUCPEnabled {
+	if env.GetEnableUCP() {
 		err := showResourceUCP(cmd, args, env)
 		if err != nil {
 			return err
@@ -112,7 +108,7 @@ func showResourceUCP(cmd *cobra.Command, args []string, env environments.Environ
 	if err != nil {
 		return err
 	}
-	
+
 	resourceList, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType)
 	if err != nil {
 		return err

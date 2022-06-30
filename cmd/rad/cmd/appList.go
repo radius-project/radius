@@ -31,11 +31,7 @@ func listApplications(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isUCPEnabled := false
-	if env.GetKind() == environments.KindKubernetes {
-		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
-	}
-	if isUCPEnabled {
+	if env.GetEnableUCP() {
 		err := listApplicationsUCP(cmd, args, env)
 		if err != nil {
 			return err

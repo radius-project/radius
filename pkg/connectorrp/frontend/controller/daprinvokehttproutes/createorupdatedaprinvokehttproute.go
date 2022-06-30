@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -28,8 +29,8 @@ type CreateOrUpdateDaprInvokeHttpRoute struct {
 }
 
 // NewCreateOrUpdateDaprInvokeHttpRoute creates a new instance of CreateOrUpdateDaprInvokeHttpRoute.
-func NewCreateOrUpdateDaprInvokeHttpRoute(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateDaprInvokeHttpRoute{ctrl.NewBaseController(ds, sm)}, nil
+func NewCreateOrUpdateDaprInvokeHttpRoute(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &CreateOrUpdateDaprInvokeHttpRoute{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run executes CreateOrUpdateDaprInvokeHttpRoute operation.

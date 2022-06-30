@@ -5,10 +5,26 @@
     "properties": {
         "status": {
             "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "azure.cosmosdb.mongo",
-                "Provider": "azure"
+              "AzureCosmosAccount": {
+                "LocalID": "AzureCosmosAccount",
+                "Dependencies": null,
+                "Deployed": false,
+                "ResourceType": {
+                  "type": "azure.cosmosdb.account",
+                  "provider": "azure"
+                },
+                "Resource": null,
+                "Identity": {
+                  "data": null,
+                  "resourceType": null
+                },
+                "Status": {
+                  "HealthErrorDetails": "",
+                  "HealthState": "",
+                  "ProvisioningErrorDetails": "",
+                  "ProvisioningState": "",
+                  "Replicas": null
+                }
               }
             }]
         },

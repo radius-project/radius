@@ -92,7 +92,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 			return rest.NewBadRequestResponse(err.Error()), nil
 		}
 	}
-	plane, err := resourcegroupsdb.GetByID(ctx, db, resourceId)
+	rg, err := resourcegroupsdb.GetByID(ctx, db, resourceId)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			restResponse := rest.NewNotFoundResponse(path)
@@ -100,7 +100,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 		}
 		return nil, err
 	}
-	restResponse := rest.NewOKResponse(plane)
+	restResponse := rest.NewOKResponse(rg)
 	return restResponse, nil
 }
 

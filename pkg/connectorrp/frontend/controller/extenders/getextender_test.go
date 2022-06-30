@@ -49,7 +49,7 @@ func TestGetExtender_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewGetExtender(mds, msm)
+		ctl, err := NewGetExtender(mds, msm, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -75,7 +75,7 @@ func TestGetExtender_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewGetExtender(mds, msm)
+		ctl, err := NewGetExtender(mds, msm, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
