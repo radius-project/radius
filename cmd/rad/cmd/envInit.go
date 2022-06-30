@@ -213,12 +213,12 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
 		ucpRgName := fmt.Sprintf("%s-rg", environmentName)
 		env.Items[environmentName]["ucpresourcegroupname"] = ucpRgName
-		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName, "/plane/radius/local")
+		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName, "/planes/radius/local")
 		if err != nil {
 			return err
 		}
 
-		_, err = createUCPResourceGroup(contextName, ucpRgName, "/plane/deployments/local")
+		_, err = createUCPResourceGroup(contextName, ucpRgName, "/planes/deployments/local")
 		if err != nil {
 			return err
 		}
