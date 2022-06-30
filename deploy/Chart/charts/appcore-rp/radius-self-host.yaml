@@ -9,11 +9,15 @@ storageProvider:
   #
   provider: "apiserver"
   apiserver:
-    incluster: true 
+    incluster: true
     context: ''
     namespace: 'radius-system'
 queueProvider:
-  provider: inmemory
+  provider: "apiserver"
+  apiserver:
+    incluster: true
+    context: ''
+    namespace: 'radius-system'
 metricsProvider:
   prometheus:
     endpoint: "/metrics"
