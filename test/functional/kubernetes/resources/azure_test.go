@@ -26,7 +26,7 @@ import (
 type radiusOptions struct {
 	test.TestOptions
 	ARMAuthorizer autorest.Authorizer
-	Environment   *environments.RadiusEnvironment
+	Environment   environments.Environment
 }
 
 func NewK8sTestOptions(t *testing.T) radiusOptions {
@@ -39,13 +39,10 @@ func NewK8sTestOptions(t *testing.T) radiusOptions {
 	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
 
-	radiusEnv, ok := env.(*environments.RadiusEnvironment)
-	require.Truef(t, ok, "a standalone environment is required but the kind was '%v'", env.GetKind())
-
 	return radiusOptions{
 		TestOptions:   test.NewTestOptions(t),
 		ARMAuthorizer: auth,
-		Environment:   radiusEnv,
+		Environment:   env,
 	}
 }
 
@@ -55,6 +52,8 @@ func Test_Deploy_AzureResources(t *testing.T) {
 	params := fmt.Sprintf("storageAccountName=test%d", time.Now().Nanosecond())
 	opt := NewK8sTestOptions(t)
 
+	providers := opt.Environment.GetProviders()
+
 	test := kubernetes.NewApplicationTest(t, applicationName, []kubernetes.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, params),
@@ -62,8 +61,8 @@ func Test_Deploy_AzureResources(t *testing.T) {
 				validation.ValidateAzureResourcesCreated(ctx,
 					t,
 					opt.ARMAuthorizer,
-					opt.Environment.Providers.AzureProvider.SubscriptionID,
-					opt.Environment.Providers.AzureProvider.ResourceGroup,
+					providers.AzureProvider.SubscriptionID,
+					providers.AzureProvider.ResourceGroup,
 					applicationName,
 					validation.AzureResourceSet{
 						Resources: []validation.ExpectedResource{

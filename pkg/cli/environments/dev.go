@@ -58,6 +58,10 @@ func (e *LocalEnvironment) GetContainerRegistry() *Registry {
 	return e.Registry
 }
 
+func (e *LocalEnvironment) GetProviders() *Providers {
+	return e.Providers
+}
+
 func (e *LocalEnvironment) HasAzureProvider() bool {
 	return e.Providers != nil && e.Providers.AzureProvider != nil
 }

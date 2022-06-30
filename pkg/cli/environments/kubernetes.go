@@ -55,6 +55,10 @@ func (e *KubernetesEnvironment) GetStatusLink() string {
 	return ""
 }
 
+func (e *KubernetesEnvironment) GetProviders() *Providers {
+	return e.Providers
+}
+
 var _ autorest.Sender = (*sender)(nil)
 
 type sender struct {
