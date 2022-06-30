@@ -56,7 +56,8 @@ func Test_Deploy_AzureResources(t *testing.T) {
 
 	test := kubernetes.NewApplicationTest(t, applicationName, []kubernetes.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, params),
+			Executor:            step.NewDeployExecutor(template, params),
+			SkipOutputResources: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetes.ApplicationTest) {
 				validation.ValidateAzureResourcesCreated(ctx,
 					t,
