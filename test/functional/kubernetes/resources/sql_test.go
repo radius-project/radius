@@ -21,6 +21,7 @@ import (
 )
 
 func Test_MicrosoftSQL(t *testing.T) {
+	t.Skip("Skipping SQL test")
 	application := "kubernetes-resources-sql"
 	template := "testdata/kubernetes-resources-sql.bicep"
 

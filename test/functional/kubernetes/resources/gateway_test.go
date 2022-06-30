@@ -31,6 +31,7 @@ const (
 )
 
 func Test_Gateway(t *testing.T) {
+	t.Skip("Skipping gateway test")
 	template := "testdata/kubernetes-resources-gateway.bicep"
 	application := "kubernetes-resources-gateway"
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
