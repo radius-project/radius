@@ -10,7 +10,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	conv "github.com/project-radius/radius/pkg/armrpc/api/conv"
-	deployment "github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	renderers "github.com/project-radius/radius/pkg/corerp/renderers"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -39,10 +38,10 @@ func (m *MockDeploymentProcessor) EXPECT() *MockDeploymentProcessorMockRecorder 
 }
 
 // Deploy mocks base method.
-func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (deployment.DeploymentOutput, error) {
+func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (DeploymentOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2)
-	ret0, _ := ret[0].(deployment.DeploymentOutput)
+	ret0, _ := ret[0].(DeploymentOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

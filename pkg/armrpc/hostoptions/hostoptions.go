@@ -114,7 +114,7 @@ func getArm() (*armauth.ArmConfig, error) {
 	}
 
 	if arm != nil {
-		fmt.Println("Initializing RP with the provided ARM credentials")
+		fmt.Println("Initialized RP with the provided ARM credentials")
 	}
 
 	return arm, nil

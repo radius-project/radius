@@ -65,7 +65,7 @@ type ResourceDependency struct {
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
 	resourceID := id.Truncate()
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Rendering resource: %s, application: %s", resourceID.Name(), resourceID.FindScope(resource.ResourceTypeName())))
+	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
 	renderer, err := dp.getResourceRenderer(resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
