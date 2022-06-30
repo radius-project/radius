@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
+	"github.com/project-radius/radius/pkg/ucp/util"
 )
 
 var (
@@ -29,7 +30,7 @@ type QueueProvider struct {
 // New creates new QueueProvider instance.
 func New(name string, opts QueueProviderOptions) *QueueProvider {
 	return &QueueProvider{
-		name:        name,
+		name:        util.NormalizeStringToLower(name),
 		queueClient: nil,
 		options:     opts,
 	}

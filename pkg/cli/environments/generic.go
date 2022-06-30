@@ -42,3 +42,7 @@ func (e *GenericEnvironment) GetContainerRegistry() *Registry {
 func (e *GenericEnvironment) GetStatusLink() string {
 	return ""
 }
+
+func (e *GenericEnvironment) GetProviders() *Providers {
+	return nil
+}
