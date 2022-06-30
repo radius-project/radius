@@ -124,17 +124,7 @@ func TestClient(t *testing.T) {
 		msg, err := client2.Dequeue(ctx)
 
 		// Increase DequeueCount to mimic the situation when client1 updates message by the clock skew.
-		qm := &v1alpha1.QueueMessage{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      msg.ID,
-				Namespace: ns,
-				Labels: map[string]string{
-					LabelNextVisibleAt: int64toa(msg.NextVisibleAt.UnixNano()),
-				},
-			},
-			Spec: v1alpha1.QueueMessageSpec{DequeueCount: msg.DequeueCount},
-		}
-		_, err = client1.extendItem(ctx, qm, qm.Spec.DequeueCount, time.Now(), time.Duration(1)*time.Minute, true)
+		_, err = client1.extendItem(ctx, msg.ID, msg.DequeueCount, time.Now(), time.Duration(1)*time.Minute, true, true)
 		require.NoError(t, err)
 
 		err = client2.ExtendMessage(ctx, msg)
