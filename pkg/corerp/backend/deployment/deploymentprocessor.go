@@ -397,13 +397,11 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 	return ResourceDependency{}, err
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, outputResources []map[string]interface{}, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) ResourceDependency {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) ResourceDependency {
 	lst := []map[string]outputresource.OutputResource{}
 	for _, r := range outputResources {
 		mp := map[string]outputresource.OutputResource{}
-		for k, v := range r {
-			mp[k] = v.(outputresource.OutputResource)
-		}
+		mp[r.LocalID] = r
 		lst = append(lst, mp)
 	}
 

@@ -60,15 +60,7 @@ func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	}
 
 	// Update the resource with deployed outputResources
-	deployedOuputResources := deploymentOutput.DeployedOutputResources
-	var outputResources []map[string]interface{}
-	for _, deployedOutputResource := range deployedOuputResources {
-		outputResource := map[string]interface{}{
-			deployedOutputResource.LocalID: deployedOutputResource,
-		}
-		outputResources = append(outputResources, outputResource)
-	}
-	existingResource.Properties.BasicResourceProperties.Status.OutputResources = outputResources
+	existingResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.DeployedOutputResources
 	existingResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	existingResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
