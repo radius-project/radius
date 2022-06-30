@@ -28,7 +28,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 	// Leave RoleNames field empty if no default roles are supported for a connection kind.
 	//
 	// For a primer on how to read this data, see the KeyVault case.
-	roleAssignmentMap := map[datamodel.Kind]container.RoleAssignmentData{
+	roleAssignmentMap := map[datamodel.IAMKind]container.RoleAssignmentData{
 
 		// Example of how to read this data:
 		//
@@ -241,7 +241,7 @@ func checkForDuplicateRegistrations(radiusResources []RadiusResourceModel, outpu
 	for _, r := range radiusResources {
 		rendererRegistration[r.ResourceType]++
 		if rendererRegistration[r.ResourceType] > 1 {
-			return fmt.Errorf("Multiple resource renderers registered for resource type: %s", r.ResourceType)
+			return fmt.Errorf("multiple resource renderers registered for resource type: %s", r.ResourceType)
 		}
 	}
 
@@ -249,7 +249,7 @@ func checkForDuplicateRegistrations(radiusResources []RadiusResourceModel, outpu
 	for _, o := range outputResources {
 		outputResourceHandlerRegistration[o.ResourceType]++
 		if outputResourceHandlerRegistration[o.ResourceType] > 1 {
-			return fmt.Errorf("Multiple output resource handlers registered for resource type: %s", o.ResourceType)
+			return fmt.Errorf("multiple output resource handlers registered for resource type: %s", o.ResourceType)
 		}
 	}
 	return nil
