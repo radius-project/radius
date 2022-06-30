@@ -28,9 +28,7 @@ import (
 // HostOptions defines all of the settings that our RP's execution environment provides.
 type HostOptions struct {
 	// Config is the bootstrap configuration loaded from config file.
-	Config    *ProviderConfig
-	Arm       *armauth.ArmConfig
-	K8sConfig *rest.Config
+	Config *ProviderConfig
 
 	// DBClientFactory func(ctx context.Context) (*mongo.Database, error)
 
@@ -46,20 +44,8 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
-	arm, err := getArm()
-	if err != nil {
-		return HostOptions{}, err
-	}
-
-	k8s, err := getKubernetes()
-	if err != nil {
-		return HostOptions{}, err
-	}
-
 	return HostOptions{
-		Config:    conf,
-		Arm:       arm,
-		K8sConfig: k8s,
+		Config: conf,
 	}, nil
 }
 
