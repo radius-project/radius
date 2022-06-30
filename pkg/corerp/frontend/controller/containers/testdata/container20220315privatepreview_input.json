@@ -45,18 +45,6 @@
                 "initialDelaySeconds": 5,
                 "kind": "tcp"
             }
-        },
-        "provisioningState": "Updating",
-        "status": {
-            "outputResources": [
-                {
-                    "LocalID": "Deployment",
-                    "ResourceType": {
-                        "Provider": "azure",
-                        "Type": "aks"
-                    }
-                }
-            ]
         }
     }
 }

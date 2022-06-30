@@ -21,6 +21,13 @@
               "ResourceType": {
                 "Type": "Gateway",
                 "Provider": "kubernetes"
+              },
+              "Identity": {
+                "data": null,
+                "resourceType": {
+                  "Type": "httproutes",
+                  "Provider": "aks"
+                }
               }
             }]
         },

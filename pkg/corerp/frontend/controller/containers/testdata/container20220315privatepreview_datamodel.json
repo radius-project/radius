@@ -59,6 +59,13 @@
                     "ResourceType": {
                         "Provider": "azure",
                         "Type": "aks"
+                    },
+                    "Identity": {
+                      "data": null,
+                      "resourceType": {
+                        "Type": "aks",
+                        "Provider": "azure"
+                      }
                     }
                 }
             ]

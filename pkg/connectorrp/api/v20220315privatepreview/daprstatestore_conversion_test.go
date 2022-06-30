@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +29,6 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		// act
 		dm, err := versionedResource.ConvertTo()
 
-		resourceType := map[string]interface{}{"Provider": "kubernetes", "Type": "DaprStateStoreProvider"}
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.DaprStateStore)
@@ -46,16 +46,14 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		case datamodel.DaprStateStoreKindStateSqlServer:
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.DaprStateStoreSQLServer.Resource)
 			require.Equal(t, "state.sqlserver", string(convertedResource.Properties.Kind))
-			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 
 		case datamodel.DaprStateStoreKindGeneric:
 			require.Equal(t, "generic", string(convertedResource.Properties.Kind))
 			require.Equal(t, "state.zookeeper", convertedResource.Properties.DaprStateStoreGeneric.Type)
 			require.Equal(t, "v1", convertedResource.Properties.DaprStateStoreGeneric.Version)
 			require.Equal(t, "bar", convertedResource.Properties.DaprStateStoreGeneric.Metadata["foo"])
-			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		default:
 			assert.Fail(t, "Kind of DaprStateStore is specified.")
 		}
@@ -77,7 +75,6 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 		versionedResource := &DaprStateStoreResource{}
 		err = versionedResource.ConvertFrom(resource)
 
-		resourceType := map[string]interface{}{"Provider": "kubernetes", "Type": "DaprStateStoreProvider"}
 		// assert
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprStateStores/daprStateStore0", resource.ID)
@@ -89,8 +86,8 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 		case datamodel.DaprStateStoreKindAzureTableStorage:
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", resource.Properties.DaprStateStoreAzureTableStorage.Resource)
 			require.Equal(t, "state.azure.tablestorage", string(resource.Properties.Kind))
-			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().BasicResourceProperties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().BasicResourceProperties.Status.OutputResources[0]["Provider"])
 		case datamodel.DaprStateStoreKindStateSqlServer:
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.DaprStateStoreSQLServer.Resource)
 			require.Equal(t, "state.sqlserver", string(resource.Properties.Kind))
@@ -99,8 +96,8 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "state.zookeeper", resource.Properties.DaprStateStoreGeneric.Type)
 			require.Equal(t, "v1", resource.Properties.DaprStateStoreGeneric.Version)
 			require.Equal(t, "bar", resource.Properties.DaprStateStoreGeneric.Metadata["foo"])
-			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().BasicResourceProperties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().BasicResourceProperties.Status.OutputResources[0]["Provider"])
 		default:
 			assert.Fail(t, "Kind of DaprStateStore is specified.")
 		}

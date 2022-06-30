@@ -18,9 +18,11 @@
         "status": {
             "outputResources": [{
               "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "Gateway",
-                "Provider": "kubernetes"
+              "Provider": "kubernetes",
+              "Identity": {
+                "aksClusterName": "",
+                "name": "",
+                "namespace": ""
               }
             }]
         },

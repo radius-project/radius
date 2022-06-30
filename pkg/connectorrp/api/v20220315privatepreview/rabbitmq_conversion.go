@@ -31,11 +31,6 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
-					Status: v1.ResourceStatus{
-						OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
-					},
-				},
 				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 				Environment:       to.String(src.Properties.Environment),
 				Application:       to.String(src.Properties.Application),
@@ -61,11 +56,6 @@ func (src *RabbitMQMessageQueueResponseResource) ConvertTo() (conv.DataModelInte
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RabbitMQMessageQueueResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
-				Status: v1.ResourceStatus{
-					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
-				},
-			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -95,7 +85,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 		RabbitMQMessageQueueResponseProperties: RabbitMQMessageQueueResponseProperties{
 			BasicResourceProperties: BasicResourceProperties{
 				Status: &ResourceStatus{
-					OutputResources: GetOutputResourcesForDatamodel(&rabbitmq.Properties.Status),
+					OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 				},
 			},
 			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
@@ -129,7 +119,7 @@ func (dst *RabbitMQMessageQueueResponseResource) ConvertFrom(src conv.DataModelI
 	dst.Properties = &RabbitMQMessageQueueResponseProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: GetOutputResourcesForDatamodel(&rabbitmq.Properties.Status),
+				OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),

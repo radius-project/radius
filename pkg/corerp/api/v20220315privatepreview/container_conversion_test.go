@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +22,6 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	r := &ContainerResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
-	resourceType := map[string]interface{}{"Provider": "aks", "Type": "containers"}
 
 	// act
 	dm, err := r.ConvertTo()
@@ -43,8 +43,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, datamodel.TCPHealthProbe, tcpProbe.Kind)
 	require.Equal(t, to.Float32Ptr(5), tcpProbe.TCP.InitialDelaySeconds)
 	require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
-	require.Equal(t, "Deployment", ct.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, resourceType, ct.Properties.Status.OutputResources[0]["ResourceType"])
+	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 }
 
@@ -54,7 +53,6 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	r := &datamodel.ContainerResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
-	resourceType := map[string]interface{}{"Provider": "aks", "Type": "containers"}
 
 	// act
 	versioned := &ContainerResource{}
@@ -72,8 +70,8 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "azure", string(val.IAM.Kind))
 	require.Equal(t, "read", val.IAM.Roles[0])
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", r.Properties.Container.Image)
-	require.Equal(t, "Deployment", r.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, resourceType, r.Properties.Status.OutputResources[0]["ResourceType"])
+	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, "aks", versioned.Properties.Status.OutputResources[0]["Provider"])
 }
 
 func TestContainerConvertFromValidation(t *testing.T) {

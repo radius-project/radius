@@ -173,6 +173,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 					Type:     resourcekinds.AzureCosmosAccount,
 					Provider: providers.ProviderAzure,
 				},
+				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
 		SecretValues: map[string]rp.SecretValueReference{

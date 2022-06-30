@@ -13,11 +13,6 @@ import (
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
-			Status: v1.ResourceStatus{
-				OutputResources: GetOutputResourcesForVersionedResource(src.Properties.GetDaprStateStoreProperties().Status),
-			},
-		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
 		Environment:       to.String(src.Properties.GetDaprStateStoreProperties().Environment),
 		Application:       to.String(src.Properties.GetDaprStateStoreProperties().Application),
@@ -75,7 +70,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	props := &DaprStateStoreProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: GetOutputResourcesForDatamodel(&daprStateStore.Properties.Status),
+				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
