@@ -31,11 +31,8 @@ func listResources(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	isUCPEnabled := false
-	if env.GetKind() == environments.KindKubernetes {
-		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
-	}
-	if isUCPEnabled {
+
+	if env.GetEnableUCP() {
 		err := listResourcesUCP(cmd, args, env)
 		if err != nil {
 			return err

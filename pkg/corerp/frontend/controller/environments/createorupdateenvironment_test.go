@@ -71,7 +71,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateEnvironment(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateEnvironment(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateEnvironment(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateEnvironment(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)
@@ -177,7 +177,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 					return nil, &store.ErrNotFound{}
 				})
 
-			ctl, err := NewCreateOrUpdateEnvironment(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateEnvironment(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -230,7 +230,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateEnvironment(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateEnvironment(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

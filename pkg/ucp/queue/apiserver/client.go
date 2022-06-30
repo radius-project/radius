@@ -139,6 +139,14 @@ func (c *Client) generateID() (string, error) {
 }
 
 func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...client.EnqueueOptions) error {
+	if msg == nil || msg.Data == nil || len(msg.Data) == 0 {
+		return client.ErrEmptyMessage
+	}
+
+	if msg.ContentType != client.JSONContentType {
+		return client.ErrUnsupportedContentType
+	}
+
 	now := time.Now()
 	id, err := c.generateID()
 	if err != nil {
@@ -281,6 +289,10 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 }
 
 func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
+	if msg == nil {
+		return client.ErrEmptyMessage
+	}
+
 	result := &v1alpha1.QueueMessage{}
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: msg.ID}, result)
@@ -301,6 +313,10 @@ func (c *Client) FinishMessage(ctx context.Context, msg *client.Message) error {
 }
 
 func (c *Client) ExtendMessage(ctx context.Context, msg *client.Message) error {
+	if msg == nil {
+		return client.ErrEmptyMessage
+	}
+
 	now := time.Now()
 	result := &v1alpha1.QueueMessage{}
 	getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: msg.ID}, result)

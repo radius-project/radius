@@ -13,6 +13,7 @@ import (
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -25,15 +26,17 @@ type Controller interface {
 
 // BaseController is the base operation controller.
 type BaseController struct {
-	DataStore      store.StorageClient
-	AsyncOperation sm.StatusManager
+	DataStore           store.StorageClient
+	AsyncOperation      sm.StatusManager
+	DeploymentProcessor deployment.DeploymentProcessor
 }
 
 // NewBaseController creates BaseController instance.
-func NewBaseController(ds store.StorageClient, sm sm.StatusManager) BaseController {
+func NewBaseController(ds store.StorageClient, sm sm.StatusManager, dp deployment.DeploymentProcessor) BaseController {
 	return BaseController{
-		DataStore:      ds,
-		AsyncOperation: sm,
+		DataStore:           ds,
+		AsyncOperation:      sm,
+		DeploymentProcessor: dp,
 	}
 }
 

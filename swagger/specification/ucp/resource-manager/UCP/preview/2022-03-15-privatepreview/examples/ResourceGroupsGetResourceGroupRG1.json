@@ -1,0 +1,14 @@
+{
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourcegroups/rg1",
+    "resourceGroupName": "rg1"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourcegroups/rg1",
+        "name": "rg1"
+      }
+    }
+  }
+}

@@ -344,6 +344,7 @@
         ],
         "properties": {
           "provisioningState": {
+            "readOnly": true,
             "$ref": "global.json#/definitions/ProvisioningState",
             "description": "Provisioning state of the environment at the time the operation was called."
           },

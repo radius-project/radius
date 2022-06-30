@@ -6,6 +6,7 @@
 package client
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -34,4 +35,28 @@ type Metadata struct {
 	ExpireAt time.Time
 	// NextVisibleAt represents the next visible time after dequeuing the message.
 	NextVisibleAt time.Time
+}
+
+// NewMessage creates Message.
+func NewMessage(data interface{}) *Message {
+	msg := &Message{
+		// Support only JSONContentType.
+		ContentType: JSONContentType,
+	}
+
+	switch d := data.(type) {
+	case []byte:
+		msg.Data = d
+	case string:
+		msg.Data = []byte(d)
+	default:
+		var err error
+		msg.ContentType = JSONContentType
+		msg.Data, err = json.Marshal(data)
+		if err != nil {
+			return nil
+		}
+	}
+
+	return msg
 }
