@@ -37,7 +37,7 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 
 // GetStorageClient creates or gets storage client.
 func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType string) (store.StorageClient, error) {
-	cn := util.NormalizeString(resourceType)
+	cn := util.NormalizeStringToLower(resourceType)
 
 	p.clientsMu.RLock()
 	c, ok := p.clients[cn]

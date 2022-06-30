@@ -10,8 +10,8 @@ import (
 	"unicode"
 )
 
-// NormalizeString converts string to safe string by removing non digit and non letter and replace '/' with '-'
-func NormalizeString(s string) string {
+// NormalizeStringToLower converts string to safe string by removing non digit and non letter and replace '/' with '-'
+func NormalizeStringToLower(s string) string {
 	if s == "" {
 		return s
 	}

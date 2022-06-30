@@ -23,7 +23,7 @@ func TestNormalizeString(t *testing.T) {
 
 	for _, tc := range testrt {
 		t.Run(tc.in, func(t *testing.T) {
-			normalized := NormalizeString(tc.in)
+			normalized := NormalizeStringToLower(tc.in)
 			require.Equal(t, tc.out, normalized)
 		})
 	}

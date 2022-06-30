@@ -30,7 +30,7 @@ type QueueProvider struct {
 // New creates new QueueProvider instance.
 func New(name string, opts QueueProviderOptions) *QueueProvider {
 	return &QueueProvider{
-		name:        util.NormalizeString(name),
+		name:        util.NormalizeStringToLower(name),
 		queueClient: nil,
 		options:     opts,
 	}
