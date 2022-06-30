@@ -265,7 +265,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string, plane string)
 
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s/%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
+		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
 		strings.NewReader(`{}`),
 	)
 	if err != nil {
