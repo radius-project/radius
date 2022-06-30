@@ -110,7 +110,7 @@ func (q *InmemQueue) Extend(msg *client.Message) error {
 	now := time.Now()
 	q.elementRange(func(e *list.Element, elem *element) bool {
 		if elem.val.ID == msg.ID {
-			if elem.val.NextVisibleAt.UnixNano() <= now.UnixNano() {
+			if elem.val.NextVisibleAt.UnixNano() <= now.UnixNano() || elem.val.DequeueCount != msg.DequeueCount {
 				elem.visible = false
 				return false
 			} else {

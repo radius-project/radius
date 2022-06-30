@@ -222,7 +222,7 @@ func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.
 	return nil, client.ErrMessageNotFound
 }
 
-func (c *Client) extendItem(ctx context.Context, item *v1alpha1.QueueMessage, afterTime time.Time, duration time.Duration) (*v1alpha1.QueueMessage, error) {
+func (c *Client) extendItem(ctx context.Context, item *v1alpha1.QueueMessage, expectedDequeueCount int, afterTime time.Time, duration time.Duration, inc bool) (*v1alpha1.QueueMessage, error) {
 	nextVisibleAt := afterTime.Add(duration).UnixNano()
 	result := &v1alpha1.QueueMessage{}
 
@@ -230,6 +230,12 @@ func (c *Client) extendItem(ctx context.Context, item *v1alpha1.QueueMessage, af
 		getErr := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.opts.Namespace, Name: item.Name}, result)
 		if getErr != nil {
 			return getErr
+		}
+
+		// Ensure that it doesn't extend the message that another client hold. Because Dequeue() operation relies
+		// on system time, clock skew gets another client fetch the leased message again.
+		if result.Spec.DequeueCount != item.Spec.DequeueCount {
+			return client.ErrDequeuedMessage
 		}
 
 		// The unix time of NextVisibleAt label in item should be less than now.
@@ -240,7 +246,9 @@ func (c *Client) extendItem(ctx context.Context, item *v1alpha1.QueueMessage, af
 		}
 
 		result.Labels[LabelNextVisibleAt] = int64toa(nextVisibleAt)
-		result.Spec.DequeueCount += 1
+		if inc {
+			result.Spec.DequeueCount += 1
+		}
 
 		// Update supports optimistic concurrency. Retry until conflict is resolved.
 		// Reference: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
@@ -271,7 +279,7 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 		if err != nil {
 			return err
 		}
-		result, err = c.extendItem(ctx, item, now, c.opts.MessageLockDuration)
+		result, err = c.extendItem(ctx, item, item.Spec.DequeueCount, now, c.opts.MessageLockDuration, true)
 		if err != nil {
 			return err
 		}
@@ -330,7 +338,11 @@ func (c *Client) ExtendMessage(ctx context.Context, msg *client.Message) error {
 		return client.ErrInvalidMessage
 	}
 
-	result, err := c.extendItem(ctx, result, now, c.opts.MessageLockDuration)
+	result, err := c.extendItem(ctx, result, msg.DequeueCount, now, c.opts.MessageLockDuration, false)
+	if err != nil {
+		return err
+	}
+
 	copyMessage(msg, result)
-	return err
+	return nil
 }
