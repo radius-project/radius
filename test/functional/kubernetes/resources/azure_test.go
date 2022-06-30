@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/functional/kubernetes"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -51,33 +50,55 @@ func Test_Deploy_AzureResources(t *testing.T) {
 	template := "testdata/azure-resources-storage-account.bicep"
 	params := fmt.Sprintf("storageAccountName=test%d", time.Now().Nanosecond())
 	opt := NewK8sTestOptions(t)
+	ctx := context.TODO()
 
 	providers := opt.Environment.GetProviders()
+	de := step.NewDeployExecutor(template, params)
 
-	test := kubernetes.NewApplicationTest(t, applicationName, []kubernetes.TestStep{
-		{
-			Executor:               step.NewDeployExecutor(template, params),
-			SkipOutputResources:    true,
-			SkipResourceValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetes.ApplicationTest) {
-				validation.ValidateAzureResourcesCreated(ctx,
-					t,
-					opt.ARMAuthorizer,
-					providers.AzureProvider.SubscriptionID,
-					providers.AzureProvider.ResourceGroup,
-					applicationName,
-					validation.AzureResourceSet{
-						Resources: []validation.ExpectedResource{
-							{
-								Type:        azresources.StorageStorageAccounts,
-								UserManaged: false,
-							},
-						},
+	t.Run(de.GetDescription(), func(t *testing.T) {
+		de.Execute(ctx, t, opt.TestOptions)
+
+		validation.ValidateAzureResourcesCreated(ctx,
+			t,
+			opt.ARMAuthorizer,
+			providers.AzureProvider.SubscriptionID,
+			providers.AzureProvider.ResourceGroup,
+			applicationName,
+			validation.AzureResourceSet{
+				Resources: []validation.ExpectedResource{
+					{
+						Type:        azresources.StorageStorageAccounts,
+						UserManaged: false,
 					},
-				)
+				},
 			},
-		},
+		)
 	})
 
-	test.Test(t)
+	// test := kubernetes.NewApplicationTest(t, applicationName, []kubernetes.TestStep{
+	// 	{
+	// 		Executor:               step.NewDeployExecutor(template, params),
+	// 		SkipOutputResources:    true,
+	// 		SkipResourceValidation: true,
+	// 		PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetes.ApplicationTest) {
+	// 			validation.ValidateAzureResourcesCreated(ctx,
+	// 				t,
+	// 				opt.ARMAuthorizer,
+	// 				providers.AzureProvider.SubscriptionID,
+	// 				providers.AzureProvider.ResourceGroup,
+	// 				applicationName,
+	// 				validation.AzureResourceSet{
+	// 					Resources: []validation.ExpectedResource{
+	// 						{
+	// 							Type:        azresources.StorageStorageAccounts,
+	// 							UserManaged: false,
+	// 						},
+	// 					},
+	// 				},
+	// 			)
+	// 		},
+	// 	},
+	// })
+
+	// test.Test(t)
 }
