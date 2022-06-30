@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,7 +45,7 @@ type deploymentProcessor struct {
 type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]interface{}
-	SecretValues   map[string]renderers.SecretValueReference
+	SecretValues   map[string]rp.SecretValueReference
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {

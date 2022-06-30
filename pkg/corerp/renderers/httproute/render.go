@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -49,7 +50,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		}
 	}
 
-	computedValues := map[string]renderers.ComputedValueReference{
+	computedValues := map[string]rp.ComputedValueReference{
 		"host": {
 			Value: kubernetes.MakeResourceName(applicationName, route.Name),
 		},

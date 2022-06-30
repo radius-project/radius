@@ -40,8 +40,14 @@
             "image": "radius.azurecr.io/webapptutorial-todoapp",
             "livenessProbe": {
               "kind": "tcp",
-              "initialDelaySeconds": 5,
-              "containerPort": 8080
+              "tcp": {
+                "healthProbeBase": {
+                  "failureThreshold": 5,
+                  "initialDelaySeconds": 5,
+                  "periodSeconds": 5
+                },
+                "containerPort": 8080
+              }
             },
             "ports": {
               "web":{

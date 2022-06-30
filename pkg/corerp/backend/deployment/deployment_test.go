@@ -14,7 +14,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	connectorrp_renderer "github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
@@ -26,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -75,6 +75,13 @@ func setup(t *testing.T) SharedMocks {
 					Provider: providers.ProviderAzure,
 				},
 			},
+			{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.Service,
+					Provider: providers.ProviderKubernetes,
+				},
+				ResourceHandler: resourceHandler,
+			},
 		},
 		map[string]bool{
 			providers.ProviderKubernetes: true,
@@ -101,52 +108,19 @@ func getTestResource() datamodel.ContainerResource {
 func getTestRendererOutput() renderers.RendererOutput {
 	testOutputResources := []outputresource.OutputResource{
 		{
-			LocalID: outputresource.LocalIDDeployment,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
-			},
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureRoleAssignment,
-					Provider: providers.ProviderAzure,
-				},
-				Data: resourcemodel.ARMIdentity{},
-			},
-		},
-		{
 			LocalID: outputresource.LocalIDService,
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Deployment,
+				Type:     resourcekinds.Service,
 				Provider: providers.ProviderKubernetes,
-			},
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     resourcekinds.Deployment,
-					Provider: providers.ProviderKubernetes,
-				},
-				Data: resourcemodel.KubernetesIdentity{},
 			},
 		},
 	}
 
 	rendererOutput := renderers.RendererOutput{
 		Resources: testOutputResources,
-		SecretValues: map[string]renderers.SecretValueReference{
-			connectorrp_renderer.ConnectionStringValue: {
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
-				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-				Action:        "listConnectionStrings",
-				ValueSelector: "/connectionStrings/0/connectionString",
-				Transformer: resourcemodel.ResourceType{
-					Provider: providers.ProviderAzure,
-					Type:     resourcekinds.AzureCosmosDBMongo,
-				},
-			},
-		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			connectorrp_renderer.DatabaseNameValue: {
-				Value: "test-database",
+		ComputedValues: map[string]rp.ComputedValueReference{
+			"url": {
+				Value: "http://test-application/test-route:8080",
 			},
 		},
 	}
@@ -181,11 +155,10 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
-
 		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 		httprouteA := datamodel.HTTPRoute{
@@ -208,8 +181,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render error", func(t *testing.T) {
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
@@ -217,6 +188,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
@@ -299,10 +271,104 @@ func Test_Render(t *testing.T) {
 			Data: httprouteA,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
-
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 
 		_, err := dp.Render(ctx, resourceID, testResource)
 		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.roleassignment")
+	})
+}
+
+func Test_Deploy(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+
+	t.Run("Verify deploy success", func(t *testing.T) {
+		testResource := getTestResource()
+		testRendererOutput := getTestRendererOutput()
+		resourceID := getTestResourceID(testResource.ID)
+
+		expectedKubernetesproperties := map[string]string{
+			handlers.KubernetesKindKey:       resourcekinds.Service,
+			handlers.KubernetesAPIVersionKey: "v1",
+			handlers.KubernetesNamespaceKey:  "test-namespace",
+			handlers.ResourceName:            "test-deployment",
+		}
+
+		expectedIdentity := resourcemodel.ResourceIdentity{
+			ResourceType: &resourcemodel.ResourceType{
+				Type:     resourcekinds.Service,
+				Provider: providers.ProviderKubernetes,
+			},
+			Data: resourcemodel.KubernetesIdentity{
+				Name:       expectedKubernetesproperties[handlers.ResourceName],
+				Namespace:  expectedKubernetesproperties[handlers.KubernetesNamespaceKey],
+				Kind:       expectedKubernetesproperties[handlers.KubernetesKindKey],
+				APIVersion: expectedKubernetesproperties[handlers.ResourceName],
+			},
+		}
+
+		mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(expectedIdentity, nil)
+		mocks.resourceHandler.EXPECT().GetResourceNativeIdentityKeyProperties(gomock.Any(), gomock.Any()).Times(1).Return(expectedKubernetesproperties, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+
+		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
+		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[0].Identity)
+		require.Equal(t, map[string]interface{}{"url": testRendererOutput.ComputedValues["url"].Value}, deploymentOutput.ComputedValues)
+	})
+
+	t.Run("Verify deploy failure", func(t *testing.T) {
+		testResource := getTestResource()
+		testRendererOutput := getTestRendererOutput()
+		resourceID := getTestResourceID(testResource.ID)
+
+		mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to deploy the resource"))
+
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		require.Error(t, err)
+	})
+
+	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
+		testResource := getTestResource()
+		testRendererOutput := getTestRendererOutput()
+		resourceID := getTestResourceID(testResource.ID)
+
+		testRendererOutput.Resources[0].Dependencies = []outputresource.Dependency{
+			{LocalID: ""},
+		}
+
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		require.Error(t, err)
+		require.Equal(t, "missing localID for outputresource", err.Error())
+	})
+
+	t.Run("Invalid output resource type", func(t *testing.T) {
+		testResource := getTestResource()
+		testRendererOutput := getTestRendererOutput()
+		resourceID := getTestResourceID(testResource.ID)
+
+		testRendererOutput.Resources[0].ResourceType.Type = "foo"
+
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		require.Error(t, err)
+		require.Equal(t, "output resource kind 'Provider: kubernetes, Type: foo' is unsupported", err.Error())
+	})
+
+	t.Run("Missing output resource identity", func(t *testing.T) {
+		testResource := getTestResource()
+		testRendererOutput := getTestRendererOutput()
+		resourceID := getTestResourceID(testResource.ID)
+
+		mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, nil)
+		mocks.resourceHandler.EXPECT().GetResourceNativeIdentityKeyProperties(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
+
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		require.Error(t, err)
+		require.Equal(t, "output resource \"Service\" does not have an identity. This is a bug in the handler", err.Error())
 	})
 }

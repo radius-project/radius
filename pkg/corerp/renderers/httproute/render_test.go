@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -59,7 +60,7 @@ func Test_Render_WithPort(t *testing.T) {
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
 
-	expectedValues := map[string]renderers.ComputedValueReference{
+	expectedValues := map[string]rp.ComputedValueReference{
 		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
 		"port":   {Value: port},
 		"scheme": {Value: "http"},
@@ -104,7 +105,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
 
-	expectedValues := map[string]renderers.ComputedValueReference{
+	expectedValues := map[string]rp.ComputedValueReference{
 		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
 		"port":   {Value: defaultPort},
 		"scheme": {Value: "http"},
@@ -150,7 +151,7 @@ func Test_Render_WithNameSpace(t *testing.T) {
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
 
-	expectedValues := map[string]renderers.ComputedValueReference{
+	expectedValues := map[string]rp.ComputedValueReference{
 		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
 		"port":   {Value: defaultPort},
 		"scheme": {Value: "http"},

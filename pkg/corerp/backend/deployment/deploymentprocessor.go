@@ -23,6 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/db"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -52,14 +53,14 @@ type deploymentProcessor struct {
 type DeploymentOutput struct {
 	DeployedOutputResources []outputresource.OutputResource
 	ComputedValues          map[string]interface{}
-	SecretValues            map[string]renderers.SecretValueReference
+	SecretValues            map[string]rp.SecretValueReference
 }
 
 type ResourceDependency struct {
 	ID              resources.ID
 	OutputResources []map[string]outputresource.OutputResource
 	ComputedValues  map[string]interface{}
-	SecretValues    map[string]renderers.SecretValueReference
+	SecretValues    map[string]rp.SecretValueReference
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -118,7 +119,7 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Deploying output resource: %v, LocalID: %s, resource type: %q\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType))
+	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
 	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 	if err != nil {
@@ -189,14 +190,17 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	computedValues := map[string]interface{}{}
 
 	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource: %v, LocalID: %s, resource type: %q\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType))
+		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
 		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, outputResource, rendererOutput)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
 
-		outputResource.Identity = resourceIdentity
+		if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
+			outputResource.Identity = resourceIdentity
+		}
+
 		if outputResource.Identity.ResourceType == nil {
 			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
 			return DeploymentOutput{}, err
@@ -288,7 +292,7 @@ func (dp *deploymentProcessor) fetchSecretsInternal(ctx context.Context, depende
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceDependency, reference renderers.SecretValueReference) (interface{}, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceDependency, reference rp.SecretValueReference) (interface{}, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil

@@ -24,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -71,7 +72,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 
 	rendererOutput = renderers.RendererOutput{
 		Resources: azureMongoOutputResources,
-		SecretValues: map[string]renderers.SecretValueReference{
+		SecretValues: map[string]rp.SecretValueReference{
 			renderers.ConnectionStringValue: {
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
 				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
