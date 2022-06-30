@@ -133,7 +133,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	params := &DevEnvironmentParams{
+	params := &EnvironmentParams{
 		Name:      environmentName,
 		Providers: &environments.Providers{AzureProvider: azureProvider},
 	}

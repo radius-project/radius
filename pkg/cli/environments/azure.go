@@ -70,6 +70,10 @@ func (e *AzureCloudEnvironment) GetStatusLink() string {
 	return url
 }
 
+func (e *AzureCloudEnvironment) GetProviders() *Providers {
+	return nil
+}
+
 func (e *AzureCloudEnvironment) CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		e.DeploymentEngineLocalURL,

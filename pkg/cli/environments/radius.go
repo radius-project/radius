@@ -21,4 +21,6 @@ type RadiusEnvironment struct {
 	// Capture arbitrary other properties
 	// We tolerate and allow extra fields - this helps with forwards compat.
 	Properties map[string]interface{} `mapstructure:",remain"`
+
+	Providers *Providers `mapstructure:"providers"`
 }
