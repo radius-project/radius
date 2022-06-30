@@ -24,11 +24,6 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
-				Status: v1.ResourceStatus{
-					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
-				},
-			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -60,7 +55,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	dst.Properties = &DaprSecretStoreProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: GetOutputResourcesForDatamodel(&daprSecretStore.Properties.Status),
+				OutputResources: v1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),

@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +28,6 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		// act
 		dm, err := versionedResource.ConvertTo()
 
-		resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.sql.database"}
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.SqlDatabase)
@@ -41,8 +41,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		if payload == "sqldatabaseresource.json" {
 			require.Equal(t, "testAccount1.sql.cosmos.azure.com", convertedResource.Properties.Server)
 			require.Equal(t, "testDatabase", convertedResource.Properties.Database)
-			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		}
 	}
 }
@@ -61,7 +60,6 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		versionedResource := &SQLDatabaseResource{}
 		err = versionedResource.ConvertFrom(resource)
 
-		resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.sql.database"}
 		// assert
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/sqlDatabases/sql0", resource.ID)
@@ -73,8 +71,8 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		if payload == "sqldatabaseresourcedatamodel.json" {
 			require.Equal(t, "testAccount1.sql.cosmos.azure.com", resource.Properties.Server)
 			require.Equal(t, "testDatabase", resource.Properties.Database)
-			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/rp"
 )
 
@@ -144,5 +145,20 @@ type BasicResourceProperties struct {
 }
 
 type ResourceStatus struct {
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+	OutputResources []outputresource.OutputResource `json:"outputResources,omitempty"`
+}
+
+// OutputResource contains some internal fields like resources/dependencies that shouldn't be inlcuded in the user response
+func BuildExternalOutputResources(outputResources []outputresource.OutputResource) []map[string]interface{} {
+	var externalOutputResources []map[string]interface{}
+	for _, or := range outputResources {
+		externalOutput := map[string]interface{}{
+			"LocalID":  or.LocalID,
+			"Provider": or.ResourceType.Provider,
+			"Identity": or.Identity.Data,
+		}
+		externalOutputResources = append(externalOutputResources, externalOutput)
+	}
+
+	return externalOutputResources
 }

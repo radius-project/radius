@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,8 +25,6 @@ func TestGatewayConvertVersionedToDataModel(t *testing.T) {
 	// act
 	dm, err := r.ConvertTo()
 
-	resourceType := map[string]interface{}{"Provider": "kubernetes", "Type": "Gateway"}
-
 	// assert
 	require.NoError(t, err)
 	ct := dm.(*datamodel.Gateway)
@@ -38,8 +37,7 @@ func TestGatewayConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "mydestination", ct.Properties.Routes[0].Destination)
 	require.Equal(t, "mypath", ct.Properties.Routes[0].Path)
 	require.Equal(t, "myreplaceprefix", ct.Properties.Routes[0].ReplacePrefix)
-	require.Equal(t, "Deployment", ct.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, resourceType, ct.Properties.Status.OutputResources[0]["ResourceType"])
+	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 }
 
@@ -54,7 +52,6 @@ func TestGatewayConvertDataModelToVersioned(t *testing.T) {
 	versioned := &GatewayResource{}
 	err = versioned.ConvertFrom(r)
 
-	resourceType := map[string]interface{}{"Provider": "kubernetes", "Type": "Gateway"}
 	// assert
 	require.NoError(t, err)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/gateway0", r.ID)
@@ -66,8 +63,8 @@ func TestGatewayConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "mydestination", r.Properties.Routes[0].Destination)
 	require.Equal(t, "mypath", r.Properties.Routes[0].Path)
 	require.Equal(t, "myreplaceprefix", r.Properties.Routes[0].ReplacePrefix)
-	require.Equal(t, "Deployment", r.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, resourceType, r.Properties.Status.OutputResources[0]["ResourceType"])
+	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
+	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
 }
 
 func TestGatewayConvertFromValidation(t *testing.T) {

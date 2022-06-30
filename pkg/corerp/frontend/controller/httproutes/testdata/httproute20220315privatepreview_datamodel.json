@@ -18,6 +18,14 @@
               "ResourceType": {
                 "Type": "httproutes",
                 "Provider": "aks"
+              },
+              "Resource": null,
+              "Identity": {
+                "data": null,
+                "resourceType": {
+                  "Type": "httproutes",
+                  "Provider": "aks"
+                }
               }
             }]
           },

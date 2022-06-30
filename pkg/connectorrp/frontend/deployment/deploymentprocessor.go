@@ -78,7 +78,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 }
 
 func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.Renderer, error) {
-	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(id.TypeSegments()[len(id.TypeSegments())-1].Type) // Lookup using resource type
+	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(id.Type()) // Lookup using resource type
 	if err != nil {
 		return nil, err
 	}

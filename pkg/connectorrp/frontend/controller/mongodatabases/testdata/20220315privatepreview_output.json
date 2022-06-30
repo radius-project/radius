@@ -5,27 +5,9 @@
     "properties": {
         "status": {
             "outputResources": [{
-              "AzureCosmosAccount": {
-                "LocalID": "AzureCosmosAccount",
-                "Dependencies": null,
-                "Deployed": false,
-                "ResourceType": {
-                  "type": "azure.cosmosdb.account",
-                  "provider": "azure"
-                },
-                "Resource": null,
-                "Identity": {
-                  "data": null,
-                  "resourceType": null
-                },
-                "Status": {
-                  "HealthErrorDetails": "",
-                  "HealthState": "",
-                  "ProvisioningErrorDetails": "",
-                  "ProvisioningState": "",
-                  "Replicas": null
-                }
-              }
+              "LocalID": "AzureCosmosAccount",
+              "Provider": "azure",
+              "Identity": null
             }]
         },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",

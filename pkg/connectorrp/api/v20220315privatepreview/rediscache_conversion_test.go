@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,6 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		// act
 		dm, err := versionedResource.ConvertTo()
 
-		resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.redis"}
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.RedisCache)
@@ -42,8 +42,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		if payload == "rediscacheresource.json" {
 			require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
 			require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
-			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		}
 	}
 }
@@ -61,22 +60,21 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		versionedResource := &RedisCacheResource{}
 		err = versionedResource.ConvertFrom(resource)
 
-		resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.redis"}
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", resource.ID)
-		require.Equal(t, "redis0", resource.Name)
-		require.Equal(t, "Applications.Connector/redisCaches", resource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", resource.Properties.Resource)
-		require.Equal(t, "myrediscache.redis.cache.windows.net", resource.Properties.Host)
-		require.Equal(t, int32(10255), resource.Properties.Port)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", *versionedResource.ID)
+		require.Equal(t, "redis0", *versionedResource.Name)
+		require.Equal(t, "Applications.Connector/redisCaches", *versionedResource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", *versionedResource.Properties.Resource)
+		require.Equal(t, "myrediscache.redis.cache.windows.net", *versionedResource.Properties.Host)
+		require.Equal(t, int32(10255), *versionedResource.Properties.Port)
 		if payload == "rediscacheresourcedatamodel.json" {
-			require.Equal(t, "test-connection-string", resource.Properties.Secrets.ConnectionString)
-			require.Equal(t, "testPassword", resource.Properties.Secrets.Password)
-			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, "test-connection-string", *versionedResource.Properties.Secrets.ConnectionString)
+			require.Equal(t, "testPassword", *versionedResource.Properties.Secrets.Password)
+			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
 		}
 	}
 }
@@ -93,7 +91,6 @@ func TestRedisCacheResponse_ConvertVersionedToDataModel(t *testing.T) {
 		// act
 		dm, err := versionedResource.ConvertTo()
 
-		resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.redis"}
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.RedisCache)
@@ -107,8 +104,7 @@ func TestRedisCacheResponse_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, int32(10255), convertedResource.Properties.Port)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 		if payload == "rediscacheresource.json" {
-			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		}
 	}
 }
@@ -126,20 +122,19 @@ func TestRedisCacheResponse_ConvertDataModelToVersioned(t *testing.T) {
 		versionedResource := &RedisCacheResource{}
 		err = versionedResource.ConvertFrom(resource)
 
-		resourceType := map[string]interface{}{"Provider": "azure", "Type": "azure.redis"}
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", resource.ID)
-		require.Equal(t, "redis0", resource.Name)
-		require.Equal(t, "Applications.Connector/redisCaches", resource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", resource.Properties.Resource)
-		require.Equal(t, "myrediscache.redis.cache.windows.net", resource.Properties.Host)
-		require.Equal(t, int32(10255), resource.Properties.Port)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", *versionedResource.ID)
+		require.Equal(t, "redis0", *versionedResource.Name)
+		require.Equal(t, "Applications.Connector/redisCaches", *versionedResource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", *versionedResource.Properties.Resource)
+		require.Equal(t, "myrediscache.redis.cache.windows.net", *versionedResource.Properties.Host)
+		require.Equal(t, int32(10255), *versionedResource.Properties.Port)
 		if payload == "rediscacheresourcedatamodel.json" {
-			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
 		}
 	}
 }
