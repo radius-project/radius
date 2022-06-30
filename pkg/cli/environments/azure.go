@@ -74,55 +74,6 @@ func (e *AzureCloudEnvironment) GetProviders() *Providers {
 	return nil
 }
 
-func (e *AzureCloudEnvironment) CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
-		e.DeploymentEngineLocalURL,
-		e.UCPLocalURL,
-		e.Context,
-		e.EnableUCP,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	auth, err := armauth.GetArmAuthorizer()
-	if err != nil {
-		return nil, err
-	}
-
-	tags := map[string]*string{}
-
-	tags["azureSubscriptionID"] = &e.SubscriptionID
-	tags["azureResourceGroup"] = &e.ResourceGroup
-
-	rgClient := azclients.NewGroupsClient(e.SubscriptionID, auth)
-	resp, err := rgClient.Get(ctx, e.ResourceGroup)
-	if err != nil {
-		return nil, err
-	}
-	tags["azureLocation"] = resp.Location
-
-	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
-
-	// Poll faster than the default, many deployments are quick
-	dc.PollingDelay = 5 * time.Second
-
-	dc.Sender = &sender{RoundTripper: roundTripper}
-
-	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
-	op.PollingDelay = 5 * time.Second
-	op.Sender = &sender{RoundTripper: roundTripper}
-
-	return &azure.ResouceDeploymentClient{
-		Client:           dc,
-		OperationsClient: op,
-		SubscriptionID:   e.SubscriptionID,
-		ResourceGroup:    e.ResourceGroup,
-		Tags:             tags,
-		EnableUCP:        e.EnableUCP,
-	}, nil
-}
-
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		e.DeploymentEngineLocalURL,
@@ -161,40 +112,20 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
 	op.PollingDelay = 5 * time.Second
 	op.Sender = &sender{RoundTripper: roundTripper}
+	resourceGroup := ""
+	if e.EnableUCP {
+		resourceGroup = e.UCPResourceGroupName
+	} else {
+		resourceGroup = e.ResourceGroup
+	}
 
 	return &azure.ResouceDeploymentClient{
 		Client:           dc,
 		OperationsClient: op,
 		SubscriptionID:   e.SubscriptionID,
-		ResourceGroup:    e.UCPResourceGroupName,
+		ResourceGroup:    resourceGroup,
 		Tags:             tags,
 		EnableUCP:        e.EnableUCP,
-	}, nil
-}
-
-func (e *AzureCloudEnvironment) CreateLegacyDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
-	k8sTypedClient, config, err := kubernetes.CreateTypedClient(e.Context)
-	if err != nil {
-		return nil, err
-	}
-
-	k8sRuntimeclient, err := kubernetes.CreateRuntimeClient(e.Context, kubernetes.Scheme)
-	if err != nil {
-		return nil, err
-	}
-
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
-	if err != nil {
-		return nil, err
-	}
-
-	return &azure.ARMDiagnosticsClient{
-		K8sTypedClient:   k8sTypedClient,
-		RestConfig:       config,
-		K8sRuntimeClient: k8sRuntimeclient,
-		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
-		ResourceGroup:    e.ResourceGroup,
-		SubscriptionID:   e.SubscriptionID,
 	}, nil
 }
 
@@ -213,13 +144,19 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 	if err != nil {
 		return nil, err
 	}
+	resourceGroup := ""
+	if e.EnableUCP {
+		resourceGroup = e.UCPResourceGroupName
+	} else {
+		resourceGroup = e.ResourceGroup
+	}
 
 	return &azure.ARMDiagnosticsClient{
 		K8sTypedClient:   k8sTypedClient,
 		RestConfig:       config,
 		K8sRuntimeClient: k8sRuntimeclient,
 		ResourceClient:   *radclient.NewRadiusResourceClient(con, e.SubscriptionID),
-		ResourceGroup:    e.UCPResourceGroupName,
+		ResourceGroup:    resourceGroup,
 		SubscriptionID:   e.SubscriptionID,
 	}, nil
 }
