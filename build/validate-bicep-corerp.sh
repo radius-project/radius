@@ -1,11 +1,11 @@
 #! /bin/bash
-BICEP_EXECUTABLE="rad-bicep"
+BICEP_EXECUTABLE="rad-bicep-corerp"
 if [[ ! -z $BICEP_PATH ]]
 then
     BICEP_EXECUTABLE="$BICEP_PATH/$BICEP_EXECUTABLE"
 fi
 
-FILES=$(find . -type f -name "*.bicep")
+FILES=$(find . -type f -name "corerp-*.bicep")
 FAILURES=()
 for F in $FILES
 do
