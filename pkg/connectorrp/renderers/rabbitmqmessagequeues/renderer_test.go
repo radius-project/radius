@@ -66,24 +66,25 @@ func Test_Render_User_Secrets(t *testing.T) {
 	require.Equal(t, 1, len(output.SecretValues))
 }
 
-/*func Test_Render_NoQueueSpecified(t *testing.T) {
+func Test_Render_NoQueueSpecified(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 
-	resource := renderers.RendererResource{
-		ApplicationName: applicationName,
-		ResourceName:    resourceName,
-		ResourceType:    ResourceType,
-		Definition: map[string]interface{}{
-			"host": "localhost",
-			"port": 42,
-			"secrets": map[string]string{
-				"connectionString": "admin:deadbeef@localhost:42",
+	resource := datamodel.RabbitMQMessageQueue{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/rabbitMQMessageQueues/queue0",
+			Name: "queue0",
+			Type: "Applications.Connector/rabbitMQMessageQueues",
+		},
+		Properties: datamodel.RabbitMQMessageQueueProperties{
+			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
+			Secrets: datamodel.RabbitMQSecrets{ConnectionString: "admin:deadbeef@localhost:42"},
 		},
 	}
-
-	_, err := renderer.Render(ctx, renderers.RenderOptions{Resource: resource, Dependencies: map[string]renderers.RendererDependency{}})
+	_, err := renderer.Render(ctx, resource)
 	require.Error(t, err)
 	require.Equal(t, "queue name must be specified", err.Error())
-}*/
+}
