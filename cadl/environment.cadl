@@ -1,71 +1,64 @@
-import "./models.cadl";
-
 import "@cadl-lang/rest";
-import "@cadl-lang/openapi3";
-// import "@azure-tools/cadl-autorest";
+import "@azure-tools/cadl-providerhub";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
 
 using Cadl.Http;
 using Cadl.Rest;
-using Cadl.Rest.Resource;
+using Azure.ResourceManager;
 
-@route("/{rootScope}/providers/Applications.Core/environments")
-namespace Environments {
-  @get op ListByScope(
-    @query apiVersion: ApiVersionParameter,
-    @path rootScope: RootScopeParameter
-  ): {
-    @statusCode statusCode: 200;
-    schema: EnvironmentResourceList;
-  } | ErrorResponse;
+@armNamespace
+@serviceTitle("Applications.Core Management APIs")
+@doc("REST API for Applications.Core Environment Resource")
+namespace Environment;
 
-  @get op Get(
-    @query apiVersion: ApiVersionParameter,
-    @path rootScope: RootScopeParameter,
-    @path environmentName: EnvironmentNameParameter
-  ): {
-    @statusCode statusCode: 200;
-    schema: EnvironmentResource;
-  } | ErrorResponse;
+@doc("Compute resource used by application environment resource.")
+model EnvironmentCompute {
+  @doc("Type of compute resource.")
+  kind: EnvironmentComputeKind;
 
-  @put op CreateOrUpdate(
-    @query apiVersion: ApiVersionParameter,
-    @path rootScope: RootScopeParameter,
-    @path environmentName: EnvironmentNameParameter,
-    @body body: EnvironmentResource
-  ): {
-    @statusCode statusCode: 200;
-    schema: EnvironmentResource;
-  } | {
-    @statusCode statusCode: 201;
-    schema: EnvironmentResource;
-  } | ErrorResponse;
+  @doc("The resource id of the compute resource for application environment.")
+  resourceId: string;
+}
 
-  @patch op Update(
-    @query apiVersion: ApiVersionParameter,
-    @path rootScope: RootScopeParameter,
-    @path environmentName: EnvironmentNameParameter,
-    @body body: EnvironmentResource
-  ): {
-    @statusCode statusCode: 200;
-    schema: EnvironmentResource;
-  } | {
-    @statusCode statusCode: 201;
-    schema: EnvironmentResource;
-  } | ErrorResponse;
+@doc("Environment properties")
+model EnvironmentProperties {
+  @visibility("read")
+  @doc("The status of the last operation.")
+  provisioningState?: ProvisioningState;
 
-  @delete op Delete(
-    @query apiVersion: ApiVersionParameter,
-    @path rootScope: RootScopeParameter,
-    @path environmentName: EnvironmentNameParameter
-  ):
-    | {
-        @statusCode statusCode: 200;
-      }
-    | {
-        @statusCode statusCode: 202;
-      }
-    | {
-        @statusCode statusCode: 204;
-      }
-    | ErrorResponse;
+  @doc("The compute resource used by application environment.")
+  compute: EnvironmentCompute;
+}
+
+model EnvironmentResource is TrackedResource<EnvironmentProperties> {
+  @doc("environment name")
+  @maxLength(128)
+  @pattern("^[a-z0-9]+(-[a-z0-9]+)*")
+  @key("environmentName")
+  @path
+  @segment("environmentName")
+  name: string;
+}
+
+@armResourceOperations
+interface Environment
+  extends ResourceOperations<EnvironmentResource, EnvironmentProperties> {}
+
+@knownValues(ProvisioningStateKV)
+model ProvisioningState is string {}
+enum ProvisioningStateKV {
+  Succeeded,
+  Failed,
+  Canceled,
+  Provisioning,
+  Updating,
+  Deleting,
+  Accepted,
+}
+
+@knownValues(EnvironmentComputeKV)
+model EnvironmentComputeKind is string {}
+enum EnvironmentComputeKV {
+  kubernetes,
 }
