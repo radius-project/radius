@@ -14,6 +14,7 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -28,8 +29,8 @@ type GetGateway struct {
 }
 
 // NewGetGateway creates a new GetGateway.
-func NewGetGateway(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &GetGateway{ctrl.NewBaseController(ds, sm)}, nil
+func NewGetGateway(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &GetGateway{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 func (a *GetGateway) Run(ctx context.Context, req *http.Request) (rest.Response, error) {

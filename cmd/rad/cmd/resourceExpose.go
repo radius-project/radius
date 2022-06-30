@@ -65,7 +65,12 @@ rad resource expose --application icecream-store Container orders --port 5000 --
 			remotePort = localPort
 		}
 
-		client, err := environments.CreateDiagnosticsClient(cmd.Context(), env)
+		var client clients.DiagnosticsClient
+		if env.GetEnableUCP() {
+			client, err = environments.CreateDiagnosticsClient(cmd.Context(), env)
+		} else {
+			client, err = environments.CreateLegacyDiagnosticsClient(cmd.Context(), env)
+		}
 
 		if err != nil {
 			return err

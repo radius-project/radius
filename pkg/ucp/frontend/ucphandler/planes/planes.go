@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	planesdb "github.com/project-radius/radius/pkg/ucp/db/planes"
+	resourcegroupsdb "github.com/project-radius/radius/pkg/ucp/db/resourcegroups"
 	"github.com/project-radius/radius/pkg/ucp/planes"
 	"github.com/project-radius/radius/pkg/ucp/proxy"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -178,6 +179,26 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 			return rest.NewNotFoundResponse(planePath), err
 		}
 		return rest.InternalServerError(err), err
+	}
+
+	if plane.Properties.Kind == rest.PlaneKindUCPNative {
+		// Check if the resource group exists
+		id, err := resources.Parse(incomingURL.Path)
+		if err != nil {
+			return rest.InternalServerError(err), err
+		}
+		rgPath := id.RootScope()
+		rgID, err := resources.Parse(rgPath)
+		if err != nil {
+			return nil, err
+		}
+		_, err = resourcegroupsdb.GetByID(ctx, db, rgID)
+		if err != nil {
+			if errors.Is(err, &store.ErrNotFound{}) {
+				return rest.NewNotFoundResponse(rgID.String()), err
+			}
+			return nil, err
+		}
 	}
 
 	// Get the resource provider

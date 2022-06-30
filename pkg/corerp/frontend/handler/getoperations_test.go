@@ -19,7 +19,7 @@ import (
 
 func TestRunWith20220315PrivatePreview(t *testing.T) {
 	// arrange
-	op, err := NewGetOperations(nil, nil)
+	op, err := NewGetOperations(nil, nil, nil)
 	require.NoError(t, err)
 	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
 		APIVersion: v20220315privatepreview.Version,
@@ -42,7 +42,7 @@ func TestRunWith20220315PrivatePreview(t *testing.T) {
 
 func TestRunWithUnsupportedAPIVersion(t *testing.T) {
 	// arrange
-	op, err := NewGetOperations(nil, nil)
+	op, err := NewGetOperations(nil, nil, nil)
 	require.NoError(t, err)
 	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
 		APIVersion: "unknownversion",

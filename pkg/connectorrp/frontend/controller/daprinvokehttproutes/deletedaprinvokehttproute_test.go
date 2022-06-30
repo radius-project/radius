@@ -41,7 +41,7 @@ func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewDeleteDaprInvokeHttpRoute(mStorageClient, nil)
+		ctl, err := NewDeleteDaprInvokeHttpRoute(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -103,7 +103,7 @@ func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewDeleteDaprInvokeHttpRoute(mStorageClient, nil)
+			ctl, err := NewDeleteDaprInvokeHttpRoute(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)

@@ -42,19 +42,13 @@ func init() {
 }
 
 func deleteEnvResource(cmd *cobra.Command, args []string) error {
-
 	config := ConfigFromContext(cmd.Context())
 	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	isUCPEnabled := false
-	if env.GetKind() == environments.KindKubernetes {
-		isUCPEnabled = env.(*environments.KubernetesEnvironment).GetEnableUCP()
-	}
-
-	if isUCPEnabled {
+	if env.GetEnableUCP() {
 		envName, err := cmd.Flags().GetString("environment")
 		if err != nil {
 			return err

@@ -14,6 +14,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -26,8 +27,8 @@ type DeleteRabbitMQMessageQueue struct {
 }
 
 // NewDeleteRabbitMQMessageQueue creates a new instance DeleteRabbitMQMessageQueue.
-func NewDeleteRabbitMQMessageQueue(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &DeleteRabbitMQMessageQueue{ctrl.NewBaseController(ds, sm)}, nil
+func NewDeleteRabbitMQMessageQueue(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &DeleteRabbitMQMessageQueue{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 func (rabbitmq *DeleteRabbitMQMessageQueue) Run(ctx context.Context, req *http.Request) (rest.Response, error) {

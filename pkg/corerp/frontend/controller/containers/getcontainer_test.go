@@ -45,7 +45,7 @@ func TestGetContainerRun_20220315PrivatePreview(t *testing.T) {
 			Return(nil, &store.ErrNotFound{}).
 			Times(1)
 
-		ctl, err := NewGetContainer(msc, nil)
+		ctl, err := NewGetContainer(msc, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -67,7 +67,7 @@ func TestGetContainerRun_20220315PrivatePreview(t *testing.T) {
 			Return(&store.Object{Metadata: store.Metadata{ID: contDataModel.ID}, Data: contDataModel}, nil).
 			Times(1)
 
-		ctl, err := NewGetContainer(msc, nil)
+		ctl, err := NewGetContainer(msc, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
