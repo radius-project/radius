@@ -213,10 +213,16 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
 		ucpRgName := fmt.Sprintf("%s-rg", environmentName)
 		env.Items[environmentName]["ucpresourcegroupname"] = ucpRgName
-		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName)
+		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName, "/planes/radius/local")
 		if err != nil {
 			return err
 		}
+
+		_, err = createUCPResourceGroup(contextName, ucpRgName, "/planes/deployments/local")
+		if err != nil {
+			return err
+		}
+
 		env.Items[environmentName]["scope"] = ucpRgId
 		ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName)
 		if err != nil {
@@ -246,7 +252,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	return nil
 }
 
-func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, error) {
+func createUCPResourceGroup(kubeCtxName, resourceGroupName string, plane string) (string, error) {
 	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		"",
 		"",
@@ -259,7 +265,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, erro
 
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", baseUrl, resourceGroupName),
+		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
 		strings.NewReader(`{}`),
 	)
 	if err != nil {
