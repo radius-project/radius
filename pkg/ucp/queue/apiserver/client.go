@@ -32,6 +32,12 @@
 // fetched message, then Update() API would return conflict error by optimistic concurrency and retry to query new message
 // and update it again until the conflict is resolved.
 //
+// How to handle clock skew - Dequeue operation in this implementation relies on system clock. If multiple queue clients
+// run in the different physical node/machines, client B in machine B could deqeueue the same message in the skewed clock
+// window before client A in machine A leased the message. Client A ensures that extend message lock earlier than skewed time
+// window and ExtendMessage always checks message dequeue count of Client A's message is equal to the deqeue count of
+// Client B's message. If it is unmatched or the skewed time window is bigger than the client expect, it means Client B
+// already leased the message. In this case, ExtendMessage returns ErrDequeuedMessage to prevent Client A from extending lock.
 
 package apiserver
 
