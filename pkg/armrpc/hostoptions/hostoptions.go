@@ -13,16 +13,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/radrp/k8sauth"
 	"gopkg.in/yaml.v3"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/rest"
-	"k8s.io/kubectl/pkg/scheme"
-	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HostOptions defines all of the settings that our RP's execution environment provides.
@@ -86,44 +79,4 @@ func FromContext(ctx context.Context) *ProviderConfig {
 // WithContext injects ProviderConfig into the given http context.
 func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 	return context.WithValue(ctx, servicecontext.HostingConfigContextKey, cfg)
-}
-
-func getArm() (*armauth.ArmConfig, error) {
-	skipARM, ok := os.LookupEnv("SKIP_ARM")
-	if ok && strings.EqualFold(skipARM, "true") {
-		return nil, nil
-	}
-
-	arm, err := armauth.GetArmConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build ARM config: %w", err)
-	}
-
-	if arm != nil {
-		fmt.Println("Initialized RP with the provided ARM credentials")
-	}
-
-	return arm, nil
-}
-
-func getKubernetes() (*rest.Config, error) {
-	cfg, err := k8sauth.GetConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
-	}
-
-	// Verify that we can connect to the cluster before handing out the config
-	s := scheme.Scheme
-	c, err := controller_runtime.New(cfg, controller_runtime.Options{Scheme: s})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
-	}
-
-	ns := &corev1.NamespaceList{}
-	err = c.List(context.Background(), ns, &controller_runtime.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to kubernetes: %w", err)
-	}
-
-	return cfg, nil
 }
