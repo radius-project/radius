@@ -181,7 +181,7 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(testRendererOutput, nil)
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 
 		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
@@ -215,8 +215,8 @@ func Test_Render(t *testing.T) {
 		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
-		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).AnyTimes().Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).AnyTimes().Return(mocks.db, nil)
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
@@ -229,7 +229,7 @@ func Test_Render(t *testing.T) {
 			},
 			Data: httprouteA,
 		}
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).AnyTimes().Return(&nr, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
 		_, err := dp.Render(ctx, resourceID, testResource)
 		require.Error(t, err, "failed to render the resource")
@@ -239,24 +239,6 @@ func Test_Render(t *testing.T) {
 		testInvalidResourceID := "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.foo/foo/foo"
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testInvalidResourceID)
-		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		requiredResources := []resources.ID{depId1}
-
-		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).AnyTimes().Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).AnyTimes().Return(mocks.db, nil)
-		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
-			},
-			Properties: &datamodel.HTTPRouteProperties{},
-		}
-		nr := store.Object{
-			Metadata: store.Metadata{
-				ID: httprouteA.ID,
-			},
-			Data: httprouteA,
-		}
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).AnyTimes().Return(&nr, nil)
 
 		_, err := dp.Render(ctx, resourceID, testResource)
 		require.Error(t, err, "radius resource type 'Applications.foo/foo' is unsupported")
@@ -272,8 +254,9 @@ func Test_Render(t *testing.T) {
 		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
-		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).AnyTimes().Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).AnyTimes().Return(mocks.db, nil)
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
@@ -286,12 +269,10 @@ func Test_Render(t *testing.T) {
 			},
 			Data: httprouteA,
 		}
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).AnyTimes().Return(&nr, nil)
-
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
 		_, err := dp.Render(ctx, resourceID, testResource)
-		require.Error(t, err, "output resource \"AzureCosmosAccount\" does not have a provider specified")
+		require.Error(t, err, "output resource \"Deployment\" does not have a provider specified")
 	})
 
 	t.Run("Unsupported output resource provider", func(t *testing.T) {
@@ -317,11 +298,11 @@ func Test_Render(t *testing.T) {
 			},
 			Data: httprouteA,
 		}
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).AnyTimes().Return(&nr, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 
 		_, err := dp.Render(ctx, resourceID, testResource)
-		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account")
+		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.roleassignment")
 	})
 }
