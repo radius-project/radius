@@ -435,6 +435,10 @@ func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 			ManualScaling: &datamodel.ManualScalingExtension{
 				Replicas: to.Int32(c.Replicas),
 			},
+<<<<<<< HEAD
+=======
+			Replicas: c.Replicas,
+>>>>>>> 3d58388f (changes to commit renderer for manualscale)
 		}
 		return *converted
 	case *DaprSidecarExtension:
@@ -461,7 +465,11 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassi
 			Extension: Extension{
 				Kind: to.StringPtr(string(e.Kind)),
 			},
+<<<<<<< HEAD
 			Replicas: to.Int32Ptr(e.ManualScaling.Replicas),
+=======
+			Replicas: c.Replicas,
+>>>>>>> 3d58388f (changes to commit renderer for manualscale)
 		}
 		return converted.GetExtension()
 	case datamodel.DaprSidecar:

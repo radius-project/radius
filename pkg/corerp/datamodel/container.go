@@ -184,7 +184,7 @@ type Extension struct {
 
 // ManualScalingExtension - ManualScaling Extension
 type ManualScalingExtension struct {
-	Replicas int32 `json:"replicas,omitempty"`
+	Replicas *int32 `json:"replicas,omitempty"`
 }
 
 // DaprSidecarExtension - Specifies the resource should have a Dapr sidecar injected
