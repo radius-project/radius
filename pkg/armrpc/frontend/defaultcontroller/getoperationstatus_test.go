@@ -49,7 +49,7 @@ func TestGetOperationStatusRun(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewGetOperationStatus(mStorageClient, nil)
+		ctl, err := NewGetOperationStatus(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -73,7 +73,7 @@ func TestGetOperationStatusRun(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewGetOperationStatus(mStorageClient, nil)
+		ctl, err := NewGetOperationStatus(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)

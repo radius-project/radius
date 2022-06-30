@@ -50,7 +50,7 @@ func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListContainers(msc, nil)
+		ctl, err := NewListContainers(msc, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -115,7 +115,7 @@ func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListContainers(msc, nil)
+			ctl, err := NewListContainers(msc, nil, nil)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

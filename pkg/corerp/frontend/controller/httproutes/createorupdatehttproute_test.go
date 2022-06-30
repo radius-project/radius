@@ -119,7 +119,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			ctl, err := NewCreateOrUpdateHTTPRoute(mds, msm)
+			ctl, err := NewCreateOrUpdateHTTPRoute(mds, msm, nil)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)
@@ -236,7 +236,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			ctl, err := NewCreateOrUpdateHTTPRoute(mds, msm)
+			ctl, err := NewCreateOrUpdateHTTPRoute(mds, msm, nil)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)

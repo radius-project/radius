@@ -41,7 +41,7 @@ func TestGetDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewGetDaprPubSubBroker(mStorageClient, nil)
+		ctl, err := NewGetDaprPubSubBroker(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -65,7 +65,7 @@ func TestGetDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewGetDaprPubSubBroker(mStorageClient, nil)
+		ctl, err := NewGetDaprPubSubBroker(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
