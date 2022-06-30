@@ -360,7 +360,9 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.Env
 // getRequiredResourceDependencies is to get the resource dependencies.
 func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Context, resourceID resources.ID) (ResourceDependency, error) {
 	var res *store.Object
-	sc, err := dp.sp.GetStorageClient(ctx, resourceID.Type())
+	var err error
+	var sc store.StorageClient
+	sc, err = dp.sp.GetStorageClient(ctx, resourceID.Type())
 	if err != nil {
 		return ResourceDependency{}, err
 	}
@@ -368,71 +370,49 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 	resourceType := resourceID.Type()
 	switch resourceType {
 	case container.ResourceType:
-		cont := &datamodel.ContainerResource{}
+		obj := &datamodel.ContainerResource{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(cont); err == nil {
-				lst := []map[string]outputresource.OutputResource{}
-				for _, r := range cont.Properties.Status.OutputResources {
-					mp := map[string]outputresource.OutputResource{}
-					for k, v := range r {
-						mp[k] = v.(outputresource.OutputResource)
-					}
-					lst = append(lst, mp)
-				}
-
-				return ResourceDependency{
-					ID:              resourceID,
-					OutputResources: lst,
-					ComputedValues:  cont.ComputedValues,
-					SecretValues:    cont.SecretValues,
-				}, nil
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
 			}
 		}
 	case gateway.ResourceType:
-		cont := &datamodel.Gateway{}
+		obj := &datamodel.Gateway{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(cont); err == nil {
-				lst := []map[string]outputresource.OutputResource{}
-				for _, r := range cont.Properties.Status.OutputResources {
-					mp := map[string]outputresource.OutputResource{}
-					for k, v := range r {
-						mp[k] = v.(outputresource.OutputResource)
-					}
-					lst = append(lst, mp)
-				}
-
-				return ResourceDependency{
-					ID:              resourceID,
-					OutputResources: lst,
-					ComputedValues:  cont.ComputedValues,
-					SecretValues:    cont.SecretValues,
-				}, nil
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
 			}
 		}
 	case httproute.ResourceType:
-		cont := &datamodel.HTTPRoute{}
+		obj := &datamodel.HTTPRoute{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(cont); err == nil {
-				lst := []map[string]outputresource.OutputResource{}
-				for _, r := range cont.Properties.Status.OutputResources {
-					mp := map[string]outputresource.OutputResource{}
-					for k, v := range r {
-						mp[k] = v.(outputresource.OutputResource)
-					}
-					lst = append(lst, mp)
-				}
-
-				return ResourceDependency{
-					ID:              resourceID,
-					OutputResources: lst,
-					ComputedValues:  cont.ComputedValues,
-					SecretValues:    cont.SecretValues,
-				}, nil
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
 			}
 		}
+	default:
+		err = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, resourceID.String())
 	}
 
-	return ResourceDependency{}, nil
+	return ResourceDependency{}, err
+}
+
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, outputResources []map[string]interface{}, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) ResourceDependency {
+	lst := []map[string]outputresource.OutputResource{}
+	for _, r := range outputResources {
+		mp := map[string]outputresource.OutputResource{}
+		for k, v := range r {
+			mp[k] = v.(outputresource.OutputResource)
+		}
+		lst = append(lst, mp)
+	}
+
+	return ResourceDependency{
+		ID:              resourceID,
+		OutputResources: lst,
+		ComputedValues:  computedValues,
+		SecretValues:    secretValues,
+	}
 }
 
 func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, dependency ResourceDependency) (renderers.RendererDependency, error) {
