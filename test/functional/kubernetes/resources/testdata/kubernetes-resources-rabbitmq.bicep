@@ -11,7 +11,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
     properties: {
       container: {
         image: magpieimage
-        readinessProbe:{
+        readinessProbe: {
           kind: 'httpGet'
           containerPort: 3000
           path: '/healthz'
@@ -51,7 +51,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource rabbitmq 'rabbitmq.com.MessageQueue' = {
     name: 'rabbitmq'
     properties: {
-			queue: 'queue'
+      queue: 'queue'
       secrets: {
         connectionString: 'amqp://${username}:${password}@${rabbitmqRoute.properties.host}:${rabbitmqRoute.properties.port}'
       }
