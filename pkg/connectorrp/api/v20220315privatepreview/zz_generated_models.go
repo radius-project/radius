@@ -206,7 +206,7 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubAzureServiceBusResourceProperties.
 func (d DaprPubSubAzureServiceBusResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, "pubsub.azure.servicebus")
+	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, DaprPubSubBrokerPropertiesKindPubsubAzureServicebus)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -267,7 +267,7 @@ type DaprPubSubBrokerProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The DaprPubSubProperties kind
-	Kind *string `json:"kind,omitempty"`
+	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -288,7 +288,7 @@ func (d *DaprPubSubBrokerProperties) UnmarshalJSON(data []byte) error {
 	return d.unmarshalInternal(rawMsg)
 }
 
-func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
+func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interface{}, discValue DaprPubSubBrokerPropertiesKind) {
 	d.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "environment", d.Environment)
@@ -404,7 +404,7 @@ type DaprPubSubGenericResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubGenericResourceProperties.
 func (d DaprPubSubGenericResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, "generic")
+	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, DaprPubSubBrokerPropertiesKindGeneric)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -611,7 +611,7 @@ type DaprStateStoreAzureTableStorageResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreAzureTableStorageResourceProperties.
 func (d DaprStateStoreAzureTableStorageResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "state.azure.tablestorage")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindStateAzureTablestorage)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -654,7 +654,7 @@ type DaprStateStoreGenericResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreGenericResourceProperties.
 func (d DaprStateStoreGenericResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "generic")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindGeneric)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
@@ -724,7 +724,7 @@ type DaprStateStoreProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The Dapr StateStore kind
-	Kind *string `json:"kind,omitempty"`
+	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
 
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
@@ -745,7 +745,7 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 	return d.unmarshalInternal(rawMsg)
 }
 
-func (d DaprStateStoreProperties) marshalInternal(objectMap map[string]interface{}, discValue string) {
+func (d DaprStateStoreProperties) marshalInternal(objectMap map[string]interface{}, discValue DaprStateStorePropertiesKind) {
 	d.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "environment", d.Environment)
@@ -835,7 +835,7 @@ type DaprStateStoreSQLServerResourceProperties struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprStateStoreSQLServerResourceProperties.
 func (d DaprStateStoreSQLServerResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.DaprStateStoreProperties.marshalInternal(objectMap, "state.sqlserver")
+	d.DaprStateStoreProperties.marshalInternal(objectMap, DaprStateStorePropertiesKindStateSqlserver)
 	populate(objectMap, "resource", d.Resource)
 	return json.Marshal(objectMap)
 }
@@ -942,7 +942,7 @@ type ExtenderList struct {
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of Extender resources
-	Value []*ExtenderResource `json:"value,omitempty"`
+	Value []*ExtenderResponseResource `json:"value,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ExtenderList.
@@ -955,36 +955,16 @@ func (e ExtenderList) MarshalJSON() ([]byte, error) {
 
 // ExtenderProperties - Extender connector properties
 type ExtenderProperties struct {
-	BasicResourceProperties
-	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
-	AdditionalProperties map[string]interface{}
-
-	// Dictionary of
+	ExtenderResponseProperties
+	// The secret values for the given Extender resource
 	Secrets map[string]interface{} `json:"secrets,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the extender connector at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type ExtenderProperties.
 func (e ExtenderProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	e.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "application", e.Application)
-	populate(objectMap, "environment", e.Environment)
-	populate(objectMap, "provisioningState", e.ProvisioningState)
+	e.ExtenderResponseProperties.marshalInternal(objectMap)
 	populate(objectMap, "secrets", e.Secrets)
-	if e.AdditionalProperties != nil {
-		for key, val := range e.AdditionalProperties {
-			objectMap[key] = val
-		}
-	}
 	return json.Marshal(objectMap)
 }
 
@@ -997,15 +977,6 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "application":
-				err = unpopulate(val, &e.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, &e.Environment)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, &e.ProvisioningState)
-				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, &e.Secrets)
 				delete(rawMsg, key)
@@ -1014,23 +985,8 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := e.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := e.ExtenderResponseProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
-	}
-	for key, val := range rawMsg {
-	var err error
-		if e.AdditionalProperties == nil {
-			e.AdditionalProperties = map[string]interface{}{}
-		}
-		if val != nil {
-			var aux interface{}
-			err = json.Unmarshal(val, &aux)
-			e.AdditionalProperties[key] = aux
-		}
-		delete(rawMsg, key)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -1080,6 +1036,134 @@ func (e *ExtenderResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ExtenderResponseProperties - Extender connector properties
+type ExtenderResponseProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]interface{}
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the extender connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderResponseProperties.
+func (e ExtenderResponseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	e.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderResponseProperties.
+func (e *ExtenderResponseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return e.unmarshalInternal(rawMsg)
+}
+
+func (e ExtenderResponseProperties) marshalInternal(objectMap map[string]interface{}) {
+	e.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", e.Application)
+	populate(objectMap, "environment", e.Environment)
+	populate(objectMap, "provisioningState", e.ProvisioningState)
+	if e.AdditionalProperties != nil {
+		for key, val := range e.AdditionalProperties {
+			objectMap[key] = val
+		}
+	}
+}
+
+func (e *ExtenderResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &e.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &e.Environment)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &e.ProvisioningState)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := e.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+	var err error
+		if e.AdditionalProperties == nil {
+			e.AdditionalProperties = map[string]interface{}{}
+		}
+		if val != nil {
+			var aux interface{}
+			err = json.Unmarshal(val, &aux)
+			e.AdditionalProperties[key] = aux
+		}
+		delete(rawMsg, key)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ExtenderResponseResource - Extender connector
+type ExtenderResponseResource struct {
+	TrackedResource
+	// REQUIRED; Extender connector properties
+	Properties *ExtenderResponseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ExtenderResponseResource.
+func (e ExtenderResponseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	e.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", e.Properties)
+	populate(objectMap, "systemData", e.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderResponseResource.
+func (e *ExtenderResponseResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &e.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &e.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := e.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // ExtendersCreateOrUpdateOptions contains the optional parameters for the Extenders.CreateOrUpdate method.
 type ExtendersCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -1100,13 +1184,18 @@ type ExtendersListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ExtendersListSecretsOptions contains the optional parameters for the Extenders.ListSecrets method.
+type ExtendersListSecretsOptions struct {
+	// placeholder for future optional parameters
+}
+
 // MongoDatabaseList - Object that includes an array of MongoDatabase and a possible link for next set
 type MongoDatabaseList struct {
 	// The link used to fetch the next page of MongoDatabase list.
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of MongoDatabase resources
-	Value []*MongoDatabaseResource `json:"value,omitempty"`
+	Value []*MongoDatabaseResponseResource `json:"value,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type MongoDatabaseList.
@@ -1117,8 +1206,91 @@ func (m MongoDatabaseList) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// MongoDatabaseProperties - MongoDatabse connector properties
+// MongoDatabaseProperties - MongoDatabase connector properties
 type MongoDatabaseProperties struct {
+	MongoDatabaseResponseProperties
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseProperties.
+func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	m.MongoDatabaseResponseProperties.marshalInternal(objectMap)
+	populate(objectMap, "secrets", m.Secrets)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseProperties.
+func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "secrets":
+				err = unpopulate(val, &m.Secrets)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := m.MongoDatabaseResponseProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MongoDatabaseResource - MongoDatabase connector
+type MongoDatabaseResource struct {
+	TrackedResource
+	// REQUIRED; MongoDatabase connector properties
+	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResource.
+func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	m.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", m.Properties)
+	populate(objectMap, "systemData", m.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResource.
+func (m *MongoDatabaseResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &m.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &m.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := m.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MongoDatabaseResponseProperties - MongoDatabase connector properties
+type MongoDatabaseResponseProperties struct {
 	BasicResourceProperties
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1132,9 +1304,6 @@ type MongoDatabaseProperties struct {
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
 
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
 	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty" azure:"ro"`
 
@@ -1142,9 +1311,23 @@ type MongoDatabaseProperties struct {
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseProperties.
-func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResponseProperties.
+func (m MongoDatabaseResponseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	m.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResponseProperties.
+func (m *MongoDatabaseResponseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return m.unmarshalInternal(rawMsg)
+}
+
+func (m MongoDatabaseResponseProperties) marshalInternal(objectMap map[string]interface{}) {
 	m.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", m.Application)
 	populate(objectMap, "environment", m.Environment)
@@ -1152,16 +1335,9 @@ func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "port", m.Port)
 	populate(objectMap, "provisioningState", m.ProvisioningState)
 	populate(objectMap, "resource", m.Resource)
-	populate(objectMap, "secrets", m.Secrets)
-	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseProperties.
-func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return err
-	}
+func (m *MongoDatabaseResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
@@ -1183,9 +1359,6 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 		case "resource":
 				err = unpopulate(val, &m.Resource)
 				delete(rawMsg, key)
-		case "secrets":
-				err = unpopulate(val, &m.Secrets)
-				delete(rawMsg, key)
 		}
 		if err != nil {
 			return err
@@ -1197,18 +1370,18 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MongoDatabaseResource - MongoDatabse connector
-type MongoDatabaseResource struct {
+// MongoDatabaseResponseResource - MongoDatabase connector
+type MongoDatabaseResponseResource struct {
 	TrackedResource
-	// REQUIRED; MongoDatabse connector properties
-	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
+	// REQUIRED; MongoDatabase connector properties
+	Properties *MongoDatabaseResponseProperties `json:"properties,omitempty"`
 
 	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResource.
-func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseResponseResource.
+func (m MongoDatabaseResponseResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	m.TrackedResource.marshalInternal(objectMap)
 	populate(objectMap, "properties", m.Properties)
@@ -1216,8 +1389,8 @@ func (m MongoDatabaseResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResource.
-func (m *MongoDatabaseResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseResponseResource.
+func (m *MongoDatabaseResponseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -1285,7 +1458,7 @@ type RabbitMQMessageQueueList struct {
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of RabbitMQMessageQueue resources
-	Value []*RabbitMQMessageQueueResource `json:"value,omitempty"`
+	Value []*RabbitMQMessageQueueResponseResource `json:"value,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueList.
@@ -1298,31 +1471,15 @@ func (r RabbitMQMessageQueueList) MarshalJSON() ([]byte, error) {
 
 // RabbitMQMessageQueueProperties - RabbitMQMessageQueue connector properties
 type RabbitMQMessageQueueProperties struct {
-	BasicResourceProperties
-	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; The name of the queue
-	Queue *string `json:"queue,omitempty"`
-
+	RabbitMQMessageQueueResponseProperties
 	// Secrets provided by resources,
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueProperties.
 func (r RabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	r.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "application", r.Application)
-	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "provisioningState", r.ProvisioningState)
-	populate(objectMap, "queue", r.Queue)
+	r.RabbitMQMessageQueueResponseProperties.marshalInternal(objectMap)
 	populate(objectMap, "secrets", r.Secrets)
 	return json.Marshal(objectMap)
 }
@@ -1336,18 +1493,6 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "application":
-				err = unpopulate(val, &r.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, &r.Environment)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, &r.ProvisioningState)
-				delete(rawMsg, key)
-		case "queue":
-				err = unpopulate(val, &r.Queue)
-				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, &r.Secrets)
 				delete(rawMsg, key)
@@ -1356,7 +1501,7 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := r.RabbitMQMessageQueueResponseProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
@@ -1383,6 +1528,118 @@ func (r RabbitMQMessageQueueResource) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResource.
 func (r *RabbitMQMessageQueueResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &r.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RabbitMQMessageQueueResponseProperties - RabbitMQMessageQueue connector response properties
+type RabbitMQMessageQueueResponseProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResponseProperties.
+func (r RabbitMQMessageQueueResponseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResponseProperties.
+func (r *RabbitMQMessageQueueResponseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return r.unmarshalInternal(rawMsg)
+}
+
+func (r RabbitMQMessageQueueResponseProperties) marshalInternal(objectMap map[string]interface{}) {
+	r.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "environment", r.Environment)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "queue", r.Queue)
+}
+
+func (r *RabbitMQMessageQueueResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &r.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &r.Environment)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "queue":
+				err = unpopulate(val, &r.Queue)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RabbitMQMessageQueueResponseResource - RabbitMQMessageQueue connector
+type RabbitMQMessageQueueResponseResource struct {
+	TrackedResource
+	// REQUIRED; RabbitMQMessageQueue connector response properties
+	Properties *RabbitMQMessageQueueResponseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResponseResource.
+func (r RabbitMQMessageQueueResponseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", r.Properties)
+	populate(objectMap, "systemData", r.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResponseResource.
+func (r *RabbitMQMessageQueueResponseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err
@@ -1444,7 +1701,7 @@ type RedisCacheList struct {
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of RedisCache resources
-	Value []*RedisCacheResource `json:"value,omitempty"`
+	Value []*RedisCacheResponseResource `json:"value,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisCacheList.
@@ -1457,39 +1714,15 @@ func (r RedisCacheList) MarshalJSON() ([]byte, error) {
 
 // RedisCacheProperties - RedisCache connector properties
 type RedisCacheProperties struct {
-	BasicResourceProperties
-	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// The host name of the target redis cache
-	Host *string `json:"host,omitempty"`
-
-	// The port value of the target redis cache
-	Port *int32 `json:"port,omitempty"`
-
-	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
-	Resource *string `json:"resource,omitempty"`
-
+	RedisCacheResponseProperties
 	// The secret values for the given RedisCache resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisCacheProperties.
 func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	r.BasicResourceProperties.marshalInternal(objectMap)
-	populate(objectMap, "application", r.Application)
-	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "host", r.Host)
-	populate(objectMap, "port", r.Port)
-	populate(objectMap, "provisioningState", r.ProvisioningState)
-	populate(objectMap, "resource", r.Resource)
+	r.RedisCacheResponseProperties.marshalInternal(objectMap)
 	populate(objectMap, "secrets", r.Secrets)
 	return json.Marshal(objectMap)
 }
@@ -1503,24 +1736,6 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "application":
-				err = unpopulate(val, &r.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, &r.Environment)
-				delete(rawMsg, key)
-		case "host":
-				err = unpopulate(val, &r.Host)
-				delete(rawMsg, key)
-		case "port":
-				err = unpopulate(val, &r.Port)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, &r.ProvisioningState)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, &r.Resource)
-				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, &r.Secrets)
 				delete(rawMsg, key)
@@ -1529,7 +1744,7 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+	if err := r.RedisCacheResponseProperties.unmarshalInternal(rawMsg); err != nil {
 		return err
 	}
 	return nil
@@ -1556,6 +1771,132 @@ func (r RedisCacheResource) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheResource.
 func (r *RedisCacheResource) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "properties":
+				err = unpopulate(val, &r.Properties)
+				delete(rawMsg, key)
+		case "systemData":
+				err = unpopulate(val, &r.SystemData)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.TrackedResource.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RedisCacheResponseProperties - RedisCache connector properties
+type RedisCacheResponseProperties struct {
+	BasicResourceProperties
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The host name of the target redis cache
+	Host *string `json:"host,omitempty"`
+
+	// The port value of the target redis cache
+	Port *int32 `json:"port,omitempty"`
+
+	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
+	Resource *string `json:"resource,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheResponseProperties.
+func (r RedisCacheResponseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.marshalInternal(objectMap)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheResponseProperties.
+func (r *RedisCacheResponseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return r.unmarshalInternal(rawMsg)
+}
+
+func (r RedisCacheResponseProperties) marshalInternal(objectMap map[string]interface{}) {
+	r.BasicResourceProperties.marshalInternal(objectMap)
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "environment", r.Environment)
+	populate(objectMap, "host", r.Host)
+	populate(objectMap, "port", r.Port)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "resource", r.Resource)
+}
+
+func (r *RedisCacheResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, &r.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, &r.Environment)
+				delete(rawMsg, key)
+		case "host":
+				err = unpopulate(val, &r.Host)
+				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, &r.Port)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, &r.Resource)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := r.BasicResourceProperties.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RedisCacheResponseResource - RedisCache connector
+type RedisCacheResponseResource struct {
+	TrackedResource
+	// REQUIRED; RedisCache connector properties
+	Properties *RedisCacheResponseProperties `json:"properties,omitempty"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheResponseResource.
+func (r RedisCacheResponseResource) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	r.TrackedResource.marshalInternal(objectMap)
+	populate(objectMap, "properties", r.Properties)
+	populate(objectMap, "systemData", r.SystemData)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheResponseResource.
+func (r *RedisCacheResponseResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err

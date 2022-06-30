@@ -28,10 +28,12 @@ func Test_CreateResourceGroup(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+	testResourceGroupID := "/planes/radius/local/resourceGroups/test-rg"
+	testResourceGroupName := "test-rg"
 
 	resourceGroup := rest.ResourceGroup{
-		ID:   "/planes/radius/local/resourceGroups/test-rg",
-		Name: "test-rg",
+		ID:   testResourceGroupID,
+		Name: testResourceGroupName,
 	}
 
 	var o store.Object
@@ -41,8 +43,16 @@ func Test_CreateResourceGroup(t *testing.T) {
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
 	mockStorageClient.EXPECT().Save(gomock.Any(), &o)
-	_, err := testHandler.Create(ctx, mockStorageClient, body, path)
+	response, err := testHandler.Create(ctx, mockStorageClient, body, path)
+
+	expectedResourceGroup := rest.ResourceGroup{
+		ID:   testResourceGroupID,
+		Name: testResourceGroupName,
+	}
+	expectedResponse := rest.NewOKResponse(expectedResourceGroup)
+
 	assert.Equal(t, nil, err)
+	assert.DeepEqual(t, expectedResponse, response)
 
 }
 
@@ -53,9 +63,10 @@ func Test_ListResourceGroups(t *testing.T) {
 	var testHandler = NewResourceGroupsUCPHandler()
 
 	var query store.Query
-	query.RootScope = path
-	query.ScopeRecursive = false
+	query.RootScope = "/planes/radius/local"
+	query.ScopeRecursive = true
 	query.IsScopeQuery = true
+	query.ResourceType = "resourcegroups"
 
 	testResourceGroupID := "/planes/radius/local/resourceGroups/test-rg"
 	testResourceGroupName := "test-rg"

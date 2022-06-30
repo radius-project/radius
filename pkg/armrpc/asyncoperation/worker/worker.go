@@ -7,6 +7,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime/debug"
@@ -18,9 +19,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/project-radius/radius/pkg/queue"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"golang.org/x/sync/semaphore"
@@ -82,7 +83,7 @@ func New(
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	msgCh, err := w.requestQueue.Dequeue(ctx)
+	msgCh, err := queue.StartDequeuer(ctx, w.requestQueue)
 	if err != nil {
 		return err
 	}
@@ -97,7 +98,12 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 		go func(msgreq *queue.Message) {
 			defer w.sem.Release(1)
 
-			op := msgreq.Data.(*ctrl.Request)
+			op := &ctrl.Request{}
+			if err := json.Unmarshal(msgreq.Data, op); err != nil {
+				logger.Error(err, "failed to unmarshal queue message.")
+				return
+			}
+
 			opLogger := logger.WithValues(
 				"OperationID", op.OperationID.String(),
 				"OperationType", op.OperationType,
@@ -116,14 +122,14 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			if ctrl == nil {
 				opLogger.V(radlogger.Error).Info("Unknown operation")
-				if err := msgreq.Finish(nil); err != nil {
+				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
 					logger.Error(err, "failed to finish the message which includes unknown operation.")
 				}
 				return
 			}
 			if msgreq.DequeueCount >= MaxDequeueCount {
 				opLogger.V(radlogger.Error).Info(fmt.Sprintf("Exceed max retrycount: %d", msgreq.DequeueCount))
-				if err := msgreq.Finish(nil); err != nil {
+				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
 					logger.Error(err, "failed to finish the message which exceeds the max retry count.")
 				}
 				return
@@ -159,7 +165,11 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *queue.Message, asyncCtrl ctrl.Controller) {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	asyncReq := message.Data.(*ctrl.Request)
+	asyncReq := &ctrl.Request{}
+	if err := json.Unmarshal(message.Data, asyncReq); err != nil {
+		logger.Error(err, "failed to unmarshal queue message.")
+		return
+	}
 	asyncReqCtx, opCancel := context.WithCancel(ctx)
 	// Ensure that asyncReqCtx context is cancelled when runOperation returns.
 	// That is, cancelling asyncReqCtx signals to ctrl.Run() to cancel the execution,
@@ -199,7 +209,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	for {
 		select {
 		case <-time.After(messageExtendAfter):
-			if err := message.Extend(); err != nil {
+			if err := w.requestQueue.ExtendMessage(ctx, message); err != nil {
 				logger.Error(err, "fails to extend message lock")
 			} else {
 				logger.Info("Extended message lock duration.", "NextVisibleTime", message.NextVisibleAt.UTC().String())
@@ -227,7 +237,11 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, sc store.StorageClient) {
 	logger := logr.FromContextOrDiscard(ctx)
-	req := message.Data.(*ctrl.Request)
+	req := &ctrl.Request{}
+	if err := json.Unmarshal(message.Data, req); err != nil {
+		logger.Error(err, "failed to unmarshal queue message.")
+		return
+	}
 
 	err := w.updateResourceAndOperationStatus(ctx, sc, req.ResourceID, req.OperationID, result.ProvisioningState(), result.Error)
 	if err != nil {
@@ -236,7 +250,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 
 	// Finish the message only if Requeue is false. Otherwise, AsyncRequestProcessWorker will requeue the message and process it again.
 	if !result.Requeue {
-		if err := message.Finish(nil); err != nil {
+		if err := w.requestQueue.FinishMessage(ctx, message); err != nil {
 			logger.Error(err, "failed to finish the message")
 		}
 	}

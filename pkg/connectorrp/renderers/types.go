@@ -7,6 +7,7 @@ package renderers
 
 import (
 	"context"
+	"errors"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -20,6 +21,9 @@ const (
 	PasswordStringHolder  = "password"
 )
 
+var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
+
+//go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/connectorrp/renderers Renderer
 type Renderer interface {
 	Render(ctx context.Context, resource conv.DataModelInterface) (RendererOutput, error)
 }
@@ -96,7 +100,7 @@ type SecretValueTransformer interface {
 	Transform(ctx context.Context, resource conv.DataModelInterface, value interface{}) (interface{}, error)
 }
 
-//go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/renderers github.com/project-radius/radius/pkg/renderers SecretValueClient
+//go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/connectorrp/renderers github.com/project-radius/radius/pkg/connectorrp/renderers SecretValueClient
 type SecretValueClient interface {
 	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }

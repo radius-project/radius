@@ -60,6 +60,35 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if env.GetEnableUCP() {
+		err := DeleteApplicationUCP(cmd, args, env, applicationName, config)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := DeleteApplicationLegacy(cmd, args, env, applicationName, config)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DeleteApplicationUCP(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
+	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	if err != nil {
+		return err
+	}
+
+	deleteResponse, err := client.DeleteApplication(cmd.Context(), applicationName)
+	if err != nil {
+		return err
+	}
+
+	return printOutput(cmd, deleteResponse, false)
+}
+
+func DeleteApplicationLegacy(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
 	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err

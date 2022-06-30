@@ -188,7 +188,7 @@ func (client *RedisCachesClient) getCreateRequest(ctx context.Context, redisCach
 // getHandleResponse handles the Get response.
 func (client *RedisCachesClient) getHandleResponse(resp *http.Response) (RedisCachesGetResponse, error) {
 	result := RedisCachesGetResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResponseResource); err != nil {
 		return RedisCachesGetResponse{}, err
 	}
 	return result, nil

@@ -318,6 +318,7 @@
       "discriminator": "kind",
       "properties": {
         "provisioningState": {
+          "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprPubSubBroker connector at the time the operation was called"
         },
@@ -331,7 +332,8 @@
         },
         "kind": {
           "description": "The DaprPubSubProperties kind",
-          "type": "string"
+          "type": "string",
+          "enum": ["pubsub.azure.servicebus","generic"]
         }
       },
       "required": [

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,14 +42,67 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 func Test_EnvironmentWithCoreRP(t *testing.T) {
 	ctx := context.Background()
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "", "", true)
-
 	require.NoError(t, err, "")
+
+	// Create resource group in deployments plane
+	rgDeployments := fmt.Sprintf("%s/planes/deployments/local/resourceGroups/%s", url, resourceGroup)
+	createRgRequestDeployments, err := http.NewRequest(
+		http.MethodPut,
+		rgDeployments,
+		strings.NewReader(`{}`),
+	)
+	require.NoError(t, err, "")
+
+	res, err := roundTripper.RoundTrip(createRgRequestDeployments)
+	require.NoError(t, err, "")
+
+	require.Equal(t, http.StatusCreated, res.StatusCode)
+	t.Logf("Resource group: %s created successfully", resourceGroup)
+
+	getRgRequestDeployments, err := http.NewRequest(
+		http.MethodGet,
+		rgDeployments,
+		strings.NewReader(`{}`),
+	)
+	require.NoError(t, err, "")
+	res, err = roundTripper.RoundTrip(getRgRequestDeployments)
+	require.NoError(t, err, "")
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	t.Logf("Was able to GET Resource group: %s successfully", resourceGroup)
+
+	// Create resource group in radius plane. Currently, DE uses the same resourcegroup in the radius plane as well
+	rgRadius := fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", url, resourceGroup)
+	createRgRequestRadius, err := http.NewRequest(
+		http.MethodPut,
+		rgRadius,
+		strings.NewReader(`{}`),
+	)
+	require.NoError(t, err, "")
+
+	res, err = roundTripper.RoundTrip(createRgRequestRadius)
+	require.NoError(t, err, "")
+
+	require.Equal(t, http.StatusCreated, res.StatusCode)
+	t.Logf("Resource group: %s created successfully", resourceGroup)
+
+	getRgRequestRadius, err := http.NewRequest(
+		http.MethodGet,
+		rgRadius,
+		nil,
+	)
+	require.NoError(t, err, "")
+
+	res, err = roundTripper.RoundTrip(getRgRequestRadius)
+	require.NoError(t, err, "")
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	t.Logf("Was able to GET Resource group: %s successfully", resourceGroup)
 
 	deploymentsClient := clients.NewResourceDeploymentClientWithBaseURI(url)
 
 	deploymentsClient.Sender = &sender{RoundTripper: roundTripper}
 
-	future, err := deploymentsClient.CreateOrUpdate(ctx, "/planes/deployments/local/resourceGroups/default/providers/Microsoft.Resources/deployments/my-deployment", resources.Deployment{
+	deploymentURL := fmt.Sprintf("/planes/deployments/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/my-deployment", resourceGroup)
+	future, err := deploymentsClient.CreateOrUpdate(ctx, deploymentURL, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
 			Mode: resources.DeploymentModeIncremental,
 			Template: map[string]interface{}{
@@ -78,7 +132,7 @@ func Test_EnvironmentWithCoreRP(t *testing.T) {
 						"type":   "Applications.Core/environments@2022-03-15-privatepreview",
 						"properties": map[string]interface{}{
 							"name":     envName,
-							"location": "westus2",
+							"location": "global",
 							"properties": map[string]interface{}{
 								"compute": map[string]interface{}{
 									"kind":       "kubernetes",

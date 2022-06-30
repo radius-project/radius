@@ -107,7 +107,7 @@
           "200": {
             "description": "RabbitMQMessageQueue resource",
             "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResponseResource"
             }
           },
           "default": {
@@ -269,7 +269,7 @@
           "description": "List of RabbitMQMessageQueue resources",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            "$ref": "#/definitions/RabbitMQMessageQueueResponseResource"
           }
         },
         "nextLink": {
@@ -299,6 +299,27 @@
         }
       }
     },
+    "RabbitMQMessageQueueResponseResource": {
+      "description": "RabbitMQMessageQueue connector",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "systemData": {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/RabbitMQMessageQueueResponseProperties"
+        }
+      }
+    },
     "RabbitMQListSecretsResult" :{
       "description": "The secret values for the given RabbitMQMessageQueue resource",
       "$ref": "#/definitions/RabbitMQSecrets"
@@ -312,8 +333,8 @@
         }
       }
     },
-    "RabbitMQMessageQueueProperties": {
-      "description": "RabbitMQMessageQueue connector properties",
+    "RabbitMQMessageQueueResponseProperties": {
+      "description": "RabbitMQMessageQueue connector response properties",
       "type": "object",
       "allOf": [
         {
@@ -322,6 +343,7 @@
       ],
       "properties": {
         "provisioningState": {
+          "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the rabbitMQ message queue connector at the time the operation was called"
         },
@@ -336,7 +358,19 @@
         "queue": {
           "description": "The name of the queue",
           "type": "string"
-        },
+        }
+      },
+      "required": ["environment","queue"]
+    },
+    "RabbitMQMessageQueueProperties": {
+      "description": "RabbitMQMessageQueue connector properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RabbitMQMessageQueueResponseProperties"
+        }
+      ],
+      "properties": {
         "secrets": {
           "type": "object",
           "description": "Secrets provided by resources,",

@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -28,8 +29,8 @@ type ListRedisCaches struct {
 }
 
 // NewListRedisCaches creates a new instance of ListRedisCaches.
-func NewListRedisCaches(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &ListRedisCaches{ctrl.NewBaseController(ds, sm)}, nil
+func NewListRedisCaches(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &ListRedisCaches{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 func (redis *ListRedisCaches) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -55,12 +56,12 @@ func (redis *ListRedisCaches) createPaginatedList(ctx context.Context, req *http
 
 	items := []interface{}{}
 	for _, item := range result.Items {
-		dm := &datamodel.RedisCache{}
+		dm := &datamodel.RedisCacheResponse{}
 		if err := item.As(dm); err != nil {
 			return nil, err
 		}
 
-		versioned, err := converter.RedisCacheDataModelToVersioned(dm, serviceCtx.APIVersion)
+		versioned, err := converter.RedisCacheDataModelToVersioned(dm, serviceCtx.APIVersion, false)
 		if err != nil {
 			return nil, err
 		}

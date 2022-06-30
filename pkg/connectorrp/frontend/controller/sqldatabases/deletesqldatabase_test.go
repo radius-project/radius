@@ -41,7 +41,7 @@ func TestDeleteSqlDatabase_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewDeleteSqlDatabase(mStorageClient, nil)
+		ctl, err := NewDeleteSqlDatabase(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -103,7 +103,7 @@ func TestDeleteSqlDatabase_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewDeleteSqlDatabase(mStorageClient, nil)
+			ctl, err := NewDeleteSqlDatabase(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)

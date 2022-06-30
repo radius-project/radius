@@ -8,11 +8,10 @@ package dataprovider
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync"
-	"unicode"
 
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/util"
 )
 
 var (
@@ -38,7 +37,7 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 
 // GetStorageClient creates or gets storage client.
 func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType string) (store.StorageClient, error) {
-	cn := normalizeResourceType(resourceType)
+	cn := util.NormalizeStringToLower(resourceType)
 
 	p.clientsMu.RLock()
 	c, ok := p.clients[cn]
@@ -72,22 +71,4 @@ func (p *storageProvider) GetStorageClient(ctx context.Context, resourceType str
 	}
 
 	return c, err
-}
-
-// normalizeResourceType converts resourcetype to safe string by removing non digit and non letter and replace '/' with '-'
-func normalizeResourceType(s string) string {
-	if s == "" {
-		return s
-	}
-
-	sb := strings.Builder{}
-	for _, ch := range s {
-		if ch == '/' {
-			sb.WriteString("-")
-		} else if unicode.IsDigit(ch) || unicode.IsLetter(ch) {
-			sb.WriteRune(ch)
-		}
-	}
-
-	return strings.ToLower(sb.String())
 }

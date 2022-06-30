@@ -17,6 +17,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+const (
+	UCPEndpointType = "ucp"
+	UCPApiVersion   = "2022-03-15-privatepreview"
+)
+
 // APIValidator is the middleware to validate incoming request with OpenAPI spec.
 func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
@@ -48,7 +53,37 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 				}
 				return
 			}
+			h.ServeHTTP(w, r)
+		}
 
+		return http.HandlerFunc(fn)
+	}
+}
+
+// APIValidatorUCP is the middleware to validate incoming request for UCP with OpenAPI spec.
+func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			endpointType := UCPEndpointType
+			// TODO: Currently, UCP APIs do not support versioning. Using a dummy version here
+			apiVersion := UCPApiVersion
+			v, ok := loader.GetValidator(endpointType, apiVersion)
+			if !ok {
+				resp := unsupportedAPIVersionResponse(apiVersion, endpointType, loader.SupportedVersions(endpointType))
+				if err := resp.Apply(r.Context(), w, r); err != nil {
+					handleError(r.Context(), w, err)
+				}
+				return
+			}
+
+			errs := v.ValidateRequest(r)
+			if errs != nil {
+				resp := validationFailedResponse(endpointType, errs)
+				if err := resp.Apply(r.Context(), w, r); err != nil {
+					handleError(r.Context(), w, err)
+				}
+				return
+			}
 			h.ServeHTTP(w, r)
 		}
 

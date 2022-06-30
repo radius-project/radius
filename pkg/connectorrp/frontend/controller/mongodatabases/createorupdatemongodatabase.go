@@ -16,6 +16,8 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -28,8 +30,8 @@ type CreateOrUpdateMongoDatabase struct {
 }
 
 // NewCreateOrUpdateMongoDatabase creates a new instance of CreateOrUpdateMongoDatabase.
-func NewCreateOrUpdateMongoDatabase(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateMongoDatabase{ctrl.NewBaseController(ds, sm)}, nil
+func NewCreateOrUpdateMongoDatabase(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &CreateOrUpdateMongoDatabase{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run executes CreateOrUpdateMongoDatabase operation.
@@ -40,8 +42,26 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	// TODO Integrate with renderer/deployment processor to validate associated resource existence (if fromResource is defined)
-	// and store resource properties and secrets reference
+	rendererOutput, err := mongo.DeploymentProcessor.Render(ctx, serviceCtx.ResourceID, newResource)
+	if err != nil {
+		return nil, err
+	}
+	deploymentOutput, err := mongo.DeploymentProcessor.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	var outputResources []map[string]interface{}
+	for _, deployedOutputResource := range deploymentOutput.Resources {
+		outputResource := map[string]interface{}{
+			deployedOutputResource.LocalID: deployedOutputResource,
+		}
+		outputResources = append(outputResources, outputResource)
+	}
+
+	newResource.Properties.BasicResourceProperties.Status.OutputResources = outputResources
+	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
+	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.MongoDatabase{}
@@ -68,7 +88,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	versioned, err := converter.MongoDatabaseDataModelToVersioned(newResource, serviceCtx.APIVersion)
+	versioned, err := converter.MongoDatabaseDataModelToVersioned(newResource, serviceCtx.APIVersion, true)
 	if err != nil {
 		return nil, err
 	}

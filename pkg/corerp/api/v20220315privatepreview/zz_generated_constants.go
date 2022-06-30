@@ -122,7 +122,7 @@ func (c Protocol) ToPtr() *Protocol {
 	return &c
 }
 
-// ProvisioningState - Gets the status of the container at the time the operation was called.
+// ProvisioningState - Provisioning state of the resource at the time the operation was called.
 type ProvisioningState string
 
 const (

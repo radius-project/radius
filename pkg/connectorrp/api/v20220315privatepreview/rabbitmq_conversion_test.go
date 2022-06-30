@@ -75,6 +75,66 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 		}
 	}
 }
+
+func TestRabbitMQMessageQueueResponse_ConvertVersionedToDataModel(t *testing.T) {
+	testset := []string{"rabbitmqresource.json", "rabbitmqresource2.json"}
+	for _, payload := range testset {
+
+		// arrange
+		rawPayload := loadTestData(payload)
+		versionedResource := &RabbitMQMessageQueueResource{}
+		err := json.Unmarshal(rawPayload, versionedResource)
+		require.NoError(t, err)
+
+		// act
+		dm, err := versionedResource.ConvertTo()
+		resourceType := map[string]interface{}{"Provider": "rabbitmqProvider", "Type": "rabbitmq"}
+
+		// assert
+		require.NoError(t, err)
+		convertedResource := dm.(*datamodel.RabbitMQMessageQueue)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/rabbitMQMessageQueues/rabbitmq0", convertedResource.ID)
+		require.Equal(t, "rabbitmq0", convertedResource.Name)
+		require.Equal(t, "Applications.Connector/rabbitMQMessageQueues", convertedResource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
+		require.Equal(t, "testQueue", convertedResource.Properties.Queue)
+		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+		if payload == "rabbitmqresource.json" {
+			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+		}
+	}
+}
+
+func TestRabbitMQMessageQueueResponse_ConvertDataModelToVersioned(t *testing.T) {
+	testset := []string{"rabbitmqresponseresourcedatamodel.json", "rabbitmqresourcedatamodel2.json"}
+	for _, payload := range testset {
+		// arrange
+		rawPayload := loadTestData(payload)
+		resource := &datamodel.RabbitMQMessageQueue{}
+		err := json.Unmarshal(rawPayload, resource)
+		require.NoError(t, err)
+
+		// act
+		versionedResource := &RabbitMQMessageQueueResource{}
+		err = versionedResource.ConvertFrom(resource)
+
+		resourceType := map[string]interface{}{"Provider": "rabbitmqProvider", "Type": "rabbitmq"}
+		// assert
+		require.NoError(t, err)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/rabbitMQMessageQueues/rabbitmq0", resource.ID)
+		require.Equal(t, "rabbitmq0", resource.Name)
+		require.Equal(t, "Applications.Connector/rabbitMQMessageQueues", resource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
+		require.Equal(t, "testQueue", resource.Properties.Queue)
+		if payload == "rabbitmqresponseresourcedatamodel.json" {
+			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+		}
+	}
+}
 func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
 		src conv.DataModelInterface

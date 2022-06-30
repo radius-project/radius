@@ -69,12 +69,16 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.DBClient = dbClient
 	}
 
-	Register(r, s.options.DBClient, s.options.UcpHandler)
+	err := Register(ctx, r, s.options.DBClient, s.options.UcpHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	if s.options.Configure != nil {
 		s.options.Configure(r)
 	}
 
-	err := s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.UcpHandler.Planes, s.options.InitialPlanes)
+	err = s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.UcpHandler.Planes, s.options.InitialPlanes)
 	if err != nil {
 		return nil, err
 	}

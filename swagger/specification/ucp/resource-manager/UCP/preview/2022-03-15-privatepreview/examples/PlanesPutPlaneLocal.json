@@ -1,0 +1,27 @@
+{
+  "parameters": {
+    "rootScope": "/planes/radius/local",
+    "environmentName": "local",
+    "PlaneResource": {
+      "properties": {
+        "resourceProviders": {
+            "Applications.Core": "http://localhost:7443"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local",
+        "name": "local",
+        "type": "System.Planes/radius",
+        "properties": {
+          "resourceProviders": {
+            "Applications.Core": "http://localhost:7443"
+          }
+        }
+      }
+    }
+  }
+}

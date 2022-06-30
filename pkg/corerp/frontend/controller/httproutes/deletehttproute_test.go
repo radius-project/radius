@@ -8,125 +8,98 @@ package httproutes
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+		mctrl := gomock.NewController(t)
+		mds := store.NewMockStorageClient(mctrl)
+		msm := statusmanager.NewMockStatusManager(mctrl)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
+		return func(tb testing.TB) {
+			mctrl.Finish()
+		}, mds, msm
+	}
 
 	t.Parallel()
 
-	t.Run("delete non-existing resource", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
-
-		mStorageClient.
-			EXPECT().
-			Get(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{}
-			})
-
-		ctl, err := NewDeleteHTTPRoute(mStorageClient, nil)
-
-		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
-		require.NoError(t, err)
-		err = resp.Apply(ctx, w, req)
-		require.NoError(t, err)
-
-		result := w.Result()
-		require.Equal(t, http.StatusNoContent, result.StatusCode)
-
-		body := result.Body
-		defer body.Close()
-		payload, err := ioutil.ReadAll(body)
-		require.NoError(t, err)
-		require.Empty(t, payload, "response body should be empty")
-	})
-
-	existingResourceDeletionCases := []struct {
-		desc               string
-		ifMatchETag        string
-		resourceETag       string
-		expectedStatusCode int
-		shouldFail         bool
+	deleteCases := []struct {
+		desc     string
+		etag     string
+		curState v1.ProvisioningState
+		getErr   error
+		qErr     error
+		saveErr  error
+		code     int
 	}{
-		{"delete-existing-resource-no-if-match", "", "random-etag", http.StatusOK, false},
-		{"delete-not-existing-resource-no-if-match", "", "", http.StatusNoContent, true},
-		{"delete-existing-resource-matching-if-match", "matching-etag", "matching-etag", http.StatusOK, false},
-		{"delete-existing-resource-not-matching-if-match", "not-matching-etag", "another-etag", http.StatusPreconditionFailed, true},
-		{"delete-not-existing-resource-*-if-match", "*", "", http.StatusNoContent, true},
-		{"delete-existing-resource-*-if-match", "*", "random-etag", http.StatusOK, false},
+		{"async-delete-non-existing-resource-no-etag", "", v1.ProvisioningStateNone, &store.ErrNotFound{}, nil, nil, http.StatusNoContent},
+		{"async-delete-existing-resource-not-in-terminal-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, http.StatusConflict},
+		{"async-delete-existing-resource-success", "", v1.ProvisioningStateSucceeded, nil, nil, nil, http.StatusAccepted},
 	}
 
-	for _, tt := range existingResourceDeletionCases {
+	for _, tt := range deleteCases {
 		t.Run(tt.desc, func(t *testing.T) {
+			teardownTest, mds, msm := setupTest(t)
+			defer teardownTest(t)
+
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
-			req.Header.Set("If-Match", tt.ifMatchETag)
+			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
+			req.Header.Set("If-Match", tt.etag)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
-			_, hrtDataModel, _ := getTestModels20220315privatepreview()
+			_, appDataModel, _ := getTestModels20220315privatepreview()
 
-			mStorageClient.
-				EXPECT().
+			appDataModel.Properties.ProvisioningState = tt.curState
+
+			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
-						Data:     hrtDataModel,
-					}, nil
-				})
+				Return(&store.Object{
+					Metadata: store.Metadata{ID: appDataModel.ID},
+					Data:     appDataModel,
+				}, tt.getErr).
+				Times(1)
 
-			if !tt.shouldFail {
-				mStorageClient.
-					EXPECT().
-					Delete(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, id string, _ ...store.DeleteOptions) error {
-						return nil
-					})
+			if tt.getErr == nil && appDataModel.Properties.ProvisioningState.IsTerminal() {
+				msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(tt.qErr).
+					Times(1)
+
+				if tt.qErr != nil {
+					mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(tt.saveErr).
+						Times(1)
+				}
 			}
 
-			ctl, err := NewDeleteHTTPRoute(mStorageClient, nil)
+			ctl, err := NewDeleteHTTPRoute(mds, msm, nil)
 			require.NoError(t, err)
+
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
+
 			err = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
 
 			result := w.Result()
-			require.Equal(t, tt.expectedStatusCode, result.StatusCode)
+			require.Equal(t, tt.code, result.StatusCode)
 
-			body := result.Body
-			defer body.Close()
-			payload, err := ioutil.ReadAll(body)
-			require.NoError(t, err)
-
-			if result.StatusCode == http.StatusOK || result.StatusCode == http.StatusNoContent {
-				// We return either http.StatusOK or http.StatusNoContent without a response body for success.
-				require.Empty(t, payload, "response body should be empty")
-			} else {
-				armerr := armerrors.ErrorResponse{}
-				err = json.Unmarshal(payload, &armerr)
-				require.NoError(t, err)
-				require.Equal(t, armerrors.PreconditionFailed, armerr.Error.Code)
-				require.NotEmpty(t, armerr.Error.Target)
+			// If happy path, expect that the returned object has Deleting state
+			if tt.code == http.StatusAccepted {
+				actualOutput := &datamodel.HTTPRoute{}
+				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+				require.Equal(t, v1.ProvisioningStateDeleting, actualOutput.Properties.ProvisioningState)
 			}
 		})
 	}

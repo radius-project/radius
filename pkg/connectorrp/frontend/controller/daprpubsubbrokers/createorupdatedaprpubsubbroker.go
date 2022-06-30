@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -28,8 +29,8 @@ type CreateOrUpdateDaprPubSubBroker struct {
 }
 
 // NewCreateOrUpdateDaprPubSubBroker creates a new instance of CreateOrUpdateDaprPubSubBroker.
-func NewCreateOrUpdateDaprPubSubBroker(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateDaprPubSubBroker{ctrl.NewBaseController(ds, sm)}, nil
+func NewCreateOrUpdateDaprPubSubBroker(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &CreateOrUpdateDaprPubSubBroker{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run executes CreateOrUpdateDaprPubSubBroker operation.
@@ -93,23 +94,6 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Validate(ctx context.Context, 
 
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
-	daprPubSubProperties := dm.Properties.GetDaprPubSubBrokerProperties()
-	daprPubSubProperties.ProvisioningState = v1.ProvisioningStateSucceeded
-	switch v := dm.Properties.(type) {
-	case *datamodel.DaprPubSubAzureServiceBusResourceProperties:
-		dm.Properties = &datamodel.DaprPubSubAzureServiceBusResourceProperties{
-			DaprPubSubBrokerProperties: daprPubSubProperties,
-			Resource:                   v.Resource,
-		}
-	case *datamodel.DaprPubSubGenericResourceProperties:
-		dm.Properties = &datamodel.DaprPubSubGenericResourceProperties{
-			DaprPubSubBrokerProperties: daprPubSubProperties,
-			Type:                       v.Type,
-			Version:                    v.Version,
-			Metadata:                   v.Metadata,
-		}
-	default:
-		dm.Properties = daprPubSubProperties
-	}
+	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 	return dm, nil
 }

@@ -12,8 +12,10 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
+	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -118,7 +120,14 @@ type LegacyManagementClient interface {
 
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {
-	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]v20220315privatepreview.Resource, error)
+	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error)
+	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
+	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)
+	ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error)
+	DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error)
+	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
+	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
+	DeleteEnv(ctx context.Context, envName string) error
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

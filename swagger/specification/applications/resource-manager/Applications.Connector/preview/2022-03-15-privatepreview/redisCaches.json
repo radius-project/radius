@@ -107,7 +107,7 @@
           "200": {
             "description": "RedisCache resource",
             "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
+              "$ref": "#/definitions/RedisCacheResponseResource"
             }
           },
           "default": {
@@ -269,7 +269,7 @@
           "description": "List of RedisCache resources",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/RedisCacheResource"
+            "$ref": "#/definitions/RedisCacheResponseResource"
           }
         },
         "nextLink": {
@@ -299,6 +299,27 @@
         }
       }
     },
+    "RedisCacheResponseResource": {
+      "description": "RedisCache connector",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "systemData": {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/RedisCacheResponseProperties"
+        }
+      }
+    },
     "RedisCacheListSecretsResult": {
       "description": "The secret values for the given RedisCache resource",
       "$ref": "#/definitions/RedisCacheSecrets"
@@ -320,7 +341,7 @@
         }
       }
     },
-    "RedisCacheProperties": {
+    "RedisCacheResponseProperties": {
       "description": "RedisCache connector properties",
       "type": "object",
       "allOf": [
@@ -330,6 +351,7 @@
       ],
       "properties": {
         "provisioningState": {
+          "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the redis cache connector at the time the operation was called"
         },
@@ -363,14 +385,25 @@
             6380,
             6379
           ]
-        },
+        }
+      },
+      "required": ["environment"]
+    },
+    "RedisCacheProperties": {
+      "description": "RedisCache connector properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RedisCacheResponseProperties"
+        }
+      ],
+      "properties": {
         "secrets": {
           "type": "object",
           "additionalProperties": false,
           "$ref": "#/definitions/RedisCacheSecrets"
         }
-      },
-      "required": ["environment"]
+      }
     }
   },
   "parameters": {

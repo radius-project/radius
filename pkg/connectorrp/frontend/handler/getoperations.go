@@ -14,6 +14,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -26,8 +27,8 @@ type GetOperations struct {
 }
 
 // NewGetOperations creates a new GetOperations.
-func NewGetOperations(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &GetOperations{ctrl.NewBaseController(ds, sm)}, nil
+func NewGetOperations(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &GetOperations{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run returns the list of available operations/permission for the resource provider at tenant level.
@@ -83,6 +84,16 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    "mongoDatabases",
 					Operation:   "Delete mongoDatabase",
 					Description: "Deletes a mongoDatabase connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/mongoDatabases/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "mongoDatabases",
+					Operation:   "List secrets",
+					Description: "Lists mongoDatabase secrets.",
 				},
 				IsDataAction: false,
 			},
@@ -167,6 +178,16 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
+				Name: "Applications.Connector/redisCaches/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "redisCaches",
+					Operation:   "List secrets",
+					Description: "Lists redisCache secrets.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
 				Name: "Applications.Connector/rabbitMQMessageQueues/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
@@ -193,6 +214,56 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    "rabbitMQMessageQueues",
 					Operation:   "Delete rabbitMQMessageQueue",
 					Description: "Deletes a rabbitMQMessageQueue connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/rabbitMQMessageQueues/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "rabbitMQMessageQueues",
+					Operation:   "List secrets",
+					Description: "Lists rabbitMQMessageQueue secrets.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Get/List extenders",
+					Description: "Gets/Lists extender connector(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Create/Update extenders",
+					Description: "Creates or updates a extender connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Delete extender",
+					Description: "Deletes a extender connector.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Connector/extenders/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "List secrets",
+					Description: "Lists extender secrets.",
 				},
 				IsDataAction: false,
 			},

@@ -125,6 +125,25 @@ func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) EnvList(ctx context.Context) (string, error) {
+	args := []string{
+		"env",
+		"list",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
+	args := []string{
+		"env",
+		"delete",
+		"--yes",
+		"-a", environmentName,
+	}
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
 func (cli *CLI) ResourceShow(ctx context.Context, applicationName string, resourceType string, resourceName string) (string, error) {
 	args := []string{
 		"resource",

@@ -30,6 +30,7 @@ type Loader struct {
 	validators        map[string]validator
 	supportedVersions map[string][]string
 	providerName      string
+	rootScopePrefix   string
 	specFiles         fs.FS
 }
 
@@ -57,12 +58,13 @@ func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 }
 
 // LoadSpec loads the swagger files and caches the validator.
-func LoadSpec(ctx context.Context, providerName string, specs fs.FS) (*Loader, error) {
+func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePrefix string) (*Loader, error) {
 	log := logr.FromContextOrDiscard(ctx)
 	l := &Loader{
 		providerName:      providerName,
 		validators:        map[string]validator{},
 		supportedVersions: map[string][]string{},
+		rootScopePrefix:   rootScopePrefix,
 		specFiles:         specs,
 	}
 
@@ -116,11 +118,12 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS) (*Loader, e
 		qualifiedType := parsed["provider"] + "/" + parsed["resourcetype"]
 		key := getValidatorKey(qualifiedType, parsed["version"])
 		l.validators[key] = validator{
-			TypeName:     qualifiedType,
-			APIVersion:   parsed["version"],
-			specDoc:      wDoc,
-			paramCache:   make(map[string]map[string]spec.Parameter),
-			paramCacheMu: &sync.RWMutex{},
+			TypeName:        qualifiedType,
+			APIVersion:      parsed["version"],
+			specDoc:         wDoc,
+			rootScopePrefix: l.rootScopePrefix,
+			paramCache:      make(map[string]map[string]spec.Parameter),
+			paramCacheMu:    &sync.RWMutex{},
 		}
 		l.supportedVersions[qualifiedType] = append(l.supportedVersions[qualifiedType], parsed["version"])
 

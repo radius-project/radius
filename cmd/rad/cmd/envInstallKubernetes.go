@@ -15,7 +15,9 @@ var envInstallKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "Installs radius onto a kubernetes cluster",
 	Long:  `Installs radius onto a kubernetes cluster`,
-	RunE:  installKubernetes,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return initSelfHosted(cmd, args, Kubernetes)
+	},
 }
 
 func init() {

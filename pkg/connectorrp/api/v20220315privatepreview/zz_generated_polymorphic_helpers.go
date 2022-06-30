@@ -20,9 +20,9 @@ func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (
 	}
 	var b DaprPubSubBrokerPropertiesClassification
 	switch m["kind"] {
-	case "generic":
+	case string(DaprPubSubBrokerPropertiesKindGeneric):
 		b = &DaprPubSubGenericResourceProperties{}
-	case "pubsub.azure.servicebus":
+	case string(DaprPubSubBrokerPropertiesKindPubsubAzureServicebus):
 		b = &DaprPubSubAzureServiceBusResourceProperties{}
 	default:
 		b = &DaprPubSubBrokerProperties{}
@@ -78,11 +78,11 @@ func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (Da
 	}
 	var b DaprStateStorePropertiesClassification
 	switch m["kind"] {
-	case "generic":
+	case string(DaprStateStorePropertiesKindGeneric):
 		b = &DaprStateStoreGenericResourceProperties{}
-	case "state.azure.tablestorage":
+	case string(DaprStateStorePropertiesKindStateAzureTablestorage):
 		b = &DaprStateStoreAzureTableStorageResourceProperties{}
-	case "state.sqlserver":
+	case string(DaprStateStorePropertiesKindStateSqlserver):
 		b = &DaprStateStoreSQLServerResourceProperties{}
 	default:
 		b = &DaprStateStoreProperties{}
