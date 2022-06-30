@@ -45,18 +45,17 @@ func Test_CreateResourceGroup(t *testing.T) {
 	o.Metadata.ID = resourceGroup.ID
 	o.Data = &resourceGroup
 
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+		return nil, &store.ErrNotFound{}
+	})
 	mockStorageClient.EXPECT().Save(gomock.Any(), &o)
 
 	expectedResourceGroup := rest.ResourceGroup{
 		ID:   testResourceGroupID,
 		Name: testResourceGroupName,
 	}
-	expectedResponse := rest.NewOKResponse(expectedResourceGroup)
+	expectedResponse := rest.NewCreatedResponse(expectedResourceGroup)
 
-	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-		return nil, &store.ErrNotFound{}
-	})
 	response, err := testHandler.Create(ctx, mockStorageClient, body, path)
 	assert.Equal(t, nil, err)
 	assert.DeepEqual(t, expectedResponse, response)

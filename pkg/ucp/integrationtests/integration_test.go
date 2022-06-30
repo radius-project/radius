@@ -268,7 +268,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	db.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return nil, &store.ErrNotFound{}
 	})
-
+	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
 	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourceGroups/rg1", bytes.NewBuffer(body))
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
