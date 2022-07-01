@@ -32,12 +32,12 @@
 // fetched message, then Update() API would return conflict error by optimistic concurrency and retry to query new message
 // and update it again until the conflict is resolved.
 //
-// How to handle clock skew - Dequeue operation in this implementation relies on system clock. If multiple queue clients
-// run in the different physical node/machines, client B in machine B could deqeueue the same message in the skewed clock
-// window before client A in machine A leased the message. Client A ensures that extend message lock earlier than skewed time
+// How to handle clock skew - Dequeue operation in this implementation relies on system clock. If Client A and B
+// run in the different physical node A and B respectively, client B in node B could deqeueue the same message in the skewed clock
+// window before client A in node A leased the message. Client A ensures that extend message lock earlier than skewed time
 // window and ExtendMessage always checks message dequeue count of Client A's message is equal to the deqeue count of
-// Client B's message. If it is unmatched or the skewed time window is bigger than the client expect, it means Client B
-// already leased the message. In this case, ExtendMessage returns ErrDequeuedMessage to prevent Client A from extending lock.
+// Client B's message. If it is mismatched, it means Client B already leased the message. In this case, ExtendMessage returns
+// ErrDequeuedMessage to prevent Client A from extending lock.
 
 package apiserver
 
@@ -228,7 +228,7 @@ func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.
 	return nil, client.ErrMessageNotFound
 }
 
-func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount int, afterTime time.Time, duration time.Duration, checkRequeue bool, incDequeueCount bool) (*v1alpha1.QueueMessage, error) {
+func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount int, afterTime time.Time, duration time.Duration, isDequeueExtend bool) (*v1alpha1.QueueMessage, error) {
 	nextVisibleAt := afterTime.Add(duration).UnixNano()
 	result := &v1alpha1.QueueMessage{}
 
@@ -238,27 +238,21 @@ func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount
 			return getErr
 		}
 
-		nsec := mustParseInt64(result.Labels[LabelNextVisibleAt])
-
-		// Check if the message is already requeued. This condition is required for ExtendMessage because we cannot extend the message which was requeued.
-		if !checkRequeue && nsec < afterTime.UnixNano() {
-			return client.ErrInvalidMessage
-		}
-
-		// Ensure that it doesn't extend the message that another client hold. Because Dequeue() operation relies
-		// on system time, clock skew gets another client fetch the leased message again.
+		// Ensure that it doesn't extend the message that another client leased. DequeueCount must be mismatched if another client leased this message.
+		// This can happen by clock skew Because Dequeue() operation relies on system clock.
 		if result.Spec.DequeueCount != expectedDequeueCount {
 			return client.ErrDequeuedMessage
 		}
 
-		// The unix time of NextVisibleAt label in item should be less than now.
-		// If it is greater than now, then the other instance or client already dequeued the message.
-		if nsec >= nextVisibleAt {
-			return client.ErrDequeuedMessage
+		nsec := mustParseInt64(result.Labels[LabelNextVisibleAt])
+
+		// Check if the message is already requeued. This condition is required for ExtendMessage because we cannot extend the message which was requeued.
+		if !isDequeueExtend && nsec < afterTime.UnixNano() {
+			return client.ErrInvalidMessage
 		}
 
 		result.Labels[LabelNextVisibleAt] = int64toa(nextVisibleAt)
-		if incDequeueCount {
+		if isDequeueExtend {
 			result.Spec.DequeueCount += 1
 		}
 
@@ -291,7 +285,7 @@ func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*c
 		if err != nil {
 			return err
 		}
-		result, err = c.extendItem(ctx, item.Name, item.Spec.DequeueCount, now, c.opts.MessageLockDuration, true, true)
+		result, err = c.extendItem(ctx, item.Name, item.Spec.DequeueCount, now, c.opts.MessageLockDuration, true)
 		if err != nil {
 			return err
 		}
@@ -338,7 +332,7 @@ func (c *Client) ExtendMessage(ctx context.Context, msg *client.Message) error {
 	}
 
 	now := time.Now()
-	result, err := c.extendItem(ctx, msg.ID, msg.DequeueCount, now, c.opts.MessageLockDuration, false, false)
+	result, err := c.extendItem(ctx, msg.ID, msg.DequeueCount, now, c.opts.MessageLockDuration, false)
 	if err != nil {
 		return err
 	}

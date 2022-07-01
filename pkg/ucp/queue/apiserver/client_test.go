@@ -125,7 +125,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		// Increase DequeueCount to mimic the situation when client1 updates message by the clock skew.
-		_, err = client1.extendItem(ctx, msg.ID, msg.DequeueCount, time.Now(), time.Duration(1)*time.Minute, true, true)
+		_, err = client1.extendItem(ctx, msg.ID, msg.DequeueCount, time.Now(), time.Duration(1)*time.Minute, true)
 		require.NoError(t, err)
 
 		err = client2.ExtendMessage(ctx, msg)
