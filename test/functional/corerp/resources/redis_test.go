@@ -21,7 +21,7 @@ func Test_Redis(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewTempCoreRPExecutor(template),
+			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
 					Name: "corerp-resources-redis-user-secrets",

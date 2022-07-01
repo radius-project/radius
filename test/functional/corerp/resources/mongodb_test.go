@@ -21,7 +21,7 @@ func Test_MongoDB(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewTempCoreRPExecutor(template),
+			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
 					Name: "corerp-resources-mongodb-app",
@@ -50,7 +50,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewTempCoreRPExecutor(template),
+			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
 					Name: "corerp-resources-mongodb-user-secrets-app",
