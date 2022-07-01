@@ -372,3 +372,40 @@ func Test_Deploy(t *testing.T) {
 		require.Equal(t, "output resource \"Service\" does not have an identity. This is a bug in the handler", err.Error())
 	})
 }
+
+func Test_Delete(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+
+	t.Run("Verify delete success", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+
+		err := dp.Delete(ctx, resourceID, testResource.Properties.Status.OutputResources)
+		require.NoError(t, err)
+	})
+
+	t.Run("Verify delete failure", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
+
+		err := dp.Delete(ctx, resourceID, testResource.Properties.Status.OutputResources)
+		require.Error(t, err)
+	})
+
+	t.Run("Verify delete with no output resources", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+		testResource.Properties.Status.OutputResources = []outputresource.OutputResource{}
+
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(0).Return(nil)
+
+		err := dp.Delete(ctx, resourceID, testResource.Properties.Status.OutputResources)
+		require.NoError(t, err)
+	})
+}

@@ -20,9 +20,13 @@ const (
 	DatabaseNameValue     = "database"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
+	Host                  = "host"
+	Port                  = "port"
 )
 
 var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
+
+var ErrResourceMissingForResource = errors.New("the 'resource' field is required")
 
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/connectorrp/renderers Renderer
 type Renderer interface {

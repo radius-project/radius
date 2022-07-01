@@ -36,6 +36,24 @@
         "periodSeconds": 5,
         "containerPort": 8080
       }
-    }
+    },
+    "extensions": [
+      {
+        "extension": {
+          "kind": "manualScaling"
+        },
+        "replicas": 2
+      },
+      {
+        "extension": {
+          "kind": "daprSidecar"
+        },
+        "appId": "app-id",
+        "appPort": 80,
+        "config": "config",
+        "protocol": "http",
+        "provides": "provides"
+      }
+    ]
   }
 }

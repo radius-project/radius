@@ -35,7 +35,7 @@ func Test_Gateway(t *testing.T) {
 	application := "kubernetes-resources-gateway"
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			RadiusResources: &validation.ResourceSet{
 				Resources: []validation.RadiusResource{
 					{
