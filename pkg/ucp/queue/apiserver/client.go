@@ -33,11 +33,11 @@
 // and update it again until the conflict is resolved.
 //
 // How to handle clock skew - Dequeue operation in this implementation relies on system clock. If Client A and B
-// run in the different physical node A and B respectively, client B in node B could deqeueue the same message in the skewed clock
-// window before client A in node A leased the message. Client A ensures that extend message lock earlier than skewed time
-// window and ExtendMessage always checks message dequeue count of Client A's message is equal to the deqeue count of
-// Client B's message. If it is mismatched, it means Client B already leased the message. In this case, ExtendMessage returns
-// ErrDequeuedMessage to prevent Client A from extending lock.
+// run in the different physical node A and B respectively, client B in node B could deqeueue the same message in the clock skew
+// window before client A in node A leased the message. When Client A calls ExtendMessage, it always fetches message with id first
+// and checks if its dequeue count matches the dequeue count of Message Client A currently have. We are using DequeueCount as a
+// revision number of message here. If it is mismatched, it means that Client B already leased the message. In this case,
+// ExtendMessage returns ErrDequeuedMessage to prevent Client A from extending lock.
 
 package apiserver
 
@@ -228,6 +228,10 @@ func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.
 	return nil, client.ErrMessageNotFound
 }
 
+// extendItem udpates LabelNExtvisibleAt to extend the lease time of message. Dequeue and ExtendMessage
+// use this function. Dequeue Operation updates DequeueCount and LabelNextVisibleAt whereas ExtendMessage
+// updates only LabelNextVisibleAt -- handled by isDequeueExtend flag. We can use DequeueCount as a revision
+// number of the message so this func could easily catch the clock skew issue.
 func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount int, afterTime time.Time, duration time.Duration, isDequeueExtend bool) (*v1alpha1.QueueMessage, error) {
 	nextVisibleAt := afterTime.Add(duration).UnixNano()
 	result := &v1alpha1.QueueMessage{}
@@ -238,8 +242,9 @@ func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount
 			return getErr
 		}
 
-		// Ensure that it doesn't extend the message that another client leased. DequeueCount must be mismatched if another client leased this message.
-		// This can happen by clock skew Because Dequeue() operation relies on system clock.
+		// Ensure that it doesn't extend the message that another client leased. DequeueCount must be
+		// mismatched if another client leased this message. This can happen by clock skew Because
+		// Dequeue() operation relies on system clock.
 		if result.Spec.DequeueCount != expectedDequeueCount {
 			return client.ErrDequeuedMessage
 		}
