@@ -11,7 +11,7 @@ resource outerApp 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-module innerApp 'app-inner.bicep' = {
+module innerApp 'corerp-mechanics-nestedmodules-innerapp.bicep' = {
   name: 'corerp-mechanics-nestedmodules-innerapp'
   params: {
     location: location
