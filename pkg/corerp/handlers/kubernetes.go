@@ -115,6 +115,22 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 	return nil
 }
 
+func (handler *kubernetesHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+	identity := resource.Identity.Data.(resourcemodel.KubernetesIdentity)
+	item := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": identity.APIVersion,
+			"kind":       identity.Kind,
+			"metadata": map[string]interface{}{
+				"namespace": identity.Namespace,
+				"name":      identity.Name,
+			},
+		},
+	}
+
+	return client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
+}
+
 func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
 	if resource.ResourceType.Provider != providers.ProviderKubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")

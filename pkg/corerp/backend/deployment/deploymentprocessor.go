@@ -34,7 +34,8 @@ import (
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, operationID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
+	Delete(ctx context.Context, id resources.ID, resource conv.DataModelInterface) error
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
@@ -234,11 +235,41 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}, nil
 }
 
+func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, resource conv.DataModelInterface) error {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, id)
+	resourceID := id.Truncate()
+
+	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
+	resourceDependency, err := dp.getRequiredDependencies(ctx, resourceID, resource)
+	if err != nil {
+		return err
+	}
+
+	deployedOutputResources := resourceDependency.OutputResources
+	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
+		outputResource := deployedOutputResources[i]
+		for _, v := range outputResource {
+			outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(v.ResourceType)
+			if err != nil {
+				return err
+			}
+
+			logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", v.LocalID, v.ResourceType))
+			err = outputResourceModel.ResourceHandler.Delete(ctx, v)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // Returns fully qualified radius resource identifier to RendererDependency map
 func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceIDs []resources.ID) (map[string]renderers.RendererDependency, error) {
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, id := range resourceIDs {
-		rd, err := dp.getRequiredResourceDependencies(ctx, id)
+		rd, err := dp.getRequiredDependenciesByID(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch required resource dependencies %q: %w", id.String(), err)
 		}
@@ -357,8 +388,8 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.Env
 	return renderers.EnvironmentOptions{}, nil
 }
 
-// getRequiredResourceDependencies is to get the resource dependencies.
-func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Context, resourceID resources.ID) (ResourceDependency, error) {
+// getRequiredDependenciesByID is to get the resource dependencies.
+func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, resourceID resources.ID) (ResourceDependency, error) {
 	var res *store.Object
 	var err error
 	var sc store.StorageClient
@@ -390,6 +421,27 @@ func (dp *deploymentProcessor) getRequiredResourceDependencies(ctx context.Conte
 				return dp.buildResourceDependency(resourceID, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
 			}
 		}
+	default:
+		err = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, resourceID.String())
+	}
+
+	return ResourceDependency{}, err
+}
+
+// getRequiredDependencies is to get the resource dependencies.
+func (dp *deploymentProcessor) getRequiredDependencies(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (ResourceDependency, error) {
+	var err error
+	resourceType := resource.ResourceTypeName()
+	switch resourceType {
+	case container.ResourceType:
+		obj := resource.(datamodel.ContainerResource)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
+	case gateway.ResourceType:
+		obj := &datamodel.Gateway{}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
+	case httproute.ResourceType:
+		obj := &datamodel.HTTPRoute{}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
 	default:
 		err = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, resourceID.String())
 	}
