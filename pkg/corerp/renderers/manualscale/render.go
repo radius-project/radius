@@ -43,7 +43,6 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 
 	extensions := resource.Properties.Extensions
-
 	for _, e := range extensions {
 		switch e.Kind {
 		case datamodel.ManualScaling:
