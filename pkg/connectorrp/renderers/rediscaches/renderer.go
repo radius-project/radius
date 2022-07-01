@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -62,7 +63,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 	}
 }
 
-func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]renderers.SecretValueReference) (renderers.RendererOutput, error) {
+func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	redisCacheID, err := resources.Parse(properties.Resource)
 	if err != nil {
@@ -89,7 +90,7 @@ func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 
 	// Populate connection string reference if a value isn't provided
 	if properties.Secrets.IsEmpty() || properties.Secrets.ConnectionString == "" {
-		secretValues = map[string]renderers.SecretValueReference{
+		secretValues = map[string]rp.SecretValueReference{
 			renderers.PasswordStringHolder: {
 				LocalID:       outputresource.LocalIDAzureRedis,
 				Action:        "listKeys",
@@ -120,14 +121,14 @@ func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	}, nil
 }
 
-func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[string]renderers.SecretValueReference {
-	secretValues := map[string]renderers.SecretValueReference{}
+func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[string]rp.SecretValueReference {
+	secretValues := map[string]rp.SecretValueReference{}
 	if !properties.Secrets.IsEmpty() {
 		if properties.Secrets.Password != "" {
-			secretValues[renderers.PasswordStringHolder] = renderers.SecretValueReference{Value: properties.Secrets.Password}
+			secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{Value: properties.Secrets.Password}
 		}
 		if properties.Secrets.ConnectionString != "" {
-			secretValues[renderers.ConnectionStringValue] = renderers.SecretValueReference{Value: properties.Secrets.ConnectionString}
+			secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{Value: properties.Secrets.ConnectionString}
 		}
 	}
 

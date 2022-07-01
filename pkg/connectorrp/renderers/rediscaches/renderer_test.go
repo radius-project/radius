@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -117,7 +118,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 
-	expectedSecretValues := map[string]renderers.SecretValueReference{
+	expectedSecretValues := map[string]rp.SecretValueReference{
 		renderers.ConnectionStringValue: {Value: connectionString},
 		renderers.PasswordStringHolder:  {Value: password},
 	}
