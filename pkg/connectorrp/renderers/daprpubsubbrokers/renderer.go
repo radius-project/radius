@@ -41,7 +41,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rend
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
-	if &resource.Properties.Kind == nil {
+	if resource.Properties.Kind == "" {
 		return renderers.RendererOutput{}, errors.New("Resource kind not specified for Dapr Pub/Sub component")
 	}
 
