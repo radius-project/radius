@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -28,8 +29,8 @@ type CreateOrUpdateRedisCache struct {
 }
 
 // NewCreateOrUpdateRedisCache creates a new instance of CreateOrUpdateRedisCache.
-func NewCreateOrUpdateRedisCache(ds store.StorageClient, sm manager.StatusManager) (ctrl.Controller, error) {
-	return &CreateOrUpdateRedisCache{ctrl.NewBaseController(ds, sm)}, nil
+func NewCreateOrUpdateRedisCache(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
+	return &CreateOrUpdateRedisCache{ctrl.NewBaseController(ds, sm, dp)}, nil
 }
 
 // Run executes CreateOrUpdateRedisCache operation.

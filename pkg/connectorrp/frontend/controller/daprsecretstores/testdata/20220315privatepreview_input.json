@@ -1,15 +1,6 @@
 {
     "location": "West US",
     "properties": {
-        "status": {
-          "outputResources": [{
-            "LocalID": "Deployment",
-            "ResourceType": {
-              "Type": "Secret",
-              "Provider": "kubernetes"
-            }
-          }]
-        },
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
         "kind": "generic",

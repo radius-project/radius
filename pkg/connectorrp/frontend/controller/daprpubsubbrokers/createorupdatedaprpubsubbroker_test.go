@@ -70,7 +70,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprPubSubBroker(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateDaprPubSubBroker(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprPubSubBroker(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateDaprPubSubBroker(mStorageClient, nil, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

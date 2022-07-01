@@ -63,7 +63,7 @@
 ## ApplicationProperties
 ### Properties
 * **environment**: string (Required): The resource id of the environment linked to application.
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating': Provisioning state of the resource at the time the operation was called.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 
 ## SystemData
 ### Properties
@@ -82,7 +82,7 @@
 ## ContainerProperties
 ### Properties
 * **application**: string (Required): Specifies resource id of the application
-* **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections) (Required): Dictionary of <ConnectionProperties>
+* **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Dictionary of <ConnectionProperties>
 * **container**: [Container](#container) (Required): Definition of a container.
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
@@ -212,7 +212,7 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating': Provisioning state of the resource at the time the operation was called.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 
 ## EnvironmentCompute
 ### Properties
@@ -229,7 +229,7 @@
 * **application**: string (Required): The resource id of the application linked to Gateway resource.
 * **hostname**: [GatewayPropertiesHostname](#gatewaypropertieshostname): Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 * **internal**: bool: Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating': Provisioning state of the resource at the time the operation was called.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **routes**: [GatewayRoute](#gatewayroute)[]: Routes attached to this Gateway
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
@@ -254,7 +254,7 @@
 * **application**: string (Required): The resource id of the application linked to HTTP Route resource.
 * **hostname**: string: The internal hostname accepting traffic for the HTTP Route. Readonly.
 * **port**: int: The port number for the HTTP Route. Defaults to 80. Readonly.
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating': Provisioning state of the resource at the time the operation was called.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **scheme**: string: The scheme used for traffic. Readonly.
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 * **url**: string: A stable URL that that can be used to route traffic to a resource. Readonly.

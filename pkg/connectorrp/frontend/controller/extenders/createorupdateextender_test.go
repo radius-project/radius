@@ -77,7 +77,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateExtender(mds, msm)
+			ctl, err := NewCreateOrUpdateExtender(mds, msm, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -140,7 +140,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateExtender(mds, msm)
+			ctl, err := NewCreateOrUpdateExtender(mds, msm, nil)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

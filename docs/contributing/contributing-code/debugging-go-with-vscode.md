@@ -58,7 +58,7 @@ You can create your own aliases as well, and select them from the drop down.
 
 ## Debugging interactive commands
 
-At the time of writing of this document, interactive commands like `rad env init azure -i` don't work with vanilla Go debugging in vs-code. However there is (a somewhat ugly) but useful way of still being able to debug.
+At the time of writing of this document, interactive commands don't work with vanilla Go debugging in vs-code. However there is (a somewhat ugly) but useful way of still being able to debug.
 
 For this case you will need to create an alias and a task. However, for convenience and usability it's very important that we create scriptable version of everything we do interactively since we can't easily debug the interactive version!
 

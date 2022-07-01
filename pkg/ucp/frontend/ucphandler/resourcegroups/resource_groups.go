@@ -57,6 +57,7 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 			return nil, err
 		}
 	}
+	rg.Name = ID.Name()
 	rg, err = resourcegroupsdb.Save(ctx, db, rg)
 	if err != nil {
 		return nil, err
@@ -73,14 +74,22 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
 	var query store.Query
-	query.RootScope = path
-	query.ScopeRecursive = false
-	query.IsScopeQuery = true
-	listOfPlanes, err := resourcegroupsdb.GetScope(ctx, db, query)
+	planeType, planeName, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
 	if err != nil {
 		return nil, err
 	}
-	var ok = rest.NewOKResponse(listOfPlanes)
+	query.RootScope = resources.SegmentSeparator + resources.PlanesSegment + resources.SegmentSeparator + planeType + resources.SegmentSeparator + planeName
+
+	// TODO: This is a temporary workaround till #2740 is fixed.
+	query.ScopeRecursive = true
+
+	query.IsScopeQuery = true
+	query.ResourceType = "resourcegroups"
+	listOfResourceGroups, err := resourcegroupsdb.GetScope(ctx, db, query)
+	if err != nil {
+		return nil, err
+	}
+	var ok = rest.NewOKResponse(listOfResourceGroups)
 	return ok, nil
 }
 
@@ -92,7 +101,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 			return rest.NewBadRequestResponse(err.Error()), nil
 		}
 	}
-	plane, err := resourcegroupsdb.GetByID(ctx, db, resourceId)
+	rg, err := resourcegroupsdb.GetByID(ctx, db, resourceId)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			restResponse := rest.NewNotFoundResponse(path)
@@ -100,7 +109,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 		}
 		return nil, err
 	}
-	restResponse := rest.NewOKResponse(plane)
+	restResponse := rest.NewOKResponse(rg)
 	return restResponse, nil
 }
 

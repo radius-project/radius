@@ -41,7 +41,7 @@ func TestGetGatewayRun_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewGetGateway(mStorageClient, nil)
+		ctl, err := NewGetGateway(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -65,7 +65,7 @@ func TestGetGatewayRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewGetGateway(mStorageClient, nil)
+		ctl, err := NewGetGateway(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)

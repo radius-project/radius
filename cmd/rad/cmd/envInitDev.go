@@ -21,7 +21,7 @@ func init() {
 	envInitLocalCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 }
 
-type DevEnvironmentParams struct {
+type EnvironmentParams struct {
 	Name      string
 	Providers *environments.Providers
 }

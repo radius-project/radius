@@ -107,7 +107,7 @@
             "200": {
               "description": "Extender resource",
               "schema": {
-                "$ref": "#/definitions/ExtenderResource"
+                "$ref": "#/definitions/ExtenderResponseResource"
               }
             },
             "default": {
@@ -269,7 +269,7 @@
             "description": "List of Extender resources",
             "type": "array",
             "items": {
-              "$ref": "#/definitions/ExtenderResource"
+              "$ref": "#/definitions/ExtenderResponseResource"
             }
           },
           "nextLink": {
@@ -299,6 +299,27 @@
           }
         }
       },
+      "ExtenderResponseResource": {
+        "description": "Extender connector",
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+          }
+        ],
+        "required": [
+          "properties"
+        ],
+        "properties": {
+          "systemData": {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+          },
+          "properties": {
+            "x-ms-client-flatten": true,
+            "$ref": "#/definitions/ExtenderResponseProperties"
+          }
+        }
+      },
       "ExtenderListSecretsResult": {
         "description": "The secret values for the given Extender resource",
         "$ref": "#/definitions/ExtenderSecrets"
@@ -308,7 +329,7 @@
         "additionalProperties": true,
         "properties": {}
       },
-      "ExtenderProperties": {
+      "ExtenderResponseProperties": {
         "description": "Extender connector properties",
         "type": "object",
         "allOf": [
@@ -319,6 +340,7 @@
         "additionalProperties": true,
         "properties": {
           "provisioningState": {
+            "readOnly": true,
             "$ref": "global.json#/definitions/ProvisioningState",
             "description": "Provisioning state of the extender connector at the time the operation was called"
           },
@@ -329,13 +351,24 @@
           "application": {
             "$ref": "global.json#/definitions/Application",
             "description": "Fully qualified resource ID for the application that the connector is consumed by"
-          },
+          }
+        },
+        "required": ["environment"]
+      },
+      "ExtenderProperties": {
+        "description": "Extender connector properties",
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/definitions/ExtenderResponseProperties"
+          }
+        ],
+        "properties": {
           "secrets": {
             "additionalProperties": true,
             "$ref": "#/definitions/ExtenderSecrets"
           }
-        },
-        "required": ["environment"]
+        }
       }
     },
     "parameters": {

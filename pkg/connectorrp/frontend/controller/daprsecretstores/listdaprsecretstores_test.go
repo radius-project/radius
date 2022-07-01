@@ -45,7 +45,7 @@ func TestListDaprSecretStoresRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListDaprSecretStores(mStorageClient, nil)
+		ctl, err := NewListDaprSecretStores(mStorageClient, nil, nil)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -108,7 +108,7 @@ func TestListDaprSecretStoresRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListDaprSecretStores(mStorageClient, nil)
+			ctl, err := NewListDaprSecretStores(mStorageClient, nil, nil)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

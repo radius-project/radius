@@ -14,7 +14,14 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -24,6 +31,7 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	createNewResourceTestCases := []struct {
@@ -43,6 +51,7 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
@@ -54,6 +63,9 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return nil, &store.ErrNotFound{}
 				})
+
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
@@ -70,7 +82,7 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateMongoDatabase(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateMongoDatabase(mStorageClient, nil, mDeploymentProcessor)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -105,6 +117,7 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
@@ -119,6 +132,8 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 						Data:     dataModel,
 					}, nil
 				})
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 
 			if !testcase.shouldFail {
 				mStorageClient.
@@ -131,7 +146,7 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateMongoDatabase(mStorageClient, nil)
+			ctl, err := NewCreateOrUpdateMongoDatabase(mStorageClient, nil, mDeploymentProcessor)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)
@@ -147,4 +162,43 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 			}
 		})
 	}
+}
+
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureCosmosAccount,
+					Provider: providers.ProviderAzure,
+				},
+				Identity: resourcemodel.ResourceIdentity{},
+			},
+		},
+		SecretValues: map[string]rp.SecretValueReference{
+			renderers.UsernameStringValue:   {Value: "testUser"},
+			renderers.PasswordStringHolder:  {Value: "testPassword"},
+			renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
+		},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			renderers.DatabaseNameValue: {
+				Value: "db",
+			},
+		},
+	}
+
+	deploymentOutput := deployment.DeploymentOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureCosmosAccount,
+					Provider: providers.ProviderAzure,
+				},
+			},
+		},
+	}
+
+	return rendererOutput, deploymentOutput
 }

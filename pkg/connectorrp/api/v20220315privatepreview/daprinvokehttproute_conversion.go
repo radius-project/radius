@@ -24,11 +24,6 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
-				Status: v1.ResourceStatus{
-					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
-				},
-			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -57,7 +52,7 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 	dst.Properties = &DaprInvokeHTTPRouteProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: GetOutputResourcesForDatamodel(&daprHttpRoute.Properties.Status),
+				OutputResources: v1.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),

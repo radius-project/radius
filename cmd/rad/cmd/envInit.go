@@ -11,14 +11,20 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
+	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/environments"
@@ -29,6 +35,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/featureflag"
+	"github.com/project-radius/radius/pkg/handlers"
 )
 
 var envInitCmd = &cobra.Command{
@@ -126,7 +133,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	params := &DevEnvironmentParams{
+	params := &EnvironmentParams{
 		Name:      environmentName,
 		Providers: &environments.Providers{AzureProvider: azureProvider},
 	}
@@ -206,10 +213,16 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
 		ucpRgName := fmt.Sprintf("%s-rg", environmentName)
 		env.Items[environmentName]["ucpresourcegroupname"] = ucpRgName
-		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName)
+		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName, "/planes/radius/local")
 		if err != nil {
 			return err
 		}
+
+		_, err = createUCPResourceGroup(contextName, ucpRgName, "/planes/deployments/local")
+		if err != nil {
+			return err
+		}
+
 		env.Items[environmentName]["scope"] = ucpRgId
 		ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName)
 		if err != nil {
@@ -239,7 +252,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	return nil
 }
 
-func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, error) {
+func createUCPResourceGroup(kubeCtxName, resourceGroupName string, plane string) (string, error) {
 	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		"",
 		"",
@@ -252,7 +265,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, erro
 
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s/planes/radius/local/resourceGroups/%s", baseUrl, resourceGroupName),
+		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
 		strings.NewReader(`{}`),
 	)
 	if err != nil {
@@ -263,7 +276,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string) (string, erro
 		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
 	}
 	defer resp.Body.Close()
@@ -552,6 +565,144 @@ func selectEnvironment(cmd *cobra.Command, defaultVal string, interactive bool) 
 		}
 	}
 	return val, nil
+}
+
+func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (azure.Subscription, error) {
+	subs, err := azure.LoadSubscriptionsFromProfile()
+	if err != nil {
+		// Failed to load subscriptions from the user profile, fall back to online.
+		subs, err = azure.LoadSubscriptionsFromAzure(ctx, authorizer)
+		if err != nil {
+			return azure.Subscription{}, err
+		}
+	}
+
+	if subs.Default != nil {
+		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Use Subscription '%v'? [Y/n]", subs.Default.DisplayName), prompt.Yes)
+		if err != nil {
+			return azure.Subscription{}, err
+		}
+
+		if confirmed {
+			return *subs.Default, nil
+		}
+	}
+
+	// build prompt to select from list
+	sort.Slice(subs.Subscriptions, func(i, j int) bool {
+		l := strings.ToLower(subs.Subscriptions[i].DisplayName)
+		r := strings.ToLower(subs.Subscriptions[j].DisplayName)
+		return l < r
+	})
+	names := make([]string, 0, len(subs.Subscriptions))
+	for _, s := range subs.Subscriptions {
+		names = append(names, s.DisplayName)
+	}
+
+	index, err := prompt.SelectWithDefault("Select Subscription:", &names[0], names)
+	if err != nil {
+		return azure.Subscription{}, err
+	}
+
+	return subs.Subscriptions[index], nil
+}
+
+func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription) (string, error) {
+
+	rgc := clients.NewGroupsClient(sub.SubscriptionID, authorizer)
+	name, err := promptUserForRgName(ctx, rgc)
+	if err != nil {
+		return "", err
+	}
+	resp, err := rgc.CheckExistence(ctx, name)
+	if err != nil {
+		return "", err
+	} else if !resp.HasHTTPStatus(404) {
+		// already exists
+		return name, nil
+	}
+	output.LogInfo("Resource Group '%v' will be created...", name)
+
+	location, err := promptUserForLocation(ctx, authorizer, sub)
+	if err != nil {
+		return "", err
+	}
+	_, err = rgc.CreateOrUpdate(ctx, name, resources.Group{
+		Location: to.StringPtr(*location.Name),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return name, nil
+}
+
+func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription) (subscription.Location, error) {
+	// Use the display name for the prompt
+	// alphabetize so the list is stable and scannable
+	subc := clients.NewSubscriptionClient(authorizer)
+
+	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
+	if err != nil {
+		return subscription.Location{}, fmt.Errorf("cannot list locations: %w", err)
+	}
+
+	names := make([]string, 0, len(*locations.Value))
+	nameToLocation := map[string]subscription.Location{}
+	for _, loc := range *locations.Value {
+
+		names = append(names, *loc.DisplayName)
+		nameToLocation[*loc.DisplayName] = loc
+	}
+	sort.Strings(names)
+
+	index, err := prompt.SelectWithDefault("Select a location:", &names[0], names)
+	if err != nil {
+		return subscription.Location{}, err
+	}
+	selected := names[index]
+	return nameToLocation[selected], nil
+}
+
+func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (string, error) {
+	var name string
+	createNewRg, err := prompt.ConfirmWithDefault("Create a new Resource Group? [Y/n]", prompt.Yes)
+	if err != nil {
+		return "", err
+	}
+	if createNewRg {
+
+		defaultRgName := "radius-rg"
+		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
+			// only generate a random name if the default doesn't exist already or existence check fails
+			defaultRgName = handlers.GenerateRandomName("radius", "rg")
+		}
+
+		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
+		name, err = prompt.TextWithDefault(promptStr, &defaultRgName, prompt.EmptyValidator)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		rgListResp, err := rgc.List(ctx, "", nil)
+		if err != nil {
+			return "", err
+		}
+		rgList := rgListResp.Values()
+		sort.Slice(rgList, func(i, j int) bool { return strings.ToLower(*rgList[i].Name) < strings.ToLower(*rgList[j].Name) })
+		names := make([]string, 0, len(rgList))
+		for _, s := range rgList {
+			names = append(names, *s.Name)
+		}
+
+		defaultRgName, _ := azure.LoadDefaultResourceGroupFromConfig() // ignore errors resulting from being unable to read the config ini file
+		index, err := prompt.SelectWithDefault("Select ResourceGroup:", &defaultRgName, names)
+		if err != nil {
+			return "", err
+		}
+		name = *rgList[index].Name
+	}
+	return name, nil
 }
 
 // Setup flags to configure Azure provider for cloud resources

@@ -50,7 +50,7 @@ type Renderer struct {
 
 	// RoleAssignmentMap is an optional map of connection kind -> []Role Assignment. Used to configure managed
 	// identity permissions for cloud resources. This will be nil in environments that don't support role assignments.
-	RoleAssignmentMap map[datamodel.Kind]RoleAssignmentData
+	RoleAssignmentMap map[datamodel.IAMKind]RoleAssignmentData
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
@@ -71,7 +71,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 		}
 
 		// Non-radius Azure connections that are accessible from Radius container resource.
-		if connection.Iam.Kind.IsKind(datamodel.KindAzure) {
+		if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
 			azureResourceIDs = append(azureResourceIDs, resourceID)
 			continue
 		}
@@ -93,9 +93,9 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	}
 
 	for _, volume := range properties.Container.Volumes {
-		switch v := volume.(type) {
-		case datamodel.PersistentVolume:
-			resourceID, err := resources.Parse(v.Source)
+		switch volume.Kind {
+		case datamodel.Persistent:
+			resourceID, err := resources.Parse(volume.Persistent.Source)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -139,7 +139,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	// Connections might require a role assignment to grant access.
 	roles := []outputresource.OutputResource{}
 	for _, connection := range resource.Properties.Connections {
-		if !r.isIdentitySupported(connection.Iam.Kind) {
+		if !r.isIdentitySupported(connection.IAM.Kind) {
 			continue
 		}
 
@@ -211,13 +211,13 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	}
 
 	var err error
-	if cc.Container.ReadinessProbe != nil {
+	if !cc.Container.ReadinessProbe.IsEmpty() {
 		container.ReadinessProbe, err = r.makeHealthProbe(cc.Container.ReadinessProbe)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
 		}
 	}
-	if cc.Container.LivenessProbe != nil {
+	if !cc.Container.LivenessProbe.IsEmpty() {
 		container.LivenessProbe, err = r.makeHealthProbe(cc.Container.LivenessProbe)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
@@ -246,9 +246,9 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	volumes := []corev1.Volume{}
 	for volumeName, volume := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
-		switch v := volume.(type) {
-		case datamodel.EphemeralVolume:
-			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, &v)
+		switch volume.Kind {
+		case datamodel.Ephemeral:
+			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, volume.Ephemeral)
 			if err != nil {
 				return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
 			}
@@ -256,15 +256,15 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
 			// Add the volume to the list of volumes to be added to the Volumes spec
 			volumes = append(volumes, volumeSpec)
-		case datamodel.PersistentVolume:
+		case datamodel.Persistent:
 			var volumeSpec corev1.Volume
 			var volumeMountSpec corev1.VolumeMount
-			properties := dependencies[v.Source]
+			properties := dependencies[volume.Persistent.Source]
 
 			switch properties.Definition["kind"] {
 			case volumev1alpha3.PersistentVolumeKindAzureFileShare:
 				// Create spec for persistent volume
-				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, &v, resource.Name, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, volume.Persistent, resource.Name, options)
 				if err != nil {
 					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create persistent volume spec for volume: %s - %w", volumeName, err)
 				}
@@ -298,7 +298,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
 				secretProviderClassName := secretProviderClass.Data.(resourcemodel.KubernetesIdentity).Name
 				// Create spec for secret store
-				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, &v, secretProviderClassName, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, volume.Persistent, secretProviderClassName, options)
 				if err != nil {
 					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
@@ -328,7 +328,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				secretData[key] = []byte(value.(string))
 			}
 		default:
-			return []outputresource.OutputResource{}, secretData, fmt.Errorf("Only ephemeral or persistent volumes are supported. Got kind: %v", volume.GetVolume().Kind)
+			return []outputresource.OutputResource{}, secretData, fmt.Errorf("Only ephemeral or persistent volumes are supported. Got kind: %v", volume.Kind)
 		}
 	}
 
@@ -428,17 +428,17 @@ func (r Renderer) makeEphemeralVolume(volumeName string, volume *datamodel.Ephem
 	return volumeSpec, volumeMountSpec, nil
 }
 
-func (r Renderer) makeHealthProbe(p datamodel.HealthProbePropertiesClassification) (*corev1.Probe, error) {
+func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Probe, error) {
 	probeSpec := corev1.Probe{}
 
-	switch probe := p.(type) {
-	case *datamodel.HTTPGetHealthProbeProperties:
+	switch p.Kind {
+	case datamodel.HTTPGetHealthProbe:
 		// Set the probe spec
 		probeSpec.ProbeHandler.HTTPGet = &corev1.HTTPGetAction{}
-		probeSpec.ProbeHandler.HTTPGet.Port = intstr.FromInt(int(probe.ContainerPort))
-		probeSpec.ProbeHandler.HTTPGet.Path = probe.Path
+		probeSpec.ProbeHandler.HTTPGet.Port = intstr.FromInt(int(p.HTTPGet.ContainerPort))
+		probeSpec.ProbeHandler.HTTPGet.Path = p.HTTPGet.Path
 		httpHeaders := []corev1.HTTPHeader{}
-		for k, v := range probe.Headers {
+		for k, v := range p.HTTPGet.Headers {
 			httpHeaders = append(httpHeaders, corev1.HTTPHeader{
 				Name:  k,
 				Value: v,
@@ -446,33 +446,33 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbePropertiesClassificatio
 		}
 		probeSpec.ProbeHandler.HTTPGet.HTTPHeaders = httpHeaders
 		c := containerHealthProbeConfig{
-			initialDelaySeconds: probe.InitialDelaySeconds,
-			failureThreshold:    probe.FailureThreshold,
-			periodSeconds:       probe.PeriodSeconds,
+			initialDelaySeconds: p.HTTPGet.InitialDelaySeconds,
+			failureThreshold:    p.HTTPGet.FailureThreshold,
+			periodSeconds:       p.HTTPGet.PeriodSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
-	case *datamodel.TCPHealthProbeProperties:
+	case datamodel.TCPHealthProbe:
 		// Set the probe spec
 		probeSpec.ProbeHandler.TCPSocket = &corev1.TCPSocketAction{}
-		probeSpec.TCPSocket.Port = intstr.FromInt(int(probe.ContainerPort))
+		probeSpec.TCPSocket.Port = intstr.FromInt(int(p.TCP.ContainerPort))
 		c := containerHealthProbeConfig{
-			initialDelaySeconds: probe.InitialDelaySeconds,
-			failureThreshold:    probe.FailureThreshold,
-			periodSeconds:       probe.PeriodSeconds,
+			initialDelaySeconds: p.TCP.InitialDelaySeconds,
+			failureThreshold:    p.TCP.FailureThreshold,
+			periodSeconds:       p.TCP.PeriodSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
-	case *datamodel.ExecHealthProbeProperties:
+	case datamodel.ExecHealthProbe:
 		// Set the probe spec
 		probeSpec.ProbeHandler.Exec = &corev1.ExecAction{}
-		probeSpec.Exec.Command = strings.Split(probe.Command, " ")
+		probeSpec.Exec.Command = strings.Split(p.Exec.Command, " ")
 		c := containerHealthProbeConfig{
-			initialDelaySeconds: probe.InitialDelaySeconds,
-			failureThreshold:    probe.FailureThreshold,
-			periodSeconds:       probe.PeriodSeconds,
+			initialDelaySeconds: p.Exec.InitialDelaySeconds,
+			failureThreshold:    p.Exec.FailureThreshold,
+			periodSeconds:       p.Exec.PeriodSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	default:
-		return nil, fmt.Errorf("health probe kind unsupported: %v", p.GetHealthProbeProperties().Kind)
+		return nil, fmt.Errorf("health probe kind unsupported: %v", p.Kind)
 	}
 	return &probeSpec, nil
 }
@@ -570,7 +570,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 	return output
 }
 
-func (r Renderer) isIdentitySupported(kind datamodel.Kind) bool {
+func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
 	if r.RoleAssignmentMap == nil || !kind.IsValid() {
 		return false
 	}
@@ -635,19 +635,19 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource datamodel.Contai
 func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection *datamodel.ConnectionProperties, dependencies map[string]renderers.RendererDependency) ([]outputresource.OutputResource, error) {
 	var roleNames []string
 	var armResourceIdentifier string
-	if connection.Iam.Kind.IsKind(datamodel.KindAzure) {
-		if len(connection.Iam.Roles) < 1 {
+	if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
+		if len(connection.IAM.Roles) < 1 {
 			return nil, fmt.Errorf("rbac permissions are required to access Azure connections")
 		}
-		roleNames = append(roleNames, connection.Iam.Roles...)
+		roleNames = append(roleNames, connection.IAM.Roles...)
 		armResourceIdentifier = connection.Source
 	} else {
 		// We're reporting errors in this code path to avoid obscuring a bug in another layer of the system.
 		// None of these error conditions should be caused by invalid user input. They should only be caused
 		// by internal bugs in Radius.
-		roleAssignmentData, ok := r.RoleAssignmentMap[connection.Iam.Kind]
+		roleAssignmentData, ok := r.RoleAssignmentMap[connection.IAM.Kind]
 		if !ok {
-			return nil, fmt.Errorf("RBAC is not supported for connection kind %q", connection.Iam.Kind)
+			return nil, fmt.Errorf("RBAC is not supported for connection kind %q", connection.IAM.Kind)
 		}
 
 		// The dependency will have already been fetched by the system.
