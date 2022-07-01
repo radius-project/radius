@@ -41,8 +41,18 @@ func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, req *http.Request
 		return nil, err
 	}
 
-	// TODO Integrate with renderer/deployment processor to validate associated resource existence (if fromResource is defined)
-	// and store resource properties and secrets reference
+	rendererOutput, err := sql.DeploymentProcessor.Render(ctx, serviceCtx.ResourceID, newResource)
+	if err != nil {
+		return nil, err
+	}
+	deploymentOutput, err := sql.DeploymentProcessor.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
+	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
+	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.SqlDatabase{}

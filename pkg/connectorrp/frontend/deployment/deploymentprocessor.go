@@ -102,7 +102,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	updatedOutputResources := []outputresource.OutputResource{}
 	var computedValues map[string]interface{}
 	for _, outputResource := range orderedOutputResources {
-		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, outputResource, rendererOutput)
+		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
@@ -134,7 +134,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 

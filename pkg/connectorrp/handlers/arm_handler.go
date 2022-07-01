@@ -28,26 +28,22 @@ type armHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *armHandler) Put(ctx context.Context, resource outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
-	properties, ok := resource.Resource.(map[string]string)
-	if !ok {
-		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required properties for resource")
-	}
-
+func (handler *armHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
 	// Do a GET just to validate that the resource exists.
-	resource, err := getByID(ctx, handler.arm.SubscriptionID, handler.arm.Auth, options.Resource.Identity)
+	res, err := getByID(ctx, handler.arm.SubscriptionID, handler.arm.Auth, resource.Identity)
 	if err != nil {
-		return nil, err
+		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	// Return the resource so renderers can use it for computed values.
-	serialized, err := handler.serializeResource(*resource)
+	// TODO: it may not require such serialization.
+	serialized, err := handler.serializeResource(*res)
 	if err != nil {
-		return nil, err
+		return resourcemodel.ResourceIdentity{}, nil, err
 	}
-	options.Resource.Resource = serialized
+	resource.Resource = serialized
 
-	return map[string]string{}, nil
+	return resourcemodel.ResourceIdentity{}, map[string]string{}, nil
 }
 
 func (handler *armHandler) serializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
