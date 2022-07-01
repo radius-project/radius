@@ -94,6 +94,30 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 	return
 }
 
+func buildFetchSecretsInput() ResourceData {
+	resourceID, testResource, rendererOutput := buildTestMongoResource()
+	testResource.Properties.Secrets = datamodel.MongoDatabaseSecrets{
+		Username:         "testUser",
+		Password:         "testPassword",
+		ConnectionString: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
+	}
+
+	secretValues := map[string]rp.SecretValueReference{
+		renderers.UsernameStringValue:   {Value: "testUser"},
+		renderers.PasswordStringHolder:  {Value: "testPassword"},
+		renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
+	}
+
+	computedValues := map[string]interface{}{
+		renderers.DatabaseNameValue: "db",
+	}
+
+	testResource.ComputedValues = computedValues
+	testResource.SecretValues = secretValues
+
+	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues}
+}
+
 type SharedMocks struct {
 	model              model.ApplicationModel
 	db                 *store.MockStorageClient
@@ -532,4 +556,15 @@ func Test_Delete(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
 	})
+}
+
+func Test_FetchSecrets(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+
+	input := buildFetchSecretsInput()
+	secrets, err := dp.FetchSecrets(ctx, input)
+	require.NoError(t, err)
+	require.Equal(t, 3, len(secrets))
 }
