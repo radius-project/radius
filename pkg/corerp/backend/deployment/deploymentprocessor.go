@@ -240,7 +240,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, reso
 	resourceID := id.Truncate()
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
-	resourceDependency, err := dp.getRequiredResourceDependenciesFromResource(ctx, resourceID, resource)
+	resourceDependency, err := dp.getRequiredDependencies(ctx, resourceID, resource)
 	if err != nil {
 		return err
 	}
@@ -269,7 +269,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, reso
 func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceIDs []resources.ID) (map[string]renderers.RendererDependency, error) {
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, id := range resourceIDs {
-		rd, err := dp.getRequiredResourceDependenciesFromID(ctx, id)
+		rd, err := dp.getRequiredDependenciesByID(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch required resource dependencies %q: %w", id.String(), err)
 		}
@@ -388,8 +388,8 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.Env
 	return renderers.EnvironmentOptions{}, nil
 }
 
-// getRequiredResourceDependenciesFromID is to get the resource dependencies.
-func (dp *deploymentProcessor) getRequiredResourceDependenciesFromID(ctx context.Context, resourceID resources.ID) (ResourceDependency, error) {
+// getRequiredDependenciesByID is to get the resource dependencies.
+func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, resourceID resources.ID) (ResourceDependency, error) {
 	var res *store.Object
 	var err error
 	var sc store.StorageClient
@@ -428,8 +428,8 @@ func (dp *deploymentProcessor) getRequiredResourceDependenciesFromID(ctx context
 	return ResourceDependency{}, err
 }
 
-// getRequiredResourceDependenciesFromResource is to get the resource dependencies.
-func (dp *deploymentProcessor) getRequiredResourceDependenciesFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (ResourceDependency, error) {
+// getRequiredDependencies is to get the resource dependencies.
+func (dp *deploymentProcessor) getRequiredDependencies(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (ResourceDependency, error) {
 	var err error
 	resourceType := resource.ResourceTypeName()
 	switch resourceType {
