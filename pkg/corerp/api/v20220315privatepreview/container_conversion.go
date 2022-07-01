@@ -433,7 +433,7 @@ func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 		converted := &datamodel.Extension{
 			Kind: datamodel.ManualScaling,
 			ManualScaling: &datamodel.ManualScalingExtension{
-				Replicas: to.Int32(c.Replicas),
+				Replicas: c.Replicas,
 			},
 		}
 		return *converted
@@ -461,7 +461,7 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassi
 			Extension: Extension{
 				Kind: to.StringPtr(string(e.Kind)),
 			},
-			Replicas: to.Int32Ptr(e.ManualScaling.Replicas),
+			Replicas: e.ManualScaling.Replicas,
 		}
 		return converted.GetExtension()
 	case datamodel.DaprSidecar:
