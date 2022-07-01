@@ -102,6 +102,9 @@ func GetArmAuthorizer() (autorest.Authorizer, error) {
 }
 
 func authServicePrincipal() (autorest.Authorizer, error) {
+	fmt.Println(os.Getenv("AZURE_CLIENT_ID"))
+	fmt.Println(os.Getenv("AZURE_CLIENT_SECRET"))
+	fmt.Println(os.Getenv("AZURE_TENANT_ID"))
 	clientcfg := auth.NewClientCredentialsConfig(os.Getenv("AZURE_CLIENT_ID"), os.Getenv("AZURE_CLIENT_SECRET"), os.Getenv("AZURE_TENANT_ID"))
 	auth, err := clientcfg.Authorizer()
 	if err != nil {
