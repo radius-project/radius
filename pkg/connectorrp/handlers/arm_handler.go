@@ -46,6 +46,10 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 	return resourcemodel.ResourceIdentity{}, map[string]string{}, nil
 }
 
+func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+	return nil
+}
+
 func (handler *armHandler) serializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
 	// We turn the resource into a weakly-typed representation. This is needed because JSON Pointer
 	// will have trouble with the autorest embdedded types.
