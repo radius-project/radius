@@ -228,7 +228,7 @@ func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.
 	return nil, client.ErrMessageNotFound
 }
 
-// extendItem udpates LabelNExtvisibleAt to extend the lease time of message. Dequeue and ExtendMessage
+// extendItem udpates LabelNextVisibleAt to extend the lease time of message. Dequeue and ExtendMessage
 // use this function. Dequeue Operation updates DequeueCount and LabelNextVisibleAt whereas ExtendMessage
 // updates only LabelNextVisibleAt -- handled by isDequeue flag. We can use DequeueCount as a revision
 // number of the message so this func could easily catch the clock skew issue.
