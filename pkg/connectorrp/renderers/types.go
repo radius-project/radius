@@ -20,6 +20,8 @@ const (
 	DatabaseNameValue     = "database"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
+	Host                  = "host"
+	Port                  = "port"
 )
 
 var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
