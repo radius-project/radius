@@ -7,6 +7,7 @@ package deployment
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/go-openapi/jsonpointer"
@@ -28,6 +29,7 @@ type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
 	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
+	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, storageClient store.StorageClient, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
@@ -47,6 +49,14 @@ type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]interface{}
 	SecretValues   map[string]rp.SecretValueReference
+}
+
+type ResourceData struct {
+	ID              resources.ID
+	Resource        conv.DataModelInterface
+	OutputResources []outputresource.OutputResource
+	ComputedValues  map[string]interface{}
+	SecretValues    map[string]rp.SecretValueReference
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -204,4 +214,53 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.
 	}
 
 	return nil
+}
+
+func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error) {
+	secretValues := map[string]interface{}{}
+	for k, secretReference := range resourceData.SecretValues {
+		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch secret %s for resource %s: %w", k, resourceData.ID.String(), err)
+		}
+
+		if (secretReference.Transformer != resourcemodel.ResourceType{}) {
+			outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(secretReference.Transformer)
+			if err != nil {
+				return nil, err
+			} else if outputResourceModel.SecretValueTransformer == nil {
+				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
+			}
+
+			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, resourceData.Resource, secret)
+			if err != nil {
+				return nil, fmt.Errorf("failed to transform secret %s for resource %s: %w", k, resourceData.ID.String(), err)
+			}
+		}
+
+		secretValues[k] = secret
+	}
+
+	return secretValues, nil
+}
+
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference) (interface{}, error) {
+	if reference.Value != "" {
+		// The secret reference contains the value itself
+		return reference.Value, nil
+	}
+
+	// Reference to operations to fetch secrets is currently only supported for Azure resources
+	if dp.secretClient == nil {
+		return nil, errors.New("no Azure credentials provided to fetch secret")
+	}
+
+	// Find the output resource that maps to the secret value reference
+	for _, outputResource := range outputResources {
+		if outputResource.LocalID == reference.LocalID {
+			return dp.secretClient.FetchSecret(ctx, outputResource.Identity, reference.Action, reference.ValueSelector)
+		}
+	}
+
+	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
 }
