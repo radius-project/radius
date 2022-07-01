@@ -107,7 +107,8 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePr
 			PathLoader: func(path string) (json.RawMessage, error) {
 				// Trim before 'specification' to convert relative path.
 				first := strings.Index(path, "specification")
-				data, err := fs.ReadFile(l.specFiles, path[first:])
+				suffix := path[first:]
+				data, err := fs.ReadFile(l.specFiles, suffix)
 				return json.RawMessage(data), err
 			},
 		})
