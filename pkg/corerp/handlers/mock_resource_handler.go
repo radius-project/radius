@@ -81,7 +81,7 @@ func (mr *MockResourceHandlerMockRecorder) GetResourceNativeIdentityKeyPropertie
 }
 
 // Put mocks base method.
-func (m *MockResourceHandler) Put(arg0 context.Context, arg1 outputresource.OutputResource) error {
+func (m *MockResourceHandler) Put(arg0 context.Context, arg1 *outputresource.OutputResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", arg0, arg1)
 	ret0, _ := ret[0].(error)
