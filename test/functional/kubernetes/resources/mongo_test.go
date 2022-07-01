@@ -19,9 +19,7 @@ import (
 )
 
 func TestMongo(t *testing.T) {
-	t.Skip("will re-enable as part of #2021")
-
-	template := "testdata/kubernetes-resources-mongo/kubernetes-resources-mongo.bicep"
+	template := "testdata/kubernetes-resources-mongo.bicep"
 	application := "kubernetes-resources-mongo"
 
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
@@ -31,7 +29,7 @@ func TestMongo(t *testing.T) {
 				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ResourceName:    "todoapp",
+						ResourceName:    "webapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, rest.ResourceType{Type: resourcekinds.Kubernetes, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, rest.ResourceType{Type: resourcekinds.Kubernetes, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
@@ -42,14 +40,14 @@ func TestMongo(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						// This will ensure that all the connection-properties
-						// were populated correctly.
-						validation.NewK8sPodForResource(application, "todoapp"),
+						validation.NewK8sPodForResource(application, "webapp"),
+						validation.NewK8sPodForResource(application, "mongo-container"),
+						validation.NewK8sServiceForResource(application, "mongo-route"),
 					},
 				},
 			},
 		},
-	}, loadResources("testdata/kubernetes-resources-mongo", ".input.yaml")...)
+	})
 
 	test.Test(t)
 }
