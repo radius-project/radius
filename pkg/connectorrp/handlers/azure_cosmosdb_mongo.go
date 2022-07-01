@@ -53,3 +53,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, resource *out
 
 	return outputResourceIdentity, properties, nil
 }
+
+func (handler *azureCosmosDBMongoHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+	return nil
+}

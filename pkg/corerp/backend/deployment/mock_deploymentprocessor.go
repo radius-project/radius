@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	conv "github.com/project-radius/radius/pkg/armrpc/api/conv"
 	renderers "github.com/project-radius/radius/pkg/corerp/renderers"
+	outputresource "github.com/project-radius/radius/pkg/radrp/outputresource"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -38,7 +39,7 @@ func (m *MockDeploymentProcessor) EXPECT() *MockDeploymentProcessorMockRecorder 
 }
 
 // Delete mocks base method.
-func (m *MockDeploymentProcessor) Delete(arg0 context.Context, arg1 resources.ID, arg2 conv.DataModelInterface) error {
+func (m *MockDeploymentProcessor) Delete(arg0 context.Context, arg1 resources.ID, arg2 []outputresource.OutputResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

@@ -19,7 +19,7 @@ import (
 )
 
 func TestRedis(t *testing.T) {
-	template := "testdata/kubernetes-resources-redis/kubernetes-resources-redis.bicep"
+	template := "testdata/kubernetes-resources-redis.bicep"
 	application := "kubernetes-resources-redis"
 
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
@@ -29,7 +29,7 @@ func TestRedis(t *testing.T) {
 				Resources: []validation.RadiusResource{
 					{
 						ApplicationName: application,
-						ResourceName:    "todoapp",
+						ResourceName:    "webapp",
 						OutputResources: map[string]validation.ExpectedOutputResource{
 							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, rest.ResourceType{Type: resourcekinds.Kubernetes, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
 							outputresource.LocalIDSecret:     validation.NewOutputResource(outputresource.LocalIDSecret, rest.ResourceType{Type: resourcekinds.Kubernetes, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
@@ -40,14 +40,14 @@ func TestRedis(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					application: {
-						// This will ensure that all the connection-properties
-						// were populated correctly.
-						validation.NewK8sPodForResource(application, "todoapp"),
+						validation.NewK8sPodForResource(application, "webapp"),
+						validation.NewK8sPodForResource(application, "redis-container"),
+						validation.NewK8sServiceForResource(application, "redis-route"),
 					},
 				},
 			},
 		},
-	}, loadResources("testdata/kubernetes-resources-redis", ".input.yaml")...)
+	})
 
 	test.Test(t)
 }
