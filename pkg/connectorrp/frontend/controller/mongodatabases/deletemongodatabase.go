@@ -53,6 +53,11 @@ func (mongo *DeleteMongoDatabase) Run(ctx context.Context, req *http.Request) (r
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
+	err = mongo.DeploymentProcessor.Delete(ctx, serviceCtx.ResourceID, existingResource.Properties.Status.OutputResources)
+	if err != nil {
+		return nil, err
+	}
+
 	err = mongo.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {

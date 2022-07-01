@@ -384,7 +384,7 @@ func Test_Delete(t *testing.T) {
 
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
-		err := dp.Delete(ctx, resourceID, testResource)
+		err := dp.Delete(ctx, resourceID, testResource.Properties.Status.OutputResources)
 		require.NoError(t, err)
 	})
 
@@ -394,7 +394,7 @@ func Test_Delete(t *testing.T) {
 
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
-		err := dp.Delete(ctx, resourceID, testResource)
+		err := dp.Delete(ctx, resourceID, testResource.Properties.Status.OutputResources)
 		require.Error(t, err)
 	})
 
@@ -405,7 +405,7 @@ func Test_Delete(t *testing.T) {
 
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(0).Return(nil)
 
-		err := dp.Delete(ctx, resourceID, testResource)
+		err := dp.Delete(ctx, resourceID, testResource.Properties.Status.OutputResources)
 		require.NoError(t, err)
 	})
 }
