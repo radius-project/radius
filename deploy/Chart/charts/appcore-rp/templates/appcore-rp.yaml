@@ -14,8 +14,8 @@ spec:
     metadata:
       labels:
         control-plane: appcore-rp
-{{ if .Values.global.appcorerp.provider.azure.podidentity }}
-        aadpodidbinding: {{ .Values.global.appcorerp.provider.azure.podidentity }}
+{{ if .Values.global.rp.provider.azure.podidentity }}
+        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
 {{ end }}
     spec:
       serviceAccountName: appcore-rp
@@ -97,28 +97,28 @@ metadata:
     app: appcore-rp
 stringData:
 # Configuration for 'Azure' provider functionality
-{{ if .Values.global.appcorerp.provider.azure.podidentity }}
+{{ if .Values.global.rp.provider.azure.podidentity }}
   # Enable ARM without explicit credentials
   SKIP_ARM: 'false'
   ARM_AUTH_METHOD: 'ManagedIdentity'
-  ARM_SUBSCRIPTION_ID: {{ .Values.global.appcorerp.provider.azure.subscriptionId }}
-  ARM_RESOURCE_GROUP: {{ .Values.global.appcorerp.provider.azure.resourceGroup }}
-{{ else if .Values.global.appcorerp.provider.azure.servicePrincipal }}
+  ARM_SUBSCRIPTION_ID: {{ .Values.global.rp.provider.azure.subscriptionId }}
+  ARM_RESOURCE_GROUP: {{ .Values.global.rp.provider.azure.resourceGroup }}
+{{ else if .Values.global.rp.provider.azure.servicePrincipal }}
   # Enable ARM with explicit credentials
   SKIP_ARM: 'false' 
   ARM_AUTH_METHOD: 'ServicePrincipal'
-  AZURE_CLIENT_ID: {{ .Values.global.appcorerp.provider.azure.servicePrincipal.clientId }}
-  AZURE_CLIENT_SECRET: {{ .Values.global.appcorerp.provider.azure.servicePrincipal.clientSecret }}
-  AZURE_TENANT_ID: {{ .Values.global.appcorerp.provider.azure.servicePrincipal.tenantId }}
-  ARM_SUBSCRIPTION_ID: {{ .Values.global.appcorerp.provider.azure.subscriptionId }}
-  ARM_RESOURCE_GROUP: {{ .Values.global.appcorerp.provider.azure.resourceGroup }}
+  AZURE_CLIENT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.clientId }}
+  AZURE_CLIENT_SECRET: {{ .Values.global.rp.provider.azure.servicePrincipal.clientSecret }}
+  AZURE_TENANT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.tenantId }}
+  ARM_SUBSCRIPTION_ID: {{ .Values.global.rp.provider.azure.subscriptionId }}
+  ARM_RESOURCE_GROUP: {{ .Values.global.rp.provider.azure.resourceGroup }}
 {{ else }}
   # Skip ARM by default. Overwriting this secret will let you set this to false as well as configure credentials
   SKIP_ARM: 'true' 
 {{ end }}
 # Configuration for AKS integration
-{{ if .Values.global.appcorerp.aks }}
-  K8S_SUBSCRIPTION_ID: {{ .Values.global.appcorerp.aks.subscriptionId }}
-  K8S_RESOURCE_GROUP: {{ .Values.global.appcorerp.aks.resourceGroup }}
-  K8S_CLUSTER_NAME: {{ .Values.global.appcorerp.aks.clusterName }}
+{{ if .Values.global.rp.aks }}
+  K8S_SUBSCRIPTION_ID: {{ .Values.global.rp.aks.subscriptionId }}
+  K8S_RESOURCE_GROUP: {{ .Values.global.rp.aks.resourceGroup }}
+  K8S_CLUSTER_NAME: {{ .Values.global.rp.aks.clusterName }}
 {{ end }}
