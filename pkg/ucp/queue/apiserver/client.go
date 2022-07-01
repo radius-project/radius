@@ -230,9 +230,9 @@ func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.
 
 // extendItem udpates LabelNExtvisibleAt to extend the lease time of message. Dequeue and ExtendMessage
 // use this function. Dequeue Operation updates DequeueCount and LabelNextVisibleAt whereas ExtendMessage
-// updates only LabelNextVisibleAt -- handled by isDequeueExtend flag. We can use DequeueCount as a revision
+// updates only LabelNextVisibleAt -- handled by isDequeue flag. We can use DequeueCount as a revision
 // number of the message so this func could easily catch the clock skew issue.
-func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount int, afterTime time.Time, duration time.Duration, isDequeueExtend bool) (*v1alpha1.QueueMessage, error) {
+func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount int, afterTime time.Time, duration time.Duration, isDequeue bool) (*v1alpha1.QueueMessage, error) {
 	nextVisibleAt := afterTime.Add(duration).UnixNano()
 	result := &v1alpha1.QueueMessage{}
 
@@ -252,12 +252,12 @@ func (c *Client) extendItem(ctx context.Context, id string, expectedDequeueCount
 		nsec := mustParseInt64(result.Labels[LabelNextVisibleAt])
 
 		// Check if the message is already requeued. This condition is required for ExtendMessage because we cannot extend the message which was requeued.
-		if !isDequeueExtend && nsec < afterTime.UnixNano() {
+		if !isDequeue && nsec < afterTime.UnixNano() {
 			return client.ErrInvalidMessage
 		}
 
 		result.Labels[LabelNextVisibleAt] = int64toa(nextVisibleAt)
-		if isDequeueExtend {
+		if isDequeue {
 			result.Spec.DequeueCount += 1
 		}
 
