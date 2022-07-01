@@ -43,3 +43,7 @@ func (handler *azureCosmosAccountHandler) Put(ctx context.Context, resource outp
 
 	return outputResourceIdentity, properties, nil
 }
+
+func (handler *azureCosmosAccountHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+	return nil
+}
