@@ -14,16 +14,64 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
+
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureSqlServer,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureSqlServer,
+					Provider: providers.ProviderAzure,
+				},
+				Identity: resourcemodel.ResourceIdentity{},
+			},
+		},
+		SecretValues: map[string]rp.SecretValueReference{},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			renderers.DatabaseNameValue: {
+				Value: "db",
+			},
+			renderers.ServerNameValue: {
+				LocalID:     outputresource.LocalIDAzureSqlServer,
+				JSONPointer: "/properties/fullyQualifiedDomainName",
+			},
+		},
+	}
+
+	deploymentOutput := deployment.DeploymentOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureSqlServer,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureSqlServer,
+					Provider: providers.ProviderAzure,
+				},
+			},
+		},
+	}
+
+	return rendererOutput, deploymentOutput
+}
 
 func TestCreateOrUpdateSqlDatabase_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 	ctx := context.Background()
 
 	createNewResourceTestCases := []struct {
@@ -55,6 +103,9 @@ func TestCreateOrUpdateSqlDatabase_20220315PrivatePreview(t *testing.T) {
 					return nil, &store.ErrNotFound{}
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -70,7 +121,7 @@ func TestCreateOrUpdateSqlDatabase_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateSqlDatabase(mStorageClient, nil, nil)
+			ctl, err := NewCreateOrUpdateSqlDatabase(mStorageClient, nil, mDeploymentProcessor)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -120,6 +171,9 @@ func TestCreateOrUpdateSqlDatabase_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			if !testcase.shouldFail {
 				mStorageClient.
 					EXPECT().
@@ -131,7 +185,7 @@ func TestCreateOrUpdateSqlDatabase_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateSqlDatabase(mStorageClient, nil, nil)
+			ctl, err := NewCreateOrUpdateSqlDatabase(mStorageClient, nil, mDeploymentProcessor)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

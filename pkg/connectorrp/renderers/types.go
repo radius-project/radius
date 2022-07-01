@@ -18,6 +18,7 @@ import (
 const (
 	ConnectionStringValue = "connectionString"
 	DatabaseNameValue     = "database"
+	ServerNameValue       = "server"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
 	Host                  = "host"
