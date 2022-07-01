@@ -6,9 +6,11 @@
         "status": {
             "outputResources": [{
               "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "httproutes",
-                "Provider": "aks"
+              "Provider": "aks",
+              "Identity": {
+                "aksClusterName": "",
+                "name": "",
+                "namespace": ""
               }
             }]
           },

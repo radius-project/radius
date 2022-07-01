@@ -45,7 +45,7 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 	}
 
 	listOfResourceGroups := rest.ResourceGroupList{}
-	if len(result.Items) > 0 {
+	if result != nil && len(result.Items) > 0 {
 		for _, item := range result.Items {
 			var rg rest.ResourceGroup
 			err = item.As(&rg)

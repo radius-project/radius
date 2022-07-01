@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,6 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 		// act
 		dm, err := versionedResource.ConvertTo()
 
-		resourceType := map[string]interface{}{"Provider": "kubernetes", "Type": "Secret"}
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.DaprSecretStore)
@@ -41,8 +41,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 		if payload == "daprsecretstoreresource.json" {
-			require.Equal(t, "Deployment", convertedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, convertedResource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		}
 	}
 }
@@ -60,22 +59,20 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 		versionedResource := &DaprSecretStoreResource{}
 		err = versionedResource.ConvertFrom(resource)
 
-		resourceType := map[string]interface{}{"Provider": "kubernetes", "Type": "Secret"}
-
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprSecretStores/daprSecretStore0", resource.ID)
-		require.Equal(t, "daprSecretStore0", resource.Name)
-		require.Equal(t, "Applications.Connector/daprSecretStores", resource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
-		require.Equal(t, "generic", string(resource.Properties.Kind))
-		require.Equal(t, "secretstores.hashicorp.vault", resource.Properties.Type)
-		require.Equal(t, "v1", resource.Properties.Version)
-		require.Equal(t, "bar", resource.Properties.Metadata["foo"])
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprSecretStores/daprSecretStore0", *versionedResource.ID)
+		require.Equal(t, "daprSecretStore0", *versionedResource.Name)
+		require.Equal(t, "Applications.Connector/daprSecretStores", *versionedResource.Type)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
+		require.Equal(t, "generic", string(*versionedResource.Properties.Kind))
+		require.Equal(t, "secretstores.hashicorp.vault", *versionedResource.Properties.Type)
+		require.Equal(t, "v1", *versionedResource.Properties.Version)
+		require.Equal(t, "bar", versionedResource.Properties.Metadata["foo"])
 		if payload == "daprsecretstoreresource.json" {
-			require.Equal(t, "Deployment", resource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, resourceType, resource.Properties.Status.OutputResources[0]["ResourceType"])
+			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, "ExtenderProvider", versionedResource.Properties.Status.OutputResources[0]["Provider"])
 		}
 	}
 

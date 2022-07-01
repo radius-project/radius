@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -49,7 +50,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		}
 	}
 
-	computedValues := map[string]renderers.ComputedValueReference{
+	computedValues := map[string]rp.ComputedValueReference{
 		"host": {
 			Value: kubernetes.MakeResourceName(applicationName, route.Name),
 		},
@@ -95,13 +96,13 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, ResourceTypeName, route.Name),
+			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, ResourceType, route.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       route.Name,
 					Port:       route.Properties.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceTypeName + route.Name)),
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceType + route.Name)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},

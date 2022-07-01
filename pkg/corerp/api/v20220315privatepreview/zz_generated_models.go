@@ -20,8 +20,8 @@ type ApplicationProperties struct {
 	// REQUIRED; The resource id of the environment linked to application.
 	Environment *string `json:"environment,omitempty"`
 
-	// Provisioning state of the application at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
+	// READ-ONLY; Provisioning state of the application at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // ApplicationResource - Radius Application.
@@ -420,8 +420,8 @@ type EnvironmentProperties struct {
 	// REQUIRED; The compute resource used by application environment.
 	Compute *EnvironmentCompute `json:"compute,omitempty"`
 
-	// Provisioning state of the environment at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
+	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // EnvironmentResource - Application environment.
@@ -673,11 +673,11 @@ type GatewayProperties struct {
 	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 	Internal *bool `json:"internal,omitempty"`
 
-	// Provisioning state of the Gateway at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
-
 	// Routes attached to this Gateway
 	Routes []*GatewayRoute `json:"routes,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type GatewayProperties.
@@ -874,14 +874,14 @@ type HTTPRouteProperties struct {
 	// The port number for the HTTP Route. Defaults to 80. Readonly.
 	Port *int32 `json:"port,omitempty"`
 
-	// Provisioning state of the HTTP Route at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
-
 	// The scheme used for traffic. Readonly.
 	Scheme *string `json:"scheme,omitempty"`
 
 	// A stable URL that that can be used to route traffic to a resource. Readonly.
 	URL *string `json:"url,omitempty"`
+
+	// READ-ONLY; Provisioning state of the HTTP Route at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type HTTPRouteProperties.

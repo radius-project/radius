@@ -1,0 +1,21 @@
+{
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourcegroups"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourcegroups/rg1",
+            "name": "rg1"
+          },
+          {
+            "id": "/planes/radius/local/resourcegroups/rg2",
+            "name": "rg2"
+          }
+        ]
+      }
+    }
+  }
+}

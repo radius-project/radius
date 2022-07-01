@@ -24,11 +24,6 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.MongoDatabaseResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
-				Status: v1.ResourceStatus{
-					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
-				},
-			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:       to.String(src.Properties.Environment),
 			Application:       to.String(src.Properties.Application),
@@ -63,11 +58,6 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
-					Status: v1.ResourceStatus{
-						OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
-					},
-				},
 				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 				Environment:       to.String(src.Properties.Environment),
 				Application:       to.String(src.Properties.Application),
@@ -100,7 +90,7 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 	dst.Properties = &MongoDatabaseResponseProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: GetOutputResourcesForDatamodel(&mongo.Properties.Status),
+				OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
@@ -130,7 +120,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		MongoDatabaseResponseProperties: MongoDatabaseResponseProperties{
 			BasicResourceProperties: BasicResourceProperties{
 				Status: &ResourceStatus{
-					OutputResources: GetOutputResourcesForDatamodel(&mongo.Properties.Status),
+					OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 				},
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
@@ -174,20 +164,4 @@ func (src *MongoDatabaseSecrets) ConvertTo() (conv.DataModelInterface, error) {
 		Password:         to.String(src.Password),
 	}
 	return converted, nil
-}
-
-func GetOutputResourcesForVersionedResource(status *ResourceStatus) []map[string]interface{} {
-	var outputResources []map[string]interface{}
-	if status != nil {
-		outputResources = status.OutputResources
-	}
-	return outputResources
-}
-
-func GetOutputResourcesForDatamodel(status *v1.ResourceStatus) []map[string]interface{} {
-	var outputResources []map[string]interface{}
-	if status != nil {
-		outputResources = status.OutputResources
-	}
-	return outputResources
 }

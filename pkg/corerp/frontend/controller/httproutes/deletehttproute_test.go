@@ -83,7 +83,7 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			ctl, err := NewDeleteHTTPRoute(mds, msm)
+			ctl, err := NewDeleteHTTPRoute(mds, msm, nil)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)

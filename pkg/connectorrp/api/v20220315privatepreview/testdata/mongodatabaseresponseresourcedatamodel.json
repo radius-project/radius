@@ -16,7 +16,7 @@
     "properties": {
         "status": {
             "outputResources": [{
-              "LocalID": "Deployment",
+              "LocalID": "AzureCosmosAccount",
               "ResourceType": {
                 "Type": "azure.cosmosdb.mongo",
                 "Provider": "azure"

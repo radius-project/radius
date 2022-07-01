@@ -737,8 +737,16 @@ type MockEnvironment struct {
 	DiagnosticsClient clients.DiagnosticsClient
 }
 
+func (e *MockEnvironment) CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
+	return e.DeploymentClient, nil
+}
+
 func (e *MockEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	return e.DeploymentClient, nil
+}
+
+func (e *MockEnvironment) CreateLegacyDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {
+	return e.DiagnosticsClient, nil
 }
 
 func (e *MockEnvironment) CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error) {

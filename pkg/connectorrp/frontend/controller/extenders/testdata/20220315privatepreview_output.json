@@ -4,13 +4,7 @@
     "name": "extender0",
     "properties": {
         "status": {
-          "outputResources": [{
-            "LocalID": "Deployment",
-            "ResourceType": {
-              "Type": "extenderType",
-              "Provider": "extenderProvider"
-            }
-          }]
+          "outputResources": null
         },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",

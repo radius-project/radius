@@ -6,19 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-arm-json generate-radclient generate-genericcliclient generate-rad-corerp-client generate-go generate-bicep-types ## Generates all targets.
-
-.PHONY: generate-arm-json
-generate-arm-json: generate-jq-installed ## Generates ARM-JSON from our environment creation Bicep files
-	@echo "$(ARROW) Updating ARM-JSON..."
-	az bicep build --file deploy/rp-full.bicep
-	jq 'del(.metadata, .resources[].properties.template.metadata)' deploy/rp-full.json  > deploy/rp-full.tmp && mv deploy/rp-full.tmp deploy/rp-full.json
-
-.PHONY: generate-jq-installed
-generate-jq-installed:
-	@echo "$(ARROW) Detecting jq..."
-	@which node > /dev/null || { echo "jq is a required dependency"; exit 1; }
-	@echo "$(ARROW) OK"
+generate: generate-radclient generate-genericcliclient generate-rad-corerp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -31,6 +19,18 @@ generate-autorest-installed:
 	@echo "$(ARROW) Detecting autorest..."
 	@which autorest > /dev/null || { echo "run 'npm install -g autorest' to install autorest"; exit 1; }
 	@echo "$(ARROW) OK"
+
+.PHONY: generate-controller-gen-installed
+generate-controller-gen-installed:
+	@echo "$(ARROW) Detecting controller-gen..."
+	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1'"; exit 1; }
+	@echo "$(ARROW) OK"
+
+.PHONY: generate-ucp-crd
+generate-ucp-crd: generate-controller-gen-installed
+	@echo "$(ARROW) Generating CRDs for ucp.dev..."
+	controller-gen object paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... object:headerFile=./boilerplate.go.txt
+	controller-gen rbac:roleName=manager-role crd paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
 
 .PHONY: generate-openapi-specs
 generate-openapi-specs:
