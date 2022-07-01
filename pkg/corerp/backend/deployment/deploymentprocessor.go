@@ -254,7 +254,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, reso
 				return err
 			}
 
-			logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %q\n", v.Identity, v.LocalID, v.ResourceType))
+			logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", v.LocalID, v.ResourceType))
 			err = outputResourceModel.ResourceHandler.Delete(ctx, v)
 			if err != nil {
 				return err

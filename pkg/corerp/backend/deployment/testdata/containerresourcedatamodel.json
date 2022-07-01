@@ -16,10 +16,10 @@
     "properties": {
         "status": {
           "outputResources": [{
-            "LocalID": "Deployment",
+            "LocalID": "Service",
             "ResourceType": {
-              "Type": "containers",
-              "Provider": "aks"
+              "Type": "Service",
+              "Provider": "kubernetes"
             }
           }]
         },
