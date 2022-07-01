@@ -362,7 +362,7 @@ type DaprSidecarExtension struct {
 // MarshalJSON implements the json.Marshaller interface for type DaprSidecarExtension.
 func (d DaprSidecarExtension) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	d.Extension.marshalInternal(objectMap, "dapr.io/Sidecar@v1alpha1")
+	d.Extension.marshalInternal(objectMap, "daprSidecar")
 	populate(objectMap, "appId", d.AppID)
 	populate(objectMap, "appPort", d.AppPort)
 	populate(objectMap, "config", d.Config)
@@ -1090,7 +1090,7 @@ type ManualScalingExtension struct {
 // MarshalJSON implements the json.Marshaller interface for type ManualScalingExtension.
 func (m ManualScalingExtension) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	m.Extension.marshalInternal(objectMap, "Applications.Core/ManualScaling@v1alpha1")
+	m.Extension.marshalInternal(objectMap, "manualScaling")
 	populate(objectMap, "replicas", m.Replicas)
 	return json.Marshal(objectMap)
 }

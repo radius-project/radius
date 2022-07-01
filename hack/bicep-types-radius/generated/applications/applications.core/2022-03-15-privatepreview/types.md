@@ -185,19 +185,19 @@
 * **Discriminator**: kind
 
 ### Base Properties
-### ManualScalingExtension
-#### Properties
-* **kind**: 'Applications.Core/ManualScaling@v1alpha1' (Required): Specifies the extensions of a resource.
-* **replicas**: int: Replica count.
-
 ### DaprSidecarExtension
 #### Properties
 * **appId**: string (Required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
 * **appPort**: int: The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
 * **config**: string: Specifies the Dapr configuration to use for the resource.
-* **kind**: 'dapr.io/Sidecar@v1alpha1' (Required): Specifies the extensions of a resource.
+* **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
 * **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
+
+### ManualScalingExtension
+#### Properties
+* **kind**: 'manualScaling' (Required): Specifies the extensions of a resource.
+* **replicas**: int: Replica count.
 
 
 ## ResourceStatus

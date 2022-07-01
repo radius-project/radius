@@ -621,7 +621,7 @@
           }
         },
         "additionalProperties": false,
-        "x-ms-discriminator-value": "Applications.Core/ManualScaling@v1alpha1"
+        "x-ms-discriminator-value": "manualScaling"
       },
       "DaprSidecarExtension": {
         "allOf": [
@@ -665,7 +665,7 @@
           }
         },
         "additionalProperties": false,
-        "x-ms-discriminator-value": "dapr.io/Sidecar@v1alpha1"
+        "x-ms-discriminator-value": "daprSidecar"
       },
       "Extension": {
         "description": "Extension of a resource.",
