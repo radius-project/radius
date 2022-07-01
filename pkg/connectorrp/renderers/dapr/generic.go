@@ -9,13 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/providers"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -25,7 +19,7 @@ type DaprGeneric struct {
 	Metadata map[string]interface{}
 }
 
-func ValidateDaprGenericObject(daprGeneric DaprGeneric) error {
+func (daprGeneric DaprGeneric) Validate() error {
 	if daprGeneric.Type == nil || *daprGeneric.Type == "" {
 		return errors.New("No type specified for generic Dapr component")
 	}
@@ -71,30 +65,4 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName 
 		},
 	}
 	return item, nil
-}
-
-func GetDaprGeneric(daprGeneric DaprGeneric, dm conv.DataModelInterface) ([]outputresource.OutputResource, error) {
-	err := ValidateDaprGenericObject(daprGeneric)
-	if err != nil {
-		return nil, err
-	}
-	resource, ok := dm.(datamodel.DaprSecretStore)
-	if !ok {
-		return nil, conv.ErrInvalidModelConversion
-	}
-	daprGenericResource, err := ConstructDaprGeneric(daprGeneric, resource.Properties.Application, resource.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	output := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDDaprComponent,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.DaprComponent,
-			Provider: providers.ProviderKubernetes,
-		},
-		Resource: &daprGenericResource,
-	}
-
-	return []outputresource.OutputResource{output}, nil
 }

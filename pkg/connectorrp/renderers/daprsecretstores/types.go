@@ -6,7 +6,7 @@
 package daprsecretstores
 
 const (
-	ResourceType = "Applications.Connector/daprStateStores"
+	ResourceType = "Applications.Connector/daprSecretStores"
 )
 
 type Properties struct {

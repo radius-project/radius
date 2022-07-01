@@ -43,7 +43,7 @@ func GetDaprPubSubGeneric(dm conv.DataModelInterface) (renderers.RendererOutput,
 }
 
 func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm conv.DataModelInterface) ([]outputresource.OutputResource, error) {
-	err := dapr.ValidateDaprGenericObject(daprGeneric)
+	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
 	}

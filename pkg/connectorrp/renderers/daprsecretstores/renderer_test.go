@@ -108,7 +108,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
 			},
 			"spec": map[string]interface{}{
-				"type":    "Applications.Connector/daprStateStores",
+				"type":    "Applications.Connector/daprSecretStores",
 				"version": "v1",
 				"metadata": []map[string]interface{}{
 					{
