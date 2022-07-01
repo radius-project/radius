@@ -108,4 +108,27 @@ func TestClient(t *testing.T) {
 	}
 
 	sharedtest.RunTest(t, cli, clear)
+
+	t.Run("ExtendMessage is failed when machine's clock is skewed", func(t *testing.T) {
+		clear(t)
+
+		// client1 is executing on node 1
+		client1, err := New(rc, Options{Name: "applications.core", Namespace: ns, MessageLockDuration: time.Duration(1) * time.Minute})
+		require.NoError(t, err)
+		// client2 is executing on node 2
+		client2, err := New(rc, Options{Name: "applications.core", Namespace: ns, MessageLockDuration: time.Duration(1) * time.Minute})
+		require.NoError(t, err)
+
+		err = client1.Enqueue(ctx, client.NewMessage("{}"))
+		require.NoError(t, err)
+		msg, err := client2.Dequeue(ctx)
+		require.NoError(t, err)
+
+		// Increase DequeueCount to mimic the situation when client1 updates message by the clock skew.
+		_, err = client1.extendItem(ctx, msg.ID, msg.DequeueCount, time.Now(), time.Duration(1)*time.Minute, true)
+		require.NoError(t, err)
+
+		err = client2.ExtendMessage(ctx, msg)
+		require.ErrorIs(t, err, client.ErrDequeuedMessage)
+	})
 }

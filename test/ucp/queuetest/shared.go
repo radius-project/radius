@@ -141,6 +141,7 @@ func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 		time.Sleep(TestMessageLockTime / 2)
 		err = cli.ExtendMessage(ctx, msg1)
 		t.Logf("%s %v", msg1.ID, msg1.NextVisibleAt)
+		require.Equal(t, 1, msg1.DequeueCount, "DequeueCount must be 1")
 		require.NoError(t, err)
 
 		for {
