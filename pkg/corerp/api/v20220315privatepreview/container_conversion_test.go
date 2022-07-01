@@ -45,6 +45,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, 2, len(ct.Properties.Extensions))
 }
 
 func TestContainerConvertDataModelToVersioned(t *testing.T) {
@@ -72,6 +73,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", r.Properties.Container.Image)
 	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
 	require.Equal(t, "aks", versioned.Properties.Status.OutputResources[0]["Provider"])
+	require.Equal(t, 2, len(versioned.Properties.Extensions))
 }
 
 func TestContainerConvertFromValidation(t *testing.T) {
