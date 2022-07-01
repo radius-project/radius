@@ -30,9 +30,12 @@ planes:
     properties:
       resourceProviders:
         Applications.Core: "http://localhost:8080"
-        Applications.Connector: "http://localhost:8080"
+        Applications.Connector: "http://localhost:8081"
+      kind: "UCPNative"
   - id: "/planes/deployments/local"
     properties:
       resourceProviders:
         Microsoft.Resources: "http://localhost:5017"
+      kind: "UCPNative"
+      
 
