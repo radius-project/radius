@@ -132,7 +132,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = outputResourceModel.ResourceHandler.Put(ctx, outputResource)
+	err = outputResourceModel.ResourceHandler.Put(ctx, &outputResource)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}

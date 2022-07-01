@@ -27,8 +27,8 @@ type kubernetesHandler struct {
 	k8s client.Client
 }
 
-func (handler *kubernetesHandler) Put(ctx context.Context, resource outputresource.OutputResource) error {
-	item, err := convertToUnstructured(resource)
+func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+	item, err := convertToUnstructured(*resource)
 	if err != nil {
 		return err
 	}

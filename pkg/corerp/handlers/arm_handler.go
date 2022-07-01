@@ -28,12 +28,7 @@ type armHandler struct {
 	arm *armauth.ArmConfig
 }
 
-// Put(ctx context.Context, resource outputresource.OutputResource) error
-// GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error)
-// GetResourceNativeIdentityKeyProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error)
-// Delete(ctx context.Context, resource outputresource.OutputResource) error
-
-func (handler *armHandler) Put(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *armHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
 	// Do a GET just to validate that the resource exists.
 	arm_resource, err := getByID(ctx, handler.arm.SubscriptionID, handler.arm.Auth, resource.Identity)
 	if err != nil {
@@ -51,7 +46,7 @@ func (handler *armHandler) Put(ctx context.Context, resource outputresource.Outp
 }
 
 func (handler *armHandler) GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error) {
-	return resourcemodel.ResourceIdentity{}, nil
+	return resource.Identity, nil
 }
 
 func (handler *armHandler) GetResourceNativeIdentityKeyProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error) {
