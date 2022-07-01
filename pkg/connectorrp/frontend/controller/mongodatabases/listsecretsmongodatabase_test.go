@@ -15,10 +15,12 @@ import (
 
 	"github.com/golang/mock/gomock"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 )
 
 func TestListSecrets_20220315PrivatePreview(t *testing.T) {
@@ -26,9 +28,15 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	_, mongoDataModel, _ := getTestModels20220315privatepreview()
+	expectedSecrets := map[string]interface{}{
+		renderers.UsernameStringValue:   "testUser",
+		renderers.PasswordStringHolder:  "testPassword",
+		renderers.ConnectionStringValue: "testConnectionString",
+	}
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -42,7 +50,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewListSecretsMongoDatabase(mStorageClient, nil, nil)
+		ctl, err := NewListSecretsMongoDatabase(mStorageClient, nil, mDeploymentProcessor)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -65,8 +73,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     mongoDataModel,
 				}, nil
 			})
+		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		ctl, err := NewListSecretsMongoDatabase(mStorageClient, nil, nil)
+		ctl, err := NewListSecretsMongoDatabase(mStorageClient, nil, mDeploymentProcessor)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -74,12 +83,10 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.MongoDatabaseResource{}
+		actualOutput := &v20220315privatepreview.MongoDatabaseSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		// TODO update to expect secrets values after controller is integrated with backend.
-		// require.Equal(t, expectedOutput.Properties.Secrets, actualOutput)
-		require.Equal(t, &v20220315privatepreview.MongoDatabaseResource{}, actualOutput)
+		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
@@ -93,7 +100,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		ctl, err := NewListSecretsMongoDatabase(mStorageClient, nil, nil)
+		ctl, err := NewListSecretsMongoDatabase(mStorageClient, nil, mDeploymentProcessor)
 
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, req)

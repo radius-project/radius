@@ -67,6 +67,21 @@ func (mr *MockDeploymentProcessorMockRecorder) Deploy(arg0, arg1, arg2 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), arg0, arg1, arg2)
 }
 
+// FetchSecrets mocks base method.
+func (m *MockDeploymentProcessor) FetchSecrets(arg0 context.Context, arg1 ResourceData) (map[string]interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FetchSecrets", arg0, arg1)
+	ret0, _ := ret[0].(map[string]interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FetchSecrets indicates an expected call of FetchSecrets.
+func (mr *MockDeploymentProcessorMockRecorder) FetchSecrets(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchSecrets", reflect.TypeOf((*MockDeploymentProcessor)(nil).FetchSecrets), arg0, arg1)
+}
+
 // Render mocks base method.
 func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 conv.DataModelInterface) (renderers.RendererOutput, error) {
 	m.ctrl.T.Helper()

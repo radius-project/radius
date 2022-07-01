@@ -20,10 +20,10 @@ func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassifi
 	}
 	var b ExtensionClassification
 	switch m["kind"] {
-	case "Applications.Core/ManualScaling@v1alpha1":
-		b = &ManualScalingExtension{}
-	case "dapr.io/Sidecar@v1alpha1":
+	case "daprSidecar":
 		b = &DaprSidecarExtension{}
+	case "manualScaling":
+		b = &ManualScalingExtension{}
 	default:
 		b = &Extension{}
 	}

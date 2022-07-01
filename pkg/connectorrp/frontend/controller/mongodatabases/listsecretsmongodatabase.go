@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -46,12 +47,16 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, req *http.Request
 		return nil, err
 	}
 
-	// TODO integrate with deploymentprocessor
-	// output, err := ctrl.JobEngine.FetchSecrets(ctx, sCtx.ResourceID, resource)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	secrets, err := ctrl.DeploymentProcessor.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	if err != nil {
+		return nil, err
+	}
+	mongoSecrets := datamodel.MongoDatabaseSecrets{
+		Username:         secrets[renderers.UsernameStringValue].(string),
+		Password:         secrets[renderers.PasswordStringHolder].(string),
+		ConnectionString: secrets[renderers.ConnectionStringValue].(string),
+	}
 
-	versioned, _ := converter.MongoDatabaseSecretsDataModelToVersioned(&datamodel.MongoDatabaseSecrets{}, sCtx.APIVersion)
+	versioned, _ := converter.MongoDatabaseSecretsDataModelToVersioned(&mongoSecrets, sCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }
