@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/cbl-mariner/base/core:2.0
 
-RUN yum -y install ca-certificates
+RUN yum -y install wget ca-certificates 
 
 # Install libifxaudit
 RUN wget https://packages.microsoft.com/centos/7/prod/libifxaudit-1.0-1525.x86_64.rpm && rpm -i libifxaudit-1.0-1525.x86_64.rpm
