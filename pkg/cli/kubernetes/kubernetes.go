@@ -258,7 +258,6 @@ func CreateRuntimeClient(context string, scheme *runtime.Scheme) (client.Client,
 
 	var c client.Client
 	for i := 0; i < 2; i++ {
-		output.LogInfo("Attempting to get a kubernetes client...")
 		c, err = client.New(merged, client.Options{Scheme: scheme})
 		if err != nil {
 			output.LogInfo(fmt.Errorf("failed to get a kubernetes client: %w", err).Error())

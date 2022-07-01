@@ -35,6 +35,8 @@ type Environment interface {
 	GetContainerRegistry() *Registry
 
 	GetEnableUCP() bool
+
+	GetProviders() *Providers
 }
 
 // Registry represent the configuration for a container registry.

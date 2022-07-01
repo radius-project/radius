@@ -75,13 +75,6 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 
-	resourceStatus := v1.ResourceStatus{}
-	if src.Properties.BasicResourceProperties.Status != nil {
-		resourceStatus = v1.ResourceStatus{
-			OutputResources: src.Properties.BasicResourceProperties.Status.OutputResources,
-		}
-	}
-
 	converted := &datamodel.ContainerResource{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -91,9 +84,6 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.ContainerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
-				Status: resourceStatus,
-			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Application:       to.String(src.Properties.Application),
 			Connections:       connections,
@@ -186,7 +176,7 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Properties = &ContainerProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: c.Properties.BasicResourceProperties.Status.OutputResources,
+				OutputResources: v1.BuildExternalOutputResources(c.Properties.Status.OutputResources),
 			},
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.Properties.ProvisioningState),

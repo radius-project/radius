@@ -42,6 +42,10 @@ func (redis RedisCacheResponse) ResourceTypeName() string {
 	return "Applications.Connector/redisCaches"
 }
 
+func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
+	return redisSecrets == RedisCacheSecrets{}
+}
+
 // RedisCacheProperties represents the properties of RedisCache resource.
 type RedisCacheResponseProperties struct {
 	v1.BasicResourceProperties

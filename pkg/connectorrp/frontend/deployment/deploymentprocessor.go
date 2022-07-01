@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,6 +27,7 @@ import (
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
+	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, storageClient store.StorageClient, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
@@ -44,7 +46,7 @@ type deploymentProcessor struct {
 type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]interface{}
-	SecretValues   map[string]renderers.SecretValueReference
+	SecretValues   map[string]rp.SecretValueReference
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -77,7 +79,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 }
 
 func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.Renderer, error) {
-	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(id.TypeSegments()[len(id.TypeSegments())-1].Type) // Lookup using resource type
+	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(id.Type()) // Lookup using resource type
 	if err != nil {
 		return nil, err
 	}
@@ -176,4 +178,30 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	}
 
 	return resourceIdentity, computedValues, nil
+}
+
+func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.ID, outputResources []outputresource.OutputResource) error {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceID)
+
+	orderedOutputResources, err := outputresource.OrderOutputResources(outputResources)
+	if err != nil {
+		return err
+	}
+
+	// Loop over each output resource and delete in reverse dependency order
+	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
+		outputResource := orderedOutputResources[i]
+		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
+		if err != nil {
+			return err
+		}
+
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+		err = outputResourceModel.ResourceHandler.Delete(ctx, outputResource)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

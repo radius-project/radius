@@ -51,15 +51,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	var outputResources []map[string]interface{}
-	for _, deployedOutputResource := range deploymentOutput.Resources {
-		outputResource := map[string]interface{}{
-			deployedOutputResource.LocalID: deployedOutputResource,
-		}
-		outputResources = append(outputResources, outputResource)
-	}
-
-	newResource.Properties.BasicResourceProperties.Status.OutputResources = outputResources
+	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 

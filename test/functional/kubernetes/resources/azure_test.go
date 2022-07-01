@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resources
+package resource_test
 
 import (
 	"context"
@@ -12,8 +12,6 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/stretchr/testify/require"
-
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/cli"
@@ -21,15 +19,16 @@ import (
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
+	"github.com/stretchr/testify/require"
 )
 
-type localDevOptions struct {
+type radiusOptions struct {
 	test.TestOptions
 	ARMAuthorizer autorest.Authorizer
-	Environment   *environments.LocalEnvironment
+	Environment   environments.Environment
 }
 
-func NewLocalDevTestOptions(t *testing.T) localDevOptions {
+func NewK8sTestOptions(t *testing.T) radiusOptions {
 	auth, err := armauth.GetArmAuthorizer()
 	require.NoError(t, err, "failed to authenticate with azure")
 
@@ -39,31 +38,31 @@ func NewLocalDevTestOptions(t *testing.T) localDevOptions {
 	env, err := cli.GetEnvironment(config, "")
 	require.NoError(t, err, "failed to read default environment")
 
-	localEnv, ok := env.(*environments.LocalEnvironment)
-	require.Truef(t, ok, "a standalone environment is required but the kind was '%v'", env.GetKind())
-
-	return localDevOptions{
+	return radiusOptions{
 		TestOptions:   test.NewTestOptions(t),
 		ARMAuthorizer: auth,
-		Environment:   localEnv,
+		Environment:   env,
 	}
 }
 
 func Test_Deploy_AzureResources(t *testing.T) {
 	applicationName := "test-app"
 	template := "testdata/azure-resources-storage-account.bicep"
-	ctx := context.TODO()
-	opt := NewLocalDevTestOptions(t)
 	params := fmt.Sprintf("storageAccountName=test%d", time.Now().Nanosecond())
+	opt := NewK8sTestOptions(t)
+	ctx := context.TODO()
+
+	providers := opt.Environment.GetProviders()
 	de := step.NewDeployExecutor(template, params)
+
 	t.Run(de.GetDescription(), func(t *testing.T) {
 		de.Execute(ctx, t, opt.TestOptions)
 
 		validation.ValidateAzureResourcesCreated(ctx,
 			t,
 			opt.ARMAuthorizer,
-			opt.Environment.Providers.AzureProvider.SubscriptionID,
-			opt.Environment.Providers.AzureProvider.ResourceGroup,
+			providers.AzureProvider.SubscriptionID,
+			providers.AzureProvider.ResourceGroup,
 			applicationName,
 			validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{
@@ -75,5 +74,4 @@ func Test_Deploy_AzureResources(t *testing.T) {
 			},
 		)
 	})
-
 }

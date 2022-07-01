@@ -133,7 +133,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	params := &DevEnvironmentParams{
+	params := &EnvironmentParams{
 		Name:      environmentName,
 		Providers: &environments.Providers{AzureProvider: azureProvider},
 	}
@@ -276,7 +276,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string, plane string)
 		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
 	}
 	defer resp.Body.Close()

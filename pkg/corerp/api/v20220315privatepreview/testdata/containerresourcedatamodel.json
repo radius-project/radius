@@ -51,6 +51,24 @@
           "containerPort": 8080
         }
       }
-    }
+    },
+    "extensions": [
+      {
+        "kind": "manualScaling",
+        "manualScaling": {
+          "replicas": 2
+        }
+      },
+      {
+        "kind": "daprSidecar",
+        "daprSidecar": {
+          "appId": "app-id",
+          "appPort": 80,
+          "config": "config",
+          "protocol": "http",
+          "provides": "provides"
+        }
+      }
+    ]
   }
 }

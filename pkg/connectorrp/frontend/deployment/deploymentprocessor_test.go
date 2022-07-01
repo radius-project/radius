@@ -24,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -71,7 +72,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 
 	rendererOutput = renderers.RendererOutput{
 		Resources: azureMongoOutputResources,
-		SecretValues: map[string]renderers.SecretValueReference{
+		SecretValues: map[string]rp.SecretValueReference{
 			renderers.ConnectionStringValue: {
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
 				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
@@ -429,4 +430,106 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 	_, err := dp.Deploy(ctx, resourceID, rendererOutput)
 	require.Error(t, err)
 	require.Equal(t, "failed to process JSON Pointer \"/some-other-data\" for resource: object has no key \"some-other-data\"", err.Error())
+}
+
+func Test_Delete(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+
+	testOutputResources := []outputresource.OutputResource{
+		{
+			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: providers.ProviderAzure,
+			},
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureCosmosAccount,
+					Provider: providers.ProviderAzure,
+				},
+				Data: resourcemodel.ARMIdentity{},
+			},
+		},
+		{
+			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: providers.ProviderAzure,
+			},
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureCosmosDBMongo,
+					Provider: providers.ProviderAzure,
+				},
+				Data: resourcemodel.ARMIdentity{},
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDAzureCosmosAccount,
+				},
+			},
+		},
+	}
+
+	t.Run("Verify delete success", func(t *testing.T) {
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
+
+		resourceID, _, _ := buildTestMongoResource()
+		err := dp.Delete(ctx, resourceID, testOutputResources)
+		require.NoError(t, err)
+	})
+
+	t.Run("Verify delete failure", func(t *testing.T) {
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
+
+		resourceID, _, _ := buildTestMongoResource()
+		err := dp.Delete(ctx, resourceID, testOutputResources)
+		require.Error(t, err)
+	})
+
+	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
+		resourceID, _, _ := buildTestMongoResource()
+		outputResources := []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureCosmosDBMongo,
+					Provider: providers.ProviderAzure,
+				},
+				Identity: resourcemodel.ResourceIdentity{
+					ResourceType: &resourcemodel.ResourceType{
+						Type:     resourcekinds.AzureCosmosDBMongo,
+						Provider: providers.ProviderAzure,
+					},
+					Data: resourcemodel.ARMIdentity{},
+				},
+				Dependencies: []outputresource.Dependency{
+					{
+						LocalID: "",
+					},
+				},
+			},
+		}
+		err := dp.Delete(ctx, resourceID, outputResources)
+		require.Error(t, err)
+		require.Equal(t, "missing localID for outputresource", err.Error())
+	})
+
+	t.Run("Invalid output resource type", func(t *testing.T) {
+		outputResources := []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     "foo",
+					Provider: providers.ProviderAzure,
+				},
+			},
+		}
+		resourceID, _, _ := buildTestMongoResource()
+		err := dp.Delete(ctx, resourceID, outputResources)
+		require.Error(t, err)
+		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
+	})
 }

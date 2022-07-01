@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -172,9 +173,10 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 					Type:     resourcekinds.AzureCosmosAccount,
 					Provider: providers.ProviderAzure,
 				},
+				Identity: resourcemodel.ResourceIdentity{},
 			},
 		},
-		SecretValues: map[string]renderers.SecretValueReference{
+		SecretValues: map[string]rp.SecretValueReference{
 			renderers.UsernameStringValue:   {Value: "testUser"},
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},

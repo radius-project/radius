@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -61,7 +62,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 	}
 }
 
-func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretValues map[string]renderers.SecretValueReference) (renderers.RendererOutput, error) {
+func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	cosmosMongoDBID, err := resources.Parse(properties.Resource)
 	if err != nil {
@@ -81,7 +82,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretVal
 
 	// Populate connection string reference if a value isn't provided
 	if properties.Secrets.IsEmpty() || properties.Secrets.ConnectionString == "" {
-		connStringRef := renderers.SecretValueReference{
+		connStringRef := rp.SecretValueReference{
 			LocalID: cosmosAccountDependency.LocalID,
 			// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
 			Action:        "listConnectionStrings",
@@ -132,17 +133,17 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretVal
 	}, nil
 }
 
-func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[string]renderers.SecretValueReference {
-	secretValues := map[string]renderers.SecretValueReference{}
+func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[string]rp.SecretValueReference {
+	secretValues := map[string]rp.SecretValueReference{}
 	if !properties.Secrets.IsEmpty() {
 		if properties.Secrets.Username != "" {
-			secretValues[renderers.UsernameStringValue] = renderers.SecretValueReference{Value: properties.Secrets.Username}
+			secretValues[renderers.UsernameStringValue] = rp.SecretValueReference{Value: properties.Secrets.Username}
 		}
 		if properties.Secrets.Password != "" {
-			secretValues[renderers.PasswordStringHolder] = renderers.SecretValueReference{Value: properties.Secrets.Password}
+			secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{Value: properties.Secrets.Password}
 		}
 		if properties.Secrets.ConnectionString != "" {
-			secretValues[renderers.ConnectionStringValue] = renderers.SecretValueReference{Value: properties.Secrets.ConnectionString}
+			secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{Value: properties.Secrets.ConnectionString}
 		}
 	}
 

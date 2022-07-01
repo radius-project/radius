@@ -25,11 +25,6 @@ func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.ExtenderProperties{
 			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
-					Status: v1.ResourceStatus{
-						OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
-					},
-				},
 				ProvisioningState:    toProvisioningStateDataModel(src.Properties.ProvisioningState),
 				Environment:          to.String(src.Properties.Environment),
 				Application:          to.String(src.Properties.Application),
@@ -55,11 +50,6 @@ func (src *ExtenderResponseResource) ConvertTo() (conv.DataModelInterface, error
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.ExtenderResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
-				Status: v1.ResourceStatus{
-					OutputResources: GetOutputResourcesForVersionedResource(src.Properties.Status),
-				},
-			},
 			ProvisioningState:    toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			Environment:          to.String(src.Properties.Environment),
 			Application:          to.String(src.Properties.Application),
@@ -89,7 +79,7 @@ func (dst *ExtenderResource) ConvertFrom(src conv.DataModelInterface) error {
 		ExtenderResponseProperties: ExtenderResponseProperties{
 			BasicResourceProperties: BasicResourceProperties{
 				Status: &ResourceStatus{
-					OutputResources: GetOutputResourcesForDatamodel(&extender.Properties.Status),
+					OutputResources: v1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 				},
 			},
 			ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),
@@ -118,7 +108,7 @@ func (dst *ExtenderResponseResource) ConvertFrom(src conv.DataModelInterface) er
 	dst.Properties = &ExtenderResponseProperties{
 		BasicResourceProperties: BasicResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: GetOutputResourcesForDatamodel(&extender.Properties.Status),
+				OutputResources: v1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 			},
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),

@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 const (
@@ -19,6 +20,8 @@ const (
 	DatabaseNameValue     = "database"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
+	Host                  = "host"
+	Port                  = "port"
 )
 
 var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
@@ -31,7 +34,7 @@ type Renderer interface {
 type RendererOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]ComputedValueReference
-	SecretValues   map[string]SecretValueReference
+	SecretValues   map[string]rp.SecretValueReference
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
@@ -59,34 +62,6 @@ type ComputedValueReference struct {
 
 	// JSONPointer specifies a JSON Pointer that cn be used to look up the value in the resource's body.
 	JSONPointer string
-}
-
-// SecretValueReference represents a secret value that can accessed on the output resources
-// have been deployed.
-type SecretValueReference struct {
-	// SecretValueReference always needs to be resolved against a deployed resource. These
-	// are secrets so we don't want to store them.
-
-	// LocalID is used to resolve the 'target' output resource for retrieving the secret value.
-	LocalID string
-
-	// Action refers to a named custom action used to fetch the secret value. Maybe be empty in the case of Kubernetes since there's
-	// no concept of 'action'. Will always be set for an ARM resource.
-	Action string
-
-	// ValueSelector is a JSONPointer used to resolve the secret value.
-	ValueSelector string
-
-	// Transformer is a reference to a SecretValueTransformer that can be looked up by name.
-	// By-convention this is the Resource Type of the resource (eg: Microsoft.DocumentDB/databaseAccounts).
-	// If there are multiple kinds of transformers per Resource Type, then add a unique suffix.
-	//
-	// NOTE: the transformer is a string key because it has to round-trip from
-	// the database. We don't store the secret value, so we have to be able to process it later.
-	Transformer resourcemodel.ResourceType
-
-	// Value is the secret value itself
-	Value string
 }
 
 // SecretValueTransformer allows transforming a secret value before passing it on to a Resource
