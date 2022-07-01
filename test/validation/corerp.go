@@ -14,10 +14,12 @@ import (
 )
 
 const (
-	EnvironmentsResource = "applications.core/environments"
-	ApplicationsResource = "applications.core/applications"
-	HttpRoutesResource   = "applications.core/httpRoutes"
-	ContainersResource   = "applications.core/containers"
+	EnvironmentsResource   = "applications.core/environments"
+	ApplicationsResource   = "applications.core/applications"
+	HttpRoutesResource     = "applications.core/httpRoutes"
+	MongoDatabasesResource = "applications.core/mongoDatabases"
+	RedisCachesResource    = "applications.core/redisCaches"
+	ContainersResource     = "applications.core/containers"
 )
 
 type Resource struct {
