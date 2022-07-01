@@ -64,8 +64,7 @@ type ResourceDependency struct {
 	SecretValues    map[string]rp.SecretValueReference
 }
 
-func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
-	resourceID := id.Truncate()
+func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
 	renderer, err := dp.getResourceRenderer(resourceID)
