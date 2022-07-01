@@ -6,6 +6,9 @@
 package v20220315privatepreview
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -16,7 +19,11 @@ import (
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
 func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-
+	res, err := json.Marshal(src)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(res))
 	connections := make(map[string]datamodel.ConnectionProperties)
 	for key, val := range src.Properties.Connections {
 		if val != nil {
@@ -52,7 +59,11 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 	}
 
 	ports := make(map[string]datamodel.ContainerPort)
+
 	for key, val := range src.Properties.Container.Ports {
+		fmt.Println(val)
+		fmt.Println(val.Protocol)
+
 		ports[key] = datamodel.ContainerPort{
 			ContainerPort: to.Int32(val.ContainerPort),
 			Protocol:      toProtocolDataModel(val.Protocol),
@@ -296,6 +307,8 @@ func fromKindDataModel(kind datamodel.IAMKind) *Kind {
 }
 
 func toProtocolDataModel(protocol *Protocol) datamodel.Protocol {
+	fmt.Println(protocol)
+	fmt.Println(*protocol)
 	switch *protocol {
 	case ProtocolHTTP:
 		return datamodel.ProtocolHTTP
