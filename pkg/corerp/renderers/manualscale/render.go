@@ -45,8 +45,8 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	extensions := resource.Properties.Extensions
 
 	for _, e := range extensions {
-		switch e.GetExtension().Kind {
-		case Kind:
+		switch e.Kind {
+		case datamodel.ManualScaling:
 			for _, ores := range output.Resources {
 				if ores.ResourceType.Provider != providers.ProviderKubernetes {
 					// Not a Kubernetes resource
@@ -56,12 +56,9 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 				if !ok {
 					return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 				}
-				ext, ok := e.(datamodel.ManualScalingExtension)
-				if !ok {
-					return renderers.RendererOutput{}, errors.New("error rendering ManualScale Extension")
-				}
-				if ext.Replicas != nil {
-					r.setReplicas(o, ext.Replicas)
+
+				if e.ManualScaling != nil && e.ManualScaling.Replicas != nil {
+					r.setReplicas(o, e.ManualScaling.Replicas)
 				}
 			}
 		default:

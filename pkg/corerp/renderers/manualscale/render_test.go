@@ -45,21 +45,8 @@ func Test_Render_Success(t *testing.T) {
 		preplicas *int32 = &replicas
 	)
 
-	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
-		Container: datamodel.Container{
-			Image: "someimage:latest",
-		},
-		Extensions: []datamodel.ExtensionClassification{datamodel.ManualScalingExtension{
-			Extension: datamodel.Extension{
-				Kind: Kind,
-			},
-			Replicas: preplicas,
-		}},
-	}
-
+	properties := makeProperties(t, preplicas)
 	resource := makeResource(t, properties)
-
 	dependencies := map[string]renderers.RendererDependency{}
 
 	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
@@ -80,19 +67,7 @@ func Test_Render_CanSpecifyZero(t *testing.T) {
 		preplicas *int32 = &replicas
 	)
 
-	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
-		Container: datamodel.Container{
-			Image: "someimage:latest",
-		},
-		Extensions: []datamodel.ExtensionClassification{datamodel.ManualScalingExtension{
-			Extension: datamodel.Extension{
-				Kind: Kind,
-			},
-			Replicas: preplicas,
-		}},
-	}
-
+	properties := makeProperties(t, preplicas)
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
@@ -139,4 +114,20 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) datamo
 		Properties: properties,
 	}
 	return resource
+}
+
+func makeProperties(t *testing.T, replicas *int32) datamodel.ContainerProperties {
+	properties := datamodel.ContainerProperties{
+		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+		},
+		Extensions: []datamodel.Extension{{
+			Kind: datamodel.ManualScaling,
+			ManualScaling: &datamodel.ManualScalingExtension{
+				Replicas: replicas,
+			},
+		}},
+	}
+	return properties
 }
