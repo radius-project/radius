@@ -22,10 +22,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// Renderer is the renderers.Renderer implementation for the dapr sidecar extension.
 type Renderer struct {
 	Inner renderers.Renderer
 }
 
+// GetDependencyIDs returns dependencies for the container datamodel passed in
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	radiusDependencyIDs, azureDependencyIDs, err := r.Inner.GetDependencyIDs(ctx, dm)
 	if err != nil {
@@ -53,6 +55,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	return append(radiusDependencyIDs, parsed), azureDependencyIDs, nil
 }
 
+// Render augments the container's kubernetes output resource with value for dapr sidecar extension.
 func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(datamodel.ContainerResource)
 	if !ok {
