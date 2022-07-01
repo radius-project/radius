@@ -75,7 +75,7 @@ resource mongo 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview'
   properties: {
     environment: environment
     secrets: {
-      connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.host}:${mongoRoute.properties.port}'
+      connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}'
       username: username
       password: password
     }
