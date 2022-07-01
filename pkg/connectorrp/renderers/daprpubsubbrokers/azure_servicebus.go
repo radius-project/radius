@@ -34,11 +34,11 @@ func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.Rendere
 		return renderers.RendererOutput{}, renderers.ErrResourceMissingForResource
 	}
 	//Validate fully qualified resource identifier of the source resource is supplied for this connector
-	azureServiceBusID, err := resources.Parse(properties.Resource)
+	azureServiceBusTopicID, err := resources.Parse(properties.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
 	}
-	err = azureServiceBusID.ValidateResourceType(TopicResourceType)
+	err = azureServiceBusTopicID.ValidateResourceType(TopicResourceType)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Topic")
 	}
@@ -55,10 +55,10 @@ func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.Rendere
 			handlers.KubernetesKindKey:       "Component",
 
 			// Truncate the topic part of the ID to make an ID for the namespace
-			handlers.ServiceBusNamespaceIDKey:   azureServiceBusID.Truncate().String(),
-			handlers.ServiceBusTopicIDKey:       azureServiceBusID.String(),
-			handlers.ServiceBusNamespaceNameKey: azureServiceBusID.TypeSegments()[0].Name,
-			handlers.ServiceBusTopicNameKey:     azureServiceBusID.TypeSegments()[1].Name,
+			handlers.ServiceBusNamespaceIDKey:   azureServiceBusTopicID.Truncate().String(),
+			handlers.ServiceBusTopicIDKey:       azureServiceBusTopicID.String(),
+			handlers.ServiceBusNamespaceNameKey: azureServiceBusTopicID.TypeSegments()[0].Name,
+			handlers.ServiceBusTopicNameKey:     azureServiceBusTopicID.TypeSegments()[1].Name,
 		},
 	}
 

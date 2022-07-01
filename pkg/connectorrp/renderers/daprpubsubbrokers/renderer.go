@@ -20,15 +20,6 @@ var _ renderers.Renderer = (*Renderer)(nil)
 
 type PubSubFunc = func(conv.DataModelInterface) (renderers.RendererOutput, error)
 
-const (
-	appName           = "test-app"
-	resourceName      = "test-pub-sub-topic"
-	pubsubType        = "pubsub.kafka"
-	daprPubSubVersion = "v1"
-	daprVersion       = "dapr.io/v1alpha1"
-	k8sKind           = "Component"
-)
-
 // SupportedAzurePubSubKindValues is a map of supported resource kinds for Azure and the associated renderer
 var SupportedPubSubKindValues = map[string]PubSubFunc{
 	resourcekinds.DaprPubSubTopicAzureServiceBus: GetDaprPubSubAzureServiceBus,

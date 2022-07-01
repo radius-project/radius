@@ -22,6 +22,15 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+const (
+	appName           = "test-app"
+	resourceName      = "test-pub-sub-topic"
+	pubsubType        = "pubsub.kafka"
+	daprPubSubVersion = "v1"
+	daprVersion       = "dapr.io/v1alpha1"
+	k8sKind           = "Component"
+)
+
 func Test_Render_Generic_Success(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
