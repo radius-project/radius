@@ -33,6 +33,8 @@ spec:
           value: 'self-hosted'
         - name: K8S_CLUSTER
           value: 'true'
+        - name: SKIP_AUTH
+          value: 'true'
         name: appcore-rp
         ports:
         - containerPort: 5443
