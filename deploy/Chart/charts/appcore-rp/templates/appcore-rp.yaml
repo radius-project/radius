@@ -31,6 +31,8 @@ spec:
         env:
         - name: RADIUS_ENV
           value: 'self-hosted'
+        - name: K8S_CLUSTER
+          value: 'true'
         name: appcore-rp
         ports:
         - containerPort: 5443
