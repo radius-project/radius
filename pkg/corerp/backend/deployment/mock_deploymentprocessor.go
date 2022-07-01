@@ -37,6 +37,20 @@ func (m *MockDeploymentProcessor) EXPECT() *MockDeploymentProcessorMockRecorder 
 	return m.recorder
 }
 
+// Delete mocks base method.
+func (m *MockDeploymentProcessor) Delete(arg0 context.Context, arg1 resources.ID, arg2 conv.DataModelInterface) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockDeploymentProcessorMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDeploymentProcessor)(nil).Delete), arg0, arg1, arg2)
+}
+
 // Deploy mocks base method.
 func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput) (DeploymentOutput, error) {
 	m.ctrl.T.Helper()
