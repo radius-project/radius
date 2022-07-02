@@ -156,20 +156,20 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		// 	},
 		// 	ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
 		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.AzureSqlServer,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewARMHandler(arm),
-		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.AzureSqlServerDatabase,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewARMHandler(arm),
-		// },
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureSqlServer,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureSqlServerDatabase,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewARMHandler(arm),
+		},
 		// {
 		// 	ResourceType: resourcemodel.ResourceType{
 		// 		Type:     resourcekinds.AzureRedis,

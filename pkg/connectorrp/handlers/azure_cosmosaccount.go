@@ -28,7 +28,7 @@ type azureCosmosAccountHandler struct {
 	azureCosmosDBBaseHandler
 }
 
-func (handler *azureCosmosAccountHandler) Put(ctx context.Context, resource outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+func (handler *azureCosmosAccountHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
 	properties, ok := resource.Resource.(map[string]string)
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required properties for resource")
@@ -44,6 +44,6 @@ func (handler *azureCosmosAccountHandler) Put(ctx context.Context, resource outp
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *azureCosmosAccountHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *azureCosmosAccountHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
 	return nil
 }
