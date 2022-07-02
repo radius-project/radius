@@ -22,24 +22,24 @@ type Renderer struct {
 }
 
 // Render creates the output resource for the rabbitmqmessagequeues resource.
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rp.RendererOutput, error) {
 	resource, ok := dm.(datamodel.RabbitMQMessageQueue)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties
 
 	if properties.Secrets == (datamodel.RabbitMQSecrets{}) || properties.Secrets.ConnectionString == "" {
-		return renderers.RendererOutput{}, errors.New("secrets must be specified")
+		return rp.RendererOutput{}, errors.New("secrets must be specified")
 	}
 
 	// queue name must be specified by the user
 	queueName := properties.Queue
 	if queueName == "" {
-		return renderers.RendererOutput{}, fmt.Errorf("queue name must be specified")
+		return rp.RendererOutput{}, fmt.Errorf("queue name must be specified")
 	}
-	values := map[string]renderers.ComputedValueReference{
+	values := map[string]rp.ComputedValueReference{
 		"queue": {
 			Value: queueName,
 		},
@@ -49,7 +49,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 	// thus serialized to our database.
 	//
 	// TODO(#1767): We need to store these in a secret store.
-	return renderers.RendererOutput{
+	return rp.RendererOutput{
 		ComputedValues: values,
 		SecretValues: map[string]rp.SecretValueReference{
 			"connectionString": {

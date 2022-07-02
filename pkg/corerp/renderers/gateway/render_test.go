@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/stretchr/testify/require"
@@ -602,7 +603,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 	validateHttpRoute(t, output.Resources, routeName, httpRoutePort, nil)
 }
 
-func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
+func renderHttpRoute(t *testing.T, port int32) rp.RendererOutput {
 	r := &httproute.Renderer{}
 
 	dependencies := map[string]renderers.RendererDependency{}

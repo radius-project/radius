@@ -21,26 +21,26 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (rp.RendererOutput, error) {
 	resource, ok := dm.(datamodel.DaprPubSubBroker)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	properties := resource.Properties.DaprPubSubAzureServiceBus
 
 	var output outputresource.OutputResource
 
 	if properties.Resource == "" {
-		return renderers.RendererOutput{}, renderers.ErrResourceMissingForResource
+		return rp.RendererOutput{}, renderers.ErrResourceMissingForResource
 	}
 	//Validate fully qualified resource identifier of the source resource is supplied for this connector
 	azureServiceBusTopicID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
+		return rp.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
 	}
 	err = azureServiceBusTopicID.ValidateResourceType(TopicResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Topic")
+		return rp.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Topic")
 	}
 	output = outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureServiceBusTopic,
@@ -62,7 +62,7 @@ func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.Rendere
 		},
 	}
 
-	values := map[string]renderers.ComputedValueReference{
+	values := map[string]rp.ComputedValueReference{
 		"namespace": {
 			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
 			PropertyReference: handlers.ServiceBusNamespaceNameKey,
@@ -78,7 +78,7 @@ func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.Rendere
 	}
 	secrets := map[string]rp.SecretValueReference{}
 
-	return renderers.RendererOutput{
+	return rp.RendererOutput{
 		Resources:      []outputresource.OutputResource{output},
 		ComputedValues: values,
 		SecretValues:   secrets,

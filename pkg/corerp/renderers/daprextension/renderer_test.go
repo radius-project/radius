@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,7 +31,7 @@ func (r *noop) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface)
 	return nil, nil, nil
 }
 
-func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (rp.RendererOutput, error) {
 	// Return a deployment so the Dapr extension can modify it
 	deployment := appsv1.Deployment{}
 
@@ -43,7 +44,7 @@ func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options r
 		LocalID: outputresource.LocalIDDeployment,
 	}
 
-	output := renderers.RendererOutput{
+	output := rp.RendererOutput{
 		Resources: []outputresource.OutputResource{deploymentResource},
 	}
 

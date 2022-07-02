@@ -3,6 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package containers
+package controller
 
-const ResourceTypeName = "Applications.Core/containers"
+var (
+	// TODO
+	// Nothing for now in Connector RP
+	ResourceTypeNames = []string{}
+)

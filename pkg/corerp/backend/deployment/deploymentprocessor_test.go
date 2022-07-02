@@ -105,7 +105,7 @@ func getTestResource() datamodel.ContainerResource {
 	return *testResource
 }
 
-func getTestRendererOutput() renderers.RendererOutput {
+func getTestRendererOutput() rp.RendererOutput {
 	testOutputResources := []outputresource.OutputResource{
 		{
 			LocalID: outputresource.LocalIDService,
@@ -116,7 +116,7 @@ func getTestRendererOutput() renderers.RendererOutput {
 		},
 	}
 
-	rendererOutput := renderers.RendererOutput{
+	rendererOutput := rp.RendererOutput{
 		Resources: testOutputResources,
 		ComputedValues: map[string]rp.ComputedValueReference{
 			"url": {
@@ -149,7 +149,9 @@ func Test_Render(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
 
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+	dp, err := NewCoreRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
+
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -188,7 +190,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rp.RendererOutput{}, errors.New("failed to render the resource"))
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
@@ -281,7 +283,9 @@ func Test_Render(t *testing.T) {
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+
+	dp, err := NewCoreRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
 
 	t.Run("Verify deploy success", func(t *testing.T) {
 		testResource := getTestResource()
@@ -314,8 +318,8 @@ func Test_Deploy(t *testing.T) {
 
 		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 		require.NoError(t, err)
-		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
-		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[0].Identity)
+		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.Resources))
+		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[0].Identity)
 		require.Equal(t, map[string]interface{}{"url": testRendererOutput.ComputedValues["url"].Value}, deploymentOutput.ComputedValues)
 	})
 
@@ -376,7 +380,9 @@ func Test_Deploy(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+
+	dp, err := NewCoreRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
 
 	t.Run("Verify delete success", func(t *testing.T) {
 		testResource := getTestResource()

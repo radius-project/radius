@@ -18,7 +18,7 @@ import (
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/corerp/renderers Renderer
 type Renderer interface {
 	GetDependencyIDs(ctx context.Context, resource conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error)
-	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
+	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (rp.RendererOutput, error)
 }
 
 type RenderOptions struct {

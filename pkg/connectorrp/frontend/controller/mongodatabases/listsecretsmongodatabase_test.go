@@ -14,13 +14,12 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/deployment"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
-
-	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 )
 
 func TestListSecrets_20220315PrivatePreview(t *testing.T) {

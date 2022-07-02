@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	conv "github.com/project-radius/radius/pkg/armrpc/api/conv"
+	rp "github.com/project-radius/radius/pkg/rp"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -53,10 +54,10 @@ func (mr *MockRendererMockRecorder) GetDependencyIDs(arg0, arg1 interface{}) *go
 }
 
 // Render mocks base method.
-func (m *MockRenderer) Render(arg0 context.Context, arg1 conv.DataModelInterface, arg2 RenderOptions) (RendererOutput, error) {
+func (m *MockRenderer) Render(arg0 context.Context, arg1 conv.DataModelInterface, arg2 RenderOptions) (rp.RendererOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
-	ret0, _ := ret[0].(RendererOutput)
+	ret0, _ := ret[0].(rp.RendererOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

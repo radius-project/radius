@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,16 +31,16 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModel
 }
 
 // Render augments the container's kubernetes output resource with value for manualscale replica if applicable.
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (rp.RendererOutput, error) {
 	// Let the inner renderer do its work
 	output, err := r.Inner.Render(ctx, dm, options)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 
 	resource, ok := dm.(datamodel.ContainerResource)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
 	extensions := resource.Properties.Extensions
@@ -53,7 +54,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 				}
 				o, ok := ores.Resource.(runtime.Object)
 				if !ok {
-					return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
+					return rp.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 				}
 
 				if e.ManualScaling != nil && e.ManualScaling.Replicas != nil {

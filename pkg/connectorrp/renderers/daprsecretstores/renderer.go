@@ -33,24 +33,24 @@ type Renderer struct {
 	SecretStores map[string]SecretStoreFunc
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rp.RendererOutput, error) {
 	resource, ok := dm.(datamodel.DaprSecretStore)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties
 	secretStoreFunc := r.SecretStores[string(properties.Kind)]
 	if secretStoreFunc == nil {
-		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores))
+		return rp.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores))
 	}
 	resoures, err := secretStoreFunc(resource)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
-	return renderers.RendererOutput{
+	return rp.RendererOutput{
 		Resources: resoures,
-		ComputedValues: map[string]renderers.ComputedValueReference{
+		ComputedValues: map[string]rp.ComputedValueReference{
 			"secretStoreName": {
 				Value: resource.Name,
 			},

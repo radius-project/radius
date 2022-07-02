@@ -30,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -107,15 +108,15 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (rp.RendererOutput, error) {
 	resource, ok := dm.(datamodel.ContainerResource)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
 	appId, err := resources.Parse(resource.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w ", err)
+		return rp.RendererOutput{}, fmt.Errorf("invalid application id: %w ", err)
 	}
 
 	outputResources := []outputresource.OutputResource{}
@@ -125,7 +126,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	// Create the deployment as the primary workload
 	deploymentOutputResources, secretData, err := r.makeDeployment(ctx, resource, applicationName, renderers.RenderOptions{Dependencies: dependencies})
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 
 	outputResources = append(outputResources, deploymentOutputResources...)
@@ -145,7 +146,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 		rbacOutputResources, err := r.makeRoleAssignmentsForResource(ctx, &connection, dependencies)
 		if err != nil {
-			return renderers.RendererOutput{}, err
+			return rp.RendererOutput{}, err
 		}
 
 		roles = append(roles, rbacOutputResources...)
@@ -158,7 +159,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		outputResources = append(outputResources, r.makePodIdentity(ctx, resource, applicationName, roles))
 	}
 
-	return renderers.RendererOutput{Resources: outputResources}, nil
+	return rp.RendererOutput{Resources: outputResources}, nil
 }
 
 func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.ContainerResource, applicationName string, options renderers.RenderOptions) ([]outputresource.OutputResource, map[string][]byte, error) {

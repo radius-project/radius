@@ -60,7 +60,7 @@ func Test_Render_Success(t *testing.T) {
 	}
 	require.Equal(t, expectedOutputResource, redisCacheOutputResource.Resource)
 
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
+	expectedComputedValues := map[string]rp.ComputedValueReference{
 		renderers.UsernameStringValue: {
 			LocalID:           "AzureRedis",
 			PropertyReference: "redisusername",
@@ -105,7 +105,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 0)
 
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
+	expectedComputedValues := map[string]rp.ComputedValueReference{
 		renderers.UsernameStringValue: {
 			Value: "",
 		},

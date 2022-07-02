@@ -33,21 +33,21 @@ type Renderer struct {
 }
 
 // Render creates the output resource for the sqlDatabase resource.
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rp.RendererOutput, error) {
 	resource, ok := dm.(datamodel.SqlDatabase)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties
 
 	if resource.Properties.Resource == "" {
 		if properties.Server == "" || properties.Database == "" {
-			return renderers.RendererOutput{}, renderers.ErrorResourceOrServerNameMissingFromResource
+			return rp.RendererOutput{}, renderers.ErrorResourceOrServerNameMissingFromResource
 		}
-		return renderers.RendererOutput{
+		return rp.RendererOutput{
 			Resources: []outputresource.OutputResource{},
-			ComputedValues: map[string]renderers.ComputedValueReference{
+			ComputedValues: map[string]rp.ComputedValueReference{
 				"database": {
 					Value: properties.Database,
 				},
@@ -63,23 +63,23 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 		// Source resource identifier is provided, currently only Azure resources are expected with non empty resource id
 		rendererOutput, err := renderAzureResource(properties)
 		if err != nil {
-			return renderers.RendererOutput{}, err
+			return rp.RendererOutput{}, err
 		}
 
 		return rendererOutput, nil
 	}
 }
 
-func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.RendererOutput, error) {
+func renderAzureResource(properties datamodel.SqlDatabaseProperties) (rp.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	databaseID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
+		return rp.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
 	}
 	// Validate resource type matches the expected Azure SQL DB resource type
 	err = databaseID.ValidateResourceType(AzureSQLResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a %s", "SQL Database")
+		return rp.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a %s", "SQL Database")
 	}
 
 	// Build output resources
@@ -108,7 +108,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 		Dependencies: []outputresource.Dependency{sqlServerDependency},
 	}
 
-	computedValues := map[string]renderers.ComputedValueReference{
+	computedValues := map[string]rp.ComputedValueReference{
 		"database": {
 			Value: databaseID.Name(),
 		},
@@ -120,7 +120,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 
 	// We don't provide any secret values here because SQL requires the USER to manage
 	// the usernames and passwords. We don't have access!
-	return renderers.RendererOutput{
+	return rp.RendererOutput{
 		Resources:      []outputresource.OutputResource{serverResource, databaseResource},
 		ComputedValues: computedValues,
 		SecretValues:   map[string]rp.SecretValueReference{},

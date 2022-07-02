@@ -32,19 +32,19 @@ var _ renderers.Renderer = (*Renderer)(nil)
 type Renderer struct {
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rp.RendererOutput, error) {
 	resource, ok := dm.(datamodel.MongoDatabase)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties
 	secretValues := getProvidedSecretValues(properties)
 
 	if resource.Properties.Resource == "" {
-		return renderers.RendererOutput{
+		return rp.RendererOutput{
 			Resources: []outputresource.OutputResource{},
-			ComputedValues: map[string]renderers.ComputedValueReference{
+			ComputedValues: map[string]rp.ComputedValueReference{
 				renderers.DatabaseNameValue: {
 					Value: resource.Name,
 				},
@@ -55,26 +55,26 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 		// Source resource identifier is provided, currently only Azure resources are expected with non empty resource id
 		rendererOutput, err := RenderAzureResource(properties, secretValues)
 		if err != nil {
-			return renderers.RendererOutput{}, err
+			return rp.RendererOutput{}, err
 		}
 
 		return rendererOutput, nil
 	}
 }
 
-func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
+func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretValues map[string]rp.SecretValueReference) (rp.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	cosmosMongoDBID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
+		return rp.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
 	}
 	// Validate resource type matches the expected Azure Mongo DB resource type
 	err = cosmosMongoDBID.ValidateResourceType(AzureCosmosMongoResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a %s", "CosmosDB Mongo Database")
+		return rp.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a %s", "CosmosDB Mongo Database")
 	}
 
-	computedValues := map[string]renderers.ComputedValueReference{
+	computedValues := map[string]rp.ComputedValueReference{
 		renderers.DatabaseNameValue: {
 			Value: cosmosMongoDBID.Name(),
 		},
@@ -126,7 +126,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretVal
 		Dependencies: []outputresource.Dependency{cosmosAccountDependency},
 	}
 
-	return renderers.RendererOutput{
+	return rp.RendererOutput{
 		Resources:      []outputresource.OutputResource{cosmosAccountResource, databaseResource},
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,

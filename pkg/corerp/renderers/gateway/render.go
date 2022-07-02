@@ -50,25 +50,25 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 }
 
 // Render creates the kubernetes output resource for the gateway and its dependency - httproute
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (rp.RendererOutput, error) {
 	outputResources := []outputresource.OutputResource{}
 	gateway, ok := dm.(datamodel.Gateway)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	appId, err := resources.Parse(gateway.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, gateway.Properties.Application)
+		return rp.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, gateway.Properties.Application)
 	}
 	applicationName := appId.Name()
 	gatewayName := kubernetes.MakeResourceName(applicationName, gateway.Name)
 	hostname, err := getHostname(gateway, &gateway.Properties, applicationName, options)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
+		return rp.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	}
 	gatewayObject, err := MakeGateway(options, &gateway, gateway.Name, applicationName, hostname)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 
 	outputResources = append(outputResources, gatewayObject)
@@ -90,11 +90,11 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	httpRouteObjects, err := MakeHttpRoutes(options, gateway, &gateway.Properties, gatewayName, applicationName)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 	outputResources = append(outputResources, httpRouteObjects...)
 
-	return renderers.RendererOutput{
+	return rp.RendererOutput{
 		Resources:      outputResources,
 		ComputedValues: computedValues,
 	}, nil

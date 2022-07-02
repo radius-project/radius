@@ -25,12 +25,13 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
-func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
+func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput rp.RendererOutput) {
 	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
 	testResource = datamodel.MongoDatabase{
@@ -70,7 +71,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 		},
 	}
 
-	rendererOutput = renderers.RendererOutput{
+	rendererOutput = rp.RendererOutput{
 		Resources: azureMongoOutputResources,
 		SecretValues: map[string]rp.SecretValueReference{
 			renderers.ConnectionStringValue: {
@@ -84,7 +85,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 				},
 			},
 		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
+		ComputedValues: map[string]rp.ComputedValueReference{
 			renderers.DatabaseNameValue: {
 				Value: "test-database",
 			},
@@ -94,7 +95,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 	return
 }
 
-func buildFetchSecretsInput() ResourceData {
+func buildFetchSecretsInput() rp.ResourceData {
 	resourceID, testResource, rendererOutput := buildTestMongoResource()
 	testResource.Properties.Secrets = datamodel.MongoDatabaseSecrets{
 		Username:         "testUser",
@@ -115,12 +116,19 @@ func buildFetchSecretsInput() ResourceData {
 	testResource.ComputedValues = computedValues
 	testResource.SecretValues = secretValues
 
-	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues}
+	return rp.ResourceData{
+		ID:              resourceID,
+		Resource:        testResource,
+		OutputResources: rendererOutput.Resources,
+		ComputedValues:  computedValues,
+		SecretValues:    secretValues,
+	}
 }
 
 type SharedMocks struct {
 	model              model.ApplicationModel
 	db                 *store.MockStorageClient
+	dbProvider         *dataprovider.MockDataStorageProvider
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
 	secretsValueClient *renderers.MockSecretValueClient
@@ -163,6 +171,7 @@ func setup(t *testing.T) SharedMocks {
 	return SharedMocks{
 		model:              model,
 		db:                 store.NewMockStorageClient(ctrl),
+		dbProvider:         dataprovider.NewMockDataStorageProvider(ctrl),
 		resourceHandler:    mockResourceHandler,
 		renderer:           mockRenderer,
 		secretsValueClient: renderers.NewMockSecretValueClient(ctrl),
@@ -191,7 +200,9 @@ func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
 
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp, err := NewConnectorRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
+
 	t.Run("verify render success", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
 
@@ -203,7 +214,7 @@ func Test_Render_Success(t *testing.T) {
 	})
 
 	t.Run("verify render error", func(t *testing.T) {
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(rp.RendererOutput{}, errors.New("failed to render the resource"))
 
 		resourceID, testResource, _ := buildTestMongoResource()
 		_, err := dp.Render(ctx, resourceID, testResource)
@@ -257,7 +268,9 @@ func Test_Render_Success(t *testing.T) {
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+
+	dp, err := NewConnectorRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
 
 	t.Run("Verify deploy success", func(t *testing.T) {
 		expectedCosmosMongoDBIdentity := resourcemodel.ResourceIdentity{
@@ -328,7 +341,9 @@ func Test_Deploy(t *testing.T) {
 func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+
+	dp, err := NewConnectorRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
 
 	testResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -345,9 +360,9 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 			"some-data": "jsonpointer-value",
 		},
 	}
-	rendererOutput := renderers.RendererOutput{
+	rendererOutput := rp.RendererOutput{
 		Resources: []outputresource.OutputResource{testOutputResource},
-		ComputedValues: map[string]renderers.ComputedValueReference{
+		ComputedValues: map[string]rp.ComputedValueReference{
 			"test-key1": {
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
 				Value:   "static-value",
@@ -388,7 +403,9 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 func Test_Deploy_InvalidComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+
+	dp, err := NewConnectorRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -401,9 +418,9 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 			ResourceType: &resourceType,
 		},
 	}
-	rendererOutput := renderers.RendererOutput{
+	rendererOutput := rp.RendererOutput{
 		Resources: []outputresource.OutputResource{outputResource},
-		ComputedValues: map[string]renderers.ComputedValueReference{
+		ComputedValues: map[string]rp.ComputedValueReference{
 			"test-value": {
 				LocalID:     "test-local-id",
 				JSONPointer: ".ddkfkdk",
@@ -414,7 +431,7 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 	resourceID, _, _ := buildTestMongoResource()
-	_, err := dp.Deploy(ctx, resourceID, rendererOutput)
+	_, err = dp.Deploy(ctx, resourceID, rendererOutput)
 	require.Error(t, err)
 	require.Equal(t, "failed to process JSON Pointer \".ddkfkdk\" for resource: JSON pointer must be empty or start with a \"/", err.Error())
 }
@@ -422,7 +439,9 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 func Test_Deploy_MissingJsonPointer(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+
+	dp, err := NewConnectorRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -438,9 +457,9 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 			"some-data": 3,
 		},
 	}
-	rendererOutput := renderers.RendererOutput{
+	rendererOutput := rp.RendererOutput{
 		Resources: []outputresource.OutputResource{outputResource},
-		ComputedValues: map[string]renderers.ComputedValueReference{
+		ComputedValues: map[string]rp.ComputedValueReference{
 			"test-value": {
 				LocalID:     "test-local-id",
 				JSONPointer: "/some-other-data", // this key is missing
@@ -451,7 +470,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 	resourceID, _, _ := buildTestMongoResource()
-	_, err := dp.Deploy(ctx, resourceID, rendererOutput)
+	_, err = dp.Deploy(ctx, resourceID, rendererOutput)
 	require.Error(t, err)
 	require.Equal(t, "failed to process JSON Pointer \"/some-other-data\" for resource: object has no key \"some-other-data\"", err.Error())
 }
@@ -459,7 +478,9 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+
+	dp, err := NewConnectorRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
 
 	testOutputResources := []outputresource.OutputResource{
 		{
@@ -561,7 +582,9 @@ func Test_Delete(t *testing.T) {
 func Test_FetchSecrets(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+
+	dp, err := NewConnectorRPDeploymentProcessor(mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil)
+	require.NoError(t, err)
 
 	input := buildFetchSecretsInput()
 	secrets, err := dp.FetchSecrets(ctx, input)

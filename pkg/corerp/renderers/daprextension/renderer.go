@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -56,20 +57,20 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 }
 
 // Render augments the container's kubernetes output resource with value for dapr sidecar extension.
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (rp.RendererOutput, error) {
 	resource, ok := dm.(datamodel.ContainerResource)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	dependencies := options.Dependencies
 	output, err := r.Inner.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 
 	extension, err := r.findExtension(resource)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 
 	if extension == nil {
@@ -86,7 +87,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	appID, err := r.resolveAppId(extension, dependencies)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 
 	for i := range output.Resources {
@@ -97,7 +98,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 		o, ok := output.Resources[i].Resource.(runtime.Object)
 		if !ok {
-			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
+			return rp.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}
 
 		annotations, ok := r.getAnnotations(o)

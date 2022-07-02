@@ -6,7 +6,10 @@
 package rp
 
 import (
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
@@ -62,4 +65,24 @@ type SecretValueReference struct {
 
 	// Value is the secret value itself
 	Value string
+}
+
+type DeploymentOutput struct {
+	Resources      []outputresource.OutputResource
+	ComputedValues map[string]interface{}
+	SecretValues   map[string]SecretValueReference
+}
+
+type RendererOutput struct {
+	Resources      []outputresource.OutputResource
+	ComputedValues map[string]ComputedValueReference
+	SecretValues   map[string]SecretValueReference
+}
+
+type ResourceData struct {
+	ID              resources.ID
+	Resource        conv.DataModelInterface
+	OutputResources []outputresource.OutputResource
+	ComputedValues  map[string]interface{}
+	SecretValues    map[string]SecretValueReference
 }

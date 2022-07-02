@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,7 +78,7 @@ func Test_Render_Success(t *testing.T) {
 		clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
 		databaseResource.Identity)
 
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
+	expectedComputedValues := map[string]rp.ComputedValueReference{
 		"database": {
 			Value: "test-database",
 		},

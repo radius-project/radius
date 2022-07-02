@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/deployment"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -29,21 +30,21 @@ func TestRegister_Get(t *testing.T) {
 	opGet := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationGet}
 	opPut := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationPut}
 
-	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(s store.StorageClient) (ctrl.Controller, error) {
+	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(s store.StorageClient, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(nil),
 			fn: func(ctx context.Context) (ctrl.Result, error) {
 				return ctrl.Result{}, nil
 			},
 		}, nil
-	})
+	}, nil)
 	require.NoError(t, err)
 
-	err = registry.Register(context.TODO(), opPut.Type, opPut.Method, func(s store.StorageClient) (ctrl.Controller, error) {
+	err = registry.Register(context.TODO(), opPut.Type, opPut.Method, func(s store.StorageClient, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(nil),
 		}, nil
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	ctrl := registry.Get(opGet)

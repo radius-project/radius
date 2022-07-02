@@ -12,7 +12,6 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/stretchr/testify/require"
@@ -52,7 +51,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 
 	require.Len(t, output.Resources, 0)
 
-	expectedComputedValues := map[string]renderers.ComputedValueReference{
+	expectedComputedValues := map[string]rp.ComputedValueReference{
 		"queue": {
 			Value: "abc",
 		},

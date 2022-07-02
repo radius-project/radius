@@ -11,6 +11,9 @@ import (
 	"github.com/go-logr/logr"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	corerp_deployment "github.com/project-radius/radius/pkg/corerp/backend/deployment"
+	corerp_model "github.com/project-radius/radius/pkg/corerp/model"
+	"github.com/project-radius/radius/pkg/deployment"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
@@ -30,6 +33,8 @@ type Service struct {
 	Controllers *ControllerRegistry
 	// RequestQueue is the queue client for async operation request message.
 	RequestQueue queue.Client
+	// DeploymentProcessors is the map of deployment processors available in the program.
+	DeploymentProcessors map[string]deployment.DeploymentProcessor
 }
 
 // Init initializes worker service.
@@ -46,6 +51,16 @@ func (s *Service) Init(ctx context.Context) error {
 	}
 	s.OperationStatusManager = manager.New(opSC, s.RequestQueue, s.ProviderName, s.Options.Config.Env.RoleLocation)
 	s.Controllers = NewControllerRegistry(s.StorageProvider)
+
+	// Should we create DPs here?
+	// DeploymentProcessors
+	coreDP, err := corerp_deployment.NewCoreRPDeploymentProcessor(corerp_model.ApplicationModel{}, s.StorageProvider, nil, nil)
+	if err != nil {
+		return err
+	}
+	s.DeploymentProcessors["core-rp"] = coreDP
+	// ConnectorRP will also be added here
+
 	return nil
 }
 

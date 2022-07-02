@@ -14,82 +14,61 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/deployment"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/connectorrp/frontend/deployment github.com/project-radius/radius/pkg/connectorrp/frontend/deployment DeploymentProcessor
-
-type DeploymentProcessor interface {
-	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
-	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
-	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
+type ConnectorRPDeploymentProcessor struct {
+	deployment.BaseDeploymentProcessor
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, storageClient store.StorageClient, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, store: storageClient, secretClient: secretClient, k8s: k8s}
+func NewConnectorRPDeploymentProcessor(appModel model.ApplicationModel, storageProvider dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8s client.Client) (deployment.DeploymentProcessor, error) {
+	return &ConnectorRPDeploymentProcessor{deployment.NewBaseDeploymentProcessor(appModel, storageProvider, secretClient, k8s)}, nil
 }
 
-var _ DeploymentProcessor = (*deploymentProcessor)(nil)
-
-type deploymentProcessor struct {
-	appmodel     model.ApplicationModel
-	store        store.StorageClient
-	secretClient renderers.SecretValueClient
-	k8s          client.Client
-}
-
-type DeploymentOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]interface{}
-	SecretValues   map[string]rp.SecretValueReference
-}
-
-type ResourceData struct {
-	ID              resources.ID
-	Resource        conv.DataModelInterface
-	OutputResources []outputresource.OutputResource
-	ComputedValues  map[string]interface{}
-	SecretValues    map[string]rp.SecretValueReference
-}
-
-func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (dp *ConnectorRPDeploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (rp.RendererOutput, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.String())
 	logger.Info("Rendering resource")
 
+	// FIXME
+	appModel := dp.AppModel.(model.ApplicationModel)
+
 	renderer, err := dp.getResourceRenderer(id)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 
 	rendererOutput, err := renderer.Render(ctx, resource)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 
 	// Check if the output resources have the corresponding provider supported in Radius
 	for _, or := range rendererOutput.Resources {
 		if or.ResourceType.Provider == "" {
 			err = fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
-			return renderers.RendererOutput{}, err
+			return rp.RendererOutput{}, err
 		}
-		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
+		if !appModel.IsProviderSupported(or.ResourceType.Provider) {
 			err := fmt.Errorf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
-			return renderers.RendererOutput{}, err
+			return rp.RendererOutput{}, err
 		}
 	}
 
 	return rendererOutput, nil
 }
 
-func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.Renderer, error) {
-	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(id.Type()) // Lookup using resource type
+func (dp *ConnectorRPDeploymentProcessor) getResourceRenderer(id resources.ID) (renderers.Renderer, error) {
+	// FIXME
+	appModel := dp.AppModel.(model.ApplicationModel)
+
+	radiusResourceModel, err := appModel.LookupRadiusResourceModel(id.TypeSegments()[len(id.TypeSegments())-1].Type) // Lookup using resource type
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +78,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
-func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
+func (dp *ConnectorRPDeploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput rp.RendererOutput) (rp.DeploymentOutput, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.String())
 	// Deploy
 	logger.Info("Deploying radius resource")
@@ -107,7 +86,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
-		return DeploymentOutput{}, err
+		return rp.DeploymentOutput{}, err
 	}
 
 	updatedOutputResources := []outputresource.OutputResource{}
@@ -115,7 +94,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	for _, outputResource := range orderedOutputResources {
 		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, outputResource, rendererOutput)
 		if err != nil {
-			return DeploymentOutput{}, err
+			return rp.DeploymentOutput{}, err
 		}
 
 		if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
@@ -124,7 +103,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 		if outputResource.Identity.ResourceType == nil {
 			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler or renderer", outputResource.LocalID)
-			return DeploymentOutput{}, err
+			return rp.DeploymentOutput{}, err
 		}
 		updatedOutputResources = append(updatedOutputResources, outputResource)
 
@@ -138,18 +117,21 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		}
 	}
 
-	return DeploymentOutput{
+	return rp.DeploymentOutput{
 		Resources:      updatedOutputResources,
 		ComputedValues: computedValues,
 		SecretValues:   rendererOutput.SecretValues,
 	}, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
+func (dp *ConnectorRPDeploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput rp.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
+	// FIXME
+	appModel := dp.AppModel.(model.ApplicationModel)
+
+	outputResourceModel, err := appModel.LookupOutputResourceModel(outputResource.ResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -190,8 +172,11 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return resourceIdentity, computedValues, nil
 }
 
-func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.ID, outputResources []outputresource.OutputResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceID)
+func (dp *ConnectorRPDeploymentProcessor) Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id)
+
+	// FIXME
+	appModel := dp.AppModel.(model.ApplicationModel)
 
 	orderedOutputResources, err := outputresource.OrderOutputResources(outputResources)
 	if err != nil {
@@ -201,7 +186,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.
 	// Loop over each output resource and delete in reverse dependency order
 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
 		outputResource := orderedOutputResources[i]
-		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
+		outputResourceModel, err := appModel.LookupOutputResourceModel(outputResource.ResourceType)
 		if err != nil {
 			return err
 		}
@@ -216,8 +201,12 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.
 	return nil
 }
 
-func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error) {
+func (dp *ConnectorRPDeploymentProcessor) FetchSecrets(ctx context.Context, resourceData rp.ResourceData) (map[string]interface{}, error) {
 	secretValues := map[string]interface{}{}
+
+	// FIXME
+	appModel := dp.AppModel.(model.ApplicationModel)
+
 	for k, secretReference := range resourceData.SecretValues {
 		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference)
 		if err != nil {
@@ -225,7 +214,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 		}
 
 		if (secretReference.Transformer != resourcemodel.ResourceType{}) {
-			outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(secretReference.Transformer)
+			outputResourceModel, err := appModel.LookupOutputResourceModel(secretReference.Transformer)
 			if err != nil {
 				return nil, err
 			} else if outputResourceModel.SecretValueTransformer == nil {
@@ -244,21 +233,21 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference) (interface{}, error) {
+func (dp *ConnectorRPDeploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference) (interface{}, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
 	}
 
 	// Reference to operations to fetch secrets is currently only supported for Azure resources
-	if dp.secretClient == nil {
+	if dp.SecretClient == nil {
 		return nil, errors.New("no Azure credentials provided to fetch secret")
 	}
 
 	// Find the output resource that maps to the secret value reference
 	for _, outputResource := range outputResources {
 		if outputResource.LocalID == reference.LocalID {
-			return dp.secretClient.FetchSecret(ctx, outputResource.Identity, reference.Action, reference.ValueSelector)
+			return dp.SecretClient.FetchSecret(ctx, outputResource.Identity, reference.Action, reference.ValueSelector)
 		}
 	}
 

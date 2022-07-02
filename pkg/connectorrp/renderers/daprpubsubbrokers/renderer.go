@@ -14,11 +14,12 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
 
-type PubSubFunc = func(conv.DataModelInterface) (renderers.RendererOutput, error)
+type PubSubFunc = func(conv.DataModelInterface) (rp.RendererOutput, error)
 
 // SupportedAzurePubSubKindValues is a map of supported resource kinds for Azure and the associated renderer
 var SupportedPubSubKindValues = map[string]PubSubFunc{
@@ -35,25 +36,25 @@ type Properties struct {
 	Resource string `json:"resource"`
 }
 
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rp.RendererOutput, error) {
 	resource, ok := dm.(datamodel.DaprPubSubBroker)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
 	if resource.Properties.Kind == "" {
-		return renderers.RendererOutput{}, errors.New("Resource kind not specified for Dapr Pub/Sub component")
+		return rp.RendererOutput{}, errors.New("Resource kind not specified for Dapr Pub/Sub component")
 	}
 
 	kind := string(resource.Properties.Kind)
 
 	if r.PubSubs == nil {
-		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
+		return rp.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
 
 	pubSubFunc, ok := r.PubSubs[kind]
 	if !ok {
-		return renderers.RendererOutput{}, fmt.Errorf("Renderer not found for kind: %s", kind)
+		return rp.RendererOutput{}, fmt.Errorf("Renderer not found for kind: %s", kind)
 	}
 
 	return pubSubFunc(resource)

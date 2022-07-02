@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	conv "github.com/project-radius/radius/pkg/armrpc/api/conv"
+	rp "github.com/project-radius/radius/pkg/rp"
 )
 
 // MockRenderer is a mock of Renderer interface.
@@ -36,10 +37,10 @@ func (m *MockRenderer) EXPECT() *MockRendererMockRecorder {
 }
 
 // Render mocks base method.
-func (m *MockRenderer) Render(arg0 context.Context, arg1 conv.DataModelInterface) (RendererOutput, error) {
+func (m *MockRenderer) Render(arg0 context.Context, arg1 conv.DataModelInterface) (rp.RendererOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Render", arg0, arg1)
-	ret0, _ := ret[0].(RendererOutput)
+	ret0, _ := ret[0].(rp.RendererOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

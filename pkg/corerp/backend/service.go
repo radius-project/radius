@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 
-	containers_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller/containers"
+	"github.com/project-radius/radius/pkg/corerp/backend/controller"
 )
 
 const (
@@ -46,14 +46,37 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Register controllers
-	err := w.Controllers.Register(
-		ctx,
-		containers_ctrl.ResourceTypeName,
-		v1.OperationPut,
-		containers_ctrl.NewUpdateContainer)
-	if err != nil {
-		panic(err)
+	for _, rtName := range controller.ResourceTypeNames {
+		// register put
+		err := w.Controllers.Register(
+			ctx,
+			rtName,
+			v1.OperationPut,
+			controller.NewCreateOrUpdateResource,
+			w.DeploymentProcessors["core-rp"])
+		if err != nil {
+			panic(err)
+		}
+		// register patch
+		err = w.Controllers.Register(
+			ctx,
+			rtName,
+			v1.OperationPatch,
+			controller.NewCreateOrUpdateResource,
+			w.DeploymentProcessors["core-rp"])
+		if err != nil {
+			panic(err)
+		}
+		// register delete
+		err = w.Controllers.Register(
+			ctx,
+			rtName,
+			v1.OperationDelete,
+			controller.NewDeleteResource,
+			w.DeploymentProcessors["core-rp"])
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return w.Start(ctx, worker.Options{})

@@ -16,6 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/deployment"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/queue/inmemory"
@@ -141,9 +142,10 @@ func TestStart_UnknownOperation(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, "UNDEFINED",
-		func(s store.StorageClient) (ctrl.Controller, error) {
+		func(s store.StorageClient, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
 			return testCtrl, nil
-		})
+		},
+		nil)
 
 	require.NoError(t, err)
 
@@ -182,9 +184,10 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, v1.OperationPut,
-		func(s store.StorageClient) (ctrl.Controller, error) {
+		func(s store.StorageClient, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
 			return nil, nil
-		})
+		},
+		nil)
 	require.NoError(t, err)
 
 	// Queue async operation.
@@ -243,9 +246,10 @@ func TestStart_MaxConcurrency(t *testing.T) {
 		ctx,
 		testResourceType,
 		v1.OperationPut,
-		func(s store.StorageClient) (ctrl.Controller, error) {
+		func(s store.StorageClient, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
 			return testCtrl, nil
-		})
+		},
+		nil)
 	require.NoError(t, err)
 
 	done := make(chan struct{}, 1)
@@ -307,9 +311,10 @@ func TestStart_RunOperation(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, v1.OperationPut,
-		func(s store.StorageClient) (ctrl.Controller, error) {
+		func(s store.StorageClient, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
 			return testCtrl, nil
-		})
+		},
+		nil)
 	require.NoError(t, err)
 
 	done := make(chan struct{}, 1)

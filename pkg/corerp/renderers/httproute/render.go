@@ -30,16 +30,16 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModelI
 	return nil, nil, nil
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (rp.RendererOutput, error) {
 
 	route, ok := dm.(datamodel.HTTPRoute)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return rp.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	outputResources := []outputresource.OutputResource{}
 	appId, err := resources.Parse(route.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
+		return rp.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
 	}
 	applicationName := appId.Name()
 
@@ -67,11 +67,11 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	service, err := r.makeService(&route, options)
 	if err != nil {
-		return renderers.RendererOutput{}, err
+		return rp.RendererOutput{}, err
 	}
 	outputResources = append(outputResources, service)
 
-	return renderers.RendererOutput{
+	return rp.RendererOutput{
 		Resources:      outputResources,
 		ComputedValues: computedValues,
 	}, nil

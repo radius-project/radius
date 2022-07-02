@@ -14,9 +14,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/deployment"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -164,8 +164,8 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 	}
 }
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
-	rendererOutput := renderers.RendererOutput{
+func getDeploymentProcessorOutputs() (rp.RendererOutput, rp.DeploymentOutput) {
+	rendererOutput := rp.RendererOutput{
 		Resources: []outputresource.OutputResource{
 			{
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
@@ -181,14 +181,14 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 			renderers.PasswordStringHolder:  {Value: "testPassword"},
 			renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
 		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
+		ComputedValues: map[string]rp.ComputedValueReference{
 			renderers.DatabaseNameValue: {
 				Value: "db",
 			},
 		},
 	}
 
-	deploymentOutput := deployment.DeploymentOutput{
+	deploymentOutput := rp.DeploymentOutput{
 		Resources: []outputresource.OutputResource{
 			{
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
