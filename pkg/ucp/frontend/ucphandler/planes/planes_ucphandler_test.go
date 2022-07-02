@@ -120,7 +120,6 @@ func Test_ListPlane(t *testing.T) {
 
 	var query store.Query
 	query.RootScope = path
-	query.ScopeRecursive = true
 	query.IsScopeQuery = true
 
 	expectedPlaneList := rest.PlaneList{}
