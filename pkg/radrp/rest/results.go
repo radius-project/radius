@@ -248,8 +248,8 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	locationHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationResults", r.OperationID)
-	azureAsyncOpHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationStatuses", r.OperationID)
+	locationHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationResults", r.OperationID)
+	azureAsyncOpHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationStatuses", r.OperationID)
 
 	fmt.Println(locationHeader)
 	fmt.Println(azureAsyncOpHeader)
@@ -270,14 +270,31 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 }
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
-func getAsyncLocationPath(resourceID resources.ID, location string, resourceType string, operationID uuid.UUID) string {
+func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceID resources.ID, location string, resourceType string, operationID uuid.UUID) string {
 	root := fmt.Sprintf("/subscriptions/%s", resourceID.FindScope(resources.SubscriptionsSegment))
 
 	if resourceID.IsUCPQualfied() {
 		root = fmt.Sprintf("/planes/%s", resourceID.PlaneNamespace())
 	}
 
-	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String())
+	dest := url.URL{
+		Host:   req.Host,
+		Scheme: req.URL.Scheme,
+		Path:   fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String()),
+	}
+
+	// In production this is the header we get from app service for the 'real' protocol
+	protocol := req.Header.Get(textproto.CanonicalMIMEHeaderKey("X-Forwarded-Proto"))
+	if protocol != "" {
+		dest.Scheme = protocol
+	}
+
+	// TODO don't hardcode http here.
+	if dest.Scheme == "" {
+		dest.Scheme = "http"
+	}
+
+	return dest.String()
 }
 
 // NoContentResponse represents an HTTP 204.
