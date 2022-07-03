@@ -31,16 +31,9 @@ func listApplications(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if env.GetEnableUCP() {
-		err := listApplicationsUCP(cmd, args, env)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := listApplicationsLegacy(cmd, args, env)
-		if err != nil {
-			return err
-		}
+	err = listApplicationsUCP(cmd, args, env)
+	if err != nil {
+		return err
 	}
 	return nil
 }

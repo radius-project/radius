@@ -38,16 +38,9 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if env.GetEnableUCP() {
-		err := showResourceUCP(cmd, args, env)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := showResourceLegacy(cmd, args, env)
-		if err != nil {
-			return err
-		}
+	err = showResourceUCP(cmd, args, env)
+	if err != nil {
+		return err
 	}
 
 	return nil

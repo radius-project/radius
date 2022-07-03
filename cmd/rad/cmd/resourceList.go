@@ -32,17 +32,11 @@ func listResources(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if env.GetEnableUCP() {
-		err := listResourcesUCP(cmd, args, env)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := listResourcesLegacy(cmd, args, env)
-		if err != nil {
-			return err
-		}
+	err = listResourcesUCP(cmd, args, env)
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 

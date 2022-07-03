@@ -393,7 +393,6 @@ environment:
 To be able to deploy to the appcore RP, we need to have the right version of bicep installed.
 
 ```bash
-export RAD_FF_ENABLE_BICEP_EXTENSIBILITY=true
 make build
 ./dist/.../rad bicep download # path to rad that is built as part of the repo
 ```

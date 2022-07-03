@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/cli/tools"
-	ff "github.com/project-radius/radius/pkg/featureflag"
 )
 
 const radBicepEnvVar = "RAD_BICEP"
@@ -51,10 +50,7 @@ func DeleteBicep() error {
 
 // DownloadBicep updates our local copy of bicep
 func DownloadBicep() error {
-	dirPrefix := "bicep"
-	if ff.EnableBicepExtensibility.IsActive() {
-		dirPrefix = "bicep-extensibility"
-	}
+	dirPrefix := "bicep-extensibility"
 	// Placeholders are for: channel, platform, filename
 	downloadURIFmt := fmt.Sprint("https://radiuspublic.blob.core.windows.net/tools/", dirPrefix, "/%s/%s/%s")
 

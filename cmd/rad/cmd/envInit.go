@@ -34,7 +34,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/featureflag"
 	"github.com/project-radius/radius/pkg/handlers"
 )
 
@@ -183,7 +182,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			"context":     cluster.ContextName,
 			"clustername": cluster.ClusterName,
 			"namespace":   sharedArgs.Namespace,
-			"enableucp":   featureflag.EnableUnifiedControlPlane.IsActive(),
 			"registry": &environments.Registry{
 				PushEndpoint: cluster.RegistryPushEndpoint,
 				PullEndpoint: cluster.RegistryPullEndpoint,
@@ -199,7 +197,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			"kind":      environments.KindKubernetes,
 			"context":   contextName,
 			"namespace": sharedArgs.Namespace,
-			"enableucp": featureflag.EnableUnifiedControlPlane.IsActive(),
 		}
 
 	}
@@ -209,27 +206,25 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	if featureflag.EnableUnifiedControlPlane.IsActive() {
-		// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
-		ucpRgName := fmt.Sprintf("%s-rg", environmentName)
-		env.Items[environmentName]["ucpresourcegroupname"] = ucpRgName
-		ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName, "/planes/radius/local")
-		if err != nil {
-			return err
-		}
-
-		_, err = createUCPResourceGroup(contextName, ucpRgName, "/planes/deployments/local")
-		if err != nil {
-			return err
-		}
-
-		env.Items[environmentName]["scope"] = ucpRgId
-		ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName)
-		if err != nil {
-			return err
-		}
-		env.Items[environmentName]["id"] = ucpEnvId
+	// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
+	ucpRgName := fmt.Sprintf("%s-rg", environmentName)
+	env.Items[environmentName]["ucpresourcegroupname"] = ucpRgName
+	ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName, "/planes/radius/local")
+	if err != nil {
+		return err
 	}
+
+	_, err = createUCPResourceGroup(contextName, ucpRgName, "/planes/deployments/local")
+	if err != nil {
+		return err
+	}
+
+	env.Items[environmentName]["scope"] = ucpRgId
+	ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName)
+	if err != nil {
+		return err
+	}
+	env.Items[environmentName]["id"] = ucpEnvId
 
 	output.CompleteStep(step)
 
@@ -257,7 +252,6 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string, plane string)
 		"",
 		"",
 		kubeCtxName,
-		featureflag.EnableUnifiedControlPlane.IsActive(),
 	)
 	if err != nil {
 		return "", err
@@ -289,7 +283,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string, plane string)
 }
 
 func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string) (string, error) {
-	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "", true)
+	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "")
 	if err != nil {
 		return "", err
 	}

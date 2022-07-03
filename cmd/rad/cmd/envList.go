@@ -31,19 +31,16 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if env.GetEnableUCP() {
-		client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
-		if err != nil {
-			return err
-		}
-		envList, err := client.ListEnv(cmd.Context())
-		if err != nil {
-			return err
-		}
-		return displayEnvListUCP(envList, cmd)
-	} else {
-		return displayEnvList(cmd)
+	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	if err != nil {
+		return err
 	}
+	envList, err := client.ListEnv(cmd.Context())
+	if err != nil {
+		return err
+	}
+	return displayEnvListUCP(envList, cmd)
+
 }
 
 func displayEnvListUCP(envList []v20220315privatepreview.EnvironmentResource, cmd *cobra.Command) error {
