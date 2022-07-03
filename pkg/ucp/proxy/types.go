@@ -132,15 +132,15 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	key := segments[0] + "//" + segments[2]
 
 	if ctx.Value(UCPRequestInfoField) == nil {
-		return fmt.Errorf("Could not find ucp request data in %s header", headerName)
+		return fmt.Errorf("could not find ucp request data in %s header", headerName)
 	}
 	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
 	// Doing a reverse lookup of the URL of the responding server to find the corresponding plane ID
 	if requestInfo.PlaneURL == "" {
-		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
+		return fmt.Errorf("could not find plane URL data in %s header", headerName)
 	}
 	if strings.TrimSuffix(requestInfo.PlaneURL, "/") != strings.TrimSuffix(key, "/") {
-		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", requestInfo.PlaneURL, headerName)
+		return fmt.Errorf("planeURL: %s received in the request context does not match the url found in %s header with value %s", requestInfo.PlaneURL, headerName, key)
 	}
 
 	if requestInfo.UCPHost == "" {
@@ -148,13 +148,13 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	}
 
 	if requestInfo.PlaneKind == "" {
-		return fmt.Errorf("Plane Kind unknown. Cannot convert response header")
+		return fmt.Errorf("plane Kind unknown. Cannot convert response header")
 	}
 
 	var planeID string
 	if requestInfo.PlaneKind != rest.PlaneKindUCPNative {
 		if requestInfo.PlaneID == "" {
-			return fmt.Errorf("Could not find plane ID data in %s header", headerName)
+			return fmt.Errorf("could not find plane ID data in %s header", headerName)
 		}
 		// Doing this only for non UCP Native planes. For UCP Native planes, the request URL will have the plane ID in it and therefore no need to
 		// add the plane ID
@@ -162,7 +162,7 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	}
 
 	if requestInfo.HTTPScheme == "" {
-		return fmt.Errorf("Could not find http scheme data in %s header", headerName)
+		return fmt.Errorf("could not find http scheme data in %s header", headerName)
 	}
 
 	// Found a plane matching the URL in the location header
