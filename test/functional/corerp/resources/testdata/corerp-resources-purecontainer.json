@@ -1,0 +1,84 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "1.9-experimental",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.7.8.5997",
+      "templateHash": "12189867962628085685"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "global",
+      "metadata": {
+        "description": "Specifies the location for resources."
+      }
+    },
+    "image": {
+      "type": "string",
+      "defaultValue": "radiusdev.azurecr.io/magpiego:latest",
+      "metadata": {
+        "description": "Specifies the image of the container resource."
+      }
+    },
+    "port": {
+      "type": "int",
+      "defaultValue": 3000,
+      "metadata": {
+        "description": "Specifies the port of the container resource."
+      }
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "test",
+      "metadata": {
+        "description": "Specifies the environment for resources."
+      }
+    }
+  },
+  "imports": {
+    "radius": {
+      "provider": "Radius",
+      "version": "1.0"
+    }
+  },
+  "resources": {
+    "app": {
+      "import": "radius",
+      "type": "Applications.Core/applications@2022-03-15-privatepreview",
+      "properties": {
+        "name": "corerp-resources-purecontainer-app",
+        "location": "[parameters('location')]",
+        "properties": {
+          "environment": "[parameters('environment')]"
+        }
+      }
+    },
+    "container": {
+      "import": "radius",
+      "type": "Applications.Core/containers@2022-03-15-privatepreview",
+      "properties": {
+        "name": "corerp-resources-purecontainer-container",
+        "location": "[parameters('location')]",
+        "properties": {
+          "application": "[reference('app').id]",
+          "container": {
+            "image": "[parameters('image')]",
+            "ports": {
+              "web": {
+                "containerPort": "[parameters('port')]"
+              }
+            }
+          },
+          "connections": {}
+        }
+      },
+      "dependsOn": [
+        "app"
+      ]
+    }
+  }
+}

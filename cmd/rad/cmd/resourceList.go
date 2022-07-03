@@ -40,25 +40,6 @@ func listResources(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func listResourcesLegacy(cmd *cobra.Command, args []string, env environments.Environment) error {
-	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
-	if err != nil {
-		return err
-	}
-
-	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
-	if err != nil {
-		return err
-	}
-
-	resourceList, err := client.ListAllResourcesByApplication(cmd.Context(), applicationName)
-	if err != nil {
-		return err
-	}
-
-	return printOutput(cmd, resourceList.Value, true)
-}
-
 func listResourcesUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
 	if err != nil {

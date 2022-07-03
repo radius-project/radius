@@ -6,8 +6,11 @@
 package cmd
 
 import (
+<<<<<<< HEAD
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
+=======
+>>>>>>> 01d37d86 (moving yaml tag for now)
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -35,35 +38,12 @@ func showApplication(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if env.GetEnableUCP() {
-		err := ShowApplicationUCP(cmd, args, env, applicationName, config)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := ShowApplicationLegacy(cmd, args, env, applicationName, config)
-		if err != nil {
-			return err
-		}
+	err := ShowApplicationUCP(cmd, args, env, applicationName, config)
+	if err != nil {
+		return err
 	}
 
 	return nil
-}
-
-func ShowApplicationLegacy(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
-
-	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
-	if err != nil {
-		return err
-	}
-
-	applicationResource, err := client.ShowApplication(cmd.Context(), applicationName)
-	if err != nil {
-		return err
-	}
-
-	return printOutput(cmd, applicationResource, true)
-
 }
 
 func ShowApplicationUCP(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {

@@ -82,25 +82,6 @@ func DeleteApplicationUCP(cmd *cobra.Command, args []string, env environments.En
 	return printOutput(cmd, deleteResponse, false)
 }
 
-func DeleteApplicationLegacy(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
-	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
-	if err != nil {
-		return err
-	}
-
-	err = appDeleteInner(cmd.Context(), client, applicationName, env)
-	if err != nil {
-		return err
-	}
-
-	err = updateApplicationConfig(cmd.Context(), config, env, applicationName)
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-
 // appDeleteInner deletes an application without argument/flag validation.
 func appDeleteInner(ctx context.Context, client clients.LegacyManagementClient, applicationName string, env environments.Environment) error {
 	err := client.DeleteApplication(ctx, applicationName)
