@@ -175,7 +175,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, testResource, container.Renderer{})
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -203,7 +203,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, testResource, container.Renderer{})
 		require.Error(t, err, "failed to render the resource")
 	})
 
@@ -212,7 +212,7 @@ func Test_Render(t *testing.T) {
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testInvalidResourceID)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, testResource, container.Renderer{})
 		require.Error(t, err, "radius resource type 'Applications.foo/foo' is unsupported")
 
 	})
@@ -243,7 +243,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, testResource, container.Renderer{})
 		require.Error(t, err, "output resource \"Deployment\" does not have a provider specified")
 	})
 
@@ -273,7 +273,7 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, testResource, container.Renderer{})
 		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.roleassignment")
 	})
 }

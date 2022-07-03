@@ -8,11 +8,13 @@ package containers
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/model"
+	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -36,6 +38,7 @@ func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	// The job of backend controller is to do two major operations 1. Render and 2. Deploy
 	dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, dataprovider.NewStorageProvider(dataprovider.StorageProviderOptions{}), nil, nil)
 
+	fmt.Println("In update container")
 	// Get the resource
 	existingResource := &datamodel.ContainerResource{}
 	etag, err := c.GetResource(ctx, request.ResourceID, existingResource)
@@ -48,8 +51,9 @@ func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	}
 
 	// Render the resource
-	rendererOutput, err := dp.Render(ctx, id, existingResource)
+	rendererOutput, err := dp.Render(ctx, id, existingResource, container.Renderer{}) // TODO role assignment map?
 	if err != nil {
+		fmt.Println("Error in render " + err.Error())
 		return ctrl.Result{}, err
 	}
 

@@ -33,7 +33,7 @@ import (
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
-	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
+	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface, renderer renderers.Renderer) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
 	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error)
@@ -66,37 +66,39 @@ type ResourceData struct {
 	SecretValues    map[string]rp.SecretValueReference
 }
 
-func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface, renderer renderers.Renderer) (renderers.RendererOutput, error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
-	renderer, err := dp.getResourceRenderer(resourceID)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
 
 	// Get resources that the resource being deployed has connection with.
 	requiredResources, _, err := renderer.GetDependencyIDs(ctx, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
+	logger.Info(fmt.Sprintf("Got dependencies: %s", resourceID.Name()))
 
 	rendererDependencies, err := dp.fetchDependencies(ctx, requiredResources)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
+	logger.Info(fmt.Sprintf("fetch dependencies: %s", resourceID.Name()))
 
 	envOptions, err := dp.getEnvOptions(ctx)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
+	logger.Info(fmt.Sprintf("env options: %s", resourceID.Name()))
 
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: rendererDependencies, Environment: envOptions})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
+	logger.Info(fmt.Sprintf("finished render: %s", resourceID.Name()))
+
 	// Check if the output resources have the corresponding provider supported in Radius
 	for _, or := range rendererOutput.Resources {
+		logger.Info(or.ResourceType.String())
 		if or.ResourceType.Provider == "" {
 			err = fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
 			return renderers.RendererOutput{}, err
