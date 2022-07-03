@@ -48,37 +48,33 @@ func deleteEnvResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if env.GetEnableUCP() {
-		envName, err := cmd.Flags().GetString("environment")
-		if err != nil {
-			return err
-		}
-
-		envconfig, err := cli.ReadEnvironmentSection(config)
-		if err != nil {
-			return err
-		}
-
-		if envName == "" && envconfig.Default == "" {
-			return errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
-		}
-
-		if envName == "" {
-			envName = envconfig.Default
-		}
-		client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
-		if err != nil {
-			return err
-		}
-		err = client.DeleteEnv(cmd.Context(), envName)
-		if err == nil {
-			output.LogInfo("Environment deleted")
-		}
+	envName, err := cmd.Flags().GetString("environment")
+	if err != nil {
 		return err
-
-	} else {
-		return deleteEnvLegacy(cmd, args)
 	}
+
+	envconfig, err := cli.ReadEnvironmentSection(config)
+	if err != nil {
+		return err
+	}
+
+	if envName == "" && envconfig.Default == "" {
+		return errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
+	}
+
+	if envName == "" {
+		envName = envconfig.Default
+	}
+	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	if err != nil {
+		return err
+	}
+	err = client.DeleteEnv(cmd.Context(), envName)
+	if err == nil {
+		output.LogInfo("Environment deleted")
+	}
+	return err
+
 }
 
 func deleteEnvLegacy(cmd *cobra.Command, args []string) error {

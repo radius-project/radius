@@ -60,17 +60,11 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if env.GetEnableUCP() {
-		err := DeleteApplicationUCP(cmd, args, env, applicationName, config)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := DeleteApplicationLegacy(cmd, args, env, applicationName, config)
-		if err != nil {
-			return err
-		}
+	err = DeleteApplicationUCP(cmd, args, env, applicationName, config)
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 

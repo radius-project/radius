@@ -19,7 +19,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/featureflag"
 )
 
 const (
@@ -161,8 +160,6 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 
 	// Set feature flags in chart
-	global["rad_ff_enable_bicep_extensibility"] = featureflag.EnableBicepExtensibility.IsActive()
-	global["rad_ff_enable_ucp"] = featureflag.EnableUnifiedControlPlane.IsActive()
 
 	_, ok = global["ucp"]
 	if !ok {

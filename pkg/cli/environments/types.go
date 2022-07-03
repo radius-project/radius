@@ -34,8 +34,6 @@ type Environment interface {
 	// by the 'rad app ...' family of commands for development purposes.
 	GetContainerRegistry() *Registry
 
-	GetEnableUCP() bool
-
 	GetProviders() *Providers
 }
 
