@@ -251,6 +251,8 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	locationHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationResults", r.OperationID)
 	azureAsyncOpHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationStatuses", r.OperationID)
 
+	fmt.Println(locationHeader)
+	fmt.Println(azureAsyncOpHeader)
 	// Write Headers
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", locationHeader)
