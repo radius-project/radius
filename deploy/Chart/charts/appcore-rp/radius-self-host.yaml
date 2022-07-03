@@ -1,6 +1,7 @@
 # This is an example of configuration file.
 environment:
   name: self-hosted
+  roleLocation: "global"
 storageProvider:
   # Kubernetes APIServer store. 
   # This supports two modes:
