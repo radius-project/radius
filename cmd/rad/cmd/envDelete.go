@@ -12,18 +12,13 @@ import (
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/project-radius/radius/pkg/azure/clients"
-	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
-	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/keys"
 	"github.com/project-radius/radius/pkg/kubernetes/kubectl"
 )
@@ -75,141 +70,6 @@ func deleteEnvResource(cmd *cobra.Command, args []string) error {
 	}
 	return err
 
-}
-
-func deleteEnvLegacy(cmd *cobra.Command, args []string) error {
-	yes, err := cmd.Flags().GetBool("yes")
-	if err != nil {
-		return err
-	}
-
-	config := ConfigFromContext(cmd.Context())
-
-	// Validate environment exists, retrieve associated resource group and subscription id
-	env, err := cli.RequireEnvironmentArgs(cmd, config, args)
-	if err != nil {
-		return err
-	}
-
-	az, ok := env.(*environments.AzureCloudEnvironment)
-	if ok {
-
-		if !yes {
-			confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("All radius-created resources in resource-group %s will be deleted. Continue deleting? [y/N]?", az.ResourceGroup), prompt.No)
-			if err != nil {
-				return err
-			}
-
-			if !confirmed {
-				output.LogInfo("Delete cancelled.")
-				return nil
-			}
-		}
-
-		authorizer, err := auth.NewAuthorizerFromCLI()
-		if err != nil {
-			return err
-		}
-
-		// Delete the environment will consist of:
-		// 1. Delete all applications
-		// 2. Delete all radius resources in the customer/user resource group (ex custom resource provider)
-		// 3. Delete control plane resource group
-		if err = deleteAllApplications(cmd.Context(), az); err != nil {
-			if err, ok := err.(*radclient.RadiusError); ok && err.Code == "EnvironmentNotFound" {
-				output.LogInfo("Environment '%s' not found", az.Name)
-
-				errDelConfig := deleteEnvFromConfig(cmd.Context(), config, env.GetName())
-				if errDelConfig != nil {
-					return errDelConfig
-				}
-				return nil
-			}
-			return err
-		}
-
-		if err = deleteRadiusResourcesInResourceGroup(cmd.Context(), authorizer, az.ResourceGroup, az.SubscriptionID); err != nil {
-			return err
-		}
-
-		output.LogInfo("Environment deleted")
-		// Deletes environment entries from rad config and context from kube config
-		if err = deleteFromConfig(cmd, config, az.ClusterName, az.ResourceGroup); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	dev, ok := env.(*environments.LocalEnvironment)
-	if ok {
-
-		if !yes {
-			confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Local K3d cluster %s will be deleted. Continue deleting? [y/N]?", dev.ClusterName), prompt.No)
-			if err != nil {
-				return err
-			}
-
-			if !confirmed {
-				output.LogInfo("Delete cancelled.")
-				return nil
-			}
-		}
-
-		err := k3d.DeleteCluster(cmd.Context(), dev.ClusterName)
-		if err != nil {
-			return err
-		}
-	}
-
-	kub, ok := env.(*environments.KubernetesEnvironment)
-	if ok {
-		if !yes {
-			confirmed, err := prompt.Confirm(fmt.Sprintf("Environment %s and all applications will be deleted. Continue deleting? [y/n]?", kub.Name))
-			if err != nil {
-				return err
-			}
-
-			if !confirmed {
-				output.LogInfo("Delete cancelled.")
-				return nil
-			}
-		}
-
-		if err = helm.UninstallOnCluster(kub.Context); err != nil {
-			return err
-		}
-	}
-
-	output.LogInfo("Environment deleted")
-
-	// Delete env from the config, update default env if needed
-	if err = deleteEnvFromConfig(cmd.Context(), config, env.GetName()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// deleteAllApplications deletes all applications from a resource group.
-func deleteAllApplications(ctx context.Context, env environments.Environment) error {
-	client, err := environments.CreateLegacyManagementClient(ctx, env)
-	if err != nil {
-		return err
-	}
-
-	applicationList, err := client.ListApplications(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, application := range applicationList.Value {
-		err = appDeleteInner(ctx, client, *application.Name, env)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // deleteRadiusResourcesInResourceGroup deletes all radius resources from the customer/user resource group.

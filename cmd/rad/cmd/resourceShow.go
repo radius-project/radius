@@ -46,46 +46,6 @@ func showResource(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func showResourceLegacy(cmd *cobra.Command, args []string, env environments.Environment) error {
-	applicationName, err := cli.RequireApplication(cmd, env)
-	if err != nil {
-		return err
-	}
-
-	azureResource, err := isAzureConnectionResource(cmd, args)
-	if err != nil {
-		return err
-	}
-	var resourceType, resourceName, resourceGroup, resourceSubscriptionID string
-	if azureResource {
-		azureResource, err := cli.RequireAzureResource(cmd, args)
-		if err != nil {
-			return err
-		}
-		resourceName = azureResource.Name
-		resourceType = azureResource.ResourceType
-		resourceGroup = azureResource.ResourceGroup
-		resourceSubscriptionID = azureResource.SubscriptionID
-	} else {
-		resourceType, resourceName, err = cli.RequireResource(cmd, args)
-		if err != nil {
-			return err
-		}
-	}
-
-	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
-	if err != nil {
-		return err
-	}
-
-	resource, err := client.ShowResource(cmd.Context(), applicationName, resourceType, resourceName, resourceGroup, resourceSubscriptionID)
-	if err != nil {
-		return err
-	}
-
-	return printOutput(cmd, resource, true)
-}
-
 func showResourceUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplication(cmd, env)
 	if err != nil {

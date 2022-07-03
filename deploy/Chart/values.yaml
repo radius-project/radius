@@ -1,6 +1,6 @@
 global:
   engine:
-    image: radius.azurecr.io/deployment-engine
+    image: jkotalik.azurecr.io/de
     tag: latest
   extensibility:
     image: radius.azurecr.io/bicep-extensibility
