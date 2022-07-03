@@ -25,6 +25,7 @@ spec:
         - --run-connector
         - --connector-config=/etc/config/connector-self-host.yaml
         image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
+        imagePullPolicy: Always
         envFrom:
         - secretRef: 
             name: appcore-rp-secrets

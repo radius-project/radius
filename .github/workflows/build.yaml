@@ -322,7 +322,7 @@ jobs:
   delete_artifacts:
     name: Delete artifacts
     if: ${{ success() }}
-    needs: [ 'build', 'local_dev_tests', 'publish' ]
+    needs: [ 'build', 'publish' ]
     runs-on: ubuntu-latest
     steps:
       - name: Delete release artifacts
