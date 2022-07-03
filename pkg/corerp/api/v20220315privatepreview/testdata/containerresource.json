@@ -2,6 +2,7 @@
   "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0",
   "name": "container0",
   "type": "Applications.Core/containers",
+  "location": "westus2",
   "properties": {
     "status": {
       "outputResources": [

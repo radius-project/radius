@@ -7,7 +7,9 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -49,6 +51,13 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
+	fmt.Println("First part")
+	res, err := json.Marshal(newResource)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(res))
+
 	existingResource := &datamodel.ContainerResource{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
@@ -75,6 +84,13 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 
 	enrichMetadata(ctx, existingResource, newResource)
 
+	fmt.Println("second part")
+	res, err = json.Marshal(newResource)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(res))
+
 	obj, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
@@ -95,6 +111,12 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		respCode = http.StatusAccepted
 	}
 
+	fmt.Println("last part")
+
+	fmt.Println(newResource.TrackedResource.Location)
+	fmt.Println(serviceCtx.ResourceID)
+	fmt.Println(serviceCtx.OperationID)
+
 	return rest.NewAsyncOperationResponse(newResource, newResource.TrackedResource.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID), nil
 }
 
@@ -103,6 +125,10 @@ func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Reques
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	content, err := ctrl.ReadJSONBody(req)
+
+	fmt.Println("from request")
+	fmt.Println(string(content))
+
 	if err != nil {
 		return nil, err
 	}
