@@ -13,7 +13,7 @@ param port int = 3000
 param environment string = 'test'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-purecontainer-app'
+  name: 'corerp-app'
   location: location
   properties: {
     environment: environment
@@ -21,7 +21,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-purecontainer-container'
+  name: 'corerp-resources-purecontainer'
   location: location
   properties: {
     application: app.id

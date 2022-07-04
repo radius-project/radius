@@ -375,7 +375,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
-			Namespace: options.Environment.Namespace,
+			Namespace: "default",
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -587,7 +587,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resource.Name,
-			Namespace: applicationName,
+			Namespace: "default",
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
 		},
 		Type: corev1.SecretTypeOpaque,
