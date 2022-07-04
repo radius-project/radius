@@ -7,6 +7,7 @@ package deployment
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -70,9 +71,13 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
 
+	bytes, _ := json.Marshal(resource)
+	fmt.Println(string(bytes))
+
 	// Get resources that the resource being deployed has connection with.
 	requiredResources, _, err := renderer.GetDependencyIDs(ctx, resource)
 	if err != nil {
+		fmt.Println("hmmmm, why does it fail here")
 		return renderers.RendererOutput{}, err
 	}
 	logger.Info(fmt.Sprintf("Got dependencies: %s", resourceID.Name()))
@@ -103,10 +108,11 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 			err = fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
 			return renderers.RendererOutput{}, err
 		}
-		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			err := fmt.Errorf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
-			return renderers.RendererOutput{}, err
-		}
+		// TODO re-enable
+		// if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
+		// 	err := fmt.Errorf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
+		// 	return renderers.RendererOutput{}, err
+		// }
 	}
 
 	return rendererOutput, nil
@@ -127,21 +133,25 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 
 	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 	if err != nil {
+		fmt.Println("Error from lookup output resource model")
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	resourceIdentity, err = outputResourceModel.ResourceHandler.GetResourceIdentity(ctx, outputResource)
 	if err != nil {
+		fmt.Println("Error from resource identity")
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	err = outputResourceModel.ResourceHandler.Put(ctx, &outputResource)
 	if err != nil {
+		fmt.Println("Error from put resource")
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	properties, err := outputResourceModel.ResourceHandler.GetResourceNativeIdentityKeyProperties(ctx, outputResource)
 	if err != nil {
+		fmt.Println("Error from native identity")
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
@@ -173,6 +183,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		}
 	}
 
+	fmt.Println("Successfully created output resource")
 	return resourceIdentity, computedValues, nil
 }
 
@@ -194,8 +205,6 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	computedValues := map[string]interface{}{}
 
 	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
-
 		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, outputResource, rendererOutput)
 		if err != nil {
 			return DeploymentOutput{}, err
@@ -349,6 +358,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.Env
 		publicEndpoint := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 		if publicEndpoint != "" {
 			return renderers.EnvironmentOptions{
+				Namespace: "default", // TODO change
 				Gateway: renderers.GatewayOptions{
 					PublicEndpointOverride: true,
 					PublicIP:               publicEndpoint,
@@ -367,6 +377,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.Env
 			if service.Name == "contour-envoy" {
 				for _, in := range service.Status.LoadBalancer.Ingress {
 					return renderers.EnvironmentOptions{
+						Namespace: "default", // TODO change
 						Gateway: renderers.GatewayOptions{
 							PublicEndpointOverride: false,
 							PublicIP:               in.IP,

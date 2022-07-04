@@ -70,7 +70,9 @@ func NewModel(radiusResources []RadiusResourceModel, outputResources []OutputRes
 	}
 
 	outputResourceLookup := map[resourcemodel.ResourceType]OutputResourceModel{}
+	fmt.Println("populating output resource lookup")
 	for _, outputResource := range outputResources {
+		fmt.Println(outputResource.ResourceType)
 		outputResourceLookup[outputResource.ResourceType] = outputResource
 	}
 

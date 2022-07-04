@@ -29,15 +29,18 @@ type kubernetesHandler struct {
 }
 
 func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	fmt.Println("putting")
 	item, err := convertToUnstructured(*options.Resource)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("unst ")
 
 	err = handler.PatchNamespace(ctx, item.GetNamespace())
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("patch ")
 
 	// For a Kubernetes resource we only need to store the ObjectMeta and TypeMeta data
 	properties := map[string]string{
@@ -55,8 +58,10 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	}
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
+		fmt.Println(err.Error())
 		return nil, err
 	}
+	fmt.Println("patch ")
 
 	options.Resource.Identity = resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
@@ -75,6 +80,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 }
 
 func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {
+	fmt.Println("WOWOWOWOWO")
 	// Ensure that the namespace exists that we're able to operate upon.
 	ns := &unstructured.Unstructured{
 		Object: map[string]interface{}{

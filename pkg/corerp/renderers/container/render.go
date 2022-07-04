@@ -7,6 +7,7 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -54,10 +55,29 @@ type Renderer struct {
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
-	resource, ok := dm.(datamodel.ContainerResource)
-	if !ok {
-		return nil, nil, conv.ErrInvalidModelConversion
+	// resource, ok := dm.(datamodel.ContainerResource)
+	// if !ok {
+	// 	// This is failing
+	// 	bytes, _ := json.Marshal(dm)
+	// 	fmt.Println(string(bytes))
+	// 	return nil, nil, conv.ErrInvalidModelConversion
+	// }
+	fmt.Println("In dependency ids")
+
+	var resource datamodel.ContainerResource
+	bytes, err := json.Marshal(dm)
+	if err != nil {
+		fmt.Println("failed marshal")
+		return nil, nil, err
 	}
+	fmt.Println(string(bytes))
+
+	err = json.Unmarshal(bytes, &resource)
+	if err != nil {
+		fmt.Println("failed unmarshal")
+		return nil, nil, err
+	}
+
 	properties := resource.Properties
 
 	// Right now we only have things in connections and ports as rendering dependencies - we'll add more things
@@ -108,11 +128,20 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.ContainerResource)
-	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
-	}
 
+	var resource datamodel.ContainerResource
+	bytes, err := json.Marshal(dm)
+	if err != nil {
+		fmt.Println("failed marshal")
+		return renderers.RendererOutput{}, err
+	}
+	fmt.Println(string(bytes))
+
+	err = json.Unmarshal(bytes, &resource)
+	if err != nil {
+		fmt.Println("failed unmarshal")
+		return renderers.RendererOutput{}, err
+	}
 	appId, err := resources.Parse(resource.Properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w ", err)

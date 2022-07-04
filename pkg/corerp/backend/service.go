@@ -51,6 +51,7 @@ func (w *Service) Run(ctx context.Context) error {
 		ctx,
 		containers_ctrl.ResourceTypeName,
 		v1.OperationPut,
+		w.Options,
 		containers_ctrl.NewUpdateContainer)
 	if err != nil {
 		panic(err)

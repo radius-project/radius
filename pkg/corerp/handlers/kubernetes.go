@@ -33,6 +33,9 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return err
 	}
 
+	t, _ := item.MarshalJSON()
+	fmt.Println(string(t))
+
 	err = handler.PatchNamespace(ctx, item.GetNamespace())
 	if err != nil {
 		return err
@@ -98,7 +101,7 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 			"apiVersion": "v1",
 			"kind":       "Namespace",
 			"metadata": map[string]interface{}{
-				"name": namespace,
+				"name": "default", // TODO use namespace passed in
 				"labels": map[string]interface{}{
 					kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 				},

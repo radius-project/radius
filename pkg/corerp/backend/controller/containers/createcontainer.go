@@ -7,10 +7,12 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/model"
@@ -18,6 +20,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
+	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
 )
 
 var _ ctrl.Controller = (*UpdateContainer)(nil)
@@ -25,18 +32,35 @@ var _ ctrl.Controller = (*UpdateContainer)(nil)
 // UpdateContainer is the async operation controller to create or update Applications.Core/Containers resource.
 type UpdateContainer struct {
 	ctrl.BaseController
+	Options hostoptions.HostOptions
 }
 
 // NewUpdateContainer creates the UpdateContainer controller instance.
-func NewUpdateContainer(store store.StorageClient) (ctrl.Controller, error) {
-	return &UpdateContainer{ctrl.NewBaseAsyncController(store)}, nil
+func NewUpdateContainer(store store.StorageClient, options hostoptions.HostOptions) (ctrl.Controller, error) {
+	return &UpdateContainer{ctrl.NewBaseAsyncController(store), options}, nil
 }
 
 func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	// TODO: Integration with modified new backend controller
 	// Note: mentioning here in this current placeholder controller to show the flow, it will not be checked in,
 	// The job of backend controller is to do two major operations 1. Render and 2. Deploy
-	dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, dataprovider.NewStorageProvider(dataprovider.StorageProviderOptions{}), nil, nil)
+
+	scheme := clientgoscheme.Scheme
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(csidriver.AddToScheme(scheme))
+	utilruntime.Must(contourv1.AddToScheme(scheme))
+
+	k8s, err := controller_runtime.New(c.Options.K8sConfig, controller_runtime.Options{Scheme: scheme})
+
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	appModel, err := model.NewApplicationModel(c.Options.Arm, k8s)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	dp := deployment.NewDeploymentProcessor(appModel, dataprovider.NewStorageProvider(dataprovider.StorageProviderOptions{}), nil, nil)
 
 	fmt.Println("In update container")
 	// Get the resource
@@ -50,6 +74,9 @@ func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
+	bytes, _ := json.Marshal(existingResource)
+	fmt.Println(string(bytes))
+
 	// Render the resource
 	rendererOutput, err := dp.Render(ctx, id, existingResource, container.Renderer{}) // TODO role assignment map?
 	if err != nil {
@@ -60,6 +87,7 @@ func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	// Deploy the resource
 	deploymentOutput, err := dp.Deploy(ctx, id, rendererOutput)
 	if err != nil {
+		fmt.Println(err.Error())
 		return ctrl.Result{}, err
 	}
 
