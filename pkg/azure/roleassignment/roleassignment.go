@@ -26,7 +26,7 @@ import (
 func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, principalID, scope, roleNameOrID string) (*authorization.RoleAssignment, error) {
 	logger := radlogger.GetLogger(ctx)
 
-	roleDefinitionID, err := getRoleDefinitionID(ctx, auth, subscriptionID, scope, roleNameOrID)
+	roleDefinitionID, err := GetRoleDefinitionID(ctx, auth, subscriptionID, scope, roleNameOrID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
 	}
@@ -90,7 +90,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 }
 
 // Returns roleDefinitionID: fully qualified identifier of role definition, example: "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
-func getRoleDefinitionID(ctx context.Context, auth autorest.Authorizer, subscriptionID, scope, roleNameOrID string) (roleDefinitionID string, err error) {
+func GetRoleDefinitionID(ctx context.Context, auth autorest.Authorizer, subscriptionID, scope, roleNameOrID string) (roleDefinitionID string, err error) {
 	if strings.HasPrefix(roleNameOrID, "/subscriptions/") {
 		roleDefinitionID = roleNameOrID
 		return
