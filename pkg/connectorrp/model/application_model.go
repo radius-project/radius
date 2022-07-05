@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -34,10 +35,10 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			ResourceType: strings.ToLower(mongodatabases.ResourceType),
 			Renderer:     &mongodatabases.Renderer{},
 		},
-		// {
-		// 	ResourceType: daprhttproutev1alpha3.ResourceType,
-		// 	Renderer:     &daprhttproutev1alpha3.Renderer{},
-		// },
+		{
+			ResourceType: daprinvokehttproutes.ResourceType,
+			Renderer:     &daprinvokehttproutes.Renderer{},
+		},
 		// {
 		// 	ResourceType: daprpubsubv1alpha3.ResourceType,
 		// 	Renderer: &daprpubsubv1alpha3.Renderer{
