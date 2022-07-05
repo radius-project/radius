@@ -106,8 +106,9 @@ func ConfigureDefaultHandlers(
 		}
 	}
 
+	// /planes/radius/local/resourcegroups/validation-rg/providers/applications.core/locations/global/operationstatuses/01317cd9-31bd-464d-86b0-bff1e8220caa?api-version=2022-03-15-privatepreview
 	statusRT := providerNamespace + "/operationstatuses"
-	opStatus := fmt.Sprintf("%s/providers/%s/locations/{location}/operationstatuses/{operationId}", pathBase, providerNamespace)
+	opStatus := fmt.Sprintf("%s/resourcegroups/{resourceGroupName}/providers/%s/locations/{location}/operationstatuses/{operationId}", pathBase, providerNamespace)
 	err := RegisterHandler(ctx, sp, sm, HandlerOptions{
 		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   statusRT,
@@ -118,7 +119,7 @@ func ConfigureDefaultHandlers(
 		return err
 	}
 
-	opResult := fmt.Sprintf("%s/providers/%s/locations/{location}/operationresults/{operationId}", pathBase, providerNamespace)
+	opResult := fmt.Sprintf("%s/resourcegroups/{resourceGroupName}/providers/%s/locations/{location}/operationresults/{operationId}", pathBase, providerNamespace)
 	err = RegisterHandler(ctx, sp, sm, HandlerOptions{
 		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   statusRT,

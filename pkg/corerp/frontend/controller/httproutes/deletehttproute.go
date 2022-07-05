@@ -74,5 +74,5 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 	existingResource.Properties.ProvisioningState = v1.ProvisioningStateDeleting
 
 	return rest.NewAsyncOperationResponse(existingResource, existingResource.TrackedResource.Location, http.StatusAccepted,
-		serviceCtx.ResourceID, serviceCtx.OperationID), nil
+		serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
 }

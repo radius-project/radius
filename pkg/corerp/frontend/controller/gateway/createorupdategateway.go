@@ -93,7 +93,7 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (res
 		respCode = http.StatusAccepted
 	}
 
-	return rest.NewAsyncOperationResponse(newResource, newResource.TrackedResource.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID), nil
+	return rest.NewAsyncOperationResponse(newResource, newResource.TrackedResource.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
 
 }
 

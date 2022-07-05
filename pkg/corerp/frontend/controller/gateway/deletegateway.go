@@ -74,5 +74,5 @@ func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Respo
 	existingGateway.Properties.ProvisioningState = v1.ProvisioningStateDeleting
 
 	return rest.NewAsyncOperationResponse(existingGateway, existingGateway.TrackedResource.Location, http.StatusAccepted,
-		serviceCtx.ResourceID, serviceCtx.OperationID), nil
+		serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
 }

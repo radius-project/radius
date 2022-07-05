@@ -228,7 +228,7 @@ type AsyncOperationResponse struct {
 	Code        int
 	ResourceID  resources.ID
 	OperationID uuid.UUID
-	ApiVersion string
+	ApiVersion  string
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
@@ -239,21 +239,21 @@ func NewAsyncOperationResponse(body interface{}, location string, code int, reso
 		Code:        code,
 		ResourceID:  resourceID,
 		OperationID: operationID,
-		ApiVersion: apiVersion
+		ApiVersion:  apiVersion,
 	}
 }
 
 func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	// Write Body
-	
+
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	locationHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationResults", r.OperationID, r.ApiVersion)
-	azureAsyncOpHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationStatuses", r.OperationID, r.ApiVersion)
-
+	locationHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationResults", r.OperationID)
+	azureAsyncOpHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationStatuses", r.OperationID)
+	fmt.Println("SETTING LOCATION HEADER")
 	fmt.Println(locationHeader)
 	fmt.Println(azureAsyncOpHeader)
 	// Write Headers
@@ -283,11 +283,12 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	dest := url.URL{
 		Host:   req.Host,
 		Scheme: req.URL.Scheme,
-		Path:   fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String()),
-		RawQuery: url.Values{
-			"api-version": []string{r.ApiVersion},
-		},
+		Path:   fmt.Sprintf("%s/resourcegroups/%s/providers/%s/locations/%s/%s/%s", root, resourceID.FindScope(resources.ResourceGroupsSegment), resourceID.ProviderNamespace(), location, resourceType, operationID.String()),
 	}
+
+	query := url.Values{}
+	query.Add("api-version", r.ApiVersion)
+	dest.RawQuery = query.Encode()
 
 	// In production this is the header we get from app service for the 'real' protocol
 	protocol := req.Header.Get(textproto.CanonicalMIMEHeaderKey("X-Forwarded-Proto"))
@@ -463,6 +464,7 @@ func NewNotFoundAPIVersionResponse(resourceType string, namespace string, apiVer
 
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := radlogger.GetLogger(ctx)
+	fmt.Println("NOT FOUND URL " + req.URL.String())
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), radlogger.LogHTTPStatusCode, http.StatusNotFound)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
