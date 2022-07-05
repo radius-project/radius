@@ -14,15 +14,79 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+	output := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDAzureServiceBusTopic,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
+			Provider: providers.ProviderAzure,
+		},
+		Resource: map[string]string{
+			handlers.ResourceName:            "test-pub-sub-topic",
+			handlers.KubernetesNamespaceKey:  "test-app",
+			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+			handlers.KubernetesKindKey:       "Component",
+
+			// Truncate the topic part of the ID to make an ID for the namespace
+			handlers.ServiceBusNamespaceIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
+			handlers.ServiceBusTopicIDKey:       "test-namespace",
+			handlers.ServiceBusNamespaceNameKey: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
+			handlers.ServiceBusTopicNameKey:     "test-topic",
+		},
+	}
+	values := map[string]renderers.ComputedValueReference{
+		"namespace": {
+			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			PropertyReference: handlers.ServiceBusNamespaceNameKey,
+		},
+		"pubSubName": {
+			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			PropertyReference: handlers.ResourceName,
+		},
+		"topic": {
+			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			PropertyReference: handlers.ServiceBusTopicNameKey,
+		},
+	}
+	rendererOutput := renderers.RendererOutput{
+		Resources:      []outputresource.OutputResource{output},
+		SecretValues:   map[string]rp.SecretValueReference{},
+		ComputedValues: values,
+	}
+
+	deploymentOutput := deployment.DeploymentOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureServiceBusTopic,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
+					Provider: providers.ProviderAzure,
+				},
+			},
+		},
+	}
+
+	return rendererOutput, deploymentOutput
+}
 func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
@@ -55,6 +119,9 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 					return nil, &store.ErrNotFound{}
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -70,7 +137,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprPubSubBroker(mStorageClient, nil, nil)
+			ctl, err := NewCreateOrUpdateDaprPubSubBroker(mStorageClient, nil, mDeploymentProcessor)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -120,6 +187,9 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			if !testcase.shouldFail {
 				mStorageClient.
 					EXPECT().
@@ -131,7 +201,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprPubSubBroker(mStorageClient, nil, nil)
+			ctl, err := NewCreateOrUpdateDaprPubSubBroker(mStorageClient, nil, mDeploymentProcessor)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

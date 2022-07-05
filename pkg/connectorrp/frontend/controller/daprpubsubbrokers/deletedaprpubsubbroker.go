@@ -53,6 +53,10 @@ func (daprPubSub *DeleteDaprPubSubBroker) Run(ctx context.Context, req *http.Req
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
+	err = daprPubSub.DeploymentProcessor.Delete(ctx, serviceCtx.ResourceID, existingResource.Properties.Status.OutputResources)
+	if err != nil {
+		return nil, err
+	}
 	err = daprPubSub.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {

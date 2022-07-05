@@ -4,7 +4,11 @@
     "name": "redis0",
     "properties": {
         "status": {
-          "outputResources": null
+          "outputResources": [{
+            "LocalID": "AzureRedis",
+            "Provider": "azure",
+            "Identity": null
+          }]
         },
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",

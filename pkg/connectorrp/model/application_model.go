@@ -170,13 +170,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),
 		},
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.AzureRedis,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewAzureRedisHandler(arm),
-		// },
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRedis,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureRedisHandler(arm),
+		},
 	}
 
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
