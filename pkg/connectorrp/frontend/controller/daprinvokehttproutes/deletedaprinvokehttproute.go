@@ -53,6 +53,11 @@ func (daprHttpRoute *DeleteDaprInvokeHttpRoute) Run(ctx context.Context, req *ht
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
+	err = daprHttpRoute.DeploymentProcessor.Delete(ctx, serviceCtx.ResourceID, existingResource.Properties.Status.OutputResources)
+	if err != nil {
+		return nil, err
+	}
+
 	err = daprHttpRoute.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
