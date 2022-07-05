@@ -1,6 +1,8 @@
-param app resource 'radius.dev/Application@v1alpha3'
+import radius as radius
 
-resource container 'radius.dev/Application/Container@v1alpha3' = {
+param app resource 'Applications.Core/applications@2022-03-15-privatepreview'
+
+resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: '${app.name}/container'
   properties: {
     container: {
@@ -9,8 +11,8 @@ resource container 'radius.dev/Application/Container@v1alpha3' = {
   }
 }
 
-resource backendhttp 'radius.dev/Application/HttpRoute@v1alpha3' = {
+resource backendhttp 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   name: '${app.name}/backendhttp'
 }
 
-output test resource 'radius.dev/Application/HttpRoute@v1alpha3' = backendhttp
+output test resource 'Applications.Core/httproutes@2022-03-15-privatepreview' = backendhttp
