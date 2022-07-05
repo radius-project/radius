@@ -228,28 +228,31 @@ type AsyncOperationResponse struct {
 	Code        int
 	ResourceID  resources.ID
 	OperationID uuid.UUID
+	ApiVersion string
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID) Response {
+func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string) Response {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,
 		Code:        code,
 		ResourceID:  resourceID,
 		OperationID: operationID,
+		ApiVersion: apiVersion
 	}
 }
 
 func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	// Write Body
+	
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	locationHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationResults", r.OperationID)
-	azureAsyncOpHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationStatuses", r.OperationID)
+	locationHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationResults", r.OperationID, r.ApiVersion)
+	azureAsyncOpHeader := r.getAsyncLocationPath(req, r.ResourceID, r.Location, "operationStatuses", r.OperationID, r.ApiVersion)
 
 	fmt.Println(locationHeader)
 	fmt.Println(azureAsyncOpHeader)
@@ -281,6 +284,9 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		Host:   req.Host,
 		Scheme: req.URL.Scheme,
 		Path:   fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String()),
+		RawQuery: url.Values{
+			"api-version": []string{r.ApiVersion},
+		},
 	}
 
 	// In production this is the header we get from app service for the 'real' protocol
