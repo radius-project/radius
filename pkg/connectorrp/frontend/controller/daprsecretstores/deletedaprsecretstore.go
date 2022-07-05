@@ -53,6 +53,11 @@ func (daprSecretStore *DeleteDaprSecretStore) Run(ctx context.Context, req *http
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
+	err = daprSecretStore.DeploymentProcessor.Delete(ctx, serviceCtx.ResourceID, existingResource.Properties.Status.OutputResources)
+	if err != nil {
+		return nil, err
+	}
+
 	err = daprSecretStore.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
