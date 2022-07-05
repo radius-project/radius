@@ -242,7 +242,8 @@ Application.Core - The new RP that we're building.
 Running the Applications requires the following configuration before running:
 
 ```sh
-export RADIUS_ENV="self-hosted-dev"
+export RADIUS_ENV="self-hosted"
+cd cmd/appcore-rp
 go run cmd/appcore-rp/main.go
 ```
 
@@ -256,7 +257,7 @@ Or in VSCode by adding this to the launch.json file in the Radius repository:
     "mode": "debug",
     "program": "${workspaceFolder}/cmd/appcore-rp/main.go",
     "env": {
-        "RADIUS_ENV": "self-hosted-dev"
+        "RADIUS_ENV": "self-hosted"
     }
 },
 ```
@@ -327,10 +328,12 @@ planes:
       resourceProviders:
         Applications.Core: "http://localhost:8080" # Make sure these URLs point to the right URLs
         Applications.Connector: "http://localhost:8080"
+      kind: "UCPNative"
   - id: "/planes/deployments/local"
     properties:
       resourceProviders:
         Microsoft.Resources: "http://localhost:5017" # URL for the Deployment Engine
+      kind: "UCPNative"
 ```
 
 Then execute the following:
@@ -339,7 +342,8 @@ Then execute the following:
 export BASE_PATH="/apis/api.ucp.dev/v1alpha3"
 export PORT="9000"
 export UCP_CONFIG="cmd/ucpd/ucp-self-hosted-dev.yaml"
-go run cmd/ucp/main.go
+cd cmd/ucpd
+go run cmd/ucpd/main.go
 ```
 
 Or having the following VSCode configuration in the radius repository launch.json file:
