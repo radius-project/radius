@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -51,7 +50,7 @@ func setup(t *testing.T) SharedMocks {
 	model := model.NewModel(
 		[]model.RadiusResourceModel{
 			{
-				ResourceType: strings.ToLower(container.ResourceType),
+				ResourceType: container.ResourceType,
 				Renderer:     renderer,
 			},
 		},

@@ -7,7 +7,6 @@ package model
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
@@ -37,7 +36,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 
 	radiusResourceModel := []RadiusResourceModel{
 		{
-			ResourceType: strings.ToLower(mongodatabases.ResourceType),
+			ResourceType: mongodatabases.ResourceType,
 			Renderer:     &mongodatabases.Renderer{},
 		},
 		{
