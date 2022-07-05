@@ -17,10 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -35,15 +32,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
-			{
-				LocalID: outputresource.LocalIDAzureSqlServer,
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureSqlServer,
-					Provider: providers.ProviderAzure,
-				},
-			},
-		},
+		Resources: []outputresource.OutputResource{},
 	}
 
 	return rendererOutput, deploymentOutput
