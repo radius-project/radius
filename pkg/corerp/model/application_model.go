@@ -7,6 +7,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -60,17 +61,17 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 
 	radiusResourceModel := []RadiusResourceModel{
 		{
-			ResourceType: container.ResourceType,
+			ResourceType: strings.ToLower(container.ResourceType),
 			Renderer: &container.Renderer{
 				RoleAssignmentMap: roleAssignmentMap,
 			},
 		},
 		{
-			ResourceType: httproute.ResourceType,
+			ResourceType: strings.ToLower(httproute.ResourceType),
 			Renderer:     &httproute.Renderer{},
 		},
 		{
-			ResourceType: gateway.ResourceType,
+			ResourceType: strings.ToLower(gateway.ResourceType),
 			Renderer:     &gateway.Renderer{},
 		},
 	}
