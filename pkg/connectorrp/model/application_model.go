@@ -11,7 +11,13 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprsecretstores"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
@@ -34,39 +40,39 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			ResourceType: strings.ToLower(mongodatabases.ResourceType),
 			Renderer:     &mongodatabases.Renderer{},
 		},
-		// {
-		// 	ResourceType: daprhttproutev1alpha3.ResourceType,
-		// 	Renderer:     &daprhttproutev1alpha3.Renderer{},
-		// },
-		// {
-		// 	ResourceType: daprpubsubv1alpha3.ResourceType,
-		// 	Renderer: &daprpubsubv1alpha3.Renderer{
-		// 		PubSubs: daprpubsubv1alpha3.SupportedPubSubKindValues,
-		// 	},
-		// },
+		{
+			ResourceType: strings.ToLower(sqldatabases.ResourceType),
+			Renderer:     &sqldatabases.Renderer{},
+		},
+		{
+			ResourceType: strings.ToLower(rediscaches.ResourceType),
+			Renderer:     &rediscaches.Renderer{},
+		},
+		{
+			ResourceType: strings.ToLower(rabbitmqmessagequeues.ResourceType),
+			Renderer:     &rabbitmqmessagequeues.Renderer{},
+		},
+		{
+			ResourceType: strings.ToLower(daprinvokehttproutes.ResourceType),
+			Renderer:     &daprinvokehttproutes.Renderer{},
+		},
+		{
+			ResourceType: strings.ToLower(daprpubsubbrokers.ResourceType),
+			Renderer: &daprpubsubbrokers.Renderer{
+				PubSubs: daprpubsubbrokers.SupportedPubSubKindValues,
+			},
+		},
+		{
+			ResourceType: strings.ToLower(daprsecretstores.ResourceType),
+			Renderer: &daprsecretstores.Renderer{
+				SecretStores: daprsecretstores.SupportedSecretStoreKindValues,
+			},
+		},
 		// {
 		// 	ResourceType: daprstatestorev1alpha3.ResourceType,
 		// 	Renderer: &daprstatestorev1alpha3.Renderer{
 		// 		StateStores: daprstatestorev1alpha3.SupportedStateStoreKindValues,
 		// 	},
-		// },
-		// {
-		// 	ResourceType: daprsecretstorev1alpha3.ResourceType,
-		// 	Renderer: &daprsecretstorev1alpha3.Renderer{
-		// 		SecretStores: daprsecretstorev1alpha3.SupportedSecretStoreKindValues,
-		// 	},
-		// },
-		// {
-		// 	ResourceType: microsoftsqlv1alpha3.ResourceType,
-		// 	Renderer:     &microsoftsqlv1alpha3.Renderer{},
-		// },
-		// {
-		// 	ResourceType: redisv1alpha3.ResourceType,
-		// 	Renderer:     &redisv1alpha3.Renderer{},
-		// },
-		// {
-		// 	ResourceType: rabbitmqv1alpha3.ResourceType,
-		// 	Renderer:     &rabbitmqv1alpha3.Renderer{},
 		// },
 		// {
 		// 	ResourceType: extenderv1alpha3.ResourceType,
@@ -75,34 +81,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 	}
 
 	outputResourceModel := []OutputResourceModel{
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.Kubernetes,
-		// 		Provider: providers.ProviderKubernetes,
-		// 	},
-		// 	ResourceHandler: handlers.NewKubernetesHandler(k8s),
-		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.Deployment,
-		// 		Provider: providers.ProviderKubernetes,
-		// 	},
-		// 	ResourceHandler: handlers.NewKubernetesHandler(k8s),
-		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.KubernetesHTTPRoute,
-		// 		Provider: providers.ProviderKubernetes,
-		// 	},
-		// 	ResourceHandler: handlers.NewKubernetesHandler(k8s),
-		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.SecretProviderClass,
-		// 		Provider: providers.ProviderKubernetes,
-		// 	},
-		// 	ResourceHandler: handlers.NewKubernetesHandler(k8s),
-		// },
 		// {
 		// 	ResourceType: resourcemodel.ResourceType{
 		// 		Type:     resourcekinds.DaprStateStoreAzureStorage,
@@ -135,27 +113,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			},
 			ResourceHandler: handlers.NewAzureCosmosAccountHandler(arm),
 		},
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.DaprStateStoreAzureStorage,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.AzureCosmosDBSQL,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewAzureCosmosDBSQLHandler(arm),
-		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
-		// },
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureSqlServer,
@@ -170,6 +127,21 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),
 		},
+		// {
+		// 	ResourceType: resourcemodel.ResourceType{
+		// 		Type:     resourcekinds.DaprStateStoreAzureStorage,
+		// 		Provider: providers.ProviderAzure,
+		// 	},
+		// 	ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
+		// },
+		// {
+		// {
+		// 	ResourceType: resourcemodel.ResourceType{
+		// 		Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
+		// 		Provider: providers.ProviderAzure,
+		// 	},
+		// 	ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
+		// },
 		// {
 		// 	ResourceType: resourcemodel.ResourceType{
 		// 		Type:     resourcekinds.AzureRedis,
