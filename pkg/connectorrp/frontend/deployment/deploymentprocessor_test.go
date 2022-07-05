@@ -8,7 +8,6 @@ package deployment
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -38,6 +37,70 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 			ID:   id,
 			Name: "mongo0",
 			Type: "applications.connector/mongodatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			},
+		},
+	}
+
+	azureMongoOutputResources := []outputresource.OutputResource{
+		{
+			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: providers.ProviderAzure,
+			},
+		},
+		{
+			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: providers.ProviderAzure,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDAzureCosmosAccount,
+				},
+			},
+		},
+	}
+
+	rendererOutput = renderers.RendererOutput{
+		Resources: azureMongoOutputResources,
+		SecretValues: map[string]rp.SecretValueReference{
+			renderers.ConnectionStringValue: {
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				Action:        "listConnectionStrings",
+				ValueSelector: "/connectionStrings/0/connectionString",
+				Transformer: resourcemodel.ResourceType{
+					Provider: providers.ProviderAzure,
+					Type:     resourcekinds.AzureCosmosDBMongo,
+				},
+			},
+		},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			renderers.DatabaseNameValue: {
+				Value: "test-database",
+			},
+		},
+	}
+
+	return
+}
+
+func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
+	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+	resourceID = getResourceID(id)
+	testResource = datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   id,
+			Name: "mongo0",
+			Type: "Applications.Connector/MongoDatabases",
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -135,7 +198,7 @@ func setup(t *testing.T) SharedMocks {
 	model := model.NewModel(
 		[]model.RadiusResourceModel{
 			{
-				ResourceType: strings.ToLower(mongodatabases.ResourceType),
+				ResourceType: mongodatabases.ResourceType,
 				Renderer:     mockRenderer,
 			},
 		},
@@ -194,6 +257,16 @@ func Test_Render_Success(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
 	t.Run("verify render success", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
+
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+
+		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
+	})
+
+	t.Run("verify render success with mixedcase resourcetype", func(t *testing.T) {
+		resourceID, testResource, testRendererOutput := buildTestMongoResourceMixedCaseResourceType()
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 
