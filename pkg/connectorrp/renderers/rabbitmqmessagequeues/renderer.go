@@ -40,7 +40,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 		return renderers.RendererOutput{}, fmt.Errorf("queue name must be specified")
 	}
 	values := map[string]renderers.ComputedValueReference{
-		"queue": {
+		QueueNameKey: {
 			Value: queueName,
 		},
 	}
