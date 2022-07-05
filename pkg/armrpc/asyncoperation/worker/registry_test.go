@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,9 @@ func TestRegister_Get(t *testing.T) {
 	opPut := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationPut}
 
 	ctrlOpts := ctrl.Options{
-		StorageClient: nil,
+		StorageClient:          nil,
+		DataProvider:           mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor { return nil },
 	}
 
 	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(opts ctrl.Options) (ctrl.Controller, error) {

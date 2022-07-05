@@ -38,6 +38,13 @@ func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, 
 
 	ot := v1.OperationType{Type: resourceType, Method: method}
 
+	storageClient, err := opts.DataProvider.GetStorageClient(ctx, resourceType)
+	if err != nil {
+		return err
+	}
+	opts.StorageClient = storageClient
+	opts.ResourceType = resourceType
+
 	ctrl, err := factoryFn(opts)
 	if err != nil {
 		return err

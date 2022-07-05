@@ -16,6 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/queue/inmemory"
@@ -126,8 +127,17 @@ func TestStart_UnknownOperation(t *testing.T) {
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{}, nil, tCtx.testQueue, registry)
 
+	tCtx.mockSP.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(tCtx.mockSC, nil).
+		Times(1)
+
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
+		DataProvider:  tCtx.mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return deployment.NewMockDeploymentProcessor(mctrl)
+		},
 	}
 
 	called := false
@@ -178,13 +188,20 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{}, nil, tCtx.testQueue, registry)
 
+	tCtx.mockSP.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(tCtx.mockSC, nil).
+		Times(1)
+
 	ctx, cancel := tCtx.cancellable(0)
 	err := registry.Register(
 		ctx,
 		testResourceType, v1.OperationPut,
 		func(opts ctrl.Options) (ctrl.Controller, error) {
 			return nil, nil
-		}, ctrl.Options{})
+		}, ctrl.Options{
+			DataProvider: tCtx.mockSP,
+		})
 	require.NoError(t, err)
 
 	// Queue async operation.
@@ -225,6 +242,10 @@ func TestStart_MaxConcurrency(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
+		DataProvider:  tCtx.mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return deployment.NewMockDeploymentProcessor(mctrl)
+		},
 	}
 
 	// register test controller.
@@ -297,6 +318,10 @@ func TestStart_RunOperation(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
+		DataProvider:  tCtx.mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return deployment.NewMockDeploymentProcessor(mctrl)
+		},
 	}
 
 	called := make(chan bool, 1)
@@ -362,6 +387,10 @@ func TestRunOperation_Successfully(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
+		DataProvider:  tCtx.mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return deployment.NewMockDeploymentProcessor(mctrl)
+		},
 	}
 
 	testCtrl := &testAsyncController{
@@ -395,6 +424,10 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
+		DataProvider:  tCtx.mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return deployment.NewMockDeploymentProcessor(mctrl)
+		},
 	}
 
 	testCtrl := &testAsyncController{
@@ -429,6 +462,10 @@ func TestRunOperation_CancelContext(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: nil,
+		DataProvider:  tCtx.mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return nil
+		},
 	}
 
 	done := make(chan struct{}, 1)
@@ -471,6 +508,10 @@ func TestRunOperation_Timeout(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
+		DataProvider:  tCtx.mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return deployment.NewMockDeploymentProcessor(mctrl)
+		},
 	}
 
 	done := make(chan struct{}, 1)
@@ -502,6 +543,10 @@ func TestRunOperation_PanicController(t *testing.T) {
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
+		DataProvider:  tCtx.mockSP,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return nil
+		},
 	}
 
 	testCtrl := &testAsyncController{

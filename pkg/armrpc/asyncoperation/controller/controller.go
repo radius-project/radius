@@ -18,12 +18,22 @@ import (
 
 // Options represents controller options.
 type Options struct {
+	// StorageClient is the data storage client.
 	StorageClient store.StorageClient
-	DataProvider  dataprovider.DataStorageProvider
 
-	SecretClient renderers.SecretValueClient // should be shared client
-	KubeClient   runtimeclient.Client
+	// DataProvider is the data storage provider.
+	DataProvider dataprovider.DataStorageProvider
 
+	// SecretClient is the client to fetch secrets.
+	SecretClient renderers.SecretValueClient
+
+	// KubeClient is the Kubernetes controller runtime client.
+	KubeClient runtimeclient.Client
+
+	// ResourceType is the string that represents the resource type.
+	ResourceType string
+
+	// GetDeploymentProcessor is the factory function to create DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
 }
 
@@ -38,24 +48,49 @@ type Controller interface {
 
 // BaseController is the base struct of async operation controller.
 type BaseController struct {
-	storageClient store.StorageClient
+	options Options
 }
 
 // NewBaseAsyncController creates BaseAsyncController instance.
 func NewBaseAsyncController(options Options) BaseController {
-	return BaseController{storageClient: options.StorageClient}
+	return BaseController{options}
 }
 
 // StorageClient gets storage client for this controller.
 func (b *BaseController) StorageClient() store.StorageClient {
-	return b.storageClient
+	return b.options.StorageClient
+}
+
+// DataProvider gets data storage provider for this controller.
+func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
+	return b.options.DataProvider
+}
+
+// SecretClient gets secret client for this controller.
+func (b *BaseController) SecretClient() renderers.SecretValueClient {
+	return b.options.SecretClient
+}
+
+// KubeClient gets Kubernetes client for this controller.
+func (b *BaseController) KubeClient() runtimeclient.Client {
+	return b.options.KubeClient
+}
+
+// ResourceType gets the resource type for this controller.
+func (b *BaseController) ResourceType() string {
+	return b.options.ResourceType
+}
+
+// DeploymentProcessor gets the deployment processor for this controller.
+func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
+	return b.options.GetDeploymentProcessor()
 }
 
 // GetResource is the helper to get the resource via storage client.
 func (b *BaseController) GetResource(ctx context.Context, id string, out interface{}) (etag string, err error) {
 	etag = ""
 	var res *store.Object
-	if res, err = b.storageClient.Get(ctx, id); err == nil {
+	if res, err = b.StorageClient().Get(ctx, id); err == nil {
 		if err = res.As(out); err == nil {
 			etag = res.ETag
 			return
@@ -72,7 +107,7 @@ func (b *BaseController) SaveResource(ctx context.Context, id string, in interfa
 		},
 		Data: in,
 	}
-	err := b.storageClient.Save(ctx, nr, store.WithETag(etag))
+	err := b.StorageClient().Save(ctx, nr, store.WithETag(etag))
 	if err != nil {
 		return nil, err
 	}
