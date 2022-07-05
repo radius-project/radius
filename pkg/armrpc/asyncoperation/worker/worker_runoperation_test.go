@@ -123,14 +123,16 @@ func TestStart_UnknownOperation(t *testing.T) {
 	tCtx, mctrl := newTestContext(t)
 	defer mctrl.Finish()
 
-	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil)
-
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{}, nil, tCtx.testQueue, registry)
 
+	opts := ctrl.Options{
+		StorageClient: tCtx.mockSC,
+	}
+
 	called := false
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		BaseController: ctrl.NewBaseAsyncController(opts),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
 			called = true
 			return ctrl.Result{}, nil
@@ -141,9 +143,9 @@ func TestStart_UnknownOperation(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, "UNDEFINED",
-		func(s store.StorageClient) (ctrl.Controller, error) {
+		func(opts ctrl.Options) (ctrl.Controller, error) {
 			return testCtrl, nil
-		})
+		}, opts)
 
 	require.NoError(t, err)
 
@@ -173,8 +175,6 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	tCtx, mctrl := newTestContext(t)
 	defer mctrl.Finish()
 
-	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(nil, nil)
-
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{}, nil, tCtx.testQueue, registry)
 
@@ -182,9 +182,9 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, v1.OperationPut,
-		func(s store.StorageClient) (ctrl.Controller, error) {
+		func(opts ctrl.Options) (ctrl.Controller, error) {
 			return nil, nil
-		})
+		}, ctrl.Options{})
 	require.NoError(t, err)
 
 	// Queue async operation.
@@ -223,11 +223,15 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
+	opts := ctrl.Options{
+		StorageClient: tCtx.mockSC,
+	}
+
 	// register test controller.
 	cnt := atomic.NewInt32(0)
 	maxConcurrency := atomic.NewInt32(0)
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		BaseController: ctrl.NewBaseAsyncController(opts),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
 			cnt.Inc()
 			if maxConcurrency.Load() < cnt.Load() {
@@ -243,9 +247,9 @@ func TestStart_MaxConcurrency(t *testing.T) {
 		ctx,
 		testResourceType,
 		v1.OperationPut,
-		func(s store.StorageClient) (ctrl.Controller, error) {
+		func(opts ctrl.Options) (ctrl.Controller, error) {
 			return testCtrl, nil
-		})
+		}, opts)
 	require.NoError(t, err)
 
 	done := make(chan struct{}, 1)
@@ -291,10 +295,14 @@ func TestStart_RunOperation(t *testing.T) {
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
+	opts := ctrl.Options{
+		StorageClient: tCtx.mockSC,
+	}
+
 	called := make(chan bool, 1)
 	var opCtx context.Context
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		BaseController: ctrl.NewBaseAsyncController(opts),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
 			// operation context will be cancelled after this function is called
 			opCtx = ctx
@@ -307,9 +315,9 @@ func TestStart_RunOperation(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, v1.OperationPut,
-		func(s store.StorageClient) (ctrl.Controller, error) {
+		func(opts ctrl.Options) (ctrl.Controller, error) {
 			return testCtrl, nil
-		})
+		}, opts)
 	require.NoError(t, err)
 
 	done := make(chan struct{}, 1)
@@ -352,8 +360,12 @@ func TestRunOperation_Successfully(t *testing.T) {
 	require.NoError(t, err)
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
+	opts := ctrl.Options{
+		StorageClient: tCtx.mockSC,
+	}
+
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		BaseController: ctrl.NewBaseAsyncController(opts),
 	}
 
 	require.Equal(t, 1, tCtx.internalQ.Len())
@@ -381,8 +393,12 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
+	opts := ctrl.Options{
+		StorageClient: tCtx.mockSC,
+	}
+
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		BaseController: ctrl.NewBaseAsyncController(opts),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
 			// Sleep for longer than minimum message lock time to call client.ExtendMessage
 			time.Sleep(minMessageLockDuration * 2)
@@ -411,9 +427,13 @@ func TestRunOperation_CancelContext(t *testing.T) {
 
 	worker := New(Options{}, nil, tCtx.testQueue, nil)
 
+	opts := ctrl.Options{
+		StorageClient: nil,
+	}
+
 	done := make(chan struct{}, 1)
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(nil),
+		BaseController: ctrl.NewBaseAsyncController(opts),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
 			<-ctx.Done()
 			close(done)
@@ -449,9 +469,13 @@ func TestRunOperation_Timeout(t *testing.T) {
 	require.NoError(t, err)
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
+	opts := ctrl.Options{
+		StorageClient: tCtx.mockSC,
+	}
+
 	done := make(chan struct{}, 1)
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(tCtx.mockSC),
+		BaseController: ctrl.NewBaseAsyncController(opts),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
 			<-ctx.Done()
 			close(done)
@@ -476,8 +500,12 @@ func TestRunOperation_PanicController(t *testing.T) {
 
 	worker := New(Options{}, nil, tCtx.testQueue, nil)
 
+	opts := ctrl.Options{
+		StorageClient: tCtx.mockSC,
+	}
+
 	testCtrl := &testAsyncController{
-		BaseController: ctrl.NewBaseAsyncController(nil),
+		BaseController: ctrl.NewBaseAsyncController(opts),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
 			panic("!!! don't panic !!!")
 		},

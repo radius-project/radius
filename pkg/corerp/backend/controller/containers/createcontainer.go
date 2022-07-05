@@ -26,8 +26,8 @@ type UpdateContainer struct {
 }
 
 // NewUpdateContainer creates the UpdateContainer controller instance.
-func NewUpdateContainer(store store.StorageClient) (ctrl.Controller, error) {
-	return &UpdateContainer{ctrl.NewBaseAsyncController(store)}, nil
+func NewUpdateContainer(opts ctrl.Options) (ctrl.Controller, error) {
+	return &UpdateContainer{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
 func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {

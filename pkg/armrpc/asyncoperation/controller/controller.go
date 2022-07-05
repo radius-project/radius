@@ -8,8 +8,24 @@ package controller
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// Options represents controller options.
+type Options struct {
+	StorageClient store.StorageClient
+	DataProvider  dataprovider.DataStorageProvider
+
+	SecretClient renderers.SecretValueClient // should be shared client
+	KubeClient   runtimeclient.Client
+
+	GetDeploymentProcessor func() deployment.DeploymentProcessor
+}
 
 // Controller is an interface to implement async operation controller.
 type Controller interface {
@@ -26,8 +42,8 @@ type BaseController struct {
 }
 
 // NewBaseAsyncController creates BaseAsyncController instance.
-func NewBaseAsyncController(store store.StorageClient) BaseController {
-	return BaseController{storageClient: store}
+func NewBaseAsyncController(options Options) BaseController {
+	return BaseController{storageClient: options.StorageClient}
 }
 
 // StorageClient gets storage client for this controller.
