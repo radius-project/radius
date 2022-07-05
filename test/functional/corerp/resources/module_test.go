@@ -8,44 +8,36 @@ package resource_test
 import (
 	"testing"
 
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_Redis(t *testing.T) {
+func TestK8sModule(t *testing.T) {
 	t.Skip("Currently disabled and needs validation. Once corresponding Core RP feature lights up, re-enable this test and see if it succeeds.")
 
-	template := "testdata/corerp-resources-redis-user-secrets.bicep"
-	name := "corerp-resources-redis-user-secrets"
+	template := "testdata/corerp-module/corerp-main.bicep"
+	application := "corerp-module"
 
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, application, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			Resources: []validation.Resource{
 				{
-					Name: "corerp-resources-redis-user-secrets",
+					Name: "corerp-resources-extender",
 					Type: validation.ApplicationsResource,
 				},
 				{
-					Name: "todoapp",
+					Name: "busybox",
+					Type: validation.ContainersResource,	
+				},
+				{
+					Name: "container",
 					Type: validation.ContainersResource,
-				},
-				{
-					Name: "redis",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "redis-route",
-					Type: validation.HttpRoutesResource,
-				},
-				{
-					Name: "redis",
-					Type: validation.RedisCachesResource,
 				},
 			},
 		},
 	})
-
 	test.Test(t)
 }

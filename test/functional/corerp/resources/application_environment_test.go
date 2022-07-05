@@ -14,7 +14,7 @@ import (
 )
 
 func Test_ApplicationAndEnvironment(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+	t.Skip("Currently disabled and needs validation. Once corresponding Core RP feature lights up, re-enable this test and see if it succeeds.")
 
 	template := "testdata/corerp-resources-app-env.bicep"
 	name := "corerp-resources-app-env"
