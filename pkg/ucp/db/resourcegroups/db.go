@@ -58,26 +58,24 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 	return listOfResourceGroups, nil
 }
 
-func GetScopeRecursive(ctx context.Context, db store.StorageClient, query store.Query) (rest.ResourceList, error) {
+func GetScopeAllResources(ctx context.Context, db store.StorageClient, query store.Query) (rest.ResourceList, error) {
 	result, err := db.Query(ctx, query)
 	if err != nil {
 		return rest.ResourceList{}, err
 	}
 
-	if result == nil {
+	if result == nil || len(result.Items) == 0 {
 		return rest.ResourceList{}, nil
 	}
 
 	listOfResources := rest.ResourceList{}
-	if len(result.Items) > 0 {
-		for _, item := range result.Items {
-			var resource rest.Resource
-			err = item.As(&resource)
-			if err != nil {
-				return listOfResources, err
-			}
-			listOfResources.Value = append(listOfResources.Value, resource)
+	for _, item := range result.Items {
+		var resource rest.Resource
+		err = item.As(&resource)
+		if err != nil {
+			return listOfResources, err
 		}
+		listOfResources.Value = append(listOfResources.Value, resource)
 	}
 	return listOfResources, nil
 }

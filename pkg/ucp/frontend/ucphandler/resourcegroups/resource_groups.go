@@ -109,7 +109,7 @@ func (ucp *ucpHandler) listResources(ctx context.Context, db store.StorageClient
 	query.RootScope = path
 	query.ScopeRecursive = true
 	query.IsScopeQuery = false
-	listOfResources, err := resourcegroupsdb.GetScopeRecursive(ctx, db, query)
+	listOfResources, err := resourcegroupsdb.GetScopeAllResources(ctx, db, query)
 	if err != nil {
 		return rest.ResourceList{}, err
 	}
