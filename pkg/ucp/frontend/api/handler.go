@@ -179,7 +179,7 @@ func (h *Handler) GetResourceGroup(w http.ResponseWriter, r *http.Request) {
 }
 func (h *Handler) DeleteResourceGroup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	response, err := h.ucp.ResourceGroups.DeleteByID(ctx, h.db, h.getRelativePath(r.URL.Path))
+	response, err := h.ucp.ResourceGroups.DeleteByID(ctx, h.db, h.getRelativePath(r.URL.Path), r)
 	if err != nil {
 		internalServerError(ctx, w, r, err)
 		return

@@ -6,6 +6,7 @@ package resourcegroups
 
 import (
 	context "context"
+	http "net/http"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -52,18 +53,18 @@ func (mr *MockResourceGroupsUCPHandlerMockRecorder) Create(arg0, arg1, arg2, arg
 }
 
 // DeleteByID mocks base method.
-func (m *MockResourceGroupsUCPHandler) DeleteByID(arg0 context.Context, arg1 store.StorageClient, arg2 string) (rest.Response, error) {
+func (m *MockResourceGroupsUCPHandler) DeleteByID(arg0 context.Context, arg1 store.StorageClient, arg2 string, arg3 *http.Request) (rest.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteByID", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DeleteByID", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(rest.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteByID indicates an expected call of DeleteByID.
-func (mr *MockResourceGroupsUCPHandlerMockRecorder) DeleteByID(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockResourceGroupsUCPHandlerMockRecorder) DeleteByID(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByID", reflect.TypeOf((*MockResourceGroupsUCPHandler)(nil).DeleteByID), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByID", reflect.TypeOf((*MockResourceGroupsUCPHandler)(nil).DeleteByID), arg0, arg1, arg2, arg3)
 }
 
 // GetByID mocks base method.

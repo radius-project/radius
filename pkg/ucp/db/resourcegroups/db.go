@@ -58,6 +58,28 @@ func GetScope(ctx context.Context, db store.StorageClient, query store.Query) (r
 	return listOfResourceGroups, nil
 }
 
+func GetScopeAllResources(ctx context.Context, db store.StorageClient, query store.Query) (rest.ResourceList, error) {
+	result, err := db.Query(ctx, query)
+	if err != nil {
+		return rest.ResourceList{}, err
+	}
+
+	if result == nil || len(result.Items) == 0 {
+		return rest.ResourceList{}, nil
+	}
+
+	listOfResources := rest.ResourceList{}
+	for _, item := range result.Items {
+		var resource rest.Resource
+		err = item.As(&resource)
+		if err != nil {
+			return listOfResources, err
+		}
+		listOfResources.Value = append(listOfResources.Value, resource)
+	}
+	return listOfResources, nil
+}
+
 func DeleteByID(ctx context.Context, db store.StorageClient, ID resources.ID) error {
 	err := db.Delete(ctx, ID.String())
 	return err
