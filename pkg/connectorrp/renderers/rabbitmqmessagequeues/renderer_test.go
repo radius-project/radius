@@ -53,7 +53,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 	require.Len(t, output.Resources, 0)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"queue": {
+		QueueNameKey: {
 			Value: "abc",
 		},
 	}

@@ -11,4 +11,5 @@ const (
 	KubernetesNamespaceKey  = "kubernetesnamespace"
 	KubernetesNameKey       = "kubernetesname"
 	ResourceName            = "resourcename"
+	ApplicationName         = "applicationName"
 )

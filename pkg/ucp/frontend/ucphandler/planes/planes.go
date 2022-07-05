@@ -216,13 +216,13 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	// Not using map lookups to enable case insensitive comparisons
 	// We need to preserve the case while storing data in DB and therefore iterating for case
 	// insensitive comparisons
+
 	var proxyURL string
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
-		for k, v := range plane.Properties.ResourceProviders {
-			if strings.EqualFold(k, resourceID.ProviderNamespace()) {
-				proxyURL = v
-				break
-			}
+		proxyURL = plane.LookupResourceProvider(resourceID.ProviderNamespace())
+		if proxyURL == "" {
+			err = fmt.Errorf("Provider %s not configured", resourceID.ProviderNamespace())
+			return rest.InternalServerError(err), err
 		}
 	} else {
 		// For a non UCP-native plane, the configuration should have a URL to which
@@ -268,6 +268,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	r.URL = url
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
+
 	sender.ServeHTTP(w, r.WithContext(ctx))
 
 	return nil, nil
