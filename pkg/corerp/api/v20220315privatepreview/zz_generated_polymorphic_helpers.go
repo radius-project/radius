@@ -10,6 +10,62 @@ package v20220315privatepreview
 
 import "encoding/json"
 
+func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (EnvironmentComputeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b EnvironmentComputeClassification
+	switch m["kind"] {
+	case "kubernetes":
+		b = &KubernetesComputeProperties{}
+	default:
+		b = &EnvironmentCompute{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalEnvironmentComputeClassificationArray(rawMsg json.RawMessage) ([]EnvironmentComputeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]EnvironmentComputeClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalEnvironmentComputeClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalEnvironmentComputeClassificationMap(rawMsg json.RawMessage) (map[string]EnvironmentComputeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]EnvironmentComputeClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalEnvironmentComputeClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
 func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

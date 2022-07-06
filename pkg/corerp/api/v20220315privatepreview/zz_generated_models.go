@@ -406,25 +406,98 @@ func (d *DaprSidecarExtension) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// EnvironmentComputeClassification provides polymorphic access to related types.
+// Call the interface's GetEnvironmentCompute() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *EnvironmentCompute, *KubernetesComputeProperties
+type EnvironmentComputeClassification interface {
+	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
+	GetEnvironmentCompute() *EnvironmentCompute
+}
+
 // EnvironmentCompute - Compute resource used by application environment resource.
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
-	Kind *EnvironmentComputeKind `json:"kind,omitempty"`
+	Kind *string `json:"kind,omitempty"`
 
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
 
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
+func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type EnvironmentCompute.
+func (e *EnvironmentCompute) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	return e.unmarshalInternal(rawMsg)
+}
+
+func (e EnvironmentCompute) marshalInternal(objectMap map[string]interface{}, discValue string) {
+	e.Kind = &discValue
+	objectMap["kind"] = e.Kind
+	populate(objectMap, "resourceId", e.ResourceID)
+}
+
+func (e *EnvironmentCompute) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, &e.Kind)
+				delete(rawMsg, key)
+		case "resourceId":
+				err = unpopulate(val, &e.ResourceID)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // EnvironmentProperties - Application environment properties
 type EnvironmentProperties struct {
 	// REQUIRED; The compute resource used by application environment.
-	Compute *EnvironmentCompute `json:"compute,omitempty"`
-
-	// REQUIRED; The namespace to use for the environment.
-	Namespace *string `json:"namespace,omitempty"`
+	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type EnvironmentProperties.
+func (e EnvironmentProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "compute", e.Compute)
+	populate(objectMap, "provisioningState", e.ProvisioningState)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type EnvironmentProperties.
+func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "compute":
+				e.Compute, err = unmarshalEnvironmentComputeClassification(val)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, &e.ProvisioningState)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // EnvironmentResource - Application environment.
@@ -1081,6 +1154,44 @@ func (i IamProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "kind", i.Kind)
 	populate(objectMap, "roles", i.Roles)
 	return json.Marshal(objectMap)
+}
+
+// KubernetesComputeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
+type KubernetesComputeProperties struct {
+	EnvironmentCompute
+	// REQUIRED; The namespace to use for the environment.
+	Namespace *string `json:"namespace,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaller interface for type KubernetesComputeProperties.
+func (k KubernetesComputeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	k.EnvironmentCompute.marshalInternal(objectMap, "kubernetes")
+	populate(objectMap, "namespace", k.Namespace)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type KubernetesComputeProperties.
+func (k *KubernetesComputeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return err
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "namespace":
+				err = unpopulate(val, &k.Namespace)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := k.EnvironmentCompute.unmarshalInternal(rawMsg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ManualScalingExtension - ManualScaling Extension

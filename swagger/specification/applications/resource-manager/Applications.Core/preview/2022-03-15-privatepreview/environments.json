@@ -294,17 +294,11 @@
       "EnvironmentCompute": {
         "description": "Compute resource used by application environment resource.",
         "type": "object",
+        "discriminator": "kind",
         "properties": {
           "kind": {
             "type": "string",
-            "description": "Type of compute resource.",
-            "enum": [
-              "kubernetes"
-            ],
-            "x-ms-enum": {
-              "name": "EnvironmentComputeKind",
-              "modelAsString": true
-            }
+            "description": "Type of compute resource."
           },
           "resourceId": {
             "type": "string",
@@ -314,6 +308,27 @@
         "required": [
           "kind"
         ]
+      },
+      "KubernetesComputeProperties": {
+        "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
+        "allOf": [
+          {
+            "$ref": "#/definitions/EnvironmentCompute"
+          }
+        ],
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "The namespace to use for the environment."
+          }
+        },
+        "required": [
+          "kind",
+          "namespace"
+        ],
+        "x-ms-discriminator-value":"kubernetes"
       },
       "EnvironmentResource": {
         "description": "Application environment.",
@@ -340,8 +355,7 @@
         "description": "Application environment properties",
         "type": "object",
         "required": [
-          "compute",
-          "namespace"
+          "compute"
         ],
         "properties": {
           "provisioningState": {
@@ -352,10 +366,6 @@
           "compute": {
             "$ref": "#/definitions/EnvironmentCompute",
             "description": "The compute resource used by application environment."
-          },
-          "namespace": {
-            "type": "string",
-            "description": "The namespace to use for the environment."
           }
         }
       }

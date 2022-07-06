@@ -212,13 +212,18 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
-* **namespace**: string (Required): The namespace to use for the environment.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 
 ## EnvironmentCompute
-### Properties
-* **kind**: 'kubernetes' (Required): Type of compute resource.
+* **Discriminator**: kind
+
+### Base Properties
 * **resourceId**: string: The resource id of the compute resource for application environment.
+### KubernetesComputeProperties
+#### Properties
+* **kind**: 'kubernetes' (Required): Type of compute resource.
+* **namespace**: string (Required): The namespace to use for the environment.
+
 
 ## TrackedResourceTags
 ### Properties
