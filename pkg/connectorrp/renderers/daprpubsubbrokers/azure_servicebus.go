@@ -51,6 +51,7 @@ func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.Rendere
 		Resource: map[string]string{
 			handlers.ResourceName:            resource.Name,
 			handlers.KubernetesNamespaceKey:  resource.Properties.Application,
+			handlers.ApplicationName:         resource.Properties.Application,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
 

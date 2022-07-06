@@ -88,13 +88,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		// 	},
 		// 	ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
 		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.DaprComponent,
-		// 		Provider: providers.ProviderKubernetes,
-		// 	},
-		// 	ResourceHandler: handlers.NewKubernetesHandler(k8s),
-		// },
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprComponent,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+		},
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
@@ -135,20 +135,20 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		// 	ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
 		// },
 		// {
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
-		// },
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.AzureRedis,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewAzureRedisHandler(arm),
-		// },
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRedis,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureRedisHandler(arm),
+		},
 	}
 
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)

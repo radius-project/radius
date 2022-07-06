@@ -14,16 +14,60 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
+
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDDaprComponent,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.DaprComponent,
+					Provider: providers.ProviderKubernetes,
+				},
+				Identity: resourcemodel.ResourceIdentity{},
+			},
+		},
+		SecretValues: map[string]rp.SecretValueReference{},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"secretStoreName": {
+				Value: "test-state-store",
+			},
+		},
+	}
+
+	deploymentOutput := deployment.DeploymentOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDDaprComponent,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.DaprComponent,
+					Provider: providers.ProviderKubernetes,
+				},
+			},
+		},
+	}
+
+	return rendererOutput, deploymentOutput
+}
 
 func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 	ctx := context.Background()
 
 	createNewResourceTestCases := []struct {
@@ -54,7 +98,8 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return nil, &store.ErrNotFound{}
 				})
-
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -70,7 +115,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprSecretStore(mStorageClient, nil, nil)
+			ctl, err := NewCreateOrUpdateDaprSecretStore(mStorageClient, nil, mDeploymentProcessor)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -120,6 +165,9 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			if !testcase.shouldFail {
 				mStorageClient.
 					EXPECT().
@@ -131,7 +179,7 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprSecretStore(mStorageClient, nil, nil)
+			ctl, err := NewCreateOrUpdateDaprSecretStore(mStorageClient, nil, mDeploymentProcessor)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)
