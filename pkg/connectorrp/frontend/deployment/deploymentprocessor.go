@@ -113,21 +113,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	updatedOutputResources := []outputresource.OutputResource{}
 	var computedValues map[string]interface{}
 	for _, outputResource := range orderedOutputResources {
-		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
+		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
 
-		if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
-			outputResource.Identity = resourceIdentity
-		}
-
-		if outputResource.Identity.ResourceType == nil {
-			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler or renderer", outputResource.LocalID)
-			return DeploymentOutput{}, err
-		}
 		updatedOutputResources = append(updatedOutputResources, outputResource)
-
 		computedValues = deployedComputedValues
 	}
 
@@ -145,23 +136,30 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]interface{}, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
 	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+		return nil, err
 	}
 
 	resourceIdentity, properties, err := outputResourceModel.ResourceHandler.Put(ctx, outputResource)
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+		return nil, err
+	}
+	if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
+		outputResource.Identity = resourceIdentity
+	}
+
+	if outputResource.Identity.ResourceType == nil {
+		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler or renderer", outputResource.LocalID)
+		return nil, err
 	}
 
 	// Values consumed by other Radius resource types through connections
 	computedValues = map[string]interface{}{}
-
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
 		// A computed value might be a reference to a 'property' returned in preserved properties
@@ -175,19 +173,19 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
 				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return resourcemodel.ResourceIdentity{}, nil, err
+				return nil, err
 			}
 
 			value, _, err := pointer.Get(outputResource.Resource)
 			if err != nil {
 				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return resourcemodel.ResourceIdentity{}, nil, err
+				return nil, err
 			}
 			computedValues[k] = value
 		}
 	}
 
-	return resourceIdentity, computedValues, nil
+	return computedValues, nil
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.ID, outputResources []outputresource.OutputResource) error {
