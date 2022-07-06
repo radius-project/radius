@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -37,6 +38,8 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, req *http.
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.RabbitMQMessageQueue{}
+	// Request route for listsecrets has name of the operation as suffix which should be removed to get the resource id.
+	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Connector/mongoDatabases/<resource_name>/listsecrets
 	parsedResourceID := sCtx.ResourceID.Truncate()
 	_, err := ctrl.GetResource(ctx, parsedResourceID.String(), resource)
 	if err != nil {
@@ -46,12 +49,15 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, req *http.
 		return nil, err
 	}
 
-	// TODO integrate with deploymentprocessor
-	// output, err := ctrl.JobEngine.FetchSecrets(ctx, sCtx.ResourceID, resource)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	secrets, err := ctrl.DeploymentProcessor.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	if err != nil {
+		return nil, err
+	}
 
-	versioned, _ := converter.RabbitMQSecretsDataModelToVersioned(&datamodel.RabbitMQSecrets{}, sCtx.APIVersion)
+	redisSecrets := datamodel.RabbitMQSecrets{
+		ConnectionString: secrets[renderers.ConnectionStringValue].(string),
+	}
+
+	versioned, _ := converter.RabbitMQSecretsDataModelToVersioned(&redisSecrets, sCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }
