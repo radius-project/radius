@@ -7,7 +7,6 @@ package model
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
@@ -37,33 +36,33 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 
 	radiusResourceModel := []RadiusResourceModel{
 		{
-			ResourceType: strings.ToLower(mongodatabases.ResourceType),
+			ResourceType: mongodatabases.ResourceType,
 			Renderer:     &mongodatabases.Renderer{},
 		},
 		{
-			ResourceType: strings.ToLower(sqldatabases.ResourceType),
+			ResourceType: sqldatabases.ResourceType,
 			Renderer:     &sqldatabases.Renderer{},
 		},
 		{
-			ResourceType: strings.ToLower(rediscaches.ResourceType),
+			ResourceType: rediscaches.ResourceType,
 			Renderer:     &rediscaches.Renderer{},
 		},
 		{
-			ResourceType: strings.ToLower(rabbitmqmessagequeues.ResourceType),
+			ResourceType: rabbitmqmessagequeues.ResourceType,
 			Renderer:     &rabbitmqmessagequeues.Renderer{},
 		},
 		{
-			ResourceType: strings.ToLower(daprinvokehttproutes.ResourceType),
+			ResourceType: daprinvokehttproutes.ResourceType,
 			Renderer:     &daprinvokehttproutes.Renderer{},
 		},
 		{
-			ResourceType: strings.ToLower(daprpubsubbrokers.ResourceType),
+			ResourceType: daprpubsubbrokers.ResourceType,
 			Renderer: &daprpubsubbrokers.Renderer{
 				PubSubs: daprpubsubbrokers.SupportedPubSubKindValues,
 			},
 		},
 		{
-			ResourceType: strings.ToLower(daprsecretstores.ResourceType),
+			ResourceType: daprsecretstores.ResourceType,
 			Renderer: &daprsecretstores.Renderer{
 				SecretStores: daprsecretstores.SupportedSecretStoreKindValues,
 			},
