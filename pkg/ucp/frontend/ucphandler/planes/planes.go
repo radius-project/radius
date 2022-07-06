@@ -108,7 +108,6 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
 	var query store.Query
 	query.RootScope = path
-	query.ScopeRecursive = true
 	query.IsScopeQuery = true
 	listOfPlanes, err := planesdb.GetScope(ctx, db, query)
 	if err != nil {

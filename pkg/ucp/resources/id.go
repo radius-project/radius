@@ -258,12 +258,36 @@ func (ri ID) Append(resourceType TypeSegment) ID {
 	}
 }
 
-// Truncate removes the last type/name pair of the ResourceID. Calling truncate on a top level resource has no effect.
+// Truncate removes the last type/name pair for a resource id or scope id. Calling truncate on a top level resource or scope has no effect.
 func (ri ID) Truncate() ID {
-	if len(ri.typeSegments) < 2 {
-		return ri
+	if len(ri.typeSegments) == 0 && len(ri.scopeSegments) == 0 {
+		return ri // Top level scope already
 	}
 
+	if len(ri.typeSegments) > 0 && len(ri.typeSegments) < 2 {
+		return ri // Top level resource already
+	}
+
+	if len(ri.typeSegments) == 0 {
+		// Truncate the root scope
+		if ri.IsUCPQualfied() {
+			result, err := Parse(MakeUCPID(ri.scopeSegments[0:len(ri.scopeSegments)-1], []TypeSegment{}...))
+			if err != nil {
+				panic(err) // Should not be possible.
+			}
+
+			return result
+		} else {
+			result, err := Parse(MakeRelativeID(ri.scopeSegments[0:len(ri.scopeSegments)-1], []TypeSegment{}...))
+			if err != nil {
+				panic(err) // Should not be possible.
+			}
+
+			return result
+		}
+	}
+
+	// Truncate the resource type
 	if ri.IsUCPQualfied() {
 		result, err := Parse(MakeUCPID(ri.scopeSegments, ri.typeSegments[0:len(ri.typeSegments)-1]...))
 		if err != nil {
@@ -287,19 +311,23 @@ func Parse(id string) (ID, error) {
 	if strings.HasPrefix(id, SegmentSeparator+PlanesSegment) {
 		isUCPQualified = true
 		id = strings.TrimPrefix(id, SegmentSeparator+PlanesSegment)
+
+		// Handles /planes and /planes/
+		if id == "" || id == "/" {
+			normalized := MakeUCPID([]ScopeSegment{}, []TypeSegment{}...)
+			return ID{
+				id:            normalized,
+				scopeSegments: []ScopeSegment{},
+				typeSegments:  []TypeSegment{},
+			}, nil
+		}
 	}
 
-	scopes := []ScopeSegment{}
-	if id == "" && isUCPQualified {
-		normalized := ""
-		if isUCPQualified {
-			normalized = MakeUCPID(scopes, []TypeSegment{}...)
-		} else {
-			normalized = MakeRelativeID(scopes, []TypeSegment{}...)
-		}
+	if id == "/" {
+		normalized := MakeRelativeID([]ScopeSegment{}, []TypeSegment{}...)
 		return ID{
 			id:            normalized,
-			scopeSegments: scopes,
+			scopeSegments: []ScopeSegment{},
 			typeSegments:  []TypeSegment{},
 		}, nil
 	}
@@ -332,6 +360,7 @@ func Parse(id string) (ID, error) {
 	}
 
 	// Parse scopes - iterate until we get to "providers"
+	scopes := []ScopeSegment{}
 
 	i := 0
 	for i < len(segments) {

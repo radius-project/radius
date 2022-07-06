@@ -62,7 +62,20 @@ func Test_ParseValidIDs(t *testing.T) {
 			types:    []TypeSegment{},
 			provider: "",
 		},
-
+		{
+			id:       "/planes/",
+			expected: "/planes",
+			scopes:   []ScopeSegment{},
+			types:    []TypeSegment{},
+			provider: "",
+		},
+		{
+			id:       "/",
+			expected: "/",
+			scopes:   []ScopeSegment{},
+			types:    []TypeSegment{},
+			provider: "",
+		},
 		{
 			id:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/",
 			expected: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders",
@@ -392,6 +405,22 @@ func Test_Truncate_Success(t *testing.T) {
 	require.Equal(t, "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius", truncated.id)
 }
 
+func Test_Truncate_Success_Scope(t *testing.T) {
+	id, err := Parse("/subscriptions/s1/resourceGroups/r1/")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/subscriptions/s1", truncated.id)
+}
+
+func Test_Truncate_Success_Scope_UCP(t *testing.T) {
+	id, err := Parse("/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1", truncated.id)
+}
+
 func Test_Truncate_Success_UCP(t *testing.T) {
 	id, err := Parse("/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)
@@ -414,6 +443,14 @@ func Test_Truncate_ReturnsSelfForTopLevelResource_UCP(t *testing.T) {
 
 	truncated := id.Truncate()
 	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius", truncated.id)
+}
+
+func Test_Truncate_ReturnsSelfForTopLevelScope_UCP(t *testing.T) {
+	id, err := Parse("/planes/")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/planes", truncated.id)
 }
 
 func Test_IdParsing_WithNoTypeSegments(t *testing.T) {

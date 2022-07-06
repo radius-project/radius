@@ -15,16 +15,19 @@
 //
 // Keys are structured like the following example:
 //
-// 		scope|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
+// 		scope|/planes/radius/local/|/resourceGroups/cool-group/
 // 		resource|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 //
-// scope or resource prefix helps with querying for scope or resources selectively.
-// For example, a scope Query for planes would match all key prefixes such as scope://planes thus returning a
-// list of planes and other "scopes" where as a resource query on planes would match all the resources under all the planes,
-// which will be identifiable by key prefix resource|/planes
-// Without the help of this prefix, when we query for a prefix /planes, we are potentially requesting for
-// everything in the database
-// The routing-scope is separated from the resource-path by the '|' separator.
+// As a special case for scopes (like resource groups) we treat the last segment as the routing scope.
+//
+// The prefix (scope or resource) limits each query to either for scope or resources respectively. In our
+// use cases for the store we never need to query scopes and resources at the same time. Separating these actions
+// limits the number of results - we want to avoid cases where the query has to return a huge set of results.
+//
+// For example, the following query will be commonly executed and we don't want it to list all resources in the
+// database:
+//
+//		scope|/planes/
 //
 // This scheme allows a variety of flexibility for querying/filtering with different scopes. We prefer
 // query approaches that that involved client-side filtering to avoid the need for N+1 query strategies.
@@ -39,6 +42,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/store/storeutil"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
@@ -264,105 +268,52 @@ func idFromKey(key []byte) (resources.ID, error) {
 		return resources.ID{}, errors.New("the etcd key '%q' is invalid because it does not have 3 sections")
 	}
 
-	if parts[2] == "" {
-		// Scope reference
-		parsed, err := resources.Parse(parts[1])
-		if err != nil {
-			return resources.ID{}, err
-		}
+	switch parts[0] {
+	case storeutil.ScopePrefix:
+		// The key might look like:
+		//		scope|/planes/radius/local/|/resourceGroups/cool-group/
+		return resources.Parse(parts[1] + strings.TrimPrefix(parts[2], resources.SegmentSeparator))
 
-		return parsed, nil
+	case storeutil.ResourcePrefix:
+		// The key might look like:
+		//		resource|/subscriptions/{guid}/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
+		return resources.Parse(parts[1] + resources.ProvidersSegment + parts[2])
+
+	default:
+		return resources.ID{}, errors.New("the etcd key '%q' is invalid because it has the wrong prefix")
 	}
-
-	// The key might look like:
-	// 	scope|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
-	// OR
-	// 	/subscriptions/{guid}/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
-	//
-	// We put it back together by adding "providers" and then it's a valid resource ID.
-	parsed, err := resources.Parse(parts[1] + resources.ProvidersSegment + parts[2])
-	if err != nil {
-		return resources.ID{}, err
-	}
-
-	return parsed, nil
 }
 
 // keyFromID returns the key to use for an ID. They key should be used as an exact match.
 func keyFromID(id resources.ID) string {
-	var scopeOrResource = store.UCPResourcePrefix
-	if id.IsScope() {
-		scopeOrResource = store.UCPScopePrefix
-	}
-
-	return scopeOrResource + SectionSeparator + normalize(id.RootScope()) +
-		SectionSeparator + normalize(id.RoutingScope())
+	prefix, rootScope, routingScope, _ := storeutil.ExtractStorageParts(id)
+	return prefix + SectionSeparator + rootScope + SectionSeparator + routingScope
 }
 
-// keyFromQuery returns the key to use for an ID. The key should be used as a prefix.
+// keyFromQuery returns the key to use for an for executing a query. The key should be used as a prefix.
 func keyFromQuery(query store.Query) string {
-	if query.ScopeRecursive {
-		// A recursive query will not be able to consider anything in the routing scope, so it
-		// always requires client-side filtering.
-		key := normalize(query.RootScope)
-		if query.IsScopeQuery {
-			key = store.UCPScopePrefix + SectionSeparator + key
-		} else {
-			key = store.UCPResourcePrefix + SectionSeparator + key
-		}
-		return key
+	// These patterns require a prefix match for us in ETCd.
+	//
+	// A recursive query will not be able to consider anything in the routing scope, so it
+	// always requires client-side filtering.
+	prefix := storeutil.ResourcePrefix
+	if query.IsScopeQuery {
+		prefix = storeutil.ScopePrefix
 	}
 
-	key := normalize(query.RootScope) + SectionSeparator + normalize(query.RoutingScopePrefix)
-	if query.IsScopeQuery {
-		key = store.UCPScopePrefix + SectionSeparator + key
+	if query.ScopeRecursive {
+		return prefix + SectionSeparator + storeutil.NormalizePart(query.RootScope)
 	} else {
-		key = store.UCPResourcePrefix + SectionSeparator + key
+		return prefix + SectionSeparator + storeutil.NormalizePart(query.RootScope) + SectionSeparator + storeutil.NormalizePart(query.RoutingScopePrefix)
 	}
-	return key
 }
 
 func keyMatchesQuery(key []byte, query store.Query) bool {
-	// The only case we have to filter explicitly here is when a Resource Type filter is applied
-	// or for a scope recursive query. The rest of these cases have their logic just handled by the key
-	// mechanism.
-	if !query.ScopeRecursive && query.ResourceType == "" {
-		return true
-	}
-
-	// OK we have to filter.
-
 	// Ignore invalid keys, we don't expect to find them.
 	id, err := idFromKey(key)
 	if err != nil {
 		return false
 	}
 
-	if query.RoutingScopePrefix != "" && !strings.HasPrefix(normalize(id.RoutingScope()), normalize(query.RoutingScopePrefix)) {
-		return false // Not a match for the routing scope.
-	}
-
-	if query.ResourceType != "" && query.IsScopeQuery {
-		scopes := id.ScopeSegments()
-		resourceType := scopes[len(scopes)-1].Type
-		return strings.EqualFold(resourceType, query.ResourceType)
-	} else if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
-		return false // Not a match for the resource type
-	}
-
-	return true
-}
-
-func normalize(part string) string {
-	if len(part) == 0 {
-		return ""
-	}
-	if !strings.HasPrefix(part, resources.SegmentSeparator) {
-		part = resources.SegmentSeparator + part
-	}
-	if !strings.HasSuffix(part, resources.SegmentSeparator) {
-		part = part + resources.SegmentSeparator
-	}
-
-	return strings.ToLower(part)
+	return storeutil.IDMatchesQuery(id, query)
 }
