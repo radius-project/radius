@@ -31,6 +31,7 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 				Kind:       toEnvironmentComputeKindDataModel(src.Properties.Compute.Kind),
 				ResourceID: to.String(src.Properties.Compute.ResourceID),
 			},
+			Namespace: to.String(src.Properties.Namespace),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			CreatedAPIVersion: Version,
@@ -60,6 +61,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 			Kind:       fromEnvironmentComputeKind(env.Properties.Compute.Kind),
 			ResourceID: to.StringPtr(env.Properties.Compute.ResourceID),
 		},
+		Namespace: to.StringPtr(env.Properties.Namespace),
 	}
 
 	return nil

@@ -5,6 +5,7 @@
             "kind": "kubernetes",
             "resourceId": "fakeid"
         },
+        "namespace": "default",
         "provisioningState": "Succeeded"
     }
 }
