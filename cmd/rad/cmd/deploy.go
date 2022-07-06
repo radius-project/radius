@@ -110,11 +110,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// err = injectEnvironmentParam(parameters, cmd.Context(), env)
+	err = injectEnvironmentParam(parameters, cmd.Context(), env)
 
-	// if err != nil {
-	// 	return err
-	// }
+	if err != nil {
+		return err
+	}
 
 	ok, err := bicep.IsBicepInstalled()
 	if err != nil {
