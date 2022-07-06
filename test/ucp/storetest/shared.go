@@ -24,6 +24,7 @@ const (
 
 	ResourcePath1       = "System.Resources/resourceType1/resource1"
 	ResourcePath2       = "System.Resources/resourceType2/resource2"
+	ResourcePath3       = "System.Resources/resourceType2/Resource3"
 	NestedResourcePath1 = "System.Resources/resourceType1/resource1/nestedType/nested1"
 
 	RadiusScope         = "/planes/radius/local/"
@@ -38,6 +39,7 @@ var ResourceGroup1ID = parseOrPanic(ResourceGroup1Scope)
 var ResourceGroup2ID = parseOrPanic(ResourceGroup2Scope)
 var Resource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + ResourcePath1)
 var Resource2ID = parseOrPanic(ResourceGroup2Scope + "/providers/" + ResourcePath2)
+var Resource3ID = parseOrPanic(ResourceGroup2Scope + "/providers/" + ResourcePath3)
 var NestedResource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + NestedResourcePath1)
 var ARMResourceID = parseOrPanic(ARMResourceScope + "/providers/" + ResourcePath1)
 var RadiusPlaneID = parseOrPanic(RadiusScope)

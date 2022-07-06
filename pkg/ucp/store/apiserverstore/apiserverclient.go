@@ -383,7 +383,7 @@ func resourceName(id resources.ID) string {
 	}
 
 	// example: resource.resource1.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%s.%x", prefix, id.Name(), hash)
+	return fmt.Sprintf("%s.%s.%x", prefix, strings.ToLower(id.Name()), hash)
 }
 
 func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {

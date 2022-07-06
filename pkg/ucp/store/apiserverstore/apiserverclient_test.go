@@ -85,6 +85,35 @@ func Test_APIServer_Client(t *testing.T) {
 		require.Equal(t, expected, resource.Labels)
 	})
 
+	t.Run("save_resource_and_validate_kubernetes_object_uppercase_name", func(t *testing.T) {
+		clear(t)
+
+		obj1 := store.Object{
+			Metadata: store.Metadata{
+				ID: shared.Resource3ID.String(),
+			},
+			Data: shared.Data1,
+		}
+		err := client.Save(ctx, &obj1)
+		require.NoError(t, err)
+
+		// Now let's look at the kubernetes object.
+		resourceName := resourceName(shared.Resource3ID)
+
+		resource := ucpv1alpha1.Resource{}
+		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
+		require.NoError(t, err)
+
+		expected := map[string]string{
+			"ucp.dev/kind":                 "resource",
+			"ucp.dev/resource-type":        "system.resources_resourcetype2",
+			"ucp.dev/scope-radius":         "local",
+			"ucp.dev/scope-resourcegroups": "group2",
+		}
+
+		require.Equal(t, expected, resource.Labels)
+	})
+
 	t.Run("save_scope_and_validate_kubernetes_object", func(t *testing.T) {
 		clear(t)
 
