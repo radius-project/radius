@@ -1,0 +1,162 @@
+import "@cadl-lang/rest";
+import "@azure-tools/cadl-providerhub";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Azure.ResourceManager;
+
+@armNamespace
+@serviceTitle("Applications.Core Management APIs")
+@doc("REST API for Applications.Core Container Resource")
+namespace Containers;
+
+@doc("Specifies a listening port for the container")
+model ContainerPort {
+  @doc("The listening port number")
+  containerPort: int16;
+
+  @doc("Protocol in use by the port")
+  protocol?: Protocol;
+
+  @doc("Specifies a route provided by this port")
+  provides?: string;
+}
+
+@doc("Properties for readiness/liveness probe")
+model HealthProbeProperties {
+  /*
+          "description": "Properties for readiness/liveness probe",
+        "type": "object",
+        "discriminator": "kind",
+        "properties": {
+          "kind": {
+            "description": "The HealthProbeProperties kind",
+            "type": "string"
+          },
+          "initialDelaySeconds": {
+            "description": "Initial delay in seconds before probing for readiness/liveness",
+            "type": "number"
+          },
+          "failureThreshold": {
+            "description": "Threshold number of times the probe fails after which a failure would be reported",
+            "type": "number"
+          },
+          "periodSeconds": {
+            "description": "Interval for the readiness/liveness probe in seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind"
+        ]*/
+  @doc("The HealthProbeProperties kind")
+  kind: string;
+
+  @doc("Initial delay in seconds before probing for readiness/liveness")
+  initialDelaySeconds?: float32;
+
+  @doc("Threshold number of times the probe fails after which a failure would be reported")
+  failureThreshold?: float32;
+
+  @doc("Interval for the readiness/liveness probe in seconds")
+  periodSeconds?: float32;
+}
+
+@doc("Definition of a container")
+model Container {
+  /*
+  "Container": {
+        "description": "Definition of a container.",
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "properties": {
+          "image": {
+            "description": "The registry and image to download and run in your container",
+            "type": "string"
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "ports": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/definitions/ContainerPort"
+            }
+          },
+          "readinessProbe": {
+            "$ref": "#/definitions/HealthProbeProperties"
+          },
+          "livenessProbe": {
+            "$ref": "#/definitions/HealthProbeProperties"
+          },
+          "volumes": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/definitions/Volume"
+            }
+          }
+        }
+      },
+  */
+  @doc("The registry and image to download and run in your container")
+  image: string;
+  env: Map<string, string>;
+  ports: Map<string, ContainerPort>;
+  readinessProbe: HealthProbeProperties;
+  livenessProbe: HealthProbeProperties;
+  volumes: Map<string, Volume>;
+}
+
+@doc("Container properties")
+model ContainerProperties {
+  @visibility("read")
+  @doc("The status of the last operation.")
+  provisioningState?: ProvisioningState;
+  application: string;
+  // connections: {
+  //   additionalProperties: ConnectionProperties;
+  // };
+
+  container: Container;
+  // extensions: Extension[];
+}
+
+model ContainerResource is TrackedResource<ContainerProperties> {
+  @doc("Container name")
+  @maxLength(128)
+  @pattern("^[a-z0-9]+(-[a-z0-9]+)*")
+  @key("ContainerName")
+  @path
+  @segment("{ContainerName}")
+  name: string;
+}
+
+@armResourceOperations
+interface Containers
+  extends ResourceOperations<ContainerResource, ContainerProperties> {}
+
+@knownValues(ProvisioningStateKV)
+model ProvisioningState is string {}
+enum ProvisioningStateKV {
+  Succeeded,
+  Failed,
+  Canceled,
+  Provisioning,
+  Updating,
+  Deleting,
+  Accepted,
+}
+
+@knownValues(ProtocolKV)
+model Protocol is string {}
+enum ProtocolKV {
+  TCP,
+  UDP,
+}
