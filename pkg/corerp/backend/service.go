@@ -57,5 +57,15 @@ func (w *Service) Run(ctx context.Context) error {
 		panic(err)
 	}
 
+	err = w.Controllers.Register(
+		ctx,
+		containers_ctrl.HttpRouteResourceTypeName,
+		v1.OperationPut,
+		w.Options,
+		containers_ctrl.NewUpdateHttpRoute)
+	if err != nil {
+		panic(err)
+	}
+
 	return w.Start(ctx, worker.Options{})
 }

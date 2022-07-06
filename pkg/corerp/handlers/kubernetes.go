@@ -36,6 +36,8 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 	t, _ := item.MarshalJSON()
 	fmt.Println(string(t))
 
+	fmt.Println("Calling put")
+
 	err = handler.PatchNamespace(ctx, item.GetNamespace())
 	if err != nil {
 		return err

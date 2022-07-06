@@ -69,7 +69,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	if err != nil {
 		fmt.Println("failed marshal")
 		return nil, nil, err
-	}
+}
 	fmt.Println(string(bytes))
 
 	err = json.Unmarshal(bytes, &resource)

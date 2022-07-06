@@ -7,6 +7,7 @@ package httproute
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -32,10 +33,20 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModelI
 
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 
-	route, ok := dm.(datamodel.HTTPRoute)
-	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+	var route datamodel.HTTPRoute
+	bytes, err := json.Marshal(dm)
+	if err != nil {
+		fmt.Println("failed marshal")
+		return renderers.RendererOutput{}, err
 	}
+	fmt.Println(string(bytes))
+
+	err = json.Unmarshal(bytes, &route)
+	if err != nil {
+		fmt.Println("failed unmarshal")
+		return renderers.RendererOutput{}, err
+	}
+
 	outputResources := []outputresource.OutputResource{}
 	appId, err := resources.Parse(route.Properties.Application)
 	if err != nil {
@@ -92,7 +103,7 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, route.Name),
-			Namespace: options.Environment.Namespace,
+			Namespace: "default",
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
 		},
 		Spec: corev1.ServiceSpec{

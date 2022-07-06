@@ -6,3 +6,4 @@
 package containers
 
 const ResourceTypeName = "Applications.Core/containers"
+const HttpRouteResourceTypeName = "Applications.Core/httpRoutes"

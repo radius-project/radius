@@ -20,25 +20,26 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-purecontainer'
-  location: location
-  properties: {
-    application: app.id
-    container: {
-      image: image
-      ports: {
-        web: {
-          containerPort: port
-        }
-      }
-    }
-    connections: {}
-  }
-}
+// resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
+//   name: 'corerp-resources-purecontainer'
+//   location: location
+//   properties: {
+//     application: app.id
+//     container: {
+//       image: image
+//       ports: {
+//         web: {
+//           containerPort: port
+//           provides: httproute.id
+//         }
+//       }
+//     }
+//     connections: {}
+//   }
+// }
 
 resource httproute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-purehttproute'
+  name: 'corerp-resources-purehttproute2'
   location: location
 
   properties: {
