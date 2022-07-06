@@ -1,0 +1,40 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0",
+    "name": "container0",
+    "type": "Applications.Core/containers",
+    "properties": {
+      "status": {
+        "outputResources": [
+          {
+            "LocalID": "Deployment",
+            "ResourceType": {
+              "Type": "containers",
+              "Provider": "aks"
+            }
+          }
+        ]
+      },
+      "provisioningState": "Succeeded",
+      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+      "connections": {
+        "inventory": {
+          "source": "inventory_route_id",
+          "iam": {
+            "kind": "azure",
+            "roles": [
+              "read"
+            ]
+          }
+        }
+      },
+      "container": {
+        "image": "radius.azurecr.io/webapptutorial-todoapp",
+        "ports": {
+            "web": {
+              "containerPort": 8080
+            }
+        }
+      }
+
+    }
+}
