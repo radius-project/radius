@@ -340,7 +340,8 @@
         "description": "Application environment properties",
         "type": "object",
         "required": [
-          "compute"
+          "compute",
+          "namespace"
         ],
         "properties": {
           "provisioningState": {
@@ -351,6 +352,10 @@
           "compute": {
             "$ref": "#/definitions/EnvironmentCompute",
             "description": "The compute resource used by application environment."
+          },
+          "namespace": {
+            "type": "string",
+            "description": "The namespace to use for the environment."
           }
         }
       }
