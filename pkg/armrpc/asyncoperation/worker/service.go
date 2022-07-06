@@ -69,7 +69,9 @@ func (s *Service) Init(ctx context.Context) error {
 	}
 	s.KubeClient = k8s
 
-	s.SecretClient = renderers.NewSecretValueClient(*s.Options.Arm)
+	if s.Options.Arm != nil {
+		s.SecretClient = renderers.NewSecretValueClient(*s.Options.Arm)
+	}
 
 	return nil
 }
