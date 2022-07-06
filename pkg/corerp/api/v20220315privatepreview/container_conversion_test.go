@@ -76,7 +76,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, 2, len(versioned.Properties.Extensions))
 }
 
-func TestContainerConvertVersionedToDataModelEmtptyProtocol(t *testing.T) {
+func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
 	// arrange
 	rawPayload := loadTestData("containerresourceemptyprotocol.json")
 	r := &ContainerResource{}
