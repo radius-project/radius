@@ -36,3 +36,13 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
     connections: {}
   }
 }
+
+resource httproute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
+  name: 'corerp-resources-purehttproute'
+  location: location
+
+  properties: {
+    application: app.id
+    port: 80
+  }
+}
