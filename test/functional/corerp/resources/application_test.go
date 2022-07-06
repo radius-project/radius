@@ -20,12 +20,15 @@ func Test_Application(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-application-app",
-					Type: validation.ApplicationsResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-application-app",
+						Type: validation.ApplicationsResource,
+					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 

@@ -20,10 +20,12 @@ func Test_Environment(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-environment-env",
-					Type: validation.EnvironmentsResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-env",
+						Type: validation.EnvironmentsResource,
+					},
 				},
 			},
 		},

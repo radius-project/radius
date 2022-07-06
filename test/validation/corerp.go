@@ -11,24 +11,44 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/test/radcli"
 )
 
 const (
 	EnvironmentsResource   = "applications.core/environments"
 	ApplicationsResource   = "applications.core/applications"
 	HttpRoutesResource     = "applications.core/httpRoutes"
+	GatewaysResource       = "applications.core/gateways"
 	MongoDatabasesResource = "applications.core/mongoDatabases"
 	RedisCachesResource    = "applications.core/redisCaches"
 	ContainersResource     = "applications.core/containers"
 )
 
-type Resource struct {
+type CoreRPResource struct {
 	Type string
 	Name string
 }
 
-func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected []Resource, client clients.ApplicationsManagementClient) {
-	for _, resource := range expected {
+type CoreRPResourceSet struct {
+	Resources []CoreRPResource
+}
+
+func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, resource CoreRPResource) error {
+	if resource.Type == EnvironmentsResource {
+		t.Logf("deleting environment: %s", resource.Name)
+		return cli.EnvDelete(ctx, resource.Name)
+	} else if resource.Type == ApplicationsResource {
+		t.Logf("deleting application: %s", resource.Name)
+		return cli.ApplicationDelete(ctx, resource.Name)
+	}
+
+	t.Logf("resource %s is not an application or an environment. skipping...", resource.Name)
+	return nil
+}
+
+func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
+	for _, resource := range expected.Resources {
 		if resource.Type == EnvironmentsResource {
 			envs, err := client.ListEnv(ctx)
 			require.NoError(t, err)

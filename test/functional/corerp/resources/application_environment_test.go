@@ -14,7 +14,7 @@ import (
 )
 
 func Test_ApplicationAndEnvironment(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+	t.Skip()
 
 	template := "testdata/corerp-resources-app-env.bicep"
 	name := "corerp-resources-app-env"
@@ -22,16 +22,19 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-app-env-env",
-					Type: validation.EnvironmentsResource,
-				},
-				{
-					Name: "corerp-resources-app-env-app",
-					Type: validation.ApplicationsResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-app-env-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: "corerp-resources-app-env-app",
+						Type: validation.ApplicationsResource,
+					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 

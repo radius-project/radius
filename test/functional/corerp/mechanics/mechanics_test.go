@@ -20,14 +20,16 @@ func Test_NestedModules(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-mechanics-nestedmodules-outerapp-app",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "corerp-mechanics-nestedmodules-innerapp-app",
-					Type: validation.ApplicationsResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-mechanics-nestedmodules-outerapp-app",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "corerp-mechanics-nestedmodules-innerapp-app",
+						Type: validation.ApplicationsResource,
+					},
 				},
 			},
 		},

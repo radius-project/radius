@@ -14,7 +14,7 @@ import (
 )
 
 func Test_Redis(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+	t.Skip()
 
 	template := "testdata/corerp-resources-redis-user-secrets.bicep"
 	name := "corerp-resources-redis-user-secrets"
@@ -22,28 +22,31 @@ func Test_Redis(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-redis-user-secrets",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "todoapp",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "redis",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "redis-route",
-					Type: validation.HttpRoutesResource,
-				},
-				{
-					Name: "redis",
-					Type: validation.RedisCachesResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-redis-user-secrets",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "todoapp",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "redis",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "redis-route",
+						Type: validation.HttpRoutesResource,
+					},
+					{
+						Name: "redis",
+						Type: validation.RedisCachesResource,
+					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 
