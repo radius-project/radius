@@ -52,7 +52,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 	return renderers.RendererOutput{
 		ComputedValues: values,
 		SecretValues: map[string]rp.SecretValueReference{
-			"connectionString": {
+			renderers.ConnectionStringValue: {
 				Value: properties.Secrets.ConnectionString,
 			},
 		},
