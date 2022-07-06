@@ -31,6 +31,7 @@ func (m ApplicationModel) GetOutputResources() []OutputResourceModel {
 	return m.outputResources
 }
 
+// LookupRadiusResourceModel is a case insensitive lookup for resourceType
 func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*RadiusResourceModel, error) {
 	resource, ok := m.radiusResourceLookup[strings.ToLower(resourceType)]
 	if !ok {

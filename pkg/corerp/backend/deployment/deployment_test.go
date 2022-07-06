@@ -112,6 +112,13 @@ func getLowerCaseTestResource() datamodel.ContainerResource {
 	return *testResource
 }
 
+func getUpperCaseTestResource() datamodel.ContainerResource {
+	rawDataModel := radiustesting.ReadFixture("containerresourcedatamodeluppercase.json")
+	testResource := &datamodel.ContainerResource{}
+	_ = json.Unmarshal(rawDataModel, testResource)
+	return *testResource
+}
+
 func getTestRendererOutput() renderers.RendererOutput {
 	testOutputResources := []outputresource.OutputResource{
 		{
@@ -189,6 +196,36 @@ func Test_Render(t *testing.T) {
 
 	t.Run("verify render success lowercase resourcetype", func(t *testing.T) {
 		testResource := getLowerCaseTestResource()
+		testRendererOutput := getTestRendererOutput()
+		resourceID := getTestResourceID(testResource.ID)
+
+		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
+		requiredResources := []resources.ID{depId1}
+
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		httprouteA := datamodel.HTTPRoute{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			},
+			Properties: &datamodel.HTTPRouteProperties{},
+		}
+		nr := store.Object{
+			Metadata: store.Metadata{
+				ID: httprouteA.ID,
+			},
+			Data: httprouteA,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
+
+		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
+	})
+
+	t.Run("verify render success uppercase resourcetype", func(t *testing.T) {
+		testResource := getUpperCaseTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
