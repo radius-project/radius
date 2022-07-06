@@ -78,7 +78,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 
 func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("containerresourceemptyprotocol.json")
+	rawPayload := loadTestData("containerresourcenegativetest.json")
 	r := &ContainerResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
