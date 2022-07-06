@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -29,8 +28,8 @@ type ListSecretsRedisCache struct {
 }
 
 // NewListSecretsRedisCache creates a new instance of ListSecretsRedisCache.
-func NewListSecretsRedisCache(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &ListSecretsRedisCache{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewListSecretsRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
+	return &ListSecretsRedisCache{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run returns secrets values for the specified RedisCache resource
@@ -49,7 +48,7 @@ func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, req *http.Request) (
 		return nil, err
 	}
 
-	secrets, err := ctrl.DeploymentProcessor.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	secrets, err := ctrl.DeploymentProcessor().FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
 	if err != nil {
 		return nil, err
 	}

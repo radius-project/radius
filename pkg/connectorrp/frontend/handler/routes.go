@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/validator"
@@ -25,13 +26,14 @@ import (
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/rediscaches"
 	sql_ctrl "github.com/project-radius/radius/pkg/connectorrp/frontend/controller/sqldatabases"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 )
 
 const (
 	ProviderNamespaceName = "Applications.Connector"
 )
 
-func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, router *mux.Router, pathBase string, isARM bool) error {
+func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 	if isARM {
 		pathBase += "/subscriptions/{subscriptionID}"
 	} else {
@@ -40,7 +42,7 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	resourceGroupPath := "/resourcegroups/{resourceGroupName}"
 
 	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, sp, sm, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations)
+	err := server.ConfigureDefaultHandlers(ctx, sp, sm, router, pathBase, isARM, ProviderNamespaceName, NewGetOperations, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -377,7 +379,16 @@ func AddRoutes(ctx context.Context, sp dataprovider.DataStorageProvider, sm mana
 	}
 
 	for _, h := range handlerOptions {
-		if err := server.RegisterHandler(ctx, sp, sm, h); err != nil {
+		storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, h.ResourceType)
+		if err != nil {
+			return err
+		}
+		getDeploymentProcessorFunc := func() deployment.DeploymentProcessor {
+			return deployment.NewDeploymentProcessor(ctrlOpts.AppModel, storageClient, ctrlOpts.SecretClient, ctrlOpts.KubeClient)
+		}
+		ctrlOpts.GetDeploymentProcessor = getDeploymentProcessorFunc
+
+		if err := server.RegisterHandler(ctx, sp, sm, h, ctrlOpts); err != nil {
 			return err
 		}
 	}

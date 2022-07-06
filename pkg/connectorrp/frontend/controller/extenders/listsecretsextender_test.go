@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -54,7 +55,15 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewListSecretsExtender(mds, msm, mDeploymentProcessor)
+		opts := ctrl.Options{
+			StorageClient:  mds,
+			AsyncOperation: msm,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsExtender(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -79,8 +88,18 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     extenderDataModel,
 				}, nil
 			})
+
 		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
-		ctl, err := NewListSecretsExtender(mds, msm, mDeploymentProcessor)
+
+		opts := ctrl.Options{
+			StorageClient:  mds,
+			AsyncOperation: msm,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsExtender(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -110,7 +129,15 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		ctl, err := NewListSecretsExtender(mds, msm, mDeploymentProcessor)
+		opts := ctrl.Options{
+			StorageClient:  mds,
+			AsyncOperation: msm,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsExtender(opts)
 
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, req)

@@ -12,10 +12,8 @@ import (
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -34,8 +32,8 @@ type DeleteHTTPRoute struct {
 }
 
 // NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
-func NewDeleteHTTPRoute(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &DeleteHTTPRoute{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewDeleteHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
+	return &DeleteHTTPRoute{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run executes DeleteHTTPRoute operation
@@ -61,7 +59,7 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteHTTPRouteOperationTimeout)
+	err = e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteHTTPRouteOperationTimeout)
 	if err != nil {
 		existingResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
 		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), existingResource, etag)

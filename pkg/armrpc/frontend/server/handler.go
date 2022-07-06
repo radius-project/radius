@@ -16,20 +16,17 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 const (
 	APIVersionParam = "api-version"
 )
 
-type ControllerFunc func(store.StorageClient, manager.StatusManager, deployment.DeploymentProcessor) (ctrl.Controller, error)
+type ControllerFunc func(ctrl.Options) (ctrl.Controller, error)
 
 type HandlerOptions struct {
 	ParentRouter   *mux.Router
@@ -38,15 +35,22 @@ type HandlerOptions struct {
 	HandlerFactory ControllerFunc
 }
 
-func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, opts HandlerOptions) error {
-	sc, err := sp.GetStorageClient(ctx, opts.ResourceType)
+func RegisterHandler(ctx context.Context, sp dataprovider.DataStorageProvider, sm manager.StatusManager, opts HandlerOptions, ctrlOpts ctrl.Options) error {
+	// sc, err := sp.GetStorageClient(ctx, opts.ResourceType)
+	// if err != nil {
+	// 	return err
+	// }
+
+	storageClient, err := ctrlOpts.DataProvider.GetStorageClient(ctx, opts.ResourceType)
 	if err != nil {
 		return err
 	}
+	ctrlOpts.StorageClient = storageClient
+	ctrlOpts.ResourceType = opts.ResourceType
 
 	// TODO replace this with real values once app model and arm options are passed here
-	dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, nil, nil, nil)
-	ctrl, err := opts.HandlerFactory(sc, sm, dp)
+	// dp := deployment.NewDeploymentProcessor(model.ApplicationModel{}, nil, nil, nil)
+	ctrl, err := opts.HandlerFactory(ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -79,7 +83,8 @@ func ConfigureDefaultHandlers(
 	pathBase string,
 	isAzureProvider bool,
 	providerNamespace string,
-	operationCtrlFactory ControllerFunc) error {
+	operationCtrlFactory ControllerFunc,
+	ctrlOpts ctrl.Options) error {
 	providerNamespace = strings.ToLower(providerNamespace)
 	rt := providerNamespace + "/provider"
 
@@ -90,7 +95,7 @@ func ConfigureDefaultHandlers(
 			ResourceType:   rt,
 			Method:         v1.OperationGet,
 			HandlerFactory: operationCtrlFactory,
-		})
+		}, ctrlOpts)
 		if err != nil {
 			return err
 		}
@@ -100,7 +105,7 @@ func ConfigureDefaultHandlers(
 			ResourceType:   rt,
 			Method:         v1.OperationPut,
 			HandlerFactory: default_ctrl.NewCreateOrUpdateSubscription,
-		})
+		}, ctrlOpts)
 		if err != nil {
 			return err
 		}
@@ -113,7 +118,7 @@ func ConfigureDefaultHandlers(
 		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationStatuses,
 		HandlerFactory: default_ctrl.NewGetOperationStatus,
-	})
+	}, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -124,7 +129,7 @@ func ConfigureDefaultHandlers(
 		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationResult,
 		HandlerFactory: default_ctrl.NewGetOperationResult,
-	})
+	}, ctrlOpts)
 	if err != nil {
 		return err
 	}

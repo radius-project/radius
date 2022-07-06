@@ -14,9 +14,41 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// Options represents controller options.
+type Options struct {
+	// StorageClient is the data storage client.
+	StorageClient store.StorageClient
+
+	// DataProvider is the data storage provider.
+	DataProvider dataprovider.DataStorageProvider
+
+	// SecretClient is the client to fetch secrets.
+	SecretClient renderers.SecretValueClient
+
+	// KubeClient is the Kubernetes controller runtime client.
+	KubeClient runtimeclient.Client
+
+	// ResourceType is the string that represents the resource type.
+	ResourceType string
+
+	// GetDeploymentProcessor is the factory function to create DeploymentProcessor instance.
+	GetDeploymentProcessor func() deployment.DeploymentProcessor
+
+	// AsyncOperation
+	AsyncOperation sm.StatusManager
+
+	// Application Model
+	AppModel model.ApplicationModel
+}
 
 // Controller is an interface of each operation controller.
 type Controller interface {
@@ -26,25 +58,56 @@ type Controller interface {
 
 // BaseController is the base operation controller.
 type BaseController struct {
-	DataStore           store.StorageClient
-	AsyncOperation      sm.StatusManager
-	DeploymentProcessor deployment.DeploymentProcessor
+	options Options
 }
 
 // NewBaseController creates BaseController instance.
-func NewBaseController(ds store.StorageClient, sm sm.StatusManager, dp deployment.DeploymentProcessor) BaseController {
+func NewBaseController(options Options) BaseController {
 	return BaseController{
-		DataStore:           ds,
-		AsyncOperation:      sm,
-		DeploymentProcessor: dp,
+		options,
 	}
+}
+
+// StorageClient gets storage client for this controller.
+func (b *BaseController) StorageClient() store.StorageClient {
+	return b.options.StorageClient
+}
+
+// DataProvider gets data storage provider for this controller.
+func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
+	return b.options.DataProvider
+}
+
+// SecretClient gets secret client for this controller.
+func (b *BaseController) SecretClient() renderers.SecretValueClient {
+	return b.options.SecretClient
+}
+
+// KubeClient gets Kubernetes client for this controller.
+func (b *BaseController) KubeClient() runtimeclient.Client {
+	return b.options.KubeClient
+}
+
+// ResourceType gets the resource type for this controller.
+func (b *BaseController) ResourceType() string {
+	return b.options.ResourceType
+}
+
+// DeploymentProcessor gets the deployment processor for this controller.
+func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
+	return b.options.GetDeploymentProcessor()
+}
+
+// DeploymentProcessor gets the deployment processor for this controller.
+func (b *BaseController) StatusManager() sm.StatusManager {
+	return b.options.AsyncOperation
 }
 
 // GetResource is the helper to get the resource via storage client.
 func (c *BaseController) GetResource(ctx context.Context, id string, out interface{}) (etag string, err error) {
 	etag = ""
 	var res *store.Object
-	if res, err = c.DataStore.Get(ctx, id); err == nil {
+	if res, err = c.StorageClient().Get(ctx, id); err == nil {
 		if err = res.As(out); err == nil {
 			etag = res.ETag
 			return
@@ -61,7 +124,7 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in interfa
 		},
 		Data: in,
 	}
-	err := c.DataStore.Save(ctx, nr, store.WithETag(etag))
+	err := c.StorageClient().Save(ctx, nr, store.WithETag(etag))
 	if err != nil {
 		return nil, err
 	}
