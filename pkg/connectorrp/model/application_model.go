@@ -81,13 +81,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 	}
 
 	outputResourceModel := []OutputResourceModel{
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.DaprStateStoreAzureStorage,
-		// 		Provider: providers.ProviderKubernetes,
-		// 	},
-		// 	ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-		// },
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureStorage,
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
+		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprComponent,
@@ -127,14 +127,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),
 		},
-		// {
-		// 	ResourceType: resourcemodel.ResourceType{
-		// 		Type:     resourcekinds.DaprStateStoreAzureStorage,
-		// 		Provider: providers.ProviderAzure,
-		// 	},
-		// 	ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-		// },
-		// {
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureStorage,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
+		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,

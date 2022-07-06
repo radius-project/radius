@@ -66,6 +66,7 @@ func Test_Render_Success(t *testing.T) {
 	expected := map[string]string{
 		handlers.KubernetesNameKey:       "test-resource",
 		handlers.KubernetesNamespaceKey:  "test-app",
+		handlers.ApplicationName:         "test-app",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
 		handlers.ResourceIDKey:           "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
