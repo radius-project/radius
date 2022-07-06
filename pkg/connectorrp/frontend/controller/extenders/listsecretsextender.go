@@ -36,6 +36,8 @@ func (ctrl *ListSecretsExtender) Run(ctx context.Context, req *http.Request) (re
 	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.Extender{}
+	// Request route for listsecrets has name of the operation as suffix which should be removed to get the resource id.
+	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Connector/extenders/<resource_name>/listsecrets
 	parsedResourceID := sCtx.ResourceID.Truncate()
 	_, err := ctrl.GetResource(ctx, parsedResourceID.String(), resource)
 	if err != nil {
@@ -45,11 +47,10 @@ func (ctrl *ListSecretsExtender) Run(ctx context.Context, req *http.Request) (re
 		return nil, err
 	}
 
-	// TODO integrate with deploymentprocessor
-	// output, err := ctrl.JobEngine.FetchSecrets(ctx, sCtx.ResourceID, resource)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	secrets, err := ctrl.DeploymentProcessor.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	if err != nil {
+		return nil, err
+	}
 
-	return rest.NewOKResponse(resource.Properties.Secrets), nil
+	return rest.NewOKResponse(secrets), nil
 }
