@@ -38,6 +38,14 @@ func Test_Container(t *testing.T) {
 					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "corerp-resources-container-container"),
+						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-container-httproute"),
+					},
+				},
+			},
 			SkipObjectValidation: true,
 		},
 	})

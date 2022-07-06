@@ -31,6 +31,5 @@ func Test_Application(t *testing.T) {
 			SkipObjectValidation: true,
 		},
 	})
-
 	test.Test(t)
 }

@@ -38,6 +38,13 @@ func Test_MongoDB(t *testing.T) {
 					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "webapp"),
+					},
+				},
+			},
 			SkipObjectValidation: true,
 		},
 	})
@@ -78,6 +85,15 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "webapp"),
+						validation.NewK8sPodForResource(name, "mongo"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

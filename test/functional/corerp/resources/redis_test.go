@@ -46,6 +46,15 @@ func Test_Redis(t *testing.T) {
 					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "webapp"),
+						validation.NewK8sPodForResource(name, "redis"),
+						validation.NewK8sHTTPProxyForResource(name, "redis-route"),
+					},
+				},
+			},
 			SkipObjectValidation: true,
 		},
 	})

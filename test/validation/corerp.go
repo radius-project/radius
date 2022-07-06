@@ -34,10 +34,15 @@ type CoreRPResourceSet struct {
 	Resources []CoreRPResource
 }
 
-func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, resource CoreRPResource) error {
+func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource CoreRPResource) error {
 	if resource.Type == EnvironmentsResource {
 		t.Logf("deleting environment: %s", resource.Name)
-		return cli.EnvDelete(ctx, resource.Name)
+		return client.DeleteEnv(ctx, resource.Name)
+
+		// TODO: this should probably call the CLI, but if you create an
+		// environment via bicep deployment, it will not be reflected in the
+		// rad config.
+		// return cli.EnvDelete(ctx, resource.Name)
 	} else if resource.Type == ApplicationsResource {
 		t.Logf("deleting application: %s", resource.Name)
 		return cli.ApplicationDelete(ctx, resource.Name)

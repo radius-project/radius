@@ -32,6 +32,7 @@ func Test_NestedModules(t *testing.T) {
 					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 

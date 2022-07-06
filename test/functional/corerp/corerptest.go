@@ -195,7 +195,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			if step.SkipObjectValidation {
 				t.Logf("skipping validation of objects...")
 			} else if step.K8sObjects == nil && len(step.K8sOutputResources) == 0 {
-				require.Fail(t, "no objects specified and SkipObjectValidation == false, either specify a resource set or set SkipObjectValidation = true ")
+				require.Fail(t, "no objects specified and SkipObjectValidation == false, either specify an object set or set SkipObjectValidation = true ")
 			} else {
 				if step.K8sObjects != nil {
 					t.Logf("validating creation of objects for %s", step.Executor.GetDescription())
@@ -219,7 +219,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	for _, step := range ct.Steps {
 		for _, resource := range step.CoreRPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
-			err := validation.DeleteCoreRPResource(ctx, t, cli, resource)
+			err := validation.DeleteCoreRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
 			require.NoErrorf(t, err, "failed to delete %s", resource.Name)
 			t.Logf("finished deleting %s", ct.Description)
 

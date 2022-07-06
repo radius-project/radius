@@ -53,13 +53,13 @@ func Test_Gateway(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "frontend"),
-						validation.NewK8sPodForResource(name, "backend"),
-						validation.NewK8sHTTPProxyForResource(name, "gateway"),
-						validation.NewK8sHTTPProxyForResource(name, "frontendroute"),
-						validation.NewK8sServiceForResource(name, "frontendroute"),
-						validation.NewK8sHTTPProxyForResource(name, "backendroute"),
-						validation.NewK8sServiceForResource(name, "backendroute"),
+						validation.NewK8sPodForResource(name, "corerp-resources-gateway-frontend"),
+						validation.NewK8sPodForResource(name, "corerp-resources-gateway-backend"),
+						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-gateway-gateway"),
+						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-gateway-frontendroute"),
+						validation.NewK8sServiceForResource(name, "corerp-resources-gateway-frontendroute"),
+						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-gateway-backendroute"),
+						validation.NewK8sServiceForResource(name, "corerp-resources-gateway-backendroute"),
 					},
 				},
 			},

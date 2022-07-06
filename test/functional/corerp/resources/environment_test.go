@@ -28,6 +28,7 @@ func Test_Environment(t *testing.T) {
 					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 
