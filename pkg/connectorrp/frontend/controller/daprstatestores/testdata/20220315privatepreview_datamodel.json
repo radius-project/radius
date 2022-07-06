@@ -18,6 +18,16 @@
         "kind": "state.azure.tablestorage",
         "daprStateStoreAzureTableStorage": {
           "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
+        },
+        "status": {
+            "outputResources": [{
+                "LocalID": "DaprComponent",
+                "Dependencies": null,
+                "ResourceType": {
+                  "type": "dapr.io.component",
+                  "provider": "kubernetes"
+                }
+            }]
         }
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",

@@ -39,6 +39,7 @@ func GetDaprStateStoreAzureStorage(resource renderers.RendererResource) ([]outpu
 		Resource: map[string]string{
 			handlers.KubernetesNameKey:       resource.ResourceName,
 			handlers.KubernetesNamespaceKey:  resource.ApplicationName,
+			handlers.ApplicationName:         resource.ApplicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
 
