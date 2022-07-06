@@ -28,6 +28,7 @@ const (
 )
 
 type RadiusOptions struct {
+	Reinstall              bool
 	ChartPath              string
 	ChartVersion           string
 	Image                  string
@@ -40,13 +41,14 @@ type RadiusOptions struct {
 	AzureProvider          *azure.Provider
 }
 
-func ApplyRadiusHelmChart(options RadiusOptions) error {
+func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
 	namespace := RadiusSystemNamespace
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &namespace,
+		Context:   &kubeContext,
 	}
 
 	helmConf, err := HelmConfig(&helmOutput, &flags)
@@ -91,14 +93,21 @@ func ApplyRadiusHelmChart(options RadiusOptions) error {
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("Installing new Radius Kubernetes environment to namespace: %s", RadiusSystemNamespace)
+		output.LogInfo("Installing Radius to namespace: %s", RadiusSystemNamespace)
 
 		err = runRadiusHelmInstall(helmConf, helmChart)
 		if err != nil {
 			return fmt.Errorf("failed to run radius helm install, err: \n%w\nhelm output:\n%s", err, helmOutput.String())
 		}
+	} else if options.Reinstall {
+		output.LogInfo("Reinstalling Radius to namespace: %s", RadiusSystemNamespace)
+
+		err = runRadiusHelmUpgrade(helmConf, radiusReleaseName, helmChart)
+		if err != nil {
+			return fmt.Errorf("failed to run radius helm upgrade, err: \n%w\nhelm output:\n%s", err, helmOutput.String())
+		}
 	} else if err == nil {
-		output.LogInfo("Found existing Radius Kubernetes environment")
+		output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
 	}
 
 	return err
@@ -108,9 +117,18 @@ func runRadiusHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) 
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = radiusReleaseName
 	installClient.Namespace = RadiusSystemNamespace
+	installClient.CreateNamespace = true
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
 	return runInstall(installClient, helmChart)
+}
+
+func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helmChart *chart.Chart) error {
+	installClient := helm.NewUpgrade(helmConf)
+	installClient.Namespace = RadiusSystemNamespace
+	installClient.Wait = true
+	installClient.Timeout = installTimeout
+	return runUpgrade(installClient, releaseName, helmChart)
 }
 
 func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {

@@ -14,7 +14,6 @@ import (
 
 func Test_CanSetCLIOptions(t *testing.T) {
 	cliOptions := CLIClusterOptions{
-		Namespace: "namespace",
 		Radius: RadiusOptions{
 			ChartPath: "chartpath",
 			Image:     "image",
@@ -23,7 +22,6 @@ func Test_CanSetCLIOptions(t *testing.T) {
 	}
 	clusterOptions := PopulateDefaultClusterOptions(cliOptions)
 
-	require.Equal(t, "namespace", clusterOptions.Namespace)
 	require.Equal(t, "chartpath", clusterOptions.Radius.ChartPath)
 	require.Equal(t, "image", clusterOptions.Radius.Image)
 	require.Equal(t, "tag", clusterOptions.Radius.Tag)

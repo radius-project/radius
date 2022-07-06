@@ -29,7 +29,7 @@ type ContourOptions struct {
 	HostNetwork  bool
 }
 
-func ApplyContourHelmChart(options ContourOptions) error {
+func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -121,6 +121,7 @@ func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = contourReleaseName
 	installClient.Namespace = RadiusSystemNamespace
+	installClient.CreateNamespace = true
 
 	return runInstall(installClient, helmChart)
 }

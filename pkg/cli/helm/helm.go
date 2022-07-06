@@ -112,3 +112,15 @@ func runInstall(installClient *helm.Install, helmChart *chart.Chart) error {
 	}
 	return err
 }
+
+func runUpgrade(upgradeClient *helm.Upgrade, releaseName string, helmChart *chart.Chart) error {
+	var err error
+	for i := 0; i < retries; i++ {
+		_, err = upgradeClient.Run(releaseName, helmChart, helmChart.Values)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(retryTimeout)
+	}
+	return err
+}
