@@ -8,6 +8,7 @@ package environments
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -53,6 +54,26 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
+	query := store.Query{
+		RootScope:    serviceCtx.ResourceID.RootScope(),
+		ResourceType: serviceCtx.ResourceID.Type(),
+		// Filters: []store.QueryFilter{
+		// 	{
+		// 		Field: "namespace",
+		// 		Value: newResource.Properties.Namespace,
+		// 	},
+		// },
+	}
+
+	result, err := e.DataStore.Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(result.Items) > 0 {
+		return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace already exists", serviceCtx.ResourceID)), nil
+	}
+
 	UpdateExistingResourceData(ctx, existingResource, newResource)
 
 	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
@@ -61,19 +82,6 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	}
 
 	versioned, err := converter.EnvironmentDataModelToVersioned(newResource, serviceCtx.APIVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	query := store.Query{
-		RootScope:    serviceCtx.ResourceID.RootScope(),
-		ResourceType: serviceCtx.ResourceID.Type(),
-		Filters: []store.QueryFilter{
-			{}
-		},
-	}
-
-	result, err := e.DataStore.Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
 	if err != nil {
 		return nil, err
 	}
