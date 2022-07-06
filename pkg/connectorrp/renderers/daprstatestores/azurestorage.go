@@ -28,7 +28,7 @@ func GetDaprStateStoreAzureStorage(dm conv.DataModelInterface) (outputResources 
 	var azuretableStorageID resources.ID
 	if resource.Properties.Kind == datamodel.DaprStateStoreKindAzureTableStorage {
 		properties := resource.Properties.DaprStateStoreAzureTableStorage
-		if &properties.Resource == nil || properties.Resource == "" {
+		if properties.Resource == "" {
 			return nil, renderers.ErrResourceMissingForResource
 		}
 		//Validate fully qualified resource identifier of the source resource is supplied for this connector
@@ -40,7 +40,7 @@ func GetDaprStateStoreAzureStorage(dm conv.DataModelInterface) (outputResources 
 	}
 	if resource.Properties.Kind == datamodel.DaprStateStoreKindStateSqlServer {
 		properties := resource.Properties.DaprStateStoreSQLServer
-		if &properties.Resource == nil || properties.Resource == "" {
+		if properties.Resource == "" {
 			return nil, renderers.ErrResourceMissingForResource
 		}
 		//Validate fully qualified resource identifier of the source resource is supplied for this connector
