@@ -65,6 +65,19 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
+	query := store.Query{
+		RootScope:    serviceCtx.ResourceID.RootScope(),
+		ResourceType: serviceCtx.ResourceID.Type(),
+		Filters: []store.QueryFilter{
+			{}
+		},
+	}
+
+	result, err := e.DataStore.Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
+	if err != nil {
+		return nil, err
+	}
+
 	headers := map[string]string{"ETag": nr.ETag}
 
 	return rest.NewOKResponseWithHeaders(versioned, headers), nil
