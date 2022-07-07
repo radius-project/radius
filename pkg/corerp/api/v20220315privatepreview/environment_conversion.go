@@ -38,9 +38,9 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 	}
 
-	envCompute := toEnvironmentComputeDataModel(src.Properties.Compute)
-	if envCompute == nil {
-		return nil, conv.ErrInvalidModelConversion
+	envCompute, err := toEnvironmentComputeDataModel(src.Properties.Compute)
+	if err != nil {
+		return nil, err
 	}
 
 	converted.Properties.Compute = *envCompute
@@ -74,18 +74,27 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	return nil
 }
 
-func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) *datamodel.EnvironmentCompute {
+func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamodel.EnvironmentCompute, error) {
 	switch v := h.(type) {
 	case *KubernetesComputeProperties:
+		k, err := toEnvironmentComputeKindDataModel(*v.Kind)
+		if err != nil {
+			return nil, err
+		}
+
+		if v.Namespace == nil || len(*v.Namespace) == 0 || len(*v.Namespace) >= 64 {
+			return nil, &conv.ErrInvalidProperty{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
+		}
+
 		return &datamodel.EnvironmentCompute{
-			Kind: toEnvironmentComputeKindDataModel(*v.Kind),
+			Kind: k,
 			KubernetesCompute: datamodel.KubernetesComputeProperties{
 				ResourceID: *v.ResourceID,
 				Namespace:  *v.Namespace,
 			},
-		}
+		}, nil
 	default:
-		return nil
+		return nil, conv.ErrInvalidModelConversion
 	}
 }
 
@@ -104,12 +113,12 @@ func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) E
 	}
 }
 
-func toEnvironmentComputeKindDataModel(kind string) datamodel.EnvironmentComputeKind {
+func toEnvironmentComputeKindDataModel(kind string) (datamodel.EnvironmentComputeKind, error) {
 	switch kind {
 	case EnvironmentComputeKindKubernetes:
-		return datamodel.KubernetesComputeKind
+		return datamodel.KubernetesComputeKind, nil
 	default:
-		return datamodel.UnknownComputeKind
+		return datamodel.UnknownComputeKind, &conv.ErrInvalidProperty{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
 	}
 }
 
