@@ -73,9 +73,17 @@ func deleteEnvResource(cmd *cobra.Command, args []string) error {
 		err = client.DeleteEnv(cmd.Context(), envName)
 		if err == nil {
 			output.LogInfo("Environment deleted")
+		} else {
+			return err
+		}
+
+		// Delete env from the config, update default env if needed
+		err = deleteEnvFromConfig(cmd.Context(), config, env.GetName())
+		if err == nil {
+			output.LogInfo("Environment removed from config.yaml")
+
 		}
 		return err
-
 	} else {
 		return deleteEnvLegacy(cmd, args)
 	}
