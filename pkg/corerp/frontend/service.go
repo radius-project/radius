@@ -52,7 +52,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, s.StorageProvider, s.OperationStatusManager, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
+			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
 			if err != nil {
 				return err
 			}

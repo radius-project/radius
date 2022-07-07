@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
 
@@ -49,7 +50,9 @@ func (s *Service) Run(ctx context.Context) error {
 		DataProvider: s.StorageProvider,
 		SecretClient: s.SecretClient,
 		KubeClient:   s.KubeClient,
-		AppModel:     connectorAppModel,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return deployment.NewDeploymentProcessor(connectorAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
+		},
 	}
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
@@ -60,7 +63,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, s.StorageProvider, s.OperationStatusManager, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
+			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
 			if err != nil {
 				return err
 			}

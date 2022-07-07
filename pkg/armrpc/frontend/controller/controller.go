@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -45,9 +44,6 @@ type Options struct {
 
 	// AsyncOperation
 	AsyncOperation sm.StatusManager
-
-	// Application Model
-	AppModel model.ApplicationModel
 }
 
 // Controller is an interface of each operation controller.
