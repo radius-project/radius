@@ -8,9 +8,8 @@ package cmd
 import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // appShowCmd command to show properties of a  application
@@ -36,6 +35,22 @@ func showApplication(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if env.GetEnableUCP() {
+		err := ShowApplicationUCP(cmd, args, env, applicationName, config)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := ShowApplicationLegacy(cmd, args, env, applicationName, config)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ShowApplicationLegacy(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
 
 	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
 	if err != nil {
@@ -47,15 +62,21 @@ func showApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	format, err := cli.RequireOutput(cmd)
+	return printOutput(cmd, applicationResource, true)
+
+}
+
+func ShowApplicationUCP(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
+	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
 	}
 
-	err = output.Write(format, applicationResource, cmd.OutOrStdout(), objectformats.GetApplicationTableFormat())
+	applicationResource, err := client.ShowApplication(cmd.Context(), applicationName)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return printOutput(cmd, applicationResource, false)
+
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -83,7 +84,12 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			ctl, err := NewDeleteHTTPRoute(mds, msm, nil)
+			opts := ctrl.Options{
+				StorageClient:  mds,
+				AsyncOperation: msm,
+			}
+
+			ctl, err := NewDeleteHTTPRoute(opts)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)

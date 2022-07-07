@@ -24,6 +24,7 @@ const (
 
 	ResourcePath1       = "System.Resources/resourceType1/resource1"
 	ResourcePath2       = "System.Resources/resourceType2/resource2"
+	ResourcePath3       = "System.Resources/resourceType2/Resource3"
 	NestedResourcePath1 = "System.Resources/resourceType1/resource1/nestedType/nested1"
 
 	RadiusScope         = "/planes/radius/local/"
@@ -38,8 +39,10 @@ var ResourceGroup1ID = parseOrPanic(ResourceGroup1Scope)
 var ResourceGroup2ID = parseOrPanic(ResourceGroup2Scope)
 var Resource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + ResourcePath1)
 var Resource2ID = parseOrPanic(ResourceGroup2Scope + "/providers/" + ResourcePath2)
+var Resource3ID = parseOrPanic(ResourceGroup2Scope + "/providers/" + ResourcePath3)
 var NestedResource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + NestedResourcePath1)
-var ARMResource = parseOrPanic(ARMResourceScope + "/providers/" + ResourcePath1)
+var ARMResourceID = parseOrPanic(ARMResourceScope + "/providers/" + ResourcePath1)
+var RadiusPlaneID = parseOrPanic(RadiusScope)
 
 var ResourceGroup1Data = map[string]interface{}{
 	"value": "1",
@@ -72,6 +75,13 @@ var NestedData1 = map[string]interface{}{
 	"value": "3",
 	"properties": map[string]interface{}{
 		"resource": "3",
+	},
+}
+
+var RadiusPlaneData = map[string]interface{}{
+	"value:": "1",
+	"properties": map[string]interface{}{
+		"plane": "1",
 	},
 }
 
@@ -161,12 +171,12 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		clear(t)
 		// Testing that we can work with both UCP and ARM IDs.
 
-		obj1 := createObject(ARMResource, Data1)
+		obj1 := createObject(ARMResourceID, Data1)
 		err := client.Save(ctx, &obj1)
 		require.NoError(t, err)
 		require.NotEmpty(t, obj1.ETag)
 
-		obj1Get, err := client.Get(ctx, ARMResource.String())
+		obj1Get, err := client.Get(ctx, ARMResourceID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
 		require.Equal(t, obj1Get.ETag, obj1.ETag)
@@ -366,6 +376,10 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		err = client.Save(ctx, &obj2)
 		require.NoError(t, err)
 
+		plane1 := createObject(RadiusPlaneID, RadiusPlaneData)
+		err = client.Save(ctx, &plane1)
+		require.NoError(t, err)
+
 		t.Run("query_resources_at_resource_group_scope", func(t *testing.T) {
 			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope})
 			require.NoError(t, err)
@@ -417,18 +431,14 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 		t.Run("query_scopes_at_resource_group_scope", func(t *testing.T) {
 			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, IsScopeQuery: true})
 			require.NoError(t, err)
-			expected := []store.Object{
-				group1,
-			}
+			expected := []store.Object{}
 			CompareObjectLists(t, expected, objs.Items)
 		})
 
 		t.Run("query_scopes_at_resource_group_scope_with_type_filter", func(t *testing.T) {
 			objs, err := client.Query(ctx, store.Query{RootScope: ResourceGroup1Scope, IsScopeQuery: true, ResourceType: "resourceGroups"})
 			require.NoError(t, err)
-			expected := []store.Object{
-				group1,
-			}
+			expected := []store.Object{}
 			CompareObjectLists(t, expected, objs.Items)
 		})
 
@@ -484,6 +494,51 @@ func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T))
 			expected := []store.Object{
 				nested1,
 			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_scopes_at_plane_scope", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: PlaneScope, IsScopeQuery: true})
+			require.NoError(t, err)
+			expected := []store.Object{
+				plane1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_scopes_at_plane_scope_with_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: PlaneScope, IsScopeQuery: true, ResourceType: "radius"})
+			require.NoError(t, err)
+			expected := []store.Object{
+				plane1,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_scopes_at_plane_scope_recursive", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, ScopeRecursive: true, IsScopeQuery: true})
+			require.NoError(t, err)
+			expected := []store.Object{
+				group1,
+				group2,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_scopes_at_with_type_filter", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, IsScopeQuery: true, ResourceType: "resourcegroups"})
+			require.NoError(t, err)
+			expected := []store.Object{
+				group1,
+				group2,
+			}
+			CompareObjectLists(t, expected, objs.Items)
+		})
+
+		t.Run("query_scopes_at_with_type_filter_non_matching", func(t *testing.T) {
+			objs, err := client.Query(ctx, store.Query{RootScope: RadiusScope, IsScopeQuery: true, ResourceType: "subscriptions"})
+			require.NoError(t, err)
+			expected := []store.Object{}
 			CompareObjectLists(t, expected, objs.Items)
 		})
 

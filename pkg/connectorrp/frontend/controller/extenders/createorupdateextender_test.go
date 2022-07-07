@@ -14,23 +14,50 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+	rendererOutput := renderers.RendererOutput{
+		SecretValues: map[string]rp.SecretValueReference{
+			"secretname": {
+				Value: "secretvalue",
+			},
+		},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"foo": {
+				Value: "bar",
+			},
+		},
+	}
+
+	deploymentOutput := deployment.DeploymentOutput{
+		Resources: []outputresource.OutputResource{},
+	}
+
+	return rendererOutput, deploymentOutput
+}
+
 func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager, *deployment.MockDeploymentProcessor, renderers.RendererOutput, deployment.DeploymentOutput) {
 		mctrl := gomock.NewController(t)
+		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+		rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 		mds := store.NewMockStorageClient(mctrl)
 		msm := statusmanager.NewMockStatusManager(mctrl)
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, mds, msm
+		}, mds, msm, mDeploymentProcessor, rendererOutput, deploymentOutput
 	}
-
 	createNewResourceTestCases := []struct {
 		desc               string
 		headerKey          string
@@ -47,7 +74,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			teardownTest, mds, msm := setupTest(t)
+			teardownTest, mds, msm, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
 			defer teardownTest(t)
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
@@ -61,7 +88,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return nil, &store.ErrNotFound{}
 				})
-
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -77,7 +105,15 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateExtender(mds, msm, nil)
+			opts := ctrl.Options{
+				StorageClient:  mds,
+				AsyncOperation: msm,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateExtender(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -111,7 +147,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			teardownTest, mds, msm := setupTest(t)
+			teardownTest, mds, msm, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
 			defer teardownTest(t)
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
@@ -129,6 +165,9 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			if !testcase.shouldFail {
 				mds.
 					EXPECT().
@@ -140,7 +179,15 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateExtender(mds, msm, nil)
+			opts := ctrl.Options{
+				StorageClient:  mds,
+				AsyncOperation: msm,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateExtender(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

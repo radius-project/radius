@@ -90,10 +90,6 @@ func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path st
 		return nil, err
 	}
 	query.RootScope = resources.SegmentSeparator + resources.PlanesSegment + resources.SegmentSeparator + planeType + resources.SegmentSeparator + planeName
-
-	// TODO: This is a temporary workaround till #2740 is fixed.
-	query.ScopeRecursive = true
-
 	query.IsScopeQuery = true
 	query.ResourceType = "resourcegroups"
 	listOfResourceGroups, err := resourcegroupsdb.GetScope(ctx, db, query)

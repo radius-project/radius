@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
@@ -115,7 +116,14 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprSecretStore(mStorageClient, nil, mDeploymentProcessor)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateDaprSecretStore(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -179,7 +187,14 @@ func TestCreateOrUpdateDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprSecretStore(mStorageClient, nil, mDeploymentProcessor)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateDaprSecretStore(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

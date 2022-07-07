@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -119,7 +120,12 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			ctl, err := NewCreateOrUpdateHTTPRoute(mds, msm, nil)
+			opts := ctrl.Options{
+				StorageClient:  mds,
+				AsyncOperation: msm,
+			}
+
+			ctl, err := NewCreateOrUpdateHTTPRoute(opts)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)
@@ -236,7 +242,12 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			ctl, err := NewCreateOrUpdateHTTPRoute(mds, msm, nil)
+			opts := ctrl.Options{
+				StorageClient:  mds,
+				AsyncOperation: msm,
+			}
+
+			ctl, err := NewCreateOrUpdateHTTPRoute(opts)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)

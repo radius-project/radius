@@ -15,29 +15,34 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 )
 
 func TestListSecrets_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
 		msm := statusmanager.NewMockStatusManager(mctrl)
+		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, mds, msm
+		}, mds, msm, mDeploymentProcessor
 	}
 	ctx := context.Background()
 
 	_, extenderDataModel, _ := getTestModels20220315privatepreview()
-
+	expectedSecrets := map[string]interface{}{
+		"accountSid": "sid",
+		"authToken:": "token",
+	}
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
-		teardownTest, mds, msm := setupTest(t)
+		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
@@ -50,7 +55,15 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewListSecretsExtender(mds, msm, nil)
+		opts := ctrl.Options{
+			StorageClient:  mds,
+			AsyncOperation: msm,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsExtender(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -60,7 +73,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
-		teardownTest, mds, msm := setupTest(t)
+		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
@@ -76,7 +89,17 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListSecretsExtender(mds, msm, nil)
+		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
+
+		opts := ctrl.Options{
+			StorageClient:  mds,
+			AsyncOperation: msm,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsExtender(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -84,16 +107,17 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.ExtenderResource{}
+		actualOutput := &map[string]interface{}{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		// TODO update to expect secrets values after controller is integrated with backend.
 		// require.Equal(t, expectedOutput.Properties.Secrets, actualOutput)
-		require.Equal(t, &v20220315privatepreview.ExtenderResource{}, actualOutput)
+		require.Equal(t, expectedSecrets["accountSid"], (*actualOutput)["accountSid"])
+		require.Equal(t, expectedSecrets["authToken"], (*actualOutput)["authToken"])
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
-		teardownTest, mds, msm := setupTest(t)
+		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
 		defer teardownTest(t)
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -105,7 +129,15 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		ctl, err := NewListSecretsExtender(mds, msm, nil)
+		opts := ctrl.Options{
+			StorageClient:  mds,
+			AsyncOperation: msm,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsExtender(opts)
 
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, req)

@@ -14,6 +14,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -25,6 +27,7 @@ func TestDeleteDaprStateStore_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	t.Parallel()
@@ -41,7 +44,14 @@ func TestDeleteDaprStateStore_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewDeleteDaprStateStore(mStorageClient, nil, nil)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewDeleteDaprStateStore(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -95,6 +105,7 @@ func TestDeleteDaprStateStore_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mStorageClient.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
@@ -103,7 +114,14 @@ func TestDeleteDaprStateStore_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewDeleteDaprStateStore(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewDeleteDaprStateStore(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
