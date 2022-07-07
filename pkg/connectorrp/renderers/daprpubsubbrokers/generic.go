@@ -6,7 +6,6 @@
 package daprpubsubbrokers
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/dapr"
@@ -16,11 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func GetDaprPubSubGeneric(dm conv.DataModelInterface) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.DaprPubSubBroker)
-	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
-	}
+func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName string) (renderers.RendererOutput, error) {
 	properties := resource.Properties.DaprPubSubGeneric
 
 	daprGeneric := dapr.DaprGeneric{
@@ -29,7 +24,7 @@ func GetDaprPubSubGeneric(dm conv.DataModelInterface) (renderers.RendererOutput,
 		Metadata: properties.Metadata,
 	}
 
-	outputResources, err := getDaprGeneric(daprGeneric, dm)
+	outputResources, err := getDaprGeneric(daprGeneric, resource, applicationName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -42,16 +37,13 @@ func GetDaprPubSubGeneric(dm conv.DataModelInterface) (renderers.RendererOutput,
 
 }
 
-func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm conv.DataModelInterface) ([]outputresource.OutputResource, error) {
+func getDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprPubSubBroker, applicationName string) ([]outputresource.OutputResource, error) {
 	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
 	}
-	resource, ok := dm.(datamodel.DaprPubSubBroker)
-	if !ok {
-		return nil, conv.ErrInvalidModelConversion
-	}
-	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, resource.Properties.Application, resource.Name)
+
+	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name)
 	if err != nil {
 		return nil, err
 	}

@@ -17,9 +17,10 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-type StateStoreFunc = func(conv.DataModelInterface) ([]outputresource.OutputResource, error)
+type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string) ([]outputresource.OutputResource, error)
 
 var SupportedStateStoreKindValues = map[string]StateStoreFunc{
 	resourcekinds.DaprStateStoreAzureTableStorage: GetDaprStateStoreAzureStorage,
@@ -49,7 +50,12 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rend
 		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.StateStores))
 	}
 
-	resoures, err := stateStoreFunc(resource)
+	applicationID, err := resources.Parse(resource.Properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
+	}
+
+	resoures, err := stateStoreFunc(resource, applicationID.Name())
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
