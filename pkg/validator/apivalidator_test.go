@@ -302,7 +302,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			req, _ := http.NewRequestWithContext(context.Background(), tc.method, tc.url, bytes.NewBuffer(body))
 			r.ServeHTTP(w, req)
 
-			require.Equal(t, tc.responseCode, w.Result().StatusCode, "%s", string(w.Body.Bytes()))
+			require.Equal(t, tc.responseCode, w.Result().StatusCode, "%s", w.Body.String())
 
 			if w.Result().StatusCode != http.StatusAccepted {
 				armErr := &armerrors.ErrorResponse{}
