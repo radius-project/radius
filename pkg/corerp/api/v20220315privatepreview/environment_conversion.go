@@ -13,6 +13,10 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
+const (
+	environmentComputeKindKubernetes = "kubernetes"
+)
+
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
@@ -27,17 +31,20 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.EnvironmentProperties{
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Compute: datamodel.EnvironmentCompute{
-				Kind:       toEnvironmentComputeKindDataModel(src.Properties.Compute.Kind),
-				ResourceID: to.String(src.Properties.Compute.ResourceID),
-			},
-			Namespace: to.String(src.Properties.Namespace),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			CreatedAPIVersion: Version,
 			UpdatedAPIVersion: Version,
 		},
 	}
+
+	envCompute := toEnvironmentComputeDataModel(src.Properties.Compute)
+	if envCompute == nil {
+		return nil, conv.ErrInvalidModelConversion
+	}
+
+	converted.Properties.Compute = *envCompute
+
 	return converted, nil
 }
 
@@ -57,49 +64,62 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.Properties.ProvisioningState),
-		Compute: &EnvironmentCompute{
-			Kind:       fromEnvironmentComputeKind(env.Properties.Compute.Kind),
-			ResourceID: to.StringPtr(env.Properties.Compute.ResourceID),
-		},
+	}
+
+	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
+	if dst.Properties.Compute == nil {
+		return conv.ErrInvalidModelConversion
 	}
 
 	return nil
 }
 
-func fromCompute(h datamodel.EnvironmentCompute) HealthProbePropertiesClassification {
-	switch h.Kind {
-	case datamodel.KubernetesComputeKind:
-		converted := ExecHealthProbeProperties{
-			HealthProbeProperties: HealthProbeProperties{
-				Kind:                (*string)(&h.Kind),
-				FailureThreshold:    h.Exec.FailureThreshold,
-				InitialDelaySeconds: h.Exec.InitialDelaySeconds,
-				PeriodSeconds:       h.Exec.PeriodSeconds,
+func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) *datamodel.EnvironmentCompute {
+	switch v := h.(type) {
+	case *KubernetesComputeProperties:
+		return &datamodel.EnvironmentCompute{
+			Kind: toEnvironmentComputeKindDataModel(*v.Kind),
+			KubernetesCompute: datamodel.KubernetesComputeProperties{
+				ResourceID: *v.ResourceID,
+				Namespace:  *v.Namespace,
 			},
-			Command: to.StringPtr(h.Exec.Command),
 		}
-		return &converted
+	default:
+		return nil
 	}
-
-	return nil
 }
 
-func toEnvironmentComputeKindDataModel(kind *EnvironmentComputeKind) datamodel.EnvironmentComputeKind {
-	switch *kind {
-	case EnvironmentComputeKindKubernetes:
+func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) EnvironmentComputeClassification {
+	switch envCompute.Kind {
+	case datamodel.KubernetesComputeKind:
+		return &KubernetesComputeProperties{
+			EnvironmentCompute: EnvironmentCompute{
+				Kind:       fromEnvironmentComputeKind(envCompute.Kind),
+				ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
+			},
+			Namespace: &envCompute.KubernetesCompute.Namespace,
+		}
+	default:
+		return nil
+	}
+}
+
+func toEnvironmentComputeKindDataModel(kind string) datamodel.EnvironmentComputeKind {
+	switch kind {
+	case environmentComputeKindKubernetes:
 		return datamodel.KubernetesComputeKind
 	default:
 		return datamodel.UnknownComputeKind
 	}
 }
 
-func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *EnvironmentComputeKind {
-	var k EnvironmentComputeKind
+func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
+	var k string
 	switch kind {
 	case datamodel.KubernetesComputeKind:
-		k = EnvironmentComputeKindKubernetes
+		k = environmentComputeKindKubernetes
 	default:
-		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatprevie supports only kubernetes.
+		k = environmentComputeKindKubernetes // 2022-03-15-privatprevie supports only kubernetes.
 	}
 
 	return &k

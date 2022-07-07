@@ -40,7 +40,6 @@ func (e Environment) ResourceTypeName() string {
 type EnvironmentProperties struct {
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
 	Compute           EnvironmentCompute   `json:"compute,omitempty"`
-	Namespace         string               `json:"namespace,omitempty"`
 }
 
 // EnvironmentCompute represents the compute resource of Environment.
@@ -49,7 +48,8 @@ type EnvironmentCompute struct {
 	KubernetesCompute KubernetesComputeProperties `json:"kubernetes,omitempty"`
 }
 
+// KubernetesComputeProperties represents the kubernetes compute of the environment.
 type KubernetesComputeProperties struct {
 	ResourceID string `json:"resourceId,omitempty"`
-	Namespace  string `json:"namespace,omitempty"`
+	Namespace  string `json:"namespace"`
 }

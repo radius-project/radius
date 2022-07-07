@@ -1156,7 +1156,7 @@ func (i IamProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// KubernetesComputeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
+// KubernetesComputeProperties - Specifies the properties for Kubernetes compute environment
 type KubernetesComputeProperties struct {
 	EnvironmentCompute
 	// REQUIRED; The namespace to use for the environment.

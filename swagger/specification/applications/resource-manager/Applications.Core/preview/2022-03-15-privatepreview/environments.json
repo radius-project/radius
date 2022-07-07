@@ -310,7 +310,7 @@
         ]
       },
       "KubernetesComputeProperties": {
-        "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
+        "description": "Specifies the properties for Kubernetes compute environment",
         "allOf": [
           {
             "$ref": "#/definitions/EnvironmentCompute"

@@ -40,7 +40,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "env0", ct.Name)
 	require.Equal(t, "Applications.Core/environments", ct.Type)
 	require.Equal(t, "kubernetes", string(ct.Properties.Compute.Kind))
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", ct.Properties.Compute.ResourceID)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", ct.Properties.Compute.KubernetesCompute.ResourceID)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 
 }
@@ -62,7 +62,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "env0", r.Name)
 	require.Equal(t, "Applications.Core/environments", r.Type)
 	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.ResourceID)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
 }
 
 type fakeResource struct{}
@@ -89,15 +89,15 @@ func TestConvertFromValidation(t *testing.T) {
 
 func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
-		versioned EnvironmentComputeKind
+		versioned string
 		datamodel datamodel.EnvironmentComputeKind
 	}{
-		{EnvironmentComputeKindKubernetes, datamodel.KubernetesComputeKind},
+		{environmentComputeKindKubernetes, datamodel.KubernetesComputeKind},
 		{"", datamodel.UnknownComputeKind},
 	}
 
 	for _, tt := range kindTests {
-		sc := toEnvironmentComputeKindDataModel(&tt.versioned)
+		sc := toEnvironmentComputeKindDataModel(tt.versioned)
 		require.Equal(t, tt.datamodel, sc)
 	}
 }
@@ -105,10 +105,10 @@ func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
 		datamodel datamodel.EnvironmentComputeKind
-		versioned EnvironmentComputeKind
+		versioned string
 	}{
-		{datamodel.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
-		{datamodel.UnknownComputeKind, EnvironmentComputeKindKubernetes},
+		{datamodel.KubernetesComputeKind, environmentComputeKindKubernetes},
+		{datamodel.UnknownComputeKind, environmentComputeKindKubernetes},
 	}
 
 	for _, tt := range kindTests {
