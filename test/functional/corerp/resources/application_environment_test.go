@@ -34,7 +34,8 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: true,
+			// Application and Environment should not render any K8s Objects directly
+			K8sObjects: &validation.K8sObjectSet{},
 		},
 	})
 
