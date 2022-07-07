@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,11 @@ func TestGetContainerRun_20220315PrivatePreview(t *testing.T) {
 			Return(nil, &store.ErrNotFound{}).
 			Times(1)
 
-		ctl, err := NewGetContainer(msc, nil, nil)
+		opts := ctrl.Options{
+			StorageClient: msc,
+		}
+
+		ctl, err := NewGetContainer(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -67,7 +72,11 @@ func TestGetContainerRun_20220315PrivatePreview(t *testing.T) {
 			Return(&store.Object{Metadata: store.Metadata{ID: contDataModel.ID}, Data: contDataModel}, nil).
 			Times(1)
 
-		ctl, err := NewGetContainer(msc, nil, nil)
+		opts := ctrl.Options{
+			StorageClient: msc,
+		}
+
+		ctl, err := NewGetContainer(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)

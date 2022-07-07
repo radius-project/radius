@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -27,8 +26,8 @@ type ListSecretsExtender struct {
 }
 
 // NewListSecretsExtender creates a new instance of ListSecretsExtender.
-func NewListSecretsExtender(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &ListSecretsExtender{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewListSecretsExtender(opts ctrl.Options) (ctrl.Controller, error) {
+	return &ListSecretsExtender{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run returns secrets values for the specified Extender resource
@@ -47,7 +46,7 @@ func (ctrl *ListSecretsExtender) Run(ctx context.Context, req *http.Request) (re
 		return nil, err
 	}
 
-	secrets, err := ctrl.DeploymentProcessor.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	secrets, err := ctrl.DeploymentProcessor().FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
 	if err != nil {
 		return nil, err
 	}

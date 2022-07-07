@@ -11,12 +11,10 @@ import (
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -29,8 +27,8 @@ type CreateOrUpdateRabbitMQMessageQueue struct {
 }
 
 // NewCreateOrUpdateRabbitMQMessageQueue creates a new instance of CreateOrUpdateRabbitMQMessageQueue.
-func NewCreateOrUpdateRabbitMQMessageQueue(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &CreateOrUpdateRabbitMQMessageQueue{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewCreateOrUpdateRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
+	return &CreateOrUpdateRabbitMQMessageQueue{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run executes CreateOrUpdateRabbitMQMessageQueue operation.
@@ -41,11 +39,11 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, req
 		return nil, err
 	}
 
-	rendererOutput, err := rabbitmq.DeploymentProcessor.Render(ctx, serviceCtx.ResourceID, newResource)
+	rendererOutput, err := rabbitmq.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := rabbitmq.DeploymentProcessor.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := rabbitmq.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
 	if err != nil {
 		return nil, err
 	}

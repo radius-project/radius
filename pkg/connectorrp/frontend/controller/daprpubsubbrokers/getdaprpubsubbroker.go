@@ -10,12 +10,10 @@ import (
 	"errors"
 	"net/http"
 
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -28,8 +26,8 @@ type GetDaprPubSubBroker struct {
 }
 
 // NewGetDaprPubSubBroker creates a new instance of GetDaprPubSubBroker.
-func NewGetDaprPubSubBroker(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &GetDaprPubSubBroker{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewGetDaprPubSubBroker(opts ctrl.Options) (ctrl.Controller, error) {
+	return &GetDaprPubSubBroker{ctrl.NewBaseController(opts)}, nil
 }
 
 func (daprPubSub *GetDaprPubSubBroker) Run(ctx context.Context, req *http.Request) (rest.Response, error) {

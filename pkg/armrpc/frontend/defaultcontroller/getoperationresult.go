@@ -14,7 +14,6 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -28,8 +27,8 @@ type GetOperationResult struct {
 }
 
 // NewGetOperationResult creates a new GetOperationResult.
-func NewGetOperationResult(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &GetOperationResult{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewGetOperationResult(opts ctrl.Options) (ctrl.Controller, error) {
+	return &GetOperationResult{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run returns the response with necessary headers about the async operation.

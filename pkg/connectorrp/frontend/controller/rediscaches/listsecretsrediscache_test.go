@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -49,7 +50,14 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewListSecretsRedisCache(mStorageClient, nil, mDeploymentProcessor)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsRedisCache(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -74,7 +82,14 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			})
 		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		ctl, err := NewListSecretsRedisCache(mStorageClient, nil, mDeploymentProcessor)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsRedisCache(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -100,7 +115,14 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		ctl, err := NewListSecretsRedisCache(mStorageClient, nil, mDeploymentProcessor)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsRedisCache(opts)
 
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, req)

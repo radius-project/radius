@@ -10,12 +10,10 @@ import (
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -29,8 +27,8 @@ type ListMongoDatabases struct {
 }
 
 // NewListMongoDatabases creates a new instance of ListMongoDatabases.
-func NewListMongoDatabases(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &ListMongoDatabases{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewListMongoDatabases(opts ctrl.Options) (ctrl.Controller, error) {
+	return &ListMongoDatabases{ctrl.NewBaseController(opts)}, nil
 }
 
 func (mongo *ListMongoDatabases) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -41,7 +39,7 @@ func (mongo *ListMongoDatabases) Run(ctx context.Context, req *http.Request) (re
 		ResourceType: serviceCtx.ResourceID.Type(),
 	}
 
-	result, err := mongo.DataStore.Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
+	result, err := mongo.StorageClient().Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
 	if err != nil {
 		return nil, err
 	}
