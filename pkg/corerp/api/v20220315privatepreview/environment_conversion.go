@@ -76,7 +76,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 
 func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamodel.EnvironmentCompute, error) {
 	switch v := h.(type) {
-	case *KubernetesComputeProperties:
+	case *KubernetesCompute:
 		k, err := toEnvironmentComputeKindDataModel(*v.Kind)
 		if err != nil {
 			return nil, err
@@ -101,7 +101,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) EnvironmentComputeClassification {
 	switch envCompute.Kind {
 	case datamodel.KubernetesComputeKind:
-		return &KubernetesComputeProperties{
+		return &KubernetesCompute{
 			EnvironmentCompute: EnvironmentCompute{
 				Kind:       fromEnvironmentComputeKind(envCompute.Kind),
 				ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),

@@ -409,7 +409,7 @@ func (d *DaprSidecarExtension) UnmarshalJSON(data []byte) error {
 // EnvironmentComputeClassification provides polymorphic access to related types.
 // Call the interface's GetEnvironmentCompute() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *EnvironmentCompute, *KubernetesComputeProperties
+// - *EnvironmentCompute, *KubernetesCompute
 type EnvironmentComputeClassification interface {
 	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
 	GetEnvironmentCompute() *EnvironmentCompute
@@ -462,7 +462,7 @@ func (e *EnvironmentCompute) unmarshalInternal(rawMsg map[string]json.RawMessage
 
 // EnvironmentProperties - Application environment properties
 type EnvironmentProperties struct {
-	// REQUIRED; The compute resource used by application environment.
+	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
@@ -1156,23 +1156,23 @@ func (i IamProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// KubernetesComputeProperties - Specifies the properties for Kubernetes compute environment
-type KubernetesComputeProperties struct {
+// KubernetesCompute - Specifies the properties for Kubernetes compute environment
+type KubernetesCompute struct {
 	EnvironmentCompute
 	// REQUIRED; The namespace to use for the environment.
 	Namespace *string `json:"namespace,omitempty"`
 }
 
-// MarshalJSON implements the json.Marshaller interface for type KubernetesComputeProperties.
-func (k KubernetesComputeProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type KubernetesCompute.
+func (k KubernetesCompute) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	k.EnvironmentCompute.marshalInternal(objectMap, "kubernetes")
 	populate(objectMap, "namespace", k.Namespace)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type KubernetesComputeProperties.
-func (k *KubernetesComputeProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type KubernetesCompute.
+func (k *KubernetesCompute) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return err

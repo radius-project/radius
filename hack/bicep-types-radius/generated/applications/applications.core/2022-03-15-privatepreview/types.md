@@ -219,7 +219,7 @@
 
 ### Base Properties
 * **resourceId**: string: The resource id of the compute resource for application environment.
-### KubernetesComputeProperties
+### KubernetesCompute
 #### Properties
 * **kind**: 'kubernetes' (Required): Type of compute resource.
 * **namespace**: string (Required): The namespace to use for the environment.

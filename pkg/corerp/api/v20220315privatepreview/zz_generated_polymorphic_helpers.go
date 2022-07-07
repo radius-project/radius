@@ -21,7 +21,7 @@ func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (Environm
 	var b EnvironmentComputeClassification
 	switch m["kind"] {
 	case "kubernetes":
-		b = &KubernetesComputeProperties{}
+		b = &KubernetesCompute{}
 	default:
 		b = &EnvironmentCompute{}
 	}
