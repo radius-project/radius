@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // HTTPRoute represents HTTPRoute resource.
@@ -25,6 +26,13 @@ type HTTPRoute struct {
 // ResourceTypeName returns the qualified name of the resource
 func (h HTTPRoute) ResourceTypeName() string {
 	return "Applications.Core/httpRoutes"
+}
+
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (h HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	h.Properties.BasicResourceProperties.Status.OutputResources = do.DeployedOutputResources
+	h.InternalMetadata.ComputedValues = do.ComputedValues
+	h.InternalMetadata.SecretValues = do.SecretValues
 }
 
 // HTTPRouteProperties represents the properties of HTTPRoute.

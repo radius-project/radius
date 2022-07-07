@@ -120,5 +120,5 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 }
 
 func MakeResourceName(application string, resource string) string {
-	return application + "-" + resource
+	return strings.ToLower(application + "-" + resource)
 }
