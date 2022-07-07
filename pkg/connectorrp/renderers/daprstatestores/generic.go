@@ -15,11 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func GetDaprStateStoreGeneric(dm conv.DataModelInterface) ([]outputresource.OutputResource, error) {
-	resource, ok := dm.(datamodel.DaprStateStore)
-	if !ok {
-		return []outputresource.OutputResource{}, conv.ErrInvalidModelConversion
-	}
+func GetDaprStateStoreGeneric(resource datamodel.DaprStateStore, applicationName string) ([]outputresource.OutputResource, error) {
 	properties := resource.Properties.DaprStateStoreGeneric
 
 	daprGeneric := dapr.DaprGeneric{
@@ -28,10 +24,10 @@ func GetDaprStateStoreGeneric(dm conv.DataModelInterface) ([]outputresource.Outp
 		Metadata: properties.Metadata,
 	}
 
-	return getDaprGeneric(daprGeneric, resource)
+	return getDaprGeneric(daprGeneric, resource, applicationName)
 }
 
-func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm conv.DataModelInterface) ([]outputresource.OutputResource, error) {
+func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm conv.DataModelInterface, applicationName string) ([]outputresource.OutputResource, error) {
 	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
@@ -40,7 +36,7 @@ func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm conv.DataModelInterface) ([
 	if !ok {
 		return nil, conv.ErrInvalidModelConversion
 	}
-	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, resource.Properties.Application, resource.Name)
+	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name)
 	if err != nil {
 		return nil, err
 	}

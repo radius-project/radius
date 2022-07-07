@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -20,11 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func GetDaprStateStoreAzureStorage(dm conv.DataModelInterface) (outputResources []outputresource.OutputResource, err error) {
-	resource, ok := dm.(datamodel.DaprStateStore)
-	if !ok {
-		return []outputresource.OutputResource{}, conv.ErrInvalidModelConversion
-	}
+func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicationName string) (outputResources []outputresource.OutputResource, err error) {
 	var azuretableStorageID resources.ID
 	if resource.Properties.Kind == datamodel.DaprStateStoreKindAzureTableStorage {
 		properties := resource.Properties.DaprStateStoreAzureTableStorage
@@ -63,8 +58,8 @@ func GetDaprStateStoreAzureStorage(dm conv.DataModelInterface) (outputResources 
 			},
 			Resource: map[string]string{
 				handlers.KubernetesNameKey:       resource.Name,
-				handlers.KubernetesNamespaceKey:  resource.Properties.Application,
-				handlers.ApplicationName:         resource.Properties.Application,
+				handlers.KubernetesNamespaceKey:  applicationName,
+				handlers.ApplicationName:         applicationName,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",
 

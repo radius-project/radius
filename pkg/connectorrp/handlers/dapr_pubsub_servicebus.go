@@ -113,7 +113,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ResourceName],
+				"name":      kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]),
 				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName]),
 			},
 			"spec": map[string]interface{}{
