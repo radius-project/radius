@@ -309,7 +309,7 @@
           "kind"
         ]
       },
-      "KubernetesComputeProperties": {
+      "KubernetesCompute": {
         "description": "Specifies the properties for Kubernetes compute environment",
         "allOf": [
           {
@@ -317,7 +317,6 @@
           }
         ],
         "type": "object",
-        "additionalProperties": false,
         "properties": {
           "namespace": {
             "type": "string",
@@ -325,7 +324,6 @@
           }
         },
         "required": [
-          "kind",
           "namespace"
         ],
         "x-ms-discriminator-value":"kubernetes"
@@ -364,8 +362,7 @@
             "description": "Provisioning state of the environment at the time the operation was called."
           },
           "compute": {
-            "$ref": "#/definitions/EnvironmentCompute",
-            "description": "The compute resource used by application environment."
+            "$ref": "#/definitions/EnvironmentCompute"
           }
         }
       }
