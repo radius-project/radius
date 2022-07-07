@@ -45,7 +45,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, mongoDBResource)
+	output, err := renderer.Render(ctx, &mongoDBResource)
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 2)
