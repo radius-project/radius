@@ -92,7 +92,7 @@ func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 		versioned string
 		datamodel datamodel.EnvironmentComputeKind
 	}{
-		{environmentComputeKindKubernetes, datamodel.KubernetesComputeKind},
+		{EnvironmentComputeKindKubernetes, datamodel.KubernetesComputeKind},
 		{"", datamodel.UnknownComputeKind},
 	}
 
@@ -107,8 +107,8 @@ func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 		datamodel datamodel.EnvironmentComputeKind
 		versioned string
 	}{
-		{datamodel.KubernetesComputeKind, environmentComputeKindKubernetes},
-		{datamodel.UnknownComputeKind, environmentComputeKindKubernetes},
+		{datamodel.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
+		{datamodel.UnknownComputeKind, EnvironmentComputeKindKubernetes},
 	}
 
 	for _, tt := range kindTests {

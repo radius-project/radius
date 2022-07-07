@@ -302,9 +302,13 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 			Location: &loc,
 		},
 		Properties: &coreRpApps.EnvironmentProperties{
-			Compute: &coreRpApps.EnvironmentCompute{
-				Kind:       coreRpApps.EnvironmentComputeKindKubernetes.ToPtr(),
-				ResourceID: &id,
+			Compute: &coreRpApps.KubernetesComputeProperties{
+				EnvironmentCompute: coreRpApps.EnvironmentCompute{
+					Kind:       to.StringPtr(coreRpApps.EnvironmentComputeKindKubernetes),
+					ResourceID: &id,
+				},
+				// FIXME: allow users to specify kubernetes namespace
+				Namespace: to.StringPtr(environmentName),
 			},
 		},
 	}

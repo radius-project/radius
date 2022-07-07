@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	environmentComputeKindKubernetes = "kubernetes"
+	EnvironmentComputeKindKubernetes = "kubernetes"
 )
 
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
@@ -106,7 +106,7 @@ func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) E
 
 func toEnvironmentComputeKindDataModel(kind string) datamodel.EnvironmentComputeKind {
 	switch kind {
-	case environmentComputeKindKubernetes:
+	case EnvironmentComputeKindKubernetes:
 		return datamodel.KubernetesComputeKind
 	default:
 		return datamodel.UnknownComputeKind
@@ -117,9 +117,9 @@ func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
 	var k string
 	switch kind {
 	case datamodel.KubernetesComputeKind:
-		k = environmentComputeKindKubernetes
+		k = EnvironmentComputeKindKubernetes
 	default:
-		k = environmentComputeKindKubernetes // 2022-03-15-privatprevie supports only kubernetes.
+		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatprevie supports only kubernetes.
 	}
 
 	return &k
