@@ -33,7 +33,7 @@ type Renderer struct {
 }
 
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.MongoDatabase)
+	resource, ok := dm.(*datamodel.MongoDatabase)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}

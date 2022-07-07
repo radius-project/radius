@@ -31,7 +31,7 @@ type Renderer struct {
 // GetDependencyIDs fetches all the httproutes used by the gateway
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	// Need all httproutes that are used by this gateway
-	gateway, ok := dm.(datamodel.Gateway)
+	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
 		return nil, nil, conv.ErrInvalidModelConversion
 	}
@@ -52,7 +52,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 // Render creates the kubernetes output resource for the gateway and its dependency - httproute
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	outputResources := []outputresource.OutputResource{}
-	gateway, ok := dm.(datamodel.Gateway)
+	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
@@ -62,11 +62,11 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 	applicationName := appId.Name()
 	gatewayName := kubernetes.MakeResourceName(applicationName, gateway.Name)
-	hostname, err := getHostname(gateway, &gateway.Properties, applicationName, options)
+	hostname, err := getHostname(*gateway, &gateway.Properties, applicationName, options)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	}
-	gatewayObject, err := MakeGateway(options, &gateway, gateway.Name, applicationName, hostname)
+	gatewayObject, err := MakeGateway(options, gateway, gateway.Name, applicationName, hostname)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -88,7 +88,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		},
 	}
 
-	httpRouteObjects, err := MakeHttpRoutes(options, gateway, &gateway.Properties, gatewayName, applicationName)
+	httpRouteObjects, err := MakeHttpRoutes(options, *gateway, &gateway.Properties, gatewayName, applicationName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

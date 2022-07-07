@@ -55,7 +55,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	result, err := renderer.Render(context.Background(), resource)
+	result, err := renderer.Render(context.Background(), &resource)
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
@@ -106,7 +106,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.Error())
 }
@@ -132,7 +132,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "No type specified for generic Dapr component", err.Error())
 }
@@ -158,7 +158,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
 }
@@ -224,7 +224,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	result, err := renderer.Render(context.Background(), resource)
+	result, err := renderer.Render(context.Background(), &resource)
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -265,7 +265,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_InvalidResourceType(t *testing.T
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Topic", err.Error())
 }
