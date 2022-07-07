@@ -302,7 +302,7 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 			Location: &loc,
 		},
 		Properties: &coreRpApps.EnvironmentProperties{
-			Compute: &coreRpApps.KubernetesComputeProperties{
+			Compute: &coreRpApps.KubernetesCompute{
 				EnvironmentCompute: coreRpApps.EnvironmentCompute{
 					Kind:       to.StringPtr(coreRpApps.EnvironmentComputeKindKubernetes),
 					ResourceID: &id,
