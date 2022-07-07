@@ -128,7 +128,36 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 	}
 
 	// TODO: Adding handlers next after this changelist
-	azureOutputResourceModel := []OutputResourceModel{}
+	azureOutputResourceModel := []OutputResourceModel{
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
+		},
+	}
 	/* 	azureOutputResourceModel := []OutputResourceModel{
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{

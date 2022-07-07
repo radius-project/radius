@@ -33,10 +33,14 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return err
 	}
 
-	err = handler.PatchNamespace(ctx, item.GetNamespace())
+	namespace := "kind-radius"
+
+	err = handler.PatchNamespace(ctx, namespace)
 	if err != nil {
 		return err
 	}
+
+	// resource.Deployed = true
 
 	if resource.Deployed {
 		// This resource is deployed in the Render process
