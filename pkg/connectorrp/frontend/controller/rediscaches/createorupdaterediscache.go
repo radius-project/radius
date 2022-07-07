@@ -11,12 +11,10 @@ import (
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -29,8 +27,8 @@ type CreateOrUpdateRedisCache struct {
 }
 
 // NewCreateOrUpdateRedisCache creates a new instance of CreateOrUpdateRedisCache.
-func NewCreateOrUpdateRedisCache(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &CreateOrUpdateRedisCache{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewCreateOrUpdateRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
+	return &CreateOrUpdateRedisCache{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run executes CreateOrUpdateRedisCache operation.
@@ -41,11 +39,11 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, req *http.Reques
 		return nil, err
 	}
 
-	rendererOutput, err := redis.DeploymentProcessor.Render(ctx, serviceCtx.ResourceID, newResource)
+	rendererOutput, err := redis.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := redis.DeploymentProcessor.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := redis.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
 	if err != nil {
 		return nil, err
 	}

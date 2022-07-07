@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net/http"
 
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -29,8 +28,8 @@ type ListSecretsRabbitMQMessageQueue struct {
 }
 
 // NewListSecretsRabbitMQMessageQueue creates a new instance of ListSecretsRabbitMQMessageQueue.
-func NewListSecretsRabbitMQMessageQueue(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &ListSecretsRabbitMQMessageQueue{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewListSecretsRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
+	return &ListSecretsRabbitMQMessageQueue{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run returns secrets values for the specified RabbitMQMessageQueue resource
@@ -49,7 +48,7 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, req *http.
 		return nil, err
 	}
 
-	secrets, err := ctrl.DeploymentProcessor.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	secrets, err := ctrl.DeploymentProcessor().FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
 	if err != nil {
 		return nil, err
 	}

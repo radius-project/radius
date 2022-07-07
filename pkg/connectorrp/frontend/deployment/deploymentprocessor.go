@@ -18,8 +18,8 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -32,15 +32,15 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, storageClient store.StorageClient, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, store: storageClient, secretClient: secretClient, k8s: k8s}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8s: k8s}
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 
 type deploymentProcessor struct {
 	appmodel     model.ApplicationModel
-	store        store.StorageClient
+	sp           dataprovider.DataStorageProvider
 	secretClient renderers.SecretValueClient
 	k8s          client.Client
 }

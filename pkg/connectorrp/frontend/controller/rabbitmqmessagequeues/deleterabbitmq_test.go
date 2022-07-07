@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
@@ -44,7 +45,11 @@ func TestDeleteRabbitMQMessageQueue_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewDeleteRabbitMQMessageQueue(mStorageClient, nil, mDeploymentProcessor)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewDeleteRabbitMQMessageQueue(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -107,7 +112,14 @@ func TestDeleteRabbitMQMessageQueue_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewDeleteRabbitMQMessageQueue(mStorageClient, nil, mDeploymentProcessor)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewDeleteRabbitMQMessageQueue(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -149,7 +161,14 @@ func TestDeleteRabbitMQMessageQueue_20220315PrivatePreview(t *testing.T) {
 				})
 			mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
 
-			ctl, err := NewDeleteRabbitMQMessageQueue(mStorageClient, nil, mDeploymentProcessor)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewDeleteRabbitMQMessageQueue(opts)
 			require.NoError(t, err)
 			_, err = ctl.Run(ctx, req)
 			require.Error(t, err)

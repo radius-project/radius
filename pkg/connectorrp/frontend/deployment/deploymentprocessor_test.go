@@ -24,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -187,6 +188,7 @@ type SharedMocks struct {
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
 	secretsValueClient *renderers.MockSecretValueClient
+	storageProvider    *dataprovider.MockDataStorageProvider
 }
 
 func setup(t *testing.T) SharedMocks {
@@ -254,7 +256,7 @@ func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
 
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 	t.Run("verify render success", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
 
@@ -330,7 +332,7 @@ func Test_Render_Success(t *testing.T) {
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	t.Run("Verify deploy success", func(t *testing.T) {
 		expectedCosmosMongoDBIdentity := resourcemodel.ResourceIdentity{
@@ -401,7 +403,7 @@ func Test_Deploy(t *testing.T) {
 func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	testResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -461,7 +463,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 func Test_Deploy_InvalidComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -495,7 +497,7 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 func Test_Deploy_MissingJsonPointer(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -532,7 +534,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	testOutputResources := []outputresource.OutputResource{
 		{
@@ -634,7 +636,7 @@ func Test_Delete(t *testing.T) {
 func Test_FetchSecrets(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	input := buildFetchSecretsInput()
 	secrets, err := dp.FetchSecrets(ctx, input)
