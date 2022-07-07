@@ -61,7 +61,24 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 			Kind:       fromEnvironmentComputeKind(env.Properties.Compute.Kind),
 			ResourceID: to.StringPtr(env.Properties.Compute.ResourceID),
 		},
-		Namespace: to.StringPtr(env.Properties.Namespace),
+	}
+
+	return nil
+}
+
+func fromCompute(h datamodel.EnvironmentCompute) HealthProbePropertiesClassification {
+	switch h.Kind {
+	case datamodel.KubernetesComputeKind:
+		converted := ExecHealthProbeProperties{
+			HealthProbeProperties: HealthProbeProperties{
+				Kind:                (*string)(&h.Kind),
+				FailureThreshold:    h.Exec.FailureThreshold,
+				InitialDelaySeconds: h.Exec.InitialDelaySeconds,
+				PeriodSeconds:       h.Exec.PeriodSeconds,
+			},
+			Command: to.StringPtr(h.Exec.Command),
+		}
+		return &converted
 	}
 
 	return nil
