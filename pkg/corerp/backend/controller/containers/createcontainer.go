@@ -39,7 +39,7 @@ func (c *UpdateContainer) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	}
 
 	// Render the resource
-	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, existingResource)
+	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, *existingResource)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
