@@ -237,29 +237,6 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			},
 		},
 		{
-			desc:            "invalid put-environment with invalid enum item",
-			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
-			apiVersion:      "2022-03-15-privatepreview",
-			contentFilePath: "put-environments-invalid-enum.json",
-			url:             resourceIDUrl,
-			responseCode:    400,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
-					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
-					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
-						{
-							Code:    "InvalidProperties",
-							Message: "$.properties.compute.kind in body should be one of [kubernetes]",
-						},
-					},
-				},
-			},
-		},
-		{
 			desc:            "invalid put-environment with invalid json doc",
 			method:          http.MethodPut,
 			rootScope:       "/{rootScope:.*}",
@@ -325,7 +302,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			req, _ := http.NewRequestWithContext(context.Background(), tc.method, tc.url, bytes.NewBuffer(body))
 			r.ServeHTTP(w, req)
 
-			require.Equal(t, tc.responseCode, w.Result().StatusCode)
+			require.Equal(t, tc.responseCode, w.Result().StatusCode, "%s", w.Body.String())
 
 			if w.Result().StatusCode != http.StatusAccepted {
 				armErr := &armerrors.ErrorResponse{}

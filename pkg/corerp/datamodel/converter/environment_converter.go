@@ -19,8 +19,10 @@ func EnvironmentDataModelToVersioned(model *datamodel.Environment, version strin
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.EnvironmentResource{}
-		err := versioned.ConvertFrom(model)
-		return versioned, err
+		if err := versioned.ConvertFrom(model); err != nil {
+			return nil, err
+		}
+		return versioned, nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion
@@ -36,7 +38,10 @@ func EnvironmentDataModelFromVersioned(content []byte, version string) (*datamod
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
-		return dm.(*datamodel.Environment), err
+		if err != nil {
+			return nil, err
+		}
+		return dm.(*datamodel.Environment), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

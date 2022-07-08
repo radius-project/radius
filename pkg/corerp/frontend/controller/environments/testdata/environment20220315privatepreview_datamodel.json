@@ -14,8 +14,11 @@
     "properties": {
         "provisioningState": "Succeeded",
         "compute": {
-            "kind": "unknown",
-            "resourceId": "fakeid"
+            "kind": "kubernetes",
+            "kubernetes": {
+                "resourceId": "fakeid",
+                "namespace": "default"
+            }
         }
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",

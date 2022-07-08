@@ -7,47 +7,82 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
+
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 )
 
-func loadTestData(testfile string) []byte {
-	d, err := ioutil.ReadFile("./testdata/" + testfile)
-	if err != nil {
-		return nil
-	}
-	return d
-}
-
 func TestConvertVersionedToDataModel(t *testing.T) {
-	// arrange
-	rawPayload := loadTestData("environmentresource.json")
-	r := &EnvironmentResource{}
-	err := json.Unmarshal(rawPayload, r)
-	require.NoError(t, err)
+	conversionTests := []struct {
+		filename string
+		expected *datamodel.Environment
+		err      error
+	}{
+		{
+			filename: "environmentresource.json",
+			expected: &datamodel.Environment{
+				TrackedResource: v1.TrackedResource{
+					ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					Name: "env0",
+					Type: "Applications.Core/environments",
+					Tags: map[string]string{},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: datamodel.EnvironmentCompute{
+						Kind: "kubernetes",
+						KubernetesCompute: datamodel.KubernetesComputeProperties{
+							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+							Namespace:  "default",
+						},
+					},
+					ProvisioningState: v1.ProvisioningStateAccepted,
+				},
+				InternalMetadata: v1.InternalMetadata{
+					CreatedAPIVersion: "2022-03-15-privatepreview",
+					UpdatedAPIVersion: "2022-03-15-privatepreview",
+				},
+			},
+			err: nil,
+		},
+		{
+			filename: "environmentresource-invalid-missing-namespace.json",
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+		},
+		{
+			filename: "environmentresource-invalid-namespace.json",
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+		},
+	}
 
-	// act
-	dm, err := r.ConvertTo()
+	for _, tt := range conversionTests {
+		t.Run(tt.filename, func(t *testing.T) {
+			rawPayload := radiustesting.ReadFixture(tt.filename)
+			r := &EnvironmentResource{}
+			err := json.Unmarshal(rawPayload, r)
+			require.NoError(t, err)
 
-	// assert
-	require.NoError(t, err)
-	ct := dm.(*datamodel.Environment)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", ct.ID)
-	require.Equal(t, "env0", ct.Name)
-	require.Equal(t, "Applications.Core/environments", ct.Type)
-	require.Equal(t, "kubernetes", string(ct.Properties.Compute.Kind))
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", ct.Properties.Compute.ResourceID)
-	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+			// act
+			dm, err := r.ConvertTo()
 
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+			} else {
+				require.NoError(t, err)
+				ct := dm.(*datamodel.Environment)
+				require.Equal(t, tt.expected, ct)
+			}
+		})
+	}
 }
 
 func TestConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("environmentresourcedatamodel.json")
+	rawPayload := radiustesting.ReadFixture("environmentresourcedatamodel.json")
 	r := &datamodel.Environment{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -62,7 +97,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "env0", r.Name)
 	require.Equal(t, "Applications.Core/environments", r.Type)
 	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.ResourceID)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
 }
 
 type fakeResource struct{}
@@ -89,15 +124,19 @@ func TestConvertFromValidation(t *testing.T) {
 
 func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
-		versioned EnvironmentComputeKind
+		versioned string
 		datamodel datamodel.EnvironmentComputeKind
+		err       error
 	}{
-		{EnvironmentComputeKindKubernetes, datamodel.KubernetesComputeKind},
-		{"", datamodel.UnknownComputeKind},
+		{EnvironmentComputeKindKubernetes, datamodel.KubernetesComputeKind, nil},
+		{"", datamodel.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
 	}
 
 	for _, tt := range kindTests {
-		sc := toEnvironmentComputeKindDataModel(&tt.versioned)
+		sc, err := toEnvironmentComputeKindDataModel(tt.versioned)
+		if tt.err != nil {
+			require.ErrorIs(t, err, tt.err)
+		}
 		require.Equal(t, tt.datamodel, sc)
 	}
 }
@@ -105,7 +144,7 @@ func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
 		datamodel datamodel.EnvironmentComputeKind
-		versioned EnvironmentComputeKind
+		versioned string
 	}{
 		{datamodel.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
 		{datamodel.UnknownComputeKind, EnvironmentComputeKindKubernetes},
