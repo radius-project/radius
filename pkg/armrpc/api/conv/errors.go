@@ -31,5 +31,5 @@ func (e *ErrInvalidProperty) Is(target error) bool {
 		return false
 	}
 
-	return (e.PropertyName == t.PropertyName && t.ValidValue == t.ValidValue)
+	return (e.PropertyName == t.PropertyName && e.ValidValue == t.ValidValue)
 }
