@@ -49,7 +49,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 	renderer := Renderer{}
-	result, err := renderer.Render(ctx, resource)
+	result, err := renderer.Render(ctx, &resource)
 	require.NoError(t, err)
 
 	require.Equal(t, 0, len(result.Resources))
