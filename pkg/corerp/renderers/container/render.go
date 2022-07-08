@@ -636,9 +636,6 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 	var roleNames []string
 	var armResourceIdentifier string
 	if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
-		if len(connection.IAM.Roles) < 1 {
-			return nil, fmt.Errorf("rbac permissions are required to access Azure connections")
-		}
 		roleNames = append(roleNames, connection.IAM.Roles...)
 		armResourceIdentifier = connection.Source
 	} else {
