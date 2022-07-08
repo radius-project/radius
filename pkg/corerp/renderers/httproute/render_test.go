@@ -194,10 +194,10 @@ func makeHTTPRouteProperties(port int32) datamodel.HTTPRouteProperties {
 	return properties
 }
 
-func makeResource(t *testing.T, properties *datamodel.HTTPRouteProperties) datamodel.HTTPRoute {
+func makeResource(t *testing.T, properties *datamodel.HTTPRouteProperties) *datamodel.HTTPRoute {
 
 	dm := datamodel.HTTPRoute{Properties: properties}
 	dm.Name = resourceName
 
-	return dm
+	return &dm
 }

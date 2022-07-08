@@ -694,8 +694,8 @@ func makeRouteResourceID(routeName string) string {
 		})
 }
 
-func makeResource(t *testing.T, properties datamodel.GatewayProperties) datamodel.Gateway {
-	return datamodel.Gateway{
+func makeResource(t *testing.T, properties datamodel.GatewayProperties) *datamodel.Gateway {
+	return &datamodel.Gateway{
 		TrackedResource: apiv1.TrackedResource{
 			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway",
 			Name: resourceName,
@@ -704,11 +704,11 @@ func makeResource(t *testing.T, properties datamodel.GatewayProperties) datamode
 		Properties: properties,
 	}
 }
-func makeDependentResource(t *testing.T, properties datamodel.HTTPRouteProperties) datamodel.HTTPRoute {
+func makeDependentResource(t *testing.T, properties datamodel.HTTPRouteProperties) *datamodel.HTTPRoute {
 	dm := datamodel.HTTPRoute{Properties: &properties}
 	dm.Name = resourceName
 
-	return dm
+	return &dm
 }
 func makeResourceID(t *testing.T, resourceID string) resources.ID {
 	id, err := resources.Parse(resourceID)

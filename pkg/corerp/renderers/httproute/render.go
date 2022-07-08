@@ -32,7 +32,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModelI
 
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 
-	route, ok := dm.(datamodel.HTTPRoute)
+	route, ok := dm.(*datamodel.HTTPRoute)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
@@ -65,7 +65,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		},
 	}
 
-	service, err := r.makeService(&route, options)
+	service, err := r.makeService(route, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

@@ -25,7 +25,7 @@ type Renderer struct {
 }
 
 func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.Extender)
+	resource, ok := dm.(*datamodel.Extender)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}

@@ -37,7 +37,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, err
 	}
 
-	resource, ok := dm.(datamodel.ContainerResource)
+	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}

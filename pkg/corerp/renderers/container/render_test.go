@@ -48,7 +48,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func makeResource(t *testing.T, properties datamodel.ContainerProperties) datamodel.ContainerResource {
+func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		TrackedResource: apiv1.TrackedResource{
 			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
@@ -57,7 +57,7 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) datamo
 		},
 		Properties: properties,
 	}
-	return resource
+	return &resource
 }
 
 func makeResourceID(t *testing.T, resourceType string, resourceName string) resources.ID {

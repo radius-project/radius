@@ -20,7 +20,7 @@ type Renderer struct {
 }
 
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.DaprInvokeHttpRoute)
+	resource, ok := dm.(*datamodel.DaprInvokeHttpRoute)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}

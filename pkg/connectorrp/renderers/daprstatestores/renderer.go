@@ -34,7 +34,7 @@ type Renderer struct {
 }
 
 func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.DaprStateStore)
+	resource, ok := dm.(*datamodel.DaprStateStore)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
@@ -55,7 +55,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rend
 		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
 	}
 
-	resoures, err := stateStoreFunc(resource, applicationID.Name())
+	resoures, err := stateStoreFunc(*resource, applicationID.Name())
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
