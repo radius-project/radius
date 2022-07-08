@@ -10,7 +10,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'default'
+      namespace: 'corerp-resources-environment-env'
     }
   }
 }
