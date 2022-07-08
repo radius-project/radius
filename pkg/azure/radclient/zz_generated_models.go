@@ -1902,6 +1902,9 @@ type HTTPRouteProperties struct {
 	// The scheme used for traffic. Readonly.
 	Scheme *string `json:"scheme,omitempty"`
 
+	// Targetport of the root service. Used for TrafficSplit only
+	Targetport *int32 `json:"targetport,omitempty"`
+
 	// A stable URL that that can be used to route traffic to a resource. Readonly.
 	URL *string `json:"url,omitempty"`
 }
@@ -1914,6 +1917,7 @@ func (h HTTPRouteProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "port", h.Port)
 	populate(objectMap, "routes", h.Routes)
 	populate(objectMap, "scheme", h.Scheme)
+	populate(objectMap, "targetport", h.Targetport)
 	populate(objectMap, "url", h.URL)
 	return json.Marshal(objectMap)
 }

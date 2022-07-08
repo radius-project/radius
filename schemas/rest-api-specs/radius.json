@@ -1221,6 +1221,10 @@
           "description": "The scheme used for traffic. Readonly.",
           "type": "string"
         },
+        "targetport": {
+          "description": "Targetport of the root service. Used for TrafficSplit only",
+          "type": "integer"
+        },
         "url": {
           "description": "A stable URL that that can be used to route traffic to a resource. Readonly.",
           "type": "string"

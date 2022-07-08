@@ -93,6 +93,9 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		outputs = append(outputs, trafficsplit)
 		portNum = pNum
 	}
+	if route.Targetport != nil {
+		portNum = int(*route.Targetport)
+	}
 	service := r.makeService(resource, route, portNum)
 	outputs = append(outputs, service)
 	return renderers.RendererOutput{
@@ -125,7 +128,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *radcl
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(resource.ApplicationName, resourceType, resource.ResourceName),
+			Selector: kubernetes.MakeRouteSelectorLabelsService(resource.ApplicationName, resourceType, resource.ResourceName, specifiedTargetPort),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
@@ -139,7 +142,6 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *radcl
 	}
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta)
 }
-
 
 func (r *Renderer) makeTrafficSplit(resource renderers.RendererResource, route *radclient.HTTPRouteProperties, options renderers.RenderOptions) (outputresource.OutputResource, int, error) {
 	namespace := resource.ApplicationName
