@@ -55,8 +55,7 @@ func New(storeClient store.StorageClient, q queue.Client, providerName, location
 
 // operationStatusResourceID function is to build the operationStatus resourceID.
 func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID uuid.UUID) string {
-	prefix := id.PlaneScope()
-	return fmt.Sprintf("%s/providers/%s/locations/%s/operationstatuses/%s", prefix, aom.providerName, aom.location, operationID)
+	return fmt.Sprintf("%s/providers/%s/locations/%s/operationstatuses/%s", id.PlaneScope(), aom.providerName, aom.location, operationID)
 }
 
 func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *servicecontext.ARMRequestContext, operationTimeout time.Duration) error {
