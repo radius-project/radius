@@ -83,7 +83,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 		}
 
 		if v.Namespace == nil || len(*v.Namespace) == 0 || len(*v.Namespace) >= 64 {
-			return nil, &conv.ErrInvalidProperty{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
+			return nil, &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
 		}
 
 		return &datamodel.EnvironmentCompute{
@@ -118,7 +118,7 @@ func toEnvironmentComputeKindDataModel(kind string) (datamodel.EnvironmentComput
 	case EnvironmentComputeKindKubernetes:
 		return datamodel.KubernetesComputeKind, nil
 	default:
-		return datamodel.UnknownComputeKind, &conv.ErrInvalidProperty{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
+		return datamodel.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
 	}
 }
 

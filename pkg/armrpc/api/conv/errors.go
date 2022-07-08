@@ -15,18 +15,18 @@ var (
 	ErrInvalidModelConversion = errors.New("invalid model conversion")
 )
 
-// ErrInvalidProperty represents an invalid property error.
-type ErrInvalidProperty struct {
+// ErrModelConversion represents an invalid property error.
+type ErrModelConversion struct {
 	PropertyName string
 	ValidValue   string
 }
 
-func (e *ErrInvalidProperty) Error() string {
+func (e *ErrModelConversion) Error() string {
 	return fmt.Sprintf("%s must be %s.", e.PropertyName, e.ValidValue)
 }
 
-func (e *ErrInvalidProperty) Is(target error) bool {
-	t, ok := target.(*ErrInvalidProperty)
+func (e *ErrModelConversion) Is(target error) bool {
+	t, ok := target.(*ErrModelConversion)
 	if !ok {
 		return false
 	}

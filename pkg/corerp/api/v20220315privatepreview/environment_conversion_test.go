@@ -51,11 +51,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-invalid-missing-namespace.json",
-			err:      &conv.ErrInvalidProperty{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
 		},
 		{
 			filename: "environmentresource-invalid-namespace.json",
-			err:      &conv.ErrInvalidProperty{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
 		},
 	}
 
@@ -129,7 +129,7 @@ func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 		err       error
 	}{
 		{EnvironmentComputeKindKubernetes, datamodel.KubernetesComputeKind, nil},
-		{"", datamodel.UnknownComputeKind, &conv.ErrInvalidProperty{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
+		{"", datamodel.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
 	}
 
 	for _, tt := range kindTests {
