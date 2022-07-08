@@ -3,8 +3,8 @@
     "properties": {
         "compute": {
             "kind": "kubernetes",
-            "resourceId": "fakeid"
-        },
-        "provisioningState": "Succeeded"
+            "resourceId": "fakeid",
+            "namespace": "default"
+        }
     }
 }

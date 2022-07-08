@@ -14,11 +14,13 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/stretchr/testify/require"
+
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 )
 
 func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("containerresource.json")
+	rawPayload := radiustesting.ReadFixture("containerresource.json")
 	r := &ContainerResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -50,7 +52,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 
 func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("containerresourcedatamodel.json")
+	rawPayload := radiustesting.ReadFixture("containerresourcedatamodel.json")
 	r := &datamodel.ContainerResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)

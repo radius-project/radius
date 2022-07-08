@@ -5,13 +5,6 @@
 
 package conv
 
-import "errors"
-
-var (
-	// ErrInvalidModelConversion is the error when converting model is invalid.
-	ErrInvalidModelConversion = errors.New("invalid model conversion")
-)
-
 // DataModelInterface is the interface for version agnostic datamodel.
 type DataModelInterface interface {
 	ResourceTypeName() string

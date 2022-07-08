@@ -13,6 +13,10 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
+const (
+	EnvironmentComputeKindKubernetes = "kubernetes"
+)
+
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
@@ -27,16 +31,20 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.EnvironmentProperties{
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Compute: datamodel.EnvironmentCompute{
-				Kind:       toEnvironmentComputeKindDataModel(src.Properties.Compute.Kind),
-				ResourceID: to.String(src.Properties.Compute.ResourceID),
-			},
 		},
 		InternalMetadata: v1.InternalMetadata{
 			CreatedAPIVersion: Version,
 			UpdatedAPIVersion: Version,
 		},
 	}
+
+	envCompute, err := toEnvironmentComputeDataModel(src.Properties.Compute)
+	if err != nil {
+		return nil, err
+	}
+
+	converted.Properties.Compute = *envCompute
+
 	return converted, nil
 }
 
@@ -56,26 +64,66 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.Properties.ProvisioningState),
-		Compute: &EnvironmentCompute{
-			Kind:       fromEnvironmentComputeKind(env.Properties.Compute.Kind),
-			ResourceID: to.StringPtr(env.Properties.Compute.ResourceID),
-		},
+	}
+
+	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
+	if dst.Properties.Compute == nil {
+		return conv.ErrInvalidModelConversion
 	}
 
 	return nil
 }
 
-func toEnvironmentComputeKindDataModel(kind *EnvironmentComputeKind) datamodel.EnvironmentComputeKind {
-	switch *kind {
-	case EnvironmentComputeKindKubernetes:
-		return datamodel.KubernetesComputeKind
+func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamodel.EnvironmentCompute, error) {
+	switch v := h.(type) {
+	case *KubernetesCompute:
+		k, err := toEnvironmentComputeKindDataModel(*v.Kind)
+		if err != nil {
+			return nil, err
+		}
+
+		if v.Namespace == nil || len(*v.Namespace) == 0 || len(*v.Namespace) >= 64 {
+			return nil, &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
+		}
+
+		return &datamodel.EnvironmentCompute{
+			Kind: k,
+			KubernetesCompute: datamodel.KubernetesComputeProperties{
+				ResourceID: *v.ResourceID,
+				Namespace:  *v.Namespace,
+			},
+		}, nil
 	default:
-		return datamodel.UnknownComputeKind
+		return nil, conv.ErrInvalidModelConversion
 	}
 }
 
-func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *EnvironmentComputeKind {
-	var k EnvironmentComputeKind
+func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) EnvironmentComputeClassification {
+	switch envCompute.Kind {
+	case datamodel.KubernetesComputeKind:
+		return &KubernetesCompute{
+			EnvironmentCompute: EnvironmentCompute{
+				Kind:       fromEnvironmentComputeKind(envCompute.Kind),
+				ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
+			},
+			Namespace: &envCompute.KubernetesCompute.Namespace,
+		}
+	default:
+		return nil
+	}
+}
+
+func toEnvironmentComputeKindDataModel(kind string) (datamodel.EnvironmentComputeKind, error) {
+	switch kind {
+	case EnvironmentComputeKindKubernetes:
+		return datamodel.KubernetesComputeKind, nil
+	default:
+		return datamodel.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
+	}
+}
+
+func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
+	var k string
 	switch kind {
 	case datamodel.KubernetesComputeKind:
 		k = EnvironmentComputeKindKubernetes
