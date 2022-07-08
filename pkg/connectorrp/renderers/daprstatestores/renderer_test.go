@@ -22,7 +22,9 @@ import (
 )
 
 const (
-	appName               = "test-app"
+	applicationName       = "test-app"
+	applicationID         = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/test-app"
+	environmentID         = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env"
 	resourceName          = "test-state-store"
 	daprVersion           = "dapr.io/v1alpha1"
 	k8sKind               = "Component"
@@ -35,12 +37,12 @@ func Test_Render_Success(t *testing.T) {
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
-			Name: "test-state-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        datamodel.DaprStateStoreKindAzureTableStorage,
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
@@ -48,7 +50,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	result, err := renderer.Render(context.Background(), resource)
+	result, err := renderer.Render(context.Background(), &resource)
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -59,10 +61,10 @@ func Test_Render_Success(t *testing.T) {
 
 	expected := map[string]string{
 		handlers.KubernetesNameKey:       "test-state-store",
-		handlers.KubernetesNamespaceKey:  "test-app",
+		handlers.KubernetesNamespaceKey:  applicationName,
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
-		handlers.ApplicationName:         "test-app",
+		handlers.ApplicationName:         applicationName,
 		handlers.ResourceIDKey:           "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		handlers.StorageAccountNameKey:   "test-account",
 		handlers.ResourceName:            "mytable",
@@ -75,12 +77,12 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
-			Name: "test-state-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        "state.azure.tablestorage",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
@@ -88,7 +90,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.Error())
 }
@@ -98,18 +100,18 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
-			Name: "test-state-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application:                     "test-app",
-			Environment:                     "test-env",
+			Application:                     applicationID,
+			Environment:                     environmentID,
 			Kind:                            "state.azure.tablestorage",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{},
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
 }
@@ -119,12 +121,12 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
-			Name: "test-state-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        "state.azure.cosmosdb",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
@@ -132,7 +134,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.Error())
 }
@@ -142,12 +144,12 @@ func Test_Render_Generic_Success(t *testing.T) {
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
-			Name: "test-state-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        datamodel.DaprStateStoreKindGeneric,
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Type:    stateStoreType,
@@ -159,7 +161,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	result, err := renderer.Render(context.Background(), resource)
+	result, err := renderer.Render(context.Background(), &resource)
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
@@ -172,9 +174,9 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
-				"namespace": appName,
-				"name":      resourceName,
-				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
+				"namespace": applicationName,
+				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 			},
 			"spec": map[string]interface{}{
 				"type":    stateStoreType,
@@ -196,12 +198,12 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
-			Name: "test-state-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Type:     stateStoreType,
@@ -211,7 +213,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.Error())
 }
@@ -221,12 +223,12 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
-			Name: "test-state-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Metadata: map[string]interface{}{
@@ -237,7 +239,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "No type specified for generic Dapr component", err.Error())
 }
@@ -247,12 +249,12 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
-			Name: "test-state-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Metadata: map[string]interface{}{
@@ -263,7 +265,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 
 	require.Error(t, err)
 	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())

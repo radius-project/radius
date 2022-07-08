@@ -45,7 +45,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, mongoDBResource)
+	output, err := renderer.Render(ctx, &mongoDBResource)
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 2)
@@ -106,7 +106,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, mongoDBResource)
+	output, err := renderer.Render(ctx, &mongoDBResource)
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 0)
 
@@ -143,7 +143,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, mongoDBResource)
+	output, err := renderer.Render(ctx, &mongoDBResource)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(output.Resources))
 }
@@ -165,7 +165,7 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, mongoDBResource)
+	_, err := renderer.Render(ctx, &mongoDBResource)
 	require.Error(t, err)
 	require.Equal(t, "invalid model conversion", err.Error())
 }
@@ -189,7 +189,7 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, mongoDBResource)
+	_, err := renderer.Render(ctx, &mongoDBResource)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must be a valid resource id", err.Error())
 }
@@ -213,7 +213,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, mongoDBResource)
+	_, err := renderer.Render(ctx, &mongoDBResource)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a CosmosDB Mongo Database", err.Error())
 }

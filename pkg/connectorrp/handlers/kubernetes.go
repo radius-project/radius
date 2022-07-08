@@ -107,14 +107,14 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 }
 
 func (handler *kubernetesHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]interface{})
+	resourceIdentity := resource.Identity.Data.(resourcemodel.KubernetesIdentity)
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": properties[KubernetesAPIVersionKey],
-			"kind":       properties[KubernetesKindKey],
+			"apiVersion": resourceIdentity.APIVersion,
+			"kind":       resourceIdentity.Kind,
 			"metadata": map[string]interface{}{
-				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ResourceName],
+				"namespace": resourceIdentity.Namespace,
+				"name":      resourceIdentity.Name,
 			},
 		},
 	}

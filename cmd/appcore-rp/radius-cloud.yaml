@@ -17,6 +17,8 @@ storageProvider:
     database: applicationscore
     # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
     masterKey: set-me-in-a-different-way
+queueProvider:
+  provider: inmemory
 server:
   host: "0.0.0.0"
   port: 8080

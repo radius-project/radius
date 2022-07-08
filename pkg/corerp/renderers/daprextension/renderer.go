@@ -57,7 +57,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 // Render augments the container's kubernetes output resource with value for dapr sidecar extension.
 func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.ContainerResource)
+	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
@@ -127,7 +127,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 }
 
 func (r *Renderer) findExtension(dm conv.DataModelInterface) (*datamodel.DaprSidecarExtension, error) {
-	container, ok := dm.(datamodel.ContainerResource)
+	container, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
 		return nil, conv.ErrInvalidModelConversion
 	}
