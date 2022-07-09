@@ -6,6 +6,8 @@
 package hostoptions
 
 import (
+	"github.com/project-radius/radius/pkg/client/azuread"
+	kubeenv "github.com/project-radius/radius/pkg/client/kubernetes"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
@@ -13,8 +15,9 @@ import (
 
 // ProviderConfig includes the resource provider configuration.
 type ProviderConfig struct {
-	Env             EnvironmentOptions                  `yaml:"environment"`
-	Identity        IdentityOptions                     `yaml:"identity"`
+	Environment     EnvironmentOptions                  `yaml:"environment"`
+	AzureAD         *azuread.Options                    `yaml:"azureAd,omitempty"`
+	Kubernetes      *kubeenv.Options                    `yaml:"kubernetes,omitempty"`
 	StorageProvider dataprovider.StorageProviderOptions `yaml:"storageProvider"`
 	QueueProvider   qprovider.QueueProviderOptions      `yaml:"queueProvider"`
 	Server          *ServerOptions                      `yaml:"server,omitempty"`

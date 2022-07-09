@@ -2,6 +2,12 @@
 environment:
   name: Dev
   roleLocation: "global"
+azureAd:
+  clientId: appid
+  tenantId: tenantId
+  clientSecret: secret
+kubernetes:
+  environment: local
 storageProvider:
   provider: "etcd"
   etcd:

@@ -15,8 +15,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kelseyhightower/envconfig"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	kubeenv "github.com/project-radius/radius/pkg/client/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/k8sauth"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +46,11 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
-	k8s, err := getKubernetes()
+	if conf.Kubernetes != nil && conf.Kubernetes.Environment == kubeenv.KubeAKS && conf.Kubernetes.Azure != nil {
+		conf.Kubernetes.Azure.Identity = conf.AzureAD
+	}
+
+	restConf, err := kubeenv.GetKubeConfig(conf.Kubernetes)
 	if err != nil {
 		return HostOptions{}, err
 	}
@@ -52,7 +58,7 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 	return HostOptions{
 		Config:    conf,
 		Arm:       arm,
-		K8sConfig: k8s,
+		K8sConfig: restConf,
 	}, nil
 }
 
@@ -71,15 +77,8 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 		return nil, fmt.Errorf("failed to load yaml: %w", err)
 	}
 
-	// TODO: improve the way to override the configration via env var.
-	cosmosdbUrl := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_URL")
-	if cosmosdbUrl != "" {
-		conf.StorageProvider.CosmosDB.Url = cosmosdbUrl
-	}
-
-	cosmosDBKey := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY")
-	if cosmosDBKey != "" {
-		conf.StorageProvider.CosmosDB.MasterKey = cosmosDBKey
+	if err := envconfig.Process("RADIUS_", conf); err != nil {
+		panic(err)
 	}
 
 	return conf, nil

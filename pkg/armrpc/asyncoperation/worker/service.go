@@ -55,19 +55,22 @@ func (s *Service) Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.OperationStatusManager = manager.New(opSC, s.RequestQueue, s.ProviderName, s.Options.Config.Env.RoleLocation)
+	s.OperationStatusManager = manager.New(opSC, s.RequestQueue, s.ProviderName, s.Options.Config.Environment.RoleLocation)
 	s.Controllers = NewControllerRegistry(s.StorageProvider)
 
-	scheme := clientgoscheme.Scheme
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(csidriver.AddToScheme(scheme))
-	utilruntime.Must(contourv1.AddToScheme(scheme))
+	if s.Options.K8sConfig != nil {
+		// TODO: it is better to let controller create k8s client since k8s client doesn't related to worker service itself.
+		scheme := clientgoscheme.Scheme
+		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+		utilruntime.Must(csidriver.AddToScheme(scheme))
+		utilruntime.Must(contourv1.AddToScheme(scheme))
 
-	k8s, err := controller_runtime.New(s.Options.K8sConfig, controller_runtime.Options{Scheme: scheme})
-	if err != nil {
-		return err
+		k8s, err := controller_runtime.New(s.Options.K8sConfig, controller_runtime.Options{Scheme: scheme})
+		if err != nil {
+			return err
+		}
+		s.KubeClient = k8s
 	}
-	s.KubeClient = k8s
 
 	if s.Options.Arm != nil {
 		s.SecretClient = renderers.NewSecretValueClient(*s.Options.Arm)
