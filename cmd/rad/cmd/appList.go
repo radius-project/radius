@@ -31,14 +31,6 @@ func listApplications(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = listApplications(cmd, args, env)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func listApplications(cmd *cobra.Command, args []string, env environments.Environment) error {
 	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
@@ -49,4 +41,8 @@ func listApplications(cmd *cobra.Command, args []string, env environments.Enviro
 	}
 
 	return printOutput(cmd, applicationList, false)
+	if err != nil {
+		return err
+	}
+	return nil
 }

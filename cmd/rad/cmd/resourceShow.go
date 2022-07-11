@@ -38,15 +38,6 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = showResource(cmd, args, env)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func showResource(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplication(cmd, env)
 	if err != nil {
 		return err
@@ -68,6 +59,11 @@ func showResource(cmd *cobra.Command, args []string, env environments.Environmen
 	}
 
 	return printOutput(cmd, resourceList, false)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func isAzureConnectionResource(cmd *cobra.Command, args []string) (bool, error) {
