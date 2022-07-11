@@ -1,6 +1,4 @@
-import kubernetes from kubernetes {
-  namespace: 'default'
-}
+import kubernetes from kubernetes
 
 resource redisService 'kubernetes.core/Service@v1' existing = {
   metadata: {
