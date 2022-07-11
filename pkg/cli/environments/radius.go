@@ -16,7 +16,6 @@ type RadiusEnvironment struct {
 	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
 	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
 	UCPResourceGroupName     string `mapstructure:"ucpresourcegroupname,omitempty"`
-	EnableUCP                bool   `mapstructure:"enableucp,omitempty"`
 
 	// Capture arbitrary other properties
 	// We tolerate and allow extra fields - this helps with forwards compat.

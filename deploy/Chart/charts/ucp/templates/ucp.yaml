@@ -28,8 +28,6 @@ spec:
           value: '/apis/api.ucp.dev/v1alpha3' # listen for APIService URLs
         - name: TLS_CERT_DIR
           value: '/var/tls/cert'
-        - name: RAD_FF_ENABLE_UCP
-          value: "{{ .Values.global.rad_ff_enable_bicep_extensibility }}"
         - name: PORT
           value: '9443'
         name: ucp

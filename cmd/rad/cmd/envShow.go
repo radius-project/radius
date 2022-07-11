@@ -46,46 +46,30 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if env.GetEnableUCP() {
-		client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
-		if err != nil {
-			return err
-		}
-
-		if envName == "" && envconfig.Default == "" {
-			return errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
-		}
-
-		if envName == "" {
-			envName = envconfig.Default
-		}
-
-		envResource, err := client.GetEnvDetails(cmd.Context(), envName)
-		if err != nil {
-			return err
-		}
-
-		b, err := yaml.Marshal(envResource)
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(b))
-
-	} else {
-
-		e, err := envconfig.GetEnvironment(envName)
-		if err != nil {
-			return err
-		}
-
-		b, err := yaml.Marshal(&e)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(string(b))
-
+	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	if err != nil {
+		return err
 	}
+
+	if envName == "" && envconfig.Default == "" {
+		return errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
+	}
+
+	if envName == "" {
+		envName = envconfig.Default
+	}
+
+	envResource, err := client.GetEnvDetails(cmd.Context(), envName)
+	if err != nil {
+		return err
+	}
+
+	b, err := yaml.Marshal(envResource)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(b))
+
 	return nil
 
 }

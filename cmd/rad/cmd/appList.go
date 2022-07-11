@@ -31,35 +31,6 @@ func listApplications(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if env.GetEnableUCP() {
-		err := listApplicationsUCP(cmd, args, env)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := listApplicationsLegacy(cmd, args, env)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func listApplicationsLegacy(cmd *cobra.Command, args []string, env environments.Environment) error {
-	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
-	if err != nil {
-		return err
-	}
-
-	applicationList, err := client.ListApplications(cmd.Context())
-	if err != nil {
-		return err
-	}
-
-	return printOutput(cmd, applicationList.Value, true)
-}
-
-func listApplicationsUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
 	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err
