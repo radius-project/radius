@@ -26,24 +26,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const defaultResyncInterval = time.Second * 50
+
 func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) ResourceHandler {
-	informerFactory := informers.NewSharedInformerFactory(clientSet, 15*time.Second)
-	// Start the informer
-	informerFactory.Start(wait.NeverStop)
-	informerFactory.WaitForCacheSync(wait.NeverStop)
-	watchCh := make(chan bool)
-	watchErrorCh := make(chan error)
-	return &kubernetesHandler{client: client, clientSet: clientSet, informerFactory: informerFactory, readinessCh: watchCh, watchErrorCh: watchErrorCh}
+	return &kubernetesHandler{client: client, clientSet: clientSet}
 }
 
 type kubernetesHandler struct {
-	client          client.Client
-	clientSet       k8s.Interface
-	informerFactory informers.SharedInformerFactory
-	// watch channel for deployment readiness
-	readinessCh chan bool
-	// watch channel for deployment error
-	watchErrorCh chan error
+	client    client.Client
+	clientSet k8s.Interface
 }
 
 func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
@@ -66,10 +57,16 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return err
 	}
 
+	if item.GetKind() != "Deployment" {
+		return nil // only checking further the Deployment output resource status
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute) // 5 minute deployment readiness timeout
 	defer cancel()
 
-	handler.watchUntilReady(ctx, &item)
+	readinessCh := make(chan bool)
+	watchErrorCh := make(chan error)
+	handler.watchUntilReady(ctx, &item, readinessCh, watchErrorCh)
 
 	select {
 	case <-ctx.Done():
@@ -83,9 +80,9 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		status := dep.Status.Conditions[len(dep.Status.Conditions)-1]
 
 		return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
-	case <-handler.readinessCh:
+	case <-readinessCh:
 		return nil
-	case <-handler.watchErrorCh:
+	case <-watchErrorCh:
 		return err
 	}
 }
@@ -187,27 +184,30 @@ func convertToUnstructured(resource outputresource.OutputResource) (unstructured
 	return unstructured.Unstructured{Object: c}, nil
 }
 
-func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object) {
-	deploymentInformer := handler.informerFactory.Apps().V1().Deployments()
+func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error) {
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, defaultResyncInterval, informers.WithNamespace(item.GetNamespace()))
+
+	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new_obj interface{}) {
 			obj, ok := new_obj.(*v1.Deployment)
 			if !ok {
-				handler.watchErrorCh <- errors.New("deployment object is not of appsv1.Deployment type")
+				watchErrorCh <- errors.New("deployment object is not of appsv1.Deployment type")
 			}
-			handler.watchUntilDeploymentReady(ctx, obj)
+
+			handler.watchUntilDeploymentReady(ctx, obj, readinessCh)
 		},
 		UpdateFunc: func(old_obj, new_obj interface{}) {
 			old, ok := old_obj.(*v1.Deployment)
 			if !ok {
-				handler.watchErrorCh <- errors.New("old deployment object is not of appsv1.Deployment type")
+				watchErrorCh <- errors.New("old deployment object is not of appsv1.Deployment type")
 			}
 			new, ok := new_obj.(*v1.Deployment)
 			if !ok {
-				handler.watchErrorCh <- errors.New("new deployment object not of appsv1.Deployment type")
+				watchErrorCh <- errors.New("new deployment object not of appsv1.Deployment type")
 			}
 			if old.ResourceVersion != new.ResourceVersion {
-				handler.watchUntilDeploymentReady(ctx, new)
+				handler.watchUntilDeploymentReady(ctx, new, readinessCh)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -215,15 +215,18 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 		},
 	}
 
-	deploymentInformer.Informer().AddEventHandler(handlers)
+	deploymentInformer.AddEventHandler(handlers)
+	// Start the informer
+	informerFactory.Start(wait.NeverStop)
+	informerFactory.WaitForCacheSync(wait.NeverStop)
 }
 
-func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment) {
+func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment, readinessCh chan<- bool) {
 	for _, c := range obj.Status.Conditions {
 		// check for complete deployment condition
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
 		if c.Type == v1.DeploymentProgressing && c.Status == "True" && c.Reason == "NewReplicaSetAvailable" {
-			handler.readinessCh <- true
+			readinessCh <- true
 		}
 	}
 }
