@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	v1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -72,7 +73,16 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 
 	select {
 	case <-ctx.Done():
-		return fmt.Errorf("deployment timed out, deployment: %s in namespace %s is not ready", item.GetName(), item.GetNamespace())
+		// Get the final deployment status
+		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
+		}
+		// Now get the latest available observation of deployment current state
+		// note that there can be a race condition here, by the time it fetches the latest status, deployment might be succeeded
+		status := dep.Status.Conditions[len(dep.Status.Conditions)-1]
+
+		return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 	case <-handler.readinessCh:
 		return nil
 	case <-handler.watchErrorCh:
