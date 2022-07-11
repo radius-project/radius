@@ -17,7 +17,7 @@ else
 endif
 
 ifeq ($(GOOS),windows)
-#    BINARY_EXT = .exe
+   BINARY_EXT = .exe
    GOLANGCI_LINT:=golangci-lint.exe
 else
    GOLANGCI_LINT:=golangci-lint

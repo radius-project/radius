@@ -38,7 +38,7 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = showResourceUCP(cmd, args, env)
+	err = showResource(cmd, args, env)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func showResource(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func showResourceUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
+func showResource(cmd *cobra.Command, args []string, env environments.Environment) error {
 	applicationName, err := cli.RequireApplication(cmd, env)
 	if err != nil {
 		return err

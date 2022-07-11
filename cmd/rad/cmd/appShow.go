@@ -36,7 +36,7 @@ func showApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = ShowApplicationUCP(cmd, args, env, applicationName, config)
+	err = ShowApplication(cmd, args, env, applicationName, config)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func showApplication(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func ShowApplicationUCP(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
+func ShowApplication(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
 	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err

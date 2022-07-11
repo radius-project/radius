@@ -60,7 +60,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err = DeleteApplicationUCP(cmd, args, env, applicationName, config)
+	err = DeleteApplication(cmd, args, env, applicationName, config)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func DeleteApplicationUCP(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
+func DeleteApplication(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
 	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err

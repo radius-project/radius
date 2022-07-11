@@ -39,11 +39,11 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return displayEnvListUCP(envList, cmd)
+	return displayEnvList(envList, cmd)
 
 }
 
-func displayEnvListUCP(envList []v20220315privatepreview.EnvironmentResource, cmd *cobra.Command) error {
+func displayEnvList(envList []v20220315privatepreview.EnvironmentResource, cmd *cobra.Command) error {
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
