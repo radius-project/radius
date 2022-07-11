@@ -6,12 +6,9 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/environments"
 )
 
@@ -64,25 +61,4 @@ func showResource(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func isAzureConnectionResource(cmd *cobra.Command, args []string) (bool, error) {
-	resourceType, err := cmd.Flags().GetString("type")
-	if err != nil {
-		return false, err
-	}
-
-	if resourceType == "" {
-		if len(args) > 0 {
-			resourceType = args[0]
-		} else {
-			return false, fmt.Errorf("resource type is required")
-		}
-	}
-
-	if azure.KnownAzureResourceType(resourceType) {
-		return true, nil
-	}
-
-	return false, nil
 }

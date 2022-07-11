@@ -81,35 +81,3 @@ func DeleteApplication(cmd *cobra.Command, args []string, env environments.Envir
 
 	return printOutput(cmd, deleteResponse, false)
 }
-
-// appDeleteInner deletes an application without argument/flag validation.
-func appDeleteInner(ctx context.Context, client clients.LegacyManagementClient, applicationName string, env environments.Environment) error {
-	err := client.DeleteApplication(ctx, applicationName)
-	if err != nil {
-		return fmt.Errorf("delete application error: %w", err)
-	}
-
-	fmt.Printf("Application '%s' has been deleted.\n", applicationName)
-	return nil
-}
-
-func updateApplicationConfig(ctx context.Context, config *viper.Viper, env environments.Environment, applicationName string) error {
-	// If the application we are deleting is the default application, remove it
-	if env.GetDefaultApplication() == applicationName {
-		envSection, err := cli.ReadEnvironmentSection(config)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Removing default application '%v' from environment '%v'\n", applicationName, env.GetName())
-
-		envSection.Items[cases.Fold().String(env.GetName())][environments.EnvironmentKeyDefaultApplication] = ""
-
-		err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(envSection, cli.MergeWithLatestConfig(env.GetName())))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
