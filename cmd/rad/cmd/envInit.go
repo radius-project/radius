@@ -144,7 +144,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	cliOptions := helm.CLIClusterOptions{
-		Namespace: sharedArgs.Namespace,
+		Namespace: environmentName,
 		Radius: helm.RadiusOptions{
 			ChartPath:     sharedArgs.ChartPath,
 			Image:         sharedArgs.Image,
@@ -182,7 +182,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			"kind":        "dev",
 			"context":     cluster.ContextName,
 			"clustername": cluster.ClusterName,
-			"namespace":   sharedArgs.Namespace,
+			"namespace":   environmentName,
 			"enableucp":   featureflag.EnableUnifiedControlPlane.IsActive(),
 			"registry": &environments.Registry{
 				PushEndpoint: cluster.RegistryPushEndpoint,
@@ -198,7 +198,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		env.Items[params.Name] = map[string]interface{}{
 			"kind":      environments.KindKubernetes,
 			"context":   contextName,
-			"namespace": sharedArgs.Namespace,
+			"namespace": environmentName,
 			"enableucp": featureflag.EnableUnifiedControlPlane.IsActive(),
 		}
 
