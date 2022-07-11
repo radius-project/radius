@@ -271,7 +271,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	}
 
 	now := time.Now().UTC()
-	err = w.sm.Update(ctx, rID.RootScope(), operationID, state, &now, opErr)
+	err = w.sm.Update(ctx, rID, operationID, state, &now, opErr)
 	if err != nil {
 		logger.Error(err, "failed to update operationstatus", "OperationID", operationID.String())
 		return err
@@ -286,7 +286,7 @@ func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.S
 		return false, err
 	}
 
-	status, err := w.sm.Get(ctx, rID.RootScope(), operationID)
+	status, err := w.sm.Get(ctx, rID, operationID)
 	if err != nil {
 		return false, err
 	}
