@@ -35,7 +35,8 @@ func showApplication(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	err := ShowApplicationUCP(cmd, args, env, applicationName, config)
+
+	err = ShowApplicationUCP(cmd, args, env, applicationName, config)
 	if err != nil {
 		return err
 	}
