@@ -13,18 +13,18 @@ param magpiePort int = 3000
 param environment string = 'test'
 
 @description('Specifies the image for the container resource.')
-param rabbitmqImage string = 'rabbitmq:3.10'
+param sqlImage string = 'mcr.microsoft.com/mssql/server:2019-latest'
 
 @description('Specifies the port for the container resource.')
-param rabbitmqPort int = 5672
+param sqlPort int = 1433
 
 @description('Specifies the RabbitMQ username.')
-param username string = 'guest'
+param username string = 'sa'
 
 @description('Specifies the RabbitMQ password.')
-param password string = 'guest'
+param password string = 'p@ssw0rd'
 
-var appPrefix = 'corerp-resources-rabbitmq'
+var appPrefix = 'corerp-resources-sql'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: '${appPrefix}-app'
@@ -39,56 +39,62 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   location: location
   properties: {
     application: app.id
+    connections: {
+      sql: {
+        source: db.id
+      }
+    }
     container: {
       image: magpieImage
+      env: {
+        CONNECTION_SQL_CONNECTIONSTRING: 'Data Source=tcp:${db.properties.server},${sqlRoute.properties.port};Initial Catalog=${db.properties.database};User Id=${username};Password=${password};Encrypt=True;TrustServerCertificate=True'
+      }
       readinessProbe: {
         kind: 'httpGet'
         containerPort: magpiePort
         path: '/healthz'
       }
     }
-    connections: {
-      rabbitmq: {
-        source: rabbitmq.id
-      }
-    }
   }
 }
 
-resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
+  name: '${appPrefix}-db'
+  location: location
+  properties: {
+    environment: environment
+    server: sqlRoute.properties.hostname
+    database: 'master'
+  }
+}
+
+resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: '${appPrefix}-route'
+  location: location
+  properties: {
+    application: app.id
+    port: sqlPort
+  }
+}
+
+resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: '${appPrefix}-container'
   location: location
   properties: {
     application: app.id
     container: {
-      image: rabbitmqImage
+      image: sqlImage
+      env: {
+        ACCEPT_EULA: 'Y'
+        MSSQL_PID: 'Developer'
+        MSSQL_SA_PASSWORD: password
+      }
       ports: {
-        rabbitmq: {
-          containerPort: rabbitmqPort
-          provides: rabbitmqRoute.id
+        sql: {
+          containerPort: sqlPort
+          provides: sqlRoute.id
         }
       }
-    }
-  }
-}
-
-resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-route'
-  location: location
-  properties: {
-    application: app.id
-    port: rabbitmqPort
-  }
-}
-
-resource rabbitmq 'Applications.Connector/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-mq'
-  location: location
-  properties: {
-    environment: environment
-    queue: 'queue'
-    secrets: {
-      connectionString: 'amqp://${username}:${password}@${rabbitmqRoute.properties.hostname}:${rabbitmqRoute.properties.port}'
     }
   }
 }

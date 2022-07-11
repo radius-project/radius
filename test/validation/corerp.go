@@ -20,10 +20,11 @@ const (
 	ApplicationsResource          = "applications.core/applications"
 	HttpRoutesResource            = "applications.core/httpRoutes"
 	GatewaysResource              = "applications.core/gateways"
+	ContainersResource            = "applications.connector/containers"
 	MongoDatabasesResource        = "applications.connector/mongoDatabases"
 	RabbitMQMessageQueuesResource = "applications.conneector/rabbitMQMessageQueues"
 	RedisCachesResource           = "applications.connector/redisCaches"
-	ContainersResource            = "applications.connector/containers"
+	SQLDatabasesResource          = "applications.connector/sqlDatabases"
 )
 
 type CoreRPResource struct {
