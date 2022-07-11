@@ -296,9 +296,6 @@ func fromKindDataModel(kind datamodel.IAMKind) *Kind {
 }
 
 func toProtocolDataModel(protocol *Protocol) datamodel.Protocol {
-	if protocol == nil {
-		return datamodel.ProtocolHTTP
-	}
 	switch *protocol {
 	case ProtocolHTTP:
 		return datamodel.ProtocolHTTP
