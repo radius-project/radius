@@ -6,7 +6,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -110,7 +109,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = injectEnvironmentParam(parameters, cmd.Context(), env)
+	err = environments.InjectEnvironmentParam(parameters, cmd.Context(), env)
 
 	if err != nil {
 		return err
@@ -163,27 +162,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	})
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func injectEnvironmentParam(parameters map[string]map[string]interface{}, context context.Context, env environments.Environment) error {
-	client, err := environments.CreateApplicationsManagementClient(context, env)
-	if err != nil {
-		return err
-	}
-
-	envResource, err := client.GetEnvDetails(context, env.GetName())
-
-	if err != nil {
-		return err
-	}
-
-	if _, ok := parameters["environment"]; !ok {
-		parameters["environment"] = map[string]interface{}{
-			"value": envResource.ID,
-		}
 	}
 
 	return nil
