@@ -29,7 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
@@ -40,7 +40,7 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8sClient client.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
 
@@ -51,7 +51,7 @@ type deploymentProcessor struct {
 	sp           dataprovider.DataStorageProvider
 	secretClient renderers.SecretValueClient
 	// k8sClient is the Kubernetes controller runtime client.
-	k8sClient client.Client
+	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
 	k8sClientSet kubernetes.Interface
 }
@@ -360,7 +360,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.Env
 
 		// Find the public IP of the cluster (External IP of the contour-envoy service)
 		var services corev1.ServiceList
-		err := dp.k8sClient.List(ctx, &services, &client.ListOptions{Namespace: "radius-system"})
+		err := dp.k8sClient.List(ctx, &services, &controller_runtime.ListOptions{Namespace: "radius-system"})
 		if err != nil {
 			return renderers.EnvironmentOptions{}, fmt.Errorf("failed to look up Services: %w", err)
 		}

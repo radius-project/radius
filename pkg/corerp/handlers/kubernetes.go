@@ -25,19 +25,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewKubernetesHandler(k8s client.Client, k8sClientSet k8s.Interface) ResourceHandler {
-	informerFactory := informers.NewSharedInformerFactory(k8sClientSet, 15*time.Second)
+func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) ResourceHandler {
+	informerFactory := informers.NewSharedInformerFactory(clientSet, 15*time.Second)
 	// Start the informer
 	informerFactory.Start(wait.NeverStop)
 	informerFactory.WaitForCacheSync(wait.NeverStop)
 	watchCh := make(chan bool)
 	watchErrorCh := make(chan error)
-	return &kubernetesHandler{k8s: k8s, k8sClientSet: k8sClientSet, informerFactory: informerFactory, readinessCh: watchCh, watchErrorCh: watchErrorCh}
+	return &kubernetesHandler{client: client, clientSet: clientSet, informerFactory: informerFactory, readinessCh: watchCh, watchErrorCh: watchErrorCh}
 }
 
 type kubernetesHandler struct {
-	k8s             client.Client
-	k8sClientSet    k8s.Interface
+	client          client.Client
+	clientSet       k8s.Interface
 	informerFactory informers.SharedInformerFactory
 	// watch channel for deployment readiness
 	readinessCh chan bool
@@ -60,7 +60,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return nil
 	}
 
-	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	err = handler.client.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 		},
 	}
 
-	err := handler.k8s.Patch(ctx, ns, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	err := handler.client.Patch(ctx, ns, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		// we consider this fatal - without a namespace we won't be able to apply anything else
 		return fmt.Errorf("error applying namespace: %w", err)
@@ -156,7 +156,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, resource outputres
 		},
 	}
 
-	return client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
+	return client.IgnoreNotFound(handler.client.Delete(ctx, &item))
 }
 
 func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
