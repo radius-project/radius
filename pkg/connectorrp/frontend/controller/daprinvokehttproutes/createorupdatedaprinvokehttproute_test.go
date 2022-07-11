@@ -13,17 +13,39 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
+
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+	rendererOutput := renderers.RendererOutput{
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"appId": {
+				Value: "test-appId",
+			},
+		},
+	}
+
+	deploymentOutput := deployment.DeploymentOutput{
+		Resources: []outputresource.OutputResource{},
+	}
+
+	return rendererOutput, deploymentOutput
+}
 
 func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 	ctx := context.Background()
 
 	createNewResourceTestCases := []struct {
@@ -55,6 +77,9 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 					return nil, &store.ErrNotFound{}
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -70,7 +95,14 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -120,6 +152,9 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 					}, nil
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			if !testcase.shouldFail {
 				mStorageClient.
 					EXPECT().
@@ -131,7 +166,14 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

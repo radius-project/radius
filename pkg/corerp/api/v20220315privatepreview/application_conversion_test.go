@@ -11,12 +11,13 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/stretchr/testify/require"
 )
 
 func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("applicationresource.json")
+	rawPayload := radiustesting.ReadFixture("applicationresource.json")
 	r := &ApplicationResource{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
@@ -37,7 +38,7 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 
 func TestApplicationConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("applicationresourcedatamodel.json")
+	rawPayload := radiustesting.ReadFixture("applicationresourcedatamodel.json")
 	r := &datamodel.Application{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)

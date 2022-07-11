@@ -102,6 +102,17 @@ func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context
 	return results, nil
 }
 
+func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationResource, error) {
+	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
+	getResponse, err := client.Get(ctx, applicationName, &corerp.ApplicationsGetOptions{})
+	var result v20220315privatepreview.ApplicationResource
+	if err != nil {
+		return result, err
+	}
+	result = getResponse.ApplicationResource
+	return result, nil
+}
+
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	return client.Delete(ctx, applicationName, nil)

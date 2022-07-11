@@ -40,6 +40,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
+	"github.com/project-radius/radius/pkg/ucp/store/storeutil"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -120,7 +121,7 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 				continue
 			}
 
-			if idMatchesQuery(id, query) {
+			if storeutil.IDMatchesQuery(id, query) {
 				converted, err := readEntry(&entry)
 				if err != nil {
 					return nil, err
@@ -382,7 +383,7 @@ func resourceName(id resources.ID) string {
 	}
 
 	// example: resource.resource1.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%s.%x", prefix, id.Name(), hash)
+	return fmt.Sprintf("%s.%s.%x", prefix, strings.ToLower(id.Name()), hash)
 }
 
 func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
@@ -395,15 +396,16 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 			continue
 		}
 
-		if id.IsScope() {
-			set[LabelKind] = store.UCPScopePrefix
-		} else {
-			set[LabelKind] = store.UCPResourcePrefix
-		}
+		prefix, rootScope, _, resourceType := storeutil.ExtractStorageParts(id)
+		set[LabelKind] = prefix
 
-		scopes := id.ScopeSegments()
-		for _, scope := range scopes {
-			key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(scope.Type))
+		// We need to take apart the root scope so we can turn it into key-value-pairs.
+		parsedRootScope, err := resources.Parse(rootScope)
+		if err != nil {
+			continue
+		}
+		for _, scope := range parsedRootScope.ScopeSegments() {
+			key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(strings.ReplaceAll(scope.Type, resources.SegmentSeparator, "-")))
 			value := strings.ToLower(scope.Name)
 
 			existing, ok := set[key]
@@ -412,13 +414,6 @@ func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
 			}
 
 			set[key] = value
-		}
-
-		var resourceType string
-		if id.IsScope() {
-			resourceType = scopes[len(scopes)-1].Type
-		} else {
-			resourceType = id.Type()
 		}
 
 		// '/' is not valid in a label values, so we use '_'
@@ -442,14 +437,14 @@ func createLabelSelector(query store.Query) (labels.Selector, error) {
 
 	selector := labels.NewSelector()
 	if query.IsScopeQuery {
-		requirement, err := labels.NewRequirement(LabelKind, selection.Equals, []string{store.UCPScopePrefix})
+		requirement, err := labels.NewRequirement(LabelKind, selection.Equals, []string{storeutil.ScopePrefix})
 		if err != nil {
 			return nil, err
 		}
 
 		selector = selector.Add(*requirement)
 	} else {
-		requirement, err := labels.NewRequirement(LabelKind, selection.Equals, []string{store.UCPResourcePrefix})
+		requirement, err := labels.NewRequirement(LabelKind, selection.Equals, []string{storeutil.ResourcePrefix})
 		if err != nil {
 			return nil, err
 		}
@@ -458,7 +453,7 @@ func createLabelSelector(query store.Query) (labels.Selector, error) {
 	}
 
 	for _, scope := range id.ScopeSegments() {
-		key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(scope.Type))
+		key := fmt.Sprintf(LabelScopeFormat, strings.ToLower(strings.ReplaceAll(scope.Type, resources.SegmentSeparator, "-")))
 		value := strings.ToLower(scope.Name)
 
 		requirement, err := labels.NewRequirement(key, selection.In, []string{value, LabelValueMultiple})
@@ -538,67 +533,4 @@ func convert(obj *store.Object) (*ucpv1alpha1.ResourceEntry, error) {
 	}
 
 	return &resource, nil
-}
-
-func idMatchesQuery(id resources.ID, query store.Query) bool {
-	if query.ScopeRecursive && !strings.HasPrefix(normalize(id.RootScope()), normalize(query.RootScope)) {
-		// Example:
-		// id is /planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
-		// query.RootScope is /planes/azure/azurecloud
-		//
-		// Query root scope is not a prefix
-		return false
-	} else if !query.ScopeRecursive && normalize(id.RootScope()) != normalize(query.RootScope) {
-		// Example:
-		// id is /planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
-		// query.RootScope is /planes/radius/local/resourceGroups/another-group
-		//
-		// Query root scope does not match
-		return false
-	}
-
-	if query.RoutingScopePrefix != "" && !strings.HasPrefix(normalize(id.RoutingScope()), normalize(query.RoutingScopePrefix)) {
-		// Example:
-		// id is /planes/radius/local/resourceGroups/cool-group/providers/Some.Resource/type1/name1/type2/name2
-		// query.RoutingScopePrefix is /planes/radius/local/resourceGroups/cool-group/providers/Some.Resource/type1/anothername
-		//
-		// Query routing scope is not a prefix
-		return false
-	}
-
-	if query.ResourceType != "" && query.IsScopeQuery {
-		// Example:
-		// id is /planes/radius/local/resourceGroups/cool-group
-		// query.ResourceType is subscriptions
-		//
-		// Query resource type is not a match
-		scopes := id.ScopeSegments()
-		resourceType := scopes[len(scopes)-1].Type
-		return strings.EqualFold(resourceType, query.ResourceType)
-	} else if query.ResourceType != "" && !strings.EqualFold(id.Type(), query.ResourceType) {
-		// Example:
-		// id is /planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/applications/cool-app
-		// query.ResourceType is Applications.Core/containers
-		//
-		// Query resource type is not a match
-		return false
-	}
-
-	return true
-}
-
-func normalize(part string) string {
-	if len(part) == 0 {
-		return ""
-	}
-
-	if !strings.HasPrefix(part, resources.SegmentSeparator) {
-		part = resources.SegmentSeparator + part
-	}
-
-	if !strings.HasSuffix(part, resources.SegmentSeparator) {
-		part = part + resources.SegmentSeparator
-	}
-
-	return strings.ToLower(part)
 }

@@ -8,7 +8,6 @@ package deployment
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -25,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -38,6 +38,70 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 			ID:   id,
 			Name: "mongo0",
 			Type: "applications.connector/mongodatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			},
+		},
+	}
+
+	azureMongoOutputResources := []outputresource.OutputResource{
+		{
+			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: providers.ProviderAzure,
+			},
+		},
+		{
+			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: providers.ProviderAzure,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDAzureCosmosAccount,
+				},
+			},
+		},
+	}
+
+	rendererOutput = renderers.RendererOutput{
+		Resources: azureMongoOutputResources,
+		SecretValues: map[string]rp.SecretValueReference{
+			renderers.ConnectionStringValue: {
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				Action:        "listConnectionStrings",
+				ValueSelector: "/connectionStrings/0/connectionString",
+				Transformer: resourcemodel.ResourceType{
+					Provider: providers.ProviderAzure,
+					Type:     resourcekinds.AzureCosmosDBMongo,
+				},
+			},
+		},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			renderers.DatabaseNameValue: {
+				Value: "test-database",
+			},
+		},
+	}
+
+	return
+}
+
+func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
+	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+	resourceID = getResourceID(id)
+	testResource = datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   id,
+			Name: "mongo0",
+			Type: "Applications.Connector/MongoDatabases",
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -124,6 +188,7 @@ type SharedMocks struct {
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
 	secretsValueClient *renderers.MockSecretValueClient
+	storageProvider    *dataprovider.MockDataStorageProvider
 }
 
 func setup(t *testing.T) SharedMocks {
@@ -135,7 +200,7 @@ func setup(t *testing.T) SharedMocks {
 	model := model.NewModel(
 		[]model.RadiusResourceModel{
 			{
-				ResourceType: strings.ToLower(mongodatabases.ResourceType),
+				ResourceType: mongodatabases.ResourceType,
 				Renderer:     mockRenderer,
 			},
 		},
@@ -191,9 +256,19 @@ func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
 
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 	t.Run("verify render success", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
+
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+
+		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
+	})
+
+	t.Run("verify render success with mixedcase resourcetype", func(t *testing.T) {
+		resourceID, testResource, testRendererOutput := buildTestMongoResourceMixedCaseResourceType()
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 
@@ -257,7 +332,7 @@ func Test_Render_Success(t *testing.T) {
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	t.Run("Verify deploy success", func(t *testing.T) {
 		expectedCosmosMongoDBIdentity := resourcemodel.ResourceIdentity{
@@ -328,7 +403,7 @@ func Test_Deploy(t *testing.T) {
 func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	testResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -388,7 +463,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 func Test_Deploy_InvalidComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -422,7 +497,7 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 func Test_Deploy_MissingJsonPointer(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -459,7 +534,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	testOutputResources := []outputresource.OutputResource{
 		{
@@ -561,7 +636,7 @@ func Test_Delete(t *testing.T) {
 func Test_FetchSecrets(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.db, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	input := buildFetchSecretsInput()
 	secrets, err := dp.FetchSecrets(ctx, input)

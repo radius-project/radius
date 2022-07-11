@@ -12,10 +12,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-type ControllerFactoryFunc func(store.StorageClient) (ctrl.Controller, error)
+type ControllerFactoryFunc func(opts ctrl.Options) (ctrl.Controller, error)
 
 // ControllerRegistry is an registry to register async controllers.
 type ControllerRegistry struct {
@@ -33,18 +32,20 @@ func NewControllerRegistry(sp dataprovider.DataStorageProvider) *ControllerRegis
 }
 
 // Register registers controller.
-func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, method v1.OperationMethod, factoryFn ControllerFactoryFunc) error {
+func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, method v1.OperationMethod, factoryFn ControllerFactoryFunc, opts ctrl.Options) error {
 	h.ctrlMapMu.Lock()
 	defer h.ctrlMapMu.Unlock()
 
 	ot := v1.OperationType{Type: resourceType, Method: method}
 
-	sc, err := h.sp.GetStorageClient(ctx, ot.Type)
+	storageClient, err := opts.DataProvider.GetStorageClient(ctx, resourceType)
 	if err != nil {
 		return err
 	}
+	opts.StorageClient = storageClient
+	opts.ResourceType = resourceType
 
-	ctrl, err := factoryFn(sc)
+	ctrl, err := factoryFn(opts)
 	if err != nil {
 		return err
 	}

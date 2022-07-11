@@ -12,10 +12,8 @@ import (
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
@@ -36,8 +34,8 @@ type CreateOrUpdateHTTPRoute struct {
 }
 
 // NewCreateOrUpdateTTPRoute creates a new CreateOrUpdateHTTPRoute.
-func NewCreateOrUpdateHTTPRoute(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &CreateOrUpdateHTTPRoute{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewCreateOrUpdateHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
+	return &CreateOrUpdateHTTPRoute{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run executes CreateOrUpdateHTTPRoute operation.
@@ -79,7 +77,7 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncPutHTTPRouteOperationTimeout)
+	err = e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncPutHTTPRouteOperationTimeout)
 	if err != nil {
 		newResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
 		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, nr.ETag)

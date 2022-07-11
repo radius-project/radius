@@ -22,7 +22,9 @@ func NewUCPHandler(options UCPHandlerOptions) UCPHandler {
 			Address:  options.Address,
 			BasePath: options.BasePath,
 		}),
-		ResourceGroups: ucpresourcegroups.NewResourceGroupsUCPHandler(),
+		ResourceGroups: ucpresourcegroups.NewResourceGroupsUCPHandler(ucpresourcegroups.Options{
+			BasePath: options.BasePath,
+		}),
 	}
 }
 

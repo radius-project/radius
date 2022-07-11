@@ -124,6 +124,7 @@ type ApplicationsManagementClient interface {
 	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
 	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)
 	ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error)
+	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error)
 	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)

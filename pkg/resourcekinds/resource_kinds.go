@@ -19,6 +19,7 @@ const (
 	StatefulSet                      = "StatefulSet"
 	SecretProviderClass              = "SecretProviderClass"
 	DaprStateStoreAzureStorage       = "dapr.statestore.azurestorage"
+	DaprStateStoreAzureTableStorage  = "state.azure.tablestorage"
 	DaprGeneric                      = "generic"
 	DaprComponent                    = "dapr.io.component"
 	DaprPubSubTopicAzureServiceBus   = "pubsub.azure.servicebus"

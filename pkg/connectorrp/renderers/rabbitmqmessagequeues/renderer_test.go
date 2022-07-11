@@ -47,13 +47,13 @@ func Test_Render_User_Secrets(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, resource)
+	output, err := renderer.Render(ctx, &resource)
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 0)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"queue": {
+		QueueNameKey: {
 			Value: "abc",
 		},
 	}
@@ -85,7 +85,7 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 			Secrets: datamodel.RabbitMQSecrets{ConnectionString: "admin:deadbeef@localhost:42"},
 		},
 	}
-	_, err := renderer.Render(ctx, resource)
+	_, err := renderer.Render(ctx, &resource)
 	require.Error(t, err)
 	require.Equal(t, "queue name must be specified", err.Error())
 }

@@ -12,10 +12,8 @@ import (
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
@@ -34,8 +32,8 @@ type CreateOrUpdateGateway struct {
 }
 
 // NewCreateOrUpdateGateway creates a new CreateOrUpdateGateway.
-func NewCreateOrUpdateGateway(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &CreateOrUpdateGateway{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewCreateOrUpdateGateway(opts ctrl.Options) (ctrl.Controller, error) {
+	return &CreateOrUpdateGateway{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run executes CreateOrUpdateGateway operation.
@@ -78,7 +76,7 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (res
 		return nil, err
 	}
 
-	err = e.AsyncOperation.QueueAsyncOperation(ctx, serviceCtx, AsyncPutGatewayOperationTimeout)
+	err = e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncPutGatewayOperationTimeout)
 	if err != nil {
 		newResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
 		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, obj.ETag)

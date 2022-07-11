@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,11 @@ func TestGetMongoDatabase_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewGetMongoDatabase(mStorageClient, nil, nil)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewGetMongoDatabase(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -65,7 +70,11 @@ func TestGetMongoDatabase_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewGetMongoDatabase(mStorageClient, nil, nil)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewGetMongoDatabase(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)

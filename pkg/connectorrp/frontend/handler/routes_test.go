@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -243,7 +244,7 @@ func TestHandlers(t *testing.T) {
 
 func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovider.MockDataStorageProvider) {
 	r := mux.NewRouter()
-	err := AddRoutes(context.Background(), mockSP, nil, r, pathBase, isARM)
+	err := AddRoutes(context.Background(), r, pathBase, isARM, ctrl.Options{DataProvider: mockSP})
 	require.NoError(t, err)
 
 	for _, tt := range handlerTests {

@@ -9,10 +9,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -21,11 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.DaprPubSubBroker)
-	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
-	}
+func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicationName string) (renderers.RendererOutput, error) {
 	properties := resource.Properties.DaprPubSubAzureServiceBus
 
 	var output outputresource.OutputResource
@@ -42,6 +37,7 @@ func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.Rendere
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Topic")
 	}
+
 	output = outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureServiceBusTopic,
 		ResourceType: resourcemodel.ResourceType{
@@ -50,7 +46,8 @@ func GetDaprPubSubAzureServiceBus(dm conv.DataModelInterface) (renderers.Rendere
 		},
 		Resource: map[string]string{
 			handlers.ResourceName:            resource.Name,
-			handlers.KubernetesNamespaceKey:  resource.Properties.Application,
+			handlers.KubernetesNamespaceKey:  applicationName,
+			handlers.ApplicationName:         applicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
 

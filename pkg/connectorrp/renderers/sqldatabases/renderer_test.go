@@ -49,7 +49,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, resource)
+	output, err := renderer.Render(ctx, &resource)
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 2)
@@ -106,7 +106,7 @@ func Test_Render_MissingResource(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, resource)
+	_, err := renderer.Render(ctx, &resource)
 	require.Error(t, err)
 	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.Error())
 }
@@ -127,7 +127,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, resource)
+	_, err := renderer.Render(ctx, &resource)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a SQL Database", err.Error())
 }

@@ -8,12 +8,15 @@ package daprpubsubbrokers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -25,6 +28,7 @@ func TestDeleteDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	t.Parallel()
@@ -41,7 +45,14 @@ func TestDeleteDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewDeleteDaprPubSubBroker(mStorageClient, nil, nil)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewDeleteDaprPubSubBroker(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -95,6 +106,7 @@ func TestDeleteDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mStorageClient.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
@@ -103,7 +115,14 @@ func TestDeleteDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewDeleteDaprPubSubBroker(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewDeleteDaprPubSubBroker(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -130,4 +149,32 @@ func TestDeleteDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 			}
 		})
 	}
+	t.Run("delete deploymentprocessor error", func(t *testing.T) {
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+		_, daprPubSubDataModel, _ := getTestModels20220315privatepreview()
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id, ETag: "test-etag"},
+					Data:     daprPubSubDataModel,
+				}, nil
+			})
+		mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewDeleteDaprPubSubBroker(opts)
+		require.NoError(t, err)
+		_, err = ctl.Run(ctx, req)
+		require.Error(t, err)
+	})
 }

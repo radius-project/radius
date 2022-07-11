@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/gorilla/mux"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/frontend/handler"
@@ -37,6 +38,13 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
+	opts := ctrl.Options{
+		DataProvider:   s.StorageProvider,
+		SecretClient:   s.SecretClient,
+		KubeClient:     s.KubeClient,
+		AsyncOperation: s.OperationStatusManager,
+	}
+
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	err := s.Start(ctx, server.Options{
 		Address:  address,
@@ -45,7 +53,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, s.StorageProvider, s.OperationStatusManager, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted())
+			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
 			if err != nil {
 				return err
 			}

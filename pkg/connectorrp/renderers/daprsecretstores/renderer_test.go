@@ -23,7 +23,9 @@ import (
 )
 
 const (
-	appName                = "test-app"
+	applicationName        = "test-app"
+	applicationID          = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/test-app"
+	environmentID          = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env"
 	resourceName           = "test-secret-store"
 	daprVersion            = "dapr.io/v1alpha1"
 	k8sKind                = "Component"
@@ -46,18 +48,18 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
-			Name: "test-secret-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			Application: applicationID,
+			Environment: environmentID,
 			Type:        ResourceType,
 			Kind:        "azure.keyvault",
 		},
 	}
 
-	_, err := renderer.Render(ctx, resource)
+	_, err := renderer.Render(ctx, &resource)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreKindValues)), err.Error())
 }
@@ -68,12 +70,12 @@ func Test_Render_Generic_Success(t *testing.T) {
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
-			Name: "test-secret-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: appName,
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			Application: applicationID,
+			Environment: environmentID,
 			Type:        ResourceType,
 			Kind:        resourcekinds.DaprGeneric,
 			Version:     daprSecretStoreVersion,
@@ -83,7 +85,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 		},
 	}
 
-	result, err := renderer.Render(ctx, resource)
+	result, err := renderer.Render(ctx, &resource)
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -103,9 +105,9 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
-				"namespace": appName,
-				"name":      resourceName,
-				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
+				"namespace": applicationName,
+				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 			},
 			"spec": map[string]interface{}{
 				"type":    "Applications.Connector/daprSecretStores",
@@ -128,19 +130,19 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
-			Name: "test-secret-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			Application: applicationID,
+			Environment: environmentID,
 			Type:        "secretstores.kubernetes",
 			Kind:        resourcekinds.DaprGeneric,
 			Version:     daprSecretStoreVersion,
 			Metadata:    map[string]interface{}{},
 		},
 	}
-	_, err := renderer.Render(ctx, resource)
+	_, err := renderer.Render(ctx, &resource)
 	require.Error(t, err)
 	require.Equal(t, "No metadata specified for Dapr component of type secretstores.kubernetes", err.Error())
 }
@@ -151,12 +153,12 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
-			Name: "test-secret-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        resourcekinds.DaprGeneric,
 			Version:     daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
@@ -165,7 +167,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, resource)
+	_, err := renderer.Render(ctx, &resource)
 	require.Error(t, err)
 	require.Equal(t, "No type specified for generic Dapr component", err.Error())
 }
@@ -176,12 +178,12 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
-			Name: "test-secret-store",
+			Name: resourceName,
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			Application: applicationID,
+			Environment: environmentID,
 			Type:        "secretstores.kubernetes",
 			Kind:        resourcekinds.DaprGeneric,
 			Metadata: map[string]interface{}{
@@ -190,7 +192,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, resource)
+	_, err := renderer.Render(ctx, &resource)
 
 	require.Error(t, err)
 	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())

@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -41,7 +42,11 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewDeleteEnvironment(mStorageClient, nil, nil)
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewDeleteEnvironment(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -103,7 +108,11 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewDeleteEnvironment(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+			}
+
+			ctl, err := NewDeleteEnvironment(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)

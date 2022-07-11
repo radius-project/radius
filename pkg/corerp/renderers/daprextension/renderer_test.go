@@ -170,7 +170,7 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 	require.Equal(t, "the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: \"routeappId\", Extension: \"testappId\"", err.Error())
 }
 
-func makeresource(t *testing.T, properties datamodel.ContainerProperties) datamodel.ContainerResource {
+func makeresource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		TrackedResource: apiv1.TrackedResource{
 			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
@@ -179,5 +179,5 @@ func makeresource(t *testing.T, properties datamodel.ContainerProperties) datamo
 		},
 		Properties: properties,
 	}
-	return resource
+	return &resource
 }

@@ -13,16 +13,43 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+	rendererOutput := renderers.RendererOutput{
+		SecretValues: map[string]rp.SecretValueReference{
+			renderers.ConnectionStringValue: {
+				Value: "testConnectionString",
+			},
+		},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			"queue": {
+				Value: "testqueue",
+			},
+		},
+	}
+
+	deploymentOutput := deployment.DeploymentOutput{
+		Resources: []outputresource.OutputResource{},
+	}
+
+	return rendererOutput, deploymentOutput
+}
 func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
@@ -55,6 +82,9 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 					return nil, &store.ErrNotFound{}
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -70,7 +100,14 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateRabbitMQMessageQueue(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateRabbitMQMessageQueue(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
@@ -120,6 +157,9 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			if !testcase.shouldFail {
 				mStorageClient.
 					EXPECT().
@@ -131,7 +171,14 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateRabbitMQMessageQueue(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateRabbitMQMessageQueue(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

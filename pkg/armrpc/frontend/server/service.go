@@ -14,8 +14,11 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
+	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Service is the base worker service implementation to initialize and start web service.
@@ -30,6 +33,10 @@ type Service struct {
 	OperationStatusManager manager.StatusManager
 	// ARMCertManager is the certificate manager of client cert authentication.
 	ARMCertManager *authentication.ArmCertManager
+	// KubeClient is the Kubernetes controller runtime client.
+	KubeClient controller_runtime.Client
+	// SecretClient is the client to fetch secrets.
+	SecretClient renderers.SecretValueClient
 }
 
 // Init initializes web service.
@@ -48,6 +55,15 @@ func (s *Service) Init(ctx context.Context) error {
 		return err
 	}
 	s.OperationStatusManager = manager.New(opSC, reqQueueClient, s.ProviderName, s.Options.Config.Env.RoleLocation)
+
+	s.KubeClient, err = kubeclient.CreateKubeClient(s.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
+
+	if s.Options.Arm != nil {
+		s.SecretClient = renderers.NewSecretValueClient(*s.Options.Arm)
+	}
 
 	// Initialize the manager for ARM client cert validation
 	if s.Options.Config.Server.EnableArmAuth {

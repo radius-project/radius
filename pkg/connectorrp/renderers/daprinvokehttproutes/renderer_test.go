@@ -42,7 +42,7 @@ func Test_Render_Success(t *testing.T) {
 			AppId:       "test-appId",
 		},
 	}
-	output, err := renderer.Render(ctx, resource)
+	output, err := renderer.Render(ctx, &resource)
 	require.NoError(t, err)
 	require.NoError(t, err)
 
