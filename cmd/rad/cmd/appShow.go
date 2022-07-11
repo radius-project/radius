@@ -6,11 +6,8 @@
 package cmd
 
 import (
-<<<<<<< HEAD
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
-=======
->>>>>>> 01d37d86 (moving yaml tag for now)
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
