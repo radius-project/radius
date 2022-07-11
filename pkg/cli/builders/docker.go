@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	dockerparser "github.com/novln/docker-parser"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
 type ImageOperation int
@@ -154,7 +154,7 @@ func (builder *dockerBuilder) Build(ctx context.Context, options Options) (Outpu
 	return output, nil
 }
 
-func NormalizeImage(registry *environments.Registry, image string, operation ImageOperation) (string, error) {
+func NormalizeImage(registry *workspaces.Registry, image string, operation ImageOperation) (string, error) {
 	reference, err := dockerparser.Parse(image)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse image reference: %w", err)

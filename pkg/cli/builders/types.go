@@ -9,13 +9,13 @@ import (
 	"context"
 	"path"
 
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
 type Options struct {
 	BaseDirectory string
-	Registry      *environments.Registry
+	Registry      *workspaces.Registry
 	Output        *output.Stream
 	Values        interface{}
 }

@@ -365,6 +365,50 @@ func Test_MakeRelativeID(t *testing.T) {
 	}
 }
 
+func Test_FindScope(t *testing.T) {
+	type testcase struct {
+		ID       string
+		Segment  string
+		Expected string
+	}
+
+	cases := []testcase{
+		{
+			ID:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
+			Segment:  SubscriptionsSegment,
+			Expected: "s1",
+		},
+		{
+			ID:       "/subscriPtions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
+			Segment:  SubscriptionsSegment,
+			Expected: "s1",
+		},
+		{
+			ID:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
+			Segment:  ResourceGroupsSegment,
+			Expected: "r1",
+		},
+		{
+			ID:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
+			Segment:  "radius",
+			Expected: "local",
+		},
+		{
+			ID:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
+			Segment:  ResourceGroupsSegment,
+			Expected: "r1",
+		},
+	}
+
+	for _, tc := range cases {
+		id, err := Parse(tc.ID)
+		require.NoError(t, err)
+
+		result := id.FindScope(tc.Segment)
+		require.Equal(t, tc.Expected, result)
+	}
+}
+
 func Test_Append_Collection(t *testing.T) {
 	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)

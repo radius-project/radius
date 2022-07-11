@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
@@ -24,8 +24,10 @@ import (
 
 type radiusOptions struct {
 	test.TestOptions
-	ARMAuthorizer autorest.Authorizer
-	Environment   environments.Environment
+	ARMAuthorizer       autorest.Authorizer
+	Workspace           workspaces.Workspace
+	AzureSubscriptionID string
+	AzureResourceGroup  string
 }
 
 func NewK8sTestOptions(t *testing.T) radiusOptions {
@@ -35,13 +37,23 @@ func NewK8sTestOptions(t *testing.T) radiusOptions {
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
-	env, err := cli.GetEnvironment(config, "")
-	require.NoError(t, err, "failed to read default environment")
+	workspace, err := cli.GetWorkspace(config, "")
+	require.NoError(t, err, "failed to read default workspace")
+
+	require.NotNil(t, workspace.ProviderConfig.Azure, "Azure config is nil")
+
+	azureSubscriptionID := workspace.ProviderConfig.Azure.SubscriptionID
+	require.NotEmpty(t, azureSubscriptionID, "subscription id must be specified")
+
+	azureResourceGroup := workspace.ProviderConfig.Azure.ResourceGroup
+	require.NotEmpty(t, azureResourceGroup, "resource group must be specified")
 
 	return radiusOptions{
-		TestOptions:   test.NewTestOptions(t),
-		ARMAuthorizer: auth,
-		Environment:   env,
+		TestOptions:         test.NewTestOptions(t),
+		ARMAuthorizer:       auth,
+		Workspace:           *workspace,
+		AzureSubscriptionID: azureSubscriptionID,
+		AzureResourceGroup:  azureResourceGroup,
 	}
 }
 
@@ -52,7 +64,6 @@ func Test_Deploy_AzureResources(t *testing.T) {
 	opt := NewK8sTestOptions(t)
 	ctx := context.TODO()
 
-	providers := opt.Environment.GetProviders()
 	de := step.NewDeployExecutor(template, params)
 
 	t.Run(de.GetDescription(), func(t *testing.T) {
@@ -61,8 +72,8 @@ func Test_Deploy_AzureResources(t *testing.T) {
 		validation.ValidateAzureResourcesCreated(ctx,
 			t,
 			opt.ARMAuthorizer,
-			providers.AzureProvider.SubscriptionID,
-			providers.AzureProvider.ResourceGroup,
+			opt.AzureSubscriptionID,
+			opt.AzureResourceGroup,
 			applicationName,
 			validation.AzureResourceSet{
 				Resources: []validation.ExpectedResource{

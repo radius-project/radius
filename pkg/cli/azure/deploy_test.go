@@ -16,11 +16,10 @@ import (
 func Test_GetProviderConfigs(t *testing.T) {
 
 	resourceDeploymentClient := ResouceDeploymentClient{
-		SubscriptionID:   "test",
-		ResourceGroup:    "testrg",
-		Client:           clients.ResourceDeploymentClient{},
-		OperationsClient: clients.ResourceDeploymentOperationsClient{},
-		AzProvider:       &Provider{},
+		RadiusResourceGroup: "testrg",
+		Client:              clients.ResourceDeploymentClient{},
+		OperationsClient:    clients.ResourceDeploymentOperationsClient{},
+		AzProvider:          &Provider{},
 	}
 
 	var expectedConfig providers.ProviderConfig
@@ -45,12 +44,13 @@ func Test_GetProviderConfigs(t *testing.T) {
 func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 
 	resourceDeploymentClient := ResouceDeploymentClient{
-		SubscriptionID:   "test",
-		ResourceGroup:    "testrg",
-		Client:           clients.ResourceDeploymentClient{},
-		OperationsClient: clients.ResourceDeploymentOperationsClient{},
-		AzProvider: &Provider{SubscriptionID: "dummy",
-			ResourceGroup: "azrg"},
+		RadiusResourceGroup: "testrg",
+		Client:              clients.ResourceDeploymentClient{},
+		OperationsClient:    clients.ResourceDeploymentOperationsClient{},
+		AzProvider: &Provider{
+			SubscriptionID: "dummy",
+			ResourceGroup:  "azrg",
+		},
 	}
 
 	var expectedConfig providers.ProviderConfig

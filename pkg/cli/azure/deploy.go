@@ -26,12 +26,11 @@ import (
 const OperationPollInterval time.Duration = time.Second * 5
 
 type ResouceDeploymentClient struct {
-	SubscriptionID   string
-	ResourceGroup    string
-	Client           azclients.ResourceDeploymentClient
-	OperationsClient azclients.ResourceDeploymentOperationsClient
-	Tags             map[string]*string
-	AzProvider       *Provider
+	RadiusResourceGroup string
+	Client              azclients.ResourceDeploymentClient
+	OperationsClient    azclients.ResourceDeploymentOperationsClient
+	Tags                map[string]*string
+	AzProvider          *Provider
 }
 
 var _ clients.DeploymentClient = (*ResouceDeploymentClient)(nil)
@@ -76,14 +75,14 @@ func (dc *ResouceDeploymentClient) Deploy(ctx context.Context, options clients.D
 func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*resources.DeploymentsCreateOrUpdateFuture, error) {
 	var resourceId string
 	scopes := []ucpresources.ScopeSegment{
-		{Type: "planes", Name: "deployments/local"},
-		{Type: "resourcegroups", Name: dc.ResourceGroup},
+		{Type: "deployments", Name: "local"},
+		{Type: "resourcegroups", Name: dc.RadiusResourceGroup},
 	}
 	types := []ucpresources.TypeSegment{
 		{Type: "Microsoft.Resources/deployments", Name: name},
 	}
 
-	resourceId = ucpresources.MakeRelativeID(scopes, types...)
+	resourceId = ucpresources.MakeUCPID(scopes, types...)
 
 	providerConfig := dc.GetProviderConfigs()
 
@@ -117,8 +116,8 @@ func (dc *ResouceDeploymentClient) GetProviderConfigs() providers.ProviderConfig
 		}
 	}
 
-	if dc.ResourceGroup != "" {
-		scope := "/planes/radius/local/resourceGroups/" + dc.ResourceGroup
+	if dc.RadiusResourceGroup != "" {
+		scope := "/planes/radius/local/resourceGroups/" + dc.RadiusResourceGroup
 		providerConfigs.Radius = &providers.Radius{
 			Type: "Radius",
 			Value: providers.Value{
@@ -126,7 +125,7 @@ func (dc *ResouceDeploymentClient) GetProviderConfigs() providers.ProviderConfig
 			},
 		}
 
-		scope = "/planes/deployments/local/resourceGroups/" + dc.ResourceGroup
+		scope = "/planes/deployments/local/resourceGroups/" + dc.RadiusResourceGroup
 		providerConfigs.Deployments = &providers.Deployments{
 			Type: "Microsoft.Resources",
 			Value: providers.Value{
@@ -256,14 +255,14 @@ func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name stri
 
 	// No providers section, hence all segments are part of scopes
 	scopes := []ucpresources.ScopeSegment{
-		{Type: "planes", Name: "deployments/local"},
-		{Type: "resourcegroups", Name: dc.ResourceGroup},
+		{Type: "deployments", Name: "local"},
+		{Type: "resourcegroups", Name: dc.RadiusResourceGroup},
 	}
 	types := ucpresources.TypeSegment{
 		Type: "Microsoft.Resources/deployments",
 		Name: name,
 	}
-	resourceId = ucpresources.MakeRelativeID(scopes, types)
+	resourceId = ucpresources.MakeUCPID(scopes, types)
 
 	operationList, err := dc.OperationsClient.List(ctx, resourceId, nil)
 	if err != nil {

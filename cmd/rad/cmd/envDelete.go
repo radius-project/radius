@@ -6,13 +6,14 @@
 package cmd
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 )
 
 var envDeleteCmd = &cobra.Command{
@@ -30,33 +31,38 @@ func init() {
 
 func deleteEnvResource(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	envName, err := cmd.Flags().GetString("environment")
+	environmentName, err := cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 
-	envconfig, err := cli.ReadEnvironmentSection(config)
+	yes, err := cmd.Flags().GetBool("yes")
 	if err != nil {
 		return err
 	}
 
-	if envName == "" && envconfig.Default == "" {
-		return errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
+	// Prompt user to confirm deletion
+	if !yes {
+		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete environment '%v' from '%v' [y/N]?", environmentName, workspace.Name), prompt.No)
+		if err != nil {
+			return err
+		}
+		if !confirmed {
+			return nil
+		}
 	}
 
-	if envName == "" {
-		envName = envconfig.Default
-	}
-	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}
-	err = client.DeleteEnv(cmd.Context(), envName)
+
+	err = client.DeleteEnv(cmd.Context(), environmentName)
 	if err == nil {
 		output.LogInfo("Environment deleted")
 	}

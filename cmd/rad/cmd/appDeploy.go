@@ -110,7 +110,7 @@ func init() {
 
 func deployApplication(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 	}
 
 	options := stages.Options{
-		Environment:   env,
+		Workspace:   *workspace,
 		BaseDirectory: baseDir,
 		Manifest:      manifest,
 		Builders:      builders.DefaultBuilders(),

@@ -12,7 +12,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/test"
 )
 
@@ -22,10 +22,10 @@ func NewCoreRPTestOptions(t *testing.T) CoreRPTestOptions {
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
 
-	env, err := cli.GetEnvironment(config, "")
-	require.NoError(t, err, "failed to read default environment")
+	workspace, err := cli.GetWorkspace(config, "")
+	require.NoError(t, err, "failed to read default workspace")
 
-	client, err := environments.CreateApplicationsManagementClient(ctx, env)
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, *workspace)
 	require.NoError(t, err, "failed to create ApplicationsManagementClient")
 
 	return CoreRPTestOptions{
