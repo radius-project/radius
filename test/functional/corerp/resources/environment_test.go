@@ -53,5 +53,5 @@ func Test_EnvironmentParamInjection(t *testing.T) {
 
 	temp := params["environment"]["value"].(*string)
 	// Only check the first part as we don't want this test to fail if the environment name changes
-	require.Contains(t, "/planes/radius/local/resourcegroups", *temp)
+	require.Contains(t, *temp, "/planes/radius/local/resourcegroups")
 }
