@@ -144,8 +144,8 @@ func GetBaseUrlForDeploymentEngine(overrideURL string) string {
 func GetBaseUrlAndRoundTripperForDeploymentEngine(deploymentEngineURL string, ucpURL string, context string) (string, http.RoundTripper, error) {
 	var baseURL string
 	var roundTripper http.RoundTripper
-	var basePath string
-	basePath = UCPAPIServerBasePath
+	basePath := UCPAPIServerBasePath
+
 	if deploymentEngineURL != "" {
 		baseURL = strings.TrimSuffix(deploymentEngineURL, "/") + basePath
 		roundTripper = NewLocationRewriteRoundTripper(deploymentEngineURL, http.DefaultTransport)
@@ -158,8 +158,7 @@ func GetBaseUrlAndRoundTripperForDeploymentEngine(deploymentEngineURL string, uc
 			return "", nil, err
 		}
 
-		var k8sType string
-		k8sType = UCPType
+		k8sType := UCPType
 
 		roundTripper, err = CreateRestRoundTripper(context, k8sType, deploymentEngineURL)
 		if err != nil {

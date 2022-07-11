@@ -6,11 +6,9 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
@@ -64,28 +62,4 @@ func deleteEnvResource(cmd *cobra.Command, args []string) error {
 	}
 	return err
 
-}
-
-func deleteEnvFromConfig(ctx context.Context, config *viper.Viper, envName string) error {
-	output.LogInfo("Updating config")
-	env, err := cli.ReadEnvironmentSection(config)
-	if err != nil {
-		return err
-	}
-
-	delete(env.Items, envName)
-	// Make another existing environment default if environment being deleted is current default
-	if env.Default == envName && len(env.Items) > 0 {
-		for key := range env.Items {
-			env.Default = key
-			output.LogInfo("%v is now the default environment", key)
-			break
-		}
-	}
-
-	if err = cli.SaveConfigOnLock(ctx, config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeDeleteEnvConfig(envName))); err != nil {
-		return err
-	}
-
-	return nil
 }

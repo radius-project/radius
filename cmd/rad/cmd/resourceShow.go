@@ -56,9 +56,4 @@ func showResource(cmd *cobra.Command, args []string) error {
 	}
 
 	return printOutput(cmd, resourceList, false)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

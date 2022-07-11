@@ -41,8 +41,4 @@ func listApplications(cmd *cobra.Command, args []string) error {
 	}
 
 	return printOutput(cmd, applicationList, false)
-	if err != nil {
-		return err
-	}
-	return nil
 }
