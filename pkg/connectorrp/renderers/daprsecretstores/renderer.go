@@ -7,6 +7,7 @@ package daprsecretstores
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -19,9 +20,10 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-type SecretStoreFunc = func(conv.DataModelInterface) ([]outputresource.OutputResource, error)
+type SecretStoreFunc = func(resource datamodel.DaprSecretStore, applicationName string) ([]outputresource.OutputResource, error)
 
 var SupportedSecretStoreKindValues = map[string]SecretStoreFunc{
 	resourcekinds.DaprGeneric: GetDaprSecretStoreGeneric,
@@ -34,7 +36,7 @@ type Renderer struct {
 }
 
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.DaprSecretStore)
+	resource, ok := dm.(*datamodel.DaprSecretStore)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
@@ -44,7 +46,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 	if secretStoreFunc == nil {
 		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores))
 	}
-	resoures, err := secretStoreFunc(resource)
+
+	applicationID, err := resources.Parse(resource.Properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
+	}
+
+	resoures, err := secretStoreFunc(*resource, applicationID.Name())
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -73,11 +81,7 @@ func getAlphabeticallySortedKeys(store map[string]SecretStoreFunc) []string {
 	return keys
 }
 
-func GetDaprSecretStoreGeneric(dm conv.DataModelInterface) ([]outputresource.OutputResource, error) {
-	resource, ok := dm.(datamodel.DaprSecretStore)
-	if !ok {
-		return nil, conv.ErrInvalidModelConversion
-	}
+func GetDaprSecretStoreGeneric(resource datamodel.DaprSecretStore, applicationName string) ([]outputresource.OutputResource, error) {
 	properties := resource.Properties
 	daprGeneric := dapr.DaprGeneric{
 		Type:     &properties.Type,
@@ -85,19 +89,16 @@ func GetDaprSecretStoreGeneric(dm conv.DataModelInterface) ([]outputresource.Out
 		Metadata: properties.Metadata,
 	}
 
-	return GetDaprGeneric(daprGeneric, dm)
+	return GetDaprGeneric(daprGeneric, resource, applicationName)
 }
 
-func GetDaprGeneric(daprGeneric dapr.DaprGeneric, dm conv.DataModelInterface) ([]outputresource.OutputResource, error) {
+func GetDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprSecretStore, applicationName string) ([]outputresource.OutputResource, error) {
 	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
 	}
-	resource, ok := dm.(datamodel.DaprSecretStore)
-	if !ok {
-		return nil, conv.ErrInvalidModelConversion
-	}
-	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, resource.Properties.Application, resource.Name)
+
+	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name)
 	if err != nil {
 		return nil, err
 	}

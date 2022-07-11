@@ -61,8 +61,11 @@ func getTestEnvironmentModel(rootScope string, resourceName string) *datamodel.E
 		},
 		Properties: datamodel.EnvironmentProperties{
 			Compute: datamodel.EnvironmentCompute{
-				Kind:       datamodel.KubernetesComputeKind,
-				ResourceID: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+				Kind: datamodel.KubernetesComputeKind,
+				KubernetesCompute: datamodel.KubernetesComputeProperties{
+					ResourceID: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+					Namespace:  "default",
+				},
 			},
 		},
 		InternalMetadata: v1.InternalMetadata{},

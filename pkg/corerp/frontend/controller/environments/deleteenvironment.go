@@ -10,10 +10,8 @@ import (
 	"errors"
 	"net/http"
 
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -27,8 +25,8 @@ type DeleteEnvironment struct {
 }
 
 // NewDeleteEnvironment creates a new DeleteEnvironment.
-func NewDeleteEnvironment(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &DeleteEnvironment{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewDeleteEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
+	return &DeleteEnvironment{ctrl.NewBaseController(opts)}, nil
 }
 
 func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -50,7 +48,7 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	err = e.DataStore.Delete(ctx, serviceCtx.ResourceID.String())
+	err = e.StorageClient().Delete(ctx, serviceCtx.ResourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil

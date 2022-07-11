@@ -10,10 +10,8 @@ import (
 	"errors"
 	"net/http"
 
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -28,8 +26,8 @@ type GetHTTPRoute struct {
 }
 
 // NewGetHTTPRoute creates a new GetHTTPRoute.
-func NewGetHTTPRoute(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &GetHTTPRoute{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewGetHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
+	return &GetHTTPRoute{ctrl.NewBaseController(opts)}, nil
 }
 
 // Run executes GetHTTPRoute operation

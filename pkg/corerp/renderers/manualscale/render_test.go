@@ -104,7 +104,7 @@ func Test_Render_NoExtension(t *testing.T) {
 	require.Nil(t, deployment.Spec.Replicas)
 }
 
-func makeResource(t *testing.T, properties datamodel.ContainerProperties) datamodel.ContainerResource {
+func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		TrackedResource: apiv1.TrackedResource{
 			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
@@ -113,7 +113,7 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) datamo
 		},
 		Properties: properties,
 	}
-	return resource
+	return &resource
 }
 
 func makeProperties(t *testing.T, replicas *int32) datamodel.ContainerProperties {

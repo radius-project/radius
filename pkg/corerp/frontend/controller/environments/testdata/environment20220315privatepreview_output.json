@@ -5,7 +5,8 @@
     "properties": {
         "compute": {
             "kind": "kubernetes",
-            "resourceId": "fakeid"
+            "resourceId": "fakeid",
+            "namespace": "default"
         },
         "provisioningState": "Succeeded"
     },

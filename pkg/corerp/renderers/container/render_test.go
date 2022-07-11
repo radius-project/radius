@@ -48,7 +48,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func makeResource(t *testing.T, properties datamodel.ContainerProperties) datamodel.ContainerResource {
+func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		TrackedResource: apiv1.TrackedResource{
 			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
@@ -57,7 +57,7 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) datamo
 		},
 		Properties: properties,
 	}
-	return resource
+	return &resource
 }
 
 func makeResourceID(t *testing.T, resourceType string, resourceName string) resources.ID {
@@ -684,7 +684,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 	require.Len(t, outputResource, 1)
 }
 
-func Test_Render_AzureConnectionMissingRoleError(t *testing.T) {
+func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
 	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").String()
 	properties := datamodel.ContainerProperties{
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
@@ -709,8 +709,7 @@ func Test_Render_AzureConnectionMissingRoleError(t *testing.T) {
 		},
 	}
 	_, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
-	require.Error(t, err)
-	require.Equal(t, "rbac permissions are required to access Azure connections", err.Error())
+	require.NoError(t, err)
 }
 
 func Test_Render_EphemeralVolumes(t *testing.T) {

@@ -31,6 +31,7 @@ func (m ApplicationModel) GetOutputResources() []OutputResourceModel {
 	return m.outputResources
 }
 
+// LookupRadiusResourceModel is a case insensitive lookup for resourceType
 func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*RadiusResourceModel, error) {
 	resource, ok := m.radiusResourceLookup[strings.ToLower(resourceType)]
 	if !ok {
@@ -67,7 +68,7 @@ type OutputResourceModel struct {
 func NewModel(radiusResources []RadiusResourceModel, outputResources []OutputResourceModel, supportedProviders map[string]bool) ApplicationModel {
 	radiusResourceLookup := map[string]RadiusResourceModel{}
 	for _, radiusResource := range radiusResources {
-		radiusResourceLookup[radiusResource.ResourceType] = radiusResource
+		radiusResourceLookup[strings.ToLower(radiusResource.ResourceType)] = radiusResource
 	}
 
 	outputResourceLookup := map[resourcemodel.ResourceType]OutputResourceModel{}

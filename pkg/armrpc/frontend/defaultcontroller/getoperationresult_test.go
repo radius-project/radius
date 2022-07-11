@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -47,7 +48,9 @@ func TestGetOperationResultRun(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewGetOperationResult(mStorageClient, nil, nil)
+		ctl, err := NewGetOperationResult(ctrl.Options{
+			StorageClient: mStorageClient,
+		})
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -112,7 +115,9 @@ func TestGetOperationResultRun(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewGetOperationResult(mStorageClient, nil, nil)
+			ctl, err := NewGetOperationResult(ctrl.Options{
+				StorageClient: mStorageClient,
+			})
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

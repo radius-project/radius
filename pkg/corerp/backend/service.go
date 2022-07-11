@@ -10,10 +10,13 @@ import (
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 
 	containers_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller/containers"
+	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
+	"github.com/project-radius/radius/pkg/corerp/model"
 )
 
 const (
@@ -46,12 +49,27 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
+	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient)
+	if err != nil {
+		return fmt.Errorf("failed to initialize application model: %w", err)
+	}
+
+	opts := ctrl.Options{
+		DataProvider: w.StorageProvider,
+		SecretClient: w.SecretClient,
+		KubeClient:   w.KubeClient,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.SecretClient, w.KubeClient)
+		},
+	}
+
 	// Register controllers
-	err := w.Controllers.Register(
+	err = w.Controllers.Register(
 		ctx,
 		containers_ctrl.ResourceTypeName,
 		v1.OperationPut,
-		containers_ctrl.NewUpdateContainer)
+		containers_ctrl.NewUpdateContainer,
+		opts)
 	if err != nil {
 		panic(err)
 	}

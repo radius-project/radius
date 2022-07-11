@@ -54,7 +54,7 @@ type Renderer struct {
 }
 
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
-	resource, ok := dm.(datamodel.ContainerResource)
+	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
 		return nil, nil, conv.ErrInvalidModelConversion
 	}
@@ -108,7 +108,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	resource, ok := dm.(datamodel.ContainerResource)
+	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
@@ -123,7 +123,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	applicationName := appId.Name()
 
 	// Create the deployment as the primary workload
-	deploymentOutputResources, secretData, err := r.makeDeployment(ctx, resource, applicationName, renderers.RenderOptions{Dependencies: dependencies})
+	deploymentOutputResources, secretData, err := r.makeDeployment(ctx, *resource, applicationName, renderers.RenderOptions{Dependencies: dependencies})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -133,7 +133,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
-		outputResources = append(outputResources, r.makeSecret(ctx, resource, applicationName, secretData))
+		outputResources = append(outputResources, r.makeSecret(ctx, *resource, applicationName, secretData))
 	}
 
 	// Connections might require a role assignment to grant access.
@@ -154,8 +154,8 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	// If we created role assigmments then we will need an identity and the mapping of the identity to AKS.
 	if len(roles) > 0 {
 		outputResources = append(outputResources, roles...)
-		outputResources = append(outputResources, r.makeManagedIdentity(ctx, resource, applicationName))
-		outputResources = append(outputResources, r.makePodIdentity(ctx, resource, applicationName, roles))
+		outputResources = append(outputResources, r.makeManagedIdentity(ctx, *resource, applicationName))
+		outputResources = append(outputResources, r.makePodIdentity(ctx, *resource, applicationName, roles))
 	}
 
 	return renderers.RendererOutput{Resources: outputResources}, nil
@@ -636,9 +636,6 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 	var roleNames []string
 	var armResourceIdentifier string
 	if connection.IAM.Kind.IsKind(datamodel.KindAzure) {
-		if len(connection.IAM.Roles) < 1 {
-			return nil, fmt.Errorf("rbac permissions are required to access Azure connections")
-		}
 		roleNames = append(roleNames, connection.IAM.Roles...)
 		armResourceIdentifier = connection.Source
 	} else {

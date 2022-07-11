@@ -23,7 +23,9 @@ import (
 )
 
 const (
-	appName           = "test-app"
+	applicationName   = "test-app"
+	applicationID     = "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+	environmentID     = "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Applications.Core/environments/test-env"
 	resourceName      = "test-pub-sub-topic"
 	pubsubType        = "pubsub.kafka"
 	daprPubSubVersion = "v1"
@@ -36,12 +38,12 @@ func Test_Render_Generic_Success(t *testing.T) {
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
-			Name: "test-pub-sub-topic",
+			Name: resourceName,
 			Type: "Applications.Connector/daprPubSubBrokers",
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        resourcekinds.DaprGeneric,
 			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
 				Type:    "pubsub.kafka",
@@ -53,7 +55,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	result, err := renderer.Render(context.Background(), resource)
+	result, err := renderer.Render(context.Background(), &resource)
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
@@ -66,9 +68,9 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
-				"namespace": appName,
-				"name":      resourceName,
-				"labels":    kubernetes.MakeDescriptiveLabels(appName, "test-pub-sub-topic"),
+				"namespace": applicationName,
+				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, "test-pub-sub-topic"),
 			},
 			"spec": map[string]interface{}{
 				"type":    pubsubType,
@@ -90,12 +92,12 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
-			Name: "test-pub-sub-topic",
+			Name: resourceName,
 			Type: "Applications.Connector/daprPubSubBrokers",
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        resourcekinds.DaprGeneric,
 			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
 				Type:    "pubsub.kafka",
@@ -104,7 +106,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.Error())
 }
@@ -114,12 +116,12 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
-			Name: "test-pub-sub-topic",
+			Name: resourceName,
 			Type: "Applications.Connector/daprPubSubBrokers",
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        resourcekinds.DaprGeneric,
 			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
 				Metadata: map[string]interface{}{
@@ -130,7 +132,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "No type specified for generic Dapr component", err.Error())
 }
@@ -140,12 +142,12 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
-			Name: "test-pub-sub-topic",
+			Name: resourceName,
 			Type: "Applications.Connector/daprPubSubBrokers",
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        resourcekinds.DaprGeneric,
 			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
 				Metadata: map[string]interface{}{
@@ -156,7 +158,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
 }
@@ -174,7 +176,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 		Version:  &properties.Version,
 		Metadata: properties.Metadata,
 	}
-	item, err := dapr.ConstructDaprGeneric(daprGeneric, appName, resourceName)
+	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName)
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{
@@ -182,9 +184,9 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
-				"namespace": appName,
-				"name":      resourceName,
-				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
+				"namespace": applicationName,
+				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 			},
 			"spec": map[string]interface{}{
 				"type":    pubsubType,
@@ -209,12 +211,12 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
-			Name: "test-pub-sub-topic",
+			Name: resourceName,
 			Type: "Applications.Connector/daprPubSubBrokers",
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        resourcekinds.DaprPubSubTopicAzureServiceBus,
 			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
@@ -222,7 +224,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	result, err := renderer.Render(context.Background(), resource)
+	result, err := renderer.Render(context.Background(), &resource)
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -232,8 +234,9 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
 
 	expected := map[string]string{
-		handlers.ResourceName:               "test-pub-sub-topic",
-		handlers.KubernetesNamespaceKey:     "test-app",
+		handlers.ResourceName:               resourceName,
+		handlers.KubernetesNamespaceKey:     applicationName,
+		handlers.ApplicationName:            applicationName,
 		handlers.KubernetesAPIVersionKey:    "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:          "Component",
 		handlers.ServiceBusNamespaceIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
@@ -249,12 +252,12 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_InvalidResourceType(t *testing.T
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
-			Name: "test-pub-sub-topic",
+			Name: resourceName,
 			Type: "Applications.Connector/daprPubSubBrokers",
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: "test-app",
-			Environment: "test-env",
+			Application: applicationID,
+			Environment: environmentID,
 			Kind:        resourcekinds.DaprPubSubTopicAzureServiceBus,
 			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/topics/test-topic",
@@ -262,7 +265,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_InvalidResourceType(t *testing.T
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), resource)
+	_, err := renderer.Render(context.Background(), &resource)
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Topic", err.Error())
 }

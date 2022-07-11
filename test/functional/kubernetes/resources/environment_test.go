@@ -137,6 +137,7 @@ func Test_EnvironmentWithCoreRP(t *testing.T) {
 								"compute": map[string]interface{}{
 									"kind":       "kubernetes",
 									"resourceId": "",
+									"namespace":  envName,
 								},
 							},
 						},

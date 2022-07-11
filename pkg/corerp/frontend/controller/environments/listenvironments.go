@@ -10,10 +10,8 @@ import (
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -28,8 +26,8 @@ type ListEnvironments struct {
 }
 
 // NewListEnvironments creates a new ListEnvironments.
-func NewListEnvironments(ds store.StorageClient, sm manager.StatusManager, dp deployment.DeploymentProcessor) (ctrl.Controller, error) {
-	return &ListEnvironments{ctrl.NewBaseController(ds, sm, dp)}, nil
+func NewListEnvironments(opts ctrl.Options) (ctrl.Controller, error) {
+	return &ListEnvironments{ctrl.NewBaseController(opts)}, nil
 }
 
 func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
@@ -40,7 +38,7 @@ func (e *ListEnvironments) Run(ctx context.Context, req *http.Request) (rest.Res
 		ResourceType: serviceCtx.ResourceID.Type(),
 	}
 
-	result, err := e.DataStore.Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
+	result, err := e.StorageClient().Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
 	if err != nil {
 		return nil, err
 	}

@@ -13,17 +13,72 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
+
+func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureRedis,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureRedis,
+					Provider: providers.ProviderAzure,
+				},
+				Identity: resourcemodel.ResourceIdentity{},
+			},
+		},
+		SecretValues: map[string]rp.SecretValueReference{
+			renderers.ConnectionStringValue: {Value: "test-connection-string"},
+			renderers.PasswordStringHolder:  {Value: "testpassword"},
+		},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			renderers.UsernameStringValue: {
+				LocalID:           outputresource.LocalIDAzureRedis,
+				PropertyReference: "redisusername",
+			},
+			renderers.Host: {
+				Value: "hello.com",
+			},
+			renderers.Port: {
+				Value: int32(1234),
+			},
+		},
+	}
+
+	deploymentOutput := deployment.DeploymentOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureRedis,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureRedis,
+					Provider: providers.ProviderAzure,
+				},
+			},
+		},
+	}
+
+	return rendererOutput, deploymentOutput
+}
 
 func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 	ctx := context.Background()
 
 	createNewResourceTestCases := []struct {
@@ -54,7 +109,8 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return nil, &store.ErrNotFound{}
 				})
-
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -70,13 +126,19 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateRedisCache(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateRedisCache(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
-
 			if !testcase.shouldFail {
 				actualOutput := &v20220315privatepreview.RedisCacheResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
@@ -119,7 +181,8 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 						Data:     dataModel,
 					}, nil
 				})
-
+			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 			if !testcase.shouldFail {
 				mStorageClient.
 					EXPECT().
@@ -131,7 +194,14 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewCreateOrUpdateRedisCache(mStorageClient, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewCreateOrUpdateRedisCache(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			_ = resp.Apply(ctx, w, req)

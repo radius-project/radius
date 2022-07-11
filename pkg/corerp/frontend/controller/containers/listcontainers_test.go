@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -50,7 +51,11 @@ func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListContainers(msc, nil, nil)
+		opts := ctrl.Options{
+			StorageClient: msc,
+		}
+
+		ctl, err := NewListContainers(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -115,7 +120,11 @@ func TestListContainersRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListContainers(msc, nil, nil)
+			opts := ctrl.Options{
+				StorageClient: msc,
+			}
+
+			ctl, err := NewListContainers(opts)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

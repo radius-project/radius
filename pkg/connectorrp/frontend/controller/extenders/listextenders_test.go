@@ -16,6 +16,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -53,7 +54,12 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 
-		ctl, err := NewListExtenders(mds, msm, nil)
+		opts := ctrl.Options{
+			StorageClient:  mds,
+			AsyncOperation: msm,
+		}
+
+		ctl, err := NewListExtenders(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -118,7 +124,12 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 					}, nil
 				})
 
-			ctl, err := NewListExtenders(mds, msm, nil)
+			opts := ctrl.Options{
+				StorageClient:  mds,
+				AsyncOperation: msm,
+			}
+
+			ctl, err := NewListExtenders(opts)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)

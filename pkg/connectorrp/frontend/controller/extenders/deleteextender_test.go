@@ -15,6 +15,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -22,20 +24,20 @@ import (
 )
 
 func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
 		msm := statusmanager.NewMockStatusManager(mctrl)
-
+		mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, mds, msm
+		}, mds, msm, mDeploymentProcessor
 	}
 
 	t.Parallel()
 
 	t.Run("delete non-existing resource", func(t *testing.T) {
-		teardownTest, mds, msm := setupTest(t)
+		teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
 		defer teardownTest(t)
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
@@ -48,7 +50,15 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		ctl, err := NewDeleteExtender(mds, msm, nil)
+		opts := ctrl.Options{
+			StorageClient:  mds,
+			AsyncOperation: msm,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewDeleteExtender(opts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -83,7 +93,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range existingResourceDeleteTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			teardownTest, mds, msm := setupTest(t)
+			teardownTest, mds, msm, mDeploymentProcessor := setupTest(t)
 			defer teardownTest(t)
 			w := httptest.NewRecorder()
 
@@ -104,6 +114,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mds.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
@@ -112,7 +123,15 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			ctl, err := NewDeleteExtender(mds, msm, nil)
+			opts := ctrl.Options{
+				StorageClient:  mds,
+				AsyncOperation: msm,
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+					return mDeploymentProcessor
+				},
+			}
+
+			ctl, err := NewDeleteExtender(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
