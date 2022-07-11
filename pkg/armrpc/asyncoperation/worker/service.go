@@ -18,6 +18,7 @@ import (
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
@@ -39,6 +40,8 @@ type Service struct {
 	RequestQueue queue.Client
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient controller_runtime.Client
+	// KubeClientSet is the Kubernetes client.
+	KubeClientSet kubernetes.Interface
 	// SecretClient is the client to fetch secrets.
 	SecretClient renderers.SecretValueClient
 }
@@ -68,6 +71,11 @@ func (s *Service) Init(ctx context.Context) error {
 		return err
 	}
 	s.KubeClient = k8s
+
+	s.KubeClientSet, err = kubernetes.NewForConfig(s.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
 
 	if s.Options.Arm != nil {
 		s.SecretClient = renderers.NewSecretValueClient(*s.Options.Arm)

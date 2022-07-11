@@ -49,7 +49,7 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient)
+	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient, w.KubeClientSet)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
@@ -59,7 +59,7 @@ func (w *Service) Run(ctx context.Context) error {
 		SecretClient: w.SecretClient,
 		KubeClient:   w.KubeClient,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.SecretClient, w.KubeClient)
+			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.SecretClient, w.KubeClient, w.KubeClientSet)
 		},
 	}
 

@@ -9,22 +9,38 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
+	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewKubernetesHandler(k8s client.Client) ResourceHandler {
-	return &kubernetesHandler{k8s: k8s}
+func NewKubernetesHandler(k8s client.Client, k8sClientSet k8s.Interface) ResourceHandler {
+	informerFactory := informers.NewSharedInformerFactory(k8sClientSet, 15*time.Second)
+	// Start the informer
+	informerFactory.Start(wait.NeverStop)
+	informerFactory.WaitForCacheSync(wait.NeverStop)
+	watchCh := make(chan bool)
+	return &kubernetesHandler{k8s: k8s, k8sClientSet: k8sClientSet, informerFactory: informerFactory, watchCh: watchCh}
 }
 
 type kubernetesHandler struct {
-	k8s client.Client
+	k8s             client.Client
+	k8sClientSet    k8s.Interface
+	informerFactory informers.SharedInformerFactory
+	// watch chanel for deployment readiness
+	watchCh chan bool
 }
 
 func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
@@ -39,17 +55,25 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 	}
 
 	if resource.Deployed {
-		// This resource is deployed in the Render process
-		// TODO: This will eventually change
-		// For now, no need to process any further
 		return nil
 	}
+
 	err = handler.k8s.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return err
 	}
 
-	return err
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute) // 1 minute deployment readiness timeout
+	defer cancel()
+
+	handler.watchUntilReady(ctx, &item)
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("deployment timed out, deployment: %s in namespace %s is not ready", item.GetName(), item.GetNamespace())
+	case <-handler.watchCh:
+		return nil
+	}
 }
 
 func (handler *kubernetesHandler) GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error) {
@@ -147,4 +171,53 @@ func convertToUnstructured(resource outputresource.OutputResource) (unstructured
 	}
 
 	return unstructured.Unstructured{Object: c}, nil
+}
+
+func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object) {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("Watching for deployment changes"))
+	deploymentInformer := handler.informerFactory.Apps().V1().Deployments()
+	handlers := cache.ResourceEventHandlerFuncs{
+		AddFunc: func(new_obj interface{}) {
+			logger.Info(fmt.Sprintf("New deployment is added"))
+			obj, ok := new_obj.(*v1.Deployment)
+			if !ok {
+				e := errors.New("not a appsv1.Deployment type")
+				logger.Error(e, "expected obj to be a *appsv1.Deployment, got %T", obj)
+			}
+			handler.watchUntilDeploymentReady(ctx, obj)
+		},
+		UpdateFunc: func(old_obj, new_obj interface{}) {
+			logger.Info(fmt.Sprintf("Deployment is updated"))
+			old, ok := old_obj.(*v1.Deployment)
+			if !ok {
+				e := errors.New("not a appsv1.Deployment type")
+				logger.Error(e, "expected old obj to be a *appsv1.Deployment, got %T", old_obj)
+			}
+			new, ok := new_obj.(*v1.Deployment)
+			if !ok {
+				e := errors.New("not a appsv1.Deployment type")
+				logger.Error(e, "expected new obj to be a *appsv1.Deployment, got %T", new_obj)
+			}
+			if old.ResourceVersion != new.ResourceVersion {
+				handler.watchUntilDeploymentReady(ctx, new)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			logger.Info(fmt.Sprintf("Deployment is deleted"))
+			// no-op here
+		},
+	}
+
+	deploymentInformer.Informer().AddEventHandler(handlers)
+}
+
+func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment) {
+	for _, c := range obj.Status.Conditions {
+		// check for complete deployment condition
+		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
+		if c.Type == v1.DeploymentProgressing && c.Status == "True" && c.Reason == "NewReplicaSetAvailable" {
+			handler.watchCh <- true
+		}
+	}
 }

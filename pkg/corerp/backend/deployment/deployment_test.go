@@ -163,7 +163,7 @@ func Test_Render(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
 
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -355,7 +355,7 @@ func Test_Render(t *testing.T) {
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
 	t.Run("Verify deploy success", func(t *testing.T) {
 		testResource := getTestResource()
@@ -450,7 +450,7 @@ func Test_Deploy(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
 	t.Run("Verify delete success", func(t *testing.T) {
 		testResource := getTestResource()
