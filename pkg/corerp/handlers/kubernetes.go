@@ -13,7 +13,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	v1 "k8s.io/api/apps/v1"
@@ -32,15 +31,18 @@ func NewKubernetesHandler(k8s client.Client, k8sClientSet k8s.Interface) Resourc
 	informerFactory.Start(wait.NeverStop)
 	informerFactory.WaitForCacheSync(wait.NeverStop)
 	watchCh := make(chan bool)
-	return &kubernetesHandler{k8s: k8s, k8sClientSet: k8sClientSet, informerFactory: informerFactory, watchCh: watchCh}
+	watchErrorCh := make(chan error)
+	return &kubernetesHandler{k8s: k8s, k8sClientSet: k8sClientSet, informerFactory: informerFactory, readinessCh: watchCh, watchErrorCh: watchErrorCh}
 }
 
 type kubernetesHandler struct {
 	k8s             client.Client
 	k8sClientSet    k8s.Interface
 	informerFactory informers.SharedInformerFactory
-	// watch chanel for deployment readiness
-	watchCh chan bool
+	// watch channel for deployment readiness
+	readinessCh chan bool
+	// watch channel for deployment error
+	watchErrorCh chan error
 }
 
 func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
@@ -63,7 +65,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute) // 1 minute deployment readiness timeout
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute) // 5 minute deployment readiness timeout
 	defer cancel()
 
 	handler.watchUntilReady(ctx, &item)
@@ -71,8 +73,10 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("deployment timed out, deployment: %s in namespace %s is not ready", item.GetName(), item.GetNamespace())
-	case <-handler.watchCh:
+	case <-handler.readinessCh:
 		return nil
+	case <-handler.watchErrorCh:
+		return err
 	}
 }
 
@@ -174,37 +178,29 @@ func convertToUnstructured(resource outputresource.OutputResource) (unstructured
 }
 
 func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object) {
-	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Watching for deployment changes"))
 	deploymentInformer := handler.informerFactory.Apps().V1().Deployments()
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new_obj interface{}) {
-			logger.Info(fmt.Sprintf("New deployment is added"))
 			obj, ok := new_obj.(*v1.Deployment)
 			if !ok {
-				e := errors.New("not a appsv1.Deployment type")
-				logger.Error(e, "expected obj to be a *appsv1.Deployment, got %T", obj)
+				handler.watchErrorCh <- errors.New("deployment object is not of appsv1.Deployment type")
 			}
 			handler.watchUntilDeploymentReady(ctx, obj)
 		},
 		UpdateFunc: func(old_obj, new_obj interface{}) {
-			logger.Info(fmt.Sprintf("Deployment is updated"))
 			old, ok := old_obj.(*v1.Deployment)
 			if !ok {
-				e := errors.New("not a appsv1.Deployment type")
-				logger.Error(e, "expected old obj to be a *appsv1.Deployment, got %T", old_obj)
+				handler.watchErrorCh <- errors.New("old deployment object is not of appsv1.Deployment type")
 			}
 			new, ok := new_obj.(*v1.Deployment)
 			if !ok {
-				e := errors.New("not a appsv1.Deployment type")
-				logger.Error(e, "expected new obj to be a *appsv1.Deployment, got %T", new_obj)
+				handler.watchErrorCh <- errors.New("new deployment object not of appsv1.Deployment type")
 			}
 			if old.ResourceVersion != new.ResourceVersion {
 				handler.watchUntilDeploymentReady(ctx, new)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			logger.Info(fmt.Sprintf("Deployment is deleted"))
 			// no-op here
 		},
 	}
@@ -217,7 +213,7 @@ func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context,
 		// check for complete deployment condition
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
 		if c.Type == v1.DeploymentProgressing && c.Status == "True" && c.Reason == "NewReplicaSetAvailable" {
-			handler.watchCh <- true
+			handler.readinessCh <- true
 		}
 	}
 }
