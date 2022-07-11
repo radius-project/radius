@@ -16,6 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +29,8 @@ type asyncOperationsManagerTest struct {
 
 const (
 	operationTimeoutDuration = time.Hour * 2
-	testRootScope            = "test-root-scope"
+	azureEnvResourceID       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"
+	ucpEnvResourceID         = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"
 	saveErr                  = "save error"
 	enqueueErr               = "enqueue error"
 	deleteErr                = "delete error"
@@ -65,6 +67,35 @@ var testAos = &Status{
 	Location:         "test-location",
 	HomeTenantID:     "test-home-tenant-id",
 	ClientObjectID:   "test-client-object-id",
+}
+
+func TestOperationStatusResourceID(t *testing.T) {
+	resourceIDTests := []struct {
+		resourceID          string
+		operationID         uuid.UUID
+		operationResourceID string
+	}{
+		{
+			resourceID:          azureEnvResourceID,
+			operationID:         uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			operationResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/locations/global/operationstatuses/00000000-0000-0000-0000-000000000001",
+		}, {
+			resourceID:          ucpEnvResourceID,
+			operationID:         uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+			operationResourceID: "/planes/radius/local/providers/applications.core/locations/global/operationstatuses/00000000-0000-0000-0000-000000000001",
+		},
+	}
+
+	sm := &statusManager{providerName: "applications.core", location: "global"}
+
+	for _, tc := range resourceIDTests {
+		t.Run(tc.resourceID, func(t *testing.T) {
+			rid, err := resources.Parse(tc.resourceID)
+			require.NoError(t, err)
+			url := sm.operationStatusResourceID(rid, tc.operationID)
+			require.Equal(t, tc.operationResourceID, url)
+		})
+	}
 }
 
 func TestCreateAsyncOperationStatus(t *testing.T) {
@@ -159,8 +190,9 @@ func TestDeleteAsyncOperationStatus(t *testing.T) {
 			defer mctrl.Finish()
 
 			aomTest.storeClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
-
-			err := aomTest.manager.Delete(context.TODO(), testRootScope, uuid.New())
+			rid, err := resources.Parse(azureEnvResourceID)
+			require.NoError(t, err)
+			err = aomTest.manager.Delete(context.TODO(), rid, uuid.New())
 
 			if tt.DeleteErr != nil {
 				require.Error(t, err, deleteErr)
@@ -202,7 +234,9 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 				Get(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(tt.Obj, tt.GetErr)
 
-			aos, err := aomTest.manager.Get(context.TODO(), testRootScope, uuid.New())
+			rid, err := resources.Parse(azureEnvResourceID)
+			require.NoError(t, err)
+			aos, err := aomTest.manager.Get(context.TODO(), rid, uuid.New())
 
 			if tt.GetErr == nil {
 				require.NoError(t, err)
@@ -254,8 +288,9 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			}
 
 			testAos.Status = v1.ProvisioningStateSucceeded
-
-			err := aomTest.manager.Update(context.TODO(), testRootScope, opID, v1.ProvisioningStateAccepted, nil, nil)
+			rid, err := resources.Parse(azureEnvResourceID)
+			require.NoError(t, err)
+			err = aomTest.manager.Update(context.TODO(), rid, opID, v1.ProvisioningStateAccepted, nil, nil)
 
 			if tt.GetErr == nil && tt.SaveErr == nil {
 				require.NoError(t, err)
