@@ -84,7 +84,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch application resource to get the namespace %w", err)
 	}
-	// 3. fetch the environment resource from th db to get the Namespace
+	// 3. fetch the environment resource from the db to get the Namespace
 	namespace, err := dp.getEnvironmentNamespace(ctx, environment)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch environment resource to get the namespace %w", err)
@@ -357,13 +357,8 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
-<<<<<<< Updated upstream
-func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.EnvironmentOptions, error) {
-	if dp.k8sClient != nil {
-=======
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace string) (renderers.EnvironmentOptions, error) {
 	if dp.k8s != nil {
->>>>>>> Stashed changes
 		// If the public endpoint override is specified (Local Dev scenario), then use it.
 		publicEndpoint := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 		if publicEndpoint != "" {
