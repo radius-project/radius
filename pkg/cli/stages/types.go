@@ -27,7 +27,7 @@ type Options struct {
 	Parameters    clients.DeploymentParameters
 
 	// BicepBuildFunc supports overriding the build build process for testing.
-	BicepBuildFunc func(ctx context.Context, deployFile string) (string, error)
+	BicepBuildFunc func(ctx context.Context, deployFile string) (map[string]interface{}, error)
 }
 
 type processor struct {

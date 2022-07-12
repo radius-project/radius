@@ -126,6 +126,31 @@ func (ri ID) RootScope() string {
 	return SegmentSeparator + joined
 }
 
+// PlaneScope returns plane or subscription scope without resourceGroup
+//
+// Examples:
+//	/subscriptions/{guid}
+//	/planes/radius/local
+func (ri ID) PlaneScope() string {
+	segments := []string{}
+	for _, t := range ri.scopeSegments {
+		if !strings.EqualFold(t.Type, ResourceGroupsSegment) {
+			segments = append(segments, t.Type)
+			if t.Name != "" {
+				segments = append(segments, t.Name)
+			}
+			break
+		}
+	}
+
+	joined := strings.Join(segments, SegmentSeparator)
+	if ri.IsUCPQualfied() {
+		return SegmentSeparator + PlanesSegment + SegmentSeparator + joined
+	}
+
+	return SegmentSeparator + joined
+}
+
 // ProviderNamespace returns the providers part of the ID
 //
 // Examples:

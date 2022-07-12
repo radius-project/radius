@@ -1,0 +1,13 @@
+{
+  "name": "cadl-project",
+  "dependencies": {
+    "@azure-tools/cadl-autorest": "^0.17.0",
+    "@azure-tools/cadl-azure-core": "^0.4.0",
+    "@azure-tools/cadl-azure-resource-manager": "^0.7.0",
+    "@azure-tools/cadl-providerhub": "^0.18.0",
+    "@cadl-lang/compiler": "latest",
+    "@cadl-lang/openapi3": "latest",
+    "@cadl-lang/rest": "latest"
+  },
+  "private": true
+}

@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // ContainerResource represents Container resource.
@@ -25,6 +26,13 @@ type ContainerResource struct {
 // ResourceTypeName returns the qualified name of the resource
 func (c ContainerResource) ResourceTypeName() string {
 	return "Applications.Core/containers"
+}
+
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (c ContainerResource) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	c.Properties.BasicResourceProperties.Status.OutputResources = do.DeployedOutputResources
+	c.InternalMetadata.ComputedValues = do.ComputedValues
+	c.InternalMetadata.SecretValues = do.SecretValues
 }
 
 // ContainerProperties represents the properties of Container.

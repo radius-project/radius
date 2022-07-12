@@ -6,6 +6,8 @@
 package rp
 
 import (
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
@@ -62,4 +64,19 @@ type SecretValueReference struct {
 
 	// Value is the secret value itself
 	Value string
+}
+
+// DeploymentOutput is the output details of a deployment.
+type DeploymentOutput struct {
+	DeployedOutputResources []outputresource.OutputResource
+	ComputedValues          map[string]interface{}
+	SecretValues            map[string]SecretValueReference
+}
+
+// DeploymentDataModel is the interface that wraps existing data models
+// and enables us to use in generic deployment backend controllers.
+type DeploymentDataModel interface {
+	conv.DataModelInterface
+
+	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
 }

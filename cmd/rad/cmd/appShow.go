@@ -35,38 +35,16 @@ func showApplication(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if env.GetEnableUCP() {
-		err := ShowApplicationUCP(cmd, args, env, applicationName, config)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := ShowApplicationLegacy(cmd, args, env, applicationName, config)
-		if err != nil {
-			return err
-		}
+
+	err = ShowApplication(cmd, args, env, applicationName, config)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func ShowApplicationLegacy(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
-
-	client, err := environments.CreateLegacyManagementClient(cmd.Context(), env)
-	if err != nil {
-		return err
-	}
-
-	applicationResource, err := client.ShowApplication(cmd.Context(), applicationName)
-	if err != nil {
-		return err
-	}
-
-	return printOutput(cmd, applicationResource, true)
-
-}
-
-func ShowApplicationUCP(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
+func ShowApplication(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
 	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
 	if err != nil {
 		return err

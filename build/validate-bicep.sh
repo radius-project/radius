@@ -1,11 +1,13 @@
 #! /bin/bash
-BICEP_EXECUTABLE="rad-bicep-customrp"
+BICEP_EXECUTABLE_CORERP="rad-bicep-corerp"
+BICEP_EXECUTABLE_CUSTOMRP="rad-bicep-customrp"
 if [[ ! -z $BICEP_PATH ]]
 then
-    BICEP_EXECUTABLE="$BICEP_PATH/$BICEP_EXECUTABLE"
+    BICEP_EXECUTABLE_CORERP="$BICEP_PATH/$BICEP_EXECUTABLE_CORERP"
+    BICEP_EXECUTABLE_CUSTOMRP="$BICEP_PATH/$BICEP_EXECUTABLE_CUSTOMRP"
 fi
 
-FILES=$(find . -type f -name "*.bicep" ! -name "corerp-*.bicep")
+FILES=$(find . -type f -name "*.bicep")
 FAILURES=()
 for F in $FILES
 do
@@ -20,11 +22,19 @@ do
     # - Compiled output (ARM templates) go to rad-bicep's stdout
     # - rad-bicep's stdout goes to /dev/null
     # - rad-bicep's stderr goes to the variable
-    exec 3>&1
-    STDERR=$($BICEP_EXECUTABLE build $F --stdout 2>&1 1>/dev/null)
-    EXITCODE=$?
-    exec 3>&-
-
+    if grep -q "import radius as radius" $F
+    then
+        exec 3>&1
+        STDERR=$($BICEP_EXECUTABLE_CORERP build $F --stdout 2>&1 1>/dev/null)
+        EXITCODE=$?
+        exec 3>&-
+    else
+        exec 3>&1
+        STDERR=$($BICEP_EXECUTABLE_CUSTOMRP build $F --stdout 2>&1 1>/dev/null)
+        EXITCODE=$?
+        exec 3>&-
+    fi
+    
     if [[ ! $EXITCODE -eq 0 || ! -z $STDERR ]]
     then
         echo $STDERR

@@ -17,12 +17,13 @@ import (
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (ApplicationModel, error) {
+func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sClientSet kubernetes.Interface) (ApplicationModel, error) {
 	// Configure RBAC support on connections based connection kind.
 	// Role names can be user input or default roles assigned by Radius.
 	// Leave RoleNames field empty if no default roles are supported for a connection kind.
@@ -81,54 +82,83 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 				Type:     resourcekinds.Kubernetes,
 				Provider: providers.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Deployment,
 				Provider: providers.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
 				Provider: providers.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Secret,
 				Provider: providers.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Gateway,
 				Provider: providers.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.KubernetesHTTPRoute,
 				Provider: providers.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.SecretProviderClass,
 				Provider: providers.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 	}
 
 	// TODO: Adding handlers next after this changelist
-	azureOutputResourceModel := []OutputResourceModel{}
+	azureOutputResourceModel := []OutputResourceModel{
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRoleAssignment,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
+		},
+	}
 	/* 	azureOutputResourceModel := []OutputResourceModel{
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{

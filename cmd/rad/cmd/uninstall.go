@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var envInstallCmd = &cobra.Command{
-	Use:   "install",
-	Short: "Installs radius for a given platform",
-	Long:  `Installs radius for a given platform`,
+var uninstallCmd = &cobra.Command{
+	Use:   "uninstall",
+	Short: "Uninstall radius for a specific platform",
+	Long:  `Uninstall radius for a specific platform`,
 }
 
 func init() {
-	envCmd.AddCommand(envInstallCmd)
+	RootCmd.AddCommand(uninstallCmd)
 }

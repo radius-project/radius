@@ -17,6 +17,7 @@ import (
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 
+	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -36,6 +37,8 @@ type Service struct {
 	RequestQueue queue.Client
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient controller_runtime.Client
+	// KubeClientSet is the Kubernetes client.
+	KubeClientSet kubernetes.Interface
 	// SecretClient is the client to fetch secrets.
 	SecretClient renderers.SecretValueClient
 }
@@ -56,6 +59,11 @@ func (s *Service) Init(ctx context.Context) error {
 	s.Controllers = NewControllerRegistry(s.StorageProvider)
 
 	s.KubeClient, err = kubeclient.CreateKubeClient(s.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
+
+	s.KubeClientSet, err = kubernetes.NewForConfig(s.Options.K8sConfig)
 	if err != nil {
 		return err
 	}

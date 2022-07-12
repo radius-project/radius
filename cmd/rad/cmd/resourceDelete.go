@@ -6,8 +6,6 @@
 package cmd
 
 import (
-	"errors"
-
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/spf13/cobra"
@@ -30,10 +28,6 @@ func deleteResource(cmd *cobra.Command, args []string) error {
 	env, err := cli.RequireEnvironment(cmd, config)
 	if err != nil {
 		return err
-	}
-
-	if !env.GetEnableUCP() {
-		return errors.New("Delete is not enabled")
 	}
 
 	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)

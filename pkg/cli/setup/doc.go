@@ -3,6 +3,6 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package containers
-
-const ResourceTypeName = "Applications.Core/containers"
+// package setup contains support functions for programmatically installing and uninstalling Radius. These functions
+// are intended for use by the CLI and will print output.
+package setup

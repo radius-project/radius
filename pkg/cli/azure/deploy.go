@@ -30,7 +30,6 @@ type ResouceDeploymentClient struct {
 	Client           azclients.ResourceDeploymentClient
 	OperationsClient azclients.ResourceDeploymentOperationsClient
 	Tags             map[string]*string
-	EnableUCP        bool
 }
 
 var _ clients.DeploymentClient = (*ResouceDeploymentClient)(nil)
@@ -73,37 +72,20 @@ func (dc *ResouceDeploymentClient) Deploy(ctx context.Context, options clients.D
 }
 
 func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*resources.DeploymentsCreateOrUpdateFuture, error) {
-	template := map[string]interface{}{}
-	err := json.Unmarshal([]byte(options.Template), &template)
-	if err != nil {
-		return nil, err
-	}
-
 	var resourceId string
-	if dc.EnableUCP {
-		scopes := []ucpresources.ScopeSegment{
-			{Type: "planes", Name: "deployments/local"},
-			{Type: "resourcegroups", Name: dc.ResourceGroup},
-		}
-		types := []ucpresources.TypeSegment{
-			{Type: "Microsoft.Resources/deployments", Name: name},
-		}
-
-		resourceId = ucpresources.MakeRelativeID(scopes, types...)
-	} else {
-		scopes := []ucpresources.ScopeSegment{
-			{Type: "subscriptions", Name: dc.SubscriptionID},
-			{Type: "resourcegroups", Name: dc.ResourceGroup},
-		}
-		types := []ucpresources.TypeSegment{
-			{Type: "Microsoft.Resources/deployments", Name: name},
-		}
-		resourceId = ucpresources.MakeRelativeID(scopes, types...)
+	scopes := []ucpresources.ScopeSegment{
+		{Type: "planes", Name: "deployments/local"},
+		{Type: "resourcegroups", Name: dc.ResourceGroup},
 	}
+	types := []ucpresources.TypeSegment{
+		{Type: "Microsoft.Resources/deployments", Name: name},
+	}
+
+	resourceId = ucpresources.MakeRelativeID(scopes, types...)
 
 	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
-			Template:   template,
+			Template:   options.Template,
 			Parameters: options.Parameters,
 			Mode:       resources.DeploymentModeIncremental,
 		},
@@ -234,21 +216,12 @@ func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name stri
 	var resourceId string
 
 	// No providers section, hence all segments are part of scopes
-	if dc.EnableUCP {
-		scopes := []ucpresources.ScopeSegment{
-			{Type: "planes", Name: "deployments/local"},
-			{Type: "resourcegroups", Name: dc.ResourceGroup},
-			{Type: "deployments", Name: name + "/operations"},
-		}
-		resourceId = ucpresources.MakeRelativeID(scopes)
-	} else {
-		scopes := []ucpresources.ScopeSegment{
-			{Type: "subscriptions", Name: dc.SubscriptionID},
-			{Type: "resourcegroups", Name: dc.ResourceGroup},
-			{Type: "deployments", Name: name + "/operations"},
-		}
-		resourceId = ucpresources.MakeRelativeID(scopes)
+	scopes := []ucpresources.ScopeSegment{
+		{Type: "planes", Name: "deployments/local"},
+		{Type: "resourcegroups", Name: dc.ResourceGroup},
+		{Type: "deployments", Name: name + "/operations"},
 	}
+	resourceId = ucpresources.MakeRelativeID(scopes)
 
 	operationList, err := dc.OperationsClient.List(ctx, resourceId, nil)
 	if err != nil {

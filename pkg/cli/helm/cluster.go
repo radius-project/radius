@@ -11,10 +11,7 @@ import (
 	"strings"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	client_go "k8s.io/client-go/kubernetes"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -24,15 +21,13 @@ const (
 )
 
 type CLIClusterOptions struct {
-	Namespace string
-	Radius    RadiusOptions
+	Radius RadiusOptions
 }
 
 type ClusterOptions struct {
-	Namespace string
-	Dapr      DaprOptions
-	Contour   ContourOptions
-	Radius    RadiusOptions
+	Dapr    DaprOptions
+	Contour ContourOptions
+	Radius  RadiusOptions
 }
 
 func NewDefaultClusterOptions() ClusterOptions {
@@ -49,7 +44,6 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 
 	return ClusterOptions{
-		Namespace: "default",
 		Dapr: DaprOptions{
 			Version: DaprDefaultVersion,
 		},
@@ -67,9 +61,8 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	options := NewDefaultClusterOptions()
 
 	// If any of the CLI options are provided, override the default options.
-
-	if cliOptions.Namespace != "" {
-		options.Namespace = cliOptions.Namespace
+	if cliOptions.Radius.Reinstall {
+		options.Radius.Reinstall = cliOptions.Radius.Reinstall
 	}
 
 	if cliOptions.Radius.ChartPath != "" {
@@ -107,34 +100,23 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	return options
 }
 
-func InstallOnCluster(ctx context.Context, options ClusterOptions, client client_go.Interface, runtimeClient runtime_client.Client) error {
-	// Make sure namespace passed in exists.
-	err := kubernetes.EnsureNamespace(ctx, client, options.Namespace)
-	if err != nil {
-		return err
-	}
-
-	// Do note: the namespace passed in to rad env init kubernetes
-	// doesn't match the namespace where we deploy the controller to.
-	// The controller and other resources are all deployed to the
+func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext string) error {
+	// Do note: the namespace passed in to rad install kubernetes
+	// doesn't match the namespace where we deploy radius.
+	// The RPs and other resources are all deployed to the
 	// 'radius-system' namespace. The namespace passed in will be
 	// where pods/services/deployments will be put for rad deploy.
-	err = kubernetes.EnsureNamespace(ctx, client, RadiusSystemNamespace)
+	err := ApplyRadiusHelmChart(options.Radius, kubeContext)
 	if err != nil {
 		return err
 	}
 
-	err = ApplyRadiusHelmChart(options.Radius)
+	err = ApplyContourHelmChart(options.Contour, kubeContext)
 	if err != nil {
 		return err
 	}
 
-	err = ApplyContourHelmChart(options.Contour)
-	if err != nil {
-		return err
-	}
-
-	err = ApplyDaprHelmChart(options.Dapr.Version)
+	err = ApplyDaprHelmChart(options.Dapr.Version, kubeContext)
 	if err != nil {
 		return err
 	}

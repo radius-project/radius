@@ -13,12 +13,6 @@ import (
 
 func init() {
 	envInitCmd.AddCommand(envInitLocalCmd)
-
-	// TODO: right now we only handle Azure as a special case. This needs to be generalized
-	// to handle other providers.
-	registerAzureProviderFlags(envInitLocalCmd)
-	envInitLocalCmd.Flags().String("ucp-image", "", "Specify the UCP image to use")
-	envInitLocalCmd.Flags().String("ucp-tag", "", "Specify the UCP tag to use")
 }
 
 type EnvironmentParams struct {

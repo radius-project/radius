@@ -33,7 +33,7 @@ func ValidateBicepFile(filePath string) error {
 
 type Options struct {
 	Environment    environments.Environment
-	Template       string
+	Template       map[string]interface{}
 	Parameters     clients.DeploymentParameters
 	ProgressText   string
 	CompletionText string
@@ -44,11 +44,7 @@ type Options struct {
 func DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
 	var deploymentClient clients.DeploymentClient
 	var err error
-	if options.Environment.GetEnableUCP() {
-		deploymentClient, err = environments.CreateDeploymentClient(ctx, options.Environment)
-	} else {
-		deploymentClient, err = environments.CreateLegacyDeploymentClient(ctx, options.Environment)
-	}
+	deploymentClient, err = environments.CreateDeploymentClient(ctx, options.Environment)
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
@@ -93,11 +89,7 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 			}
 		}
 		var diagnosticsClient clients.DiagnosticsClient
-		if options.Environment.GetEnableUCP() {
-			diagnosticsClient, err = environments.CreateDiagnosticsClient(ctx, options.Environment)
-		} else {
-			diagnosticsClient, err = environments.CreateLegacyDiagnosticsClient(ctx, options.Environment)
-		}
+		diagnosticsClient, err = environments.CreateDiagnosticsClient(ctx, options.Environment)
 		if err != nil {
 			return clients.DeploymentResult{}, err
 		}

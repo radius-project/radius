@@ -465,6 +465,38 @@ func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
 	require.Equal(t, "", routingScope)
 }
 
+func TestPlaneScope(t *testing.T) {
+	tests := []struct {
+		desc       string
+		id         string
+		planeScope string
+	}{
+		{
+			desc:       "Azure resource id",
+			id:         "/subscriptions/s1/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
+			planeScope: "/subscriptions/s1",
+		},
+		{
+			desc:       "UCP resource id",
+			id:         "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
+			planeScope: "/planes/radius/local",
+		},
+		{
+			desc:       "No subscription or plane level types",
+			id:         "/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
+			planeScope: "/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			rID, err := Parse(tt.id)
+			require.NoError(t, err)
+			require.Equal(t, tt.planeScope, rID.PlaneScope())
+		})
+	}
+}
+
 func TestPlaneNamespace(t *testing.T) {
 	tests := []struct {
 		desc     string

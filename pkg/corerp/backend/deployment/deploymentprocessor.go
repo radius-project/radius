@@ -28,19 +28,20 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/client-go/kubernetes"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error)
 	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8s: k8s}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)
@@ -49,13 +50,10 @@ type deploymentProcessor struct {
 	appmodel     model.ApplicationModel
 	sp           dataprovider.DataStorageProvider
 	secretClient renderers.SecretValueClient
-	k8s          client.Client
-}
-
-type DeploymentOutput struct {
-	DeployedOutputResources []outputresource.OutputResource
-	ComputedValues          map[string]interface{}
-	SecretValues            map[string]rp.SecretValueReference
+	// k8sClient is the Kubernetes controller runtime client.
+	k8sClient controller_runtime.Client
+	// k8sClientSet is the Kubernetes client.
+	k8sClientSet kubernetes.Interface
 }
 
 type ResourceData struct {
@@ -174,7 +172,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return resourceIdentity, computedValues, nil
 }
 
-func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, id.String())
 
 	// Deploy
@@ -183,7 +181,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
-		return DeploymentOutput{}, err
+		return rp.DeploymentOutput{}, err
 	}
 
 	deployedOutputResources := []outputresource.OutputResource{}
@@ -196,7 +194,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, outputResource, rendererOutput)
 		if err != nil {
-			return DeploymentOutput{}, err
+			return rp.DeploymentOutput{}, err
 		}
 
 		if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
@@ -205,7 +203,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 		if outputResource.Identity.ResourceType == nil {
 			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
-			return DeploymentOutput{}, err
+			return rp.DeploymentOutput{}, err
 		}
 
 		// Build database resource - copy updated properties to Resource field
@@ -229,7 +227,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		}
 	}
 
-	return DeploymentOutput{
+	return rp.DeploymentOutput{
 		DeployedOutputResources: deployedOutputResources,
 		ComputedValues:          computedValues,
 		SecretValues:            rendererOutput.SecretValues,
@@ -342,7 +340,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 }
 
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.EnvironmentOptions, error) {
-	if dp.k8s != nil {
+	if dp.k8sClient != nil {
 		// If the public endpoint override is specified (Local Dev scenario), then use it.
 		publicEndpoint := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 		if publicEndpoint != "" {
@@ -356,7 +354,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context) (renderers.Env
 
 		// Find the public IP of the cluster (External IP of the contour-envoy service)
 		var services corev1.ServiceList
-		err := dp.k8s.List(ctx, &services, &client.ListOptions{Namespace: "radius-system"})
+		err := dp.k8sClient.List(ctx, &services, &controller_runtime.ListOptions{Namespace: "radius-system"})
 		if err != nil {
 			return renderers.EnvironmentOptions{}, fmt.Errorf("failed to look up Services: %w", err)
 		}

@@ -14,13 +14,23 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 
-	containers_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller/containers"
+	backend_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/model"
 )
 
 const (
 	providerName = "Applications.Core"
+)
+
+var (
+	// ResourceTypeNames is the array that holds resource types that needs async processing.
+	// We use this array to generate generic backend controller for each resource.
+	ResourceTypeNames = []string{
+		"Applications.Core/containers",
+		"Applications.Core/gateways",
+		"Applications.Core/httpRoutes",
+	}
 )
 
 // Service is a service to run AsyncReqeustProcessWorker.
@@ -49,7 +59,7 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient)
+	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient, w.KubeClientSet)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
@@ -59,19 +69,21 @@ func (w *Service) Run(ctx context.Context) error {
 		SecretClient: w.SecretClient,
 		KubeClient:   w.KubeClient,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.SecretClient, w.KubeClient)
+			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.SecretClient, w.KubeClient, w.KubeClientSet)
 		},
 	}
 
-	// Register controllers
-	err = w.Controllers.Register(
-		ctx,
-		containers_ctrl.ResourceTypeName,
-		v1.OperationPut,
-		containers_ctrl.NewUpdateContainer,
-		opts)
-	if err != nil {
-		panic(err)
+	for _, rt := range ResourceTypeNames {
+		// Register controllers
+		err = w.Controllers.Register(ctx, rt, v1.OperationPut, backend_ctrl.NewCreateOrUpdateResource, opts)
+		if err != nil {
+			panic(err)
+		}
+		err = w.Controllers.Register(ctx, rt, v1.OperationPatch, backend_ctrl.NewCreateOrUpdateResource, opts)
+		if err != nil {
+			panic(err)
+		}
+		// Delete will also be added here
 	}
 
 	return w.Start(ctx, worker.Options{})

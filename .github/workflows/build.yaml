@@ -221,7 +221,7 @@ jobs:
       run: |
         export PATH=$GITHUB_WORKSPACE/dist:$PATH
         mkdir ~/.rad
-        dist/rad env install kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }} --ucp-image ${{ env.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ env.REL_VERSION }}
+        dist/rad env init kubernetes --chart ${{ env.RADIUS_CHART_LOCATION }} --image ${{ env.DOCKER_REGISTRY }}/radius-controller --tag ${{ env.REL_VERSION }} --ucp-image ${{ env.DOCKER_REGISTRY }}/ucpd --ucp-tag ${{ env.REL_VERSION }}
         # Print config for sanity check
         cat ~/.rad/config.yaml
     - name: Download Bicep
@@ -248,104 +248,6 @@ jobs:
         rad env uninstall kubernetes
         ./.github/scripts/namespace-is-empty.sh
   
-  local_dev_tests:
-    name: Run K3s Local Dev tests
-    needs: [ 'build', 'images' ]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/pull/') # Run on PR only
-    env:
-      # Timeout used for functional tests
-      LOCALDEV_FUNCTIONALTEST_TIMEOUT: 20m
-      RADIUS_CONTAINER_LOG_BASE: dist/container_logs
-      RADIUS_CHART_LOCATION: deploy/Chart/
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Setup rad CLI
-      uses: ./.github/actions/setup-rad-cli
-    - name: Install k3d
-      run: curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
-    - name: Define a resource group name
-      run:  echo "INTEGRATION_TEST_RESOURCE_GROUP_NAME=radius-$(date +%s%N)" >> $GITHUB_ENV
-    - name: az CLI login
-      run: |
-        az login --service-principal \
-          --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
-          --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
-          --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-    - name: az account set
-      run: az account set --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
-    - name: Create the resource group
-      run: |
-        az group create \
-          --location westus \
-          --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
-          --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
-        while [ $(az group exists --name ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }}) = false ]; do sleep 2; done
-    - name: Run 'rad env init dev'
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        mkdir ~/.rad
-        dist/rad env init dev \
-          --chart=${{ env.RADIUS_CHART_LOCATION }} \
-          --image=${{ env.DOCKER_REGISTRY }}/radius-rp \
-          --tag ${{ env.REL_VERSION }} \
-          --appcore-image ${{ env.DOCKER_REGISTRY }}/appcore-rp \
-          --appcore-tag ${{ env.REL_VERSION }} \
-          --ucp-image ${{ env.DOCKER_REGISTRY }}/ucpd \
-          --ucp-tag ${{ env.REL_VERSION }} \
-          --provider-azure \
-          --provider-azure-resource-group=${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
-          --provider-azure-client-id=${{ secrets.AZURE_SP_TESTS_APPID }} \
-          --provider-azure-client-secret=${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
-          --provider-azure-tenant-id=${{ secrets.AZURE_SP_TESTS_TENANTID }} \
-          --provider-azure-subscription=${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}      
-    - name: Wait for control-plane ready
-      run: |
-        kubectl wait --for=condition=ready pod -l app=radius-db -n radius-system --timeout 5m
-        sleep 1m
-        kubectl wait --for=condition=ready pod -l app=radius-rp -n radius-system --timeout 5m
-    - name: Download Bicep
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        cd $GITHUB_WORKSPACE
-        which rad || { echo "cannot find rad"; exit 1; }
-        rad bicep download
-    - name: Run Local Dev tests (PR)
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
-        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-        make test-functional-localdev
-    - name: Run Local Dev Kubernetes tests (PR)
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        export TEST_TIMEOUT=${{ env.LOCALDEV_FUNCTIONALTEST_TIMEOUT }}
-        export RADIUS_CONTAINER_LOG_PATH=$GITHUB_WORKSPACE/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-        make test-functional-kubernetes
-    - name: Run 'rad env delete'
-      if: always()
-      run: |
-        export PATH=$GITHUB_WORKSPACE/dist:$PATH
-        dist/rad env delete dev --yes
-        # Print config for sanity check
-        cat ~/.rad/config.yaml
-    - if: always()
-      name: Delete resource group created for environment
-      run: | 
-         az group delete \
-          --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
-          --resource-group ${{ env.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
-          --yes \
-          --verbose \
-          --no-wait
-    - name: Upload container logs
-      if: always()
-      uses: actions/upload-artifact@master
-      with:
-        name: container_logs
-        path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
-
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
@@ -420,7 +322,7 @@ jobs:
   delete_artifacts:
     name: Delete artifacts
     if: ${{ success() }}
-    needs: [ 'build', 'local_dev_tests', 'publish' ]
+    needs: [ 'build', 'publish' ]
     runs-on: ubuntu-latest
     steps:
       - name: Delete release artifacts

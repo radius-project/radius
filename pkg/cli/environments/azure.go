@@ -44,10 +44,6 @@ func (e *AzureCloudEnvironment) GetKind() string {
 	return e.Kind
 }
 
-func (e *AzureCloudEnvironment) GetEnableUCP() bool {
-	return e.EnableUCP
-}
-
 func (e *AzureCloudEnvironment) GetDefaultApplication() string {
 	return e.DefaultApplication
 }
@@ -58,6 +54,10 @@ func (e *AzureCloudEnvironment) GetKubeContext() string {
 
 func (e *AzureCloudEnvironment) GetContainerRegistry() *Registry {
 	return nil
+}
+
+func (e *AzureCloudEnvironment) GetId() string {
+	return e.Id
 }
 
 func (e *AzureCloudEnvironment) GetStatusLink() string {
@@ -74,61 +74,11 @@ func (e *AzureCloudEnvironment) GetProviders() *Providers {
 	return nil
 }
 
-func (e *AzureCloudEnvironment) CreateLegacyDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
-		e.DeploymentEngineLocalURL,
-		e.UCPLocalURL,
-		e.Context,
-		e.EnableUCP,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	auth, err := armauth.GetArmAuthorizer()
-	if err != nil {
-		return nil, err
-	}
-
-	tags := map[string]*string{}
-
-	tags["azureSubscriptionID"] = &e.SubscriptionID
-	tags["azureResourceGroup"] = &e.ResourceGroup
-
-	rgClient := azclients.NewGroupsClient(e.SubscriptionID, auth)
-	resp, err := rgClient.Get(ctx, e.ResourceGroup)
-	if err != nil {
-		return nil, err
-	}
-	tags["azureLocation"] = resp.Location
-
-	dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
-
-	// Poll faster than the default, many deployments are quick
-	dc.PollingDelay = 5 * time.Second
-
-	dc.Sender = &sender{RoundTripper: roundTripper}
-
-	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
-	op.PollingDelay = 5 * time.Second
-	op.Sender = &sender{RoundTripper: roundTripper}
-
-	return &azure.ResouceDeploymentClient{
-		Client:           dc,
-		OperationsClient: op,
-		SubscriptionID:   e.SubscriptionID,
-		ResourceGroup:    e.ResourceGroup,
-		Tags:             tags,
-		EnableUCP:        e.EnableUCP,
-	}, nil
-}
-
 func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error) {
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
 		e.DeploymentEngineLocalURL,
 		e.UCPLocalURL,
 		e.Context,
-		e.EnableUCP,
 	)
 	if err != nil {
 		return nil, err
@@ -168,7 +118,6 @@ func (e *AzureCloudEnvironment) CreateDeploymentClient(ctx context.Context) (cli
 		SubscriptionID:   e.SubscriptionID,
 		ResourceGroup:    e.UCPResourceGroupName,
 		Tags:             tags,
-		EnableUCP:        e.EnableUCP,
 	}, nil
 }
 
@@ -183,7 +132,7 @@ func (e *AzureCloudEnvironment) CreateLegacyDiagnosticsClient(ctx context.Contex
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +158,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 		return nil, err
 	}
 
-	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
+	_, con, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +174,7 @@ func (e *AzureCloudEnvironment) CreateDiagnosticsClient(ctx context.Context) (cl
 }
 
 func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context) (clients.LegacyManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL, e.EnableUCP)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.RadiusRPLocalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +188,7 @@ func (e *AzureCloudEnvironment) CreateLegacyManagementClient(ctx context.Context
 }
 
 func (e *AzureCloudEnvironment) CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error) {
-	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL, e.EnableUCP)
+	_, connection, err := kubernetes.CreateAPIServerConnection(e.Context, e.UCPLocalURL)
 	if err != nil {
 		return nil, err
 	}

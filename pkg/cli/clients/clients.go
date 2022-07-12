@@ -38,7 +38,7 @@ type DeploymentParameters = map[string]map[string]interface{}
 // DeploymentOptions is the options passed when deploying an ARM-JSON template.
 type DeploymentOptions struct {
 	// Template is the text of the ARM-JSON template in string form.
-	Template string
+	Template map[string]interface{}
 
 	// Parameters is the set of parameters passed to the deployment.
 	Parameters DeploymentParameters
