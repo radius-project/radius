@@ -62,7 +62,7 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
-	AppId           resources.ID // Application ID for which the resource is created
+	AppID           resources.ID // Application ID for which the resource is created
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -80,7 +80,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch resource to get the namespace %w", err)
 	}
 	// 2. fetch the application resource from the DB to get the environment info
-	environment, err := dp.getApplication(ctx, res.AppId)
+	environment, err := dp.getEnvironmentFromApplication(ctx, res.AppID)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch application resource to get the namespace %w", err)
 	}
@@ -455,7 +455,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID, appID resourc
 		OutputResources: outputResources,
 		ComputedValues:  computedValues,
 		SecretValues:    secretValues,
-		AppId:           appID,
+		AppID:           appID,
 	}
 }
 
@@ -493,8 +493,8 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	return rendererDependency, nil
 }
 
-// getApplication fetches the application resource from the db for getting the environment to fetch the environment resource
-func (dp *deploymentProcessor) getApplication(ctx context.Context, appID resources.ID) (environment string, err error) {
+// getEnvironmentFromApplication fetches the application resource from the db for getting the environment to fetch the environment resource
+func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context, appID resources.ID) (environment string, err error) {
 	var res *store.Object
 	var sc store.StorageClient
 	sc, err = dp.sp.GetStorageClient(ctx, appID.Type())
