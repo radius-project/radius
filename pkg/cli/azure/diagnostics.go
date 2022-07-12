@@ -46,11 +46,11 @@ type ARMDiagnosticsClient struct {
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
 func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
-	if len(options.ResourceID.Types) != 3 || !strings.EqualFold(options.ResourceID.Types[2].Type, resourcekinds.Gateway) {
+	if len(options.ResourceID.TypeSegments()) != 3 || !strings.EqualFold(options.ResourceID.TypeSegments()[2].Type, resourcekinds.Gateway) {
 		return nil, nil
 	}
 
-	response, err := dc.ResourceClient.Get(ctx, dc.ResourceGroup, options.ResourceID.Types[1].Name, options.ResourceID.Types[2].Type, options.ResourceID.Types[2].Name, nil)
+	response, err := dc.ResourceClient.Get(ctx, dc.ResourceGroup, options.ResourceID.TypeSegments()[1].Name, options.ResourceID.TypeSegments()[2].Type, options.ResourceID.TypeSegments()[2].Name, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -104,13 +103,13 @@ func (dc *ResouceDeploymentClient) createSummary(deployment resources.Deployment
 		return clients.DeploymentResult{}, nil
 	}
 
-	resources := []azresources.ResourceID{}
+	resources := []ucpresources.ID{}
 	for _, resource := range *deployment.Properties.OutputResources {
 		if resource.ID == nil {
 			continue
 		}
 
-		id, err := azresources.Parse(*resource.ID)
+		id, err := ucpresources.Parse(*resource.ID)
 		if err != nil {
 			return clients.DeploymentResult{}, err
 		}
@@ -181,30 +180,51 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 		}
 
 		for _, operation := range operations {
-			if operation.Properties == nil || operation.Properties.TargetResource == nil || operation.Properties.TargetResource.ID == nil {
+			if operation.Properties == nil || operation.Properties.TargetResource == nil {
 				continue
 			}
 
 			provisioningState := rest.OperationStatus(*operation.Properties.ProvisioningState)
-			id, err := azresources.Parse(*operation.Properties.TargetResource.ID)
-			if err != nil {
-				return err
-			}
-
-			current := status[id.ID]
-			next := clients.StatusStarted
-			if rest.SuccededStatus == provisioningState {
-				next = clients.StatusCompleted
-			} else if rest.IsTeminalStatus(provisioningState) {
-				next = clients.StatusFailed
-			}
-
-			if current != next && progressChan != nil {
-				status[id.ID] = next
-				progressChan <- clients.ResourceProgress{
-					Resource: id,
-					Status:   next,
+			if operation.Properties.TargetResource.ID != nil {
+				id, err := ucpresources.Parse(*operation.Properties.TargetResource.ID)
+				if err != nil {
+					return err
 				}
+				current := status[id.String()]
+
+				next := clients.StatusStarted
+				if rest.SuccededStatus == provisioningState {
+					next = clients.StatusCompleted
+				} else if rest.IsTeminalStatus(provisioningState) {
+					next = clients.StatusFailed
+				}
+
+				if current != next && progressChan != nil {
+					status[id.String()] = next
+					progressChan <- clients.ResourceProgress{
+						Resource: id,
+						Status:   next,
+					}
+				}
+			} else {
+				// Extensible resource references don't have IDs on them
+				// name := operation.Properties.TargetResource.ResourceName
+				// current := status[*name]
+
+				// next := clients.StatusStarted
+				// if rest.SuccededStatus == provisioningState {
+				// 	next = clients.StatusCompleted
+				// } else if rest.IsTeminalStatus(provisioningState) {
+				// 	next = clients.StatusFailed
+				// }
+
+				// if current != next && progressChan != nil {
+				// 	status[*name] = next
+				// 	progressChan <- clients.ResourceProgress{
+				// 		Resource: id,
+				// 		Status:   next,
+				// 	}
+				// }
 			}
 		}
 	}

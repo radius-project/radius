@@ -8,12 +8,12 @@ package deploy
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 type PublicEndpoint struct {
-	Resource azresources.ResourceID
+	Resource ucpresources.ID
 	Endpoint string
 }
 
