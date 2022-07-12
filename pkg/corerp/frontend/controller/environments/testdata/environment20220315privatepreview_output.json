@@ -8,8 +8,7 @@
             "resourceId": "fakeid",
             "namespace": "default"
         },
-        "provisioningState": "Succeeded",
-        "namespace": "default"
+        "provisioningState": "Succeeded"
     },
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

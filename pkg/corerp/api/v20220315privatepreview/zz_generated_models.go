@@ -465,9 +465,6 @@ type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
-	// REQUIRED; The namespace to use for the environment.
-	Namespace *string `json:"namespace,omitempty"`
-
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }

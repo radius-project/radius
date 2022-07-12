@@ -212,7 +212,6 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
-* **namespace**: string (Required): The namespace to use for the environment.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 
 ## EnvironmentCompute

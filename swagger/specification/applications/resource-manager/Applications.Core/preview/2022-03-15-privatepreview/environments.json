@@ -353,8 +353,7 @@
         "description": "Application environment properties",
         "type": "object",
         "required": [
-          "compute",
-          "namespace"
+          "compute"
         ],
         "properties": {
           "provisioningState": {
