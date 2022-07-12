@@ -46,3 +46,7 @@ func (e *GenericEnvironment) GetStatusLink() string {
 func (e *GenericEnvironment) GetProviders() *Providers {
 	return nil
 }
+
+func (e *GenericEnvironment) GetId() string {
+	return ""
+}

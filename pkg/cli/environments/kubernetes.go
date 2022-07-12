@@ -54,6 +54,10 @@ func (e *KubernetesEnvironment) GetProviders() *Providers {
 	return e.Providers
 }
 
+func (e *KubernetesEnvironment) GetId() string {
+	return e.Id
+}
+
 var _ autorest.Sender = (*sender)(nil)
 
 type sender struct {

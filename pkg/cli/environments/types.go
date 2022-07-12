@@ -26,6 +26,7 @@ type Environment interface {
 	GetKind() string
 	GetDefaultApplication() string
 	GetKubeContext() string
+	GetId() string
 
 	// GetStatusLink provides an optional URL for display of the environment.
 	GetStatusLink() string

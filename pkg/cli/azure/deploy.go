@@ -72,12 +72,6 @@ func (dc *ResouceDeploymentClient) Deploy(ctx context.Context, options clients.D
 }
 
 func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*resources.DeploymentsCreateOrUpdateFuture, error) {
-	template := map[string]interface{}{}
-	err := json.Unmarshal([]byte(options.Template), &template)
-	if err != nil {
-		return nil, err
-	}
-
 	var resourceId string
 	scopes := []ucpresources.ScopeSegment{
 		{Type: "planes", Name: "deployments/local"},
@@ -91,7 +85,7 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 
 	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, resources.Deployment{
 		Properties: &resources.DeploymentProperties{
-			Template:   template,
+			Template:   options.Template,
 			Parameters: options.Parameters,
 			Mode:       resources.DeploymentModeIncremental,
 		},

@@ -133,6 +133,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 	output.CompleteStep(step)
 
+	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), env.GetId())
+
+	if err != nil {
+		return err
+	}
+
 	var progressText string
 	status := env.GetStatusLink()
 	if status == "" {
