@@ -1,0 +1,64 @@
+import "@cadl-lang/rest";
+import "@azure-tools/cadl-providerhub";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Azure.ResourceManager;
+
+@armNamespace
+@serviceTitle("Applications.Core Management APIs")
+@doc("REST API for Applications.Core Environment Resource")
+namespace Environment;
+
+@doc("Compute resource used by application environment resource.")
+model EnvironmentCompute {
+  @doc("Type of compute resource.")
+  kind: EnvironmentComputeKind;
+
+  @doc("The resource id of the compute resource for application environment.")
+  resourceId: string;
+}
+
+@doc("Environment properties")
+model EnvironmentProperties {
+  @visibility("read")
+  @doc("The status of the last operation.")
+  provisioningState?: ProvisioningState;
+
+  @doc("The compute resource used by application environment.")
+  compute: EnvironmentCompute;
+}
+
+model EnvironmentResource is TrackedResource<EnvironmentProperties> {
+  @doc("environment name")
+  @maxLength(128)
+  @pattern("^[a-z0-9]+(-[a-z0-9]+)*")
+  @key("environmentName")
+  @path
+  @segment("{environmentName}")
+  name: string;
+}
+
+@armResourceOperations
+interface Environment
+  extends ResourceOperations<EnvironmentResource, EnvironmentProperties> {}
+
+@knownValues(ProvisioningStateKV)
+model ProvisioningState is string {}
+enum ProvisioningStateKV {
+  Succeeded,
+  Failed,
+  Canceled,
+  Provisioning,
+  Updating,
+  Deleting,
+  Accepted,
+}
+
+@knownValues(EnvironmentComputeKV)
+model EnvironmentComputeKind is string {}
+enum EnvironmentComputeKV {
+  kubernetes,
+}
