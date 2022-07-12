@@ -109,12 +109,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = environments.InjectEnvironmentParam(parameters, cmd.Context(), env)
-
-	if err != nil {
-		return err
-	}
-
 	ok, err := bicep.IsBicepInstalled()
 	if err != nil {
 		return fmt.Errorf("failed to find rad-bicep: %w", err)
@@ -139,6 +133,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	output.CompleteStep(step)
+
+	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), env.)
+
+	if err != nil {
+		return err
+	}
 
 	var progressText string
 	status := env.GetStatusLink()

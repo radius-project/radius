@@ -33,7 +33,7 @@ func ValidateBicepFile(filePath string) error {
 
 type Options struct {
 	Environment    environments.Environment
-	Template       string
+	Template       map[string]interface{}
 	Parameters     clients.DeploymentParameters
 	ProgressText   string
 	CompletionText string

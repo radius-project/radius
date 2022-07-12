@@ -7,6 +7,7 @@ package bicep
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -23,15 +24,15 @@ const SemanticVersionRegex = `(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|
 
 // Run rad-bicep with the given args and return the stdout. The stderr
 // is not capture but instead redirected to that of the current process.
-func runBicep(args ...string) (string, error) {
+func runBicep(args ...string) (map[string]interface{}, error) {
 
 	if installed, _ := IsBicepInstalled(); !installed {
-		return "", fmt.Errorf("rad-bicep not installed, run \"rad bicep download\" to install")
+		return nil, fmt.Errorf("rad-bicep not installed, run \"rad bicep download\" to install")
 	}
 
 	binPath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
 	if err != nil {
-		return "", fmt.Errorf("failed to find rad-bicep: %w", err)
+		return nil, fmt.Errorf("failed to find rad-bicep: %w", err)
 	}
 
 	// runs 'rad-bicep'
@@ -40,12 +41,12 @@ func runBicep(args ...string) (string, error) {
 	c.Stderr = os.Stderr
 	stdout, err := c.StdoutPipe()
 	if err != nil {
-		return "", fmt.Errorf("failed to create pipe: %w", err)
+		return nil, fmt.Errorf("failed to create pipe: %w", err)
 	}
 
 	err = c.Start()
 	if err != nil {
-		return "", fmt.Errorf("failed executing %q: %w", fullCmd, err)
+		return nil, fmt.Errorf("failed executing %q: %w", fullCmd, err)
 	}
 
 	// asyncronously copy to our buffer, we don't really need to observe
@@ -58,20 +59,26 @@ func runBicep(args ...string) (string, error) {
 	// Wait() will wait for us to finish draining stderr before returning the exit code
 	err = c.Wait()
 	if err != nil {
-		return "", fmt.Errorf("failed executing %q: %w", fullCmd, err)
+		return nil, fmt.Errorf("failed executing %q: %w", fullCmd, err)
 	}
 
 	// read the content
 	bytes, err := io.ReadAll(&buf)
 	if err != nil {
-		return "", fmt.Errorf("failed to read rad-bicep output: %w", err)
+		return nil, fmt.Errorf("failed to read rad-bicep output: %w", err)
 	}
 
-	return string(bytes), err
+	template := map[string]interface{}{}
+	err = json.Unmarshal(bytes, &template)
+	if err != nil {
+		return nil, err
+	}
+
+	return template, err
 }
 
 // Build the provided `.bicep` file and returns the deployment template.
-func Build(filePath string) (string, error) {
+func Build(filePath string) (map[string]interface{}, error) {
 	// rad-bicep is being told to output the template to stdout and we will capture it
 	// rad-bicep will output compilation errors to stderr which will go to the user's console
 	return runBicep("build", "--stdout", filePath)
@@ -86,7 +93,12 @@ func Version() string {
 		return fmt.Sprintf("unknown (%s)", err)
 	}
 
-	version := regexp.MustCompile(SemanticVersionRegex).FindString(output)
+	bytes, err := json.Marshal(output)
+	if err != nil {
+		return fmt.Sprintf("could not (%s)", err)
+	}
+
+	version := regexp.MustCompile(SemanticVersionRegex).FindString(string(bytes))
 	if version == "" {
 		return fmt.Sprintf("unknown (failed to parse bicep version from %q)", output)
 	}

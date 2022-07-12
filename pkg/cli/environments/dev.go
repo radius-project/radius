@@ -54,6 +54,10 @@ func (e *LocalEnvironment) GetContainerRegistry() *Registry {
 	return e.Registry
 }
 
+func (e *LocalEnvironment) GetId() string {
+	return e.Id
+}
+
 func (e *LocalEnvironment) GetProviders() *Providers {
 	return e.Providers
 }
