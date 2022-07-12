@@ -358,7 +358,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 }
 
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace string) (renderers.EnvironmentOptions, error) {
-	if dp.k8s != nil {
+	if dp.k8sClient != nil {
 		// If the public endpoint override is specified (Local Dev scenario), then use it.
 		publicEndpoint := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 		if publicEndpoint != "" {
