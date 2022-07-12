@@ -95,7 +95,7 @@ func Version() string {
 
 	bytes, err := json.Marshal(output)
 	if err != nil {
-		return fmt.Sprintf("could not (%s)", err)
+		return fmt.Sprintf("could not marshal json (%s)", err)
 	}
 
 	version := regexp.MustCompile(SemanticVersionRegex).FindString(string(bytes))

@@ -9,12 +9,11 @@ import (
 	"context"
 )
 
+// Injects a parameter for environment into the parameters if required
+// parameters.environment exists && param not passed in -> inject environmentId
+// parameters.environment does not exist -> noop
+// input parameters already include environment -> noop.
 func InjectEnvironmentParam(deploymentTemplate map[string]interface{}, parameters map[string]map[string]interface{}, context context.Context, environmentId string) error {
-
-	// parameters environment exists && param not passed in -> inject environmentId
-	// parameters environment does not exist -> noop
-	// parameters already include environment -> noop.
-
 	if deploymentTemplate["parameters"] == nil {
 		return nil
 	}

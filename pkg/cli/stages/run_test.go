@@ -613,7 +613,7 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 			require.NoError(t, err)
 			deploymentOutput := map[string]interface{}{}
 
-			json.Unmarshal(content, &deploymentOutput)
+			_ = json.Unmarshal(content, &deploymentOutput)
 
 			return MockBicepBuild(ctx, deployFile, deploymentOutput)
 		},
