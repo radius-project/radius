@@ -218,10 +218,12 @@ func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name stri
 	scopes := []ucpresources.ScopeSegment{
 		{Type: "planes", Name: "deployments/local"},
 		{Type: "resourcegroups", Name: dc.ResourceGroup},
-		{Type: "providers", Name: "Microsoft.Resources"},
-		{Type: "deployments", Name: name + "/operations"},
 	}
-	resourceId = ucpresources.MakeRelativeID(scopes)
+	types := ucpresources.TypeSegment{
+		Type: "Microsoft.Resources/deployments",
+		Name: name + "/operations",
+	}
+	resourceId = ucpresources.MakeRelativeID(scopes, types)
 
 	operationList, err := dc.OperationsClient.List(ctx, resourceId, nil)
 	if err != nil {
