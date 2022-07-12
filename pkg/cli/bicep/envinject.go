@@ -9,7 +9,7 @@ import (
 	"context"
 )
 
-// Injects a parameter for environment into the parameters if required
+// Injects an argument for environment into the parameters if required
 // parameters.environment exists && param not passed in -> inject environmentId
 // parameters.environment does not exist -> noop
 // input parameters already include environment -> noop.
