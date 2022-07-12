@@ -28,7 +28,7 @@ type DaprOptions struct {
 	Version string
 }
 
-func ApplyDaprHelmChart(version string) error {
+func ApplyDaprHelmChart(version string, kubeContext string) error {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
 
@@ -74,6 +74,7 @@ func ApplyDaprHelmChart(version string) error {
 func runDaprHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = daprReleaseName
+	installClient.CreateNamespace = true
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.Timeout = installTimeout
 	installClient.Wait = true
