@@ -77,7 +77,10 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		}
 		// Now get the latest available observation of deployment current state
 		// note that there can be a race condition here, by the time it fetches the latest status, deployment might be succeeded
-		status := dep.Status.Conditions[len(dep.Status.Conditions)-1]
+		status := v1.DeploymentCondition{}
+		if len(dep.Status.Conditions) >= 1 {
+			status = dep.Status.Conditions[len(dep.Status.Conditions)-1]
+		}
 
 		return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 	case <-readinessCh:
