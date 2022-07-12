@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -16,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,7 +28,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const defaultResyncInterval = time.Second * 50
+const (
+	DefaultCacheResyncInterval   = time.Minute * 10
+	DefaultDeploymentTimeout     = time.Minute * 5
+	DefaultTestDeploymentTimeout = time.Second * 5
+)
+
+var TestHook bool
 
 func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) ResourceHandler {
 	return &kubernetesHandler{client: client, clientSet: clientSet}
@@ -57,16 +65,25 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return err
 	}
 
-	if item.GetKind() != "Deployment" {
+	if !strings.EqualFold(item.GetKind(), "Deployment") {
 		return nil // only checking further the Deployment output resource status
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute) // 5 minute deployment readiness timeout
+	timeout := DefaultDeploymentTimeout
+
+	// Setting the lower limits for testing when TestHook is enabled
+	if TestHook {
+		timeout = DefaultTestDeploymentTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	readinessCh := make(chan bool)
-	watchErrorCh := make(chan error)
-	handler.watchUntilReady(ctx, &item, readinessCh, watchErrorCh)
+	readinessCh := make(chan bool, 1)
+	watchErrorCh := make(chan error, 1)
+	go func() {
+		handler.watchUntilReady(ctx, &item, readinessCh, watchErrorCh)
+	}()
 
 	select {
 	case <-ctx.Done():
@@ -188,7 +205,7 @@ func convertToUnstructured(resource outputresource.OutputResource) (unstructured
 }
 
 func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error) {
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, defaultResyncInterval, informers.WithNamespace(item.GetNamespace()))
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
@@ -228,7 +245,7 @@ func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context,
 	for _, c := range obj.Status.Conditions {
 		// check for complete deployment condition
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
-		if c.Type == v1.DeploymentProgressing && c.Status == "True" && c.Reason == "NewReplicaSetAvailable" {
+		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
 			readinessCh <- true
 		}
 	}
