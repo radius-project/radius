@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // Gateway represents Gateway resource.
@@ -25,6 +26,13 @@ type Gateway struct {
 // ResourceTypeName returns the qualified name of the resource
 func (g Gateway) ResourceTypeName() string {
 	return "Applications.Core/gateways"
+}
+
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (g Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	g.Properties.BasicResourceProperties.Status.OutputResources = do.DeployedOutputResources
+	g.InternalMetadata.ComputedValues = do.ComputedValues
+	g.InternalMetadata.SecretValues = do.SecretValues
 }
 
 // GatewayProperties represents the properties of Gateway.
