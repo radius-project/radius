@@ -1,0 +1,236 @@
+import "@cadl-lang/rest";
+import "@azure-tools/cadl-providerhub";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+
+import "./types.cadl";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Azure.ResourceManager;
+
+@armNamespace
+@serviceTitle("Applications.Core Management APIs")
+@doc("REST API for Applications.Core Container Resource")
+namespace Containers;
+
+@doc("Specifies a listening port for the container")
+model ContainerPort {
+  @doc("The listening port number")
+  containerPort: int16;
+
+  @doc("Protocol in use by the port")
+  protocol?: PortProtocol;
+
+  @doc("Specifies a route provided by this port")
+  provides?: string;
+}
+
+@doc("Properties for readiness/liveness probe")
+@discriminator("kind")
+model HealthProbeProperties {
+  @doc("Initial delay in seconds before probing for readiness/liveness")
+  initialDelaySeconds?: float32;
+
+  @doc("Threshold number of times the probe fails after which a failure would be reported")
+  failureThreshold?: float32;
+
+  @doc("Interval for the readiness/liveness probe in seconds")
+  periodSeconds?: float32;
+}
+
+@doc("Specifies the properties for readiness/liveness probe using HTTP Get")
+model HttpGetHealthProbeProperties extends HealthProbeProperties {
+  kind: "httpGet";
+
+  @doc("The listening port number")
+  containerPort: int16;
+
+  @doc("The route to make the HTTP request on")
+  path: string;
+
+  @doc("Custom HTTP headers to add to the get request")
+  headers?: Map<string, string>;
+}
+
+@doc("Specifies the properties for readiness/liveness probe using TCP")
+model TcpHealthProbeProperties extends HealthProbeProperties {
+  kind: "tcp";
+
+  @doc("The listening port number")
+  containerPort: int16;
+}
+
+@doc("Specifies the properties for readiness/liveness probe using an executable")
+model ExecHealthProbeProperties extends HealthProbeProperties {
+  kind: "exec";
+
+  @doc("Command to execute to probe readiness/liveness")
+  command: string;
+}
+
+@discriminator("kind")
+@doc("Specifies a volume for a container")
+model Volume {
+  @doc("The path where the volume is mounted")
+  mountPath?: string;
+}
+
+@doc("Specifies an ephemeral volume for a container")
+model EphemeralVolume extends Volume {
+  kind: "ephemeral";
+
+  @doc("Backing store for the ephemeral volume")
+  managedStore: ManagedStore;
+}
+
+@doc("Specifies a persistent volume for a container")
+model PersistentVolume extends Volume {
+  kind: "persistent";
+
+  @doc("Container read/write access to the volume")
+  rbac?: VolumeRbac;
+
+  @doc("The source of the volume")
+  source: string;
+}
+
+@doc("Extension of a resource.")
+@discriminator("kind")
+model Extension {}
+
+@doc("ManualScaling Extension")
+model ManualScalingExtension extends Extension {
+  kind: "manualScaling";
+
+  @doc("Replica count.")
+  replicas: int16;
+}
+
+@doc("Specifies the resource should have a Dapr sidecar injected")
+model DaprSidecarExtension extends Extension {
+  kind: "daprSidecar";
+
+  @doc("The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. ")
+  appPort?: int16;
+
+  @doc("The Dapr appId. Specifies the identifier used by Dapr for service invocation.")
+  appId: string;
+
+  @doc("Specifies the Dapr configuration to use for the resource.")
+  config?: string;
+
+  @doc("Specifies the Dapr app-protocol to use for the resource.")
+  protocol?: DaprProtocol;
+
+  @doc("Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.")
+  provides: string;
+}
+
+@doc("Iam properties")
+model IamProperties {
+  @doc("The kind of IAM provider to configure")
+  kind: Kind;
+
+  @doc("RBAC permissions to be assigned on the source resource")
+  roles: string[];
+}
+
+@doc("Connection Properties")
+model ConnectionProperties {
+  @doc("The source of the connection")
+  source: string;
+  disableDefaultEnvVars?: boolean = false;
+  iam?: IamProperties;
+}
+
+@doc("Definition of a container")
+model Container {
+  @doc("The registry and image to download and run in your container")
+  image: string;
+  env?: Map<string, string>;
+  ports?: Map<string, ContainerPort>;
+  readinessProbe?: HealthProbeProperties;
+  livenessProbe?: HealthProbeProperties;
+  volumes?: Map<string, Volume>;
+}
+
+@doc("Container properties")
+model ContainerProperties {
+  // allof: BasicResourceProperties
+
+  @doc("The status of the last operation.")
+  provisioningState?: ProvisioningState;
+
+  @doc("Specifies resource id of the application")
+  application: string;
+
+  @doc("Specifies a connection to another resource.")
+  connections: Map<string, ConnectionProperties>;
+
+  @doc("Definition of a container.")
+  container: Container;
+
+  @doc("Extensions spec of the resource")
+  extensions: Extension[];
+}
+
+model ContainerResource is TrackedResource<ContainerProperties> {
+  @doc("Container name")
+  @maxLength(128)
+  @pattern("^[a-z0-9]+(-[a-z0-9]+)*")
+  @key("ContainerName")
+  @path
+  @segment("{ContainerName}")
+  name: string;
+}
+
+@armResourceOperations
+interface Containers
+  extends ResourceOperations<ContainerResource, ContainerProperties> {}
+
+@knownValues(ProvisioningStateKV)
+model ProvisioningState is string {}
+enum ProvisioningStateKV {
+  Succeeded,
+  Failed,
+  Canceled,
+  Provisioning,
+  Updating,
+  Deleting,
+  Accepted,
+}
+
+@knownValues(PortProtocolKV)
+model PortProtocol is string {}
+enum PortProtocolKV {
+  TCP,
+  UDP,
+}
+
+@knownValues(ManagedStoreKV)
+model ManagedStore is string {}
+enum ManagedStoreKV {
+  memory,
+  disk,
+}
+
+@knownValues(VolumeRbacKV)
+model VolumeRbac is string {}
+enum VolumeRbacKV {
+  read,
+  write,
+}
+
+@knownValues(KindKV)
+model Kind is string {}
+enum KindKV {
+  azure,
+}
+
+@knownValues(DaprProtocolKV)
+model DaprProtocol is string {}
+enum DaprProtocolKV {
+  http,
+  grpc,
+}
