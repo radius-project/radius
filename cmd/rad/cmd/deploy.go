@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/deploy"
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
@@ -134,7 +133,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 	output.CompleteStep(step)
 
-	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), env.)
+	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), env.GetId())
 
 	if err != nil {
 		return err

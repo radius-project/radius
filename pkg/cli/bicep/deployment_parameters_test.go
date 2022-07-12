@@ -6,6 +6,7 @@
 package bicep
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -85,7 +86,11 @@ func Test_ParseParameters_File(t *testing.T) {
 	input, err := ioutil.ReadFile(filepath.Join("testdata", "test-parameters.json"))
 	require.NoError(t, err)
 
-	parameters, err := parser.ParseFileContents(input)
+	template := map[string]interface{}{}
+	err = json.Unmarshal(input, &template)
+	require.NoError(t, err)
+
+	parameters, err := parser.ParseFileContents(template)
 	require.NoError(t, err)
 
 	expected := clients.DeploymentParameters{

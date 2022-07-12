@@ -7,6 +7,7 @@ package stages
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path"
@@ -23,13 +24,13 @@ import (
 	"github.com/project-radius/radius/test"
 )
 
-func SkipBicepBuild(ctx context.Context, deployFile string) (string, error) {
+func SkipBicepBuild(ctx context.Context, deployFile string) (map[string]interface{}, error) {
 	// We don't want to run bicep in unit tests. It's fine because we're not going to
 	// look at the output of this.
-	return "", nil
+	return nil, nil
 }
 
-func MockBicepBuild(ctx context.Context, deployFile string, template string) (string, error) {
+func MockBicepBuild(ctx context.Context, deployFile string, template map[string]interface{}) (map[string]interface{}, error) {
 	// Mock the bicep build with the supplied template data
 	// Template data should be the result of building the
 	// stage bicep file.
@@ -607,11 +608,14 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 				"value": "value2",
 			},
 		},
-		BicepBuildFunc: func(ctx context.Context, deployFile string) (string, error) {
+		BicepBuildFunc: func(ctx context.Context, deployFile string) (map[string]interface{}, error) {
 			content, err := ioutil.ReadFile(filepath.Join("testdata", "test-bicep-output.json"))
 			require.NoError(t, err)
+			deploymentOutput := map[string]interface{}{}
 
-			return MockBicepBuild(ctx, deployFile, string(content))
+			json.Unmarshal(content, &deploymentOutput)
+
+			return MockBicepBuild(ctx, deployFile, deploymentOutput)
 		},
 	}
 

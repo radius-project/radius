@@ -32,10 +32,15 @@ func (OSFileSystem) Open(name string) (fs.File, error) {
 	return os.Open(name)
 }
 
-func (pp ParameterParser) ParseFileContents(input []byte) (clients.DeploymentParameters, error) {
+func (pp ParameterParser) ParseFileContents(input map[string]interface{}) (clients.DeploymentParameters, error) {
 	output := clients.DeploymentParameters{}
 
-	err := pp.unmarshalParameters(input, output)
+	b, err := json.Marshal(input)
+	if err != nil {
+		return nil, err
+	}
+
+	err = pp.unmarshalParameters(b, output)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +114,7 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 }
 
 func (pp ParameterParser) unmarshalParameters(b []byte, output clients.DeploymentParameters) error {
+
 	data := ParameterFile{}
 	err := json.Unmarshal(b, &data)
 	if err != nil {
