@@ -33,9 +33,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return err
 	}
 
-	namespace := "kind-radius"
-
-	err = handler.PatchNamespace(ctx, namespace)
+	err = handler.PatchNamespace(ctx, "default")
 	if err != nil {
 		return err
 	}

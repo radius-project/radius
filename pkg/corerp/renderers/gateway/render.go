@@ -7,7 +7,6 @@ package gateway
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -104,9 +103,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
 	includes := []contourv1.Include{}
 
-	if len(gateway.Properties.Routes) < 1 {
-		return outputresource.OutputResource{}, errors.New("must have at least one route when declaring a Gateway resource")
-	}
+	// if len(gateway.Properties.Routes) < 1 {
+	// 	return outputresource.OutputResource{}, errors.New("must have at least one route when declaring a Gateway resource")
+	// }
 
 	for _, route := range gateway.Properties.Routes {
 		routeName, err := getRouteName(&route)
@@ -145,7 +144,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resourceName),
-			Namespace: options.Environment.Namespace,
+			Namespace: "default",
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 		},
 		Spec: contourv1.HTTPProxySpec{
@@ -220,7 +219,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      routeResourceName,
-				Namespace: options.Environment.Namespace,
+				Namespace: "default",
 				Labels:    kubernetes.MakeDescriptiveLabels(applicationName, routeName),
 			},
 			Spec: contourv1.HTTPProxySpec{
