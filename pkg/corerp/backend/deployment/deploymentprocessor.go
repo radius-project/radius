@@ -534,7 +534,7 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 	if env.Properties != (datamodel.EnvironmentProperties{}) && env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
 		namespace = env.Properties.Compute.KubernetesCompute.Namespace
 	} else {
-		err = fmt.Errorf("Cannot find namespace in the environment resource")
+		err = fmt.Errorf("cannot find namespace in the environment resource")
 	}
 
 	return
