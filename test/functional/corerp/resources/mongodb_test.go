@@ -14,7 +14,7 @@ import (
 )
 
 func Test_MongoDB(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+	t.Skip()
 
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
@@ -22,20 +22,30 @@ func Test_MongoDB(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-mongodb-app",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "todoapp",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "db",
-					Type: validation.MongoDatabasesResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-mongodb-app",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "todoapp",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "db",
+						Type: validation.MongoDatabasesResource,
+					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "webapp"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 
@@ -43,7 +53,7 @@ func Test_MongoDB(t *testing.T) {
 }
 
 func Test_MongoDBUserSecrets(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+	t.Skip()
 
 	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
 	name := "corerp-resources-mongodb-user-secrets"
@@ -51,28 +61,39 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-mongodb-user-secrets-app",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "todoapp",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "mongo",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "mongo-route",
-					Type: validation.HttpRoutesResource,
-				},
-				{
-					Name: "mongo",
-					Type: validation.MongoDatabasesResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-mongodb-user-secrets-app",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "todoapp",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "mongo",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "mongo-route",
+						Type: validation.HttpRoutesResource,
+					},
+					{
+						Name: "mongo",
+						Type: validation.MongoDatabasesResource,
+					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "webapp"),
+						validation.NewK8sPodForResource(name, "mongo"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

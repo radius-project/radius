@@ -11,24 +11,51 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/test/radcli"
 )
 
 const (
-	EnvironmentsResource   = "applications.core/environments"
-	ApplicationsResource   = "applications.core/applications"
-	HttpRoutesResource     = "applications.core/httpRoutes"
-	MongoDatabasesResource = "applications.core/mongoDatabases"
-	RedisCachesResource    = "applications.core/redisCaches"
-	ContainersResource     = "applications.core/containers"
+	EnvironmentsResource          = "applications.core/environments"
+	ApplicationsResource          = "applications.core/applications"
+	HttpRoutesResource            = "applications.core/httpRoutes"
+	GatewaysResource              = "applications.core/gateways"
+	ContainersResource            = "applications.connector/containers"
+	MongoDatabasesResource        = "applications.connector/mongoDatabases"
+	RabbitMQMessageQueuesResource = "applications.conneector/rabbitMQMessageQueues"
+	RedisCachesResource           = "applications.connector/redisCaches"
+	SQLDatabasesResource          = "applications.connector/sqlDatabases"
 )
 
-type Resource struct {
+type CoreRPResource struct {
 	Type string
 	Name string
 }
 
-func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected []Resource, client clients.ApplicationsManagementClient) {
-	for _, resource := range expected {
+type CoreRPResourceSet struct {
+	Resources []CoreRPResource
+}
+
+func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource CoreRPResource) error {
+	if resource.Type == EnvironmentsResource {
+		t.Logf("deleting environment: %s", resource.Name)
+		return client.DeleteEnv(ctx, resource.Name)
+
+		// TODO: this should probably call the CLI, but if you create an
+		// environment via bicep deployment, it will not be reflected in the
+		// rad config.
+		// return cli.EnvDelete(ctx, resource.Name)
+	} else if resource.Type == ApplicationsResource {
+		t.Logf("deleting application: %s", resource.Name)
+		return cli.ApplicationDelete(ctx, resource.Name)
+	}
+
+	t.Logf("resource %s is not an application or an environment. skipping...", resource.Name)
+	return nil
+}
+
+func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
+	for _, resource := range expected.Resources {
 		if resource.Type == EnvironmentsResource {
 			envs, err := client.ListEnv(ctx)
 			require.NoError(t, err)

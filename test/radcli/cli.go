@@ -138,7 +138,7 @@ func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
 		"env",
 		"delete",
 		"--yes",
-		"-a", environmentName,
+		"-e", environmentName,
 	}
 	_, err := cli.RunCommand(ctx, args)
 	return err
