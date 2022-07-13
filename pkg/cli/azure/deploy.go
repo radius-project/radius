@@ -15,7 +15,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/google/uuid"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
+
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -29,6 +31,7 @@ type ResouceDeploymentClient struct {
 	Client           azclients.ResourceDeploymentClient
 	OperationsClient azclients.ResourceDeploymentOperationsClient
 	Tags             map[string]*string
+	AzProvider       *Provider
 }
 
 var _ clients.DeploymentClient = (*ResouceDeploymentClient)(nil)
@@ -82,11 +85,14 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 
 	resourceId = ucpresources.MakeRelativeID(scopes, types...)
 
-	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, resources.Deployment{
-		Properties: &resources.DeploymentProperties{
-			Template:   options.Template,
-			Parameters: options.Parameters,
-			Mode:       resources.DeploymentModeIncremental,
+	providerConfig := dc.GetProviderConfigs()
+
+	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, providers.Deployment{
+		Properties: &providers.DeploymentProperties{
+			Template:       options.Template,
+			Parameters:     options.Parameters,
+			ProviderConfig: providerConfig,
+			Mode:           resources.DeploymentModeIncremental,
 		},
 		Tags: dc.Tags,
 	})
@@ -94,8 +100,42 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 	if err != nil {
 		return nil, err
 	}
-
 	return &future, nil
+}
+
+func (dc *ResouceDeploymentClient) GetProviderConfigs() providers.ProviderConfig {
+	var providerConfigs providers.ProviderConfig
+	if dc.AzProvider != nil {
+		if dc.AzProvider.SubscriptionID != "" && dc.AzProvider.ResourceGroup != "" {
+			scope := "/subscriptions/" + dc.AzProvider.SubscriptionID + "/resourceGroups/" + dc.AzProvider.ResourceGroup
+			providerConfigs.Az = &providers.Az{
+				Type: "AzureResourceManager",
+				Value: providers.Value{
+					Scope: scope,
+				},
+			}
+		}
+	}
+
+	if dc.ResourceGroup != "" {
+		scope := "/planes/radius/local/resourceGroups/" + dc.ResourceGroup
+		providerConfigs.Radius = &providers.Radius{
+			Type: "Radius",
+			Value: providers.Value{
+				Scope: scope,
+			},
+		}
+
+		scope = "/planes/deployments/local/resourceGroups/" + dc.ResourceGroup
+		providerConfigs.Deployments = &providers.Deployments{
+			Type: "Microsoft.Resources",
+			Value: providers.Value{
+				Scope: scope,
+			},
+		}
+	}
+
+	return providerConfigs
 }
 
 func (dc *ResouceDeploymentClient) createSummary(deployment resources.DeploymentExtended) (clients.DeploymentResult, error) {
