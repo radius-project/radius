@@ -1,4 +1,4 @@
-//import radius as radius
+import radius as radius
 
 @description('Specifies the location for resources.')
 param location string = resourceGroup().location
@@ -112,4 +112,4 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
 
   }
-   
+
