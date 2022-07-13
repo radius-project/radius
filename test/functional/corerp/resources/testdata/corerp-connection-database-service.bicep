@@ -23,7 +23,6 @@ resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
     connections: {
       databaseresource: {
-        kind:'azure'
         source: databaseAccount.id
         roles: [
           'Cosmos DB Account Reader Role'
