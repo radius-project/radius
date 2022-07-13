@@ -16,20 +16,16 @@ import (
 func Test_MongoDB(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
-	template := "testdata/corerp-resources-mongodb.bicep"
-	name := "corerp-resources-mongodb"
+	template := "testdata/connectorrp-resources-mongodb.bicep"
+	name := "connectorrp-resources-mongodb"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "corerp-resources-mongodb-app",
+					Name: "connectorrp-resources-mongodb-app",
 					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "todoapp",
-					Type: validation.ContainersResource,
 				},
 				{
 					Name: "db",
@@ -45,28 +41,16 @@ func Test_MongoDB(t *testing.T) {
 func Test_MongoDBUserSecrets(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
-	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
-	name := "corerp-resources-mongodb-user-secrets"
+	template := "testdata/connectorrp-resources-mongodb-user-secrets.bicep"
+	name := "connectorrp-resources-mongodb-user-secrets"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "corerp-resources-mongodb-user-secrets-app",
+					Name: "connectorrp-resources-mongodb-user-secrets-app",
 					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "todoapp",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "mongo",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "mongo-route",
-					Type: validation.HttpRoutesResource,
 				},
 				{
 					Name: "mongo",

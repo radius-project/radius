@@ -13,23 +13,23 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_Redis(t *testing.T) {
+func Test_DaprStateStore(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
-	template := "testdata/connectorrp-resources-redis-user-secrets.bicep"
-	name := "connectorrp-resources-redis-user-secrets"
+	template := "testdata/connectorrp-resources-dapr-state-store.bicep"
+	name := "connectorrp-resources-dapr-state-store"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "connectorrp-resources-redis-user-secrets",
+					Name: "connectorrp-resources-dapr-state-store",
 					Type: validation.ApplicationsResource,
 				},
 				{
-					Name: "redis",
-					Type: validation.RedisCachesResource,
+					Name: "statestore",
+					Type: validation.DaprStateStoresResource,
 				},
 			},
 		},

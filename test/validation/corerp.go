@@ -14,12 +14,18 @@ import (
 )
 
 const (
-	EnvironmentsResource   = "applications.core/environments"
-	ApplicationsResource   = "applications.core/applications"
-	HttpRoutesResource     = "applications.core/httpRoutes"
-	MongoDatabasesResource = "applications.core/mongoDatabases"
-	RedisCachesResource    = "applications.core/redisCaches"
-	ContainersResource     = "applications.core/containers"
+	EnvironmentsResource        = "applications.core/environments"
+	ApplicationsResource        = "applications.core/applications"
+	HttpRoutesResource          = "applications.core/httpRoutes"
+	MongoDatabasesResource      = "applications.connector/mongoDatabases"
+	RedisCachesResource         = "applications.connector/redisCaches"
+	RabbitMQResource            = "applications.connector/rabbitMQMessageQueues"
+	ContainersResource          = "applications.core/containers"
+	DaprSecretStoresResource    = "applications.connector/daprSecretStores"
+	DaprStateStoresResource     = "applications.connector/daprStateStores"
+	DaprPubSubBrokerResource    = "applications.connector/daprPubSubBrokers"
+	DaprInvokeHttpRouteResource = "applications.connector/daprInvokeHttpRoutes"
+	ExtenderResource            = "applications.connector/extenders"
 )
 
 type Resource struct {

@@ -1,37 +1,14 @@
 import radius as radius
 
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
-
 param environment string
 
 param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-mongodb'
+  name: 'connectorrp-resources-mongodb'
   location: 'global'
   properties: {
     environment: environment
-  }
-}
-
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'todoapp'
-  location: 'global'
-  properties: {
-    application: app.id
-    connections: {
-      mongodb: {
-        source: db.id
-      }
-    }
-    container: {
-      image: magpieimage
-      readinessProbe:{
-        kind:'httpGet'
-        containerPort:3000
-        path: '/healthz'
-      }
-    }
   }
 }
 
@@ -49,7 +26,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   location: location
   kind: 'MongoDB'
   tags: {
-    radiustest: 'corerp-resources-mongodb'
+    radiustest: 'connectorrp-resources-mongodb'
   }
   properties: {
     consistencyPolicy: {
