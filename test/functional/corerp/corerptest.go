@@ -33,6 +33,7 @@ var radiusControllerLogSync sync.Once
 const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 	APIVersion             = "2022-03-15-privatepreview"
+	TestNamespace          = "kind-radius"
 )
 
 type TestStep struct {
@@ -70,24 +71,6 @@ func NewCoreRPTest(t *testing.T, name string, steps []TestStep, initialResources
 		Description: name,
 		Steps:       steps,
 	}
-}
-
-func (ct CoreRPTest) CollectAllNamespaces() []string {
-	all := map[string]bool{}
-	for _, step := range ct.Steps {
-		if step.K8sObjects != nil {
-			for ns := range step.K8sObjects.Namespaces {
-				all[ns] = true
-			}
-		}
-	}
-
-	results := []string{}
-	for ns := range all {
-		results = append(results, ns)
-	}
-
-	return results
 }
 
 func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
@@ -227,9 +210,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				t.Logf("skipping validation of deletion of pods...")
 			} else {
 				t.Logf("validating deletion of pods for %s", ct.Description)
-				for _, ns := range ct.CollectAllNamespaces() {
-					validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, ns, ct.Name)
-				}
+				validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, TestNamespace, ct.Name)
 				t.Logf("finished validation of deletion of pods for %s", ct.Description)
 			}
 		}
