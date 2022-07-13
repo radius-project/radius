@@ -24,10 +24,13 @@ resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
     connections: {
       databaseresource: {
         source: databaseAccount.id
-        iam: [
-          'Cosmos DB Account Reader Role'
-          '230815da-be43-4aae-9cb4-875f7bd000aa'
-        ]
+        iam: {
+          kind: 'azure'
+          roles: [
+            'Cosmos DB Account Reader Role'
+            '230815da-be43-4aae-9cb4-875f7bd000aa'
+          ]
+        }
       }
     }
   }
