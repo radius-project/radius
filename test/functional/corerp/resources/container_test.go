@@ -14,7 +14,7 @@ import (
 )
 
 func Test_Container(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+	t.Skip()
 
 	template := "testdata/corerp-resources-container.bicep"
 	name := "corerp-resources-container"
@@ -22,20 +22,31 @@ func Test_Container(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-container-app",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "corerp-resources-container-container",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "corerp-resources-container-httproute",
-					Type: validation.HttpRoutesResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-container-app",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "corerp-resources-container-container",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "corerp-resources-container-httproute",
+						Type: validation.HttpRoutesResource,
+					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "corerp-resources-container-container"),
+						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-container-httproute"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

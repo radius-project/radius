@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -532,43 +533,33 @@ func TestGetAsyncLocationPath(t *testing.T) {
 	operationID := uuid.New()
 
 	testCases := []struct {
-		desc     string
-		rID      string
-		rType    string
-		loc      string
-		opID     uuid.UUID
-		expected string
+		desc string
+		base string
+		rID  string
+		loc  string
+		opID uuid.UUID
+		av   string
+		or   string
+		os   string
 	}{
 		{
-			"ucp-location-header",
+			"ucp-test-headers",
+			"https://ucp.dev",
 			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
-			"operationResults",
 			"global",
 			operationID,
+			"2022-03-15-privatepreview",
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
-		},
-		{
-			"ucp-azure-asyncoperation-header",
-			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
-			"operationStatuses",
-			"global",
-			operationID,
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
 		},
 		{
-			"arm-location-header",
+			"arm-test-headers",
+			"https://azure.dev",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
-			"operationResults",
 			"global",
 			operationID,
+			"2022-03-15-privatepreview",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
-		},
-		{
-			"arm-azure-asyncoperation-header",
-			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
-			"operationStatuses",
-			"global",
-			operationID,
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
 		},
 	}
@@ -577,7 +568,20 @@ func TestGetAsyncLocationPath(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			resourceID, err := resources.Parse(tt.rID)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, getAsyncLocationPath(resourceID, tt.loc, tt.rType, tt.opID))
+
+			body := &datamodel.ContainerResource{}
+			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av)
+
+			req := httptest.NewRequest("GET", tt.base, nil)
+			w := httptest.NewRecorder()
+			err = r.Apply(context.Background(), w, req)
+			require.NoError(t, err)
+
+			require.NotNil(t, w.Header().Get("Location"))
+			require.Equal(t, tt.base+tt.or+"?api-version="+tt.av, w.Header().Get("Location"))
+
+			require.NotNil(t, w.Header().Get("Azure-AsyncHeader"))
+			require.Equal(t, tt.base+tt.os+"?api-version="+tt.av, w.Header().Get("Azure-AsyncOperation"))
 		})
 	}
 }

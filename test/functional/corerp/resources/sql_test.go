@@ -13,11 +13,11 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_Extender(t *testing.T) {
+func Test_SQL(t *testing.T) {
 	t.Skip()
 
-	template := "testdata/corerp-resources-extender.bicep"
-	name := "corerp-resources-extender"
+	template := "testdata/corerp-resources-rabbitmq.bicep"
+	name := "corerp-resources-rabbitmq"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -25,23 +25,33 @@ func Test_Extender(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-extender",
+						Name: "corerp-resources-sql-app",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "myapp",
+						Name: "corerp-resources-sql-webapp",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "twilio",
+						Name: "corerp-resources-sql-db",
+						Type: validation.SQLDatabasesResource,
+					},
+					{
+						Name: "corerp-resources-sql-route",
 						Type: validation.HttpRoutesResource,
+					},
+					{
+						Name: "corerp-resources-sql-container",
+						Type: validation.ContainersResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "myapp"),
+						validation.NewK8sPodForResource(name, "corerp-resources-sql-webapp"),
+						validation.NewK8sPodForResource(name, "corerp-resources-sql-container"),
+						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-sql-route"),
 					},
 				},
 			},
