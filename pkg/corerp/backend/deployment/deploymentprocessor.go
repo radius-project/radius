@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -406,23 +407,23 @@ func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, 
 		return ResourceData{}, err
 	}
 
-	resourceType := resourceID.Type()
+	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
-	case container.ResourceType:
+	case strings.ToLower(container.ResourceType):
 		obj := &datamodel.ContainerResource{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
 		}
-	case gateway.ResourceType:
+	case strings.ToLower(gateway.ResourceType):
 		obj := &datamodel.Gateway{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
 		}
-	case httproute.ResourceType:
+	case strings.ToLower(httproute.ResourceType):
 		obj := &datamodel.HTTPRoute{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(obj); err == nil {
