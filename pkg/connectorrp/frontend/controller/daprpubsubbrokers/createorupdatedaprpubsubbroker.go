@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -51,6 +52,9 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+	if topic, ok := deploymentOutput.ComputedValues[handlers.ServiceBusTopicNameKey].(string); ok {
+		newResource.Properties.DaprPubSubAzureServiceBus.Topic = topic
+	}
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.DaprPubSubBroker{}

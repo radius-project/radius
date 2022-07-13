@@ -42,6 +42,8 @@ type DaprPubSubGenericResourceProperties struct {
 
 type DaprPubSubAzureServiceBusResourceProperties struct {
 	Resource string `json:"resource,omitempty"`
+	// Topic name of the Azure ServiceBus resource. Set by the resource provider.
+	Topic string `json:"topic,omitempty"`
 }
 
 // DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.

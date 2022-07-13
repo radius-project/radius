@@ -13,6 +13,8 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprsecretstores"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprstatestores"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/extenders"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
@@ -67,16 +69,16 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 				SecretStores: daprsecretstores.SupportedSecretStoreKindValues,
 			},
 		},
-		// {
-		// 	ResourceType: daprstatestorev1alpha3.ResourceType,
-		// 	Renderer: &daprstatestorev1alpha3.Renderer{
-		// 		StateStores: daprstatestorev1alpha3.SupportedStateStoreKindValues,
-		// 	},
-		// },
-		// {
-		// 	ResourceType: extenderv1alpha3.ResourceType,
-		// 	Renderer:     &extenderv1alpha3.Renderer{},
-		// },
+		{
+			ResourceType: daprstatestores.ResourceType,
+			Renderer: &daprstatestores.Renderer{
+				StateStores: daprstatestores.SupportedStateStoreKindValues,
+			},
+		},
+		{
+			ResourceType: extenders.ResourceType,
+			Renderer:     &extenders.Renderer{},
+		},
 	}
 
 	outputResourceModel := []OutputResourceModel{

@@ -173,6 +173,7 @@
 #### Properties
 * **kind**: 'pubsub.azure.servicebus' (Required): The DaprPubSubProperties kind
 * **resource**: string (Required): PubSub resource
+* **topic**: string (ReadOnly): Topic name of the Azure ServiceBus resource
 
 
 ## TrackedResourceTags
