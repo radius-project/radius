@@ -228,16 +228,18 @@ type AsyncOperationResponse struct {
 	Code        int
 	ResourceID  resources.ID
 	OperationID uuid.UUID
+	APIVersion  string
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID) Response {
+func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string) Response {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,
 		Code:        code,
 		ResourceID:  resourceID,
 		OperationID: operationID,
+		APIVersion:  apiVersion,
 	}
 }
 
@@ -248,8 +250,8 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	locationHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationResults", r.OperationID)
-	azureAsyncOpHeader := getAsyncLocationPath(r.ResourceID, r.Location, "operationStatuses", r.OperationID)
+	locationHeader := r.getAsyncLocationPath(req, "operationResults")
+	azureAsyncOpHeader := r.getAsyncLocationPath(req, "operationStatuses")
 
 	// Write Headers
 	w.Header().Add("Content-Type", "application/json")
@@ -268,14 +270,29 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 }
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
-func getAsyncLocationPath(resourceID resources.ID, location string, resourceType string, operationID uuid.UUID) string {
-	root := fmt.Sprintf("/subscriptions/%s", resourceID.FindScope(resources.SubscriptionsSegment))
-
-	if resourceID.IsUCPQualfied() {
-		root = fmt.Sprintf("/planes/%s", resourceID.PlaneNamespace())
+func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) string {
+	dest := url.URL{
+		Host:   req.Host,
+		Scheme: req.URL.Scheme,
+		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", r.ResourceID.PlaneScope(),
+			r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
 	}
 
-	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String())
+	query := url.Values{}
+	query.Add("api-version", r.APIVersion)
+	dest.RawQuery = query.Encode()
+
+	// In production this is the header we get from app service for the 'real' protocol
+	protocol := req.Header.Get("X-Forwarded-Proto")
+	if protocol != "" {
+		dest.Scheme = protocol
+	}
+
+	if dest.Scheme == "" {
+		dest.Scheme = "http"
+	}
+
+	return dest.String()
 }
 
 // NoContentResponse represents an HTTP 204.
