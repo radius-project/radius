@@ -31,7 +31,15 @@ var ErrResourceMissingForResource = errors.New("the 'resource' field is required
 
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/connectorrp/renderers Renderer
 type Renderer interface {
-	Render(ctx context.Context, resource conv.DataModelInterface) (RendererOutput, error)
+	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
+}
+
+type RenderOptions struct {
+	Environment EnvironmentOptions
+}
+
+type EnvironmentOptions struct {
+	Namespace string
 }
 
 type RendererOutput struct {

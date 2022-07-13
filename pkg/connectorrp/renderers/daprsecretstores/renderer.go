@@ -35,7 +35,7 @@ type Renderer struct {
 	SecretStores map[string]SecretStoreFunc
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.DaprSecretStore)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion

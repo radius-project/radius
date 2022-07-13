@@ -9,17 +9,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprsecretstores"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprstatestores"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/extenders"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
+	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -68,7 +81,15 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, resource)
+	// fetch the environment from the resource
+	env, err := dp.getEnvironmetFromResource(ctx, id)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+	// fetch the environment namespace by doing a db lookup
+	namespace, err := dp.getEnvironmentNamespace(ctx, env)
+
+	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{renderers.EnvironmentOptions{Namespace: namespace}})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -261,4 +282,116 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	}
 
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
+}
+
+func (dp *deploymentProcessor) getEnvironmetFromResource(ctx context.Context, resourceID resources.ID) (string, error) {
+	var res *store.Object
+	var err error
+	var sc store.StorageClient
+	sc, err = dp.sp.GetStorageClient(ctx, resourceID.Type())
+	if err != nil {
+		return "", err
+	}
+	resourceType := strings.ToLower(resourceID.Type())
+	switch resourceType {
+	case strings.ToLower(mongodatabases.ResourceType):
+		obj := &datamodel.MongoDatabase{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	case strings.ToLower(sqldatabases.ResourceType):
+		obj := &datamodel.SqlDatabase{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	case strings.ToLower(rediscaches.ResourceType):
+		obj := &datamodel.RedisCache{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
+		obj := &datamodel.RabbitMQMessageQueue{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	case strings.ToLower(extenders.ResourceType):
+		obj := &datamodel.Extender{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	case strings.ToLower(daprstatestores.ResourceType):
+		obj := &datamodel.DaprStateStore{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	case strings.ToLower(daprsecretstores.ResourceType):
+		obj := &datamodel.DaprSecretStore{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	case strings.ToLower(daprpubsubbrokers.ResourceType):
+		obj := &datamodel.DaprPubSubBroker{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	case strings.ToLower(daprinvokehttproutes.ResourceType):
+		obj := &datamodel.DaprInvokeHttpRoute{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+			if err = res.As(obj); err == nil {
+				return obj.Properties.Environment, nil
+			}
+		}
+	default:
+		err = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, resourceID.String())
+	}
+	return "", err
+}
+
+// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
+func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environment string) (namespace string, err error) {
+	var res *store.Object
+	var sc store.StorageClient
+
+	envId, err := resources.Parse(environment)
+	if err != nil {
+		return
+	}
+	sc, err = dp.sp.GetStorageClient(ctx, envId.Type())
+	if err != nil {
+		return
+	}
+
+	env := &coreDatamodel.Environment{}
+	res, err = sc.Get(ctx, envId.String())
+	if err != nil {
+		return
+	}
+	err = res.As(env)
+	if err != nil {
+		return
+	}
+
+	if env.Properties != (coreDatamodel.EnvironmentProperties{}) && env.Properties.Compute != (coreDatamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (coreDatamodel.KubernetesComputeProperties{}) {
+		namespace = env.Properties.Compute.KubernetesCompute.Namespace
+	} else {
+		err = fmt.Errorf("Cannot find namespace in the environment resource")
+	}
+
+	return
 }
