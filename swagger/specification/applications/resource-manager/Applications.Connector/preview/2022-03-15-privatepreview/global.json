@@ -54,7 +54,6 @@
     "Application": {
       "description": "Fully qualified resource ID for the application that the connector is consumed by",
       "type": "string",
-      "readOnly": true,
       "example": [
         "app.id"
       ]
