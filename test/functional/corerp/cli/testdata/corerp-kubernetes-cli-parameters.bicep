@@ -4,7 +4,7 @@ import radius as radius
 param location string = 'global'
 
 @description('Specifies the environment for resources.')
-param environment string = '/planes/radius/local/resourcegroups/ucpenv-rg/providers/applications.core/environments/ucpenv'
+param environment string = 'test'
 
 @description('Specifies the tag of the image to be deployed.')
 param magpietag string = 'latest'
