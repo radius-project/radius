@@ -26,7 +26,6 @@ resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     connections: {
       b: {
-        kind: 'Http'
         source: b_route.id
       }
     }
@@ -57,7 +56,6 @@ resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     connections: {
       a: {
-        kind: 'Http'
         source: a_route.id
       }
     }
