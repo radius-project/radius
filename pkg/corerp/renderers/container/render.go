@@ -86,6 +86,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 		resourceID, err := resources.Parse(provides)
 		if err != nil {
+			fmt.Println("FAILED TO PARSE RESOURCE ID")
 			return nil, nil, err
 		}
 		radiusResourceIDs = append(radiusResourceIDs, resourceID)

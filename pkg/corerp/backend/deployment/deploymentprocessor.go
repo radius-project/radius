@@ -7,6 +7,7 @@ package deployment
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -68,6 +69,9 @@ type ResourceData struct {
 
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
 	logger := radlogger.GetLogger(ctx)
+	b, _ := json.Marshal(resource)
+	fmt.Println(string(b))
+
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
 	renderer, err := dp.getResourceRenderer(resourceID)
 	if err != nil {
