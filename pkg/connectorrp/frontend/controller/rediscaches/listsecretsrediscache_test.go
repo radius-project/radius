@@ -33,10 +33,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 
 	_, redisDataModel, _ := getTestModels20220315privatepreview()
-	expectedSecrets := map[string]interface{}{
-		renderers.PasswordStringHolder:  "testPassword",
-		renderers.ConnectionStringValue: "test-connection-string",
-	}
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -70,6 +66,10 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
+		expectedSecrets := map[string]interface{}{
+			renderers.PasswordStringHolder:  "testPassword",
+			renderers.ConnectionStringValue: "test-connection-string",
+		}
 
 		mStorageClient.
 			EXPECT().
@@ -101,6 +101,46 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
+		require.Equal(t, expectedSecrets[renderers.PasswordStringHolder], *actualOutput.Password)
+	})
+
+	t.Run("listSecrets existing resource partial secrets", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+		expectedSecrets := map[string]interface{}{
+			renderers.PasswordStringHolder: "testPassword",
+		}
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id},
+					Data:     redisDataModel,
+				}, nil
+			})
+		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+				return mDeploymentProcessor
+			},
+		}
+
+		ctl, err := NewListSecretsRedisCache(opts)
+
+		require.NoError(t, err)
+		resp, err := ctl.Run(ctx, req)
+		require.NoError(t, err)
+		_ = resp.Apply(ctx, w, req)
+		require.Equal(t, 200, w.Result().StatusCode)
+
+		actualOutput := &v20220315privatepreview.RedisCacheSecrets{}
+		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+
 		require.Equal(t, expectedSecrets[renderers.PasswordStringHolder], *actualOutput.Password)
 	})
 

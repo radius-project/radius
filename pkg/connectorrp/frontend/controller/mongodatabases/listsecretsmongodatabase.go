@@ -50,10 +50,16 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, req *http.Request
 	if err != nil {
 		return nil, err
 	}
-	mongoSecrets := datamodel.MongoDatabaseSecrets{
-		Username:         secrets[renderers.UsernameStringValue].(string),
-		Password:         secrets[renderers.PasswordStringHolder].(string),
-		ConnectionString: secrets[renderers.ConnectionStringValue].(string),
+
+	mongoSecrets := datamodel.MongoDatabaseSecrets{}
+	if username, ok := secrets[renderers.UsernameStringValue].(string); ok {
+		mongoSecrets.Username = username
+	}
+	if password, ok := secrets[renderers.PasswordStringHolder].(string); ok {
+		mongoSecrets.Password = password
+	}
+	if connectionString, ok := secrets[renderers.ConnectionStringValue].(string); ok {
+		mongoSecrets.ConnectionString = connectionString
 	}
 
 	versioned, _ := converter.MongoDatabaseSecretsDataModelToVersioned(&mongoSecrets, sCtx.APIVersion)

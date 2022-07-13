@@ -110,8 +110,6 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		actualOutput := &map[string]interface{}{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		// TODO update to expect secrets values after controller is integrated with backend.
-		// require.Equal(t, expectedOutput.Properties.Secrets, actualOutput)
 		require.Equal(t, expectedSecrets["accountSid"], (*actualOutput)["accountSid"])
 		require.Equal(t, expectedSecrets["authToken"], (*actualOutput)["authToken"])
 	})
