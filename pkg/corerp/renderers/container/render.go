@@ -123,7 +123,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	applicationName := appId.Name()
 
 	// Create the deployment as the primary workload
-	deploymentOutputResources, secretData, err := r.makeDeployment(ctx, *resource, applicationName, renderers.RenderOptions{Dependencies: dependencies})
+	deploymentOutputResources, secretData, err := r.makeDeployment(ctx, *resource, applicationName, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
