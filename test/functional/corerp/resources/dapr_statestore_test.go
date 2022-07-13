@@ -22,18 +22,20 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-dapr-statestore-generic",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "myapp",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "statestore-generic",
-					Type: validation.DaprStateStoreResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-dapr-statestore-generic",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "myapp",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "statestore-generic",
+						Type: validation.DaprStateStoreResource,
+					},
 				},
 			},
 		},
@@ -51,18 +53,21 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-dapr-statestore-tablestorage",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "myapp",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "mystore",
-					Type: validation.DaprStateStoreResource,
+
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-dapr-statestore-tablestorage",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "myapp",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "mystore",
+						Type: validation.DaprStateStoreResource,
+					},
 				},
 			},
 		},

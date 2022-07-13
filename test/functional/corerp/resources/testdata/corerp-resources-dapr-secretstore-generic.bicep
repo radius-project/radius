@@ -21,7 +21,6 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     connections: {
       daprsecretstore: {
-        //  kind: 'dapr.io/SecretStore'
         source: secretstore.id
       }
     }

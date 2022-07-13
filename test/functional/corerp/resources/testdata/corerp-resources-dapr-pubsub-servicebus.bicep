@@ -21,7 +21,6 @@ resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     connections: {
       daprpubsub: {
-        // kind: 'dapr.io/PubSubTopic'
         source: pubsub.id
       }
     }

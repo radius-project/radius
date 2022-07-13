@@ -22,18 +22,20 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-dapr-pubsub-generic",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "publisher",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "pubsub",
-					Type: validation.DaprPubSubResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-dapr-pubsub-generic",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "publisher",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "pubsub",
+						Type: validation.DaprPubSubResource,
+					},
 				},
 			},
 		},
@@ -51,18 +53,21 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "corerp-resources-dapr-pubsub-servicebus",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "publisher",
-					Type: validation.ContainersResource,
-				},
-				{
-					Name: "pubsub",
-					Type: validation.DaprPubSubResource,
+
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-dapr-pubsub-servicebus",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "publisher",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "pubsub",
+						Type: validation.DaprPubSubResource,
+					},
 				},
 			},
 		},
