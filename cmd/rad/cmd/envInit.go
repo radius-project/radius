@@ -197,7 +197,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	env.Items[environmentName]["scope"] = ucpRgId
-	ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName)
+	ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName, namespace)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func createUCPResourceGroup(kubeCtxName, resourceGroupName string, plane string)
 	return jsonBody["id"].(string), nil
 }
 
-func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string) (string, error) {
+func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string, namespace string) (string, error) {
 	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "")
 	if err != nil {
 		return "", err
@@ -279,7 +279,7 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 					ResourceID: &id,
 				},
 				// FIXME: allow users to specify kubernetes namespace
-				Namespace: to.StringPtr(environmentName),
+				Namespace: to.StringPtr(namespace),
 			},
 		},
 	}

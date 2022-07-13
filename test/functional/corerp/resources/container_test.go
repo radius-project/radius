@@ -14,12 +14,10 @@ import (
 )
 
 func Test_Container(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-resources-container.bicep"
-	name := "corerp-resources-container"
+	appName := "corerp-resources-container-app"
 
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, appName, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			CoreRPResources: &validation.CoreRPResourceSet{
@@ -29,24 +27,19 @@ func Test_Container(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-container-container",
-						Type: validation.ContainersResource,
-					},
-					{
-						Name: "corerp-resources-container-httproute",
-						Type: validation.HttpRoutesResource,
+						Name:    "container",
+						Type:    validation.ContainersResource,
+						AppName: "corerp-resources-container-app",
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
-						validation.NewK8sPodForResource(name, "corerp-resources-container-container"),
-						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-container-httproute"),
+					"default": {
+						validation.NewK8sPodForResource(appName, "container"),
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	})
 
