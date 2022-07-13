@@ -56,7 +56,7 @@ func (client *DaprPubSubBrokersClient) createOrUpdateCreateRequest(ctx context.C
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprPubSubBrokerName == "" {
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
@@ -117,7 +117,7 @@ func (client *DaprPubSubBrokersClient) deleteCreateRequest(ctx context.Context, 
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprPubSubBrokerName == "" {
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
@@ -169,7 +169,7 @@ func (client *DaprPubSubBrokersClient) getCreateRequest(ctx context.Context, dap
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprPubSubBrokerName == "" {
 		return nil, errors.New("parameter daprPubSubBrokerName cannot be empty")
 	}
@@ -227,7 +227,7 @@ func (client *DaprPubSubBrokersClient) listByRootScopeCreateRequest(ctx context.
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
