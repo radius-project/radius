@@ -22,6 +22,8 @@ import (
 )
 
 func Test_AzureConnections(t *testing.T) {
+	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
+
 	applicationName := "azure-connection-database-service"
 	containerResourceName := "db-service"
 	template := "testdata/azure-connection-database-service.bicep"

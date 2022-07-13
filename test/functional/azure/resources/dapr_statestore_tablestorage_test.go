@@ -21,6 +21,8 @@ import (
 )
 
 func Test_DaprStateStoreTableStorage(t *testing.T) {
+	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
+
 	application := "azure-resources-dapr-statestore-tablestorage"
 	template := "testdata/azure-resources-dapr-statestore-tablestorage.bicep"
 
