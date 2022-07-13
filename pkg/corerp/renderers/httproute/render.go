@@ -8,6 +8,7 @@ package httproute
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -84,6 +85,9 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 		return outputresource.OutputResource{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
 	}
 	applicationName := appId.Name()
+	typeParts := strings.Split(ResourceType, "/")
+
+	resourceTypeSuffix := typeParts[len(typeParts)-1]
 
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -96,13 +100,13 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, ResourceType, route.Name),
+			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, resourceTypeSuffix, route.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       route.Name,
 					Port:       route.Properties.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceType + route.Name)),
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + resourceTypeSuffix + route.Name)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
