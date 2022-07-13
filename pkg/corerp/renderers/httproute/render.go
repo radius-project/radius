@@ -7,6 +7,7 @@ package httproute
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -40,15 +41,15 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	outputResources := []outputresource.OutputResource{}
 	appId, err := resources.Parse(route.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
+		return renderers.RendererOutput{}, fmt.Errorf("HTTPROUTE1 invalid application id: %w. id: %s", err, route.Properties.Application)
 	}
 	applicationName := appId.Name()
 
-	if route.Properties == nil || route.Properties.Port == 0 {
+	fmt.Println(applicationName)
+
+	if route.Properties.Port == 0 {
 		defaultPort := kubernetes.GetDefaultPort()
-		route.Properties = &datamodel.HTTPRouteProperties{
-			Port: defaultPort,
-		}
+		route.Properties.Port = defaultPort
 	}
 
 	computedValues := map[string]rp.ComputedValueReference{
@@ -81,6 +82,8 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
 
 	appId, err := resources.Parse(route.Properties.Application)
+	b, err := json.Marshal((route))
+	fmt.Println(string(b))
 	if err != nil {
 		return outputresource.OutputResource{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
 	}

@@ -7,6 +7,7 @@ package gateway
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -165,6 +166,8 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 	for _, route := range gateway.Routes {
 		routeProperties := dependencies[route.Destination]
 		port := kubernetes.GetDefaultPort()
+		b, _ := json.Marshal(routeProperties)
+		fmt.Println("HELLO " + string(b))
 		routePort, ok := routeProperties.ComputedValues["port"].(int32)
 		if ok {
 			port = routePort

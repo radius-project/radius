@@ -216,7 +216,7 @@ func Parse(id string) (ResourceID, error) {
 }
 
 func invalid(id string) error {
-	return fmt.Errorf("'%s' is not a valid resource id", id)
+	return fmt.Errorf("'%s' is not a valid resource id AZURE", id)
 }
 
 // MakeID creates a fully-qualified resource ID.
