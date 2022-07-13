@@ -1,4 +1,3 @@
-
 import radius as radius
 
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
