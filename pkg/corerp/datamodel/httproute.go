@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/rp"
 )
 
@@ -29,10 +30,15 @@ func (h HTTPRoute) ResourceTypeName() string {
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
-func (h HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) {
-	h.Properties.BasicResourceProperties.Status.OutputResources = do.DeployedOutputResources
+func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	h.Properties.Status.OutputResources = do.DeployedOutputResources
 	h.InternalMetadata.ComputedValues = do.ComputedValues
 	h.InternalMetadata.SecretValues = do.SecretValues
+}
+
+// OutputResources returns the output resources array.
+func (h *HTTPRoute) OutputResources() []outputresource.OutputResource {
+	return h.Properties.Status.OutputResources
 }
 
 // HTTPRouteProperties represents the properties of HTTPRoute.

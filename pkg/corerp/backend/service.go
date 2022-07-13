@@ -83,7 +83,10 @@ func (w *Service) Run(ctx context.Context) error {
 		if err != nil {
 			panic(err)
 		}
-		// Delete will also be added here
+		err = w.Controllers.Register(ctx, rt, v1.OperationDelete, backend_ctrl.NewDeleteResource, opts)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return w.Start(ctx, worker.Options{})
