@@ -85,7 +85,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 		},
 	}
 
-	result, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Environment: renderers.EnvironmentOptions{Namespace: "radius-test"}})
+	result, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -142,7 +142,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Metadata:    map[string]interface{}{},
 		},
 	}
-	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Environment: renderers.EnvironmentOptions{Namespace: "radius-test"}})
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, "No metadata specified for Dapr component of type secretstores.kubernetes", err.Error())
 }
@@ -167,7 +167,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Environment: renderers.EnvironmentOptions{Namespace: "radius-test"}})
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, "No type specified for generic Dapr component", err.Error())
 }
@@ -192,7 +192,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Environment: renderers.EnvironmentOptions{Namespace: "radius-test"}})
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
 	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())

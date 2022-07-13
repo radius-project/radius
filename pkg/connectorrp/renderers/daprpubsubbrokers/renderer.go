@@ -61,5 +61,5 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
 	}
 
-	return pubSubFunc(*resource, applicationID.Name(), options.Environment.Namespace)
+	return pubSubFunc(*resource, applicationID.Name(), options.Namespace)
 }

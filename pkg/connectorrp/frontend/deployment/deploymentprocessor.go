@@ -81,7 +81,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	// fetch the environment from the resource
+	// fetch the environment ID from the resource
 	env, err := dp.getEnvironmetIDFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -92,7 +92,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{renderers.EnvironmentOptions{Namespace: namespace}})
+	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Namespace: namespace})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -291,46 +291,47 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 func (dp *deploymentProcessor) getEnvironmetIDFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (string, error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	var err error
+	var envId string
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
-		obj := resource.(datamodel.MongoDatabase)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.MongoDatabase)
+		envId = obj.Properties.Environment
 	case strings.ToLower(sqldatabases.ResourceType):
-		obj := resource.(datamodel.SqlDatabase)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.SqlDatabase)
+		envId = obj.Properties.Environment
 	case strings.ToLower(rediscaches.ResourceType):
-		obj := resource.(datamodel.RedisCache)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.RedisCache)
+		envId = obj.Properties.Environment
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
-		obj := resource.(datamodel.RabbitMQMessageQueue)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.RabbitMQMessageQueue)
+		envId = obj.Properties.Environment
 	case strings.ToLower(extenders.ResourceType):
-		obj := resource.(datamodel.Extender)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.Extender)
+		envId = obj.Properties.Environment
 	case strings.ToLower(daprstatestores.ResourceType):
-		obj := resource.(datamodel.DaprStateStore)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.DaprStateStore)
+		envId = obj.Properties.Environment
 	case strings.ToLower(daprsecretstores.ResourceType):
-		obj := resource.(datamodel.DaprSecretStore)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.DaprSecretStore)
+		envId = obj.Properties.Environment
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
-		obj := resource.(datamodel.DaprPubSubBroker)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.DaprPubSubBroker)
+		envId = obj.Properties.Environment
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
-		obj := resource.(datamodel.DaprInvokeHttpRoute)
-		return obj.Properties.Environment, nil
+		obj := resource.(*datamodel.DaprInvokeHttpRoute)
+		envId = obj.Properties.Environment
 	default:
 		err = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, resourceID.String())
 	}
-	return "", err
+	return envId, err
 }
 
-// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environment string) (namespace string, err error) {
+// getEnvironmentNamespace fetches the environment ID resource from the db for getting the namespace to deploy the resources
+func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID string) (namespace string, err error) {
 	var res *store.Object
 	var sc store.StorageClient
 
-	envId, err := resources.Parse(environment)
+	envId, err := resources.Parse(environmentID)
 	if err != nil {
 		return
 	}

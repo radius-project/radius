@@ -35,10 +35,6 @@ type Renderer interface {
 }
 
 type RenderOptions struct {
-	Environment EnvironmentOptions
-}
-
-type EnvironmentOptions struct {
 	Namespace string
 }
 

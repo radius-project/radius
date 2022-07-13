@@ -52,7 +52,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
 	}
 
-	resoures, err := secretStoreFunc(*resource, applicationID.Name(), options.Environment.Namespace)
+	resoures, err := secretStoreFunc(*resource, applicationID.Name(), options.Namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

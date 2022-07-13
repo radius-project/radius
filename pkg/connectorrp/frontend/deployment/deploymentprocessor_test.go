@@ -285,7 +285,7 @@ func Test_Render_Success(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -315,7 +315,7 @@ func Test_Render_Success(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -344,7 +344,7 @@ func Test_Render_Success(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		resourceID, testResource, _ := buildTestMongoResource()
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "failed to render the resource")
 	})
 
@@ -366,7 +366,7 @@ func Test_Render_Success(t *testing.T) {
 			},
 		}
 
-		_, err := dp.Render(ctx, parsedID, testInvalidResource)
+		_, err := dp.Render(ctx, parsedID, &testInvalidResource)
 		require.Error(t, err, "radius resource type 'Applications.foo/foo' is unsupported")
 
 	})
@@ -397,7 +397,7 @@ func Test_Render_Success(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "output resource \"AzureCosmosAccount\" does not have a provider specified")
 	})
 
@@ -427,7 +427,7 @@ func Test_Render_Success(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account")
 	})
 }
