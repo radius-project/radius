@@ -56,7 +56,7 @@ func (client *DaprStateStoresClient) createOrUpdateCreateRequest(ctx context.Con
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
@@ -117,7 +117,7 @@ func (client *DaprStateStoresClient) deleteCreateRequest(ctx context.Context, da
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
@@ -169,7 +169,7 @@ func (client *DaprStateStoresClient) getCreateRequest(ctx context.Context, daprS
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
 	}
@@ -227,7 +227,7 @@ func (client *DaprStateStoresClient) listByRootScopeCreateRequest(ctx context.Co
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err

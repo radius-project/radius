@@ -56,7 +56,7 @@ func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Contex
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
@@ -117,7 +117,7 @@ func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, sqlDa
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
@@ -169,7 +169,7 @@ func (client *SQLDatabasesClient) getCreateRequest(ctx context.Context, sqlDatab
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
 	}
@@ -227,7 +227,7 @@ func (client *SQLDatabasesClient) listByRootScopeCreateRequest(ctx context.Conte
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err

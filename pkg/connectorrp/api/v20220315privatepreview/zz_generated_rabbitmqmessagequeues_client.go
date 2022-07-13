@@ -56,7 +56,7 @@ func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx conte
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
@@ -117,7 +117,7 @@ func (client *RabbitMQMessageQueuesClient) deleteCreateRequest(ctx context.Conte
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
@@ -169,7 +169,7 @@ func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context,
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
@@ -227,7 +227,7 @@ func (client *RabbitMQMessageQueuesClient) listByRootScopeCreateRequest(ctx cont
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -284,7 +284,7 @@ func (client *RabbitMQMessageQueuesClient) listSecretsCreateRequest(ctx context.
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}

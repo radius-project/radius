@@ -56,7 +56,7 @@ func (client *DaprInvokeHTTPRoutesClient) createOrUpdateCreateRequest(ctx contex
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
@@ -117,7 +117,7 @@ func (client *DaprInvokeHTTPRoutesClient) deleteCreateRequest(ctx context.Contex
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
@@ -169,7 +169,7 @@ func (client *DaprInvokeHTTPRoutesClient) getCreateRequest(ctx context.Context, 
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
 	}
@@ -227,7 +227,7 @@ func (client *DaprInvokeHTTPRoutesClient) listByRootScopeCreateRequest(ctx conte
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err

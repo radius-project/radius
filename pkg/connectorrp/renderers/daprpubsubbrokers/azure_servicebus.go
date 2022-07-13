@@ -38,6 +38,8 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Topic")
 	}
 
+	serviceBusNamespaceName := azureServiceBusTopicID.TypeSegments()[0].Name
+	topicName := azureServiceBusTopicID.TypeSegments()[1].Name
 	output = outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureServiceBusTopic,
 		ResourceType: resourcemodel.ResourceType{
@@ -54,23 +56,21 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 			// Truncate the topic part of the ID to make an ID for the namespace
 			handlers.ServiceBusNamespaceIDKey:   azureServiceBusTopicID.Truncate().String(),
 			handlers.ServiceBusTopicIDKey:       azureServiceBusTopicID.String(),
-			handlers.ServiceBusNamespaceNameKey: azureServiceBusTopicID.TypeSegments()[0].Name,
-			handlers.ServiceBusTopicNameKey:     azureServiceBusTopicID.TypeSegments()[1].Name,
+			handlers.ServiceBusNamespaceNameKey: serviceBusNamespaceName,
+			handlers.ServiceBusTopicNameKey:     topicName,
 		},
 	}
 
 	values := map[string]renderers.ComputedValueReference{
 		"namespace": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			PropertyReference: handlers.ServiceBusNamespaceNameKey,
+			Value: serviceBusNamespaceName,
 		},
 		"pubSubName": {
 			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
 			PropertyReference: handlers.ResourceName,
 		},
 		"topic": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			PropertyReference: handlers.ServiceBusTopicNameKey,
+			Value: topicName,
 		},
 	}
 	secrets := map[string]rp.SecretValueReference{}
