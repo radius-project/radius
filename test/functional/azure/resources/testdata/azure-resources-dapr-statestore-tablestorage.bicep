@@ -21,30 +21,29 @@ resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   
 }
 
-resource app 'radius.dev/Application@v1alpha3' = {
+resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'azure-resources-dapr-statestore-tablestorage'
+}
 
-  resource myapp 'Container' = {
-    name: 'myapp'
-    properties: {
-      connections: {
-        daprstatestore: {
-          kind: 'dapr.io/StateStore'
-          source: stateStore.id
-        }
+resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'myapp'
+  properties: {
+    connections: {
+      daprstatestore: {
+        kind: 'dapr.io/StateStore'
+        source: stateStore.id
       }
-      container: {
-        image: magpieimage
-     }
+    }
+    container: {
+      image: magpieimage
     }
   }
+}
 
-  resource stateStore 'dapr.io.StateStore' = {
-    name: 'mystore'
-    properties: {
-      kind: 'state.azure.tablestorage'
-      resource: account::tableServices::table.id
-    }
+resource stateStore 'Applications.Connector/daprStateStores@2022-03-15-privatepreview' = {
+  name: 'mystore'
+  properties: {
+    kind: 'state.azure.tablestorage'
+    resource: account::tableServices::table.id
   }
-
 }
