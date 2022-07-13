@@ -112,4 +112,3 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
 
   }
-  
