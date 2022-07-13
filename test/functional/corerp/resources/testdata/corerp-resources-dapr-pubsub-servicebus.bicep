@@ -8,7 +8,7 @@ param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-pubsub-servicebus'
-  location: 'global'
+  location: location
   properties: {
     environment: environment
   }
@@ -28,7 +28,7 @@ resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
       image: magpieimage
       env: {
         BINDING_DAPRPUBSUB_NAME: pubsub.name
-        BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic // FIXME
+        BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic
       }
       readinessProbe:{
         kind:'httpGet'
