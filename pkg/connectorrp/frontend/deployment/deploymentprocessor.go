@@ -82,7 +82,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// fetch the environment from the resource
-	env, err := dp.getEnvironmetFromResource(ctx, id, resource)
+	env, err := dp.getEnvironmetIDFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -287,7 +287,8 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
 }
 
-func (dp *deploymentProcessor) getEnvironmetFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (string, error) {
+// getEnvironmetIDFromResource returns the environment from the resource for looking up the namespace
+func (dp *deploymentProcessor) getEnvironmetIDFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (string, error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	var err error
 	switch resourceType {
