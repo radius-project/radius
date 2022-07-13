@@ -80,7 +80,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch resource to get the namespace %w", err)
 	}
 	// 2. fetch the application resource from the DB to get the environment info
-	environment, err := dp.getEnvironmentFromApplication(ctx, res.AppID)
+	environment, err := dp.getEnvironmentIDFromApplicationID(ctx, res.AppID)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch application resource to get the namespace %w", err)
 	}
@@ -412,33 +412,21 @@ func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, 
 		obj := &datamodel.ContainerResource{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(obj); err == nil {
-				appID, err := resources.Parse(obj.Properties.Application)
-				if err != nil {
-					return ResourceData{}, fmt.Errorf("failed to parse application from the property: %w ", err)
-				}
-				return dp.buildResourceDependency(resourceID, appID, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
 		}
 	case gateway.ResourceType:
 		obj := &datamodel.Gateway{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(obj); err == nil {
-				appID, err := resources.Parse(obj.Properties.Application)
-				if err != nil {
-					return ResourceData{}, fmt.Errorf("failed to parse application from the property: %w ", err)
-				}
-				return dp.buildResourceDependency(resourceID, appID, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
 		}
 	case httproute.ResourceType:
 		obj := &datamodel.HTTPRoute{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 			if err = res.As(obj); err == nil {
-				appID, err := resources.Parse(obj.Properties.Application)
-				if err != nil {
-					return ResourceData{}, fmt.Errorf("failed to parse application from the property: %w ", err)
-				}
-				return dp.buildResourceDependency(resourceID, appID, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues), nil
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
 		}
 	default:
@@ -448,7 +436,11 @@ func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, 
 	return ResourceData{}, err
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID, appID resources.ID, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) ResourceData {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, application string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) (ResourceData, error) {
+	appID, err := resources.Parse(application)
+	if err != nil {
+		return ResourceData{}, fmt.Errorf("failed to parse application from the property: %w ", err)
+	}
 	return ResourceData{
 		ID:              resourceID,
 		Resource:        resource,
@@ -456,7 +448,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID, appID resourc
 		ComputedValues:  computedValues,
 		SecretValues:    secretValues,
 		AppID:           appID,
-	}
+	}, nil
 }
 
 func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, dependency ResourceData) (renderers.RendererDependency, error) {
@@ -494,7 +486,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 }
 
 // getEnvironmentFromApplication fetches the application resource from the db for getting the environment to fetch the environment resource
-func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context, appID resources.ID) (environment string, err error) {
+func (dp *deploymentProcessor) getEnvironmentIDFromApplicationID(ctx context.Context, appID resources.ID) (environment string, err error) {
 	var res *store.Object
 	var sc store.StorageClient
 	sc, err = dp.sp.GetStorageClient(ctx, appID.Type())
@@ -537,6 +529,12 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 	if err != nil {
 		return
 	}
-	namespace = env.Properties.Compute.KubernetesCompute.Namespace
+
+	if env.Properties != (datamodel.EnvironmentProperties{}) && env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
+		namespace = env.Properties.Compute.KubernetesCompute.Namespace
+	} else {
+		err = fmt.Errorf("Cannot find namespace in the environment resource")
+	}
+
 	return
 }
