@@ -16,15 +16,19 @@ import (
 )
 
 const (
-	EnvironmentsResource          = "applications.core/environments"
-	ApplicationsResource          = "applications.core/applications"
-	HttpRoutesResource            = "applications.core/httpRoutes"
-	GatewaysResource              = "applications.core/gateways"
-	ContainersResource            = "applications.connector/containers"
+	EnvironmentsResource = "applications.core/environments"
+	ApplicationsResource = "applications.core/applications"
+	HttpRoutesResource   = "applications.core/httpRoutes"
+	GatewaysResource     = "applications.core/gateways"
+	ContainersResource   = "applications.connector/containers"
+
 	MongoDatabasesResource        = "applications.connector/mongoDatabases"
-	RabbitMQMessageQueuesResource = "applications.conneector/rabbitMQMessageQueues"
+	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"
 	RedisCachesResource           = "applications.connector/redisCaches"
 	SQLDatabasesResource          = "applications.connector/sqlDatabases"
+	DaprPubSubResource            = "applications.connector/daprPubSubBrokers"
+	DaprSecretStoreResource       = "applications.connector/daprSecretStores"
+	DaprStateStoreResource        = "applications.connector/daprStateStores"
 )
 
 type CoreRPResource struct {
