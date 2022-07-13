@@ -1,74 +1,50 @@
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
-param environment string
-
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'azure-mechanics-communication-cycle'
-  location: 'global'
-  properties: {
-    environment: environment
+resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
+  name: 'dapr${uniqueString(resourceGroup().id, deployment().name)}'
+  location: resourceGroup().location
+  sku: {
+    name: 'Standard_LRS'
   }
-}
-
-resource a_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'a'
-  location: 'global'
-
+  kind: 'StorageV2'
   properties: {
-    application: app.id
+    accessTier: 'Hot'
   }
-}
-
-resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'a'
-  location: 'global'
-  properties: {
-    application: app.id
-    connections: {
-      b: {
-        kind: 'Http'
-        source: b_route.id
-      }
+  
+  resource tableServices 'tableServices' = {
+    name: 'default'
+    
+    resource table 'tables' = {
+      name: 'mytable'
     }
-    container: {
-      image: magpieimage
-      ports: {
-        web: {
-          containerPort: 3000
-          provides: a_route.id
+    
+  }
+  
+}
+
+resource app 'radius.dev/Application@v1alpha3' = {
+  name: 'azure-resources-dapr-statestore-tablestorage'
+
+  resource myapp 'Container' = {
+    name: 'myapp'
+    properties: {
+      connections: {
+        daprstatestore: {
+          kind: 'dapr.io/StateStore'
+          source: stateStore.id
         }
       }
+      container: {
+        image: magpieimage
+     }
     }
   }
-}
 
-resource b_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'b'
-  location: 'global'
-
-  properties: {
-    application: app.id
-  }
-}
-
-resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'b'
-  location: 'global'
-  properties: {
-    application: app.id
-    connections: {
-      a: {
-        kind: 'Http'
-        source: a_route.id
-      }
-    }
-    container: {
-      image: magpieimage
-      ports: {
-        web: {
-          containerPort: 3000
-          provides: b_route.id
-        }
-      }
+  resource stateStore 'dapr.io.StateStore' = {
+    name: 'mystore'
+    properties: {
+      kind: 'state.azure.tablestorage'
+      resource: account::tableServices::table.id
     }
   }
+
 }

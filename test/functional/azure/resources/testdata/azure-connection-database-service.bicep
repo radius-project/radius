@@ -41,3 +41,4 @@ resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     databaseAccountOfferType: 'Standard'
   }
 }
+
