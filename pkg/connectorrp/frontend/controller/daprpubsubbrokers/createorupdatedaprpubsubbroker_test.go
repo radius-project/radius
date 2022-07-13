@@ -58,8 +58,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 			PropertyReference: handlers.ResourceName,
 		},
 		"topic": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			PropertyReference: handlers.ServiceBusTopicNameKey,
+			Value: "test-topic",
 		},
 	}
 	rendererOutput := renderers.RendererOutput{

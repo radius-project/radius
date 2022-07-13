@@ -53,7 +53,7 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 	if topic, ok := deploymentOutput.ComputedValues[handlers.ServiceBusTopicNameKey].(string); ok {
-		newResource.Properties.DaprPubSubAzureServiceBus.Topic = topic
+		newResource.Properties.Topic = topic
 	}
 
 	// Read existing resource info from the data store

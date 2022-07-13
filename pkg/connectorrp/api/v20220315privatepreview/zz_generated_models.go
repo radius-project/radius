@@ -201,9 +201,6 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 	DaprPubSubBrokerProperties
 	// REQUIRED; PubSub resource
 	Resource *string `json:"resource,omitempty"`
-
-	// READ-ONLY; Topic name of the Azure ServiceBus resource
-	Topic *string `json:"topic,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprPubSubAzureServiceBusResourceProperties.
@@ -211,7 +208,6 @@ func (d DaprPubSubAzureServiceBusResourceProperties) MarshalJSON() ([]byte, erro
 	objectMap := make(map[string]interface{})
 	d.DaprPubSubBrokerProperties.marshalInternal(objectMap, DaprPubSubBrokerPropertiesKindPubsubAzureServicebus)
 	populate(objectMap, "resource", d.Resource)
-	populate(objectMap, "topic", d.Topic)
 	return json.Marshal(objectMap)
 }
 
@@ -226,9 +222,6 @@ func (d *DaprPubSubAzureServiceBusResourceProperties) UnmarshalJSON(data []byte)
 		switch key {
 		case "resource":
 				err = unpopulate(val, &d.Resource)
-				delete(rawMsg, key)
-		case "topic":
-				err = unpopulate(val, &d.Topic)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -281,6 +274,9 @@ type DaprPubSubBrokerProperties struct {
 
 	// READ-ONLY; Provisioning state of the daprPubSubBroker connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Topic name of the Azure ServiceBus resource
+	Topic *string `json:"topic,omitempty" azure:"ro"`
 }
 
 // GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type DaprPubSubBrokerProperties.
@@ -302,6 +298,7 @@ func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interfa
 	d.Kind = &discValue
 	objectMap["kind"] = d.Kind
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "topic", d.Topic)
 }
 
 func (d *DaprPubSubBrokerProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
@@ -319,6 +316,9 @@ func (d *DaprPubSubBrokerProperties) unmarshalInternal(rawMsg map[string]json.Ra
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "topic":
+				err = unpopulate(val, &d.Topic)
 				delete(rawMsg, key)
 		}
 		if err != nil {

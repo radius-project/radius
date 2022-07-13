@@ -162,6 +162,7 @@
 * **environment**: string (Required): The resource id of the environment linked to the daprPubSubBroker connector
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+* **topic**: string (ReadOnly): Topic name of the Azure ServiceBus resource
 ### DaprPubSubGenericResourceProperties
 #### Properties
 * **kind**: 'generic' (Required): The DaprPubSubProperties kind
@@ -173,7 +174,6 @@
 #### Properties
 * **kind**: 'pubsub.azure.servicebus' (Required): The DaprPubSubProperties kind
 * **resource**: string (Required): PubSub resource
-* **topic**: string (ReadOnly): Topic name of the Azure ServiceBus resource
 
 
 ## TrackedResourceTags
