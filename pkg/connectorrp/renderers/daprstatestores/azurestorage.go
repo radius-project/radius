@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicationName string) (outputResources []outputresource.OutputResource, err error) {
+func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicationName string, namespace string) (outputResources []outputresource.OutputResource, err error) {
 	var azuretableStorageID resources.ID
 	if resource.Properties.Kind == datamodel.DaprStateStoreKindAzureTableStorage {
 		properties := resource.Properties.DaprStateStoreAzureTableStorage
@@ -58,7 +58,7 @@ func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicatio
 			},
 			Resource: map[string]string{
 				handlers.KubernetesNameKey:       resource.Name,
-				handlers.KubernetesNamespaceKey:  applicationName,
+				handlers.KubernetesNamespaceKey:  namespace,
 				handlers.ApplicationName:         applicationName,
 				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 				handlers.KubernetesKindKey:       "Component",

@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string) ([]outputresource.OutputResource, error)
+type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
 
 var SupportedStateStoreKindValues = map[string]StateStoreFunc{
 	resourcekinds.DaprStateStoreAzureTableStorage: GetDaprStateStoreAzureStorage,
@@ -55,7 +55,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
 	}
 
-	resoures, err := stateStoreFunc(*resource, applicationID.Name())
+	resoures, err := stateStoreFunc(*resource, applicationID.Name(), options.Environment.Namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

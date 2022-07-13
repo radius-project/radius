@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
-func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName string) (renderers.RendererOutput, error) {
+func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error) {
 	properties := resource.Properties.DaprPubSubGeneric
 
 	daprGeneric := dapr.DaprGeneric{
@@ -24,7 +24,7 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 		Metadata: properties.Metadata,
 	}
 
-	outputResources, err := getDaprGeneric(daprGeneric, resource, applicationName)
+	outputResources, err := getDaprGeneric(daprGeneric, resource, applicationName, namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -37,13 +37,13 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 
 }
 
-func getDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprPubSubBroker, applicationName string) ([]outputresource.OutputResource, error) {
+func getDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprPubSubBroker, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
 	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
 	}
 
-	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name)
+	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name, namespace)
 	if err != nil {
 		return nil, err
 	}

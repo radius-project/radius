@@ -19,7 +19,7 @@ import (
 
 var _ renderers.Renderer = (*Renderer)(nil)
 
-type PubSubFunc = func(resource datamodel.DaprPubSubBroker, applicationName string) (renderers.RendererOutput, error)
+type PubSubFunc = func(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error)
 
 // SupportedAzurePubSubKindValues is a map of supported resource kinds for Azure and the associated renderer
 var SupportedPubSubKindValues = map[string]PubSubFunc{
@@ -61,5 +61,5 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
 	}
 
-	return pubSubFunc(*resource, applicationID.Name())
+	return pubSubFunc(*resource, applicationID.Name(), options.Environment.Namespace)
 }

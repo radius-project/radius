@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicationName string) (renderers.RendererOutput, error) {
+func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error) {
 	properties := resource.Properties.DaprPubSubAzureServiceBus
 
 	var output outputresource.OutputResource
@@ -48,7 +48,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		},
 		Resource: map[string]string{
 			handlers.ResourceName:            resource.Name,
-			handlers.KubernetesNamespaceKey:  applicationName,
+			handlers.KubernetesNamespaceKey:  namespace,
 			handlers.ApplicationName:         applicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
