@@ -11,10 +11,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2021-04-01/storage"
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
@@ -74,7 +74,7 @@ func (handler *azureFileShareStorageAccountHandler) GetResourceNativeIdentityKey
 }
 
 func getStorageAccountByID(ctx context.Context, arm armauth.ArmConfig, accountID string) (*storage.Account, error) {
-	parsed, err := resources.Parse(accountID)
+	parsed, err := azresources.Parse(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
