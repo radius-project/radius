@@ -12,9 +12,6 @@ param magpiePort int = 3000
 @description('Specifies the environment for resources.')
 param environment string = 'test'
 
-@description('Specifies the image for the container resource.')
-param sqlImage string = 'mcr.microsoft.com/mssql/server:2019-latest'
-
 @description('Specifies the port for the container resource.')
 param sqlPort int = 1433
 
@@ -75,28 +72,6 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     properties: {
       application: app.id
       port: sqlPort
-    }
-  }
-
-  resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-    name: '${appPrefix}-container'
-    location: location
-    properties: {
-      application: app.id
-      container: {
-        image: sqlImage
-        env: {
-          ACCEPT_EULA: 'Y'
-          MSSQL_PID: 'Developer'
-          MSSQL_SA_PASSWORD: adminPassword
-        }
-        ports: {
-          sql: {
-            containerPort: sqlPort
-            provides: sqlRoute.id
-          }
-        }
-      }
     }
   }
 
