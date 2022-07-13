@@ -245,6 +245,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 		handlers.ServiceBusTopicNameKey:     "test-topic",
 	}
 	require.Equal(t, expected, output.Resource)
+	require.Equal(t, "test-topic", result.ComputedValues["topic"].Value)
 }
 
 func Test_Render_DaprPubSubTopicAzureServiceBus_InvalidResourceType(t *testing.T) {
