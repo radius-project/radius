@@ -1,13 +1,21 @@
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param environment string
+param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'azure-connection-database-service'
+  location: 'global'
+  properties: {
+    environment: environment
+  }
 
 }
 
 resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'db-service'
+  location: 'global'
   properties: {
+    application: app.id
     container: {
       image: magpieimage
     }
@@ -26,7 +34,7 @@ resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'dbacc-${guid(resourceGroup().name)}'
-  location: resourceGroup().location
+  location: location
   kind: 'MongoDB'
   properties: {
     consistencyPolicy: {
@@ -34,7 +42,7 @@ resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     }
     locations: [
       {
-        locationName: resourceGroup().location
+        locationName: location
         failoverPriority: 0
         isZoneRedundant: false
       }

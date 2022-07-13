@@ -1,4 +1,6 @@
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param environment string
+
 resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: 'dapr${uniqueString(resourceGroup().id, deployment().name)}'
   location: resourceGroup().location
@@ -23,11 +25,17 @@ resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'azure-resources-dapr-statestore-tablestorage'
+  location: 'global'
+  properties: {
+    environment: environment
+  }
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'myapp'
+  location: 'global'
   properties: {
+    application: app.id
     connections: {
       daprstatestore: {
         kind: 'dapr.io/StateStore'

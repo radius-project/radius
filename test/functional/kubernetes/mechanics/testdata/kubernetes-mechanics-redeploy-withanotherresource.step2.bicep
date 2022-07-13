@@ -1,12 +1,19 @@
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param environment string 
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'kubernetes-mechanics-redeploy-withanotherresource'
+  location: 'global'
+  properties: {
+    environment: environment
+  }
 }
 
 resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'a'
+  location: 'global'
   properties: {
+    application: app.id
     container: {
       image: magpieimage
     }
@@ -15,7 +22,9 @@ resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'b'
+  location: 'global'
   properties: {
+    application: app.id
     container: {
       image: magpieimage
     }

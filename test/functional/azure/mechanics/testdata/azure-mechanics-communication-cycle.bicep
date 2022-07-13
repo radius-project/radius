@@ -1,16 +1,28 @@
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'azure-mechanics-communication-cycle'
+  location: 'global'
+  properties: {
+    environment: environment
+  }
 }
 
 resource a_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   name: 'a'
+  location: 'global'
+
+  properties: {
+    application: app.id
+  }
 }
 
 resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'a'
+  location: 'global'
   properties: {
+    application: app.id
     connections: {
       b: {
         kind: 'Http'
@@ -31,11 +43,18 @@ resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 resource b_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   name: 'b'
+  location: 'global'
+
+  properties: {
+    application: app.id
+  }
 }
 
 resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'b'
+  location: 'global'
   properties: {
+    application: app.id
     connections: {
       a: {
         kind: 'Http'
