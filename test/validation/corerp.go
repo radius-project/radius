@@ -23,7 +23,7 @@ const (
 	ContainersResource   = "applications.connector/containers"
 
 	MongoDatabasesResource        = "applications.connector/mongoDatabases"
-	RabbitMQMessageQueuesResource = "applications.conneector/rabbitMQMessageQueues"
+	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"
 	RedisCachesResource           = "applications.connector/redisCaches"
 	SQLDatabasesResource          = "applications.connector/sqlDatabases"
 	DaprPubSubResource            = "applications.connector/daprPubSubBrokers"
