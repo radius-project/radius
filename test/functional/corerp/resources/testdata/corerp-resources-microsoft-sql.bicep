@@ -15,10 +15,10 @@ param environment string = 'test'
 @description('Specifies the port for the container resource.')
 param sqlPort int = 1433
 
-@description('Specifies the RabbitMQ username.')
+@description('Specifies the SQL username.')
 param adminUsername string = 'cooluser'
 
-@description('Specifies the RabbitMQ password.')
+@description('Specifies the SQL password.')
 param adminPassword string = 'p@ssw0rd'
 
 var appPrefix = 'azure-resources-microsoft-sql'
@@ -37,8 +37,7 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
    properties: {
     application: app.id
     connections: {
-      sql: {
-        kind: 'microsoft.com/SQL'   
+      sql: { 
         source: db.id
       }
     }
@@ -85,6 +84,18 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
       administratorLogin: adminUsername
       administratorLoginPassword: adminPassword
     }
+  
+    resource dbinner 'databases' = {
+      name: 'cool-database'
+      location: location
+    }
+  
+    resource firewall 'firewallRules' = {
+      name: 'allow'
+      properties: {
+        startIpAddress: '0.0.0.0'
+        endIpAddress: '0.0.0.0'
+      }
+    }
 
   }
-
