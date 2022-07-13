@@ -12,30 +12,30 @@ param magpietag string = 'latest'
 @description('Specifies the registry of the image to be deployed.')
 param registry string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'kubernetes-cli'
+resource parametersApp 'Applications.Core/applications@2022-03-15-privatepreview' = {
+  name: 'kubernetes-cli-params'
   location: location
   properties: {
     environment: environment
   }
 }
 
-resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerA 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'a'
   location: location
   properties: {
-    application: app.id
+    application: parametersApp.id
     container: {
       image: '${registry}/magpiego:${magpietag}'
     }
   }
 }
 
-resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerB 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'b'
   location: location
   properties: {
-    application: app.id
+    application: parametersApp.id
     container: {
       image: '${registry}/magpiego:${magpietag}'
     }

@@ -30,12 +30,12 @@ func Test_CLI(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "a",
+						Name:    "containerC",
 						Type:    validation.ContainersResource,
 						AppName: "kubernetes-cli",
 					},
 					{
-						Name:    "b",
+						Name:    "containerD",
 						Type:    validation.ContainersResource,
 						AppName: "kubernetes-cli",
 					},
@@ -44,8 +44,8 @@ func Test_CLI(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "a"),
-						validation.NewK8sPodForResource(name, "b"),
+						validation.NewK8sPodForResource(name, "containerC"),
+						validation.NewK8sPodForResource(name, "containerD"),
 					},
 				},
 			},
@@ -62,34 +62,34 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 
 	template := "testdata/corerp-kubernetes-cli-parameters.bicep"
 	parameterFile := "testdata/corerp-kubernetes-cli-parameters.parameters.json"
-	name := "kubernetes-cli"
+	name := "kubernetes-cli-params"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath),
+		{Executor: step.NewDeployExecutor(template, "@"+parameterFilePath),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "kubernetes-cli",
+						Name: "kubernetes-cli-params",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "a",
+						Name:    "containerA",
 						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli",
+						AppName: "kubernetes-cli-params",
 					},
 					{
-						Name:    "b",
+						Name:    "containerB",
 						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli",
+						AppName: "kubernetes-cli-params",
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "a"),
-						validation.NewK8sPodForResource(name, "b"),
+						validation.NewK8sPodForResource(name, "containerA"),
+						validation.NewK8sPodForResource(name, "containerB"),
 					},
 				},
 			},
