@@ -20,11 +20,6 @@ var ProgressDefaultSpinner = []string{".  ", ".. ", "..."}
 
 // ShowResource returns true if the resource should be displayed to the user.
 func ShowResource(id ucpresources.ID) bool {
-	if len(id.TypeSegments()) == 1 && id.TypeSegments()[0].Name == "radiusv3" {
-		// Hide operations on the provider (custom action)
-		return false
-	}
-
 	return true
 }
 
@@ -48,11 +43,6 @@ func FormatResourceNameForDisplay(id ucpresources.ID) string {
 
 // FormatResourceTypeForDisplay returns a display string for the resource type.
 func FormatResourceTypeForDisplay(id ucpresources.ID) string {
-	if len(id.TypeSegments()) > 0 && id.TypeSegments()[0].Name == "radiusv3" {
-		// It's a Radius type - just use the last segment.
-		return id.TypeSegments()[len(id.TypeSegments())-1].Type
-	}
-
 	// It's an ARM resource, use the qualified type.
 	return id.Type()
 }

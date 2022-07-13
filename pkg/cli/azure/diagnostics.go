@@ -8,12 +8,10 @@ package azure
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	k8slabels "github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 
 	"io"
 	"io/ioutil"
@@ -46,16 +44,8 @@ type ARMDiagnosticsClient struct {
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
 func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
-	if len(options.ResourceID.TypeSegments()) != 3 || !strings.EqualFold(options.ResourceID.TypeSegments()[2].Type, resourcekinds.Gateway) {
-		return nil, nil
-	}
-
-	response, err := dc.ResourceClient.Get(ctx, dc.ResourceGroup, options.ResourceID.TypeSegments()[1].Name, options.ResourceID.TypeSegments()[2].Type, options.ResourceID.TypeSegments()[2].Name, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	hostname := fmt.Sprint(response.RadiusResourceGetResult.RadiusResource.Properties["url"])
+	// TODO fix diagnostic commands https://github.com/project-radius/radius/issues/2882
+	hostname := ""
 
 	return &hostname, nil
 }
