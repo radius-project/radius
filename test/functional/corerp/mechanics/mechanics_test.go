@@ -59,7 +59,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "a",
+						Name: "corerp-mechanics-redeploy-withanotherresource-a",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -67,7 +67,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "a"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-redeploy-withanotherresource-a"),
 					},
 				},
 			},
@@ -77,11 +77,11 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "a",
+						Name: "corerp-mechanics-redeploy-withanotherresource-a",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "a",
+						Name: "corerp-mechanics-redeploy-withanotherresource-b",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -89,8 +89,8 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "a"),
-						validation.NewK8sPodForResource(name, "b"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-redeploy-withanotherresource-a"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-redeploy-withanotherresource-b"),
 					},
 				},
 			},
@@ -112,7 +112,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "a",
+						Name: "corerp-mechanics-redeploy-withanotherresource-a",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -120,7 +120,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "a"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-redeploy-withanotherresource-a"),
 					},
 				},
 			},
@@ -130,7 +130,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "a",
+						Name: "corerp-mechanics-redeploy-withanotherresource-a",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -138,12 +138,12 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "a"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-redeploy-withanotherresource-a"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-				labelset := kubernetes.MakeSelectorLabels(name, "a")
+				labelset := kubernetes.MakeSelectorLabels(name, "corerp-mechanics-redeploy-withanotherresource-a")
 
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(name).List(context.Background(), metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
@@ -173,7 +173,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "a",
+						Name: "corerp-mechanics-redeploy-withanotherresource-a",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -181,7 +181,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "a"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-redeploy-withanotherresource-a"),
 					},
 				},
 			},
@@ -191,11 +191,11 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "a",
+						Name: "corerp-mechanics-redeploy-withanotherresource-a",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "b",
+						Name: "corerp-mechanics-redeploy-withanotherresource-b",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -203,8 +203,8 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "a"),
-						validation.NewK8sPodForResource(name, "b"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-redeploy-withanotherresource-a"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-redeploy-withanotherresource-b"),
 					},
 				},
 			},
@@ -226,19 +226,19 @@ func Test_CommunicationCycle(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "a",
+						Name: "corerp-mechanics-communication-cycle-a",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "a",
+						Name: "corerp-mechanics-communication-cycle-a-route",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "b",
+						Name: "corerp-mechanics-communication-cycle-b",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "b",
+						Name: "corerp-mechanics-communication-cycle-b-route",
 						Type: validation.HttpRoutesResource,
 					},
 				},
@@ -246,8 +246,8 @@ func Test_CommunicationCycle(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "a"),
-						validation.NewK8sPodForResource(name, "b"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-communication-cycle-a"),
+						validation.NewK8sPodForResource(name, "corerp-mechanics-communication-cycle-b"),
 					},
 				},
 			},

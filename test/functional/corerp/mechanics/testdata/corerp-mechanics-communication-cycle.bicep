@@ -12,7 +12,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource a_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'a'
+  name: 'corerp-mechanics-communication-cycle-a-route'
   location: 'global'
   properties: {
     application: app.id
@@ -20,7 +20,7 @@ resource a_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
 }
 
 resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'a'
+  name: 'corerp-mechanics-communication-cycle-a'
   location: 'global'
   properties: {
     application: app.id
@@ -42,7 +42,7 @@ resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource b_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'b'
+  name: 'corerp-mechanics-communication-cycle-b-route'
   location: 'global'
   properties: {
     application: app.id
@@ -50,7 +50,7 @@ resource b_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
 }
 
 resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'b'
+  name: 'corerp-mechanics-communication-cycle-b'
   location: 'global'
   properties: {
     application: app.id

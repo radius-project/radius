@@ -12,7 +12,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'b'
+  name: 'corerp-mechanics-redeploy-withanotherresource-b'
   location: 'global'
   properties: {
     application: app.id
