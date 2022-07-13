@@ -216,7 +216,7 @@ func Parse(id string) (ResourceID, error) {
 }
 
 func invalid(id string) error {
-	return fmt.Errorf("'%s' is not a valid resource id from HTTPROUTE", id)
+	return fmt.Errorf("'%s' is not a valid resource id", id)
 }
 
 // MakeID creates a fully-qualified resource ID.
