@@ -111,7 +111,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}
 
 	updatedOutputResources := []outputresource.OutputResource{}
-	var computedValues map[string]interface{}
+	computedValues := make(map[string]interface{})
 	for _, outputResource := range orderedOutputResources {
 		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
 		if err != nil {
