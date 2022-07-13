@@ -479,7 +479,6 @@ func Parse(id string) (ID, error) {
 }
 
 func invalid(id string) error {
-	// panic(fmt.Errorf("'%s' is not a valid resource id", id))
 	return fmt.Errorf("'%s' is not a valid resource id", id)
 }
 
