@@ -13,7 +13,7 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-app'
+  name: 'corerp-resources-container-httproute-app'
   location: location
   properties: {
     environment: environment
@@ -30,6 +30,7 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
       ports: {
         web: {
           containerPort: port
+          provides: httproute.id
         }
       }
     }
@@ -37,3 +38,11 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
+resource httproute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: 'httproute'
+  location: location
+  properties: {
+    application: app.id
+    port: port
+  }
+}
