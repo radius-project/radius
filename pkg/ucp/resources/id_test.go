@@ -465,6 +465,30 @@ func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
 	require.Equal(t, "", routingScope)
 }
 
+func Test_FindScope_Subscription(t *testing.T) {
+	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	require.NoError(t, err)
+
+	scope := id.FindScope(SubscriptionsSegment)
+	require.Equal(t, "s1", scope)
+}
+
+func Test_FindScope_ResourceGroup(t *testing.T) {
+	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	require.NoError(t, err)
+
+	scope := id.FindScope(ResourceGroupsSegment)
+	require.Equal(t, "r1", scope)
+}
+
+func Test_FindScope_ResourceGroup_CaseInsensitive(t *testing.T) {
+	id, err := Parse("/subscriptions/s1/resourcegroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
+	require.NoError(t, err)
+
+	scope := id.FindScope(ResourceGroupsSegment)
+	require.Equal(t, "r1", scope)
+}
+
 func TestPlaneScope(t *testing.T) {
 	tests := []struct {
 		desc       string
