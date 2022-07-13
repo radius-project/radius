@@ -1,57 +1,74 @@
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
 param environment string
 
-resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
-  name: 'dapr${uniqueString(resourceGroup().id, deployment().name)}'
-  location: resourceGroup().location
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'StorageV2'
-  properties: {
-    accessTier: 'Hot'
-  }
-  
-  resource tableServices 'tableServices' = {
-    name: 'default'
-    
-    resource table 'tables' = {
-      name: 'mytable'
-    }
-    
-  }
-  
-}
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'azure-resources-dapr-statestore-tablestorage'
+  name: 'azure-mechanics-communication-cycle'
   location: 'global'
   properties: {
     environment: environment
   }
 }
 
-resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'myapp'
+resource a_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
+  name: 'a'
+  location: 'global'
+
+  properties: {
+    application: app.id
+  }
+}
+
+resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'a'
   location: 'global'
   properties: {
     application: app.id
     connections: {
-      daprstatestore: {
-        kind: 'dapr.io/StateStore'
-        source: stateStore.id
+      b: {
+        kind: 'Http'
+        source: b_route.id
       }
     }
     container: {
       image: magpieimage
+      ports: {
+        web: {
+          containerPort: 3000
+          provides: a_route.id
+        }
+      }
     }
   }
 }
 
-resource stateStore 'Applications.Connector/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'mystore'
+resource b_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
+  name: 'b'
+  location: 'global'
+
   properties: {
-    kind: 'state.azure.tablestorage'
-    resource: account::tableServices::table.id
+    application: app.id
+  }
+}
+
+resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'b'
+  location: 'global'
+  properties: {
+    application: app.id
+    connections: {
+      a: {
+        kind: 'Http'
+        source: a_route.id
+      }
+    }
+    container: {
+      image: magpieimage
+      ports: {
+        web: {
+          containerPort: 3000
+          provides: b_route.id
+        }
+      }
+    }
   }
 }

@@ -1,32 +1,23 @@
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
-param environment string
-param location string = resourceGroup().location
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'radius.dev/Application@v1alpha3' = {
   name: 'azure-connection-database-service'
-  location: 'global'
-  properties: {
-    environment: environment
-  }
 
-}
-
-resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'db-service'
-  location: 'global'
-  properties: {
-    application: app.id
-    container: {
-      image: magpieimage
-    }
-    connections: {
-      databaseresource: {
-        kind:'azure'
-        source: databaseAccount.id
-        roles: [
-          'Cosmos DB Account Reader Role'
-          '230815da-be43-4aae-9cb4-875f7bd000aa'
-        ]
+  resource store 'Container' = {
+    name: 'db-service'
+    properties: {
+      container: {
+        image: magpieimage
+      }
+      connections: {
+        databaseresource: {
+          kind:'azure'
+          source: databaseAccount.id
+          roles: [
+            'Cosmos DB Account Reader Role'
+            '230815da-be43-4aae-9cb4-875f7bd000aa'
+          ]
+        }
       }
     }
   }
@@ -34,7 +25,7 @@ resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'dbacc-${guid(resourceGroup().name)}'
-  location: location
+  location: resourceGroup().location
   kind: 'MongoDB'
   properties: {
     consistencyPolicy: {
@@ -42,7 +33,7 @@ resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     }
     locations: [
       {
-        locationName: location
+        locationName: resourceGroup().location
         failoverPriority: 0
         isZoneRedundant: false
       }
@@ -50,4 +41,3 @@ resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     databaseAccountOfferType: 'Standard'
   }
 }
-

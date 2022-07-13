@@ -6,11 +6,19 @@
 package mechanics_test
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 func Test_NestedModules(t *testing.T) {
@@ -33,6 +41,216 @@ func Test_NestedModules(t *testing.T) {
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_RedeployWithAnotherResource(t *testing.T) {
+	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
+
+	name := "corerp-mechanics-redeploy-withanotherresource"
+	templateFmt := "testdata/corerp-mechanics-redeploy-withanotherresource.step%d.bicep"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "a",
+						Type: validation.ContainersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "a"),
+					},
+				},
+			},
+		},
+		{
+			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "a",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "a",
+						Type: validation.ContainersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "a"),
+						validation.NewK8sPodForResource(name, "b"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
+	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
+
+	name := "corerp-mechanics-redeploy-withupdatedresource"
+	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "a",
+						Type: validation.ContainersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "a"),
+					},
+				},
+			},
+		},
+		{
+			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "a",
+						Type: validation.ContainersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "a"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
+				labelset := kubernetes.MakeSelectorLabels(name, "a")
+
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments(name).List(context.Background(), metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(labelset).String(),
+				})
+
+				require.NoError(t, err, "failed to list deployments")
+				require.Len(t, deployments.Items, 1, "expected 1 deployment")
+				deployment := deployments.Items[0]
+				envVar := deployment.Spec.Template.Spec.Containers[0].Env[0]
+				require.Equal(t, "TEST", envVar.Name, "expected env var to be updated")
+				require.Equal(t, "updated", envVar.Value, "expected env var to be updated")
+			},
+		},
+	})
+	test.Test(t)
+}
+
+func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
+	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
+
+	name := "corerp-mechanics-redeploy-withtwoseparateresource"
+	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "a",
+						Type: validation.ContainersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "a"),
+					},
+				},
+			},
+		},
+		{
+			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "a",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "b",
+						Type: validation.ContainersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "a"),
+						validation.NewK8sPodForResource(name, "b"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_CommunicationCycle(t *testing.T) {
+	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
+
+	name := "corerp-mechanics-communication-cycle"
+	template := "testdata/corerp-mechanics-communication-cycle.bicep"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "a",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "a",
+						Type: validation.HttpRoutesResource,
+					},
+					{
+						Name: "b",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "b",
+						Type: validation.HttpRoutesResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "a"),
+						validation.NewK8sPodForResource(name, "b"),
+					},
+				},
+			},
 		},
 	})
 
