@@ -7,7 +7,9 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -46,6 +48,9 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	if err != nil {
 		return nil, err
 	}
+
+	b, _ := json.Marshal(newResource)
+	fmt.Println(string(b))
 
 	existingResource := &datamodel.ContainerResource{}
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
