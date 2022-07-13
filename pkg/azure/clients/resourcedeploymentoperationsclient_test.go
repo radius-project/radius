@@ -18,5 +18,5 @@ func TestResourceOperationsClientPrepare(t *testing.T) {
 	request, err := resourceClient.ListPreparer(context.TODO(), "/resourcegroups/my-rg/providers/Microsoft.Resources/deployments/my-deployment", nil)
 	require.NoError(t, err)
 
-	require.Equal(t, "/resourcegroups/my-rg/providers/Microsoft.Resources/deployments/my-deployment", request.URL.Path)
+	require.Equal(t, "/resourcegroups/my-rg/providers/Microsoft.Resources/deployments/my-deployment/operations", request.URL.Path)
 }

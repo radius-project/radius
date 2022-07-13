@@ -83,7 +83,7 @@ func (client ResourceDeploymentOperationsClient) ListPreparer(ctx context.Contex
 	preparer := autorest.CreatePreparer(
 		autorest.AsGet(),
 		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPath(resourceId),
+		autorest.WithPath(resourceId+"/operations"),
 		autorest.WithQueryParameters(queryParameters))
 	return preparer.Prepare((&http.Request{}).WithContext(ctx))
 }
@@ -112,7 +112,7 @@ func (client ResourceDeploymentOperationsClient) listNextResults(ctx context.Con
 // deploymentOperationsListResultPreparer prepares a request to retrieve the next set of results.
 // It returns nil if no more results exist.
 func deploymentOperationsListResultPreparer(dolr resources.DeploymentOperationsListResult, ctx context.Context) (*http.Request, error) {
-	if dolr.NextLink != nil && len(*dolr.NextLink) != 0 {
+	if dolr.NextLink == nil || len(*dolr.NextLink) == 0 {
 		return nil, nil
 	}
 	return autorest.Prepare((&http.Request{}).WithContext(ctx),
