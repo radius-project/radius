@@ -86,6 +86,7 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 
 			require.True(t, found, fmt.Sprintf("application %s was not found", resource.Name))
 		} else {
+			t.Logf("skipping validation of resource...")
 			// resources, err := client.ShowResourceByApplication(ctx, resource.AppName, resource.Type)
 			// require.NoError(t, err)
 			// require.NotEmpty(t, resources)
