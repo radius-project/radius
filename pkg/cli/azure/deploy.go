@@ -221,7 +221,7 @@ func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name stri
 	}
 	types := ucpresources.TypeSegment{
 		Type: "Microsoft.Resources/deployments",
-		Name: name + "/operations",
+		Name: name,
 	}
 	resourceId = ucpresources.MakeRelativeID(scopes, types)
 

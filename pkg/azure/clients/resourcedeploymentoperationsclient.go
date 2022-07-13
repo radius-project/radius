@@ -83,7 +83,7 @@ func (client ResourceDeploymentOperationsClient) ListPreparer(ctx context.Contex
 	preparer := autorest.CreatePreparer(
 		autorest.AsGet(),
 		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPath(resourceId),
+		autorest.WithPath(resourceId+"/operations"),
 		autorest.WithQueryParameters(queryParameters))
 	return preparer.Prepare((&http.Request{}).WithContext(ctx))
 }
