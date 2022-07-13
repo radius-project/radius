@@ -82,12 +82,15 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// fetch the environment from the resource
-	env, err := dp.getEnvironmetFromResource(ctx, id)
+	env, err := dp.getEnvironmetFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 	// fetch the environment namespace by doing a db lookup
 	namespace, err := dp.getEnvironmentNamespace(ctx, env)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{renderers.EnvironmentOptions{Namespace: namespace}})
 	if err != nil {
@@ -284,79 +287,37 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
 }
 
-func (dp *deploymentProcessor) getEnvironmetFromResource(ctx context.Context, resourceID resources.ID) (string, error) {
-	var res *store.Object
-	var err error
-	var sc store.StorageClient
-	sc, err = dp.sp.GetStorageClient(ctx, resourceID.Type())
-	if err != nil {
-		return "", err
-	}
+func (dp *deploymentProcessor) getEnvironmetFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (string, error) {
 	resourceType := strings.ToLower(resourceID.Type())
+	var err error
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
-		obj := &datamodel.MongoDatabase{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.MongoDatabase)
+		return obj.Properties.Environment, nil
 	case strings.ToLower(sqldatabases.ResourceType):
-		obj := &datamodel.SqlDatabase{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.SqlDatabase)
+		return obj.Properties.Environment, nil
 	case strings.ToLower(rediscaches.ResourceType):
-		obj := &datamodel.RedisCache{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.RedisCache)
+		return obj.Properties.Environment, nil
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
-		obj := &datamodel.RabbitMQMessageQueue{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.RabbitMQMessageQueue)
+		return obj.Properties.Environment, nil
 	case strings.ToLower(extenders.ResourceType):
-		obj := &datamodel.Extender{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.Extender)
+		return obj.Properties.Environment, nil
 	case strings.ToLower(daprstatestores.ResourceType):
-		obj := &datamodel.DaprStateStore{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.DaprStateStore)
+		return obj.Properties.Environment, nil
 	case strings.ToLower(daprsecretstores.ResourceType):
-		obj := &datamodel.DaprSecretStore{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.DaprSecretStore)
+		return obj.Properties.Environment, nil
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
-		obj := &datamodel.DaprPubSubBroker{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.DaprPubSubBroker)
+		return obj.Properties.Environment, nil
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
-		obj := &datamodel.DaprInvokeHttpRoute{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return obj.Properties.Environment, nil
-			}
-		}
+		obj := resource.(datamodel.DaprInvokeHttpRoute)
+		return obj.Properties.Environment, nil
 	default:
 		err = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, resourceID.String())
 	}
@@ -390,7 +351,7 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 	if env.Properties != (coreDatamodel.EnvironmentProperties{}) && env.Properties.Compute != (coreDatamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (coreDatamodel.KubernetesComputeProperties{}) {
 		namespace = env.Properties.Compute.KubernetesCompute.Namespace
 	} else {
-		err = fmt.Errorf("Cannot find namespace in the environment resource")
+		err = fmt.Errorf("cannot find namespace in the environment resource")
 	}
 
 	return
