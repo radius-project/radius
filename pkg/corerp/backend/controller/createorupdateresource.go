@@ -7,7 +7,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -85,7 +84,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: "deployment data model conversion error"}), err
 	}
 
-	_, err = deploymentDataModel.ApplyOutputResourcesAndSave(ctx, deploymentOutput, c.StorageClient(), request.ResourceID, obj.ETag)
+	_, err = deploymentDataModel.ApplyDeploymentOutputAndSave(ctx, deploymentOutput, c.StorageClient(), request.ResourceID, obj.ETag)
 
 	return ctrl.Result{}, err
 }
