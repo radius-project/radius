@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/azresources"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -158,7 +158,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
-	parsed, err := resources.Parse(id)
+	parsed, err := azresources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
@@ -175,7 +175,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetTopicByID(ctx context.Context, id string) (*servicebus.SBTopic, error) {
-	parsed, err := resources.Parse(id)
+	parsed, err := azresources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
 	}
