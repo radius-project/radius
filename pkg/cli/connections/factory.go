@@ -110,7 +110,8 @@ func (*impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.W
 			K8sRuntimeClient:  client,
 			ApplicationClient: *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/applications"),
 			ContainerClient:   *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/containers"),
-			EnvironmentClient:   *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/environments"),
+			EnvironmentClient: *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/environments"),
+			GatewayClient:     *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/gateways"),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
