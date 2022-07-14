@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,7 +39,7 @@ const (
 	MaxOperationConcurrency = 3
 
 	// MaxDequeueCount is the maximum dequeue count which will be retried.
-	MaxDequeueCount = 5
+	MaxDequeueCount = 3
 
 	// messageExtendMargin is the margin duration before extending message lock.
 	messageExtendMargin = time.Duration(30) * time.Second
@@ -110,6 +111,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				"ResourceID", op.ResourceID,
 				"CorrleationID", op.CorrelationID,
 				"W3CTraceID", op.TraceparentID,
+				"DequeueCount", strconv.Itoa(msgreq.DequeueCount),
 			)
 
 			opType, ok := v1.ParseOperationType(op.OperationType)
@@ -118,20 +120,18 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			ctrl := w.registry.Get(opType)
+			asyncCtrl := w.registry.Get(opType)
 
-			if ctrl == nil {
-				opLogger.V(radlogger.Error).Info("Unknown operation")
-				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
-					logger.Error(err, "failed to finish the message which includes unknown operation.")
-				}
+			if asyncCtrl == nil {
+				errMsg := "Unknown operation: " + opType.String()
+				opLogger.V(radlogger.Error).Info(errMsg)
+				w.completeOperation(ctx, msgreq, ctrl.NewCanceledResult(errMsg), asyncCtrl.StorageClient())
 				return
 			}
 			if msgreq.DequeueCount >= MaxDequeueCount {
-				opLogger.V(radlogger.Error).Info(fmt.Sprintf("Exceed max retrycount: %d", msgreq.DequeueCount))
-				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
-					logger.Error(err, "failed to finish the message which exceeds the max retry count.")
-				}
+				errMsg := fmt.Sprintf("Exceed max dequeue count: %d", msgreq.DequeueCount)
+				opLogger.V(radlogger.Error).Info(errMsg)
+				w.completeOperation(ctx, msgreq, ctrl.NewCanceledResult(errMsg), asyncCtrl.StorageClient())
 				return
 			}
 
@@ -139,7 +139,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			// 1. The same message is delivered twice in multiple instances.
 			// 2. provisioningState is not matched between resource and operationStatuses
 
-			dup, err := w.isDuplicated(ctx, ctrl.StorageClient(), op.ResourceID, op.OperationID)
+			dup, err := w.isDuplicated(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
 				logger.Error(err, "failed to check potential deduplication.")
 				return
@@ -149,12 +149,12 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			if err = w.updateResourceAndOperationStatus(ctx, ctrl.StorageClient(), op.ResourceID, op.OperationID, v1.ProvisioningStateUpdating, nil); err != nil {
+			if err = w.updateResourceAndOperationStatus(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID, v1.ProvisioningStateUpdating, nil); err != nil {
 				return
 			}
 
 			opCtx := logr.NewContext(ctx, opLogger)
-			w.runOperation(opCtx, msgreq, ctrl)
+			w.runOperation(opCtx, msgreq, asyncCtrl)
 		}(msg)
 	}
 
