@@ -326,7 +326,7 @@ func (dp *deploymentProcessor) getEnvironmetIDFromResource(ctx context.Context, 
 	return envId, err
 }
 
-// getEnvironmentNamespace fetches the environment ID resource from the db for getting the namespace to deploy the resources
+// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
 func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID string) (namespace string, err error) {
 	var res *store.Object
 	var sc store.StorageClient
