@@ -42,7 +42,7 @@ func createContext(t *testing.T) context.Context {
 func Test_GetDependencyIDs_Empty(t *testing.T) {
 	r := &Renderer{}
 
-	dependencies, _, err := r.GetDependencyIDs(createContext(t), datamodel.HTTPRoute{})
+	dependencies, _, err := r.GetDependencyIDs(createContext(t), &datamodel.HTTPRoute{})
 	require.NoError(t, err)
 	require.Empty(t, dependencies)
 }
