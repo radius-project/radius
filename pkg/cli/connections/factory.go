@@ -15,9 +15,9 @@ import (
 
 	"github.com/Azure/go-autorest/autorest"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
-	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -104,19 +104,13 @@ func (*impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.W
 			return nil, err
 		}
 
-		// This client wants a resource group name, but we store the ID instead, so compute that.
-		id, err := resources.Parse(workspace.Scope)
-		if err != nil {
-			return nil, err
-		}
-
 		return &azure.ARMDiagnosticsClient{
-			K8sTypedClient:   k8sClient,
-			RestConfig:       config,
-			K8sRuntimeClient: client,
-			// NOTE: this client type requires a subscription ID to be passed in, but it isn't used for anything.
-			ResourceClient: *radclient.NewRadiusResourceClient(con, "fake-subscription"),
-			ResourceGroup:  id.FindScope(resources.ResourceGroupsSegment),
+			K8sTypedClient:    k8sClient,
+			RestConfig:        config,
+			K8sRuntimeClient:  client,
+			ApplicationClient: *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/applications"),
+			ContainerClient:   *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/containers"),
+			EnvironmentClient:   *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/environments"),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
