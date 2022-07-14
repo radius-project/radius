@@ -28,10 +28,10 @@ func MetricsRecorder(p *metrics.HTTPMetrics) func(h http.Handler) http.Handler {
 			h.ServeHTTP(wi, r)
 
 			// ignore errors as we don't want to fail a request because of parsing failures for resource type on a request
-			resourceType, _ := resources.Parse(r.URL.Path)
+			rid, _ := resources.Parse(r.URL.Path)
 			elapsedTime := time.Since(requestStartTime).Microseconds()
 			labels := []attribute.KeyValue{attribute.String("path", r.URL.Path), attribute.String("method", r.Method), attribute.String("statusCode", strconv.Itoa(wi.statusCode)),
-				attribute.String("resourceType", resourceType.Type())}
+				attribute.String("resourceType", rid.Type())}
 			p.IncrementRequestCount(r.Context(), 1, labels...)
 			p.RecordLatency(r.Context(), elapsedTime, labels...)
 		}
