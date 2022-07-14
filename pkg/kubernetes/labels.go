@@ -121,6 +121,7 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 	}
 }
 
+// MakeResourceName returns hash of application + "-" + resource
 func MakeResourceName(application string, resource string) string {
 <<<<<<< HEAD
 	if application != "" && resource != "" {
