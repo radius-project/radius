@@ -21,7 +21,7 @@ param adminUsername string = 'cooluser'
 @description('Specifies the SQL password.')
 param adminPassword string = 'p@ssw0rd'
 
-var appPrefix = 'azure-resources-microsoft-sql'
+var appPrefix = 'corerp-resources-microsoft-sql'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: '${appPrefix}-app'
@@ -78,7 +78,7 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     name: 'sql-${uniqueString(resourceGroup().id)}'
     location: location
     tags: {
-      radiustest: 'azure-resources-microsoft-sql'
+      radiustest: 'corerp-resources-microsoft-sql'
     }
     properties: {
       administratorLogin: adminUsername
