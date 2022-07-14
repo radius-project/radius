@@ -11,7 +11,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource a_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
+resource a_route 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
   name: 'corerp-mechanics-communication-cycle-a-route'
   location: 'global'
   properties: {
@@ -41,7 +41,7 @@ resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource b_route 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
+resource b_route 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
   name: 'corerp-mechanics-communication-cycle-b-route'
   location: 'global'
   properties: {

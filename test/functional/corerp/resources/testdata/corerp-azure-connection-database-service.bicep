@@ -5,7 +5,7 @@ param environment string
 param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-connection-database-service'
+  name: 'corerp-azure-connection-database-service'
   location: 'global'
   properties: {
     environment: environment
@@ -54,4 +54,3 @@ resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     databaseAccountOfferType: 'Standard'
   }
 }
-

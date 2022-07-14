@@ -187,7 +187,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
