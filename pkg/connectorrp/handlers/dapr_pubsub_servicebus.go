@@ -12,11 +12,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -158,15 +158,18 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
-	parsed, err := azresources.Parse(id)
+	parsed, err := resources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
 
-	sbc := clients.NewServiceBusNamespacesClient(parsed.SubscriptionID, handler.arm.Auth)
+	sbc := clients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+
+	resourceGroup := parsed.FindScope("resourceGroups")
+	types := parsed.TypeSegments()
 
 	// Check if a service bus namespace exists in the resource group for this application
-	namespace, err := sbc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
+	namespace, err := sbc.Get(ctx, resourceGroup, types[0].Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get servicebus namespace: '%s':%w", *namespace.Name, err)
 	}
@@ -175,14 +178,16 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetTopicByID(ctx context.Context, id string) (*servicebus.SBTopic, error) {
-	parsed, err := azresources.Parse(id)
+	parsed, err := resources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
 	}
 
 	tc := clients.NewTopicsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	topic, err := tc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
+	resourceGroup := parsed.FindScope("resourceGroups")
+
+	topic, err := tc.Get(ctx, resourceGroup, parsed.TypeSegments()[0].Name, parsed.TypeSegments()[1].Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get servicebus queue: %w", err)
 	}
