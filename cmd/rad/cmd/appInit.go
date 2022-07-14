@@ -17,11 +17,12 @@ import (
 
 // appInitCmd command to scaffold
 var appInitCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Scaffold RAD application",
-	Long:  "Scaffolds a starter RAD application in the current directory",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  initApplication,
+	Use:    "init",
+	Short:  "Scaffold RAD application",
+	Long:   "Scaffolds a starter RAD application in the current directory",
+	Args:   cobra.MaximumNArgs(1),
+	RunE:   initApplication,
+	Hidden: true,
 }
 
 func init() {
