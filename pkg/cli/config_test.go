@@ -11,176 +11,105 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-
-	"github.com/project-radius/radius/pkg/cli/environments"
 )
 
-func Test_ReadEnvironmentSection_NoContent(t *testing.T) {
+func Test_ReadWorkspaceSection_NoContent(t *testing.T) {
 	var yaml = ``
 
 	v, err := makeConfig(yaml)
 	require.NoError(t, err)
 
-	es, err := ReadEnvironmentSection(v)
+	es, err := ReadWorkspaceSection(v)
 	require.NoError(t, err)
 	require.Empty(t, es.Default)
 	require.Empty(t, es.Items)
 }
 
-func Test_ReadEnvironmentSection_SomeItems(t *testing.T) {
+func Test_ReadWorkspaceSection_SomeItems(t *testing.T) {
 	var yaml = `
-environment:
+workspaces:
   default: test
   items:
     test:
-      kind: testing
+      connection:
+        kind: kubernetes
+      scope: /a/b/c
     test2:
-      kind: testing
+      connection:
+        kind: kubernetes
+      scope: /a/b/c
 `
 
 	v, err := makeConfig(yaml)
 	require.NoError(t, err)
 
-	es, err := ReadEnvironmentSection(v)
+	es, err := ReadWorkspaceSection(v)
 	require.NoError(t, err)
-	require.Equal(t, es.Default, "test")
+	require.Equal(t, "test", es.Default)
 	require.Len(t, es.Items, 2)
 }
 
-func Test_GetEnvironment_Invalid_NoKind(t *testing.T) {
+func Test_ReadWorkspaceSection_Invalid_NoConnection(t *testing.T) {
 	var yaml = `
-environment:
+workspaces:
   items:
     test:
-      someProperty: test
+      scope: /a/b/c
 `
 
 	v, err := makeConfig(yaml)
 	require.NoError(t, err)
 
-	es, err := ReadEnvironmentSection(v)
-	require.NoError(t, err)
-
-	_, err = es.GetEnvironment("test")
+	_, err = ReadWorkspaceSection(v)
 	require.Error(t, err)
 }
 
-func Test_GetEnvironment_Invalid_NotFound(t *testing.T) {
+func Test_GetWorkspace_Invalid_NotFound(t *testing.T) {
 	var yaml = `
-environment:
+workspaces:
   items:
-    another: {}
+    test:
+      connection:
+        kind: kubernetes
+      scope: /a/b/c
 `
 
 	v, err := makeConfig(yaml)
 	require.NoError(t, err)
 
-	es, err := ReadEnvironmentSection(v)
+	es, err := ReadWorkspaceSection(v)
 	require.NoError(t, err)
 
-	_, err = es.GetEnvironment("test")
+	_, err = es.GetWorkspace("test2")
 	require.Error(t, err)
 }
 
-func Test_GetEnvironment_Invalid_KindIsNotString(t *testing.T) {
+func Test_GetWorkspace_Valid(t *testing.T) {
 	var yaml = `
-environment:
+workspaces:
   default: test
   items:
     test:
-      kind: 3
+      connection:
+        kind: kubernetes
+        context: cool-beans
+      scope: /a/b/c
+      environment: /a/b/c/providers/Applications.Core/environments/ice-cold
 `
 
 	v, err := makeConfig(yaml)
 	require.NoError(t, err)
 
-	es, err := ReadEnvironmentSection(v)
+	es, err := ReadWorkspaceSection(v)
 	require.NoError(t, err)
 
-	_, err = es.GetEnvironment("test")
-	require.Error(t, err)
-}
-
-func Test_GetEnvironment_Invalid_AzureEnvironmentMissingProperties(t *testing.T) {
-	var yaml = `
-environment:
-  default: test
-  items:
-    test:
-      kind: azure
-`
-
-	v, err := makeConfig(yaml)
+	ws, err := es.GetWorkspace("")
 	require.NoError(t, err)
 
-	es, err := ReadEnvironmentSection(v)
-	require.NoError(t, err)
-
-	_, err = es.GetEnvironment("test")
-	require.Error(t, err)
-}
-
-func Test_GetEnvironment_ValidAzureEnvironment(t *testing.T) {
-	var yaml = `
-environment:
-  default: test
-  items:
-    test:
-      kind: azure
-      subscriptionid: testsub
-      resourcegroup: testrg
-      clustername: testcluster
-      namespace: default
-      context: my-context
-      extra: testextra
-`
-
-	v, err := makeConfig(yaml)
-	require.NoError(t, err)
-
-	es, err := ReadEnvironmentSection(v)
-	require.NoError(t, err)
-
-	e, err := es.GetEnvironment("")
-	require.NoError(t, err)
-
-	aenv, ok := e.(*environments.AzureCloudEnvironment)
-	require.True(t, ok)
-
-	require.Equal(t, "test", aenv.Name)
-	require.Equal(t, "azure", aenv.Kind)
-	require.Equal(t, "testsub", aenv.SubscriptionID)
-	require.Equal(t, "testrg", aenv.ResourceGroup)
-	require.Equal(t, "default", aenv.Namespace)
-	require.Equal(t, "my-context", aenv.Context)
-	require.Equal(t, map[string]interface{}{"extra": "testextra"}, aenv.Properties)
-}
-
-func Test_GetEnvironment_ValidGenericEnvironment(t *testing.T) {
-	var yaml = `
-environment:
-  default: test
-  items:
-    test:
-      kind: other
-      extra: testextra
-`
-
-	v, err := makeConfig(yaml)
-	require.NoError(t, err)
-
-	es, err := ReadEnvironmentSection(v)
-	require.NoError(t, err)
-
-	e, err := es.GetEnvironment("")
-	require.NoError(t, err)
-
-	aenv, ok := e.(*environments.GenericEnvironment)
-	require.True(t, ok)
-
-	require.Equal(t, "test", aenv.Name)
-	require.Equal(t, "other", aenv.Kind)
-	require.Equal(t, map[string]interface{}{"extra": "testextra"}, aenv.Properties)
+	require.Equal(t, "test", ws.Name)
+	require.Equal(t, "/a/b/c", ws.Scope)
+	require.Equal(t, "/a/b/c/providers/Applications.Core/environments/ice-cold", ws.Environment)
+	require.Equal(t, map[string]interface{}{"kind": "kubernetes", "context": "cool-beans"}, ws.Connection)
 }
 
 func makeConfig(yaml string) (*viper.Viper, error) {

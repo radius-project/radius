@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 )
 
 // resourceShowCmd command to show details of a resource
@@ -30,17 +30,17 @@ func init() {
 
 func showResource(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := cli.RequireApplication(cmd, env)
+	applicationName, err := cli.RequireApplication(cmd, *workspace)
 	if err != nil {
 		return err
 	}
 
-	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}

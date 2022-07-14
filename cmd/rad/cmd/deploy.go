@@ -47,9 +47,9 @@ order the are provided. Parameters appearing later in the argument list will ove
 rad deploy myapp.bicep
 
 
-# deploy to a specific environment
+# deploy to a specific workspace
 
-rad deploy myapp.bicep --environment production
+rad deploy myapp.bicep --workspace production
 
 
 # specify a string parameter
@@ -77,6 +77,7 @@ rad deploy myapp.bicep --parameters @myfile.json --parameters version=latest
 func init() {
 	RootCmd.AddCommand(deployCmd)
 	deployCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
+	deployCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
 	deployCmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
 }
 
@@ -103,7 +104,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
@@ -133,27 +134,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 	output.CompleteStep(step)
 
-	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), env.GetId())
-
+	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), workspace.Environment)
 	if err != nil {
 		return err
 	}
-
-	var progressText string
-	status := env.GetStatusLink()
-	if status == "" {
-		progressText = fmt.Sprintf(
-			"Deploying Application into environment '%v'...\n\n"+
-				"Deployment In Progress...", env.GetName())
-	} else {
-		progressText = fmt.Sprintf(
-			"Deploying Application into environment '%v'...\n\n"+
-				"Meanwhile, you can view the environment '%v' at:\n%v\n\n"+
-				"Deployment In Progress...", env.GetName(), env.GetName(), status)
-	}
+	progressText := fmt.Sprintf(
+		"Deploying Application into workspace '%v'...\n\n"+
+			"Deployment In Progress...", workspace.Name)
 
 	_, err = deploy.DeployWithProgress(cmd.Context(), deploy.Options{
-		Environment:    env,
+		Workspace:      *workspace,
 		Template:       template,
 		Parameters:     parameters,
 		ProgressText:   progressText,

@@ -14,8 +14,9 @@ import (
 	"sync"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
 func ValidateBicepFile(filePath string) error {
@@ -32,19 +33,24 @@ func ValidateBicepFile(filePath string) error {
 }
 
 type Options struct {
-	Environment    environments.Environment
-	Template       map[string]interface{}
-	Parameters     clients.DeploymentParameters
-	ProgressText   string
-	CompletionText string
+	Workspace         workspaces.Workspace
+	ConnectionFactory connections.Factory
+	Template          map[string]interface{}
+	Parameters        clients.DeploymentParameters
+	ProgressText      string
+	CompletionText    string
 }
 
 // DeployWithProgress run a deployment and displays progress to the user. This is intended to be used
 // from the CLI and thus logs to the console.
 func DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
+	if options.ConnectionFactory == nil {
+		options.ConnectionFactory = connections.DefaultFactory
+	}
+
 	var deploymentClient clients.DeploymentClient
 	var err error
-	deploymentClient, err = environments.CreateDeploymentClient(ctx, options.Environment)
+	deploymentClient, err = options.ConnectionFactory.CreateDeploymentClient(ctx, options.Workspace)
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
@@ -89,7 +95,7 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 			}
 		}
 		var diagnosticsClient clients.DiagnosticsClient
-		diagnosticsClient, err = environments.CreateDiagnosticsClient(ctx, options.Environment)
+		diagnosticsClient, err = options.ConnectionFactory.CreateDiagnosticsClient(ctx, options.Workspace)
 		if err != nil {
 			return clients.DeploymentResult{}, err
 		}

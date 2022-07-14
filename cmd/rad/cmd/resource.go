@@ -18,5 +18,5 @@ var resourceCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(resourceCmd)
 	resourceCmd.PersistentFlags().StringP("application", "a", "", "The application name")
-	resourceCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
+	resourceCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
 }

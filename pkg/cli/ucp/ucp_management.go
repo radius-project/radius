@@ -19,9 +19,8 @@ import (
 )
 
 type ARMApplicationsManagementClient struct {
-	EnvironmentName string
-	Connection      *arm.Connection
-	RootScope       string
+	Connection *arm.Connection
+	RootScope  string
 }
 
 var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(nil)
