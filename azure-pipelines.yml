@@ -100,6 +100,7 @@ stages:
         curl -sSLo "kind/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v0.11.0/kind-linux-amd64"
         chmod +x "kind/kind"
         kind create cluster --name radius --wait 60s
+      displayName: create kind cluster
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
@@ -115,6 +116,13 @@ stages:
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-corerp
+      displayName: run functional corerp tests
+    - script: |
+        export PATH=$(Build.SourcesDirectory)/dist:$PATH
+        export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
+        export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
+        make test-functional-ucp
+      displayName: run functional ucp tests
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
       condition: always()

@@ -49,11 +49,14 @@ $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,
 # magpie comes from our test directory.
 $(eval $(call generateDockerTargets,magpiego,./test/magpiego/,./test/magpiego/Dockerfile))
 
+# testrp comes from our test directory.
+$(eval $(call generateDockerTargets,testrp,./test/testrp/,./test/testrp/Dockerfile))
+
 # list of 'outputs' to build all images
-DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-magpiego
+DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE)) docker-build-magpiego docker-build-testrp
 
 # list of 'outputs' to push all images
-DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE)) docker-push-magpiego
+DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE)) docker-push-magpiego docker-push-testrp
 
 .PHONY: docker-build
 docker-build: $(DOCKER_BUILD_TARGETS) ## Builds all Docker images.
