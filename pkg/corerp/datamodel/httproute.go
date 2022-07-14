@@ -6,13 +6,6 @@
 package datamodel
 
 import (
-<<<<<<< HEAD
-	"context"
-	"fmt"
-	"strconv"
-
-=======
->>>>>>> 8e27c050 (use pointer)
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/rp"
