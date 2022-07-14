@@ -163,13 +163,10 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
 
-	sbc := clients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
-
-	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
-	types := parsed.TypeSegments()
+	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 
 	// Check if a service bus namespace exists in the resource group for this application
-	namespace, err := sbc.Get(ctx, resourceGroup, types[0].Name)
+	namespace, err := sbc.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get servicebus namespace: '%s':%w", *namespace.Name, err)
 	}
@@ -183,11 +180,9 @@ func (handler *daprPubSubServiceBusBaseHandler) GetTopicByID(ctx context.Context
 		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
 	}
 
-	tc := clients.NewTopicsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	tc := clients.NewTopicsClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 
-	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
-
-	topic, err := tc.Get(ctx, resourceGroup, parsed.TypeSegments()[0].Name, parsed.TypeSegments()[1].Name)
+	topic, err := tc.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name, parsed.TypeSegments()[1].Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get servicebus queue: %w", err)
 	}
