@@ -22,7 +22,7 @@ type AzureTransformer struct {
 }
 
 func (t *AzureTransformer) Transform(ctx context.Context, resource conv.DataModelInterface, value interface{}) (interface{}, error) {
-	mongoResource, ok := resource.(datamodel.MongoDatabase)
+	mongoResource, ok := resource.(*datamodel.MongoDatabase)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
