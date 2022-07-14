@@ -56,7 +56,7 @@ func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, g
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -117,7 +117,7 @@ func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayNa
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -169,7 +169,7 @@ func (client *GatewaysClient) getCreateRequest(ctx context.Context, gatewayName 
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -227,7 +227,7 @@ func (client *GatewaysClient) listByScopeCreateRequest(ctx context.Context, opti
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -284,7 +284,7 @@ func (client *GatewaysClient) updateCreateRequest(ctx context.Context, gatewayNa
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}

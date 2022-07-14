@@ -7,14 +7,10 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
-	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,7 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 var envInitCmd = &cobra.Command{
@@ -40,6 +38,8 @@ func init() {
 	envCmd.AddCommand(envInitCmd)
 	envInitCmd.PersistentFlags().BoolP("interactive", "i", false, "Collect values for required command arguments through command line interface prompts")
 	envInitCmd.PersistentFlags().StringP("namespace", "n", "default", "Specify the namespace to use for the environment into which application resources are deployed")
+	envInitCmd.PersistentFlags().BoolP("force", "f", false, "Overwrite existing workspace if present")
+
 	setup.RegisterPersistantChartArgs(envInitCmd)
 	setup.RegistePersistantAzureProviderArgs(envInitCmd)
 }
@@ -57,12 +57,13 @@ func (k EnvKind) String() string {
 
 func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.ReadEnvironmentSection(config)
+
+	interactive, err := cmd.Flags().GetBool("interactive")
 	if err != nil {
 		return err
 	}
 
-	interactive, err := cmd.Flags().GetBool("interactive")
+	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
 	}
@@ -99,7 +100,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return fmt.Errorf("unknown environment type: %s", kind)
 	}
 
-	environmentName, err := selectEnvironment(cmd, defaultEnvName, interactive)
+	environmentName, err := selectEnvironmentName(cmd, defaultEnvName, interactive)
 	if err != nil {
 		return err
 	}
@@ -107,11 +108,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	params := &EnvironmentParams{
 		Name:      environmentName,
 		Providers: &environments.Providers{AzureProvider: azureProvider},
-	}
-
-	_, foundConflict := env.Items[environmentName]
-	if foundConflict {
-		return fmt.Errorf("an environment named %s already exists. Use `rad env delete %s` to delete or select a different name", params.Name, params.Name)
 	}
 
 	cliOptions := helm.CLIClusterOptions{
@@ -132,6 +128,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	var k8sGoClient client_go.Interface
 	var contextName string
+	var registry *workspaces.Registry
 	switch kind {
 	case Dev:
 		// Create environment
@@ -147,15 +144,10 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 		clusterOptions.Contour.HostNetwork = true
 		clusterOptions.Radius.PublicEndpointOverride = cluster.HTTPEndpoint
-		env.Items[params.Name] = map[string]interface{}{
-			"kind":        "dev",
-			"context":     cluster.ContextName,
-			"clustername": cluster.ClusterName,
-			"namespace":   namespace,
-			"registry": &environments.Registry{
-				PushEndpoint: cluster.RegistryPushEndpoint,
-				PullEndpoint: cluster.RegistryPullEndpoint,
-			},
+		contextName = cluster.ContextName
+		registry = &workspaces.Registry{
+			PushEndpoint: cluster.RegistryPushEndpoint,
+			PullEndpoint: cluster.RegistryPullEndpoint,
 		}
 
 	case Kubernetes:
@@ -163,11 +155,47 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		if err != nil {
 			return err
 		}
-		env.Items[params.Name] = map[string]interface{}{
-			"kind":      environments.KindKubernetes,
-			"context":   contextName,
-			"namespace": namespace,
+	}
+
+	// Fallback logic for workspace
+	//
+	// - passed via flag
+	// - default value (config)
+	// - environment name
+	workspaceName, err := cmd.Flags().GetString("workspace")
+	if err != nil {
+		return err
+	}
+
+	if workspaceName == "" {
+		section, err := cli.ReadWorkspaceSection(config)
+		if err != nil {
+			return err
 		}
+
+		workspaceName = section.Default
+	}
+
+	if workspaceName == "" {
+		workspaceName = environmentName
+	}
+
+	// We're going to update the workspace in place if it's compatible. We only need to
+	// report an error if it's not (eg: different connection type or different kubecontext.)
+	foundExisting, err := cli.HasWorkspace(config, workspaceName)
+	if err != nil {
+		return err
+	}
+
+	var workspace *workspaces.Workspace
+	if foundExisting {
+		workspace, err = cli.GetWorkspace(config, workspaceName)
+		if err != nil {
+			return err
+		}
+	}
+	if foundExisting && !force && workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName}) {
+		return fmt.Errorf("the workspace %q already exists. Specify '--force' to overwrite", workspaceName)
 	}
 
 	// Make sure namespace for applications exists
@@ -181,85 +209,84 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	step := output.BeginStep("Creating Environment...")
+	// Steps:
+	//
+	// 1. Create workspace & resource groups
+	// 2. Create environment resource
+	// 3. Update workspace
+	if workspace == nil {
+		step := output.BeginStep("Creating Workspace...")
 
-	// As decided by the team we will have a temporary 1:1 correspondence between UCP resource group and environment
-	ucpRgName := fmt.Sprintf("%s-rg", environmentName)
-	env.Items[environmentName]["ucpresourcegroupname"] = ucpRgName
-	ucpRgId, err := createUCPResourceGroup(contextName, ucpRgName, "/planes/radius/local")
-	if err != nil {
-		return err
-	}
-
-	_, err = createUCPResourceGroup(contextName, ucpRgName, "/planes/deployments/local")
-	if err != nil {
-		return err
-	}
-
-	env.Items[environmentName]["scope"] = ucpRgId
-	ucpEnvId, err := createEnvironmentResource(cmd.Context(), contextName, ucpRgName, environmentName)
-	if err != nil {
-		return err
-	}
-	env.Items[environmentName]["id"] = ucpEnvId
-
-	output.CompleteStep(step)
-
-	// Persist settings
-
-	if params.Providers != nil {
-		providerData := map[string]interface{}{}
-		err = mapstructure.Decode(params.Providers, &providerData)
+		// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
+		//
+		// We'll flesh this out more when we add explicit commands for managing resource groups.
+		id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: contextName}, workspaceName)
 		if err != nil {
 			return err
 		}
 
-		env.Items[params.Name]["providers"] = providerData
+		workspace = &workspaces.Workspace{
+			Connection: map[string]interface{}{
+				"kind":    "kubernetes",
+				"context": contextName,
+			},
+			Scope:    id,
+			Registry: registry,
+		}
+
+		if azureProvider != nil {
+			workspace.ProviderConfig.Azure = azureProvider
+		}
+
+		err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
+			section.Default = workspaceName
+			section.Items[workspaceName] = *workspace
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		output.LogInfo("Set %q as current workspace", workspaceName)
+		output.CompleteStep(step)
+
 	}
-	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeInitEnvConfig(params.Name)))
+
+	// Reload config so we can see the updates
+	config, err = cli.LoadConfig(config.ConfigFileUsed())
 	if err != nil {
 		return err
 	}
 
+	step := output.BeginStep("Creating Environment...")
+
+	id, err := resources.Parse(workspace.Scope)
+	if err != nil {
+		return err
+	}
+
+	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, id.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
+	if err != nil {
+		return err
+	}
+
+	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
+		ws := section.Items[workspaceName]
+		ws.Environment = environmentID
+		section.Items[workspaceName] = ws
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	output.LogInfo("Set %q as current environment for workspace %q", environmentName, workspaceName)
+	output.CompleteStep(step)
+
 	return nil
 }
 
-func createUCPResourceGroup(kubeCtxName, resourceGroupName string, plane string) (string, error) {
-	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(
-		"",
-		"",
-		kubeCtxName,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	createRgRequest, err := http.NewRequest(
-		http.MethodPut,
-		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
-		strings.NewReader(`{}`),
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
-	}
-	resp, err := rt.RoundTrip(createRgRequest)
-	if err != nil {
-		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
-	}
-	defer resp.Body.Close()
-	var jsonBody map[string]interface{}
-	if json.NewDecoder(resp.Body).Decode(&jsonBody) != nil {
-		return "", nil
-	}
-
-	return jsonBody["id"].(string), nil
-}
-
-func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string) (string, error) {
+func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string, namespace string) (string, error) {
 	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "")
 	if err != nil {
 		return "", err
@@ -278,8 +305,7 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 					Kind:       to.StringPtr(coreRpApps.EnvironmentComputeKindKubernetes),
 					ResourceID: &id,
 				},
-				// FIXME: allow users to specify kubernetes namespace
-				Namespace: to.StringPtr(environmentName),
+				Namespace: to.StringPtr(namespace),
 			},
 		},
 	}
@@ -343,7 +369,7 @@ func selectNamespace(cmd *cobra.Command, defaultVal string, interactive bool) (s
 	return val, nil
 }
 
-func selectEnvironment(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
+func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
 	var val string
 	var err error
 	if interactive {

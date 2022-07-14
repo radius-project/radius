@@ -57,11 +57,11 @@ func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Co
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if client.resourceType == "" {
 		return nil, errors.New("parameter client.resourceType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", url.PathEscape(client.resourceType))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
 	}
@@ -122,11 +122,11 @@ func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, r
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if client.resourceType == "" {
 		return nil, errors.New("parameter client.resourceType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", url.PathEscape(client.resourceType))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
 	}
@@ -178,11 +178,11 @@ func (client *GenericResourcesClient) getCreateRequest(ctx context.Context, reso
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if client.resourceType == "" {
 		return nil, errors.New("parameter client.resourceType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", url.PathEscape(client.resourceType))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
 	}
@@ -240,11 +240,11 @@ func (client *GenericResourcesClient) listByRootScopeCreateRequest(ctx context.C
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if client.resourceType == "" {
 		return nil, errors.New("parameter client.resourceType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", url.PathEscape(client.resourceType))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err

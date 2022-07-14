@@ -20,7 +20,6 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -123,7 +122,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	applicationName := appId.Name()
 
 	// Create the deployment as the primary workload
-	deploymentOutputResources, secretData, err := r.makeDeployment(ctx, *resource, applicationName, renderers.RenderOptions{Dependencies: dependencies})
+	deploymentOutputResources, secretData, err := r.makeDeployment(ctx, *resource, applicationName, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -174,20 +173,25 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
 		if provides := port.Provides; provides != "" {
-			resourceId, err := azresources.Parse(provides)
+			resourceId, err := resources.Parse(provides)
 			if err != nil {
 				return []outputresource.OutputResource{}, nil, err
 			}
 			routeName := resourceId.Name()
-			routeType := resourceId.Types[len(resourceId.Types)-1].Type
+			routeType := resourceId.TypeSegments()[len(resourceId.TypeSegments())-1].Type
+
+			typeParts := strings.Split(routeType, "/")
+
+			resourceTypeSuffix := typeParts[len(typeParts)-1]
+
 			routes = append(routes, struct {
 				Name string
 				Type string
-			}{Name: routeName, Type: routeType})
+			}{Name: routeName, Type: resourceTypeSuffix})
 
 			ports = append(ports, corev1.ContainerPort{
 				// Name generation logic has to match the code in HttpRoute
-				Name:          kubernetes.GetShortenedTargetPortName(applicationName + routeType + routeName),
+				Name:          kubernetes.GetShortenedTargetPortName(applicationName + resourceTypeSuffix + routeName),
 				ContainerPort: port.ContainerPort,
 				Protocol:      corev1.ProtocolTCP,
 			})
@@ -319,7 +323,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 					// The storage account was not created when the computed value was rendered
 					// Lookup the actual storage account name from the local id
 					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
-					r, err := azresources.Parse(id)
+					r, err := resources.Parse(id)
 					if err != nil {
 						return []outputresource.OutputResource{}, nil, err
 					}
@@ -508,11 +512,11 @@ func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persiste
 	volumeSpec.Name = volumeName
 	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
 	volumeSpec.AzureFile.SecretName = applicationName
-	resourceID, err := azresources.Parse(persistentVolume.Source)
+	resourceID, err := resources.Parse(persistentVolume.Source)
 	if err != nil {
 		return corev1.Volume{}, corev1.VolumeMount{}, err
 	}
-	shareName := resourceID.Types[2].Name
+	shareName := resourceID.TypeSegments()[2].Name
 	volumeSpec.AzureFile.ShareName = shareName
 	// Make volumeMount spec
 	volumeMountSpec := corev1.VolumeMount{}

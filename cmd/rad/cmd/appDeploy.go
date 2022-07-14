@@ -96,8 +96,9 @@ rad app deploy --parameters @myfile.json
 
 rad app deploy --parameters @myfile.json --parameters version=latest
 `,
-	Args: cobra.MaximumNArgs(1),
-	RunE: deployApplication,
+	Args:   cobra.MaximumNArgs(1),
+	RunE:   deployApplication,
+	Hidden: true,
 }
 
 func init() {
@@ -110,7 +111,7 @@ func init() {
 
 func deployApplication(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func deployApplication(cmd *cobra.Command, args []string) error {
 	}
 
 	options := stages.Options{
-		Environment:   env,
+		Workspace:     *workspace,
 		BaseDirectory: baseDir,
 		Manifest:      manifest,
 		Builders:      builders.DefaultBuilders(),

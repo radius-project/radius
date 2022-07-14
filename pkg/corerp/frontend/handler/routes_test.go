@@ -85,6 +85,10 @@ var handlerTests = []struct {
 		isAzureAPI: true,
 	}, {
 		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
+		method:     http.MethodGet,
+		isAzureAPI: false,
+	}, {
+		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {

@@ -7,7 +7,7 @@ package cmd
 
 import (
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/spf13/cobra"
 )
 
@@ -24,12 +24,12 @@ func init() {
 
 func envStop(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	lifecycle, err := environments.CreateServerLifecycleClient(cmd.Context(), env)
+	lifecycle, err := connections.DefaultFactory.CreateServerLifecycleClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}

@@ -11,8 +11,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/ucp"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -24,85 +25,83 @@ type AzureResource struct {
 	SubscriptionID string
 }
 
-// Used by commands that require a named environment to be an azure cloud environment.
-func ValidateNamedEnvironment(config *viper.Viper, name string) (environments.Environment, error) {
-	env, err := ReadEnvironmentSection(config)
-	if err != nil {
-		return nil, err
-	}
-
-	e, err := env.GetEnvironment(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return e, nil
-}
-
-func RequireEnvironment(cmd *cobra.Command, config *viper.Viper) (environments.Environment, error) {
-	environmentName, err := cmd.Flags().GetString("environment")
-	if err != nil {
-		return nil, err
-	}
-
-	env, err := ValidateNamedEnvironment(config, environmentName)
-	return env, err
-}
-
-func RequireEnvironmentArgs(cmd *cobra.Command, config *viper.Viper, args []string) (environments.Environment, error) {
-	environmentName, err := RequireEnvironmentNameArgs(cmd, args)
-	if err != nil {
-		return nil, err
-	}
-
-	env, err := ValidateNamedEnvironment(config, environmentName)
-	return env, err
-}
-
-func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
-	environmentName, err := cmd.Flags().GetString("environment")
+func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
+	environmentName, err := ReadEnvironmentNameArgs(cmd, args)
 	if err != nil {
 		return "", err
 	}
 
-	if len(args) > 0 {
-		if environmentName != "" {
-			return "", fmt.Errorf("cannot specify environment name via both arguments and `-e`")
+	// We store the environment id in config, but most commands work with the environment name.
+	if environmentName == "" && workspace.Environment != "" {
+		id, err := resources.Parse(workspace.Environment)
+		if err != nil {
+			return "", err
 		}
-		environmentName = args[0]
+
+		environmentName = id.Name()
+	}
+
+	if environmentName == "" {
+		return "", fmt.Errorf("no environment name provided and no default environment set, " +
+			"either pass in an environment name or set a default environment by using `rad env switch`")
 	}
 
 	return environmentName, err
 }
 
-func RequireApplicationArgs(cmd *cobra.Command, args []string, env environments.Environment) (string, error) {
-	applicationName, err := cmd.Flags().GetString("application")
+func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	name, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return "", err
 	}
 
 	if len(args) > 0 {
-		if args[0] != "" {
-			if applicationName != "" {
-				return "", fmt.Errorf("cannot specify application name via both arguments and `-a`")
-			}
-			applicationName = args[0]
+		if name != "" {
+			return "", fmt.Errorf("cannot specify environment name via both arguments and `-e`")
 		}
+		name = args[0]
+	}
+
+	return name, err
+}
+
+func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
+	applicationName, err := ReadApplicationNameArgs(cmd, args)
+	if err != nil {
+		return "", err
 	}
 
 	if applicationName == "" {
-		applicationName = env.GetDefaultApplication()
-		if applicationName == "" {
-			return "", fmt.Errorf("no application name provided and no default application set, " +
-				"either pass in an application name or set a default application by using `rad application switch`")
-		}
+		applicationName = workspace.DefaultApplication
+
+	}
+
+	if applicationName == "" {
+		return "", fmt.Errorf("no application name provided and no default application set, " +
+			"either pass in an application name or set a default application by using `rad application switch`")
 	}
 
 	return applicationName, nil
 }
 
-func RequireApplication(cmd *cobra.Command, env environments.Environment) (string, error) {
-	return RequireApplicationArgs(cmd, []string{}, env)
+func ReadApplicationNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	name, err := cmd.Flags().GetString("application")
+	if err != nil {
+		return "", err
+	}
+
+	if len(args) > 0 {
+		if name != "" {
+			return "", fmt.Errorf("cannot specify application name via both arguments and `-a`")
+		}
+		name = args[0]
+	}
+
+	return name, err
+}
+
+func RequireApplication(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
+	return RequireApplicationArgs(cmd, []string{}, workspace)
 }
 
 func RequireResource(cmd *cobra.Command, args []string) (resourceType string, resourceName string, err error) {
@@ -154,6 +153,64 @@ func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource Azur
 
 func RequireOutput(cmd *cobra.Command) (string, error) {
 	return cmd.Flags().GetString("output")
+}
+
+// RequireWorkspace is used by commands that require an existing workspace either set as the default,
+// or specified using the 'workspace' flag.
+func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Workspace, error) {
+	name, err := cmd.Flags().GetString("workspace")
+	if err != nil {
+		return nil, err
+	}
+
+	section, err := ReadWorkspaceSection(config)
+	if err != nil {
+		return nil, err
+	}
+
+	ws, err := section.GetWorkspace(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return ws, nil
+}
+
+// RequireWorkspaceArgs is used by commands that require an existing workspace either set as the default,
+// or specified as a positional arg, or specified using the 'workspace' flag.
+func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string) (*workspaces.Workspace, error) {
+	name, err := ReadWorkspaceNameArgs(cmd, args)
+	if err != nil {
+		return nil, err
+	}
+
+	section, err := ReadWorkspaceSection(config)
+	if err != nil {
+		return nil, err
+	}
+
+	ws, err := section.GetWorkspace(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return ws, nil
+}
+
+func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	name, err := cmd.Flags().GetString("workspace")
+	if err != nil {
+		return "", err
+	}
+
+	if len(args) > 0 {
+		if name != "" {
+			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
+		}
+		name = args[0]
+	}
+
+	return name, err
 }
 
 func RequireRadYAML(cmd *cobra.Command) (string, error) {

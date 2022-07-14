@@ -56,7 +56,7 @@ func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Cont
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
@@ -117,7 +117,7 @@ func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, mon
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
@@ -169,7 +169,7 @@ func (client *MongoDatabasesClient) getCreateRequest(ctx context.Context, mongoD
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
@@ -227,7 +227,7 @@ func (client *MongoDatabasesClient) listByRootScopeCreateRequest(ctx context.Con
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	client.ep, urlPath))
 	if err != nil {
 		return nil, err
@@ -284,7 +284,7 @@ func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context
 	if client.rootScope == "" {
 		return nil, errors.New("parameter client.rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(client.rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}

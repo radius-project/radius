@@ -7,7 +7,8 @@ package cmd
 
 import (
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -26,17 +27,17 @@ func init() {
 
 func showApplication(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
+	applicationName, err := cli.RequireApplicationArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 
-	err = ShowApplication(cmd, args, env, applicationName, config)
+	err = ShowApplication(cmd, args, *workspace, applicationName, config)
 	if err != nil {
 		return err
 	}
@@ -44,8 +45,8 @@ func showApplication(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func ShowApplication(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
-	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+func ShowApplication(cmd *cobra.Command, args []string, workspace workspaces.Workspace, applicationName string, config *viper.Viper) error {
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), workspace)
 	if err != nil {
 		return err
 	}

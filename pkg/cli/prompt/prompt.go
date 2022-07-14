@@ -18,16 +18,39 @@ const (
 	unknown              = -1
 	Yes     BinaryAnswer = iota
 	No
+
+	InvalidResourceNameMessage = "names must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
 )
 
-// EmptyValidator is a validation func that always returns true.
-func EmptyValidator(string) (bool, error) {
-	return true, nil
+func MatchAll(validators ...func(string) (bool, string, error)) func(string) (bool, string, error) {
+	return func(input string) (bool, string, error) {
+		for _, validator := range validators {
+			result, message, err := validator(input)
+			if err != nil {
+				return false, "", err
+			} else if !result {
+				return false, message, nil
+			}
+		}
+
+		return true, "", nil
+	}
 }
 
-func UUIDv4Validator(uuid string) (bool, error) {
+// EmptyValidator is a validation func that always returns true.
+func EmptyValidator(string) (bool, string, error) {
+	return true, "", nil
+}
+
+// Largely matches https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
+func ResourceName(input string) (bool, string, error) {
+	r := regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]$")
+	return r.MatchString(input), InvalidResourceNameMessage, nil
+}
+
+func UUIDv4Validator(uuid string) (bool, string, error) {
 	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
-	return r.MatchString(uuid), nil
+	return r.MatchString(uuid), "input is not a valid uuid", nil
 }
 
 // Confirm prompts the user to confirm the answer to a yes/no question.
@@ -63,12 +86,12 @@ func Confirm(prompt string) (bool, error) {
 }
 
 // Text prompts the user to enter some freeform text.
-func Text(prompt string, validator func(string) (bool, error)) (string, error) {
+func Text(prompt string, validator func(string) (bool, string, error)) (string, error) {
 	return TextWithDefault(prompt, nil, validator)
 }
 
 // TextWithDefault prompts the user to enter some freeform text while offering a default value to set when the user doesn't enter any input (sends '\n')
-func TextWithDefault(prompt string, defaultValue *string, validator func(string) (bool, error)) (string, error) {
+func TextWithDefault(prompt string, defaultValue *string, validator func(string) (bool, string, error)) (string, error) {
 	input := ""
 	for {
 		fmt.Print(prompt)
@@ -81,11 +104,15 @@ func TextWithDefault(prompt string, defaultValue *string, validator func(string)
 			return "", errors.New("nothing entered")
 		}
 
-		valid, err := validator(input)
+		valid, message, err := validator(input)
 		if err != nil {
 			return "", err
 		} else if valid {
 			break
+		}
+
+		if message != "" {
+			fmt.Println(message)
 		}
 	}
 	return input, nil
@@ -123,4 +150,3 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 
 	return selected, nil
 }
-
