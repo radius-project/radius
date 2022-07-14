@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/telemetry/metrics"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -28,7 +28,7 @@ func MetricsRecorder(p *metrics.HTTPMetrics) func(h http.Handler) http.Handler {
 			h.ServeHTTP(wi, r)
 
 			// ignore errors as we don't want to fail a request because of parsing failures for resource type on a request
-			resourceType, _ := azresources.Parse(r.URL.Path)
+			resourceType, _ := resources.Parse(r.URL.Path)
 			elapsedTime := time.Since(requestStartTime).Microseconds()
 			labels := []attribute.KeyValue{attribute.String("path", r.URL.Path), attribute.String("method", r.Method), attribute.String("statusCode", strconv.Itoa(wi.statusCode)),
 				attribute.String("resourceType", resourceType.ID)}
