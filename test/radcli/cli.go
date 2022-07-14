@@ -188,6 +188,13 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) Version(ctx context.Context) (string, error) {
+	args := []string{
+		"version",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
 	description := "rad " + strings.Join(args, " ")
 	args = cli.appendStandardArgs(args)

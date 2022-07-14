@@ -24,8 +24,7 @@ const SemanticVersionRegex = `(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|
 
 // Run rad-bicep with the given args and return the stdout. The stderr
 // is not capture but instead redirected to that of the current process.
-func runBicep(args ...string) (map[string]interface{}, error) {
-
+func runBicepRaw(args ...string) ([]byte, error) {
 	if installed, _ := IsBicepInstalled(); !installed {
 		return nil, fmt.Errorf("rad-bicep not installed, run \"rad bicep download\" to install")
 	}
@@ -68,6 +67,15 @@ func runBicep(args ...string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("failed to read rad-bicep output: %w", err)
 	}
 
+	return bytes, nil
+}
+
+func runBicepJson(args ...string) (map[string]interface{}, error) {
+	bytes, err := runBicepRaw(args...)
+	if err != nil {
+		return nil, err
+	}
+
 	template := map[string]interface{}{}
 	err = json.Unmarshal(bytes, &template)
 	if err != nil {
@@ -81,26 +89,21 @@ func runBicep(args ...string) (map[string]interface{}, error) {
 func Build(filePath string) (map[string]interface{}, error) {
 	// rad-bicep is being told to output the template to stdout and we will capture it
 	// rad-bicep will output compilation errors to stderr which will go to the user's console
-	return runBicep("build", "--stdout", filePath)
+	return runBicepJson("build", "--stdout", filePath)
 }
 
 // Return a Bicep version.
 //
 // In case we can't determine a version, output "unknown (<failure reason>)".
 func Version() string {
-	output, err := runBicep("--version")
+	bytes, err := runBicepRaw("--version")
 	if err != nil {
 		return fmt.Sprintf("unknown (%s)", err)
 	}
 
-	bytes, err := json.Marshal(output)
-	if err != nil {
-		return fmt.Sprintf("could not marshal json (%s)", err)
-	}
-
 	version := regexp.MustCompile(SemanticVersionRegex).FindString(string(bytes))
 	if version == "" {
-		return fmt.Sprintf("unknown (failed to parse bicep version from %q)", output)
+		return fmt.Sprintf("unknown (failed to parse bicep version from %q)", string(bytes))
 	}
 	return version
 }
