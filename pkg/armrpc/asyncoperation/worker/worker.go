@@ -150,11 +150,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-<<<<<<< HEAD
-			if err = w.updateResourceAndOperationStatus(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID, v1.ProvisioningStateUpdating, nil); err != nil {
-=======
-			if err = w.updateResourceAndOperationStatus(ctx, ctrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
->>>>>>> main
+			if err = w.updateResourceAndOperationStatus(ctx, asyncCtrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
 				return
 			}
 
