@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string) ([]outputresource.OutputResource, error)
+type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
 
 var SupportedStateStoreKindValues = map[string]StateStoreFunc{
 	resourcekinds.DaprStateStoreAzureTableStorage: GetDaprStateStoreAzureStorage,
@@ -33,7 +33,7 @@ type Renderer struct {
 	StateStores map[string]StateStoreFunc
 }
 
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.DaprStateStore)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
@@ -55,7 +55,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rend
 		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
 	}
 
-	resoures, err := stateStoreFunc(*resource, applicationID.Name())
+	resoures, err := stateStoreFunc(*resource, applicationID.Name(), options.Namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
