@@ -49,6 +49,7 @@ func Test_CLI(t *testing.T) {
 					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 
@@ -92,6 +93,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 
