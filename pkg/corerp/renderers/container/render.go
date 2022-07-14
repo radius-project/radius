@@ -114,7 +114,6 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	appId, err := resources.Parse(resource.Properties.Application)
 	if err != nil {
-		fmt.Println("IN CONTAINER PARSE")
 		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w ", err)
 	}
 

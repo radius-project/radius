@@ -7,7 +7,6 @@ package deployment
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -426,10 +425,7 @@ func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, 
 		}
 	case strings.ToLower(httproute.ResourceType):
 		obj := &datamodel.HTTPRoute{}
-
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			b, _ := json.Marshal(res)
-			fmt.Println("STORED RES: " + string(b))
 
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)

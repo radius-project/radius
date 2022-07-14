@@ -7,7 +7,6 @@ package datamodel
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -66,7 +65,6 @@ func (h HTTPRoute) Save(ctx context.Context, do rp.DeploymentOutput, c store.Sto
 	// TODO: there has to be a better way in the future to set computed values.
 	if port, ok := do.ComputedValues["port"].(int32); ok {
 		h.Properties.Port = port
-		fmt.Println("HELLO port " + strconv.Itoa(int(port)))
 	}
 	if hostname, ok := do.ComputedValues["hostname"].(string); ok {
 		h.Properties.Hostname = hostname
@@ -77,9 +75,6 @@ func (h HTTPRoute) Save(ctx context.Context, do rp.DeploymentOutput, c store.Sto
 	if url, ok := do.ComputedValues["url"].(string); ok {
 		h.Properties.URL = url
 	}
-	
-	b, _ := json.Marshal(h)
-	fmt.Println("Saving HTTPROUTE resource " + string(b))
 
 	nr := &store.Object{
 		Metadata: store.Metadata{

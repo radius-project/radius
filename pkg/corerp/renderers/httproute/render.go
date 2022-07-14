@@ -7,7 +7,6 @@ package httproute
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -41,11 +40,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	outputResources := []outputresource.OutputResource{}
 	appId, err := resources.Parse(route.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("HTTPROUTE1 invalid application id: %w. id: %s", err, route.Properties.Application)
+		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
 	}
 	applicationName := appId.Name()
-
-	fmt.Println(applicationName)
 
 	if route.Properties.Port == 0 {
 		defaultPort := kubernetes.GetDefaultPort()
@@ -80,16 +77,14 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 }
 
 func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
-
 	appId, err := resources.Parse(route.Properties.Application)
-	b, err := json.Marshal((route))
-	fmt.Println(string(b))
+
 	if err != nil {
 		return outputresource.OutputResource{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
 	}
 	applicationName := appId.Name()
-	typeParts := strings.Split(ResourceType, "/")
 
+	typeParts := strings.Split(ResourceType, "/")
 	resourceTypeSuffix := typeParts[len(typeParts)-1]
 
 	service := &corev1.Service{

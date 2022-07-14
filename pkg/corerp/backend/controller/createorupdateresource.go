@@ -85,17 +85,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: "deployment data model conversion error"}), err
 	}
 
-	d, _ := json.Marshal(deploymentDataModel)
-	fmt.Println("DEPLOYMENT DATAMODEL " + string(d))
-
-	deploymentDataModel.ApplyDeploymentOutput(deploymentOutput)
-	a, _ := json.Marshal(deploymentOutput)
-	fmt.Println("DEPLOYMENT OUTPUT" + string(a))
-
-	b, _ := json.Marshal(deploymentDataModel)
-	fmt.Println("Saving resource " + string(b))
-
-	_, err = deploymentDataModel.Save(ctx, deploymentOutput, c.StorageClient(), request.ResourceID, obj.ETag)
+	_, err = deploymentDataModel.ApplyOutputResourcesAndSave(ctx, deploymentOutput, c.StorageClient(), request.ResourceID, obj.ETag)
 
 	return ctrl.Result{}, err
 }
