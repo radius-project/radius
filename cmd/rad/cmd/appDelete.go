@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -13,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // appDeleteCmd command to delete an application
@@ -58,7 +58,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err = DeleteApplication(cmd, args, *workspace, applicationName, config)
+	err = DeleteApplication(cmd.Context(), *workspace, applicationName)
 	if err != nil {
 		return err
 	}
@@ -66,16 +66,16 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func DeleteApplication(cmd *cobra.Command, args []string, workspace workspaces.Workspace, applicationName string, config *viper.Viper) error {
-	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), workspace)
+func DeleteApplication(ctx context.Context, workspace workspaces.Workspace, applicationName string) error {
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, workspace)
 	if err != nil {
 		return err
 	}
 
-	deleteResponse, err := client.DeleteApplication(cmd.Context(), applicationName)
+	_, err = client.DeleteApplication(ctx, applicationName)
 	if err != nil {
 		return err
 	}
 
-	return printOutput(cmd, deleteResponse, false)
+	return nil
 }
