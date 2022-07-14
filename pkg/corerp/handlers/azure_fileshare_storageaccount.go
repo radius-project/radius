@@ -79,9 +79,12 @@ func getStorageAccountByID(ctx context.Context, arm armauth.ArmConfig, accountID
 		return nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
 
-	sac := clients.NewAccountsClient(parsed.SubscriptionID, arm.Auth)
+	subscriptionId := parsed.FindScope(resources.SubscriptionsSegment)
+	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
 
-	account, err := sac.GetProperties(ctx, parsed.ResourceGroup, parsed.Types[0].Name, storage.AccountExpand(""))
+	sac := clients.NewAccountsClient(subscriptionId, arm.Auth)
+
+	account, err := sac.GetProperties(ctx, resourceGroup, parsed.TypeSegments()[0].Name, storage.AccountExpand(""))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Storage Account: %w", err)
 	}
