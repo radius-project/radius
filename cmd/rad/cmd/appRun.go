@@ -39,8 +39,9 @@ to affect deployment.
 
 rad app run
 `,
-	Args: cobra.MaximumNArgs(1),
-	RunE: runApplication,
+	Args:   cobra.MaximumNArgs(1),
+	RunE:   runApplication,
+	Hidden: true,
 }
 
 func init() {

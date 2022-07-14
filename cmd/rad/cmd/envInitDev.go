@@ -28,4 +28,5 @@ var envInitLocalCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return initSelfHosted(cmd, args, Dev)
 	},
+	Hidden: true,
 }
