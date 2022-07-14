@@ -30,12 +30,12 @@ func Test_CLI(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containerC",
+						Name:    "containera",
 						Type:    validation.ContainersResource,
 						AppName: "kubernetes-cli",
 					},
 					{
-						Name:    "containerD",
+						Name:    "containerb",
 						Type:    validation.ContainersResource,
 						AppName: "kubernetes-cli",
 					},
@@ -44,12 +44,11 @@ func Test_CLI(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "containerC"),
-						validation.NewK8sPodForResource(name, "containerD"),
+						validation.NewK8sPodForResource(name, "containera"),
+						validation.NewK8sPodForResource(name, "containerb"),
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	})
 
@@ -74,12 +73,12 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containerA",
+						Name:    "containerc",
 						Type:    validation.ContainersResource,
 						AppName: "kubernetes-cli-params",
 					},
 					{
-						Name:    "containerB",
+						Name:    "containerd",
 						Type:    validation.ContainersResource,
 						AppName: "kubernetes-cli-params",
 					},
@@ -88,12 +87,11 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "containerA"),
-						validation.NewK8sPodForResource(name, "containerB"),
+						validation.NewK8sPodForResource(name, "containerc"),
+						validation.NewK8sPodForResource(name, "containerd"),
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	})
 
