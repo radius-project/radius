@@ -14,10 +14,8 @@ import (
 )
 
 func Test_Gateway(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-resources-gateway.bicep"
-	name := "corerp-resources-gateway"
+	name := "corerp-resources-gateway-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -29,41 +27,40 @@ func Test_Gateway(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-gateway-gateway",
+						Name: "corerp-resources-gateway-app-gateway",
 						Type: validation.GatewaysResource,
 					},
 					{
-						Name: "corerp-resources-gateway-frontend-route",
+						Name: "corerp-resources-gateway-app-frontend-route",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "corerp-resources-gateway-frontend-container",
+						Name: "corerp-resources-gateway-app-frontend-container",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "corerp-resources-gateway-backend-route",
+						Name: "corerp-resources-gateway-app-backend-route",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "corerp-resources-gateway-backend-container",
+						Name: "corerp-resources-gateway-app-backend-container",
 						Type: validation.ContainersResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
-						validation.NewK8sPodForResource(name, "corerp-resources-gateway-frontend"),
-						validation.NewK8sPodForResource(name, "corerp-resources-gateway-backend"),
-						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-gateway-gateway"),
-						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-gateway-frontendroute"),
-						validation.NewK8sServiceForResource(name, "corerp-resources-gateway-frontendroute"),
-						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-gateway-backendroute"),
-						validation.NewK8sServiceForResource(name, "corerp-resources-gateway-backendroute"),
+					"default": {
+						validation.NewK8sPodForResource(name, "frontend-container"),
+						validation.NewK8sPodForResource(name, "backend-container"),
+						validation.NewK8sHTTPProxyForResource(name, "gateway"),
+						validation.NewK8sHTTPProxyForResource(name, "frontend-route"),
+						validation.NewK8sServiceForResource(name, "frontend-route"),
+						validation.NewK8sHTTPProxyForResource(name, "backend-route"),
+						validation.NewK8sServiceForResource(name, "backend-route"),
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	})
 

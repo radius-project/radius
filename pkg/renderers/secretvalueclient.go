@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 func NewSecretValueClient(arm armauth.ArmConfig) SecretValueClient {
@@ -26,8 +27,8 @@ type client struct {
 }
 
 func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error) {
-	arm, ok := identity.Data.(resourcemodel.ARMIdentity)
-	if !ok {
+	arm := &resourcemodel.ARMIdentity{}
+	if err := store.DecodeMap(identity.Data, arm); err != nil {
 		return nil, fmt.Errorf("unsupported resource type: %+v. Currently only ARM resources are supported", identity)
 	}
 

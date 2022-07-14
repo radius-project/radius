@@ -132,7 +132,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
-		outputResources = append(outputResources, r.makeSecret(ctx, *resource, applicationName, secretData))
+		outputResources = append(outputResources, r.makeSecret(ctx, *resource, applicationName, secretData, options))
 	}
 
 	// Connections might require a role assignment to grant access.
@@ -554,7 +554,7 @@ func (r Renderer) makeAzureKeyVaultPersistentVolume(volumeName string, keyvaultV
 	return volumeSpec, volumeMountSpec, nil
 }
 
-func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte) outputresource.OutputResource {
+func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) outputresource.OutputResource {
 	secret := corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -562,7 +562,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resource.Name,
-			Namespace: applicationName,
+			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
 		},
 		Type: corev1.SecretTypeOpaque,

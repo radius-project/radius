@@ -1,0 +1,40 @@
+import radius as radius
+
+@description('Specifies the location for resources.')
+param location string = 'global'
+
+@description('Specifies the environment for resources.')
+param environment string = 'test'
+
+@description('Specifies the image to be deployed.')
+param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+
+resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+  name: 'kubernetes-cli'
+  location: location
+  properties: {
+    environment: environment
+  }
+}
+
+resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containera'
+  location: location
+  properties: {
+    application: app.id
+    container: {
+      image: magpieimage
+    }
+  }
+}
+
+resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerb'
+  location: location
+  properties: {
+    application: app.id
+    container: {
+      image: magpieimage
+    }
+  }
+}
