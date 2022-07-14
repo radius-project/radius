@@ -557,6 +557,8 @@ func Test_Render_WithDependencies(t *testing.T) {
 	routeName := "routename"
 	routeDestination := makeRouteResourceID(routeName)
 	routePath := "/routea"
+	port := float64((httpRoute.ComputedValues["port"].Value).(int32))
+
 	route := datamodel.GatewayRoute{
 		Destination: routeDestination,
 		Path:        routePath,
@@ -572,7 +574,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 			ResourceID: makeResourceID(t, routeDestination),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
-				"port": (httpRoute.ComputedValues["port"].Value).(float64),
+				"port": port,
 			},
 		},
 	}
