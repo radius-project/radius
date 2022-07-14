@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -167,10 +168,12 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 		routeProperties := dependencies[route.Destination]
 		port := kubernetes.GetDefaultPort()
 		b, _ := json.Marshal(routeProperties)
-		fmt.Println("HELLO " + string(b))
-		routePort, ok := routeProperties.ComputedValues["port"].(int32)
+		fmt.Println("HELLO FROM GATEWAY" + string(b))
+		// HACK, IDK why this returns a float64 instead of int32
+		routePort, ok := routeProperties.ComputedValues["port"].(float64)
 		if ok {
-			port = routePort
+			fmt.Println("GATEWAY port " + strconv.Itoa(int(routePort)))
+			port = int32(routePort)
 		}
 
 		routeName, err := getRouteName(&route)
