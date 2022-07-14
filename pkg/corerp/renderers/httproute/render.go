@@ -44,11 +44,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 	applicationName := appId.Name()
 
-	if route.Properties == nil || route.Properties.Port == 0 {
+	if route.Properties.Port == 0 {
 		defaultPort := kubernetes.GetDefaultPort()
-		route.Properties = &datamodel.HTTPRouteProperties{
-			Port: defaultPort,
-		}
+		route.Properties.Port = defaultPort
 	}
 
 	computedValues := map[string]rp.ComputedValueReference{
@@ -79,14 +77,14 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 }
 
 func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
-
 	appId, err := resources.Parse(route.Properties.Application)
+
 	if err != nil {
 		return outputresource.OutputResource{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
 	}
 	applicationName := appId.Name()
-	typeParts := strings.Split(ResourceType, "/")
 
+	typeParts := strings.Split(ResourceType, "/")
 	resourceTypeSuffix := typeParts[len(typeParts)-1]
 
 	service := &corev1.Service{

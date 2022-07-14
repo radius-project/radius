@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -57,7 +58,7 @@ rad resource logs Container orders --application icecream-store --container dapr
 		if err != nil {
 			return err
 		}
-		if resourceType != schema.ContainerType {
+		if !strings.EqualFold(resourceType, schema.ContainerType) {
 			return fmt.Errorf("only %s is supported", schema.ContainerType)
 		}
 		follow, err := cmd.Flags().GetBool("follow")

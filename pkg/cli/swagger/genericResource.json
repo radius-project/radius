@@ -479,7 +479,8 @@
         "required": true,
         "type": "string",
         "description": "The azure resource type. For example RedisCache, RabbitMQ and other",
-        "minLength": 1
+        "minLength": 1,
+        "x-ms-skip-url-encoding": true
       }
     }
   }

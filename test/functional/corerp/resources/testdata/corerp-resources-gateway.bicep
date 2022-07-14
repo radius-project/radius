@@ -4,7 +4,7 @@ import radius as radius
 param location string = 'local'
 
 @description('Specifies the environment for resources.')
-param environment string = 'corerp-resources-gateway'
+param environment string
 
 @description('Specifies the port for the container resource.')
 param port int = 3000
@@ -12,10 +12,8 @@ param port int = 3000
 @description('Specifies the image for the container resource.')
 param image string = 'radiusdev.azurecr.io/magpiego:latest'
 
-var appPrefix = 'corerp-resources-gateway'
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-app'
+  name: 'corerp-resources-gateway-app'
   location: location
   properties: {
     environment: environment
@@ -23,7 +21,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-gateway'
+  name: 'gateway'
   location: location
   properties: {
     application: app.id
@@ -48,7 +46,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
 }
 
 resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-frontend-route'
+  name: 'frontend-route'
   location: location
   properties: {
     application: app.id
@@ -57,7 +55,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-frontend-container'
+  name: 'frontend-container'
   location: location
   properties: {
     application: app.id
@@ -84,7 +82,7 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
 }
 
 resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-backend-route'
+  name: 'backend-route'
   location: location
   properties: {
     application: app.id
@@ -92,7 +90,7 @@ resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' =
 }
 
 resource backendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-backend-container'
+  name: 'backend-container'
   location: location
   properties: {
     application: app.id

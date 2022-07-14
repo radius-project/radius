@@ -90,6 +90,5 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	if err != nil {
 		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
 	}
-
 	return ctrl.Result{}, err
 }

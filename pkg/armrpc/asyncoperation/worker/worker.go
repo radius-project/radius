@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -149,7 +150,11 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
+<<<<<<< HEAD
 			if err = w.updateResourceAndOperationStatus(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID, v1.ProvisioningStateUpdating, nil); err != nil {
+=======
+			if err = w.updateResourceAndOperationStatus(ctx, ctrl.StorageClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
+>>>>>>> main
 				return
 			}
 
@@ -243,8 +248,9 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 		return
 	}
 
-	err := w.updateResourceAndOperationStatus(ctx, sc, req.ResourceID, req.OperationID, result.ProvisioningState(), result.Error)
+	err := w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error)
 	if err != nil {
+		logger.Error(err, "failed to update resource and/or operation status")
 		return
 	}
 
@@ -256,24 +262,28 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	}
 }
 
-func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID, state v1.ProvisioningState, opErr *armerrors.ErrorDetails) error {
+func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *armerrors.ErrorDetails) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	rID, err := resources.Parse(resourceID)
+	rID, err := resources.Parse(req.ResourceID)
 	if err != nil {
 		logger.Error(err, "failed to parse resource ID")
 		return err
 	}
 
-	if err = updateResourceState(ctx, sc, rID.String(), state); err != nil {
+	opType, _ := v1.ParseOperationType(req.OperationType)
+
+	err = updateResourceState(ctx, sc, rID.String(), state)
+	if err != nil && !(opType.Method == http.MethodDelete && errors.Is(&store.ErrNotFound{}, err)) {
 		logger.Error(err, "failed to update the provisioningState in resource.")
 		return err
 	}
 
+	// Otherwise we update the operationStatus to the result.
 	now := time.Now().UTC()
-	err = w.sm.Update(ctx, rID, operationID, state, &now, opErr)
+	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr)
 	if err != nil {
-		logger.Error(err, "failed to update operationstatus", "OperationID", operationID.String())
+		logger.Error(err, "failed to update operationstatus", "OperationID", req.OperationID.String())
 		return err
 	}
 

@@ -8,6 +8,7 @@ package cmd
 import (
 	"fmt"
 	"os/signal"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -42,7 +43,7 @@ rad resource expose --application icecream-store Container orders --port 5000 --
 		if err != nil {
 			return err
 		}
-		if resourceType != schema.ContainerType {
+		if !strings.EqualFold(resourceType, schema.ContainerType) {
 			return fmt.Errorf("only %s is supported", schema.ContainerType)
 		}
 
