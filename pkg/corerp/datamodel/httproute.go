@@ -25,7 +25,7 @@ type HTTPRoute struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (h HTTPRoute) ResourceTypeName() string {
+func (h *HTTPRoute) ResourceTypeName() string {
 	return "Applications.Core/httpRoutes"
 }
 
@@ -34,6 +34,19 @@ func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	h.Properties.Status.OutputResources = do.DeployedOutputResources
 	h.InternalMetadata.ComputedValues = do.ComputedValues
 	h.InternalMetadata.SecretValues = do.SecretValues
+
+	if port, ok := do.ComputedValues["port"].(int32); ok {
+		h.Properties.Port = port
+	}
+	if hostname, ok := do.ComputedValues["hostname"].(string); ok {
+		h.Properties.Hostname = hostname
+	}
+	if scheme, ok := do.ComputedValues["scheme"].(string); ok {
+		h.Properties.Scheme = scheme
+	}
+	if url, ok := do.ComputedValues["url"].(string); ok {
+		h.Properties.URL = url
+	}
 }
 
 // OutputResources returns the output resources array.

@@ -400,7 +400,7 @@ func Test_Render_Connections(t *testing.T) {
 	}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -455,7 +455,7 @@ func Test_Render_Connections(t *testing.T) {
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		require.Equal(t, resourceName, secret.Name)
-		require.Equal(t, applicationName, secret.Namespace)
+		require.Equal(t, "default", secret.Namespace)
 		require.Equal(t, labels, secret.Labels)
 		require.Empty(t, secret.Annotations)
 

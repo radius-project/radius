@@ -25,7 +25,7 @@ type Gateway struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (g Gateway) ResourceTypeName() string {
+func (g *Gateway) ResourceTypeName() string {
 	return "Applications.Core/gateways"
 }
 
@@ -34,6 +34,7 @@ func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.InternalMetadata.ComputedValues = do.ComputedValues
 	g.InternalMetadata.SecretValues = do.SecretValues
+	// TODO gateway should have a url output property.
 }
 
 // OutputResources returns the output resources array.
