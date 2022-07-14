@@ -572,7 +572,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 			ResourceID: makeResourceID(t, routeDestination),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
-				"port": (httpRoute.ComputedValues["port"].Value).(int32),
+				"port": (httpRoute.ComputedValues["port"].Value).(float64),
 			},
 		},
 	}

@@ -166,7 +166,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 		routeProperties := dependencies[route.Destination]
 		port := kubernetes.GetDefaultPort()
 
-		// HACK, IDK why this returns a float64 instead of int32
+		// HACK, IDK why this returns a float64 instead of int32 when coming from the corerp
 		routePort, ok := routeProperties.ComputedValues["port"].(float64)
 		if ok {
 			port = int32(routePort)
