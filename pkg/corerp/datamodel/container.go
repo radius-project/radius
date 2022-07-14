@@ -25,7 +25,7 @@ type ContainerResource struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (c ContainerResource) ResourceTypeName() string {
+func (c *ContainerResource) ResourceTypeName() string {
 	return "Applications.Core/containers"
 }
 
