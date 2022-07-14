@@ -341,7 +341,7 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 	}
 
 	env := &coreDatamodel.Environment{}
-	res, err = sc.Get(ctx, envId.String())
+	res, err = sc.Get(ctx, environmentID)
 	if err != nil {
 		return
 	}
