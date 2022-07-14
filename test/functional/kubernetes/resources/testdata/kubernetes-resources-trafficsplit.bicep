@@ -20,15 +20,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
     }
   }
 
-  // resource curl 'Container@v1alpha3' = {
-  //   name:'curl'
-  //   properties: {
-  //     container: {
-  //       image: 'tommyniu.azurecr.io/curl:latest'
-  //     }
-  //   }
-  // }
-
   resource httpbinv2 'Container@v1alpha3' = {
     name: 'httpbinv2'
 
@@ -60,7 +51,7 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource httpbin 'HttpRoute@v1alpha3' = {
     name:'httpbin'
     properties: {
-      // targetport:14001
+      targetport:14001
       routes: [
         {
           destination: httpbinv1route.id
