@@ -33,7 +33,7 @@
           "description": "The port number for the route. Defaults to 80. Readonly.",
           "type": "integer"
         },
-        "targetport": {
+        "containerPort": {
           "description": "Targetport of the root service. Used for TrafficSplit only",
           "type":"integer"
         },

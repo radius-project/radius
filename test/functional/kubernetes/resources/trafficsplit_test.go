@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"time"
 
 	"strconv"
 	"strings"
@@ -24,25 +25,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	backendTimeout = 3 * time.Minute
+)
+
 func Test_TrafficSplit(t *testing.T) {
 	template := "testdata/kubernetes-resources-trafficsplit.bicep"
-	_ = template
 	application := "trafficsplit"
-	_ = application
-	// retries := 3
 
-	// for i := 1; i <= retries; i++ {
-	// 	t.Logf("Setting up trafficsplit (attempt %d/%d)", i, retries)
-	// 	err := testTrafficSplitWithCurl(t) //(t, ctx, at, hostname, localHostname, localPort, remotePort, retries)
-	// 	if err != nil {
-	// 		t.Logf("Failed to test TrafficSplit via curl with error: %s", err)
-	// 	} else {
-	// 		// Successfully ran tests
-	// 		return
-	// 	}
-	// }
-
-	// require.Fail(t, fmt.Sprintf("Curl tests failed after %d retries", retries))
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -74,7 +64,7 @@ func Test_TrafficSplit(t *testing.T) {
 				retries := 3
 
 				for i := 1; i <= retries; i++ {
-					t.Logf("Setting up trafficsplit (attempt %d/%d)", i, retries)
+					t.Logf("Attempting to connect with backends (attempt %d/%d)", i, retries)
 					err := testTrafficSplitWithCurl(t)
 					if err != nil {
 						t.Logf("Failed to test TrafficSplit via curl with error: %s", err)
@@ -94,8 +84,7 @@ func Test_TrafficSplit(t *testing.T) {
 func testTrafficSplitWithCurl(t *testing.T) error {
 	var v1Received, v2Received bool
 	t.Logf("Invoking the curl pod")
-	for i := 0; i < 10; i++ {
-		t.Logf("Curl call #%d", i)
+	for start := time.Now(); time.Since(start) < backendTimeout; {
 		podName, statusCode, err := getCurlResult(t)
 		if err != nil {
 			return err
@@ -103,7 +92,10 @@ func testTrafficSplitWithCurl(t *testing.T) error {
 		if *podName == "httpbin-v1" && *statusCode == 200 {
 			v1Received = true
 		} else if *podName == "httpbin-v2" && *statusCode == 200 {
-			v2Received = false
+			v2Received = true
+		}
+		if v1Received && v2Received {
+			break
 		}
 	}
 	if !v1Received && !v2Received {
