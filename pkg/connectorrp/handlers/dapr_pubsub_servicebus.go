@@ -165,7 +165,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 
 	sbc := clients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	resourceGroup := parsed.FindScope("resourceGroups")
+	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
 	types := parsed.TypeSegments()
 
 	// Check if a service bus namespace exists in the resource group for this application
@@ -185,7 +185,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetTopicByID(ctx context.Context
 
 	tc := clients.NewTopicsClient(handler.arm.SubscriptionID, handler.arm.Auth)
 
-	resourceGroup := parsed.FindScope("resourceGroups")
+	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
 
 	topic, err := tc.Get(ctx, resourceGroup, parsed.TypeSegments()[0].Name, parsed.TypeSegments()[1].Name)
 	if err != nil {
