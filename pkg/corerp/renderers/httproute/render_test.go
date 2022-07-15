@@ -61,10 +61,10 @@ func Test_Render_WithPort(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedValues := map[string]rp.ComputedValueReference{
-		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
-		"port":   {Value: port},
-		"scheme": {Value: "http"},
-		"url":    {Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(applicationName, resourceName), port)},
+		"hostname": {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
+		"port":     {Value: port},
+		"scheme":   {Value: "http"},
+		"url":      {Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(applicationName, resourceName), port)},
 	}
 	require.Equal(t, expectedValues, output.ComputedValues)
 
@@ -106,10 +106,10 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedValues := map[string]rp.ComputedValueReference{
-		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
-		"port":   {Value: defaultPort},
-		"scheme": {Value: "http"},
-		"url":    {Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(applicationName, resourceName), defaultPort)},
+		"hostname": {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
+		"port":     {Value: defaultPort},
+		"scheme":   {Value: "http"},
+		"url":      {Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(applicationName, resourceName), defaultPort)},
 	}
 	require.Equal(t, expectedValues, output.ComputedValues)
 
@@ -152,10 +152,10 @@ func Test_Render_WithNameSpace(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 
 	expectedValues := map[string]rp.ComputedValueReference{
-		"host":   {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
-		"port":   {Value: defaultPort},
-		"scheme": {Value: "http"},
-		"url":    {Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(applicationName, resourceName), defaultPort)},
+		"hostname": {Value: kubernetes.MakeResourceName(applicationName, resourceName)},
+		"port":     {Value: defaultPort},
+		"scheme":   {Value: "http"},
+		"url":      {Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(applicationName, resourceName), defaultPort)},
 	}
 	require.Equal(t, expectedValues, output.ComputedValues)
 
