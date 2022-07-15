@@ -35,24 +35,38 @@ var (
 )
 
 const (
-	// MaxOperationConcurrency is the maximum concurrency to process async request operation.
-	// TOOD: make this concurrency configurable.
-	MaxOperationConcurrency = 3
+	// defaultMaxOperationConcurrency is the maximum concurrency to process async request operation.
+	defaultMaxOperationConcurrency = 3
 
 	// MaxDequeueCount is the maximum dequeue count which will be retried.
-	MaxDequeueCount = 3
+	defaultMaxDequeueCount = 3
 
 	// messageExtendMargin is the margin duration before extending message lock.
-	messageExtendMargin = time.Duration(30) * time.Second
+	defaultMessageExtendMargin = time.Duration(30) * time.Second
 
 	// minMessageLockDuration is the minimum duration of message lock duration.
-	minMessageLockDuration = time.Duration(5) * time.Second
+	defaultMinMessageLockDuration = time.Duration(5) * time.Second
 
 	// deduplicationDuration is the duration for the deduplication detection.
-	deduplicationDuration = time.Duration(30) * time.Second
+	defaultDeduplicationDuration = time.Duration(30) * time.Second
 )
 
+// Options configures AsyncRequestProcessorWorker
 type Options struct {
+	// MaxOperationConcurrency is the maximum concurrency to process async request operation.
+	MaxOperationConcurrency int
+
+	// MaxDequeueCount is the maximum dequeue count which will be retried.
+	MaxDequeueCount int
+
+	// MessageExtendMargin is the margin duration before extending message lock.
+	MessageExtendMargin time.Duration
+
+	// MinMessageLockDuration is the minimum duration of message lock duration.
+	MinMessageLockDuration time.Duration
+
+	// DeduplicationDuration is the duration for the deduplication detection.
+	DeduplicationDuration time.Duration
 }
 
 // AsyncRequestProcessWorker is the worker to process async requests.
@@ -71,13 +85,29 @@ func New(
 	sm manager.StatusManager,
 	qu queue.Client,
 	ctrlRegistry *ControllerRegistry) *AsyncRequestProcessWorker {
+	if options.MaxDequeueCount == 0 {
+		options.MaxDequeueCount = defaultMaxDequeueCount
+	}
+	if options.MessageExtendMargin == time.Duration(0) {
+		options.MessageExtendMargin = defaultMessageExtendMargin
+	}
+	if options.MinMessageLockDuration == time.Duration(0) {
+		options.MinMessageLockDuration = defaultMinMessageLockDuration
+	}
+	if options.DeduplicationDuration == time.Duration(0) {
+		options.DeduplicationDuration = defaultDeduplicationDuration
+	}
+	if options.MaxOperationConcurrency == 0 {
+		options.MaxOperationConcurrency = defaultMaxOperationConcurrency
+	}
+
 	return &AsyncRequestProcessWorker{
 		options:      options,
 		sm:           sm,
 		registry:     ctrlRegistry,
 		requestQueue: qu,
 
-		sem: semaphore.NewWeighted(MaxOperationConcurrency),
+		sem: semaphore.NewWeighted(int64(options.MaxOperationConcurrency)),
 	}
 }
 
@@ -124,15 +154,20 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			asyncCtrl := w.registry.Get(opType)
 
 			if asyncCtrl == nil {
-				errMsg := "Unknown operation: " + opType.String()
-				opLogger.V(radlogger.Error).Info(errMsg)
-				w.completeOperation(ctx, msgreq, ctrl.NewCanceledResult(errMsg), asyncCtrl.StorageClient())
+				opLogger.V(radlogger.Error).Info("Unknown operation: " + opType.String())
+				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
+					opLogger.Error(err, "failed to finish the message")
+				}
 				return
 			}
-			if msgreq.DequeueCount >= MaxDequeueCount {
+			if msgreq.DequeueCount >= w.options.MaxDequeueCount {
 				errMsg := fmt.Sprintf("Exceed max dequeue count: %d", msgreq.DequeueCount)
 				opLogger.V(radlogger.Error).Info(errMsg)
-				w.completeOperation(ctx, msgreq, ctrl.NewCanceledResult(errMsg), asyncCtrl.StorageClient())
+				failed := ctrl.NewFailedResult(armerrors.ErrorDetails{
+					Code:    armerrors.Internal,
+					Message: errMsg,
+				})
+				w.completeOperation(ctx, msgreq, failed, asyncCtrl.StorageClient())
 				return
 			}
 
@@ -142,7 +177,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			dup, err := w.isDuplicated(ctx, asyncCtrl.StorageClient(), op.ResourceID, op.OperationID)
 			if err != nil {
-				logger.Error(err, "failed to check potential deduplication.")
+				opLogger.Error(err, "failed to check potential deduplication.")
 				return
 			}
 			if dup {
@@ -187,6 +222,12 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err := recover(); err != nil {
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
 				logger.V(radlogger.Fatal).Info(msg)
+
+				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
+				// If this happens, the message is requeued after message lock time (5 mins).
+				// After message lock is expired, message will be reprocessed 'w.options.MaxDequeueCount' times and
+				// then complete the message and change provisioningState to 'Failed'. Meanwhile, PUT request will
+				// be blocked.
 			}
 		}(opDone)
 
@@ -205,7 +246,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	}()
 
 	operationTimeoutAfter := time.After(asyncReq.Timeout())
-	messageExtendAfter := getMessageExtendDuration(message.NextVisibleAt)
+	messageExtendAfter := w.getMessageExtendDuration(message.NextVisibleAt)
 
 	for {
 		select {
@@ -215,7 +256,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			} else {
 				logger.Info("Extended message lock duration.", "NextVisibleTime", message.NextVisibleAt.UTC().String())
 			}
-			messageExtendAfter = getMessageExtendDuration(message.NextVisibleAt)
+			messageExtendAfter = w.getMessageExtendDuration(message.NextVisibleAt)
 
 		case <-operationTimeoutAfter:
 			logger.Info("Cancelling async operation.")
@@ -298,17 +339,17 @@ func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.S
 	}
 
 	if status.Status == v1.ProvisioningStateUpdating && status.LastUpdatedTime.IsZero() &&
-		status.LastUpdatedTime.Add(deduplicationDuration).After(time.Now().UTC()) {
+		status.LastUpdatedTime.Add(w.options.DeduplicationDuration).After(time.Now().UTC()) {
 		return true, nil
 	}
 
 	return false, nil
 }
 
-func getMessageExtendDuration(visibleAt time.Time) time.Duration {
-	d := time.Until(visibleAt.Add(-messageExtendMargin))
+func (w *AsyncRequestProcessWorker) getMessageExtendDuration(visibleAt time.Time) time.Duration {
+	d := time.Until(visibleAt.Add(-w.options.MessageExtendMargin))
 	if d <= 0 {
-		return minMessageLockDuration
+		return w.options.MinMessageLockDuration
 	}
 	return d
 }
