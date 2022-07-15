@@ -54,7 +54,7 @@ func deleteWorkspace(cmd *cobra.Command, args []string) error {
 	}
 
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
-		delete(section.Items, workspace.Name)
+		delete(section.Items, strings.ToLower(workspace.Name))
 		if strings.EqualFold(section.Default, workspace.Name) {
 			section.Default = ""
 		}

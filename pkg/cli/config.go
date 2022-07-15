@@ -254,6 +254,20 @@ func EditWorkspaces(ctx context.Context, config *viper.Viper, editor func(sectio
 			return err
 		}
 
+		// We need to check the workspaces for case-invariance. Viper stores everything as lowercase but it's
+		// possible for us to introduce bugs by creating duplicates. This section is only here so that we can easily identify a bug
+		// in the code that's calling EditWorkspaces.
+		names := map[string]bool{}
+		for name := range section.Items {
+			name = strings.ToLower(name)
+			_, ok := names[name]
+			if ok {
+				return fmt.Errorf("usage of name %q with different casings found. This is a bug in rad, the caller needs to lowercase the name before storage", name)
+			}
+
+			names[name] = true
+		}
+
 		UpdateWorkspaceSection(v, section)
 		return nil
 	})

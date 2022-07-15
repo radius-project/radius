@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/spf13/cobra"
@@ -194,7 +195,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			return err
 		}
 	}
-	if foundExisting && !force && workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName}) {
+	if foundExisting && !force && !workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName}) {
 		return fmt.Errorf("the workspace %q already exists. Specify '--force' to overwrite", workspaceName)
 	}
 
@@ -240,7 +241,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 		err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
 			section.Default = workspaceName
-			section.Items[workspaceName] = *workspace
+			section.Items[strings.ToLower(workspaceName)] = *workspace
 			return nil
 		})
 		if err != nil {
@@ -271,9 +272,9 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
-		ws := section.Items[workspaceName]
+		ws := section.Items[strings.ToLower(workspaceName)]
 		ws.Environment = environmentID
-		section.Items[workspaceName] = ws
+		section.Items[strings.ToLower(workspaceName)] = ws
 		return nil
 	})
 	if err != nil {
