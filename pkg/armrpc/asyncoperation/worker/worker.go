@@ -154,14 +154,14 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			asyncCtrl := w.registry.Get(opType)
 
 			if asyncCtrl == nil {
-				opLogger.V(radlogger.Error).Info("The current message is the unknown operation: " + opType.String())
+				opLogger.V(radlogger.Error).Info("cannot process the unknown operation: " + opType.String())
 				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
 					opLogger.Error(err, "failed to finish the message")
 				}
 				return
 			}
 			if msgreq.DequeueCount >= w.options.MaxDequeueCount {
-				errMsg := fmt.Sprintf("Exceed max dequeue count: %d", msgreq.DequeueCount)
+				errMsg := fmt.Sprintf("exceeded max dequeue count: %d", msgreq.DequeueCount)
 				opLogger.V(radlogger.Error).Info(errMsg)
 				failed := ctrl.NewFailedResult(armerrors.ErrorDetails{
 					Code:    armerrors.Internal,
