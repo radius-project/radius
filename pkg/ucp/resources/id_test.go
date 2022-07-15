@@ -7,6 +7,7 @@ package resources
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -497,6 +498,14 @@ func Test_Truncate_ReturnsSelfForTopLevelScope_UCP(t *testing.T) {
 	require.Equal(t, "/planes", truncated.id)
 }
 
+func Test_Truncate_WithCustomAction(t *testing.T) {
+	id, err := Parse("/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0", truncated.id)
+}
+
 func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
 	idStr := "/planes/radius/local/"
 	id, err := Parse(idStr)
@@ -710,6 +719,112 @@ func Test_ValidateResourceType_Invalid(t *testing.T) {
 		t.Run(fmt.Sprintf("%d: %v", i, v.testID.id), func(t *testing.T) {
 			err := v.testID.ValidateResourceType(v.testKnownType)
 			require.Errorf(t, err, "resource '%s' does not match the expected resource type %s", v.testID.id)
+		})
+	}
+}
+
+func Test_ParseByMethod(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		id       string
+		method   string
+		err      bool
+		expected string
+	}{
+		{
+			desc:     "ucp-post-with-custom-action",
+			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets",
+			method:   http.MethodPost,
+			err:      false,
+			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+		{
+			desc:     "ucp-get",
+			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method:   http.MethodGet,
+			err:      false,
+			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+		{
+			desc:     "ucp-list",
+			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases",
+			method:   http.MethodGet,
+			err:      false,
+			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:     "ucp-put",
+			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method:   http.MethodPut,
+			err:      false,
+			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+		{
+			desc:     "ucp-patch",
+			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method:   http.MethodPatch,
+			err:      false,
+			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+		{
+			desc:     "ucp-delete",
+			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method:   http.MethodDelete,
+			err:      false,
+			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		}, {
+			desc:     "arm-post-with-custom-action",
+			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets",
+			method:   http.MethodPost,
+			err:      false,
+			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+		{
+			desc:     "arm-get",
+			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method:   http.MethodGet,
+			err:      false,
+			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+		{
+			desc:     "arm-list",
+			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases",
+			method:   http.MethodGet,
+			err:      false,
+			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:     "arm-put",
+			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method:   http.MethodPut,
+			err:      false,
+			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+		{
+			desc:     "arm-patch",
+			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method:   http.MethodPatch,
+			err:      false,
+			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+		{
+			desc:     "arm-delete",
+			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method:   http.MethodDelete,
+			err:      false,
+			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			parsedID, err := ParseByMethod(tt.id, tt.method)
+			if tt.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, parsedID.String())
+			}
 		})
 	}
 }
