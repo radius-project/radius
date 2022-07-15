@@ -159,3 +159,9 @@ stages:
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
       condition: always()
+    - script: |
+        az group delete \
+          --name $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+      condition: always()
+      displayName: Delete the resource group
