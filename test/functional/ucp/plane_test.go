@@ -78,10 +78,11 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 
 	if !existing {
 		require.Equal(t, http.StatusCreated, res.StatusCode)
+	        t.Logf("Plane: %s created successfully", url)
 	} else {
 		require.Equal(t, http.StatusOK, res.StatusCode)
+		t.Logf("Plane: %s updated successfully", url)
 	}
-	t.Logf("Plane: %s created successfully", url)
 }
 
 func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Plane, int) {
