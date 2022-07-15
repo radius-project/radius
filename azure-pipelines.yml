@@ -129,7 +129,7 @@ stages:
           --appcore-tag ${{ variables.REL_VERSION }}  --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd \
           --ucp-tag ${{ variables.REL_VERSION }} \
           --provider-azure \
-          --provider-azure-resource-group ${{  variables.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
+          --provider-azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
           --provider-azure-client-id $INTEGRATION_TEST_SP_APP_ID \
           --provider-azure-client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --provider-azure-tenant-id $INTEGRATION_TEST_TENANT_ID \
