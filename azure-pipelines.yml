@@ -108,6 +108,18 @@ stages:
           --tenant $(INTEGRATION_TEST_TENANT_ID)
       displayName: az CLI login
     - script: |
+        echo "##vso[task.setvariable variable=INTEGRATION_TEST_RESOURCE_GROUP_NAME]radius-$(date +%s%N)"
+      displayName: Define a resource group name
+    - script: az account set --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+      displayName: az account set 
+    - script: |
+        az group create \
+          --location westus \
+          --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME) \
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}  
+        while [ $(az group exists --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)) = false ]; do sleep 2; done
+      displayName: Create the resource group
+    - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
         dist/rad env init kubernetes \
