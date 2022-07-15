@@ -101,6 +101,20 @@ func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context
 	return results, nil
 }
 
+func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]v20220315privatepreview.ApplicationResource, error) {
+	results := []v20220315privatepreview.ApplicationResource{}
+	applicationsList,err := amc.ListApplications(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, application := range applicationsList {
+		if envName == *application.Properties.Environment {
+			results = append(results, application)
+		}
+	}
+	return results, nil
+}
+
 func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationResource, error) {
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	getResponse, err := client.Get(ctx, applicationName, &corerp.ApplicationsGetOptions{})
@@ -119,7 +133,7 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	}
 
 	for _, resource := range resourcesWithApplication {
-		//if successful move onto next resource ignoring the response unless there is an
+		//if successful move onto next resource ignoring the response unless there is an error
 		_, err := amc.DeleteResource(ctx, *resource.Type, *resource.Name)
 		if err != nil {
 			return v20220315privatepreview.ApplicationsDeleteResponse{}, err
@@ -181,7 +195,7 @@ func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, e
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
-	applicationsWithEnv,err := amc.ListApplications(ctx)
+	applicationsWithEnv,err := amc.ListApplicationsByEnv(ctx, envName)
 	if err != nil {
 		return err
 	}
