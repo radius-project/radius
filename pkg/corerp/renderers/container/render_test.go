@@ -324,7 +324,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 				"web": {
 					ContainerPort: 5000,
 					Protocol:      datamodel.ProtocolTCP,
-					Provides:      makeResourceID(t, "HttpRoute", "A").String(),
+					Provides:      makeResourceID(t, "httpRoutes", "A").String(),
 				},
 			},
 		},
@@ -340,7 +340,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 
 	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
-	podLabels["radius.dev/route-http-a"] = "true"
+	podLabels["radius.dev/route-httproutes-a"] = "true"
 
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, _ := kubernetes.FindDeployment(output.Resources)
@@ -359,7 +359,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		routeID := makeResourceID(t, "HttpRoute", "A")
 
 		expected := v1.ContainerPort{
-			Name:          kubernetes.GetShortenedTargetPortName(applicationName + "HttpRoute" + routeID.Name()),
+			Name:          kubernetes.GetShortenedTargetPortName(applicationName + "httpRoutes" + routeID.Name()),
 			ContainerPort: 5000,
 			Protocol:      v1.ProtocolTCP,
 		}
