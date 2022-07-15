@@ -22,16 +22,19 @@ func Test_RabbitMQConnector(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "connectorrp-resources-rabbitmq",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "rabbitmq",
-					Type: validation.RabbitMQResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "connectorrp-resources-rabbitmq",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "rabbitmq",
+						Type: validation.RabbitMQMessageQueuesResource,
+					},
 				},
 			},
+			SkipObjectValidation: true,
 		},
 	})
 

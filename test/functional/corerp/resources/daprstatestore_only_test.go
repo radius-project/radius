@@ -22,14 +22,16 @@ func Test_DaprStateStoreConnector(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "connectorrp-resources-dapr-state-store",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "statestore",
-					Type: validation.DaprStateStoresResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "connectorrp-resources-dapr-state-store",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "statestore-generic",
+						Type: validation.DaprStateStoreResource,
+					},
 				},
 			},
 		},

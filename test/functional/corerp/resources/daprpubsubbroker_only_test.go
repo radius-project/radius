@@ -22,14 +22,16 @@ func Test_DaprPubSubBrokeConnector(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "connectorrp-resources-dapr-pubsub-broker",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "pubsubbbroker",
-					Type: validation.DaprPubSubBrokerResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "connectorrp-resources-dapr-pubsub-broker",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "pubsub",
+						Type: validation.DaprPubSubResource,
+					},
 				},
 			},
 		},

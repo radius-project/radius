@@ -14,28 +14,21 @@ import (
 )
 
 func Test_ExtenderConnector(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
-
 	template := "testdata/connectorrp-resources-extender.bicep"
 	name := "connectorrp-resources-extender"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "connectorrp-resources-extender",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "twilio",
-					Type: validation.ExtenderResource,
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					name: {
-						validation.NewK8sPodForResource(name, "myapp"),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "connectorrp-resources-extender",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "twilio",
+						Type: validation.HttpRoutesResource,
 					},
 				},
 			},

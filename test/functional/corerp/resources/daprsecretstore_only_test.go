@@ -22,14 +22,16 @@ func Test_DaprSecretStoreConnector(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			Resources: []validation.Resource{
-				{
-					Name: "connectorrp-resources-dapr-secret-store",
-					Type: validation.ApplicationsResource,
-				},
-				{
-					Name: "secretstore",
-					Type: validation.DaprSecretStoresResource,
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "connectorrp-resources-dapr-secret-store",
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "secretstore-generic",
+						Type: validation.DaprSecretStoreResource,
+					},
 				},
 			},
 		},

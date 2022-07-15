@@ -13,11 +13,11 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprHttpRouteConnector(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+func Test_Extender(t *testing.T) {
+	t.Skip()
 
-	template := "testdata/connectorrp-resources-dapr-http-route.bicep"
-	name := "connectorrp-resources-dapr-http-route"
+	template := "testdata/corerp-resources-extender.bicep"
+	name := "corerp-resources-extender"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -25,15 +25,27 @@ func Test_DaprHttpRouteConnector(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "connectorrp-resources-dapr-http-route",
+						Name: "corerp-resources-extender",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "httproute",
-						Type: validation.DaprInvokeHttpRouteResource,
+						Name: "myapp",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "twilio",
+						Type: validation.HttpRoutesResource,
 					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "myapp"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 
