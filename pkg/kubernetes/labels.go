@@ -6,9 +6,7 @@
 package kubernetes
 
 import (
-	"encoding/hex"
 	"fmt"
-	"hash/fnv"
 	"strings"
 )
 
@@ -52,7 +50,7 @@ func MakeDescriptiveLabels(application string, resource string) map[string]strin
 	return map[string]string{
 		LabelRadiusApplication: application,
 		LabelRadiusResource:    resource,
-		LabelName:              MakeResourceName(application, resource),
+		LabelName:              resource,
 		LabelPartOf:            application,
 		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
@@ -123,7 +121,6 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 
 // MakeResourceName returns hash of application + "-" + resource
 func MakeResourceName(application string, resource string) string {
-<<<<<<< HEAD
 	if application != "" && resource != "" {
 		return strings.ToLower(application + "-" + resource)
 	}
@@ -138,10 +135,4 @@ func MakeResourceName(application string, resource string) string {
 
 	// We should never have this case
 	return "resource-name"
-=======
-	rn := fnv.New64a()
-	rn.Write([]byte(application + "-" + resource))
-	hashrn := hex.EncodeToString(rn.Sum(nil))
-	return hashrn
->>>>>>> 2bc77365 (returning hash to avoid length restrictions on label)
 }
