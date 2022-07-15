@@ -14,8 +14,6 @@ import (
 )
 
 func Test_DaprPubSubBrokeConnector(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
-
 	template := "testdata/connectorrp-resources-dapr-pubsub-broker.bicep"
 	name := "connectorrp-resources-dapr-pubsub-broker"
 

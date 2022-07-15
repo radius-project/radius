@@ -14,8 +14,6 @@ import (
 )
 
 func Test_RabbitMQConnector(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
-
 	template := "testdata/connectorrp-resources-rabbitmq.bicep"
 	name := "connectorrp-resources-rabbitmq"
 
