@@ -97,7 +97,7 @@ func (ri ID) String() string {
 // FindScope function gets the scope type and returns the name for that scope if it exists.
 func (ri ID) FindScope(scopeType string) string {
 	for _, t := range ri.scopeSegments {
-		if t.Type == scopeType {
+		if strings.EqualFold(t.Type, scopeType) {
 			return t.Name
 		}
 	}

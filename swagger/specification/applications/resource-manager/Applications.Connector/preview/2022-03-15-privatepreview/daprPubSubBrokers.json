@@ -334,6 +334,11 @@
           "description": "The DaprPubSubProperties kind",
           "type": "string",
           "enum": ["pubsub.azure.servicebus","generic"]
+        },
+        "topic": {
+          "description": "Topic name of the Azure ServiceBus resource",
+          "type": "string",
+          "readOnly": true
         }
       },
       "required": [

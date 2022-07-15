@@ -9,48 +9,17 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/test"
 )
 
 func NewTestOptions(t *testing.T) TestOptions {
-
-	auth, err := armauth.GetArmAuthorizer()
-	require.NoError(t, err, "failed to authenticate with azure")
-
-	azcred, err := azidentity.NewDefaultAzureCredential(nil)
-	require.NoErrorf(t, err, "failed to obtain Azure credentials")
-
-	config, err := cli.LoadConfig("")
-	require.NoError(t, err, "failed to read radius config")
-
-	env, err := cli.GetEnvironment(config, "")
-	require.NoError(t, err, "failed to read default environment")
-
-	az, err := environments.RequireAzureCloud(env)
-	require.NoError(t, err, "environment was not azure cloud")
-
-	_, radiusConnection, err := kubernetes.CreateAPIServerConnection(az.Context, az.RadiusRPLocalURL)
-	require.NoError(t, err, "failed to create API Server connection")
-
-	radiusBaseURL, radiusRoundTripper, err := kubernetes.GetBaseUrlAndRoundTripper(az.RadiusRPLocalURL, "api.radius.dev", az.Context)
-	require.NoError(t, err, "failed to create API Server round-tripper")
-
 	return TestOptions{
-		TestOptions:      test.NewTestOptions(t),
-		ARMAuthorizer:    auth,
-		ARMConnection:    arm.NewDefaultConnection(azcred, nil),
-		RadiusBaseURL:    radiusBaseURL,
-		RadiusConnection: radiusConnection,
-		RadiusSender:     autorest.SenderFunc(radiusRoundTripper.RoundTrip),
-		Environment:      az,
+		TestOptions: test.NewTestOptions(t),
+
+		// FYI we're not using this code anymore, so it's been hollowed out.
+
 	}
 }
 
@@ -61,5 +30,34 @@ type TestOptions struct {
 	RadiusBaseURL    string
 	RadiusConnection *arm.Connection
 	RadiusSender     autorest.Sender
-	Environment      *environments.AzureCloudEnvironment
+	Environment      *AzureCloudEnvironment
+}
+
+type AzureCloudEnvironment struct {
+	RadiusEnvironment `mapstructure:",squash"`
+	ClusterName       string `mapstructure:"clustername" validate:"required"`
+	SubscriptionID    string `mapstructure:"subscriptionid" validate:"required"`
+	ResourceGroup     string `mapstructure:"resourcegroup" validate:"required"`
+}
+
+type RadiusEnvironment struct {
+	Name               string `mapstructure:"name" validate:"required"`
+	Kind               string `mapstructure:"kind" validate:"required"`
+	Context            string `mapstructure:"context" validate:"required"`
+	Namespace          string `mapstructure:"namespace" validate:"required"`
+	DefaultApplication string `mapstructure:"defaultapplication" yaml:",omitempty"`
+	Scope              string `mapstructure:"scope,omitempty"`
+	Id                 string `mapstructure:"id,omitempty"`
+
+	// DEBUG STUFF:
+
+	// RadiusRPLocalURL is an override for local debugging. This allows us us to run the controller + API Service outside the cluster.
+	RadiusRPLocalURL         string `mapstructure:"radiusrplocalurl,omitempty"`
+	DeploymentEngineLocalURL string `mapstructure:"deploymentenginelocalurl,omitempty"`
+	UCPLocalURL              string `mapstructure:"ucplocalurl,omitempty"`
+	UCPResourceGroupName     string `mapstructure:"ucpresourcegroupname,omitempty"`
+
+	// Capture arbitrary other properties
+	// We tolerate and allow extra fields - this helps with forwards compat.
+	Properties map[string]interface{} `mapstructure:",remain"`
 }

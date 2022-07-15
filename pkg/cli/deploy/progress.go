@@ -134,10 +134,10 @@ func (listener *InteractiveListener) Run() {
 
 		// NOTE: resources can go immediately to the Completed state without first
 		// going to the started state.
-		line, found := resourceToLineIndexMap[update.Resource.ID]
+		line, found := resourceToLineIndexMap[update.Resource.String()]
 		if !found {
 			line = listener.addEntry(output.FormatResourceForProgressDisplay(update.Resource))
-			resourceToLineIndexMap[update.Resource.ID] = line
+			resourceToLineIndexMap[update.Resource.String()] = line
 		}
 
 		switch update.Status {

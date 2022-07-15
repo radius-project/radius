@@ -32,6 +32,14 @@ func Test_ExtenderConnector(t *testing.T) {
 					Type: validation.ExtenderResource,
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "myapp"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

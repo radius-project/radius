@@ -470,7 +470,8 @@
         "required": true,
         "type": "string",
         "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-        "minLength": 1
+        "minLength": 1,
+        "x-ms-skip-url-encoding": true
       },
       "ResourceType": {
         "name": "resourceType",
@@ -478,7 +479,8 @@
         "required": true,
         "type": "string",
         "description": "The azure resource type. For example RedisCache, RabbitMQ and other",
-        "minLength": 1
+        "minLength": 1,
+        "x-ms-skip-url-encoding": true
       }
     }
   }

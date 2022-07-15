@@ -23,7 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-type SecretStoreFunc = func(resource datamodel.DaprSecretStore, applicationName string) ([]outputresource.OutputResource, error)
+type SecretStoreFunc = func(resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
 
 var SupportedSecretStoreKindValues = map[string]SecretStoreFunc{
 	resourcekinds.DaprGeneric: GetDaprSecretStoreGeneric,
@@ -35,7 +35,7 @@ type Renderer struct {
 	SecretStores map[string]SecretStoreFunc
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.DaprSecretStore)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
@@ -52,7 +52,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
 	}
 
-	resoures, err := secretStoreFunc(*resource, applicationID.Name())
+	resoures, err := secretStoreFunc(*resource, applicationID.Name(), options.Namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -81,7 +81,7 @@ func getAlphabeticallySortedKeys(store map[string]SecretStoreFunc) []string {
 	return keys
 }
 
-func GetDaprSecretStoreGeneric(resource datamodel.DaprSecretStore, applicationName string) ([]outputresource.OutputResource, error) {
+func GetDaprSecretStoreGeneric(resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
 	properties := resource.Properties
 	daprGeneric := dapr.DaprGeneric{
 		Type:     &properties.Type,
@@ -89,16 +89,16 @@ func GetDaprSecretStoreGeneric(resource datamodel.DaprSecretStore, applicationNa
 		Metadata: properties.Metadata,
 	}
 
-	return GetDaprGeneric(daprGeneric, resource, applicationName)
+	return GetDaprGeneric(daprGeneric, resource, applicationName, namespace)
 }
 
-func GetDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprSecretStore, applicationName string) ([]outputresource.OutputResource, error) {
+func GetDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
 	err := daprGeneric.Validate()
 	if err != nil {
 		return nil, err
 	}
 
-	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name)
+	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name, namespace)
 	if err != nil {
 		return nil, err
 	}

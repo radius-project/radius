@@ -174,12 +174,56 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(4).Return(mocks.db, nil)
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+		application := datamodel.Application{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
+			Properties: datamodel.ApplicationProperties{
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+		}
+		ar := store.Object{
+			Metadata: store.Metadata{
+				ID: application.ID,
+			},
+			Data: application,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
+		environment := datamodel.Environment{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+			Properties: datamodel.EnvironmentProperties{
+				Compute: datamodel.EnvironmentCompute{
+					KubernetesCompute: datamodel.KubernetesComputeProperties{
+						Namespace: "radius-test",
+					},
+				},
+			},
+		}
+		er := store.Object{
+			Metadata: store.Metadata{
+				ID: environment.ID,
+			},
+			Data: environment,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
-			Properties: &datamodel.HTTPRouteProperties{},
+			Properties: &datamodel.HTTPRouteProperties{
+				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
 		}
 		nr := store.Object{
 			Metadata: store.Metadata{
@@ -187,9 +231,10 @@ func Test_Render(t *testing.T) {
 			},
 			Data: httprouteA,
 		}
+
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -204,12 +249,56 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(4).Return(mocks.db, nil)
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+		application := datamodel.Application{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
+			Properties: datamodel.ApplicationProperties{
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+		}
+		ar := store.Object{
+			Metadata: store.Metadata{
+				ID: application.ID,
+			},
+			Data: application,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
+		environment := datamodel.Environment{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+			Properties: datamodel.EnvironmentProperties{
+				Compute: datamodel.EnvironmentCompute{
+					KubernetesCompute: datamodel.KubernetesComputeProperties{
+						Namespace: "radius-test",
+					},
+				},
+			},
+		}
+		er := store.Object{
+			Metadata: store.Metadata{
+				ID: environment.ID,
+			},
+			Data: environment,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
-			Properties: &datamodel.HTTPRouteProperties{},
+			Properties: &datamodel.HTTPRouteProperties{
+				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
 		}
 		nr := store.Object{
 			Metadata: store.Metadata{
@@ -219,7 +308,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -234,12 +323,56 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(4).Return(mocks.db, nil)
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+		application := datamodel.Application{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
+			Properties: datamodel.ApplicationProperties{
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+		}
+		ar := store.Object{
+			Metadata: store.Metadata{
+				ID: application.ID,
+			},
+			Data: application,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
+		environment := datamodel.Environment{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+			Properties: datamodel.EnvironmentProperties{
+				Compute: datamodel.EnvironmentCompute{
+					KubernetesCompute: datamodel.KubernetesComputeProperties{
+						Namespace: "radius-test",
+					},
+				},
+			},
+		}
+		er := store.Object{
+			Metadata: store.Metadata{
+				ID: environment.ID,
+			},
+			Data: environment,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
-			Properties: &datamodel.HTTPRouteProperties{},
+			Properties: &datamodel.HTTPRouteProperties{
+				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
 		}
 		nr := store.Object{
 			Metadata: store.Metadata{
@@ -249,7 +382,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		rendererOutput, err := dp.Render(ctx, resourceID, testResource)
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
@@ -261,13 +394,57 @@ func Test_Render(t *testing.T) {
 		requiredResources := []resources.ID{depId1}
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(4).Return(mocks.db, nil)
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+		application := datamodel.Application{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
+			Properties: datamodel.ApplicationProperties{
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+		}
+		ar := store.Object{
+			Metadata: store.Metadata{
+				ID: application.ID,
+			},
+			Data: application,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
+		environment := datamodel.Environment{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+			Properties: datamodel.EnvironmentProperties{
+				Compute: datamodel.EnvironmentCompute{
+					KubernetesCompute: datamodel.KubernetesComputeProperties{
+						Namespace: "radius-test",
+					},
+				},
+			},
+		}
+		er := store.Object{
+			Metadata: store.Metadata{
+				ID: environment.ID,
+			},
+			Data: environment,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
-			Properties: &datamodel.HTTPRouteProperties{},
+			Properties: &datamodel.HTTPRouteProperties{
+				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
 		}
 		nr := store.Object{
 			Metadata: store.Metadata{
@@ -277,7 +454,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "failed to render the resource")
 	})
 
@@ -286,7 +463,7 @@ func Test_Render(t *testing.T) {
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testInvalidResourceID)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "radius resource type 'Applications.foo/foo' is unsupported")
 
 	})
@@ -302,12 +479,56 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(4).Return(mocks.db, nil)
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+		application := datamodel.Application{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
+			Properties: datamodel.ApplicationProperties{
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+		}
+		ar := store.Object{
+			Metadata: store.Metadata{
+				ID: application.ID,
+			},
+			Data: application,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
+		environment := datamodel.Environment{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+			Properties: datamodel.EnvironmentProperties{
+				Compute: datamodel.EnvironmentCompute{
+					KubernetesCompute: datamodel.KubernetesComputeProperties{
+						Namespace: "radius-test",
+					},
+				},
+			},
+		}
+		er := store.Object{
+			Metadata: store.Metadata{
+				ID: environment.ID,
+			},
+			Data: environment,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
-			Properties: &datamodel.HTTPRouteProperties{},
+			Properties: &datamodel.HTTPRouteProperties{
+				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
 		}
 		nr := store.Object{
 			Metadata: store.Metadata{
@@ -317,7 +538,7 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "output resource \"Deployment\" does not have a provider specified")
 	})
 
@@ -331,12 +552,56 @@ func Test_Render(t *testing.T) {
 		requiredResources := []resources.ID{depId1}
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(4).Return(mocks.db, nil)
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+		application := datamodel.Application{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
+			Properties: datamodel.ApplicationProperties{
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+		}
+		ar := store.Object{
+			Metadata: store.Metadata{
+				ID: application.ID,
+			},
+			Data: application,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
+		environment := datamodel.Environment{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+			Properties: datamodel.EnvironmentProperties{
+				Compute: datamodel.EnvironmentCompute{
+					KubernetesCompute: datamodel.KubernetesComputeProperties{
+						Namespace: "radius-test",
+					},
+				},
+			},
+		}
+		er := store.Object{
+			Metadata: store.Metadata{
+				ID: environment.ID,
+			},
+			Data: environment,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
 			TrackedResource: v1.TrackedResource{
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
-			Properties: &datamodel.HTTPRouteProperties{},
+			Properties: &datamodel.HTTPRouteProperties{
+				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
 		}
 		nr := store.Object{
 			Metadata: store.Metadata{
@@ -347,7 +612,7 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 
-		_, err := dp.Render(ctx, resourceID, testResource)
+		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.roleassignment")
 	})
 }

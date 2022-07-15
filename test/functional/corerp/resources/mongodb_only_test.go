@@ -32,6 +32,14 @@ func Test_MongoDBConnector(t *testing.T) {
 					Type: validation.MongoDatabasesResource,
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "webapp"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 
@@ -39,7 +47,7 @@ func Test_MongoDBConnector(t *testing.T) {
 }
 
 func Test_MongoDBUserSecrets(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+	t.Skip()
 
 	template := "testdata/connectorrp-resources-mongodb-user-secrets.bicep"
 	name := "connectorrp-resources-mongodb-user-secrets"
@@ -57,6 +65,15 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 					Type: validation.MongoDatabasesResource,
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "webapp"),
+						validation.NewK8sPodForResource(name, "mongo"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

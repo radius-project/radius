@@ -46,7 +46,7 @@ test-app     Provisioned         Healthy
 }
 
 func Test_FormatResourceTable(t *testing.T) {
-	options := GetResourceTableFormatOld()
+	options := GetResourceTableFormat()
 
 	// We're just filling in the fields that are read. It's hard to test that something *doesn't* happen.
 	obj := []radclient.RadiusResource{
@@ -54,13 +54,7 @@ func Test_FormatResourceTable(t *testing.T) {
 			ProxyResource: radclient.ProxyResource{
 				Resource: radclient.Resource{
 					Name: to.StringPtr("test-resource"),
-					Type: to.StringPtr("Microsoft.CustomProviders/resourceProviders/Application/mongo.com.MongoDatabase"),
-				},
-			},
-			Properties: map[string]interface{}{
-				"status": &radclient.ResourceStatus{
-					HealthState:       to.StringPtr("Healthy"),
-					ProvisioningState: to.StringPtr("Provisioned"),
+					Type: to.StringPtr("Applications.Core/mongoDbDatabases"),
 				},
 			},
 		},
@@ -71,12 +65,6 @@ func Test_FormatResourceTable(t *testing.T) {
 					Type: to.StringPtr("Microsoft.ServiceBus/namespaces"),
 				},
 			},
-			Properties: map[string]interface{}{
-				"status": &radclient.ResourceStatus{
-					HealthState:       to.StringPtr("Healthy"),
-					ProvisioningState: to.StringPtr("Provisioned"),
-				},
-			},
 		},
 	}
 
@@ -84,9 +72,9 @@ func Test_FormatResourceTable(t *testing.T) {
 	err := output.Write(output.FormatTable, &obj, &buffer, options)
 	require.NoError(t, err)
 
-	expected := `RESOURCE             TYPE                             PROVISIONING_STATE  HEALTH_STATE
-test-resource        mongo.com.MongoDatabase          Provisioned         Healthy
-test-azure-resource  Microsoft.ServiceBus/namespaces  Provisioned         Healthy
+	expected := `RESOURCE             TYPE
+test-resource        Applications.Core/mongoDbDatabases
+test-azure-resource  Microsoft.ServiceBus/namespaces
 `
 
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))

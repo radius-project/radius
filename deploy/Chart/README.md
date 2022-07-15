@@ -33,7 +33,11 @@ kubectl get pods -n radius-system
 To uninstall the radius release:
 
 ```
-helm uninstall radius -n radius-system
+rad uninstall kubernetes
 ```
 
-Currently we don't support uninstalling the helm chart via `rad env delete`. This will be addressed in a future release.
+OR
+
+```
+helm uninstall radius -n radius-system
+```

@@ -32,6 +32,16 @@ func Test_RedisConnector(t *testing.T) {
 					Type: validation.RedisCachesResource,
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					name: {
+						validation.NewK8sPodForResource(name, "webapp"),
+						validation.NewK8sPodForResource(name, "redis"),
+						validation.NewK8sHTTPProxyForResource(name, "redis-route"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

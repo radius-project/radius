@@ -11,30 +11,56 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/test/radcli"
 )
 
 const (
-	EnvironmentsResource        = "applications.core/environments"
-	ApplicationsResource        = "applications.core/applications"
-	HttpRoutesResource          = "applications.core/httpRoutes"
-	MongoDatabasesResource      = "applications.connector/mongoDatabases"
-	RedisCachesResource         = "applications.connector/redisCaches"
-	RabbitMQResource            = "applications.connector/rabbitMQMessageQueues"
-	ContainersResource          = "applications.core/containers"
-	DaprSecretStoresResource    = "applications.connector/daprSecretStores"
-	DaprStateStoresResource     = "applications.connector/daprStateStores"
-	DaprPubSubBrokerResource    = "applications.connector/daprPubSubBrokers"
-	DaprInvokeHttpRouteResource = "applications.connector/daprInvokeHttpRoutes"
-	ExtenderResource            = "applications.connector/extenders"
+	EnvironmentsResource = "applications.core/environments"
+	ApplicationsResource = "applications.core/applications"
+	HttpRoutesResource   = "applications.core/httpRoutes"
+	GatewaysResource     = "applications.core/gateways"
+	ContainersResource   = "applications.connector/containers"
+
+	MongoDatabasesResource        = "applications.connector/mongoDatabases"
+	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"
+	RedisCachesResource           = "applications.connector/redisCaches"
+	SQLDatabasesResource          = "applications.connector/sqlDatabases"
+	DaprPubSubResource            = "applications.connector/daprPubSubBrokers"
+	DaprSecretStoreResource       = "applications.connector/daprSecretStores"
+	DaprStateStoreResource        = "applications.connector/daprStateStores"
 )
 
-type Resource struct {
-	Type string
-	Name string
+type CoreRPResource struct {
+	Type    string
+	Name    string
+	AppName string
 }
 
-func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected []Resource, client clients.ApplicationsManagementClient) {
-	for _, resource := range expected {
+type CoreRPResourceSet struct {
+	Resources []CoreRPResource
+}
+
+func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource CoreRPResource) error {
+	if resource.Type == EnvironmentsResource {
+		t.Logf("deleting environment: %s", resource.Name)
+		return client.DeleteEnv(ctx, resource.Name)
+
+		// TODO: this should probably call the CLI, but if you create an
+		// environment via bicep deployment, it will not be reflected in the
+		// rad config.
+		// return cli.EnvDelete(ctx, resource.Name)
+	} else if resource.Type == ApplicationsResource {
+		t.Logf("deleting application: %s", resource.Name)
+		return cli.ApplicationDelete(ctx, resource.Name)
+	}
+
+	t.Logf("resource %s is not an application or an environment. skipping...", resource.Name)
+	return nil
+}
+
+func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
+	for _, resource := range expected.Resources {
 		if resource.Type == EnvironmentsResource {
 			envs, err := client.ListEnv(ctx)
 			require.NoError(t, err)
@@ -64,7 +90,19 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected []Resou
 
 			require.True(t, found, fmt.Sprintf("application %s was not found", resource.Name))
 		} else {
-			require.Fail(t, "unhandled resource type")
+			t.Logf("skipping validation of resource...")
+			// resources, err := client.ShowResourceByApplication(ctx, resource.AppName, resource.Type)
+			// require.NoError(t, err)
+			// require.NotEmpty(t, resources)
+			// found := false
+			// for _, res := range resources {
+			// 	if *res.Name == resource.Name {
+			// 		found = true
+			// 		continue
+			// 	}
+			// }
+
+			// require.True(t, found, fmt.Sprintf("resource %s was not found", resource.Name))
 		}
 	}
 }

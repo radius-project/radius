@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -55,7 +56,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	result, err := renderer.Render(context.Background(), &resource)
+	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
@@ -68,7 +69,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
-				"namespace": applicationName,
+				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, "test-pub-sub-topic"),
 			},
@@ -106,7 +107,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.Error())
 }
@@ -132,7 +133,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, "No type specified for generic Dapr component", err.Error())
 }
@@ -158,7 +159,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
 }
@@ -176,7 +177,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 		Version:  &properties.Version,
 		Metadata: properties.Metadata,
 	}
-	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName)
+	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName, "radius-test")
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{
@@ -184,7 +185,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
-				"namespace": applicationName,
+				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 			},
@@ -224,7 +225,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	result, err := renderer.Render(context.Background(), &resource)
+	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -235,7 +236,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 
 	expected := map[string]string{
 		handlers.ResourceName:               resourceName,
-		handlers.KubernetesNamespaceKey:     applicationName,
+		handlers.KubernetesNamespaceKey:     "radius-test",
 		handlers.ApplicationName:            applicationName,
 		handlers.KubernetesAPIVersionKey:    "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:          "Component",
@@ -245,6 +246,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 		handlers.ServiceBusTopicNameKey:     "test-topic",
 	}
 	require.Equal(t, expected, output.Resource)
+	require.Equal(t, "test-topic", result.ComputedValues["topic"].Value)
 }
 
 func Test_Render_DaprPubSubTopicAzureServiceBus_InvalidResourceType(t *testing.T) {
@@ -265,7 +267,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_InvalidResourceType(t *testing.T
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Topic", err.Error())
 }

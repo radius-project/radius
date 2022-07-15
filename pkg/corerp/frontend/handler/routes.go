@@ -136,7 +136,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: ctr_ctrl.NewListContainers,
 		},
 		{
-			ParentRouter:   ctrRTSubrouter,
+			ParentRouter:   ctrResourceRouter,
 			ResourceType:   ctr_ctrl.ResourceTypeName,
 			Method:         v1.OperationGet,
 			HandlerFactory: ctr_ctrl.NewGetContainer,

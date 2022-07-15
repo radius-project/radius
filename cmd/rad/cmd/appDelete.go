@@ -6,13 +6,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // appDeleteCmd command to delete an application
@@ -36,19 +37,19 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	}
 
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
+	applicationName, err := cli.RequireApplicationArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 
 	// Prompt user to confirm deletion
 	if !yes {
-		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete '%v' from '%v' [y/N]?", applicationName, env.GetName()), prompt.No)
+		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete '%v' from '%v' [y/N]?", applicationName, workspace.Name), prompt.No)
 		if err != nil {
 			return err
 		}
@@ -57,7 +58,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err = DeleteApplication(cmd, args, env, applicationName, config)
+	err = DeleteApplication(cmd.Context(), *workspace, applicationName)
 	if err != nil {
 		return err
 	}
@@ -65,16 +66,16 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func DeleteApplication(cmd *cobra.Command, args []string, env environments.Environment, applicationName string, config *viper.Viper) error {
-	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+func DeleteApplication(ctx context.Context, workspace workspaces.Workspace, applicationName string) error {
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, workspace)
 	if err != nil {
 		return err
 	}
 
-	deleteResponse, err := client.DeleteApplication(cmd.Context(), applicationName)
+	_, err = client.DeleteApplication(ctx, applicationName)
 	if err != nil {
 		return err
 	}
 
-	return printOutput(cmd, deleteResponse, false)
+	return nil
 }

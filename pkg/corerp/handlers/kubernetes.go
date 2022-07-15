@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -171,7 +172,11 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 }
 
 func (handler *kubernetesHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
-	identity := resource.Identity.Data.(resourcemodel.KubernetesIdentity)
+	identity := &resourcemodel.KubernetesIdentity{}
+	if err := store.DecodeMap(resource.Identity.Data, identity); err != nil {
+		return err
+	}
+
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": identity.APIVersion,

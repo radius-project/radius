@@ -8,7 +8,7 @@ package output
 import (
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
+	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
@@ -19,40 +19,30 @@ const (
 var ProgressDefaultSpinner = []string{".  ", ".. ", "..."}
 
 // ShowResource returns true if the resource should be displayed to the user.
-func ShowResource(id azresources.ResourceID) bool {
-	if len(id.Types) == 1 && id.Types[0].Name == "radiusv3" {
-		// Hide operations on the provider (custom action)
-		return false
-	}
-
+func ShowResource(id ucpresources.ID) bool {
 	return true
 }
 
 // FormatResourceForDisplay returns a display string for the resource type and name.
-func FormatResourceForDisplay(id azresources.ResourceID) string {
+func FormatResourceForDisplay(id ucpresources.ID) string {
 	return fmt.Sprintf("%-15s %-20s", FormatResourceNameForDisplay(id), FormatResourceTypeForDisplay(id))
 }
 
 // FormatResourceForProgressDisplay returns a display string for a progress spinner, resource type, and name.
-func FormatResourceForProgressDisplay(id azresources.ResourceID) string {
+func FormatResourceForProgressDisplay(id ucpresources.ID) string {
 	// NOTE: this format string creates ... a format string! That's intentional
 	// because the progress tracker needs somewhere to put the progress.
 	return fmt.Sprintf("%s %-15s %-20s", "%-20s", FormatResourceNameForDisplay(id), FormatResourceTypeForDisplay(id))
 }
 
 // FormatResourceNameForDisplay returns a display string for the resource name.
-func FormatResourceNameForDisplay(id azresources.ResourceID) string {
+func FormatResourceNameForDisplay(id ucpresources.ID) string {
 	// Just show the last segment of the resource name.
 	return id.Name()
 }
 
 // FormatResourceTypeForDisplay returns a display string for the resource type.
-func FormatResourceTypeForDisplay(id azresources.ResourceID) string {
-	if len(id.Types) > 0 && id.Types[0].Name == "radiusv3" {
-		// It's a Radius type - just use the last segment.
-		return id.Types[len(id.Types)-1].Type
-	}
-
+func FormatResourceTypeForDisplay(id ucpresources.ID) string {
 	// It's an ARM resource, use the qualified type.
 	return id.Type()
 }

@@ -20,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicationName string) (renderers.RendererOutput, error) {
+func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error) {
 	properties := resource.Properties.DaprPubSubAzureServiceBus
 
 	var output outputresource.OutputResource
@@ -38,6 +38,8 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Topic")
 	}
 
+	serviceBusNamespaceName := azureServiceBusTopicID.TypeSegments()[0].Name
+	topicName := azureServiceBusTopicID.TypeSegments()[1].Name
 	output = outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureServiceBusTopic,
 		ResourceType: resourcemodel.ResourceType{
@@ -46,7 +48,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		},
 		Resource: map[string]string{
 			handlers.ResourceName:            resource.Name,
-			handlers.KubernetesNamespaceKey:  applicationName,
+			handlers.KubernetesNamespaceKey:  namespace,
 			handlers.ApplicationName:         applicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
@@ -54,23 +56,21 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 			// Truncate the topic part of the ID to make an ID for the namespace
 			handlers.ServiceBusNamespaceIDKey:   azureServiceBusTopicID.Truncate().String(),
 			handlers.ServiceBusTopicIDKey:       azureServiceBusTopicID.String(),
-			handlers.ServiceBusNamespaceNameKey: azureServiceBusTopicID.TypeSegments()[0].Name,
-			handlers.ServiceBusTopicNameKey:     azureServiceBusTopicID.TypeSegments()[1].Name,
+			handlers.ServiceBusNamespaceNameKey: serviceBusNamespaceName,
+			handlers.ServiceBusTopicNameKey:     topicName,
 		},
 	}
 
 	values := map[string]renderers.ComputedValueReference{
 		"namespace": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			PropertyReference: handlers.ServiceBusNamespaceNameKey,
+			Value: serviceBusNamespaceName,
 		},
 		"pubSubName": {
 			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
 			PropertyReference: handlers.ResourceName,
 		},
 		"topic": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			PropertyReference: handlers.ServiceBusTopicNameKey,
+			Value: topicName,
 		},
 	}
 	secrets := map[string]rp.SecretValueReference{}

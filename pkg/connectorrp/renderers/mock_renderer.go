@@ -36,16 +36,16 @@ func (m *MockRenderer) EXPECT() *MockRendererMockRecorder {
 }
 
 // Render mocks base method.
-func (m *MockRenderer) Render(arg0 context.Context, arg1 conv.DataModelInterface) (RendererOutput, error) {
+func (m *MockRenderer) Render(arg0 context.Context, arg1 conv.DataModelInterface, arg2 RenderOptions) (RendererOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Render", arg0, arg1)
+	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
 	ret0, _ := ret[0].(RendererOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Render indicates an expected call of Render.
-func (mr *MockRendererMockRecorder) Render(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockRendererMockRecorder) Render(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockRenderer)(nil).Render), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Render", reflect.TypeOf((*MockRenderer)(nil).Render), arg0, arg1, arg2)
 }

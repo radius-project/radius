@@ -131,7 +131,7 @@
 ## DaprInvokeHttpRouteProperties
 ### Properties
 * **appId**: string (Required): The Dapr appId used for the route
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
@@ -158,10 +158,11 @@
 * **Discriminator**: kind
 
 ### Base Properties
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): The resource id of the environment linked to the daprPubSubBroker connector
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+* **topic**: string (ReadOnly): Topic name of the Azure ServiceBus resource
 ### DaprPubSubGenericResourceProperties
 #### Properties
 * **kind**: 'generic' (Required): The DaprPubSubProperties kind
@@ -182,7 +183,7 @@
 
 ## DaprSecretStoreProperties
 ### Properties
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **metadata**: any (Required): Any object
@@ -200,7 +201,7 @@
 * **Discriminator**: kind
 
 ### Base Properties
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
@@ -229,7 +230,7 @@
 
 ## ExtenderProperties
 ### Properties
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
@@ -249,7 +250,7 @@
 
 ## MongoDatabaseProperties
 ### Properties
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **host**: string: Host name of the target Mongo database
 * **port**: int: Port value of the target Mongo database
@@ -271,7 +272,7 @@
 
 ## RabbitMQMessageQueueProperties
 ### Properties
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **queue**: string (Required): The name of the queue
@@ -289,7 +290,7 @@
 
 ## RedisCacheProperties
 ### Properties
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **host**: string: The host name of the target redis cache
 * **port**: int: The port value of the target redis cache
@@ -310,7 +311,7 @@
 
 ## SQLDatabaseProperties
 ### Properties
-* **application**: string (ReadOnly): Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **database**: string: The name of the SQL database.
 * **environment**: string (Required): The resource id of the environment linked to the sqlDatabase connector
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called

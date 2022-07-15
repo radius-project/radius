@@ -82,8 +82,8 @@ type DaprInvokeHTTPRouteProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -269,11 +269,14 @@ type DaprPubSubBrokerProperties struct {
 	// REQUIRED; The DaprPubSubProperties kind
 	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprPubSubBroker connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Topic name of the Azure ServiceBus resource
+	Topic *string `json:"topic,omitempty" azure:"ro"`
 }
 
 // GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type DaprPubSubBrokerProperties.
@@ -295,6 +298,7 @@ func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interfa
 	d.Kind = &discValue
 	objectMap["kind"] = d.Kind
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "topic", d.Topic)
 }
 
 func (d *DaprPubSubBrokerProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
@@ -312,6 +316,9 @@ func (d *DaprPubSubBrokerProperties) unmarshalInternal(rawMsg map[string]json.Ra
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "topic":
+				err = unpopulate(val, &d.Topic)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -475,8 +482,8 @@ type DaprSecretStoreProperties struct {
 	// REQUIRED; Dapr component version
 	Version *string `json:"version,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -726,8 +733,8 @@ type DaprStateStoreProperties struct {
 	// REQUIRED; The Dapr StateStore kind
 	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1045,8 +1052,8 @@ type ExtenderResponseProperties struct {
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]interface{}
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the extender connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1295,6 +1302,9 @@ type MongoDatabaseResponseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
+
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -1303,9 +1313,6 @@ type MongoDatabaseResponseProperties struct {
 
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1561,8 +1568,8 @@ type RabbitMQMessageQueueResponseProperties struct {
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1801,6 +1808,9 @@ type RedisCacheResponseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
+
 	// The host name of the target redis cache
 	Host *string `json:"host,omitempty"`
 
@@ -1809,9 +1819,6 @@ type RedisCacheResponseProperties struct {
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -2045,6 +2052,9 @@ type SQLDatabaseProperties struct {
 	// REQUIRED; The resource id of the environment linked to the sqlDatabase connector
 	Environment *string `json:"environment,omitempty"`
 
+	// Fully qualified resource ID for the environment that the connector is linked to
+	Application *string `json:"application,omitempty"`
+
 	// The name of the SQL database.
 	Database *string `json:"database,omitempty"`
 
@@ -2053,9 +2063,6 @@ type SQLDatabaseProperties struct {
 
 	// The fully qualified domain name of the SQL database.
 	Server *string `json:"server,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the environment that the connector is linked to
-	Application *string `json:"application,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the SQL database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`

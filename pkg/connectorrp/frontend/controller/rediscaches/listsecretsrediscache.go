@@ -53,9 +53,12 @@ func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, req *http.Request) (
 		return nil, err
 	}
 
-	redisSecrets := datamodel.RedisCacheSecrets{
-		Password:         secrets[renderers.PasswordStringHolder].(string),
-		ConnectionString: secrets[renderers.ConnectionStringValue].(string),
+	redisSecrets := datamodel.RedisCacheSecrets{}
+	if password, ok := secrets[renderers.PasswordStringHolder].(string); ok {
+		redisSecrets.Password = password
+	}
+	if connectionString, ok := secrets[renderers.ConnectionStringValue].(string); ok {
+		redisSecrets.ConnectionString = connectionString
 	}
 
 	versioned, _ := converter.RedisCacheSecretsDataModelToVersioned(&redisSecrets, sCtx.APIVersion)

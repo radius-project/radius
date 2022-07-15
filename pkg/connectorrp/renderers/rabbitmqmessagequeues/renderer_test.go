@@ -47,7 +47,7 @@ func Test_Render_User_Secrets(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, &resource)
+	output, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 0)
@@ -85,7 +85,7 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 			Secrets: datamodel.RabbitMQSecrets{ConnectionString: "admin:deadbeef@localhost:42"},
 		},
 	}
-	_, err := renderer.Render(ctx, &resource)
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
 	require.Equal(t, "queue name must be specified", err.Error())
 }

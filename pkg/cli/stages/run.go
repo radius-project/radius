@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/radyaml"
 )
@@ -19,7 +20,7 @@ import (
 // Run processes the stages of a rad.yaml. This is expected to be used from the CLI and thus writes
 // output to the console.
 func Run(ctx context.Context, options Options) ([]StageResult, error) {
-	output.LogInfo("Using environment %s", options.Environment.GetName())
+	output.LogInfo("Using environment %s", options.Workspace.Environment)
 
 	// Unit tests don't have to set these.
 	if options.Stderr == nil {
@@ -27,6 +28,9 @@ func Run(ctx context.Context, options Options) ([]StageResult, error) {
 	}
 	if options.Stdout == nil {
 		options.Stdout = io.Discard
+	}
+	if options.ConnectionFactory == nil {
+		options.ConnectionFactory = connections.DefaultFactory
 	}
 
 	// Validate that the desired stage is found
