@@ -50,7 +50,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 
 	computedValues := map[string]rp.ComputedValueReference{
-		"host": {
+		"hostname": {
 			Value: kubernetes.MakeResourceName(applicationName, route.Name),
 		},
 		"port": {
