@@ -50,16 +50,16 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.StateStores))
 	}
 
-	var applicationID resources.ID
-	var err error
+	var applicationName string
 	if resource.Properties.Application != "" {
-		applicationID, err = resources.Parse(resource.Properties.Application)
+		applicationID, err := resources.Parse(resource.Properties.Application)
 		if err != nil {
 			return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
 		}
+		applicationName = applicationID.Name()
 	}
 
-	resoures, err := stateStoreFunc(*resource, applicationID.Name(), options.Namespace)
+	resoures, err := stateStoreFunc(*resource, applicationName, options.Namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
