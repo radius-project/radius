@@ -46,10 +46,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	if secretStoreFunc == nil {
 		return renderers.RendererOutput{}, fmt.Errorf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores))
 	}
-
-	applicationID, err := resources.Parse(resource.Properties.Application)
-	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
+	var applicationID resources.ID
+	var err error
+	if resource.Properties.Application != "" {
+		applicationID, err = resources.Parse(resource.Properties.Application)
+		if err != nil {
+			return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
+		}
 	}
 
 	resoures, err := secretStoreFunc(*resource, applicationID.Name(), options.Namespace)

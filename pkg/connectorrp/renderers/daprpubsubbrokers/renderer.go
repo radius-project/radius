@@ -56,9 +56,13 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, fmt.Errorf("Renderer not found for kind: %s", kind)
 	}
 
-	applicationID, err := resources.Parse(resource.Properties.Application)
-	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
+	var applicationID resources.ID
+	var err error
+	if resource.Properties.Application != "" {
+		applicationID, err = resources.Parse(resource.Properties.Application)
+		if err != nil {
+			return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
+		}
 	}
 
 	return pubSubFunc(*resource, applicationID.Name(), options.Namespace)
