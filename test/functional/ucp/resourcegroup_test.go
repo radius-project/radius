@@ -68,10 +68,11 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 
 	if !existing {
 		require.Equal(t, http.StatusCreated, res.StatusCode)
+	        t.Logf("Resource group: %s created successfully", url)
 	} else {
 		require.Equal(t, http.StatusOK, res.StatusCode)
+		t.Logf("Resource group: %s updated successfully", url)
 	}
-	t.Logf("Resource group: %s created successfully", url)
 }
 
 func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) []rest.ResourceGroup {
