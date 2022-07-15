@@ -18,3 +18,6 @@ server:
   host: "0.0.0.0"
   port: 8081
   enableArmAuth: false
+workerServer:
+  maxConcurrency: 3
+  maxDequeueCount: 2
