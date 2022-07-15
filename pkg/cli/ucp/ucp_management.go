@@ -113,6 +113,18 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
+	resourcesWithApplication,err := amc.ListAllResourcesByApplication(ctx, applicationName)
+	if err != nil {
+		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+	}
+
+	for _, resource := range resourcesWithApplication {
+		//if successful move onto next resource ignoring the response unless there is an
+		_, err := amc.DeleteResource(ctx, *resource.Type, *resource.Name)
+		if err != nil {
+			return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+		}
+	}
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	return client.Delete(ctx, applicationName, nil)
 }
@@ -140,9 +152,9 @@ func isResourceWithApplication(ctx context.Context, resource generated.GenericRe
 	return false, nil
 }
 
-func (um *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
+func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
 
-	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
 	envListPager := envClient.ListByScope(&corerp.EnvironmentsListByScopeOptions{})
 	envResourceList := []corerp.EnvironmentResource{}
 	for envListPager.NextPage(ctx) {
@@ -156,9 +168,9 @@ func (um *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corer
 
 }
 
-func (um *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error) {
+func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error) {
 
-	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
 	envGetResp, err := envClient.Get(ctx, envName, &corerp.EnvironmentsGetOptions{})
 	if err == nil {
 		return envGetResp.EnvironmentsGetResult.EnvironmentResource, nil
@@ -168,11 +180,20 @@ func (um *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, en
 
 }
 
-func (um *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
-
-	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
-	_, err := envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
+func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
+	applicationsWithEnv,err := amc.ListApplications(ctx)
 	if err != nil {
+		return err
+	}
+	for _, application := range applicationsWithEnv {
+		_, err := amc.DeleteApplication(ctx, *application.Name)
+		if err != nil {
+			return err
+		}
+	}
+	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
+	_, err1 := envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
+	if err1 != nil {
 		return err
 	}
 
