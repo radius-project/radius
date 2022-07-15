@@ -1,32 +1,38 @@
 import radius as radius
 
+@description('Specifies the location for resources.')
+param location string = 'global'
+
+@description('Specifies the environment for resources.')
+param environment string = 'test'
+
+@description('Specifies the image to be deployed.')
 param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
-param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-mechanics-communication-cycle'
-  location: 'global'
+  location: location
   properties: {
     environment: environment
   }
 }
 
-resource a_route 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'corerp-mechanics-communication-cycle-a-route'
-  location: 'global'
+resource route_a 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: 'route_a'
+  location: location
   properties: {
     application: app.id
   }
 }
 
-resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'corerp-mechanics-communication-cycle-a'
-  location: 'global'
+resource containerg 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'containerg'
+  location: location
   properties: {
     application: app.id
     connections: {
       b: {
-        source: b_route.id
+        source: route_b.id
       }
     }
     container: {
@@ -34,29 +40,29 @@ resource a 'Applications.Core/containers@2022-03-15-privatepreview' = {
       ports: {
         web: {
           containerPort: 3000
-          provides: a_route.id
+          provides: route_a.id
         }
       }
     }
   }
 }
 
-resource b_route 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'corerp-mechanics-communication-cycle-b-route'
-  location: 'global'
+resource route_b 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: 'route_b'
+  location: location
   properties: {
     application: app.id
   }
 }
 
-resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'corerp-mechanics-communication-cycle-b'
-  location: 'global'
+resource cycle_a 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'cycle_a'
+  location: location
   properties: {
     application: app.id
     connections: {
       a: {
-        source: a_route.id
+        source: route_a.id
       }
     }
     container: {
@@ -64,7 +70,7 @@ resource b 'Applications.Core/containers@2022-03-15-privatepreview' = {
       ports: {
         web: {
           containerPort: 3000
-          provides: b_route.id
+          provides: route_b.id
         }
       }
     }
