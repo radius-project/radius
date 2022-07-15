@@ -42,7 +42,7 @@ docker-push-$(1):
 endef
 
 # defines a target for each image
-DOCKER_IMAGES := radius-rp ucpd appcore-rp
+DOCKER_IMAGES := ucpd appcore-rp
 
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
 
