@@ -315,7 +315,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	for i := 0; i < testMessageCnt; i++ {
 		require.Equal(t, 1, testMessages[i].DequeueCount)
 	}
-	require.Equal(t, int32(defaultMaxOperationConcurrency), maxConcurrency.Load())
+	require.Equal(t, int32(defaultMaxConcurrency), maxConcurrency.Load())
 }
 
 func TestStart_RunOperation(t *testing.T) {

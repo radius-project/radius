@@ -22,7 +22,7 @@ func TestDefaultOptions(t *testing.T) {
 	require.Equal(t, defaultMaxDequeueCount, worker.options.MaxDequeueCount)
 	require.Equal(t, defaultMessageExtendMargin, worker.options.MessageExtendMargin)
 	require.Equal(t, defaultMinMessageLockDuration, worker.options.MinMessageLockDuration)
-	require.Equal(t, defaultMaxOperationConcurrency, worker.options.MaxOperationConcurrency)
+	require.Equal(t, defaultMaxConcurrency, worker.options.MaxConcurrency)
 }
 
 func TestUpdateResourceState(t *testing.T) {

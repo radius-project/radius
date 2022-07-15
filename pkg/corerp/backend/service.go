@@ -92,10 +92,10 @@ func (w *Service) Run(ctx context.Context) error {
 	workerOpts := worker.Options{}
 	if w.Options.Config.WorkerServer != nil {
 		if w.Options.Config.WorkerServer.MaxConcurrency != nil {
-			workerOpts.MaxOperationConcurrency = *w.Options.Config.WorkerServer.MaxConcurrency
+			workerOpts.MaxConcurrency = *w.Options.Config.WorkerServer.MaxConcurrency
 		}
 		if w.Options.Config.WorkerServer.MaxDequeueCount != nil {
-			workerOpts.MaxOperationConcurrency = *w.Options.Config.WorkerServer.MaxDequeueCount
+			workerOpts.MaxDequeueCount = *w.Options.Config.WorkerServer.MaxDequeueCount
 		}
 	}
 

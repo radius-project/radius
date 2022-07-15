@@ -35,26 +35,26 @@ var (
 )
 
 const (
-	// defaultMaxOperationConcurrency is the maximum concurrency to process async request operation.
-	defaultMaxOperationConcurrency = 3
+	// defaultMaxConcurrency is the default maximum concurrency to process async request operation.
+	defaultMaxConcurrency = 3
 
-	// MaxDequeueCount is the maximum dequeue count which will be retried.
+	// defaultMaxDequeueCount is the default maximum dequeue count which will be retried.
 	defaultMaxDequeueCount = 3
 
-	// messageExtendMargin is the margin duration before extending message lock.
+	// messageExtendMargin is the default margin duration before extending message lock.
 	defaultMessageExtendMargin = time.Duration(30) * time.Second
 
-	// minMessageLockDuration is the minimum duration of message lock duration.
+	// minMessageLockDuration is the default minimum duration of message lock duration.
 	defaultMinMessageLockDuration = time.Duration(5) * time.Second
 
-	// deduplicationDuration is the duration for the deduplication detection.
+	// deduplicationDuration is the default duration for the deduplication detection.
 	defaultDeduplicationDuration = time.Duration(30) * time.Second
 )
 
 // Options configures AsyncRequestProcessorWorker
 type Options struct {
-	// MaxOperationConcurrency is the maximum concurrency to process async request operation.
-	MaxOperationConcurrency int
+	// MaxConcurrency is the maximum concurrency to process async request operation.
+	MaxConcurrency int
 
 	// MaxDequeueCount is the maximum dequeue count which will be retried.
 	MaxDequeueCount int
@@ -97,8 +97,8 @@ func New(
 	if options.DeduplicationDuration == time.Duration(0) {
 		options.DeduplicationDuration = defaultDeduplicationDuration
 	}
-	if options.MaxOperationConcurrency == 0 {
-		options.MaxOperationConcurrency = defaultMaxOperationConcurrency
+	if options.MaxConcurrency == 0 {
+		options.MaxConcurrency = defaultMaxConcurrency
 	}
 
 	return &AsyncRequestProcessWorker{
@@ -107,7 +107,7 @@ func New(
 		registry:     ctrlRegistry,
 		requestQueue: qu,
 
-		sem: semaphore.NewWeighted(int64(options.MaxOperationConcurrency)),
+		sem: semaphore.NewWeighted(int64(options.MaxConcurrency)),
 	}
 }
 
