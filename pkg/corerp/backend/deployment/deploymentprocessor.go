@@ -14,6 +14,16 @@ import (
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	connector_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprsecretstores"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprstatestores"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/extenders"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -425,6 +435,78 @@ func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, 
 		}
 	case strings.ToLower(httproute.ResourceType):
 		obj := &datamodel.HTTPRoute{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(mongodatabases.ResourceType):
+		obj := &connector_dm.MongoDatabase{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(sqldatabases.ResourceType):
+		obj := &connector_dm.SqlDatabase{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(rediscaches.ResourceType):
+		obj := &connector_dm.RedisCache{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
+		obj := &connector_dm.RabbitMQMessageQueue{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(extenders.ResourceType):
+		obj := &connector_dm.Extender{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(daprstatestores.ResourceType):
+		obj := &connector_dm.DaprStateStore{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(daprsecretstores.ResourceType):
+		obj := &connector_dm.DaprSecretStore{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(daprpubsubbrokers.ResourceType):
+		obj := &connector_dm.DaprPubSubBroker{}
+		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
+
+			if err = res.As(obj); err == nil {
+				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+			}
+		}
+	case strings.ToLower(daprinvokehttproutes.ResourceType):
+		obj := &connector_dm.DaprInvokeHttpRoute{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
 
 			if err = res.As(obj); err == nil {
