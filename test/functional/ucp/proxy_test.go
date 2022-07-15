@@ -154,7 +154,7 @@ func startTestRP(t *testing.T, configContext string) {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "testrp",
+							Name:  testRPDeploymentName + "container",
 							Image: getTestRPImage(),
 							Ports: []corev1.ContainerPort{
 								{
