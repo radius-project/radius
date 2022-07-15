@@ -499,11 +499,11 @@ func Test_Truncate_ReturnsSelfForTopLevelScope_UCP(t *testing.T) {
 }
 
 func Test_Truncate_WithCustomAction(t *testing.T) {
-	id, err := Parse("/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets")
+	id, err := Parse("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets")
 	require.NoError(t, err)
 
 	truncated := id.Truncate()
-	require.Equal(t, "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0", truncated.id)
+	require.Equal(t, "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0", truncated.id)
 }
 
 func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
@@ -725,94 +725,107 @@ func Test_ValidateResourceType_Invalid(t *testing.T) {
 
 func Test_ParseByMethod(t *testing.T) {
 	testCases := []struct {
-		desc     string
-		id       string
-		method   string
-		err      bool
-		expected string
+		desc   string
+		id     string
+		method string
+		err    bool
+		eID    string
+		eRType string
 	}{
 		{
-			desc:     "ucp-post-with-custom-action",
-			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets",
-			method:   http.MethodPost,
-			err:      false,
-			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "ucp-post-with-custom-action",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets",
+			method: http.MethodPost,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "ucp-get",
-			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
-			method:   http.MethodGet,
-			err:      false,
-			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "ucp-get",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodGet,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "ucp-list",
-			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases",
-			method:   http.MethodGet,
-			err:      false,
-			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases",
+			desc:   "ucp-list",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases",
+			method: http.MethodGet,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "ucp-put",
-			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
-			method:   http.MethodPut,
-			err:      false,
-			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "ucp-put",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodPut,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "ucp-patch",
-			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
-			method:   http.MethodPatch,
-			err:      false,
-			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "ucp-patch",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodPatch,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "ucp-delete",
-			id:       "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
-			method:   http.MethodDelete,
-			err:      false,
-			expected: "/planes/radius/local/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "ucp-delete",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodDelete,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		}, {
-			desc:     "arm-post-with-custom-action",
-			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets",
-			method:   http.MethodPost,
-			err:      false,
-			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "arm-post-with-custom-action",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets",
+			method: http.MethodPost,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "arm-get",
-			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
-			method:   http.MethodGet,
-			err:      false,
-			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "arm-get",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodGet,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "arm-list",
-			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases",
-			method:   http.MethodGet,
-			err:      false,
-			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases",
+			desc:   "arm-list",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases",
+			method: http.MethodGet,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "arm-put",
-			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
-			method:   http.MethodPut,
-			err:      false,
-			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "arm-put",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodPut,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "arm-patch",
-			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
-			method:   http.MethodPatch,
-			err:      false,
-			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "arm-patch",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodPatch,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 		{
-			desc:     "arm-delete",
-			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
-			method:   http.MethodDelete,
-			err:      false,
-			expected: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ytimocin-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			desc:   "arm-delete",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodDelete,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
 		},
 	}
 
@@ -823,7 +836,8 @@ func Test_ParseByMethod(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tt.expected, parsedID.String())
+				require.Equal(t, tt.eID, parsedID.String())
+				require.Equal(t, tt.eRType, parsedID.Type())
 			}
 		})
 	}
