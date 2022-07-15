@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MongoDB(t *testing.T) {
+func Test_MongoDBConnector(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
 	template := "testdata/connectorrp-resources-mongodb.bicep"

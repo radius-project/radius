@@ -13,23 +13,23 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprHttpRoute(t *testing.T) {
+func Test_DaprPubSubBrokeConnector(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
-	template := "testdata/connectorrp-resources-dapr-http-route.bicep"
-	name := "connectorrp-resources-dapr-http-route"
+	template := "testdata/connectorrp-resources-dapr-pubsub-broker.bicep"
+	name := "connectorrp-resources-dapr-pubsub-broker"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "connectorrp-resources-dapr-http-route",
+					Name: "connectorrp-resources-dapr-pubsub-broker",
 					Type: validation.ApplicationsResource,
 				},
 				{
-					Name: "httproute",
-					Type: validation.DaprInvokeHttpRouteResource,
+					Name: "pubsubbbroker",
+					Type: validation.DaprPubSubBrokerResource,
 				},
 			},
 		},

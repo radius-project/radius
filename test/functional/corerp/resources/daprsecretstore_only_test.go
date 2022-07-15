@@ -13,23 +13,23 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprPubSubBroker(t *testing.T) {
+func Test_DaprSecretStoreConnector(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
-	template := "testdata/connectorrp-resources-dapr-pubsub-broker.bicep"
-	name := "connectorrp-resources-dapr-pubsub-broker"
+	template := "testdata/connectorrp-resources-dapr-secret-store.bicep"
+	name := "connectorrp-resources-dapr-secret-store"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "connectorrp-resources-dapr-pubsub-broker",
+					Name: "connectorrp-resources-dapr-secret-store",
 					Type: validation.ApplicationsResource,
 				},
 				{
-					Name: "pubsubbbroker",
-					Type: validation.DaprPubSubBrokerResource,
+					Name: "secretstore",
+					Type: validation.DaprSecretStoresResource,
 				},
 			},
 		},

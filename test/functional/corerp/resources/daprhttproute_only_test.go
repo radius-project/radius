@@ -13,23 +13,23 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_RabbitMQ(t *testing.T) {
+func Test_DaprHttpRouteConnector(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
-	template := "testdata/connectorrp-resources-rabbitmq.bicep"
-	name := "connectorrp-resources-rabbitmq"
+	template := "testdata/connectorrp-resources-dapr-http-route.bicep"
+	name := "connectorrp-resources-dapr-http-route"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "connectorrp-resources-rabbitmq",
+					Name: "connectorrp-resources-dapr-http-route",
 					Type: validation.ApplicationsResource,
 				},
 				{
-					Name: "rabbitmq",
-					Type: validation.RabbitMQResource,
+					Name: "httproute",
+					Type: validation.DaprInvokeHttpRouteResource,
 				},
 			},
 		},

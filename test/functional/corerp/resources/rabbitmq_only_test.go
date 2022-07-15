@@ -13,23 +13,23 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_Redis(t *testing.T) {
+func Test_RabbitMQConnector(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
-	template := "testdata/connectorrp-resources-redis-user-secrets.bicep"
-	name := "connectorrp-resources-redis-user-secrets"
+	template := "testdata/connectorrp-resources-rabbitmq.bicep"
+	name := "connectorrp-resources-rabbitmq"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "connectorrp-resources-redis-user-secrets",
+					Name: "connectorrp-resources-rabbitmq",
 					Type: validation.ApplicationsResource,
 				},
 				{
-					Name: "redis",
-					Type: validation.RedisCachesResource,
+					Name: "rabbitmq",
+					Type: validation.RabbitMQResource,
 				},
 			},
 		},

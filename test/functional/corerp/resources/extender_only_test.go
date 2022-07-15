@@ -13,23 +13,23 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprStateStore(t *testing.T) {
+func Test_ExtenderConnector(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
-	template := "testdata/connectorrp-resources-dapr-state-store.bicep"
-	name := "connectorrp-resources-dapr-state-store"
+	template := "testdata/connectorrp-resources-extender.bicep"
+	name := "connectorrp-resources-extender"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			Resources: []validation.Resource{
 				{
-					Name: "connectorrp-resources-dapr-state-store",
+					Name: "connectorrp-resources-extender",
 					Type: validation.ApplicationsResource,
 				},
 				{
-					Name: "statestore",
-					Type: validation.DaprStateStoresResource,
+					Name: "twilio",
+					Type: validation.ExtenderResource,
 				},
 			},
 		},
