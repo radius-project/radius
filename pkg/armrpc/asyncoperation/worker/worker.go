@@ -154,7 +154,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			asyncCtrl := w.registry.Get(opType)
 
 			if asyncCtrl == nil {
-				opLogger.V(radlogger.Error).Info("Unknown operation: " + opType.String())
+				opLogger.V(radlogger.Error).Info("The current message is the unknown operation: " + opType.String())
 				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
 					opLogger.Error(err, "failed to finish the message")
 				}
