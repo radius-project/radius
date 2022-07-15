@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
+	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
@@ -191,7 +192,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 			ports = append(ports, corev1.ContainerPort{
 				// Name generation logic has to match the code in HttpRoute
-				Name:          kubernetes.GetShortenedTargetPortName(applicationName + resourceTypeSuffix + routeName),
+				Name:          kubernetes.GetShortenedTargetPortName(applicationName + httproute.ResourceTypeSuffix + routeName),
 				ContainerPort: port.ContainerPort,
 				Protocol:      corev1.ProtocolTCP,
 			})
