@@ -90,9 +90,9 @@ func (c *testContext) cancellable(timeout time.Duration) (context.Context, conte
 	}
 }
 
-func newTestContext(t *testing.T, leaseTime time.Duration) (*testContext, *gomock.Controller) {
+func newTestContext(t *testing.T, lockTime time.Duration) (*testContext, *gomock.Controller) {
 	mctrl := gomock.NewController(t)
-	inmemQ := inmemory.NewInMemQueue(leaseTime)
+	inmemQ := inmemory.NewInMemQueue(lockTime)
 	return &testContext{
 		ctx:       context.Background(),
 		mockSC:    store.NewMockStorageClient(mctrl),
