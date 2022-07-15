@@ -21,9 +21,12 @@ import (
 )
 
 const (
-	envRoute             = "/providers/applications.core/environments/{environmentName}"
-	armIDUrl             = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	ucpIDUrl             = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	envRoute     = "/providers/applications.core/environments/{environmentName}"
+	armIDUrl     = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	ucpIDUrl     = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	longarmIDUrl = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+	longucpIDUrl = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+
 	operationGetRoute    = "/providers/applications.core/operations"
 	subscriptionPUTRoute = "/subscriptions/{subscriptions}/resourceGroups/{resourceGroup}"
 )
@@ -254,6 +257,52 @@ func runTest(t *testing.T, resourceIDUrl string) {
 						{
 							Code:    "InvalidRequestContent",
 							Message: "The request content was invalid and could not be deserialized.",
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:            "env name too long",
+			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
+			route:           envRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid.json",
+			url:             longarmIDUrl,
+			responseCode:    400,
+			validationErr: &armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    "HttpRequestPayloadAPISpecValidationFailed",
+					Target:  "applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130",
+					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
+					Details: []armerrors.ErrorDetails{
+						{
+							Code:    "InvalidRequestContent",
+							Message: "environmentName in path should be at most 128 chars long",
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:            "env name too long",
+			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
+			route:           envRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid.json",
+			url:             longucpIDUrl,
+			responseCode:    400,
+			validationErr: &armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    "HttpRequestPayloadAPISpecValidationFailed",
+					Target:  "applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130",
+					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
+					Details: []armerrors.ErrorDetails{
+						{
+							Code:    "InvalidRequestContent",
+							Message: "environmentName in path should be at most 128 chars long",
 						},
 					},
 				},
