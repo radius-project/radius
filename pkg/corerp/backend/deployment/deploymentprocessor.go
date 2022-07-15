@@ -449,7 +449,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := &connector_dm.MongoDatabase{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
@@ -457,7 +456,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := &connector_dm.SqlDatabase{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
@@ -465,7 +463,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := &connector_dm.RedisCache{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
@@ -473,7 +470,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := &connector_dm.RabbitMQMessageQueue{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
@@ -481,7 +477,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(extenders.ResourceType):
 		obj := &connector_dm.Extender{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
@@ -489,7 +484,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := &connector_dm.DaprStateStore{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
@@ -497,7 +491,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := &connector_dm.DaprSecretStore{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
@@ -505,7 +498,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := &connector_dm.DaprPubSubBroker{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
@@ -513,7 +505,6 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := &connector_dm.DaprInvokeHttpRoute{}
 		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
 			if err = res.As(obj); err == nil {
 				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 			}
