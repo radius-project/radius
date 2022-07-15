@@ -160,7 +160,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				}
 				return
 			}
-			if msgreq.DequeueCount >= w.options.MaxDequeueCount {
+			if msgreq.DequeueCount > w.options.MaxDequeueCount {
 				errMsg := fmt.Sprintf("exceeded max dequeue count: %d", msgreq.DequeueCount)
 				opLogger.V(radlogger.Error).Info(errMsg)
 				failed := ctrl.NewFailedResult(armerrors.ErrorDetails{

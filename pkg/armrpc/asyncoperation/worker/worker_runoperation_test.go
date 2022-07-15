@@ -224,7 +224,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	testMessage := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
 	err = tCtx.testQueue.Enqueue(ctx, testMessage)
 	require.NoError(t, err)
-	testMessage.DequeueCount = expectedDequeueCount
+	testMessage.DequeueCount = expectedDequeueCount + 1
 
 	done := make(chan struct{}, 1)
 	go func() {
@@ -239,7 +239,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	cancel()
 	<-done
 
-	require.Equal(t, expectedDequeueCount+1, testMessage.DequeueCount)
+	require.Equal(t, expectedDequeueCount+2, testMessage.DequeueCount)
 }
 
 func TestStart_MaxConcurrency(t *testing.T) {
