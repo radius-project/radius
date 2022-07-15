@@ -19,13 +19,8 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	for k, v := range queryParams {
-		if strings.EqualFold(k, "Azure-Asyncoperation") && len(v) > 0 {
-			headerName = "azure-asyncoperation"
-			headerValue = testRPURL + "/" + v[0]
-			w.Header().Set(headerName, headerValue)
-			fmt.Printf("Added %s header with value: %s\n", headerName, headerValue)
-		} else if strings.EqualFold(k, "Location") && len(v) > 0 {
-			headerName = "location"
+		if (strings.EqualFold(k, "Azure-Asyncoperation") || strings.EqualFold(k, "Location")) && len(v) > 0 {
+			headerName = strings.ToLower(k)
 			headerValue = testRPURL + "/" + v[0]
 			w.Header().Set(headerName, headerValue)
 			fmt.Printf("Added %s header with value: %s\n", headerName, headerValue)
