@@ -179,16 +179,11 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				return []outputresource.OutputResource{}, nil, err
 			}
 			routeName := resourceId.Name()
-			routeType := resourceId.TypeSegments()[len(resourceId.TypeSegments())-1].Type
-
-			typeParts := strings.Split(routeType, "/")
-
-			resourceTypeSuffix := typeParts[len(typeParts)-1]
 
 			routes = append(routes, struct {
 				Name string
 				Type string
-			}{Name: routeName, Type: resourceTypeSuffix})
+			}{Name: routeName, Type: httproute.ResourceTypeSuffix})
 
 			ports = append(ports, corev1.ContainerPort{
 				// Name generation logic has to match the code in HttpRoute
