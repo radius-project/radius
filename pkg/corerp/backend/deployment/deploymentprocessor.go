@@ -15,6 +15,7 @@ import (
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	connector_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
+
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprsecretstores"
@@ -41,6 +42,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	ConnectorRPNamespace = "Applications.Connector"
 )
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
@@ -86,7 +91,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 
 	// get namespace for deploying the resource
 	// 1. fetch the resource from the DB and get the application info
-	res, err := dp.getRequiredDependenciesByID(ctx, resourceID)
+	res, err := dp.getResourceDataByID(ctx, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch resource to get the namespace %w", err)
 	}
@@ -288,7 +293,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, depl
 func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceIDs []resources.ID) (map[string]renderers.RendererDependency, error) {
 	rendererDependencies := map[string]renderers.RendererDependency{}
 	for _, id := range resourceIDs {
-		rd, err := dp.getRequiredDependenciesByID(ctx, id)
+		rd, err := dp.getResourceDataByID(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch required resource dependencies %q: %w", id.String(), err)
 		}
@@ -407,8 +412,8 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 	return renderers.EnvironmentOptions{Namespace: namespace}, nil
 }
 
-// getRequiredDependenciesByID is to get the resource dependencies.
-func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, resourceID resources.ID) (ResourceData, error) {
+// getResourceDataByID fetches resource for the provided id from the data store
+func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resourceID resources.ID) (ResourceData, error) {
 	var res *store.Object
 	var err error
 	var sc store.StorageClient
@@ -521,10 +526,20 @@ func (dp *deploymentProcessor) getRequiredDependenciesByID(ctx context.Context, 
 }
 
 func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, application string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) (ResourceData, error) {
-	appID, err := resources.Parse(application)
-	if err != nil {
-		return ResourceData{}, fmt.Errorf("failed to parse application from the property: %w ", err)
+	var appID resources.ID
+	if application != "" {
+		parsedID, err := resources.Parse(application)
+		if err != nil {
+			return ResourceData{}, fmt.Errorf("failed to parse application from the property: %w ", err)
+		}
+		appID = parsedID
+	} else if strings.EqualFold(resourceID.ProviderNamespace(), ConnectorRPNamespace) {
+		// Application id is optional for connector resource types
+		appID = resources.ID{}
+	} else {
+		return ResourceData{}, fmt.Errorf("missing required application id for the resource %s", resourceID.String())
 	}
+
 	return ResourceData{
 		ID:              resourceID,
 		Resource:        resource,
