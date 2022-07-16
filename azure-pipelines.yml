@@ -108,6 +108,18 @@ stages:
           --tenant $(INTEGRATION_TEST_TENANT_ID)
       displayName: az CLI login
     - script: |
+        echo "##vso[task.setvariable variable=INTEGRATION_TEST_RESOURCE_GROUP_NAME]radius-$(date +%s%N)"
+      displayName: Define a resource group name
+    - script: az account set --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+      displayName: az account set 
+    - script: |
+        az group create \
+          --location westus \
+          --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME) \
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}  
+        while [ $(az group exists --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)) = false ]; do sleep 2; done
+      displayName: Create the resource group
+    - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         mkdir ~/.rad
         dist/rad env init kubernetes \
@@ -117,7 +129,7 @@ stages:
           --appcore-tag ${{ variables.REL_VERSION }}  --ucp-image ${{ variables.DOCKER_REGISTRY }}/ucpd \
           --ucp-tag ${{ variables.REL_VERSION }} \
           --provider-azure \
-          --provider-azure-resource-group ${{  variables.INTEGRATION_TEST_RESOURCE_GROUP_NAME }} \
+          --provider-azure-resource-group $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
           --provider-azure-client-id $INTEGRATION_TEST_SP_APP_ID \
           --provider-azure-client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --provider-azure-tenant-id $INTEGRATION_TEST_TENANT_ID \
@@ -147,3 +159,13 @@ stages:
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
       condition: always()
+    - script: |
+        az group delete \
+          --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --name $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
+          --yes \
+          --verbose \
+          --no-wait
+      displayName: Delete environment resource groups
+      condition: always()
+      continueOnError: 'true'
