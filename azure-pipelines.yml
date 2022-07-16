@@ -160,7 +160,7 @@ stages:
       displayName: Publish container logs
       condition: always()
     - script: |
-        az group delete \
+        az group delete --yes\
           --name $INTEGRATION_TEST_RESOURCE_GROUP_NAME \
           --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       condition: always()
