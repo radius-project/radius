@@ -224,7 +224,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
 				// If this happens, the message is requeued after message lock time (5 mins).
-				// After message lock is expired, message will be reprocessed 'w.options.MaxDequeueCount' times and
+				// After message lock is expired, message will be reprocessed 'w.options.MaxOperationRetryCount' times and
 				// then complete the message and change provisioningState to 'Failed'. Meanwhile, PUT request will
 				// be blocked.
 			}
