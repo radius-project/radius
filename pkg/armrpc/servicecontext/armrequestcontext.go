@@ -165,7 +165,7 @@ type ARMRequestContext struct {
 func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
 	path := strings.TrimPrefix(r.URL.Path, pathBase)
-	azID, err := resources.Parse(path)
+	azID, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
 		log.V(radlogger.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", r.URL.Path))
 		// do not stop extracting headers. handler needs to care invalid resource id.

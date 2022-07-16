@@ -26,7 +26,7 @@ const (
 func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			rID, err := resources.Parse(r.URL.Path)
+			rID, err := resources.ParseByMethod(r.URL.Path, r.Method)
 			if err != nil {
 				resp := invalidResourceIDResponse(r.URL.Path)
 				if err := resp.Apply(r.Context(), w, r); err != nil {
