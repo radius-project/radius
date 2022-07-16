@@ -89,5 +89,15 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 	}
 
-	return w.Start(ctx, worker.Options{})
+	workerOpts := worker.Options{}
+	if w.Options.Config.WorkerServer != nil {
+		if w.Options.Config.WorkerServer.MaxOperationConcurrency != nil {
+			workerOpts.MaxOperationConcurrency = *w.Options.Config.WorkerServer.MaxOperationConcurrency
+		}
+		if w.Options.Config.WorkerServer.MaxOperationRetryCount != nil {
+			workerOpts.MaxOperationRetryCount = *w.Options.Config.WorkerServer.MaxOperationRetryCount
+		}
+	}
+
+	return w.Start(ctx, workerOpts)
 }

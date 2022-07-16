@@ -42,4 +42,8 @@ type ServerOptions struct {
 type WorkerServerOptions struct {
 	// Port is the localhost port which provides the system-level info, such as healthprobe and metric port
 	Port *int32 `yaml:"port,omitempty"`
+	// MaxOperationConcurrency is the maximum concurrency to process async request operation.
+	MaxOperationConcurrency *int `yaml:"maxOperationConcurrency,omitempty"`
+	// MaxOperationRetryCount is the maximum retry count to process async request operation.
+	MaxOperationRetryCount *int `yaml:"maxOperationRetryCount,omitempty"`
 }
