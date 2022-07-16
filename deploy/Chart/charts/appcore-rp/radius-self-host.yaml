@@ -26,5 +26,5 @@ server:
   host: "0.0.0.0"
   port: 5443
 workerServer:
-  maxConcurrency: 3
-  maxDequeueCount: 2
+  maxOperationConcurrency: 3
+  maxOperationRetryCount: 2

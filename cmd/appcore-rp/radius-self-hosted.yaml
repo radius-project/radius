@@ -19,5 +19,5 @@ server:
   port: 8080
   enableArmAuth: false
 workerServer:
-  maxConcurrency: 3
-  maxDequeueCount: 2
+  maxOperationConcurrency: 3
+  maxOperationRetryCount: 2
