@@ -29,7 +29,8 @@ func Test_Application(t *testing.T) {
 				},
 			},
 			// Application should not render any K8s Objects directly
-			K8sObjects: &validation.K8sObjectSet{},
+			K8sObjects:           &validation.K8sObjectSet{},
+			SkipObjectValidation: false,
 		},
 	})
 	test.Test(t)

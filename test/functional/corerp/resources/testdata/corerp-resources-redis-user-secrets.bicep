@@ -67,6 +67,7 @@ resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = 
   location: 'global'
   properties: {
     environment: environment
+    application: app.id
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
     secrets: {

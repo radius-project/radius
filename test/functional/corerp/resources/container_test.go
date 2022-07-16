@@ -39,6 +39,7 @@ func Test_Container(t *testing.T) {
 					},
 				},
 			},
+			SkipObjectValidation: false,
 		},
 	})
 
@@ -76,6 +77,7 @@ func Test_ContainerHttpRoute(t *testing.T) {
 					},
 				},
 			},
+			SkipObjectValidation: false,
 		},
 	})
 

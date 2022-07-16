@@ -60,6 +60,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
   name: 'corerp-resources-sql-db'
   location: location
   properties: {
+    application: app.id
     environment: environment
     server: sqlRoute.properties.hostname
     database: 'master'
