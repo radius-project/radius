@@ -19,10 +19,10 @@ import (
 func TestDefaultOptions(t *testing.T) {
 	worker := New(Options{}, nil, nil, nil)
 	require.Equal(t, defaultDeduplicationDuration, worker.options.DeduplicationDuration)
-	require.Equal(t, defaultMaxDequeueCount, worker.options.MaxDequeueCount)
+	require.Equal(t, defaultMaxOperationRetryCount, worker.options.MaxOperationRetryCount)
 	require.Equal(t, defaultMessageExtendMargin, worker.options.MessageExtendMargin)
 	require.Equal(t, defaultMinMessageLockDuration, worker.options.MinMessageLockDuration)
-	require.Equal(t, defaultMaxConcurrency, worker.options.MaxConcurrency)
+	require.Equal(t, defaultMaxOperationConcurrency, worker.options.MaxOperationConcurrency)
 }
 
 func TestUpdateResourceState(t *testing.T) {

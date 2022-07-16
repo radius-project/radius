@@ -35,11 +35,11 @@ var (
 )
 
 const (
-	// defaultMaxConcurrency is the default maximum concurrency to process async request operation.
-	defaultMaxConcurrency = 3
+	// defaultMaxOperationConcurrency is the default maximum concurrency to process async request operation.
+	defaultMaxOperationConcurrency = 3
 
-	// defaultMaxDequeueCount is the default maximum dequeue count which will be retried.
-	defaultMaxDequeueCount = 3
+	// defaultMaxOperationRetryCount is the default maximum retry count to process async operation.
+	defaultMaxOperationRetryCount = 3
 
 	// messageExtendMargin is the default margin duration before extending message lock.
 	defaultMessageExtendMargin = time.Duration(30) * time.Second
@@ -53,13 +53,13 @@ const (
 
 // Options configures AsyncRequestProcessorWorker
 type Options struct {
-	// MaxConcurrency is the maximum concurrency to process async request operation.
-	MaxConcurrency int
+	// MaxOperationConcurrency is the maximum concurrency to process async request operation.
+	MaxOperationConcurrency int
 
-	// MaxDequeueCount is the maximum dequeue count which will be retried.
-	MaxDequeueCount int
+	// MaxOperationRetryCount is the maximum retry count to process async request operation.
+	MaxOperationRetryCount int
 
-	// MessageExtendMargin is the margin duration before extending message lock.
+	// MessageExtendMargin is the margin duration for clock skew before extending message lock.
 	MessageExtendMargin time.Duration
 
 	// MinMessageLockDuration is the minimum duration of message lock duration.
@@ -85,8 +85,11 @@ func New(
 	sm manager.StatusManager,
 	qu queue.Client,
 	ctrlRegistry *ControllerRegistry) *AsyncRequestProcessWorker {
-	if options.MaxDequeueCount == 0 {
-		options.MaxDequeueCount = defaultMaxDequeueCount
+	if options.MaxOperationConcurrency == 0 {
+		options.MaxOperationConcurrency = defaultMaxOperationConcurrency
+	}
+	if options.MaxOperationRetryCount == 0 {
+		options.MaxOperationRetryCount = defaultMaxOperationRetryCount
 	}
 	if options.MessageExtendMargin == time.Duration(0) {
 		options.MessageExtendMargin = defaultMessageExtendMargin
@@ -97,17 +100,13 @@ func New(
 	if options.DeduplicationDuration == time.Duration(0) {
 		options.DeduplicationDuration = defaultDeduplicationDuration
 	}
-	if options.MaxConcurrency == 0 {
-		options.MaxConcurrency = defaultMaxConcurrency
-	}
 
 	return &AsyncRequestProcessWorker{
 		options:      options,
 		sm:           sm,
 		registry:     ctrlRegistry,
 		requestQueue: qu,
-
-		sem: semaphore.NewWeighted(int64(options.MaxConcurrency)),
+		sem:          semaphore.NewWeighted(int64(options.MaxOperationConcurrency)),
 	}
 }
 
@@ -160,8 +159,8 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				}
 				return
 			}
-			if msgreq.DequeueCount > w.options.MaxDequeueCount {
-				errMsg := fmt.Sprintf("exceeded max dequeue count: %d", msgreq.DequeueCount)
+			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
+				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
 				opLogger.V(radlogger.Error).Info(errMsg)
 				failed := ctrl.NewFailedResult(armerrors.ErrorDetails{
 					Code:    armerrors.Internal,

@@ -195,7 +195,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	expectedDequeueCount := 2
 
 	registry := NewControllerRegistry(tCtx.mockSP)
-	worker := New(Options{MaxDequeueCount: expectedDequeueCount}, tCtx.mockSM, tCtx.testQueue, registry)
+	worker := New(Options{MaxOperationRetryCount: expectedDequeueCount}, tCtx.mockSM, tCtx.testQueue, registry)
 
 	opts := ctrl.Options{
 		StorageClient: tCtx.mockSC,
@@ -315,7 +315,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	for i := 0; i < testMessageCnt; i++ {
 		require.Equal(t, 1, testMessages[i].DequeueCount)
 	}
-	require.Equal(t, int32(defaultMaxConcurrency), maxConcurrency.Load())
+	require.Equal(t, int32(defaultMaxOperationConcurrency), maxConcurrency.Load())
 }
 
 func TestStart_RunOperation(t *testing.T) {
