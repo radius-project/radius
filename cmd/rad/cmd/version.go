@@ -38,19 +38,19 @@ func writeVersionString(format string, w io.Writer) {
 	}
 	_ = output.Write(format, displayVersion, w, output.FormatterOptions{Columns: []output.Column{
 		{
-			Heading:  "Release",
+			Heading:  "RELEASE",
 			JSONPath: "{ .Release }",
 		},
 		{
-			Heading:  "Version",
+			Heading:  "VERSION",
 			JSONPath: "{ .Version }",
 		},
 		{
-			Heading:  "Bicep",
+			Heading:  "BICEP",
 			JSONPath: "{ .Bicep }",
 		},
 		{
-			Heading:  "Commit",
+			Heading:  "COMMIT",
 			JSONPath: "{ .Commit }",
 		},
 	}})
