@@ -14,8 +14,6 @@ import (
 )
 
 func Test_Extender(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-resources-extender.bicep"
 	name := "corerp-resources-extender"
 
@@ -40,12 +38,12 @@ func Test_Extender(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
+					"default": {
 						validation.NewK8sPodForResource(name, "myapp"),
 					},
 				},
 			},
-			SkipObjectValidation: true,
+			SkipObjectValidation: false,
 		},
 	})
 

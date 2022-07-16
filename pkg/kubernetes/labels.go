@@ -120,5 +120,18 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 }
 
 func MakeResourceName(application string, resource string) string {
-	return strings.ToLower(application + "-" + resource)
+	if application != "" && resource != "" {
+		return strings.ToLower(application + "-" + resource)
+	}
+
+	if application != "" && resource == "" {
+		return strings.ToLower(application)
+	}
+
+	if application == "" && resource != "" {
+		return strings.ToLower(resource)
+	}
+
+	// We should never have this case
+	return "resource-name"
 }

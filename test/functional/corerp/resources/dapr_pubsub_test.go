@@ -14,8 +14,6 @@ import (
 )
 
 func Test_DaprPubSubGeneric(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
-
 	template := "testdata/corerp-resources-dapr-pubsub-generic.bicep"
 	name := "corerp-resources-dapr-pubsub-generic"
 
@@ -38,12 +36,24 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "publisher"),
+					},
+				},
+			},
+			SkipObjectValidation: false,
 		},
 	})
 
 	test.Test(t)
 }
 
+// TODO: Getting "Unauthorized" error
+// Error: Code="DeploymentFailed" Message="" Details=[{"additionalInfo":null,"code":"OK","details":null,"message":"","target":null},
+// {"additionalInfo":null,"code":"Unauthorized","details":null,"message":"{\n  \"error\": {\n    \"code\": \"AuthenticationFailed\",\n
+// \"message\": \"Authentication failed. The 'Authorization' header is missing.\"\n  }\n}","target":null}]
 func Test_DaprPubSubServiceBus(t *testing.T) {
 	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
@@ -53,7 +63,6 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
@@ -70,6 +79,14 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "publisher"),
+					},
+				},
+			},
+			SkipObjectValidation: false,
 		},
 	})
 

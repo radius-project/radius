@@ -13,11 +13,13 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
+// FIXME: App is not available.
+// Failed to load logs: container "app" in pod "msql-app-85877f5fdb-q9rxj" is waiting to start: CreateContainerConfigError
 func Test_MicrosoftSQL(t *testing.T) {
 	t.Skip()
 
-	template := "corerp-resources-microsoft-sql.bicep"
-	name := "corerp-resources-microsoft-sql"
+	template := "testdata/corerp-resources-microsoft-sql.bicep"
+	name := "msql"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -25,29 +27,29 @@ func Test_MicrosoftSQL(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-microsoft-app",
+						Name: "msql",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-microsoft-sqlapp",
+						Name: "app",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "corerp-resources-microsoft-db",
+						Name: "db",
 						Type: validation.SQLDatabasesResource,
 					},
 					{
-						Name: "corerp-resources-microsoft-route",
+						Name: "route",
 						Type: validation.HttpRoutesResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
-						validation.NewK8sPodForResource(name, "corerp-resources-microsoft-sqlapp"),
-						validation.NewK8sPodForResource(name, "corerp-resources-microsoft-db"),
-						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-sql-route"),
+					"default": {
+						validation.NewK8sPodForResource(name, "app"),
+						validation.NewK8sPodForResource(name, "db"),
+						validation.NewK8sHTTPProxyForResource(name, "route"),
 					},
 				},
 			},

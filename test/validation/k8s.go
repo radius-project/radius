@@ -484,7 +484,7 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 	}
 
 	for _, remainingResource := range remaining {
-		log.Printf("Failed to validate resource with of type %s with labels %s", remainingResource.GroupVersionResource.Resource, remainingResource.Labels)
+		log.Printf("Failed to validate resource of type %s with labels %s", remainingResource.GroupVersionResource.Resource, remainingResource.Labels)
 	}
 	return len(remaining) == 0
 }

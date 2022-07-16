@@ -13,9 +13,8 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
+// FIXME: Test passes but containers are unhealthy.
 func Test_SQL(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-resources-sql.bicep"
 	name := "corerp-resources-sql"
 
@@ -29,19 +28,19 @@ func Test_SQL(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-sql-webapp",
+						Name: "webapp",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "corerp-resources-sql-db",
+						Name: "sql-db",
 						Type: validation.SQLDatabasesResource,
 					},
 					{
-						Name: "corerp-resources-sql-route",
+						Name: "sql-route",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "corerp-resources-sql-container",
+						Name: "sql-container",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -49,9 +48,9 @@ func Test_SQL(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					name: {
-						validation.NewK8sPodForResource(name, "corerp-resources-sql-webapp"),
-						validation.NewK8sPodForResource(name, "corerp-resources-sql-container"),
-						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-sql-route"),
+						validation.NewK8sPodForResource(name, "webapp"),
+						validation.NewK8sPodForResource(name, "sql-container"),
+						validation.NewK8sHTTPProxyForResource(name, "sql-route"),
 					},
 				},
 			},

@@ -13,9 +13,11 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
+// FIXME: If I set `DAPR_GRPC_PORT`, I get the following error:
+// failed to create Dapr client -  error creating connection to '127.0.0.1:3000': context deadline exceeded: context deadline exceeded
+// If I don't set it, it says nil port.
+// Bicep needs to be updated.
 func Test_DaprSecretStoreGeneric(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
-
 	template := "testdata/corerp-resources-dapr-secretstore-generic.bicep"
 	name := "corerp-resources-dapr-secretstore-generic"
 
@@ -38,6 +40,14 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 					},
 				},
 			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "myapp"),
+					},
+				},
+			},
+			SkipObjectValidation: true,
 		},
 	})
 

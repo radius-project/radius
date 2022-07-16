@@ -24,10 +24,8 @@ param username string = 'sa'
 @description('Specifies the RabbitMQ password.')
 param password string = 'p@ssw0rd'
 
-var appPrefix = 'corerp-resources-sql'
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-app'
+  name: 'corerp-resources-sql-app'
   location: location
   properties: {
     environment: environment
@@ -35,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-webapp'
+  name: 'webapp'
   location: location
   properties: {
     application: app.id
@@ -59,9 +57,10 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-db'
+  name: 'sql-db'
   location: location
   properties: {
+    application: app.id
     environment: environment
     server: sqlRoute.properties.hostname
     database: 'master'
@@ -69,7 +68,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
 }
 
 resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-route'
+  name: 'sql-route'
   location: location
   properties: {
     application: app.id
@@ -78,7 +77,7 @@ resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
 }
 
 resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-container'
+  name: 'sql-container'
   location: location
   properties: {
     application: app.id

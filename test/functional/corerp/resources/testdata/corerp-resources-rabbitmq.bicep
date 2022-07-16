@@ -24,10 +24,8 @@ param username string = 'guest'
 @description('Specifies the RabbitMQ password.')
 param password string = 'guest'
 
-var appPrefix = 'corerp-resources-rabbitmq'
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-app'
+  name: 'corerp-resources-rabbitmq'
   location: location
   properties: {
     environment: environment
@@ -35,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-webapp'
+  name: 'webapp'
   location: location
   properties: {
     application: app.id
@@ -56,7 +54,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-container'
+  name: 'rmq-ctr'
   location: location
   properties: {
     application: app.id
@@ -73,7 +71,7 @@ resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privateprevi
 }
 
 resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-route'
+  name: 'rmq-route'
   location: location
   properties: {
     application: app.id
@@ -82,9 +80,10 @@ resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource rabbitmq 'Applications.Connector/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-mq'
+  name: 'rmq'
   location: location
   properties: {
+    application: app.id
     environment: environment
     queue: 'queue'
     secrets: {

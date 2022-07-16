@@ -14,6 +14,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
+// TODO: Getting "Unauthorized" error
+// Error: Code="DeploymentFailed" Message="" Details=[{"additionalInfo":null,"code":"OK","details":null,"message":"","target":null},
+// {"additionalInfo":null,"code":"Unauthorized","details":null,"message":"{\n  \"error\": {\n    \"code\": \"AuthenticationFailed\",\n
+// \"message\": \"Authentication failed. The 'Authorization' header is missing.\"\n  }\n}","target":null}]
 func Test_AzureConnections(t *testing.T) {
 	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
 
@@ -34,7 +38,7 @@ func Test_AzureConnections(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
+					"default": {
 						validation.NewK8sPodForResource(name, containerResourceName),
 					},
 				},

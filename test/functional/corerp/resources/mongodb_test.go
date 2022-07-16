@@ -13,6 +13,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
+// TODO: Getting "Unauthorized" error
+// Error: Code="DeploymentFailed" Message="" Details=[{"additionalInfo":null,"code":"OK","details":null,"message":"","target":null},
+// {"additionalInfo":null,"code":"Unauthorized","details":null,"message":"{\n  \"error\": {\n    \"code\": \"AuthenticationFailed\",\n
+// \"message\": \"Authentication failed. The 'Authorization' header is missing.\"\n  }\n}","target":null}]
 func Test_MongoDB(t *testing.T) {
 	t.Skip()
 
@@ -40,12 +44,12 @@ func Test_MongoDB(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
-						validation.NewK8sPodForResource(name, "webapp"),
+					"default": {
+						validation.NewK8sPodForResource(name, "todoapp"),
 					},
 				},
 			},
-			SkipObjectValidation: true,
+			SkipObjectValidation: false,
 		},
 	})
 
@@ -53,8 +57,6 @@ func Test_MongoDB(t *testing.T) {
 }
 
 func Test_MongoDBUserSecrets(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
 	name := "corerp-resources-mongodb-user-secrets"
 
@@ -64,11 +66,11 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-mongodb-user-secrets-app",
+						Name: "corerp-resources-mongodb-user-secrets",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "todoapp",
+						Name: "app",
 						Type: validation.ContainersResource,
 					},
 					{
@@ -80,20 +82,20 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "mongo",
+						Name: "mongo-db",
 						Type: validation.MongoDatabasesResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
-						validation.NewK8sPodForResource(name, "webapp"),
+					"default": {
+						validation.NewK8sPodForResource(name, "app"),
 						validation.NewK8sPodForResource(name, "mongo"),
 					},
 				},
 			},
-			SkipObjectValidation: true,
+			SkipObjectValidation: false,
 		},
 	})
 

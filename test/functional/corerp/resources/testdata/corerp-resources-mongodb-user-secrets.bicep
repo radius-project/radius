@@ -20,7 +20,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'webapp'
+  name: 'app'
   location: 'global'
   properties: {
     application: app.id
@@ -70,9 +70,10 @@ resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
 }
 
 resource mongo 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mongo'
+  name: 'mongo-db'
   location: 'global'
   properties: {
+    application: app.id
     environment: environment
     secrets: {
       connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}'

@@ -40,6 +40,7 @@ resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privateprev
   location: location
   properties: {
     environment: environment
+    application: app.id
     kind: 'generic'
     type: 'pubsub.kafka'
     metadata: {

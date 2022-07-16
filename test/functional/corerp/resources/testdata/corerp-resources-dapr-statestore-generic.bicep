@@ -39,6 +39,7 @@ resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepr
   name: 'statestore-generic'
   location: location
   properties: {
+    application: app.id
     environment: environment
     kind: 'generic'
     type: 'state.zookeeper'

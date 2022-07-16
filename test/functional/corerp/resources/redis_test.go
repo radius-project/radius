@@ -13,9 +13,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
+// TODO: webapp logs this error:
+// failed to connect with redis instance at corerp-resources-redis-user-secrets-redis-route:80 -
+// dial tcp 10.96.251.170:80: connect: connection refused
 func Test_Redis(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-resources-redis-user-secrets.bicep"
 	name := "corerp-resources-redis-user-secrets"
 
@@ -48,7 +49,7 @@ func Test_Redis(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
+					"default": {
 						validation.NewK8sPodForResource(name, "webapp"),
 						validation.NewK8sPodForResource(name, "redis"),
 						validation.NewK8sHTTPProxyForResource(name, "redis-route"),
