@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -64,10 +65,11 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 	values := map[string]renderers.ComputedValueReference{
 		"namespace": {
 			Value: serviceBusNamespaceName,
-		},
+		}, 
 		"pubSubName": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			PropertyReference: handlers.ResourceName,
+			Value: kubernetes.MakeResourceName(applicationName, resource.Name),
+			// LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			// PropertyReference: handlers.ResourceName,
 		},
 		"topic": {
 			Value: topicName,
