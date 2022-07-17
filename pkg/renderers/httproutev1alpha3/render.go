@@ -63,7 +63,6 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		defaultPort := kubernetes.GetDefaultPort()
 		route.Port = &defaultPort
 	}
-
 	computedValues := map[string]renderers.ComputedValueReference{
 		"host": {
 			Value: kubernetes.MakeResourceName(resource.ApplicationName, resource.ResourceName),
@@ -93,8 +92,8 @@ func (r Renderer) Render(ctx context.Context, options renderers.RenderOptions) (
 		outputs = append(outputs, trafficsplit)
 		portNum = pNum
 	}
-	if route.Targetport != nil {
-		portNum = int(*route.Targetport)
+	if route.ContainerPort != nil {
+		portNum = int(*route.ContainerPort)
 	}
 	service := r.makeService(resource, route, portNum)
 	outputs = append(outputs, service)
