@@ -55,7 +55,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 // {"additionalInfo":null,"code":"Unauthorized","details":null,"message":"{\n  \"error\": {\n    \"code\": \"AuthenticationFailed\",\n
 // \"message\": \"Authentication failed. The 'Authorization' header is missing.\"\n  }\n}","target":null}]
 func Test_DaprPubSubServiceBus(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
+	// t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"

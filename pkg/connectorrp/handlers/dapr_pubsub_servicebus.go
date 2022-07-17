@@ -168,7 +168,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 	// Check if a service bus namespace exists in the resource group for this application
 	namespace, err := sbc.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get servicebus namespace: '%s':%w", *namespace.Name, err)
+		return nil, fmt.Errorf("failed to get servicebus namespace:%w", err)
 	}
 
 	return &namespace, nil

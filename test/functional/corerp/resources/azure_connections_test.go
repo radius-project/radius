@@ -19,8 +19,6 @@ import (
 // {"additionalInfo":null,"code":"Unauthorized","details":null,"message":"{\n  \"error\": {\n    \"code\": \"AuthenticationFailed\",\n
 // \"message\": \"Authentication failed. The 'Authorization' header is missing.\"\n  }\n}","target":null}]
 func Test_AzureConnections(t *testing.T) {
-	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
-
 	name := "corerp-azure-connection-database-service"
 	containerResourceName := "db-service"
 	template := "testdata/corerp-azure-connection-database-service.bicep"

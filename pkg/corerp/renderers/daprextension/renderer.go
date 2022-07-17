@@ -62,7 +62,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	dependencies := options.Dependencies
-	output, err := r.Inner.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := r.Inner.Render(ctx, resource, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
