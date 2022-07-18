@@ -56,7 +56,7 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 		}
 
 		workspace.DefaultApplication = applicationName
-		section.Items[workspace.Name] = *workspace
+		section.Items[strings.ToLower(workspace.Name)] = *workspace
 		return nil
 	})
 	if err != nil {

@@ -8,6 +8,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -125,6 +126,7 @@ func initWorkspaceKubernetes(cmd *cobra.Command, args []string) error {
 			workspace.ProviderConfig.Azure = azureProvider
 		}
 
+		name := strings.ToLower(name)
 		section.Default = name
 		section.Items[name] = workspace
 

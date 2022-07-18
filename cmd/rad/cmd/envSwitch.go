@@ -70,7 +70,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 		}
 
 		workspace.Environment = id.String()
-		section.Items[workspace.Name] = *workspace
+		section.Items[strings.ToLower(workspace.Name)] = *workspace
 		return nil
 	})
 	if err != nil {
