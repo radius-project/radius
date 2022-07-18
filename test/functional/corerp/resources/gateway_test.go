@@ -18,7 +18,7 @@ import (
 // 2022/07/16 22:38:47 no provider could be found for binding of type -  <nil>
 func Test_Gateway(t *testing.T) {
 	template := "testdata/corerp-resources-gateway.bicep"
-	name := "corerp-resources-gateway-app"
+	name := "corerp-resources-gateway"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -26,7 +26,7 @@ func Test_Gateway(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-gateway-app",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -64,7 +64,6 @@ func Test_Gateway(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: false,
 		},
 	})
 

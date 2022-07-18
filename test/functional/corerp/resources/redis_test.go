@@ -26,7 +26,7 @@ func Test_Redis(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-redis-user-secrets",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -52,7 +52,7 @@ func Test_Redis(t *testing.T) {
 					"default": {
 						validation.NewK8sPodForResource(name, "webapp"),
 						validation.NewK8sPodForResource(name, "redis"),
-						validation.NewK8sHTTPProxyForResource(name, "redis-route"),
+						validation.NewK8sServiceForResource(name, "redis-route"),
 					},
 				},
 			},

@@ -18,10 +18,10 @@ param sqlImage string = 'mcr.microsoft.com/mssql/server:2019-latest'
 @description('Specifies the port for the container resource.')
 param sqlPort int = 1433
 
-@description('Specifies the RabbitMQ username.')
+@description('Specifies the SQL username.')
 param username string = 'sa'
 
-@description('Specifies the RabbitMQ password.')
+@description('Specifies the SQL password.')
 param password string = 'p@ssw0rd'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
@@ -33,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'webapp'
+  name: 'corerp-resources-sql-webapp'
   location: location
   properties: {
     application: app.id
@@ -57,10 +57,9 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'sql-db'
+  name: 'corerp-resources-sql-db'
   location: location
   properties: {
-    application: app.id
     environment: environment
     server: sqlRoute.properties.hostname
     database: 'master'
@@ -68,7 +67,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
 }
 
 resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'sql-route'
+  name: 'corerp-resources-sql-route'
   location: location
   properties: {
     application: app.id
@@ -77,7 +76,7 @@ resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
 }
 
 resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sql-container'
+  name: 'corerp-resources-sql-container'
   location: location
   properties: {
     application: app.id

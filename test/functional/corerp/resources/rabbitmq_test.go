@@ -26,7 +26,7 @@ func Test_RabbitMQ(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-rabbitmq",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -52,7 +52,7 @@ func Test_RabbitMQ(t *testing.T) {
 					"default": {
 						validation.NewK8sPodForResource(name, "webapp"),
 						validation.NewK8sPodForResource(name, "rmq-ctr"),
-						validation.NewK8sHTTPProxyForResource(name, "rmq-route"),
+						validation.NewK8sServiceForResource(name, "rmq-route"),
 					},
 				},
 			},

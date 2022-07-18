@@ -14,7 +14,6 @@ import (
 )
 
 func Test_MongoDB(t *testing.T) {
-
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
 
@@ -62,7 +61,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-mongodb-user-secrets",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -88,10 +87,10 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 					"default": {
 						validation.NewK8sPodForResource(name, "app"),
 						validation.NewK8sPodForResource(name, "mongo"),
+						validation.NewK8sServiceForResource(name, "mongo-route"),
 					},
 				},
 			},
-			SkipObjectValidation: false,
 		},
 	})
 

@@ -16,7 +16,7 @@ import (
 // FIXME: Test passes but containers are unhealthy.
 func Test_SQL(t *testing.T) {
 	template := "testdata/corerp-resources-sql.bicep"
-	name := "corerp-resources-sql-app"
+	name := "corerp-resources-sql"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -24,7 +24,7 @@ func Test_SQL(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-sql-app",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -48,9 +48,9 @@ func Test_SQL(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "webapp"),
-						validation.NewK8sPodForResource(name, "sql-container"),
-						validation.NewK8sHTTPProxyForResource(name, "sql-route"),
+						validation.NewK8sPodForResource(name, "corerp-resources-sql-webapp"),
+						validation.NewK8sPodForResource(name, "corerp-resources-sql-container"),
+						validation.NewK8sServiceForResource(name, "corerp-resources-sql-route"),
 					},
 				},
 			},

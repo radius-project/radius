@@ -43,7 +43,6 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: false,
 		},
 	})
 
@@ -81,7 +80,6 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: false,
 		},
 	})
 
