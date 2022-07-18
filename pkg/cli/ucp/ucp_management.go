@@ -109,8 +109,9 @@ func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Co
 	if err != nil {
 		return nil, err
 	}
+	envID := "/" + amc.RootScope + "/providers/applications.core/environments/" + envName
 	for _, application := range applicationsList {
-		if strings.EqualFold(envName, *application.Properties.Environment) {
+		if strings.EqualFold(envID, *application.Properties.Environment) {
 			results = append(results, application)
 		}
 	}
@@ -134,12 +135,11 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
 	}
 
-	g,groupCtx := errgroup.WithContext(ctx)
+	g, groupCtx := errgroup.WithContext(ctx)
 
 	for _, resource := range resourcesWithApplication {
 		resource := resource
-		g.Go( func() error {
-			//if successful move onto next resource ignoring the response unless there is an error
+		g.Go(func() error {
 			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.Name)
 			if err != nil {
 				return err
@@ -149,7 +149,7 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	}
 	err = g.Wait()
 	if err != nil {
-		return v20220315privatepreview.ApplicationsDeleteResponse{},err
+		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
 	}
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	return client.Delete(ctx, applicationName, nil)
@@ -218,6 +218,7 @@ func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 		}
 	}
 	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
+
 	_, err = envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
 	if err != nil {
 		return err
