@@ -33,22 +33,12 @@ func Test_MicrosoftSQL(t *testing.T) {
 						Name: "mssql-app-ctnr",
 						Type: validation.ContainersResource,
 					},
-					{
-						Name: "mssql-db",
-						Type: validation.SQLDatabasesResource,
-					},
-					{
-						Name: "mssql-rte",
-						Type: validation.HttpRoutesResource,
-					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(name, "mssql-app-ctnr"),
-						validation.NewK8sPodForResource(name, "mssql-db"),
-						validation.NewK8sServiceForResource(name, "mssql-rte"),
 					},
 				},
 			},

@@ -51,6 +51,9 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, req
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+	if queue, ok := deploymentOutput.ComputedValues["queue"].(string); ok {
+		newResource.Properties.Queue = queue
+	}
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.RabbitMQMessageQueue{}

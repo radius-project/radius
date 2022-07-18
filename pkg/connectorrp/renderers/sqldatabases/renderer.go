@@ -60,6 +60,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			SecretValues: map[string]rp.SecretValueReference{},
 		}, nil
 	} else {
+		fmt.Println("Rendering azure connector")
 		// Source resource identifier is provided, currently only Azure resources are expected with non empty resource id
 		rendererOutput, err := renderAzureResource(properties)
 		if err != nil {
@@ -107,6 +108,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 		Resource:     map[string]string{},
 		Dependencies: []outputresource.Dependency{sqlServerDependency},
 	}
+	fmt.Println(databaseID.Name())
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		"database": {

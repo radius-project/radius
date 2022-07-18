@@ -43,6 +43,12 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 	}
 	resource.Resource = serialized
 
+	b, _ := json.Marshal(resource)
+	fmt.Println(string(b))
+
+	b, _ = json.Marshal(resource.Resource)
+	fmt.Println(string(b))
+
 	return resourcemodel.ResourceIdentity{}, map[string]string{}, nil
 }
 

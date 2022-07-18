@@ -12,9 +12,6 @@ param magpiePort int = 3000
 @description('Specifies the environment for resources.')
 param environment string = 'test'
 
-@description('Specifies the port for the container resource.')
-param sqlPort int = 1433
-
 @description('Specifies the SQL username.')
 param adminUsername string = 'cooluser'
 
@@ -59,17 +56,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     environment: environment
-    server: sqlRoute.properties.hostname
-    database: 'master'
-  }
-}
-
-resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'mssql-rte'
-  location: location
-  properties: {
-    application: app.id
-    port: sqlPort
+    resource: server::dbinner.id
   }
 }
 
