@@ -13,7 +13,7 @@ param port int = 3000
 param image string = 'radiusdev.azurecr.io/magpiego:latest'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-gateway-app'
+  name: 'corerp-resources-gateway'
   location: location
   properties: {
     environment: environment

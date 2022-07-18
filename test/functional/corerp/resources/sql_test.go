@@ -15,6 +15,7 @@ import (
 
 // FIXME: Test passes but containers are unhealthy.
 func Test_SQL(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-sql.bicep"
 	name := "corerp-resources-sql-app"
 

@@ -65,11 +65,11 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 	values := map[string]renderers.ComputedValueReference{
 		"namespace": {
 			Value: serviceBusNamespaceName,
-		}, 
+		},
 		"pubSubName": {
-			Value: kubernetes.MakeResourceName(applicationName, resource.Name),
-			// LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			// PropertyReference: handlers.ResourceName,
+			Value:             kubernetes.MakeResourceName(applicationName, resource.Name),
+			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			PropertyReference: handlers.ResourceName,
 		},
 		"topic": {
 			Value: topicName,

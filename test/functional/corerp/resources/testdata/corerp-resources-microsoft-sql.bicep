@@ -22,7 +22,7 @@ param adminUsername string = 'cooluser'
 param adminPassword string = 'p@ssw0rd'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'msql'
+  name: 'corerp-resources-microsoft-sql'
   location: location
   properties: {
     environment: environment

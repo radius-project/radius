@@ -64,7 +64,6 @@ func Test_Gateway(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: false,
 		},
 	})
 
