@@ -93,6 +93,10 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.UCPTag = cliOptions.Radius.UCPTag
 	}
 
+	if cliOptions.Radius.PublicEndpointOverride != "" {
+		options.Radius.PublicEndpointOverride = cliOptions.Radius.PublicEndpointOverride
+	}
+
 	if cliOptions.Radius.AzureProvider != nil {
 		options.Radius.AzureProvider = cliOptions.Radius.AzureProvider
 	}

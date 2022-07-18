@@ -35,6 +35,10 @@ spec:
           value: 'true'
         - name: SKIP_AUTH
           value: 'true'
+        {{ if .Values.global.rp.publicEndpointOverride}}
+        - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
+          value: {{ .Values.global.rp.publicEndpointOverride }}
+        {{ end }}
         name: appcore-rp
         ports:
         - containerPort: 5443
