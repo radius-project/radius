@@ -31,9 +31,6 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         containerPort:3000
         path: '/healthz'
       }
-      env: {
-        DAPR_GRPC_PORT: '3000'
-      }
     }
     extensions: [
       {
