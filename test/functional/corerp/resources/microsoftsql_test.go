@@ -16,7 +16,6 @@ import (
 // FIXME: App is not available.
 // Failed to load logs: container "app" in pod "msql-app-85877f5fdb-q9rxj" is waiting to start: CreateContainerConfigError
 func Test_MicrosoftSQL(t *testing.T) {
-	t.Skip()
 
 	template := "testdata/corerp-resources-microsoft-sql.bicep"
 	name := "msql"

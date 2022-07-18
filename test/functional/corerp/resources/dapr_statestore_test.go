@@ -54,12 +54,8 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 	test.Test(t)
 }
 
-// TODO: Getting "Unauthorized" error
-// Error: Code="DeploymentFailed" Message="" Details=[{"additionalInfo":null,"code":"OK","details":null,"message":"","target":null},
-// {"additionalInfo":null,"code":"Unauthorized","details":null,"message":"{\n  \"error\": {\n    \"code\": \"AuthenticationFailed\",\n
-// \"message\": \"Authentication failed. The 'Authorization' header is missing.\"\n  }\n}","target":null}]
+
 func Test_DaprStateStoreTableStorage(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
 
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
