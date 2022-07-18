@@ -754,6 +754,9 @@ type GatewayProperties struct {
 
 	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; URL of the gateway resource. Readonly.
+	URL *string `json:"url,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type GatewayProperties.
@@ -765,6 +768,7 @@ func (g GatewayProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "internal", g.Internal)
 	populate(objectMap, "provisioningState", g.ProvisioningState)
 	populate(objectMap, "routes", g.Routes)
+	populate(objectMap, "url", g.URL)
 	return json.Marshal(objectMap)
 }
 
@@ -791,6 +795,9 @@ func (g *GatewayProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "routes":
 				err = unpopulate(val, &g.Routes)
+				delete(rawMsg, key)
+		case "url":
+				err = unpopulate(val, &g.URL)
 				delete(rawMsg, key)
 		}
 		if err != nil {

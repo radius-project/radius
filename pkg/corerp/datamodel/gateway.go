@@ -34,7 +34,9 @@ func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.InternalMetadata.ComputedValues = do.ComputedValues
 	g.InternalMetadata.SecretValues = do.SecretValues
-	// TODO gateway should have a url output property.
+	if topic, ok := do.ComputedValues["url"].(string); ok {
+		g.Properties.URL = topic
+	}
 }
 
 // OutputResources returns the output resources array.
@@ -50,6 +52,7 @@ type GatewayProperties struct {
 	Internal          bool                       `json:"internal,omitempty"`
 	Hostname          *GatewayPropertiesHostname `json:"hostname,omitempty"`
 	Routes            []GatewayRoute             `json:"routes,omitempty"`
+	URL               string                     `json:"url,omitempty"`
 }
 
 // GatewayRoute represents the route attached to Gateway.

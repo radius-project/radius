@@ -366,6 +366,11 @@
             "items": {
               "$ref": "#/definitions/GatewayRoute"
             }
+          },
+          "url": {
+            "type": "string",
+            "readOnly": true,
+            "description": "URL of the gateway resource. Readonly."
           }
         }
       },

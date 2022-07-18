@@ -49,6 +49,7 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 			Application:       to.String(src.Properties.Application),
 			Hostname:          hostname,
 			Routes:            routes,
+			URL:               to.String(src.Properties.URL),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -101,6 +102,7 @@ func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 		Application:       to.StringPtr(g.Properties.Application),
 		Hostname:          hostname,
 		Routes:            routes,
+		URL:               to.StringPtr(g.Properties.URL),
 	}
 
 	return nil

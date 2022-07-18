@@ -238,6 +238,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **routes**: [GatewayRoute](#gatewayroute)[] (Required): Routes attached to this Gateway
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+* **url**: string (ReadOnly): URL of the gateway resource. Readonly.
 
 ## GatewayPropertiesHostname
 ### Properties
