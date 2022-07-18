@@ -7,6 +7,7 @@ package ucp
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/go-logr/logr"
@@ -16,6 +17,7 @@ import (
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"golang.org/x/sync/errgroup"
 )
 
 type ARMApplicationsManagementClient struct {
@@ -101,6 +103,21 @@ func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context
 	return results, nil
 }
 
+func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]v20220315privatepreview.ApplicationResource, error) {
+	results := []v20220315privatepreview.ApplicationResource{}
+	applicationsList, err := amc.ListApplications(ctx)
+	if err != nil {
+		return nil, err
+	}
+	envID := "/" + amc.RootScope + "/providers/applications.core/environments/" + envName
+	for _, application := range applicationsList {
+		if strings.EqualFold(envID, *application.Properties.Environment) {
+			results = append(results, application)
+		}
+	}
+	return results, nil
+}
+
 func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationResource, error) {
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	getResponse, err := client.Get(ctx, applicationName, &corerp.ApplicationsGetOptions{})
@@ -113,6 +130,27 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
+	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
+	if err != nil {
+		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+	}
+
+	g, groupCtx := errgroup.WithContext(ctx)
+
+	for _, resource := range resourcesWithApplication {
+		resource := resource
+		g.Go(func() error {
+			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.Name)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+	err = g.Wait()
+	if err != nil {
+		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+	}
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	return client.Delete(ctx, applicationName, nil)
 }
@@ -134,15 +172,15 @@ func isResourceWithApplication(ctx context.Context, resource generated.GenericRe
 	if err != nil {
 		return false, err
 	}
-	if idParsed.Name() == applicationName {
+	if strings.EqualFold(idParsed.Name(), applicationName) {
 		return true, nil
 	}
 	return false, nil
 }
 
-func (um *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
+func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
 
-	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
 	envListPager := envClient.ListByScope(&corerp.EnvironmentsListByScopeOptions{})
 	envResourceList := []corerp.EnvironmentResource{}
 	for envListPager.NextPage(ctx) {
@@ -156,9 +194,9 @@ func (um *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corer
 
 }
 
-func (um *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error) {
+func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error) {
 
-	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
+	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
 	envGetResp, err := envClient.Get(ctx, envName, &corerp.EnvironmentsGetOptions{})
 	if err == nil {
 		return envGetResp.EnvironmentsGetResult.EnvironmentResource, nil
@@ -168,10 +206,20 @@ func (um *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, en
 
 }
 
-func (um *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
+func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
+	applicationsWithEnv, err := amc.ListApplicationsByEnv(ctx, envName)
+	if err != nil {
+		return err
+	}
+	for _, application := range applicationsWithEnv {
+		_, err := amc.DeleteApplication(ctx, *application.Name)
+		if err != nil {
+			return err
+		}
+	}
+	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
 
-	envClient := corerp.NewEnvironmentsClient(um.Connection, um.RootScope)
-	_, err := envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
+	_, err = envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
 	if err != nil {
 		return err
 	}
