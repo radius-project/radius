@@ -104,10 +104,10 @@ func testTrafficSplitWithCurl(t *testing.T) error {
 	if err != nil {
 		return err
 	}
-	_, err = exec.Command(`kubectl`, `apply`, `-f`, `testdata/curl.yaml`).Output()
-	if err != nil {
-		return err
-	}
+	// _, err = exec.Command(`kubectl`, `apply`, `-f`, `testdata/curl.yaml`).Output()
+	// if err != nil {
+	// 	return err
+	// }
 	t.Logf("Invoking the curl pod")
 	for start := time.Now(); time.Since(start) < backendTimeout; {
 		podName, statusCode, err := getCurlResult(t)
@@ -142,12 +142,12 @@ func getCurlResult(t *testing.T) (*string, *int, error) {
 	// 	return nil, nil, err
 	// }
 	// _ = alpha
-	podB, err := exec.Command("kubectl", "get", "pod", "-n", "curl", "-l", "app=curl", "-o", "jsonpath='{.items[0].metadata.name}'").Output()
+	podB, err := exec.Command("kubectl", "get", "pod", "-n", "trafficsplit", "-l", "radius.dev/resource=curl", "-o", "jsonpath='{.items[0].metadata.name}'").Output()
 	if err != nil {
 		return nil, nil, err
 	}
 	podName := strings.Split(string(podB), "'")[1]
-	curl, err := exec.Command("kubectl", "exec", "-n", "curl", "-i", podName,
+	curl, err := exec.Command("kubectl", "exec", "-n", "trafficsplit", "-i", podName,
 		"-c", "curl", "--", "curl", "-I", "http://trafficsplit-httpbin.trafficsplit:80/json",
 		"|", "egrep", "'HTTP|pod'").Output()
 	t.Log(string(curl))

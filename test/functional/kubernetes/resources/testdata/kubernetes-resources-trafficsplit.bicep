@@ -64,17 +64,26 @@ resource app 'radius.dev/Application@v1alpha3' = {
       ]
     }
   }
-}
-
-resource curlapp 'radius.dev/Application@v1alpha3'= {
-  name: 'curl'
 
   resource curl 'Container@v1alpha3' = {
-      name:'curl'
-      properties: {
-        container: {
-          image: 'tommyniu.azurecr.io/curl:latest'
-        }
+    name:'curl'
+    properties: {
+      container: {
+        image: 'tommyniu.azurecr.io/curl:latest'
       }
     }
+  }
 }
+
+// resource curlapp 'radius.dev/Application@v1alpha3'= {
+//   name: 'curl'
+
+//   resource curl 'Container@v1alpha3' = {
+//       name:'curl'
+//       properties: {
+//         container: {
+//           image: 'tommyniu.azurecr.io/curl:latest'
+//         }
+//       }
+//     }
+// }
