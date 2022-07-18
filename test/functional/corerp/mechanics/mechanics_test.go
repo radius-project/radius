@@ -181,9 +181,6 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 }
 
 func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
-	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
-
-	
 	name := "corerp-mechanics-redeploy-withtwoseparateresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
 
@@ -220,6 +217,11 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
+						Name:    "containere",
+						Type:    validation.ContainersResource,
+						AppName: "corerp-mechanics-redeploy-withtwoseparateresource",
+					},
+					{
 						Name:    "containerf",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-withtwoseparateresource",
@@ -229,6 +231,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
+						validation.NewK8sPodForResource(name, "containere"),
 						validation.NewK8sPodForResource(name, "containerf"),
 					},
 				},
