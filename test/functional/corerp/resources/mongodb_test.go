@@ -28,7 +28,7 @@ func Test_MongoDB(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "todoapp",
+						Name:    "webapp",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-resources-mongodb",
 					},
@@ -42,7 +42,7 @@ func Test_MongoDB(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "todoapp"),
+						validation.NewK8sPodForResource(name, "webapp"),
 					},
 				},
 			},
