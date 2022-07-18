@@ -7,6 +7,7 @@ package ucp
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/go-logr/logr"
@@ -16,6 +17,7 @@ import (
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"golang.org/x/sync/errgroup"
 )
 
 type ARMApplicationsManagementClient struct {
@@ -103,12 +105,12 @@ func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context
 
 func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]v20220315privatepreview.ApplicationResource, error) {
 	results := []v20220315privatepreview.ApplicationResource{}
-	applicationsList,err := amc.ListApplications(ctx)
+	applicationsList, err := amc.ListApplications(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, application := range applicationsList {
-		if envName == *application.Properties.Environment {
+		if strings.EqualFold(envName, *application.Properties.Environment) {
 			results = append(results, application)
 		}
 	}
@@ -127,17 +129,27 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
-	resourcesWithApplication,err := amc.ListAllResourcesByApplication(ctx, applicationName)
+	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
 	if err != nil {
 		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
 	}
 
+	g,ctx := errgroup.WithContext(ctx)
+
 	for _, resource := range resourcesWithApplication {
-		//if successful move onto next resource ignoring the response unless there is an error
-		_, err := amc.DeleteResource(ctx, *resource.Type, *resource.Name)
-		if err != nil {
-			return v20220315privatepreview.ApplicationsDeleteResponse{}, err
-		}
+		resource := resource
+		g.Go( func() error {
+			//if successful move onto next resource ignoring the response unless there is an error
+			_, err := amc.DeleteResource(ctx, *resource.Type, *resource.Name)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+	err = g.Wait()
+	if err != nil {
+		return v20220315privatepreview.ApplicationsDeleteResponse{},err
 	}
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	return client.Delete(ctx, applicationName, nil)
@@ -160,7 +172,7 @@ func isResourceWithApplication(ctx context.Context, resource generated.GenericRe
 	if err != nil {
 		return false, err
 	}
-	if idParsed.Name() == applicationName {
+	if strings.EqualFold(idParsed.Name(), applicationName) {
 		return true, nil
 	}
 	return false, nil
@@ -195,7 +207,7 @@ func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, e
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
-	applicationsWithEnv,err := amc.ListApplicationsByEnv(ctx, envName)
+	applicationsWithEnv, err := amc.ListApplicationsByEnv(ctx, envName)
 	if err != nil {
 		return err
 	}
@@ -206,8 +218,8 @@ func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 		}
 	}
 	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
-	_, err1 := envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
-	if err1 != nil {
+	_, err = envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
+	if err != nil {
 		return err
 	}
 
