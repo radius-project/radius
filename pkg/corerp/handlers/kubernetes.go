@@ -63,6 +63,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 
 	err = handler.client.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
+		fmt.Println("Where is the error?")
 		return err
 	}
 
