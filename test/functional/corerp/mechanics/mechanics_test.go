@@ -110,8 +110,6 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 }
 
 func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
-	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
-
 	name := "corerp-mechanics-redeploy-withupdatedresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"
 
@@ -164,7 +162,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 				labelset := kubernetes.MakeSelectorLabels(name, "containerd")
 
-				deployments, err := test.Options.K8sClient.AppsV1().Deployments(name).List(context.Background(), metav1.ListOptions{
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments("default").List(context.Background(), metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 
@@ -172,7 +170,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 				require.Len(t, deployments.Items, 1, "expected 1 deployment")
 				deployment := deployments.Items[0]
 				envVar := deployment.Spec.Template.Spec.Containers[0].Env[0]
-				require.Equal(t, "test", envVar.Name, "expected env var to be updated")
+				require.Equal(t, "TEST", envVar.Name, "expected env var to be updated")
 				require.Equal(t, "updated", envVar.Value, "expected env var to be updated")
 			},
 		},
