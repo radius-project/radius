@@ -125,7 +125,7 @@ func GetShortenedTargetPortName(name string) string {
 	// targetPort can only be a maximum of 15 characters long.
 	// 32 bit number should always be less than that.
 	h := fnv.New32a()
-	h.Write([]byte(name))
+	h.Write([]byte(strings.ToLower(name)))
 	return "a" + fmt.Sprint(h.Sum32())
 }
 
