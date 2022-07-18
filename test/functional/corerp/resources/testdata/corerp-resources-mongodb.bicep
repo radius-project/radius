@@ -39,6 +39,7 @@ resource db 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = 
   name: 'db'
   location: 'global'
   properties: {
+    application: app.id
     environment: environment
     resource: account::dbinner.id
   }

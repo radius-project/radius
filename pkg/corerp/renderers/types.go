@@ -7,6 +7,9 @@ package renderers
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net/url"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -71,4 +74,34 @@ type SecretValueTransformer interface {
 //go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/renderers github.com/project-radius/radius/pkg/renderers SecretValueClient
 type SecretValueClient interface {
 	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
+}
+
+// HACK remove this once we consolidate handlers between core and connector RP.
+var _ SecretValueTransformer = (*AzureTransformer)(nil)
+
+type AzureTransformer struct {
+}
+
+func (t *AzureTransformer) Transform(ctx context.Context, dependency RendererDependency, value interface{}) (interface{}, error) {
+	// Mongo uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
+	//
+	// The connection strings that come back from CosmosDB don't include the database name.
+	str, ok := value.(string)
+	if !ok {
+		return nil, errors.New("expected the connection string to be a string")
+	}
+
+	// These connection strings won't include the database
+	u, err := url.Parse(str)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse connection string as a URL: %w", err)
+	}
+
+	databaseName, ok := dependency.ComputedValues["database"].(string)
+	if !ok {
+		return nil, errors.New("expected the databaseName to be a string")
+	}
+
+	u.Path = "/" + databaseName
+	return u.String(), nil
 }

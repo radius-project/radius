@@ -11,6 +11,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/daprextension"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
@@ -136,6 +137,15 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 
 	// TODO: Adding handlers next after this changelist
 	azureOutputResourceModel := []OutputResourceModel{
+		// HACK adding CosmosDB because SecretValueTransformer is custom.
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
+			SecretValueTransformer: &renderers.AzureTransformer{},
+		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureUserAssignedManagedIdentity,

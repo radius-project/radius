@@ -13,12 +13,7 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-// TODO: Getting "Unauthorized" error
-// Error: Code="DeploymentFailed" Message="" Details=[{"additionalInfo":null,"code":"OK","details":null,"message":"","target":null},
-// {"additionalInfo":null,"code":"Unauthorized","details":null,"message":"{\n  \"error\": {\n    \"code\": \"AuthenticationFailed\",\n
-// \"message\": \"Authentication failed. The 'Authorization' header is missing.\"\n  }\n}","target":null}]
 func Test_MongoDB(t *testing.T) {
-	t.Skip()
 
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
@@ -29,16 +24,18 @@ func Test_MongoDB(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-mongodb-app",
+						Name: "corerp-resources-mongodb",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "todoapp",
-						Type: validation.ContainersResource,
+						Name:    "todoapp",
+						Type:    validation.ContainersResource,
+						AppName: "corerp-resources-mongodb",
 					},
 					{
-						Name: "db",
-						Type: validation.MongoDatabasesResource,
+						Name:    "db",
+						Type:    validation.MongoDatabasesResource,
+						AppName: "corerp-resources-mongodb",
 					},
 				},
 			},
@@ -49,7 +46,6 @@ func Test_MongoDB(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: false,
 		},
 	})
 
