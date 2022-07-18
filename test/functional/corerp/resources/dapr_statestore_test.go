@@ -47,13 +47,11 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	})
 
 	test.Test(t)
 }
-
 
 func Test_DaprStateStoreTableStorage(t *testing.T) {
 
@@ -77,6 +75,13 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 					{
 						Name: "mystore",
 						Type: validation.DaprStateStoreResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "myapp"),
 					},
 				},
 			},

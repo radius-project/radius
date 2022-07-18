@@ -52,7 +52,6 @@ func Test_MicrosoftSQL(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	})
 

@@ -56,7 +56,6 @@ func Test_RabbitMQ(t *testing.T) {
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	})
 
