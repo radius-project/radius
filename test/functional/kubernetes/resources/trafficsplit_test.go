@@ -144,8 +144,9 @@ func getCurlResult(t *testing.T) (*string, *int, error) {
 	}
 	podName := strings.Split(string(podB), "'")[1]
 	curl, err := exec.Command("kubectl", "exec", "-n", "curl", "-i", podName,
-		"-c", "curl", "--", "curl", "-sI", "http://trafficsplit-httpbin.trafficsplit:80/json",
+		"-c", "curl", "--", "curl", "-I", "http://trafficsplit-httpbin.trafficsplit:80/json",
 		"|", "egrep", "'HTTP|pod'").Output()
+	t.Log(string(curl))
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); len(curl) > 0 && ok {
 			// The program has exited with an exit code != 0
