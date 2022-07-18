@@ -16,6 +16,11 @@ type ChartArgs struct {
 	AppCoreTag   string
 	UcpImage     string
 	UcpTag       string
+
+	// PublicEndpointOverride is used to define the public endpoint of the Kubernetes cluster
+	// for display purposes. This is useful when the the actual public IP address of a cluster's ingress
+	// is not a routable IP. This comes up all of the time for a local cluster.
+	PublicEndpointOverride string
 }
 
 // RegisterPersistantChartArgs registers the CLI arguments used for our Helm chart.
@@ -28,6 +33,7 @@ func RegisterPersistantChartArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("appcore-tag", "", "Specify Application.Core RP image tag to use")
 	cmd.PersistentFlags().String("ucp-image", "", "Specify the UCP image to use")
 	cmd.PersistentFlags().String("ucp-tag", "", "Specify the UCP tag to use")
+	cmd.PersistentFlags().String("public-endpoint-override", "", "Specify the public IP address of the Kubernetes cluster")
 }
 
 // ParseChartArgs the arguments we provide for installation of the Helm chart.
@@ -64,15 +70,20 @@ func ParseChartArgs(cmd *cobra.Command) (*ChartArgs, error) {
 	if err != nil {
 		return nil, err
 	}
+	publicEndpointOverride, err := cmd.Flags().GetString("public-endpoint-override")
+	if err != nil {
+		return nil, err
+	}
 
 	return &ChartArgs{
-		Reinstall:    reinstall,
-		ChartPath:    chartPath,
-		Image:        image,
-		Tag:          tag,
-		AppCoreImage: appcoreImage,
-		AppCoreTag:   appcoreTag,
-		UcpImage:     ucpImage,
-		UcpTag:       ucpTag,
+		Reinstall:              reinstall,
+		ChartPath:              chartPath,
+		Image:                  image,
+		Tag:                    tag,
+		AppCoreImage:           appcoreImage,
+		AppCoreTag:             appcoreTag,
+		UcpImage:               ucpImage,
+		UcpTag:                 ucpTag,
+		PublicEndpointOverride: publicEndpointOverride,
 	}, nil
 }
