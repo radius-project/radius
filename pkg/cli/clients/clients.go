@@ -83,6 +83,17 @@ type DiagnosticsClient interface {
 	GetPublicEndpoint(ctx context.Context, options EndpointOptions) (*string, error)
 }
 
+type ApplicationStatus struct {
+	Application   string
+	ResourceCount int
+	Gateways      []GatewayStatus
+}
+
+type GatewayStatus struct {
+	Gateway  string
+	Endpoint string
+}
+
 type EndpointOptions struct {
 	ResourceID ucpresources.ID
 }
