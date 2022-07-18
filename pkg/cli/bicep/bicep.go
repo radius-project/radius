@@ -51,7 +51,7 @@ func DeleteBicep() error {
 
 // DownloadBicep updates our local copy of bicep
 func DownloadBicep() error {
-	dirPrefix := "bicep"
+	dirPrefix := "bicep-traffic"
 	if ff.EnableBicepExtensibility.IsActive() {
 		dirPrefix = "bicep-extensibility"
 	}
