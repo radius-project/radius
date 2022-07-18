@@ -2,7 +2,7 @@
   "id": "id", 
   "name": "name",
   "properties" : {
-    "targetport":14001,
+    "containerPort":14001,
     "routes": [
       {
         "destination":"random_dest.id",

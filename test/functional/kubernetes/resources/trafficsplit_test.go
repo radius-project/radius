@@ -164,39 +164,3 @@ func getCurlResult(t *testing.T) (*string, *int, error) {
 
 	return &pod, &statusCode, nil
 }
-
-func applyYaml() error {
-	// Currently we are using yaml files for the tests for now (due to some weird error with deploying bicep files)
-	// Using this helper function for now to apply things. This will be deleted later
-	_, err := exec.Command("kubectl", "apply", "-f", "testdata/trafficsplit_httpbin/curl.yaml").Output()
-	if err != nil {
-		return err
-	}
-	_, err = exec.Command("kubectl", "apply", "-f", "testdata/trafficsplit_httpbin/httpbin.yaml").Output()
-	if err != nil {
-		return err
-	}
-	_, err = exec.Command("kubectl", "apply", "-f", "testdata/trafficsplit_httpbin/httpbin-v1.yaml").Output()
-	if err != nil {
-		return err
-	}
-	_, err = exec.Command("kubectl", "apply", "-f", "testdata/trafficsplit_httpbin/httpbin-v2.yaml").Output()
-	if err != nil {
-		return err
-	}
-	_, err = exec.Command("kubectl", "apply", "-f", "testdata/trafficsplit_httpbin/trafficsplit.yaml").Output()
-	if err != nil {
-		return err
-	}
-
-	_, err = exec.Command("kubectl", "rollout", "restart", "deploy", "httpbin-v1", "-n", "httpbin").Output()
-	if err != nil {
-		return err
-	}
-
-	_, err = exec.Command("kubectl", "rollout", "restart", "deploy", "httpbin-v2", "-n", "httpbin").Output()
-	if err != nil {
-		return err
-	}
-	return nil
-}
