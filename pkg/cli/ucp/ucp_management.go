@@ -134,13 +134,13 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
 	}
 
-	g,ctx := errgroup.WithContext(ctx)
+	g,groupCtx := errgroup.WithContext(ctx)
 
 	for _, resource := range resourcesWithApplication {
 		resource := resource
 		g.Go( func() error {
 			//if successful move onto next resource ignoring the response unless there is an error
-			_, err := amc.DeleteResource(ctx, *resource.Type, *resource.Name)
+			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.Name)
 			if err != nil {
 				return err
 			}
