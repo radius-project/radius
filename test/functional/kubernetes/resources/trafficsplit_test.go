@@ -31,24 +31,7 @@ const (
 
 func Test_TrafficSplit(t *testing.T) {
 	template := "testdata/kubernetes-resources-trafficsplit.bicep"
-	_ = template
 	application := "trafficsplit"
-	_ = application
-
-	// retries := 3
-
-	// for i := 1; i <= retries; i++ {
-	// 	t.Logf("Setting up trafficsplit (attempt %d/%d)", i, retries)
-	// 	err := testTrafficSplitWithCurl(t) //(t, ctx, at, hostname, localHostname, localPort, remotePort, retries)
-	// 	if err != nil {
-	// 		t.Logf("Failed to test TrafficSplit via curl with error: %s", err)
-	// 	} else {
-	// 		// Successfully ran tests
-	// 		return
-	// 	}
-	// }
-
-	// require.Fail(t, fmt.Sprintf("Curl tests failed after %d retries", retries))
 	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -99,15 +82,12 @@ func Test_TrafficSplit(t *testing.T) {
 
 func testTrafficSplitWithCurl(t *testing.T) error {
 	var v1Received, v2Received bool
-	_, err := exec.Command(`kubectl`, `patch`, `svc/trafficsplit-httpbin`,
-		`-n`, `trafficsplit`, `--patch-file=testdata/patch.yaml`).Output()
+	patch := exec.Command(`kubectl`, `patch`, `svc/trafficsplit-httpbin`,
+		`-n`, `trafficsplit`, `--patch-file=testdata/patch.yaml`)
+	err := patch.Run()
 	if err != nil {
 		return err
 	}
-	// _, err = exec.Command(`kubectl`, `apply`, `-f`, `testdata/curl.yaml`).Output()
-	// if err != nil {
-	// 	return err
-	// }
 	t.Logf("Invoking the curl pod")
 	for start := time.Now(); time.Since(start) < backendTimeout; {
 		podName, statusCode, err := getCurlResult(t)
@@ -137,11 +117,7 @@ func testTrafficSplitWithCurl(t *testing.T) error {
 
 func getCurlResult(t *testing.T) (*string, *int, error) {
 	//Helper function for calling curl and retrieving the result
-	// alpha, err := exec.Command("which", "kubectl").Output()
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
-	// _ = alpha
+
 	podB, err := exec.Command("kubectl", "get", "pod", "-n", "curl", "-l", "radius.dev/application=curl", "-o", "jsonpath='{.items[0].metadata.name}'").Output()
 	if err != nil {
 		return nil, nil, err
@@ -150,8 +126,6 @@ func getCurlResult(t *testing.T) (*string, *int, error) {
 	curl, err := exec.Command("kubectl", "exec", "-n", "curl", "-i", podName,
 		"-c", "curl", "--", "curl", "-I", "http://trafficsplit-httpbin.trafficsplit:80/json",
 		"|", "egrep", "'HTTP|pod'").Output()
-	t.Log(string(curl))
-	fmt.Println(string(curl))
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); len(curl) > 0 && ok {
 			// The program has exited with an exit code != 0
