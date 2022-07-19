@@ -236,7 +236,7 @@
 * **hostname**: [GatewayPropertiesHostname](#gatewaypropertieshostname): Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 * **internal**: bool: Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
-* **routes**: [GatewayRoute](#gatewayroute)[]: Routes attached to this Gateway
+* **routes**: [GatewayRoute](#gatewayroute)[] (Required): Routes attached to this Gateway
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
 ## GatewayPropertiesHostname
