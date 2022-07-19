@@ -127,7 +127,7 @@ func (r *Renderer) makeService(resource renderers.RendererResource, route *radcl
 			Labels:    kubernetes.MakeDescriptiveLabels(resource.ApplicationName, resource.ResourceName),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabelsService(resource.ApplicationName, resourceType, resource.ResourceName, specifiedTargetPort),
+			Selector: kubernetes.MakeRouteSelectorLabelsTrafficSplit(resource.ApplicationName, resourceType, resource.ResourceName, specifiedTargetPort),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{

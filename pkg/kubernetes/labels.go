@@ -88,7 +88,8 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 	}
 }
 
-func MakeRouteSelectorLabelsService(application string, resourceType string, route string, targetPort int) map[string]string {
+func MakeRouteSelectorLabelsTrafficSplit(application string, resourceType string, route string, targetPort int) map[string]string {
+	//This is used specifically for the traffic split root service. We only want the 'LabelRadiusApplication: application' label
 	result := map[string]string{
 		LabelRadiusApplication: application,
 
