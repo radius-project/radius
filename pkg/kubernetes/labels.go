@@ -88,6 +88,22 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 	}
 }
 
+func MakeRouteSelectorLabelsService(application string, resourceType string, route string, targetPort int) map[string]string {
+	result := map[string]string{
+		LabelRadiusApplication: application,
+
+		// NOTE: pods can serve multiple routes of different types. Therefore we need to encode the
+		// the route's type and name in the *key* to support multiple matches.
+		// fmt.Sprintf(LabelRadiusRouteFmt, strings.ToLower(strings.TrimSuffix(resourceType, "Route")), strings.ToLower(route)): "true",
+	}
+	if targetPort == 0 {
+		s := fmt.Sprintf(LabelRadiusRouteFmt, strings.ToLower(strings.TrimSuffix(resourceType, "Route")), strings.ToLower(route))
+		result[s] = "true"
+
+	}
+	return result
+}
+
 // MakeAADPodIdentityBindingLabels returns a map binding the Pod Identity name to the pod
 func MakeAADPodIdentityBindingLabels(podIdentityName string) map[string]string {
 	return map[string]string{

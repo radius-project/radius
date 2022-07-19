@@ -1189,6 +1189,10 @@
         }
       ],
       "properties": {
+        "containerPort": {
+          "description": "Targetport of the root service. Used for TrafficSplit only",
+          "type": "integer"
+        },
         "hostname": {
           "description": "The internal hostname accepting traffic for the route. Readonly.",
           "type": "string"

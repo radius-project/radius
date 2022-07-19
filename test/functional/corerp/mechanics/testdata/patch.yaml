@@ -1,0 +1,7 @@
+
+spec:
+  ports:
+  - name: httpbin
+    port: 80
+    protocol: TCP
+    targetPort: 14001

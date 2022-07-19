@@ -33,6 +33,10 @@
           "description": "The port number for the route. Defaults to 80. Readonly.",
           "type": "integer"
         },
+        "containerPort": {
+          "description": "Targetport of the root service. Used for TrafficSplit only",
+          "type":"integer"
+        },
         "routes": {
           "description": "Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of JSON objects that each only have two keys: destination and weight",
           "type": "array",

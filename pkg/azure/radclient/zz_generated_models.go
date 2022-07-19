@@ -1889,6 +1889,9 @@ type HTTPRouteListOptions struct {
 
 type HTTPRouteProperties struct {
 	BasicRouteProperties
+	// Targetport of the root service. Used for TrafficSplit only
+	ContainerPort *int32 `json:"containerPort,omitempty"`
+
 	// The internal hostname accepting traffic for the route. Readonly.
 	Hostname *string `json:"hostname,omitempty"`
 
@@ -1910,6 +1913,7 @@ type HTTPRouteProperties struct {
 func (h HTTPRouteProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	h.BasicRouteProperties.marshalInternal(objectMap)
+	populate(objectMap, "containerPort", h.ContainerPort)
 	populate(objectMap, "hostname", h.Hostname)
 	populate(objectMap, "port", h.Port)
 	populate(objectMap, "routes", h.Routes)
