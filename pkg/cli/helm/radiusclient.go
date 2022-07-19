@@ -128,6 +128,7 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	installClient.Namespace = RadiusSystemNamespace
 	installClient.Wait = true
 	installClient.Timeout = installTimeout
+	installClient.Recreate = true
 	return runUpgrade(installClient, releaseName, helmChart)
 }
 
