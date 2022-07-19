@@ -94,12 +94,6 @@ func (f *TableFormatter) Format(obj interface{}, writer io.Writer, options Forma
 		}
 	}
 
-	// Write one newline at the end of the table (for readability)
-	_, err = tabs.Write([]byte("\n"))
-	if err != nil {
-		return err
-	}
-
 	err = tabs.Flush()
 	if err != nil {
 		return err

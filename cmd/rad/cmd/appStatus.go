@@ -6,6 +6,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -34,7 +36,7 @@ func showApplicationStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	application, err := cli.RequireApplication(cmd, *workspace)
+	application, err := cli.RequireApplicationArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
@@ -91,6 +93,9 @@ func showApplicationStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	if format == output.FormatTable && len(applicationStatus.Gateways) > 0 {
+		// Print newline for readability
+		fmt.Println()
+
 		err = output.Write(format, applicationStatus.Gateways, cmd.OutOrStdout(), objectformats.GetApplicationGatewaysTableFormat())
 		if err != nil {
 			return err

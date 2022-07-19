@@ -34,8 +34,8 @@ func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.InternalMetadata.ComputedValues = do.ComputedValues
 	g.InternalMetadata.SecretValues = do.SecretValues
-	if topic, ok := do.ComputedValues["url"].(string); ok {
-		g.Properties.URL = topic
+	if url, ok := do.ComputedValues["url"].(string); ok {
+		g.Properties.URL = url
 	}
 }
 

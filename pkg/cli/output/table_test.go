@@ -70,7 +70,6 @@ func Test_Table_Scalar(t *testing.T) {
 
 	expected := `Size      Coolness  Unknown   Static      Lowered
 mega      true                Some-Value  some-value
-
 `
 	require.Equal(t, expected, buffer.String())
 }
@@ -96,7 +95,6 @@ func Test_Table_Slice(t *testing.T) {
 	expected := `Size      Coolness  Unknown   Static      Lowered
 mega      true                Some-Value  some-value
 medium    false               Some-Value  some-value
-
 `
 	require.Equal(t, expected, buffer.String())
 }

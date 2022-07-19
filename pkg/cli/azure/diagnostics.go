@@ -58,12 +58,12 @@ func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options c
 		return nil, fmt.Errorf("could not find URL for gateway %q", options.ResourceID.Name())
 	}
 
-	hostname, ok := obj.(string)
+	url, ok := obj.(string)
 	if !ok {
 		return nil, fmt.Errorf("could not find URL for gateway %q", options.ResourceID.Name())
 	}
 
-	return &hostname, nil
+	return &url, nil
 }
 
 func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {

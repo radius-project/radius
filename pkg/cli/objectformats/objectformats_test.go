@@ -41,7 +41,6 @@ func Test_FormatApplicationTable(t *testing.T) {
 
 	expected := `APPLICATION  PROVISIONING_STATE  HEALTH_STATE
 test-app     Provisioned         Healthy
-
 `
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
 }
@@ -76,7 +75,6 @@ func Test_FormatResourceTable(t *testing.T) {
 	expected := `RESOURCE             TYPE
 test-resource        Applications.Core/mongoDbDatabases
 test-azure-resource  Microsoft.ServiceBus/namespaces
-
 `
 
 	require.Equal(t, TrimSpaceMulti(expected), TrimSpaceMulti(buffer.String()))
