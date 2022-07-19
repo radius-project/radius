@@ -52,8 +52,6 @@ func (extender *CreateOrUpdateExtender) Run(ctx context.Context, req *http.Reque
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
-	newResource.ComputedValues = newResource.InternalMetadata.ComputedValues
-
 	// Read existing resource info from the data store
 	existingResource := &datamodel.Extender{}
 	etag, err := extender.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)

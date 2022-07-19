@@ -43,5 +43,5 @@ type DaprSecretStoreProperties struct {
 	Type              string                 `json:"type"`
 	Version           string                 `json:"version"`
 	Metadata          map[string]interface{} `json:"metadata"`
-	SecretStoreName    string                 `json:"secretStoreName"`
+	SecretStoreName   string                 `json:"secretStoreName"`
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -51,7 +52,7 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, r
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
-	if secretStoreName, ok := deploymentOutput.ComputedValues["secretStoreName"].(string); ok {
+	if secretStoreName, ok := deploymentOutput.ComputedValues[renderers.SecretStoreName].(string); ok {
 		newResource.Properties.SecretStoreName = secretStoreName
 	}
 
