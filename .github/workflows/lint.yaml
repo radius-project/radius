@@ -20,6 +20,7 @@ jobs:
   linter_check:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     env:
       GOVER: '^1.18'
       GOPROXY: https://proxy.golang.org
