@@ -209,6 +209,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				},
 			},
 		},
+		ComputedValues: map[string]interface{}{
+			"stateStoreName": rendererOutput.ComputedValues["stateStoreName"].Value,
+		},
 	}
 
 	return rendererOutput, deploymentOutput

@@ -67,6 +67,11 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				},
 			},
 		},
+		ComputedValues: map[string]interface{}{
+			renderers.UsernameStringValue: "redisusername",
+			renderers.Host:                "hello.com",
+			renderers.Port:                int32(1234),
+		},
 	}
 
 	return rendererOutput, deploymentOutput
