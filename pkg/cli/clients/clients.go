@@ -84,13 +84,13 @@ type DiagnosticsClient interface {
 }
 
 type ApplicationStatus struct {
-	Application   string
+	Name          string
 	ResourceCount int
 	Gateways      []GatewayStatus
 }
 
 type GatewayStatus struct {
-	Gateway  string
+	Name     string
 	Endpoint string
 }
 

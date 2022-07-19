@@ -50,7 +50,7 @@ func showApplicationStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	applicationStatus := clients.ApplicationStatus{
-		Application:   application,
+		Name:          application,
 		ResourceCount: len(resourceList),
 	}
 
@@ -74,7 +74,7 @@ func showApplicationStatus(cmd *cobra.Command, args []string) error {
 
 		if publicEndpoint != nil {
 			applicationStatus.Gateways = append(applicationStatus.Gateways, clients.GatewayStatus{
-				Gateway:  *resource.Name,
+				Name:     *resource.Name,
 				Endpoint: *publicEndpoint,
 			})
 		}
