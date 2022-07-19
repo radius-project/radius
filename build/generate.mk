@@ -88,10 +88,10 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 .PHONY: generate-bicep-types
 generate-bicep-types: generate-node-installed generate-openapi-specs ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
-# ifneq (, $(shell which autorest))
-# 	@echo "$(ARROW) Remove outdated autorest extensions and download latest version of autorest-core..."
-# 	autorest --reset
-# endif
+ifneq (, $(shell which autorest))
+	@echo "$(ARROW) Remove outdated autorest extensions and download latest version of autorest-core..."
+	autorest --reset
+endif
 	@echo "$(ARROW) Build autorest.bicep..."
 	cd hack/bicep-types-radius/src/autorest.bicep; \
 	npm ci && npm run build; \
