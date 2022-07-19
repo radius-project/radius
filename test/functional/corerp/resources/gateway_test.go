@@ -30,23 +30,23 @@ func Test_Gateway(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-gateway-app-gateway",
+						Name: "gtwy-gtwy",
 						Type: validation.GatewaysResource,
 					},
 					{
-						Name: "corerp-resources-gateway-app-frontend-route",
+						Name: "gtwy-front-rte",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "corerp-resources-gateway-app-frontend-container",
+						Name: "gtwy-front-ctr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "corerp-resources-gateway-app-backend-route",
+						Name: "gtwy-back-rte",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "corerp-resources-gateway-app-backend-container",
+						Name: "gtwy-back-ctr",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -54,13 +54,13 @@ func Test_Gateway(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "frontend-container"),
-						validation.NewK8sPodForResource(name, "backend-container"),
-						validation.NewK8sHTTPProxyForResource(name, "gateway"),
-						validation.NewK8sHTTPProxyForResource(name, "frontend-route"),
-						validation.NewK8sServiceForResource(name, "frontend-route"),
-						validation.NewK8sHTTPProxyForResource(name, "backend-route"),
-						validation.NewK8sServiceForResource(name, "backend-route"),
+						validation.NewK8sPodForResource(name, "gtwy-front-ctr"),
+						validation.NewK8sPodForResource(name, "gtwy-back-ctr"),
+						validation.NewK8sHTTPProxyForResource(name, "gtwy-gtwy"),
+						validation.NewK8sHTTPProxyForResource(name, "gtwy-front-rte"),
+						validation.NewK8sServiceForResource(name, "gtwy-front-rte"),
+						validation.NewK8sHTTPProxyForResource(name, "gtwy-back-rte"),
+						validation.NewK8sServiceForResource(name, "gtwy-back-rte"),
 					},
 				},
 			},

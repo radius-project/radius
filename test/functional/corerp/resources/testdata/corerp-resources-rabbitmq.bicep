@@ -33,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'webapp'
+  name: 'rmq-app-ctnr'
   location: location
   properties: {
     application: app.id
@@ -54,7 +54,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'rmq-ctr'
+  name: 'rmq-ctnr'
   location: location
   properties: {
     application: app.id
@@ -71,7 +71,7 @@ resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privateprevi
 }
 
 resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'rmq-route'
+  name: 'rmq-rte'
   location: location
   properties: {
     application: app.id
@@ -80,7 +80,7 @@ resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource rabbitmq 'Applications.Connector/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
-  name: 'rmq'
+  name: 'rmq-rmq'
   location: location
   properties: {
     application: app.id

@@ -15,7 +15,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'myapp'
+  name: 'gnrc-scs-ctnr'
   location: location
   properties: {
     application: app.id
@@ -35,7 +35,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'myapp'
+        appId: 'gnrc-ss-ctnr'
         appPort: 3000
       }
     ]
@@ -43,7 +43,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource secretstore 'Applications.Connector/daprSecretStores@2022-03-15-privatepreview' = {
-  name: 'secretstore-generic'
+  name: 'gnrc-scs'
   location: location
   properties: {
     environment: environment

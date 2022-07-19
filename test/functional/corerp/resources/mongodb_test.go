@@ -39,12 +39,12 @@ func Test_MongoDB(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "webapp",
+						Name:    "mdb-app-ctnr",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-resources-mongodb",
 					},
 					{
-						Name:    "db",
+						Name:    "mdb-db",
 						Type:    validation.MongoDatabasesResource,
 						AppName: "corerp-resources-mongodb",
 					},
@@ -53,7 +53,7 @@ func Test_MongoDB(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "webapp"),
+						validation.NewK8sPodForResource(name, "mdb-app-ctnr"),
 					},
 				},
 			},
@@ -77,19 +77,19 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "app",
+						Name: "mdb-us-app-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "mongo",
+						Name: "mdb-us-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "mongo-route",
+						Name: "mdb-us-rte",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "mongo-db",
+						Name: "mdb-us-db",
 						Type: validation.MongoDatabasesResource,
 					},
 				},
@@ -97,9 +97,9 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "app"),
-						validation.NewK8sPodForResource(name, "mongo"),
-						validation.NewK8sServiceForResource(name, "mongo-route"),
+						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mdb-us-ctnr"),
+						validation.NewK8sServiceForResource(name, "mdb-us-rte"),
 					},
 				},
 			},

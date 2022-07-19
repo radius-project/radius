@@ -27,11 +27,11 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "publisher",
+						Name: "gnrc-publisher",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "pubsub",
+						Name: "gnrc-pubsub",
 						Type: validation.DaprPubSubResource,
 					},
 				},
@@ -39,7 +39,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "publisher"),
+						validation.NewK8sPodForResource(name, "gnrc-publisher"),
 					},
 				},
 			},
@@ -64,11 +64,11 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "publisher",
+						Name: "sb-publisher",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "pubsub",
+						Name: "sb-pubsub",
 						Type: validation.DaprPubSubResource,
 					},
 				},
@@ -76,7 +76,7 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "publisher"),
+						validation.NewK8sPodForResource(name, "sb-publisher"),
 					},
 				},
 			},

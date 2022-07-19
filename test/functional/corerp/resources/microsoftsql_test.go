@@ -30,15 +30,15 @@ func Test_MicrosoftSQL(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "app",
+						Name: "mssql-app-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "db",
+						Name: "mssql-db",
 						Type: validation.SQLDatabasesResource,
 					},
 					{
-						Name: "route",
+						Name: "mssql-rte",
 						Type: validation.HttpRoutesResource,
 					},
 				},
@@ -46,9 +46,9 @@ func Test_MicrosoftSQL(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "app"),
-						validation.NewK8sPodForResource(name, "db"),
-						validation.NewK8sServiceForResource(name, "route"),
+						validation.NewK8sPodForResource(name, "mssql-app-ctnr"),
+						validation.NewK8sPodForResource(name, "mssql-db"),
+						validation.NewK8sServiceForResource(name, "mssql-rte"),
 					},
 				},
 			},

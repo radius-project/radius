@@ -30,7 +30,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'app'
+  name: 'mssql-app-ctnr'
   location: location
   properties: {
     application: app.id
@@ -54,7 +54,7 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'db'
+  name: 'mssql-db'
   location: location
   properties: {
     application: app.id
@@ -65,7 +65,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
 }
 
 resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'route'
+  name: 'mssql-rte'
   location: location
   properties: {
     application: app.id
@@ -74,7 +74,7 @@ resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
 }
 
 resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
-  name: 'sql-${uniqueString(resourceGroup().id)}'
+  name: 'mssql-${uniqueString(resourceGroup().id)}'
   location: location
   tags: {
     radiustest: 'corerp-resources-microsoft-sql'

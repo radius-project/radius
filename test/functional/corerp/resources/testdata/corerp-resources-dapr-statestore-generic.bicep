@@ -15,7 +15,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'myapp'
+  name: 'gnrc-sts-ctnr'
   location: location
   properties: {
     application: app.id
@@ -27,8 +27,8 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     container: {
       image: magpieimage
       readinessProbe:{
-        kind:'httpGet'
-        containerPort:3000
+        kind: 'httpGet'
+        containerPort: 3000
         path: '/healthz'
       }
     }
@@ -36,7 +36,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'statestore-generic'
+  name: 'gnrc-sts'
   location: location
   properties: {
     application: app.id

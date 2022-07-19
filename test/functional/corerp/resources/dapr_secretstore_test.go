@@ -35,11 +35,11 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "myapp",
+						Name: "gnrc-scs-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "secretstore-generic",
+						Name: "gnrc-scs",
 						Type: validation.DaprSecretStoreResource,
 					},
 				},
@@ -47,7 +47,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "myapp"),
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
 					},
 				},
 			},
