@@ -46,7 +46,6 @@ func Test_Container(t *testing.T) {
 }
 
 func Test_ContainerHttpRoute(t *testing.T) {
-	t.Skip()
 	template := "testdata/corerp-resources-container-httproute.bicep"
 	name := "corerp-resources-container-httproute"
 
