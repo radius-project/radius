@@ -11,6 +11,7 @@ on:
       - main
       - release/*
       - features/*
+      - tommyniu/main
 
 concurrency:
   # Cancel the previously triggered build for only PR build.

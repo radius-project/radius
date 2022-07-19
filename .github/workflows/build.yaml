@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - release/*
+      - tommyniu/main
     tags:
       - v*
   pull_request:
