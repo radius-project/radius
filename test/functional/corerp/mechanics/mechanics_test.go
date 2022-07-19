@@ -261,7 +261,7 @@ func Test_CommunicationCycle(t *testing.T) {
 						AppName: "corerp-mechanics-communication-cycle",
 					},
 					{
-						Name:    "route_a",
+						Name:    "routea",
 						Type:    validation.HttpRoutesResource,
 						AppName: "corerp-mechanics-communication-cycle",
 					},
@@ -271,12 +271,12 @@ func Test_CommunicationCycle(t *testing.T) {
 						AppName: "corerp-mechanics-communication-cycle",
 					},
 					{
-						Name:    "route_b",
+						Name:    "routeb",
 						Type:    validation.HttpRoutesResource,
 						AppName: "corerp-mechanics-communication-cycle",
 					},
 					{
-						Name:    "cycle_a",
+						Name:    "cyclea",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-communication-cycle",
 					},
@@ -287,7 +287,7 @@ func Test_CommunicationCycle(t *testing.T) {
 					"default": {
 						validation.NewK8sPodForResource(name, "containerf"),
 						validation.NewK8sPodForResource(name, "containerg"),
-						validation.NewK8sPodForResource(name, "cycle_a"),
+						validation.NewK8sPodForResource(name, "cyclea"),
 					},
 				},
 			},
