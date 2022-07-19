@@ -51,6 +51,9 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, r
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+	if secretStoreName, ok := deploymentOutput.ComputedValues["secretStoreName"].(string); ok {
+		newResource.Properties.SecretStoreName = secretStoreName
+	}
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.DaprSecretStore{}

@@ -38,6 +38,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 				Resource:          to.String(src.Properties.Resource),
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),
+				Username:          to.String(src.Properties.Username),
 			},
 			Secrets: secrets,
 		},
@@ -65,6 +66,7 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 			Resource:          to.String(src.Properties.Resource),
 			Host:              to.String(src.Properties.Host),
 			Port:              to.Int32(src.Properties.Port),
+			Username:          to.String(src.Properties.Username),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -99,6 +101,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Resource:          to.StringPtr(redis.Properties.Resource),
 			Host:              to.StringPtr(redis.Properties.Host),
 			Port:              to.Int32Ptr(redis.Properties.Port),
+			Username:          to.StringPtr(redis.Properties.Username),
 		},
 	}
 	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
@@ -136,6 +139,7 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 		Resource:          to.StringPtr(redis.Properties.Resource),
 		Host:              to.StringPtr(redis.Properties.Host),
 		Port:              to.Int32Ptr(redis.Properties.Port),
+		Username:          to.StringPtr(redis.Properties.Username),
 	}
 	return nil
 }

@@ -59,6 +59,9 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, req *http.Reques
 	if port, ok := deploymentOutput.ComputedValues[renderers.Port].(int32); ok {
 		newResource.Properties.Port = port
 	}
+	if username, ok := deploymentOutput.ComputedValues[renderers.UsernameStringValue].(string); ok {
+		newResource.Properties.Username = username
+	}
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.RedisCache{}

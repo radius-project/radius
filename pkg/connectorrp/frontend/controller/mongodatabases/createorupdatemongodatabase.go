@@ -53,6 +53,9 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
+	if database, ok := deploymentOutput.ComputedValues["database"].(string); ok {
+		newResource.Properties.Database = database
+	}
 	// Read existing resource info from the data store
 	existingResource := &datamodel.MongoDatabase{}
 	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)

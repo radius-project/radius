@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -46,7 +47,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				renderers.DatabaseNameValue: {
-					Value: resource.Name,
+					Value: kubernetes.MakeResourceName(resource.Properties.Application, resource.Name),
 				},
 			},
 			SecretValues: secretValues,

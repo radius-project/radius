@@ -385,6 +385,11 @@
             6380,
             6379
           ]
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for redis",
+          "readOnly": true
         }
       },
       "required": ["environment"]

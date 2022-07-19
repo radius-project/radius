@@ -108,7 +108,6 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 		Resource:     map[string]string{},
 		Dependencies: []outputresource.Dependency{sqlServerDependency},
 	}
-	fmt.Println(databaseID.Name())
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		"database": {

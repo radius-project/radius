@@ -52,6 +52,10 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Run(ctx context.Context, req
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
+	if stateStoreName, ok := deploymentOutput.ComputedValues["stateStoreName"].(string); ok {
+		newResource.Properties.StateStoreName = stateStoreName
+	}
+
 	// Read existing resource info from the data store
 	existingResource := &datamodel.DaprStateStore{}
 	etag, err := daprStateStore.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
