@@ -189,10 +189,8 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 
 	// Values consumed by other Radius resource types through connections
 	computedValues = map[string]interface{}{}
-	fmt.Println("going through computed values")
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
-		fmt.Println(k, v)
 		// A computed value might be a reference to a 'property' returned in preserved properties
 		if outputResource.LocalID == v.LocalID && v.PropertyReference != "" {
 			computedValues[k] = properties[v.PropertyReference]
@@ -212,7 +210,6 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 				return nil, err
 			}
-			fmt.Println("Setting computed value", k, "to", value)
 			computedValues[k] = value
 		}
 	}
