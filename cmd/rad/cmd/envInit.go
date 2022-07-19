@@ -216,43 +216,45 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// 1. Create workspace & resource groups
 	// 2. Create environment resource
 	// 3. Update workspace
+
+	var step output.Step
 	if workspace == nil {
-		step := output.BeginStep("Creating Workspace...")
-
-		// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
-		//
-		// We'll flesh this out more when we add explicit commands for managing resource groups.
-		id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: contextName}, workspaceName)
-		if err != nil {
-			return err
-		}
-
-		workspace = &workspaces.Workspace{
-			Connection: map[string]interface{}{
-				"kind":    "kubernetes",
-				"context": contextName,
-			},
-			Scope:    id,
-			Registry: registry,
-		}
-
-		if azureProvider != nil {
-			workspace.ProviderConfig.Azure = azureProvider
-		}
-
-		err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
-			section.Default = workspaceName
-			section.Items[strings.ToLower(workspaceName)] = *workspace
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		output.LogInfo("Set %q as current workspace", workspaceName)
-		output.CompleteStep(step)
-
+		step = output.BeginStep("Creating Workspace...")
+	} else {
+		step = output.BeginStep("Updating Workspace...")
 	}
+	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
+	//
+	// We'll flesh this out more when we add explicit commands for managing resource groups.
+	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: contextName}, workspaceName)
+	if err != nil {
+		return err
+	}
+
+	workspace = &workspaces.Workspace{
+		Connection: map[string]interface{}{
+			"kind":    "kubernetes",
+			"context": contextName,
+		},
+		Scope:    id,
+		Registry: registry,
+	}
+
+	if azureProvider != nil {
+		workspace.ProviderConfig.Azure = azureProvider
+	}
+
+	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
+		section.Default = workspaceName
+		section.Items[strings.ToLower(workspaceName)] = *workspace
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	output.LogInfo("Set %q as current workspace", workspaceName)
+	output.CompleteStep(step)
 
 	// Reload config so we can see the updates
 	config, err = cli.LoadConfig(config.ConfigFileUsed())
@@ -260,14 +262,14 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	step := output.BeginStep("Creating Environment...")
+	step = output.BeginStep("Creating Environment...")
 
-	id, err := resources.Parse(workspace.Scope)
+	scopeId, err := resources.Parse(workspace.Scope)
 	if err != nil {
 		return err
 	}
 
-	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, id.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
+	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
 	if err != nil {
 		return err
 	}
