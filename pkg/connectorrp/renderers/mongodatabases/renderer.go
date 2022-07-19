@@ -41,13 +41,21 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	properties := resource.Properties
 	secretValues := getProvidedSecretValues(properties)
+	var applicationName string
+	if resource.Properties.Application != "" {
+		applicationID, err := resources.Parse(resource.Properties.Application)
+		if err != nil {
+			return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
+		}
+		applicationName = applicationID.Name()
+	}
 
 	if resource.Properties.Resource == "" {
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				renderers.DatabaseNameValue: {
-					Value: kubernetes.MakeResourceName(resource.Properties.Application, resource.Name),
+					Value: kubernetes.MakeResourceName(applicationName, resource.Name),
 				},
 			},
 			SecretValues: secretValues,
