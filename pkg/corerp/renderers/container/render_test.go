@@ -467,6 +467,52 @@ func Test_Render_Connections(t *testing.T) {
 	require.Len(t, output.Resources, 2)
 }
 
+func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
+	properties := datamodel.ContainerProperties{
+		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		Connections: map[string]datamodel.ConnectionProperties{
+			"A": {
+				Source:                makeResourceID(t, "ResourceType", "A").String(),
+				DisableDefaultEnvVars: to.BoolPtr(true),
+				IAM: datamodel.IAMProperties{
+					Kind: datamodel.KindHTTP,
+				},
+			},
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	require.NoError(t, err)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+	container := deployment.Spec.Template.Spec.Containers[0]
+	require.Equal(t, resourceName, container.Name)
+	require.Equal(t, properties.Container.Image, container.Image)
+	require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
+
+	expectedEnv := []v1.EnvVar{}
+	require.Equal(t, expectedEnv, container.Env)
+}
+
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	properties := datamodel.ContainerProperties{
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",

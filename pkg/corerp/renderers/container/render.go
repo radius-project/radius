@@ -389,27 +389,29 @@ func getEnvVarsAndSecretData(resource datamodel.ContainerResource, dependencies 
 	// Float is used by the JSON serializer
 	for name, con := range cc.Connections {
 		properties := dependencies[con.Source]
-		for key, value := range properties.ComputedValues {
-			name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
+		if !con.GetDisableDefaultEnvVars() {
+			for key, value := range properties.ComputedValues {
+				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
 
-			source := corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: resource.Name,
+				source := corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: resource.Name,
+						},
+						Key: name,
 					},
-					Key: name,
-				},
-			}
-			switch v := value.(type) {
-			case string:
-				secretData[name] = []byte(v)
-				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-			case float64:
-				secretData[name] = []byte(strconv.Itoa(int(v)))
-				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
-			case int:
-				secretData[name] = []byte(strconv.Itoa(v))
-				env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+				}
+				switch v := value.(type) {
+				case string:
+					secretData[name] = []byte(v)
+					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+				case float64:
+					secretData[name] = []byte(strconv.Itoa(int(v)))
+					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+				case int:
+					secretData[name] = []byte(strconv.Itoa(v))
+					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
+				}
 			}
 		}
 	}

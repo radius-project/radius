@@ -32,7 +32,7 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 
 			connections[key] = datamodel.ConnectionProperties{
 				Source:                to.String(val.Source),
-				DisableDefaultEnvVars: to.Bool(val.DisableDefaultEnvVars),
+				DisableDefaultEnvVars: to.BoolPtr(*val.DisableDefaultEnvVars),
 				IAM: datamodel.IAMProperties{
 					Kind:  kind,
 					Roles: roles,
@@ -125,7 +125,7 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 
 		connections[key] = &ConnectionProperties{
 			Source:                to.StringPtr(val.Source),
-			DisableDefaultEnvVars: to.BoolPtr(val.DisableDefaultEnvVars),
+			DisableDefaultEnvVars: to.BoolPtr(*val.DisableDefaultEnvVars),
 			Iam: &IamProperties{
 				Kind:  kind,
 				Roles: roles,
