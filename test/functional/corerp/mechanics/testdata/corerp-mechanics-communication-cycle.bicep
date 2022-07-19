@@ -17,8 +17,8 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource route_a 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'route_a'
+resource routea 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: 'routea'
   location: location
   properties: {
     application: app.id
@@ -32,7 +32,7 @@ resource containerg 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     connections: {
       b: {
-        source: route_b.id
+        source: routeb.id
       }
     }
     container: {
@@ -40,29 +40,29 @@ resource containerg 'Applications.Core/containers@2022-03-15-privatepreview' = {
       ports: {
         web: {
           containerPort: 3000
-          provides: route_a.id
+          provides: routea.id
         }
       }
     }
   }
 }
 
-resource route_b 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'route_b'
+resource routeb 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: 'routeb'
   location: location
   properties: {
     application: app.id
   }
 }
 
-resource cycle_a 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'cycle_a'
+resource cyclea 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'cyclea'
   location: location
   properties: {
     application: app.id
     connections: {
       a: {
-        source: route_a.id
+        source: routea.id
       }
     }
     container: {
@@ -70,7 +70,7 @@ resource cycle_a 'Applications.Core/containers@2022-03-15-privatepreview' = {
       ports: {
         web: {
           containerPort: 3000
-          provides: route_b.id
+          provides: routeb.id
         }
       }
     }
