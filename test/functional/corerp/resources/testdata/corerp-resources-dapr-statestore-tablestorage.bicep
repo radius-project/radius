@@ -32,6 +32,13 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         path: '/healthz'
       }
     }
+    extensions: [
+      {
+        kind: 'daprSidecar'
+        appId: 'myapp'
+        appPort: 3000
+      }
+    ]
   }
 }
 
@@ -62,6 +69,7 @@ resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepr
   location: location
   properties: {
     environment: environment
+    application: app.id
     kind: 'state.azure.tablestorage'
     resource: account::tableServices::table.id
   }

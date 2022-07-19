@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
@@ -66,7 +67,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	values := map[string]renderers.ComputedValueReference{
 		"stateStoreName": {
-			Value: resource.Name,
+			Value: kubernetes.MakeResourceName(applicationName, resource.Name),
 		},
 	}
 	secrets := map[string]rp.SecretValueReference{}

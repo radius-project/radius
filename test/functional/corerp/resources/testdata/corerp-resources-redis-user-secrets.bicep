@@ -15,7 +15,6 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'webapp'
   location: 'global'
-
   properties: {
     application: app.id
     container: {
@@ -24,8 +23,8 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         DBCONNECTION: redis.connectionString()
       }
       readinessProbe:{
-        kind:'httpGet'
-        containerPort:3000
+        kind: 'httpGet'
+        containerPort: 3000
         path: '/healthz'
       }
     }
@@ -40,7 +39,6 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'redis'
   location: 'global'
-
   properties: {
     application: app.id
     container: {
@@ -59,19 +57,17 @@ resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview'
 resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   name: 'redis-route'
   location: 'global'
-
   properties: {
     application: app.id
-    port: 80
   }
 }
 
 resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = {
   name: 'redis'
   location: 'global'
-
   properties: {
     environment: environment
+    application: app.id
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
     secrets: {

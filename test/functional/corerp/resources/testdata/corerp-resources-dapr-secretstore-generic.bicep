@@ -32,6 +32,13 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         path: '/healthz'
       }
     }
+    extensions: [
+      {
+        kind: 'daprSidecar'
+        appId: 'myapp'
+        appPort: 3000
+      }
+    ]
   }
 }
 
@@ -40,6 +47,7 @@ resource secretstore 'Applications.Connector/daprSecretStores@2022-03-15-private
   location: location
   properties: {
     environment: environment
+    application: app.id
     kind: 'generic'
     type: 'secretstores.azure.keyvault'
     metadata: {

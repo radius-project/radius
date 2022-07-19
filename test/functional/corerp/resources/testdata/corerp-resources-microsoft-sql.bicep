@@ -21,10 +21,8 @@ param adminUsername string = 'cooluser'
 @description('Specifies the SQL password.')
 param adminPassword string = 'p@ssw0rd'
 
-var appPrefix = 'corerp-resources-microsoft-sql'
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-app'
+  name: 'corerp-resources-microsoft-sql'
   location: location
   properties: {
     environment: environment
@@ -32,12 +30,12 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-   name: '${appPrefix}-sqlapp'
-   location: location
-   properties: {
+  name: 'app'
+  location: location
+  properties: {
     application: app.id
     connections: {
-      sql: { 
+      sql: {
         source: db.id
       }
     }
@@ -55,47 +53,47 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-  resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
-    name: '${appPrefix}-db'
-    location: location
-    properties: {
-      environment: environment
-      server: sqlRoute.properties.hostname
-      database: 'master'
-    }
+resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
+  name: 'db'
+  location: location
+  properties: {
+    application: app.id
+    environment: environment
+    server: sqlRoute.properties.hostname
+    database: 'master'
+  }
+}
+
+resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+  name: 'route'
+  location: location
+  properties: {
+    application: app.id
+    port: sqlPort
+  }
+}
+
+resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
+  name: 'sql-${uniqueString(resourceGroup().id)}'
+  location: location
+  tags: {
+    radiustest: 'corerp-resources-microsoft-sql'
+  }
+  properties: {
+    administratorLogin: adminUsername
+    administratorLoginPassword: adminPassword
   }
 
-  resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-    name: '${appPrefix}-route'
+  resource dbinner 'databases' = {
+    name: 'cool-database'
     location: location
-    properties: {
-      application: app.id
-      port: sqlPort
-    }
   }
 
-  resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
-    name: 'sql-${uniqueString(resourceGroup().id)}'
-    location: location
-    tags: {
-      radiustest: 'corerp-resources-microsoft-sql'
-    }
+  resource firewall 'firewallRules' = {
+    name: 'allow'
     properties: {
-      administratorLogin: adminUsername
-      administratorLoginPassword: adminPassword
+      startIpAddress: '0.0.0.0'
+      endIpAddress: '0.0.0.0'
     }
-  
-    resource dbinner 'databases' = {
-      name: 'cool-database'
-      location: location
-    }
-  
-    resource firewall 'firewallRules' = {
-      name: 'allow'
-      properties: {
-        startIpAddress: '0.0.0.0'
-        endIpAddress: '0.0.0.0'
-      }
-    }
-
   }
+}
