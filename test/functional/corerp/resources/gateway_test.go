@@ -38,7 +38,7 @@ func Test_Gateway(t *testing.T) {
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "gtwy-front-ctr",
+						Name: "gtwy-front-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
@@ -46,7 +46,7 @@ func Test_Gateway(t *testing.T) {
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "gtwy-back-ctr",
+						Name: "gtwy-back-ctnr",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -54,8 +54,8 @@ func Test_Gateway(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "gtwy-front-ctr"),
-						validation.NewK8sPodForResource(name, "gtwy-back-ctr"),
+						validation.NewK8sPodForResource(name, "gtwy-front-ctnr"),
+						validation.NewK8sPodForResource(name, "gtwy-back-ctnr"),
 						validation.NewK8sHTTPProxyForResource(name, "gtwy-gtwy"),
 						validation.NewK8sHTTPProxyForResource(name, "gtwy-front-rte"),
 						validation.NewK8sServiceForResource(name, "gtwy-front-rte"),
