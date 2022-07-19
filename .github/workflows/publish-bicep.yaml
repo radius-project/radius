@@ -14,9 +14,15 @@ jobs:
     name: Update Bicep extensibility provider types
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
+    env:
+      GOVER: '^1.18'
+      GOPROXY: https://proxy.golang.org
     steps:
       - uses: actions/checkout@v3
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
       - name: Setup npm
         uses: actions/setup-node@v2
         with:
