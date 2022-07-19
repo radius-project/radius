@@ -61,7 +61,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "a",
+						Name:    "mechanicsa",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-with-another-resource",
 					},
@@ -70,7 +70,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "a"),
+						validation.NewK8sPodForResource(name, "mechanicsa"),
 					},
 				},
 			},
@@ -84,12 +84,12 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "b",
+						Name:    "mechanicsb",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-with-another-resource",
 					},
 					{
-						Name:    "c",
+						Name:    "mechanicsc",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-with-another-resource",
 					},
@@ -98,8 +98,8 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "b"),
-						validation.NewK8sPodForResource(name, "c"),
+						validation.NewK8sPodForResource(name, "mechanicsb"),
+						validation.NewK8sPodForResource(name, "mechanicsc"),
 					},
 				},
 			},
@@ -123,7 +123,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containerd",
+						Name:    "mechanicsd",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-withupdatedresource",
 					},
@@ -132,7 +132,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "containerd"),
+						validation.NewK8sPodForResource(name, "mechanicsd"),
 					},
 				},
 			},
@@ -146,7 +146,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containerd",
+						Name:    "mechanicsd",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-withupdatedresource",
 					},
@@ -155,12 +155,12 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "containerd"),
+						validation.NewK8sPodForResource(name, "mechanicsd"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-				labelset := kubernetes.MakeSelectorLabels(name, "containerd")
+				labelset := kubernetes.MakeSelectorLabels(name, "mechanicsd")
 
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments("default").List(context.Background(), metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
@@ -192,7 +192,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containere",
+						Name:    "mechanicse",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-withtwoseparateresource",
 					},
@@ -201,7 +201,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "containere"),
+						validation.NewK8sPodForResource(name, "mechanicse"),
 					},
 				},
 			},
@@ -215,12 +215,12 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containere",
+						Name:    "mechanicse",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-withtwoseparateresource",
 					},
 					{
-						Name:    "containerf",
+						Name:    "mechanicsf",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-redeploy-withtwoseparateresource",
 					},
@@ -229,8 +229,8 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "containere"),
-						validation.NewK8sPodForResource(name, "containerf"),
+						validation.NewK8sPodForResource(name, "mechanicse"),
+						validation.NewK8sPodForResource(name, "mechanicsf"),
 					},
 				},
 			},
