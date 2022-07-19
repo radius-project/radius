@@ -337,8 +337,7 @@
         },
         "topic": {
           "description": "Topic name of the Azure ServiceBus resource",
-          "type": "string",
-          "readOnly": true
+          "type": "string"
         }
       },
       "required": [

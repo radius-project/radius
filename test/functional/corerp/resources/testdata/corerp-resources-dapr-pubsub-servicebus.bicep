@@ -53,7 +53,7 @@ resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privateprev
     environment: environment
     application: app.id
     kind: 'pubsub.azure.servicebus'
-    resource: namespace::topic.id
+    resource: namespace.id
   }
 }
 
@@ -62,9 +62,5 @@ resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
   location: location
   tags: {
     radiustest: 'corerp-resources-dapr-pubsub-servicebus'
-  }
-
-  resource topic 'topics' = {
-    name: 'TOPIC_A'
   }
 }

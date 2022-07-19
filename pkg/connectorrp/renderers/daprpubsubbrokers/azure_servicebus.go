@@ -30,19 +30,22 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		return renderers.RendererOutput{}, renderers.ErrResourceMissingForResource
 	}
 	//Validate fully qualified resource identifier of the source resource is supplied for this connector
-	azureServiceBusTopicID, err := resources.Parse(properties.Resource)
+	azureServiceBusNamespaceID, err := resources.Parse(properties.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
 	}
-	err = azureServiceBusTopicID.ValidateResourceType(TopicResourceType)
+	err = azureServiceBusNamespaceID.ValidateResourceType(NamespaceResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Topic")
+		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Namespace")
 	}
 
-	serviceBusNamespaceName := azureServiceBusTopicID.TypeSegments()[0].Name
-	topicName := azureServiceBusTopicID.TypeSegments()[1].Name
+	serviceBusNamespaceName := azureServiceBusNamespaceID.TypeSegments()[0].Name
+	topicName := resource.Properties.Topic
+	if topicName == "" {
+		topicName = resource.Name
+	}
 	output = outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureServiceBusTopic,
+		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Provider: providers.ProviderAzure,
@@ -54,24 +57,22 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 			handlers.KubernetesKindKey:       "Component",
 
-			// Truncate the topic part of the ID to make an ID for the namespace
-			handlers.ServiceBusNamespaceIDKey:   azureServiceBusTopicID.Truncate().String(),
-			handlers.ServiceBusTopicIDKey:       azureServiceBusTopicID.String(),
+			handlers.ServiceBusNamespaceIDKey:   azureServiceBusNamespaceID.String(),
 			handlers.ServiceBusNamespaceNameKey: serviceBusNamespaceName,
 			handlers.ServiceBusTopicNameKey:     topicName,
 		},
 	}
 
 	values := map[string]renderers.ComputedValueReference{
-		"namespace": {
+		NamespaceNameKey: {
 			Value: serviceBusNamespaceName,
 		},
-		"pubSubName": {
+		PubSubNameKey: {
 			Value:             kubernetes.MakeResourceName(applicationName, resource.Name),
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ResourceName,
 		},
-		"topic": {
+		TopicNameKey: {
 			Value: topicName,
 		},
 	}

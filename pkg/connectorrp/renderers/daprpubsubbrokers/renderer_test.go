@@ -24,23 +24,25 @@ import (
 )
 
 const (
-	applicationName   = "test-app"
-	applicationID     = "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
-	environmentID     = "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Applications.Core/environments/test-env"
-	resourceName      = "test-pub-sub-topic"
-	pubsubType        = "pubsub.kafka"
-	daprPubSubVersion = "v1"
-	daprVersion       = "dapr.io/v1alpha1"
-	k8sKind           = "Component"
+	applicationName      = "test-app"
+	resourceID           = "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub"
+	applicationID        = "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+	environmentID        = "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Applications.Core/environments/test-env"
+	serviceBusResourceID = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace"
+	resourceName         = "test-pub-sub"
+	pubsubType           = "pubsub.kafka"
+	daprPubSubVersion    = "v1"
+	daprVersion          = "dapr.io/v1alpha1"
+	k8sKind              = "Component"
 )
 
 func Test_Render_Generic_Success(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
+			ID:   resourceID,
 			Name: resourceName,
-			Type: "Applications.Connector/daprPubSubBrokers",
+			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			Application: applicationID,
@@ -71,7 +73,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, "test-pub-sub-topic"),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 			},
 			"spec": map[string]interface{}{
 				"type":    pubsubType,
@@ -92,9 +94,9 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
+			ID:   resourceID,
 			Name: resourceName,
-			Type: "Applications.Connector/daprPubSubBrokers",
+			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			Application: applicationID,
@@ -116,9 +118,9 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
+			ID:   resourceID,
 			Name: resourceName,
-			Type: "Applications.Connector/daprPubSubBrokers",
+			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			Application: applicationID,
@@ -142,9 +144,9 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
+			ID:   resourceID,
 			Name: resourceName,
-			Type: "Applications.Connector/daprPubSubBrokers",
+			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			Application: applicationID,
@@ -207,13 +209,96 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 	assert.Equal(t, string(expectedYaml), string(actualYaml), "Resource spec does not match expected value")
 }
 
-func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
+func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
+			ID:   resourceID,
 			Name: resourceName,
-			Type: "Applications.Connector/daprPubSubBrokers",
+			Type: ResourceType,
+		},
+		Properties: datamodel.DaprPubSubBrokerProperties{
+			Application: applicationID,
+			Environment: environmentID,
+			Kind:        resourcekinds.DaprPubSubTopicAzureServiceBus,
+			Topic:       "test-topic",
+			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
+				Resource: serviceBusResourceID,
+			},
+		},
+	}
+	renderer.PubSubs = SupportedPubSubKindValues
+	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.NoError(t, err)
+
+	require.Len(t, result.Resources, 1)
+	output := result.Resources[0]
+
+	require.Equal(t, outputresource.LocalIDAzureServiceBusNamespace, output.LocalID)
+	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
+
+	expected := map[string]string{
+		handlers.ResourceName:               resourceName,
+		handlers.KubernetesNamespaceKey:     "radius-test",
+		handlers.ApplicationName:            applicationName,
+		handlers.KubernetesAPIVersionKey:    "dapr.io/v1alpha1",
+		handlers.KubernetesKindKey:          "Component",
+		handlers.ServiceBusNamespaceIDKey:   serviceBusResourceID,
+		handlers.ServiceBusNamespaceNameKey: "test-namespace",
+		handlers.ServiceBusTopicNameKey:     "test-topic",
+	}
+	require.Equal(t, expected, output.Resource)
+	require.Equal(t, "test-topic", result.ComputedValues[TopicNameKey].Value)
+}
+
+func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
+	renderer := Renderer{}
+	resource := datamodel.DaprPubSubBroker{
+		TrackedResource: v1.TrackedResource{
+			ID:   resourceID,
+			Name: resourceName,
+			Type: ResourceType,
+		},
+		Properties: datamodel.DaprPubSubBrokerProperties{
+			Application: applicationID,
+			Environment: environmentID,
+			Kind:        resourcekinds.DaprPubSubTopicAzureServiceBus,
+			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
+				Resource: serviceBusResourceID,
+			},
+		},
+	}
+	renderer.PubSubs = SupportedPubSubKindValues
+	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.NoError(t, err)
+
+	require.Len(t, result.Resources, 1)
+	output := result.Resources[0]
+
+	require.Equal(t, outputresource.LocalIDAzureServiceBusNamespace, output.LocalID)
+	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
+
+	expected := map[string]string{
+		handlers.ResourceName:               resourceName,
+		handlers.KubernetesNamespaceKey:     "radius-test",
+		handlers.ApplicationName:            applicationName,
+		handlers.KubernetesAPIVersionKey:    "dapr.io/v1alpha1",
+		handlers.KubernetesKindKey:          "Component",
+		handlers.ServiceBusNamespaceIDKey:   serviceBusResourceID,
+		handlers.ServiceBusNamespaceNameKey: "test-namespace",
+		handlers.ServiceBusTopicNameKey:     resourceName,
+	}
+	require.Equal(t, expected, output.Resource)
+	require.Equal(t, resourceName, result.ComputedValues[TopicNameKey].Value)
+}
+
+func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
+	renderer := Renderer{}
+	resource := datamodel.DaprPubSubBroker{
+		TrackedResource: v1.TrackedResource{
+			ID:   resourceID,
+			Name: resourceName,
+			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			Application: applicationID,
@@ -225,49 +310,7 @@ func Test_Render_DaprPubSubTopicAzureServiceBus_Success(t *testing.T) {
 		},
 	}
 	renderer.PubSubs = SupportedPubSubKindValues
-	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
-	require.NoError(t, err)
-
-	require.Len(t, result.Resources, 1)
-	output := result.Resources[0]
-
-	require.Equal(t, outputresource.LocalIDAzureServiceBusTopic, output.LocalID)
-	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
-
-	expected := map[string]string{
-		handlers.ResourceName:               resourceName,
-		handlers.KubernetesNamespaceKey:     "radius-test",
-		handlers.ApplicationName:            applicationName,
-		handlers.KubernetesAPIVersionKey:    "dapr.io/v1alpha1",
-		handlers.KubernetesKindKey:          "Component",
-		handlers.ServiceBusNamespaceIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
-		handlers.ServiceBusNamespaceNameKey: "test-namespace",
-		handlers.ServiceBusTopicIDKey:       "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
-		handlers.ServiceBusTopicNameKey:     "test-topic",
-	}
-	require.Equal(t, expected, output.Resource)
-	require.Equal(t, "test-topic", result.ComputedValues["topic"].Value)
-}
-
-func Test_Render_DaprPubSubTopicAzureServiceBus_InvalidResourceType(t *testing.T) {
-	renderer := Renderer{}
-	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub-topic",
-			Name: resourceName,
-			Type: "Applications.Connector/daprPubSubBrokers",
-		},
-		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprPubSubTopicAzureServiceBus,
-			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-namespace/topics/test-topic",
-			},
-		},
-	}
-	renderer.PubSubs = SupportedPubSubKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a ServiceBus Topic", err.Error())
+	require.Equal(t, "the 'resource' field must refer to a ServiceBus Namespace", err.Error())
 }
