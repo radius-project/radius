@@ -25,8 +25,8 @@ resource routea 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource containerg 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerg'
+resource mechanicsg 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'mechanicsg'
   location: location
   properties: {
     application: app.id

@@ -241,8 +241,6 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 }
 
 func Test_CommunicationCycle(t *testing.T) {
-	t.Skip("Will re-enable after all components are completed for Private Preview. Ref: https://github.com/project-radius/radius/issues/2736")
-
 	name := "corerp-mechanics-communication-cycle"
 	template := "testdata/corerp-mechanics-communication-cycle.bicep"
 
@@ -256,17 +254,12 @@ func Test_CommunicationCycle(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containerf",
-						Type:    validation.ContainersResource,
-						AppName: "corerp-mechanics-communication-cycle",
-					},
-					{
 						Name:    "routea",
 						Type:    validation.HttpRoutesResource,
 						AppName: "corerp-mechanics-communication-cycle",
 					},
 					{
-						Name:    "containerg",
+						Name:    "mechanicsg",
 						Type:    validation.ContainersResource,
 						AppName: "corerp-mechanics-communication-cycle",
 					},
@@ -285,8 +278,7 @@ func Test_CommunicationCycle(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "containerf"),
-						validation.NewK8sPodForResource(name, "containerg"),
+						validation.NewK8sPodForResource(name, "mechanicsg"),
 						validation.NewK8sPodForResource(name, "cyclea"),
 					},
 				},
