@@ -743,14 +743,14 @@ type GatewayProperties struct {
 	// REQUIRED; The resource id of the application linked to Gateway resource.
 	Application *string `json:"application,omitempty"`
 
-	// REQUIRED; Routes attached to this Gateway
-	Routes []*GatewayRoute `json:"routes,omitempty"`
-
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
 
 	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 	Internal *bool `json:"internal,omitempty"`
+
+	// Routes attached to this Gateway
+	Routes []*GatewayRoute `json:"routes,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`

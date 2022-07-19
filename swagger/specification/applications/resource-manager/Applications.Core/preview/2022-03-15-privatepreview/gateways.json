@@ -322,8 +322,7 @@
         "description": "Gateway properties",
         "type": "object",
         "required": [
-          "application",
-          "routes"
+          "application"
         ],
         "allOf": [
           {
@@ -361,7 +360,6 @@
           },
           "routes": {
             "type": "array",
-            "minItems": 1,
             "description": "Routes attached to this Gateway",
             "items": {
               "$ref": "#/definitions/GatewayRoute"
