@@ -126,13 +126,10 @@ func getCurlResult(t *testing.T) (*string, *int, error) {
 	curl, err := exec.Command("kubectl", "exec", "-n", "curl", "-i", podName,
 		"-c", "curl", "--", "curl", "-I", "http://trafficsplit-httpbin.trafficsplit:80/json",
 		"|", "egrep", "'HTTP|pod'").Output()
-	t.Log(string(curl))
 	if err != nil {
-		if _, ok := err.(*exec.ExitError); len(curl) > 0 && ok {
+		if _, ok := err.(*exec.ExitError); !(len(curl) > 0 && ok) {
 			// The program has exited with an exit code != 0
 			// Weird error thrown by curl, but we were able to get data
-			t.Log("cURL retrieved information")
-		} else {
 			return nil, nil, err
 		}
 	}
