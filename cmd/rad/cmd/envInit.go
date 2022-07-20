@@ -405,5 +405,5 @@ func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 
 func isEmpty(chartArgs *setup.ChartArgs) bool {
 	var emptyChartArgs setup.ChartArgs
-	return (chartArgs != nil && *chartArgs == emptyChartArgs)
+	return (chartArgs == nil || *chartArgs == emptyChartArgs)
 }
