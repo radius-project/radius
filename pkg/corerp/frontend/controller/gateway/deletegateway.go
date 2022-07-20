@@ -8,6 +8,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -51,6 +52,7 @@ func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Respo
 	}
 
 	if !existingGateway.Properties.ProvisioningState.IsTerminal() {
+		fmt.Printf("@@@@@ existing resource provisioning state: '%s', resourceID: %s\n", existingGateway.Properties.ProvisioningState, existingGateway.ID)
 		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
 	}
 

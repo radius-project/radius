@@ -8,6 +8,7 @@ package httproutes
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -51,6 +52,7 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 	}
 
 	if !existingResource.Properties.ProvisioningState.IsTerminal() {
+		fmt.Printf("@@@@@ existing resource provisioning state: '%s', resourceID: %s\n", existingResource.Properties.ProvisioningState, existingResource.ID)
 		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
 	}
 

@@ -8,6 +8,7 @@ package containers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -51,6 +52,7 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 	}
 
 	if !existingContainer.Properties.ProvisioningState.IsTerminal() {
+		fmt.Printf("@@@@@ existing resource provisioning state: '%s', resourceID: %s\n", existingContainer.Properties.ProvisioningState, existingContainer.ID)
 		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
 	}
 
