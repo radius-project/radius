@@ -55,7 +55,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				renderers.DatabaseNameValue: {
-					Value: kubernetes.MakeResourceName(applicationName, resource.Name),
+					Value: resource.Name,
 				},
 			},
 			SecretValues: secretValues,
