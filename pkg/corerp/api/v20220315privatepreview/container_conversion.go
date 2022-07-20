@@ -30,9 +30,14 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 				kind = toKindDataModel(val.Iam.Kind)
 			}
 
+			var disableDefaultEnvVars bool
+			if val.DisableDefaultEnvVars != nil {
+				disableDefaultEnvVars = to.Bool(val.DisableDefaultEnvVars)
+			}
+
 			connections[key] = datamodel.ConnectionProperties{
 				Source:                to.String(val.Source),
-				DisableDefaultEnvVars: to.BoolPtr(*val.DisableDefaultEnvVars),
+				DisableDefaultEnvVars: &disableDefaultEnvVars,
 				IAM: datamodel.IAMProperties{
 					Kind:  kind,
 					Roles: roles,
@@ -123,9 +128,14 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 
 		kind = fromKindDataModel(val.IAM.Kind)
 
+		var disableDefaultEnvVars bool
+		if val.DisableDefaultEnvVars != nil {
+			disableDefaultEnvVars = to.Bool(val.DisableDefaultEnvVars)
+		}
+
 		connections[key] = &ConnectionProperties{
 			Source:                to.StringPtr(val.Source),
-			DisableDefaultEnvVars: to.BoolPtr(*val.DisableDefaultEnvVars),
+			DisableDefaultEnvVars: &disableDefaultEnvVars,
 			Iam: &IamProperties{
 				Kind:  kind,
 				Roles: roles,
