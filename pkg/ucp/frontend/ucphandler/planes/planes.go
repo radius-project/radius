@@ -242,9 +242,9 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 
 	// As per https://github.com/golang/go/issues/28940#issuecomment-441749380, the way to check
 	// for http vs https is check the TLS field
-	httpScheme := "http"
-	if r.TLS != nil {
-		httpScheme = "https"
+	httpScheme := r.URL.Scheme
+	if httpScheme == "" {
+		httpScheme = "http"
 	}
 
 	requestInfo := proxy.UCPRequestInfo{
