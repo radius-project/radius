@@ -42,6 +42,7 @@
             "replacePrefix": "myreplaceprefix"
         }
         ],
+        "url": "myprefix.myapp.mydomain.com",
         "provisioningState": "Succeeded"
     }
 }

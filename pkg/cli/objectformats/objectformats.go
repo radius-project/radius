@@ -28,6 +28,36 @@ func GetApplicationTableFormat() output.FormatterOptions {
 	}
 }
 
+func GetApplicationStatusTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "APPLICATION",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "RESOURCES",
+				JSONPath: "{ .ResourceCount }",
+			},
+		},
+	}
+}
+
+func GetApplicationGatewaysTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "GATEWAY",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "ENDPOINT",
+				JSONPath: "{ .Endpoint }",
+			},
+		},
+	}
+}
+
 func GetResourceTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{

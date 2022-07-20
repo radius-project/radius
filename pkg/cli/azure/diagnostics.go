@@ -8,6 +8,7 @@ package azure
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
@@ -37,15 +38,32 @@ type ARMDiagnosticsClient struct {
 	ApplicationClient generated.GenericResourcesClient
 	ContainerClient   generated.GenericResourcesClient
 	EnvironmentClient generated.GenericResourcesClient
+	GatewayClient     generated.GenericResourcesClient
 }
 
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
 func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
-	// TODO fix diagnostic commands https://github.com/project-radius/radius/issues/2882
-	hostname := ""
+	if !strings.EqualFold("Applications.Core/gateways", options.ResourceID.Type()) {
+		return nil, nil
+	}
 
-	return &hostname, nil
+	response, err := dc.GatewayClient.Get(ctx, options.ResourceID.Name(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	obj, ok := response.Properties["url"]
+	if !ok {
+		return nil, fmt.Errorf("could not find URL for gateway %q", options.ResourceID.Name())
+	}
+
+	url, ok := obj.(string)
+	if !ok {
+		return nil, fmt.Errorf("could not find URL for gateway %q", options.ResourceID.Name())
+	}
+
+	return &url, nil
 }
 
 func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {
