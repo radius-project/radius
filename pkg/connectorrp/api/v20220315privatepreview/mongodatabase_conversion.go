@@ -30,6 +30,7 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			Resource:          to.String(src.Properties.Resource),
 			Host:              to.String(src.Properties.Host),
 			Port:              to.Int32(src.Properties.Port),
+			Database:          to.String(src.Properties.Database),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -64,6 +65,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Resource:          to.String(src.Properties.Resource),
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),
+				Database:          to.String(src.Properties.Database),
 			},
 			Secrets: secrets,
 		},
@@ -99,6 +101,7 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 		Resource:          to.StringPtr(mongo.Properties.Resource),
 		Host:              to.StringPtr(mongo.Properties.Host),
 		Port:              to.Int32Ptr(mongo.Properties.Port),
+		Database:          to.StringPtr(mongo.Properties.Database),
 	}
 	return nil
 }
@@ -129,6 +132,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Resource:          to.StringPtr(mongo.Properties.Resource),
 			Host:              to.StringPtr(mongo.Properties.Host),
 			Port:              to.Int32Ptr(mongo.Properties.Port),
+			Database:          to.StringPtr(mongo.Properties.Database),
 		},
 	}
 	if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {

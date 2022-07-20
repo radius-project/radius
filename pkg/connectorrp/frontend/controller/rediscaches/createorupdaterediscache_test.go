@@ -49,10 +49,10 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				PropertyReference: "redisusername",
 			},
 			renderers.Host: {
-				Value: "hello.com",
+				Value: "myrediscache.redis.cache.windows.net",
 			},
 			renderers.Port: {
-				Value: int32(1234),
+				Value: int32(10255),
 			},
 		},
 	}
@@ -66,6 +66,11 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 					Provider: providers.ProviderAzure,
 				},
 			},
+		},
+		ComputedValues: map[string]interface{}{
+			renderers.UsernameStringValue: "redisusername",
+			renderers.Host:                "myrediscache.redis.cache.windows.net",
+			renderers.Port:                int32(10255),
 		},
 	}
 

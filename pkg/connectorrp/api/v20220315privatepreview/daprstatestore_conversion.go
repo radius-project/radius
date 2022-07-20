@@ -17,6 +17,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		Environment:       to.String(src.Properties.GetDaprStateStoreProperties().Environment),
 		Application:       to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		Kind:              toDaprStateStoreKindDataModel(src.Properties.GetDaprStateStoreProperties().Kind),
+		StateStoreName:    to.String(src.Properties.GetDaprStateStoreProperties().StateStoreName),
 	}
 	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
@@ -77,6 +78,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 		Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 		Application:       to.StringPtr(daprStateStore.Properties.Application),
 		Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+		StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
 	}
 	switch daprStateStore.Properties.Kind {
 	case datamodel.DaprStateStoreKindAzureTableStorage:

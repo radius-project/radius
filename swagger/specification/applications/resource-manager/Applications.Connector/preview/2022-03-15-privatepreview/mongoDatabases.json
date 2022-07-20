@@ -362,6 +362,11 @@
           "example": [
             27017
           ]
+        },
+        "database": {
+          "description": "Database name of the target Mongo database",
+          "type": "string",
+          "readOnly": true
         }
       }
     },

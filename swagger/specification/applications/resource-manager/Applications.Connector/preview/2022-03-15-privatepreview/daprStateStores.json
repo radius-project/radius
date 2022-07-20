@@ -357,6 +357,11 @@
             "description": "The Dapr StateStore kind",
             "type": "string",
             "enum": ["state.sqlserver","state.azure.tablestorage","generic"]
+          },
+          "stateStoreName": {
+            "description": "The name of the Dapr State Store",
+            "type": "string",
+            "readOnly": true
           }
         },
         "required": [

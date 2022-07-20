@@ -19,6 +19,9 @@ import (
 const (
 	ConnectionStringValue = "connectionString"
 	DatabaseNameValue     = "database"
+	SecretStoreName       = "secretStoreName"
+	StateStoreName        = "stateStoreName"
+	DatabaseName          = "database"
 	ServerNameValue       = "server"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"

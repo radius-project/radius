@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -51,6 +52,16 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, req *http.Reques
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+
+	if host, ok := deploymentOutput.ComputedValues[renderers.Host].(string); ok {
+		newResource.Properties.Host = host
+	}
+	if port, ok := deploymentOutput.ComputedValues[renderers.Port].(int32); ok {
+		newResource.Properties.Port = port
+	}
+	if username, ok := deploymentOutput.ComputedValues[renderers.UsernameStringValue].(string); ok {
+		newResource.Properties.Username = username
+	}
 
 	// Read existing resource info from the data store
 	existingResource := &datamodel.RedisCache{}

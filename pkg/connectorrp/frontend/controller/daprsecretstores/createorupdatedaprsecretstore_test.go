@@ -42,7 +42,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		SecretValues: map[string]rp.SecretValueReference{},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"secretStoreName": {
-				Value: "test-state-store",
+				Value: "test-secret-store",
 			},
 		},
 	}
@@ -56,6 +56,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 					Provider: providers.ProviderKubernetes,
 				},
 			},
+		},
+		ComputedValues: map[string]interface{}{
+			"secretStoreName": rendererOutput.ComputedValues["secretStoreName"].Value,
 		},
 	}
 

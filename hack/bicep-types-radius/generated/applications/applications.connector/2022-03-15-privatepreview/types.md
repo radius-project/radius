@@ -188,6 +188,7 @@
 * **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **metadata**: any (Required): Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **secretStoreName**: string (ReadOnly): The name of the Dapr Secret Store.
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string (Required): Dapr component version
@@ -204,6 +205,7 @@
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **stateStoreName**: string (ReadOnly): The name of the Dapr State Store
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 ### DaprStateStoreGenericResourceProperties
 #### Properties
@@ -251,6 +253,7 @@
 ## MongoDatabaseProperties
 ### Properties
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **database**: string (ReadOnly): Database name of the target Mongo database
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **host**: string: Host name of the target Mongo database
 * **port**: int: Port value of the target Mongo database
@@ -298,6 +301,7 @@
 * **resource**: string: Fully qualified resource ID of a supported resource with Redis API to use for this connector
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets) (WriteOnly): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+* **username**: string (ReadOnly): The username for redis
 
 ## RedisCacheSecrets
 ### Properties
