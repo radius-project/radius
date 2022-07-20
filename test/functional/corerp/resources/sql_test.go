@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional/corerp"
@@ -15,6 +16,9 @@ import (
 
 // FIXME: Test passes but containers are unhealthy.
 func Test_SQL(t *testing.T) {
+	if runtime.GOARCH == "arm64" {
+		t.Skip()
+	}
 	template := "testdata/corerp-resources-sql.bicep"
 	name := "corerp-resources-sql"
 
