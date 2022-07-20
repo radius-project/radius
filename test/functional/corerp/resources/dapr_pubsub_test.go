@@ -62,23 +62,23 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 						Name: "corerp-resources-dapr-pubsub-servicebus",
 						Type: validation.ApplicationsResource,
 					},
-					// {
-					// 	Name: "sb-publisher",
-					// 	Type: validation.ContainersResource,
-					// },
+					{
+						Name: "sb-publisher",
+						Type: validation.ContainersResource,
+					},
 					{
 						Name: "sb-pubsub",
 						Type: validation.DaprPubSubResource,
 					},
 				},
 			},
-			// K8sObjects: &validation.K8sObjectSet{
-			// 	Namespaces: map[string][]validation.K8sObject{
-			// 		"default": {
-			// 			validation.NewK8sPodForResource(name, "sb-publisher"),
-			// 		},
-			// 	},
-			// },
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "sb-publisher"),
+					},
+				},
+			},
 		},
 	})
 
