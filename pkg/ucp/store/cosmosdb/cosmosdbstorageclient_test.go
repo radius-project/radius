@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -226,10 +227,10 @@ func TestSave(t *testing.T) {
 	client := mustGetTestClient(t)
 
 	ucpRootScope := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", randomResourceGroups[0])
-	ucpResource := getTestEnvironmentModel(ucpRootScope, "test-ucp-resource")
+	ucpResource := getTestEnvironmentModel(ucpRootScope, "test-UCP-resource")
 
 	armResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", randomSubscriptionIDs[0], randomResourceGroups[0])
-	armResource := getTestEnvironmentModel(armResourceRootScope, "test-resource")
+	armResource := getTestEnvironmentModel(armResourceRootScope, "test-Resource")
 
 	setupTest := func(tb testing.TB, resource *datamodel.Environment) (func(tb testing.TB), *store.Object) {
 		// Prepare DB object
@@ -387,7 +388,7 @@ func TestQuery(t *testing.T) {
 			for idx, resourceGroup := range randomResourceGroups {
 				// Create and Save an ARM Resource
 				armResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", subscriptionID, resourceGroup)
-				armEnv := buildAndSaveTestModel(ctx, t, armResourceRootScope, fmt.Sprintf("test-env-%d", idx))
+				armEnv := buildAndSaveTestModel(ctx, t, armResourceRootScope, fmt.Sprintf("test-ENV-%d", idx))
 				armResources = append(armResources, armEnv.ID)
 			}
 		}
@@ -598,8 +599,8 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 	ucpResources := []string{}
 	armResources := []string{}
 
-	ucpRootScope := "/planes/radius/local/resourcegroups/test-rg"
-	armResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-rg"
+	ucpRootScope := "/planes/radius/local/resourcegroups/test-RG"
+	armResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-RG"
 
 	setupTest := func(tb testing.TB) func(tb testing.TB) {
 		// 50 UCP - 50 ARM
@@ -638,7 +639,7 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 			itemCount: "",
 		},
 		"ucp-resource-10-query-item-count": {
-			rootScope: ucpRootScope,
+			rootScope: strings.ToLower(ucpRootScope), // case-insensitive query
 			itemCount: "10",
 		},
 		"arm-resource-10-query-item-count": {
