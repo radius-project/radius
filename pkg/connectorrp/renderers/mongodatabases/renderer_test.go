@@ -112,7 +112,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
-			Value: "testapplication-mongo0",
+			Value: mongoDBResource.Name,
 		},
 	}
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
