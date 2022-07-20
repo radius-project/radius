@@ -51,7 +51,6 @@ resource app 'radius.dev/Application@v1alpha3' = {
   resource httpbin 'HttpRoute@v1alpha3' = {
     name:'httpbin'
     properties: {
-      // targetport:14001
       routes: [
         {
           destination: httpbinv1route.id

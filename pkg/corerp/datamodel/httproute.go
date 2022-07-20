@@ -65,4 +65,11 @@ type HTTPRouteProperties struct {
 	Port              int32                `json:"port,omitempty"`
 	Scheme            string               `json:"scheme,omitempty"`
 	URL               string               `json:"url,omitempty"`
+	ContainerPort     int32                `json:"containerPort,omitempty"`
+	Routes            []RouteDestination   `json:"routes,omitempty"`
+}
+
+type RouteDestination struct {
+	Destination string `json:"destination,omitempty"`
+	Weight      int32  `json:"weight,omitempty"`
 }

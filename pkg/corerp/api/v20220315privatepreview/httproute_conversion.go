@@ -17,6 +17,10 @@ import (
 func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
+	var routes []datamodel.RouteDestination
+	for _, e := range src.Properties.Routes {
+		routes = append(routes, datamodel.RouteDestination{Destination: to.String(e.Destination), Weight: to.Int32(e.Weight)})
+	}
 	converted := &datamodel.HTTPRoute{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -34,6 +38,7 @@ func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 			Port:              to.Int32(src.Properties.Port),
 			Scheme:            to.String(src.Properties.Scheme),
 			URL:               to.String(src.Properties.URL),
+			Routes:            routes,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -49,7 +54,11 @@ func (dst *HTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
 	if !ok {
 		return conv.ErrInvalidModelConversion
 	}
+	var routes []*HTTPRoutePropertiesRoutesItem
 
+	for _, e := range route.Properties.Routes {
+		routes = append(routes, &HTTPRoutePropertiesRoutesItem{Destination: to.StringPtr(e.Destination), Weight: to.Int32Ptr(e.Weight)})
+	}
 	dst.ID = to.StringPtr(route.ID)
 	dst.Name = to.StringPtr(route.Name)
 	dst.Type = to.StringPtr(route.Type)
@@ -68,6 +77,7 @@ func (dst *HTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
 		Port:              to.Int32Ptr((route.Properties.Port)),
 		Scheme:            to.StringPtr(route.Properties.Scheme),
 		URL:               to.StringPtr(route.Properties.URL),
+		Routes:            routes,
 	}
 
 	return nil

@@ -133,6 +133,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "TrafficSplit",
+				Provider: providers.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+		},
 	}
 
 	// TODO: Adding handlers next after this changelist
