@@ -42,7 +42,7 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 
 	rendererOutput, err := daprPubSub.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
-		return nil, err
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 	deploymentOutput, err := daprPubSub.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
 	if err != nil {
