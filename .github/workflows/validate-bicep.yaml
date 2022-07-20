@@ -32,11 +32,6 @@ jobs:
         allow-no-subscriptions: true
     - name: Parse release version and set environment variables
       run: python ./.github/scripts/get_release_version.py
-    - name: Download rad-bicep-customrp
-      run: |
-        ./.github/scripts/curl-with-retries.sh https://radiuspublic.blob.core.windows.net/tools/bicep/${{ env.REL_CHANNEL }}/linux-x64/rad-bicep --output rad-bicep-customrp
-        chmod +x rad-bicep-customrp
-        ./rad-bicep-customrp --version
     - name: Download rad-bicep-corerp
       run: |
         ./.github/scripts/curl-with-retries.sh https://radiuspublic.blob.core.windows.net/tools/bicep-extensibility/${{ env.REL_CHANNEL }}/linux-x64/rad-bicep --output rad-bicep-corerp

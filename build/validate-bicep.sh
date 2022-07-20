@@ -1,10 +1,8 @@
 #! /bin/bash
 BICEP_EXECUTABLE_CORERP="rad-bicep-corerp"
-BICEP_EXECUTABLE_CUSTOMRP="rad-bicep-customrp"
 if [[ ! -z $BICEP_PATH ]]
 then
     BICEP_EXECUTABLE_CORERP="$BICEP_PATH/$BICEP_EXECUTABLE_CORERP"
-    BICEP_EXECUTABLE_CUSTOMRP="$BICEP_PATH/$BICEP_EXECUTABLE_CUSTOMRP"
 fi
 
 FILES=$(find . -type f -name "*.bicep")
@@ -26,11 +24,6 @@ do
     then
         exec 3>&1
         STDERR=$($BICEP_EXECUTABLE_CORERP build $F --stdout 2>&1 1>/dev/null)
-        EXITCODE=$?
-        exec 3>&-
-    else
-        exec 3>&1
-        STDERR=$($BICEP_EXECUTABLE_CUSTOMRP build $F --stdout 2>&1 1>/dev/null)
         EXITCODE=$?
         exec 3>&-
     fi
