@@ -139,6 +139,7 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	if requestInfo.PlaneURL == "" {
 		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
 	}
+	fmt.Printf("TESTTEST: %s, %s, %s", requestInfo.PlaneURL, key, header[0])
 	if strings.TrimSuffix(requestInfo.PlaneURL, "/") != strings.TrimSuffix(key, "/") {
 		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", requestInfo.PlaneURL, headerName)
 	}
