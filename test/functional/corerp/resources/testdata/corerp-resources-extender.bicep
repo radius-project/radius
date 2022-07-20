@@ -12,7 +12,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource twilio 'Applications.Connector/extenders@2022-03-15-privatepreview' = {
-  name: 'twilio'
+  name: 'extr-twilio'
   location: 'global'
   properties: {
     environment: environment
@@ -25,7 +25,7 @@ resource twilio 'Applications.Connector/extenders@2022-03-15-privatepreview' = {
 }
 
 resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'myapp'
+  name: 'extr-ctnr'
   location: 'global'
   properties: {
     application: app.id

@@ -21,7 +21,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'container'
+  name: 'ctnr-rte-ctnr'
   location: location
   properties: {
     application: app.id
@@ -39,7 +39,7 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource httproute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'httproute'
+  name: 'ctnr-rte-rte'
   location: location
   properties: {
     application: app.id

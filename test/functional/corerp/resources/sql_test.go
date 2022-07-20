@@ -17,7 +17,7 @@ import (
 func Test_SQL(t *testing.T) {
 	t.Skip()
 	template := "testdata/corerp-resources-sql.bicep"
-	name := "corerp-resources-sql-app"
+	name := "corerp-resources-sql"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -29,7 +29,7 @@ func Test_SQL(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "webapp",
+						Name: "sql-app-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
@@ -37,11 +37,11 @@ func Test_SQL(t *testing.T) {
 						Type: validation.SQLDatabasesResource,
 					},
 					{
-						Name: "sql-route",
+						Name: "sql-rte",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "sql-container",
+						Name: "sql-ctnr",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -49,9 +49,9 @@ func Test_SQL(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "corerp-resources-sql-webapp"),
-						validation.NewK8sPodForResource(name, "corerp-resources-sql-container"),
-						validation.NewK8sServiceForResource(name, "corerp-resources-sql-route"),
+						validation.NewK8sPodForResource(name, "sql-app-ctnr"),
+						validation.NewK8sPodForResource(name, "sql-ctnr"),
+						validation.NewK8sServiceForResource(name, "sql-rte"),
 					},
 				},
 			},

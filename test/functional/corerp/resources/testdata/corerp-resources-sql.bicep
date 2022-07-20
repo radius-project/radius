@@ -25,7 +25,7 @@ param username string = 'sa'
 param password string = 'p@ssw0rd'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-sql-app'
+  name: 'corerp-resources-sql'
   location: location
   properties: {
     environment: environment
@@ -33,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-sql-webapp'
+  name: 'sql-app-ctnr'
   location: location
   properties: {
     application: app.id
@@ -57,7 +57,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-sql-db'
+  name: 'sql-db'
   location: location
   properties: {
     application: app.id
@@ -68,7 +68,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
 }
 
 resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-sql-route'
+  name: 'sql-rte'
   location: location
   properties: {
     application: app.id
@@ -77,7 +77,7 @@ resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
 }
 
 resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-sql-container'
+  name: 'sql-ctnr'
   location: location
   properties: {
     application: app.id

@@ -15,7 +15,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'publisher'
+  name: 'gnrc-publisher'
   location: location
   properties: {
     application: app.id
@@ -27,8 +27,8 @@ resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
     container: {
       image: magpieimage
       readinessProbe:{
-        kind:'httpGet'
-        containerPort:3000
+        kind: 'httpGet'
+        containerPort: 3000
         path: '/healthz'
       }
     }
@@ -36,7 +36,7 @@ resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privatepreview' = {
-  name: 'pubsub'
+  name: 'gnrc-pubsub'
   location: location
   properties: {
     environment: environment

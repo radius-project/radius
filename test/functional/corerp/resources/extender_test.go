@@ -27,11 +27,11 @@ func Test_Extender(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "myapp",
+						Name: "extr-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "twilio",
+						Name: "extr-twilio",
 						Type: validation.HttpRoutesResource,
 					},
 				},
@@ -39,7 +39,7 @@ func Test_Extender(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "myapp"),
+						validation.NewK8sPodForResource(name, "extr-ctnr"),
 					},
 				},
 			},

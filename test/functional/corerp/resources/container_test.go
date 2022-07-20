@@ -27,7 +27,7 @@ func Test_Container(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "container",
+						Name: "ctnr-ctnr",
 						Type: validation.ContainersResource,
 					},
 				},
@@ -35,7 +35,7 @@ func Test_Container(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "container"),
+						validation.NewK8sPodForResource(name, "ctnr-ctnr"),
 					},
 				},
 			},
@@ -59,11 +59,11 @@ func Test_ContainerHttpRoute(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "container",
+						Name: "ctnr-rte-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "httproute",
+						Name: "ctnr-rte-rte",
 						Type: validation.HttpRoutesResource,
 					},
 				},
@@ -71,8 +71,8 @@ func Test_ContainerHttpRoute(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "container"),
-						validation.NewK8sServiceForResource(name, "httproute"),
+						validation.NewK8sPodForResource(name, "ctnr-rte-ctnr"),
+						validation.NewK8sServiceForResource(name, "ctnr-rte-rte"),
 					},
 				},
 			},
