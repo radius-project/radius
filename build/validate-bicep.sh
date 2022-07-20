@@ -26,12 +26,6 @@ do
         STDERR=$($BICEP_EXECUTABLE_CORERP build $F --stdout 2>&1 1>/dev/null)
         EXITCODE=$?
         exec 3>&-
-    else
-        # nop for validating custom rp bicep files
-        #exec 3>&1
-        #STDERR=$($BICEP_EXECUTABLE_CUSTOMRP build $F --stdout 2>&1 1>/dev/null)
-        #EXITCODE=$?
-        #exec 3>&-
     fi
     
     if [[ ! $EXITCODE -eq 0 || ! -z $STDERR ]]
