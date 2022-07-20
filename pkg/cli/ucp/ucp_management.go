@@ -136,14 +136,8 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 
 	g, groupCtx := errgroup.WithContext(ctx)
 
-	sceneResources := map[string]string{}
-
 	for _, resource := range resourcesWithApplication {
-		if sceneResources[*resource.ID] != "" {
-			fmt.Println("OH NOOOOOOOOOOOOOOOO Resource with ID:", *resource.ID, "already exists in scene:", sceneResources[*resource.ID])
-		}
-		sceneResources[*resource.ID] = *resource.Name
-		fmt.Println("Deleting resource: ", *resource.ID, "with resource name:", *resource.Name)
+
 		resource := resource
 		g.Go(func() error {
 			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.Name)
@@ -153,10 +147,14 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 			return nil
 		})
 	}
+
 	err = g.Wait()
+
 	if err != nil {
-		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+		// Don't block deletion on a resource failing to be deleted.
+		fmt.Printf("Errors from deleting resource: %s\n", err.Error())
 	}
+
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	return client.Delete(ctx, applicationName, nil)
 }
