@@ -20,7 +20,6 @@ import (
 )
 
 func TestARMRequestCtx(t *testing.T) {
-
 	outOfBoundsTopParamError := armerrors.ErrorDetails{
 		Code:    strconv.Itoa(http.StatusBadRequest),
 		Message: fmt.Sprintf("unexpected error: %v", ErrTopQueryParamOutOfBounds),

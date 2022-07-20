@@ -91,7 +91,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 }
 
 func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]string)
+	properties := resource.Resource.(map[string]interface{})
 
 	err := handler.DeleteDaprPubSub(ctx, properties)
 	if err != nil {
@@ -137,7 +137,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 	return nil
 }
 
-func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]string) error {
+func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]interface{}) error {
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],

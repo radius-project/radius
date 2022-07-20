@@ -38,6 +38,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	val, ok := ct.Properties.Connections["inventory"]
 	require.True(t, ok)
 	require.Equal(t, "inventory_route_id", val.Source)
+	require.Equal(t, true, *val.DisableDefaultEnvVars)
 	require.Equal(t, "azure", string(val.IAM.Kind))
 	require.Equal(t, "read", val.IAM.Roles[0])
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
@@ -99,6 +100,7 @@ func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "inventory_route_id", val.Source)
 	require.Equal(t, "azure", string(val.IAM.Kind))
+	require.Equal(t, false, *val.DisableDefaultEnvVars)
 	require.Equal(t, "read", val.IAM.Roles[0])
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)

@@ -41,6 +41,14 @@ func (c *ContainerResource) OutputResources() []outputresource.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
+func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
+	if conn.DisableDefaultEnvVars == nil {
+		return false
+	}
+
+	return *conn.DisableDefaultEnvVars
+}
+
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
 	v1.BasicResourceProperties
@@ -54,7 +62,7 @@ type ContainerProperties struct {
 // ConnectionProperties represents the properties of Connection.
 type ConnectionProperties struct {
 	Source                string        `json:"source,omitempty"`
-	DisableDefaultEnvVars bool          `json:"disableDefaultEnvVars,omitempty"`
+	DisableDefaultEnvVars *bool         `json:"disableDefaultEnvVars,omitempty"`
 	IAM                   IAMProperties `json:"iam,omitempty"`
 }
 
