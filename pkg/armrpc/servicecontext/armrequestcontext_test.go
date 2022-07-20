@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,11 +24,11 @@ func TestFromARMRequest(t *testing.T) {
 	require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
 	require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
 	require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", serviceCtx.ResourceID.String())
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0", serviceCtx.ResourceID.String())
 	require.Equal(t, "00000000-0000-0000-0000-000000000000", serviceCtx.ResourceID.ScopeSegments()[0].Name)
-	require.Equal(t, "radius-test-rg", serviceCtx.ResourceID.ScopeSegments()[1].Name)
+	require.Equal(t, "radius-test-RG", serviceCtx.ResourceID.ScopeSegments()[1].Name)
 	require.Equal(t, "Applications.Core/environments", serviceCtx.ResourceID.Type())
-	require.Equal(t, "env0", serviceCtx.ResourceID.Name())
+	require.Equal(t, "Env0", serviceCtx.ResourceID.Name())
 	require.True(t, len(serviceCtx.OperationID) > 0)
 }
 
@@ -107,7 +108,7 @@ func getTestHTTPRequest() (*http.Request, error) {
 		return nil, err
 	}
 
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, parsed["Referer"], nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
 	for k, v := range parsed {
 		req.Header.Add(k, v)
 	}

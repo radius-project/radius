@@ -14,8 +14,6 @@ import (
 )
 
 func Test_DaprPubSubGeneric(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
-
 	template := "testdata/corerp-resources-dapr-pubsub-generic.bicep"
 	name := "corerp-resources-dapr-pubsub-generic"
 
@@ -29,12 +27,19 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "publisher",
+						Name: "gnrc-publisher",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "pubsub",
+						Name: "gnrc-pubsub",
 						Type: validation.DaprPubSubResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "gnrc-publisher"),
 					},
 				},
 			},
@@ -45,15 +50,13 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 }
 
 func Test_DaprPubSubServiceBus(t *testing.T) {
-	t.Skip("Will re-enable after: https://github.com/project-radius/deployment-engine/issues/146")
-
+	t.Skip()
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
@@ -61,12 +64,19 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "publisher",
+						Name: "sb-publisher",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "pubsub",
+						Name: "sb-pubsub",
 						Type: validation.DaprPubSubResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "sb-publisher"),
 					},
 				},
 			},

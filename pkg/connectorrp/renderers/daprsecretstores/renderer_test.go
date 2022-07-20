@@ -95,7 +95,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.DaprComponent, outputResource.ResourceType.Type)
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		"secretStoreName": {
-			Value: "test-secret-store",
+			Value: "test-app-test-secret-store",
 		},
 	}
 	require.Equal(t, expectedComputedValues, result.ComputedValues)

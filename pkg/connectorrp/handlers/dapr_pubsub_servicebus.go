@@ -91,7 +91,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 }
 
 func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]string)
+	properties := resource.Resource.(map[string]interface{})
 
 	err := handler.DeleteDaprPubSub(ctx, properties)
 	if err != nil {
@@ -137,7 +137,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 	return nil
 }
 
-func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]string) error {
+func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]interface{}) error {
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],
@@ -168,7 +168,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 	// Check if a service bus namespace exists in the resource group for this application
 	namespace, err := sbc.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get servicebus namespace: '%s':%w", *namespace.Name, err)
+		return nil, fmt.Errorf("failed to get servicebus namespace:%w", err)
 	}
 
 	return &namespace, nil

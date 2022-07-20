@@ -467,6 +467,52 @@ func Test_Render_Connections(t *testing.T) {
 	require.Len(t, output.Resources, 2)
 }
 
+func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
+	properties := datamodel.ContainerProperties{
+		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		Connections: map[string]datamodel.ConnectionProperties{
+			"A": {
+				Source:                makeResourceID(t, "ResourceType", "A").String(),
+				DisableDefaultEnvVars: to.BoolPtr(true),
+				IAM: datamodel.IAMProperties{
+					Kind: datamodel.KindHTTP,
+				},
+			},
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	require.NoError(t, err)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+	container := deployment.Spec.Template.Spec.Containers[0]
+	require.Equal(t, resourceName, container.Name)
+	require.Equal(t, properties.Container.Image, container.Image)
+	require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
+
+	expectedEnv := []v1.EnvVar{}
+	require.Equal(t, expectedEnv, container.Env)
+}
+
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	properties := datamodel.ContainerProperties{
 		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
@@ -826,9 +872,23 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	renderOutput, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Lenf(t, renderOutput.Resources, 2, "expected 2 output resource, instead got %+v", len(renderOutput.Resources))
 
+	deploymentResource := outputresource.OutputResource{}
+	secretResource := outputresource.OutputResource{}
+	for _, resource := range renderOutput.Resources {
+		if resource.LocalID == outputresource.LocalIDDeployment {
+			deploymentResource = resource
+		}
+
+		if resource.LocalID == outputresource.LocalIDSecret {
+			secretResource = resource
+		}
+	}
+
+	require.NotEmpty(t, deploymentResource)
+	require.NotEmpty(t, secretResource)
+
 	// Verify deployment
-	require.Equal(t, outputresource.LocalIDDeployment, renderOutput.Resources[0].LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
-	volumes := renderOutput.Resources[0].Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes
+	volumes := deploymentResource.Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes
 	require.Lenf(t, volumes, 1, "expected 1 volume, instead got %+v", len(volumes))
 	require.Equal(t, tempVolName, volumes[0].Name)
 	require.NotNil(t, volumes[0].VolumeSource.AzureFile, "expected volumesource azurefile to be not nil")
@@ -836,8 +896,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	require.Equal(t, volumes[0].VolumeSource.AzureFile.ShareName, testShareName)
 
 	// Verify Kubernetes secret
-	require.Equal(t, outputresource.LocalIDSecret, renderOutput.Resources[1].LocalID, "expected output resource of kind secret instead got :%v", renderOutput.Resources[0].LocalID)
-	secret := renderOutput.Resources[1].Resource.(*corev1.Secret)
+	secret := secretResource.Resource.(*corev1.Secret)
 	require.Lenf(t, secret.Data, 2, "expected 2 secret key-value pairs, instead got %+v", len(secret.Data))
 	require.NoError(t, err)
 }

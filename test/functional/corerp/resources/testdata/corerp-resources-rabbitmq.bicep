@@ -12,7 +12,7 @@ param magpiePort int = 3000
 @description('Specifies the environment for resources.')
 param environment string = 'test'
 
-@description('Specifies the image for the container resource.')
+@description('Specifies the image for the RabbitMQ container resource.')
 param rabbitmqImage string = 'rabbitmq:3.10'
 
 @description('Specifies the port for the container resource.')
@@ -24,10 +24,8 @@ param username string = 'guest'
 @description('Specifies the RabbitMQ password.')
 param password string = 'guest'
 
-var appPrefix = 'corerp-resources-rabbitmq'
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-app'
+  name: 'corerp-resources-rabbitmq'
   location: location
   properties: {
     environment: environment
@@ -35,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-webapp'
+  name: 'rmq-app-ctnr'
   location: location
   properties: {
     application: app.id
@@ -56,7 +54,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-container'
+  name: 'rmq-ctnr'
   location: location
   properties: {
     application: app.id
@@ -73,7 +71,7 @@ resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privateprevi
 }
 
 resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-route'
+  name: 'rmq-rte'
   location: location
   properties: {
     application: app.id
@@ -82,9 +80,10 @@ resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource rabbitmq 'Applications.Connector/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
-  name: '${appPrefix}-mq'
+  name: 'rmq-rmq'
   location: location
   properties: {
+    application: app.id
     environment: environment
     queue: 'queue'
     secrets: {

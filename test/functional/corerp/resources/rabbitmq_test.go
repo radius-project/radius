@@ -13,9 +13,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
+// TODO: webapp logs this error:
+// 2022/07/16 20:44:18 Failed to connect to RabbitMQ -  dial tcp 10.96.187.212:5672: connect: connection refused
+// 2022/07/16 20:44:25 Failed to connect to RabbitMQ -  dial tcp 10.96.187.212:5672: connect: connection refused
 func Test_RabbitMQ(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-resources-rabbitmq.bicep"
 	name := "corerp-resources-rabbitmq"
 
@@ -25,37 +26,36 @@ func Test_RabbitMQ(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-rabbitmq-app",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-rabbitmq-webapp",
+						Name: "rmq-app-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "corerp-resources-rabbitmq-container",
+						Name: "rmq-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "corerp-resources-rabbitmq-route",
+						Name: "rmq-rte",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "corerp-resources-rabbitmq-mq",
+						Name: "rmq-rmq",
 						Type: validation.RabbitMQMessageQueuesResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					name: {
-						validation.NewK8sPodForResource(name, "corerp-resources-rabbitmq-webapp"),
-						validation.NewK8sPodForResource(name, "corerp-resources-rabbitmq-container"),
-						validation.NewK8sHTTPProxyForResource(name, "corerp-resources-rabbitmq-route"),
+					"default": {
+						validation.NewK8sPodForResource(name, "rmq-app-ctnr"),
+						validation.NewK8sPodForResource(name, "rmq-ctnr"),
+						validation.NewK8sServiceForResource(name, "rmq-rte"),
 					},
 				},
 			},
-			SkipObjectValidation: true,
 		},
 	})
 

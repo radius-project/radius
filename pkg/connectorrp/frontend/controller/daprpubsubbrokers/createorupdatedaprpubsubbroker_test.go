@@ -77,10 +77,14 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				},
 			},
 		},
+		ComputedValues: map[string]interface{}{
+			"topic": rendererOutput.ComputedValues["topic"].Value,
+		},
 	}
 
 	return rendererOutput, deploymentOutput
 }
+
 func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()

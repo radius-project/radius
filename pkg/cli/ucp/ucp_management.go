@@ -10,12 +10,10 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"golang.org/x/sync/errgroup"
 )
@@ -156,22 +154,20 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 }
 
 func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
-	log := logr.FromContextOrDiscard(ctx)
 	obj, found := resource.Properties["application"]
 	// A resource may not have an application associated with it.
 	if !found {
 		return false, nil
 	}
 	associatedAppId, ok := obj.(string)
-	if !ok {
-		log.V(radlogger.Warn).Info("Failed to list resources in the application. Resource with invalid application id found.")
+	if !ok || associatedAppId == "" {
 		return false, nil
 	}
 	idParsed, err := resources.Parse(associatedAppId)
-
 	if err != nil {
 		return false, err
 	}
+
 	if strings.EqualFold(idParsed.Name(), applicationName) {
 		return true, nil
 	}

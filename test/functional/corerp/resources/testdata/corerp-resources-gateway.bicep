@@ -13,7 +13,7 @@ param port int = 3000
 param image string = 'radiusdev.azurecr.io/magpiego:latest'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-gateway-app'
+  name: 'corerp-resources-gateway'
   location: location
   properties: {
     environment: environment
@@ -21,7 +21,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: 'gateway'
+  name: 'gtwy-gtwy'
   location: location
   properties: {
     application: app.id
@@ -46,7 +46,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
 }
 
 resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'frontend-route'
+  name: 'gtwy-front-rte'
   location: location
   properties: {
     application: app.id
@@ -55,7 +55,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'frontend-container'
+  name: 'gtwy-front-ctnr'
   location: location
   properties: {
     application: app.id
@@ -82,7 +82,7 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
 }
 
 resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'backend-route'
+  name: 'gtwy-back-rte'
   location: location
   properties: {
     application: app.id
@@ -90,7 +90,7 @@ resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' =
 }
 
 resource backendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'backend-container'
+  name: 'gtwy-back-ctnr'
   location: location
   properties: {
     application: app.id

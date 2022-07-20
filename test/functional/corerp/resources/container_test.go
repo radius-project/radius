@@ -15,28 +15,27 @@ import (
 
 func Test_Container(t *testing.T) {
 	template := "testdata/corerp-resources-container.bicep"
-	appName := "corerp-resources-container-app"
+	name := "corerp-resources-container"
 
-	test := corerp.NewCoreRPTest(t, appName, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-container-app",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "container",
-						Type:    validation.ContainersResource,
-						AppName: "corerp-resources-container-app",
+						Name: "ctnr-ctnr",
+						Type: validation.ContainersResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(appName, "container"),
+						validation.NewK8sPodForResource(name, "ctnr-ctnr"),
 					},
 				},
 			},
@@ -48,34 +47,32 @@ func Test_Container(t *testing.T) {
 
 func Test_ContainerHttpRoute(t *testing.T) {
 	template := "testdata/corerp-resources-container-httproute.bicep"
-	appName := "corerp-resources-container-httproute-app"
+	name := "corerp-resources-container-httproute"
 
-	test := corerp.NewCoreRPTest(t, appName, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-container-httproute-app",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "container",
-						Type:    validation.ContainersResource,
-						AppName: "corerp-resources-container-httproute-app",
+						Name: "ctnr-rte-ctnr",
+						Type: validation.ContainersResource,
 					},
 					{
-						Name:    "httproute",
-						Type:    validation.HttpRoutesResource,
-						AppName: "corerp-resources-container-httproute-app",
+						Name: "ctnr-rte-rte",
+						Type: validation.HttpRoutesResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(appName, "container"),
-						validation.NewK8sServiceForResource(appName, "httproute"),
+						validation.NewK8sPodForResource(name, "ctnr-rte-ctnr"),
+						validation.NewK8sServiceForResource(name, "ctnr-rte-rte"),
 					},
 				},
 			},

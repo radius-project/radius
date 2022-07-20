@@ -14,8 +14,6 @@ import (
 )
 
 func Test_ApplicationAndEnvironment(t *testing.T) {
-	t.Skip()
-
 	template := "testdata/corerp-resources-app-env.bicep"
 	name := "corerp-resources-app-env"
 

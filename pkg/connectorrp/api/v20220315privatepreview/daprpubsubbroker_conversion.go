@@ -22,6 +22,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		Environment:       to.String(src.Properties.GetDaprPubSubBrokerProperties().Environment),
 		Application:       to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
 		Kind:              toDaprPubSubBrokerKindDataModel(src.Properties.GetDaprPubSubBrokerProperties().Kind),
+		Topic:             to.String(src.Properties.GetDaprPubSubBrokerProperties().Topic),
 	}
 	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
@@ -77,6 +78,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 		Environment:       to.StringPtr(daprPubSub.Properties.Environment),
 		Application:       to.StringPtr(daprPubSub.Properties.Application),
 		Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
+		Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 	}
 	switch daprPubSub.Properties.Kind {
 	case datamodel.DaprPubSubBrokerKindAzureServiceBus:

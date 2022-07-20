@@ -15,7 +15,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'publisher'
+  name: 'sb-publisher'
   location: location
   properties: {
     application: app.id
@@ -31,15 +31,15 @@ resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
         BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic
       }
       readinessProbe:{
-        kind:'httpGet'
-        containerPort:3000
+        kind: 'httpGet'
+        containerPort: 3000
         path: '/healthz'
       }
     }
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'publisher'
+        appId: 'sb-pubsub'
         appPort: 3000
       }
     ]
@@ -47,10 +47,11 @@ resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privatepreview' = {
-  name: 'pubsub'
+  name: 'sb-pubsub'
   location: location
   properties: {
     environment: environment
+    application: app.id
     kind: 'pubsub.azure.servicebus'
     resource: namespace::topic.id
   }

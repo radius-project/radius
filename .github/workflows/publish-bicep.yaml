@@ -13,12 +13,30 @@ jobs:
   update-types:
     name: Update Bicep extensibility provider types
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
+    env:
+      GOVER: '^1.18'
+      GOPROXY: https://proxy.golang.org
     steps:
       - uses: actions/checkout@v3
-
-      - name: Run make generate-bicep-types
-        run: make generate-bicep-types
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Setup npm
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - name: Install autorest
+        run: npm install -g autorest@3.6.1
+      - name: Install mockgen
+        run: go install github.com/golang/mock/mockgen@v1.5.0
+      - name: Install controller-gen
+        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Run make generate
+        run: make generate
 
       - name: Check if generated code is up to date
         continue-on-error: true

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -164,10 +165,15 @@ type ARMRequestContext struct {
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
-	path := strings.TrimPrefix(r.URL.Path, pathBase)
-	azID, err := resources.ParseByMethod(path, r.Method)
+	refererUri := r.Header.Get(RefererHeader)
+	refererURL, err := url.Parse(refererUri)
+	if refererUri == "" || err != nil {
+		refererURL = r.URL
+	}
+	path := strings.TrimPrefix(refererURL.Path, pathBase)
+	rID, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
-		log.V(radlogger.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", r.URL.Path))
+		log.V(radlogger.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
 		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
@@ -178,7 +184,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 	}
 
 	rpcCtx := &ARMRequestContext{
-		ResourceID:      azID,
+		ResourceID:      rID,
 		ClientRequestID: r.Header.Get(ClientRequestIDHeader),
 		CorrelationID:   r.Header.Get(CorrelationRequestIDHeader),
 		OperationID:     uuid.New(), // TODO: this is temp. implementation. Revisit to have the right generation logic when implementing async request processor.
@@ -193,7 +199,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 
 		APIVersion:        r.URL.Query().Get(APIVersionParameterName),
 		AcceptLanguage:    r.Header.Get(AcceptLanguageHeader),
-		ClientReferer:     r.Header.Get(RefererHeader),
+		ClientReferer:     refererUri,
 		UserAgent:         r.UserAgent(),
 		RawSystemMetadata: r.Header.Get(ARMResourceSystemDataHeader),
 

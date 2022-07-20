@@ -15,7 +15,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'webapp'
+  name: 'mdb-app-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -36,9 +36,10 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'db'
+  name: 'mdb-db'
   location: 'global'
   properties: {
+    application: app.id
     environment: environment
     resource: account::dbinner.id
   }
@@ -66,10 +67,10 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   }
 
   resource dbinner 'mongodbDatabases' = {
-    name: 'mydb'
+    name: 'mdb-mydb'
     properties: {
       resource: {
-        id: 'mydb'
+        id: 'mdb-mydb'
       }
       options: { 
         throughput: 400

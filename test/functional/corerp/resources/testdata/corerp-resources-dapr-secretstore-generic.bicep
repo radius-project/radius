@@ -15,7 +15,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'myapp'
+  name: 'gnrc-scs-ctnr'
   location: location
   properties: {
     application: app.id
@@ -32,14 +32,22 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         path: '/healthz'
       }
     }
+    extensions: [
+      {
+        kind: 'daprSidecar'
+        appId: 'gnrc-ss-ctnr'
+        appPort: 3000
+      }
+    ]
   }
 }
 
 resource secretstore 'Applications.Connector/daprSecretStores@2022-03-15-privatepreview' = {
-  name: 'secretstore-generic'
+  name: 'gnrc-scs'
   location: location
   properties: {
     environment: environment
+    application: app.id
     kind: 'generic'
     type: 'secretstores.azure.keyvault'
     metadata: {
