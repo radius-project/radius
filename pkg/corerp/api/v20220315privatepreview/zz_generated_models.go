@@ -944,11 +944,18 @@ type HTTPRouteProperties struct {
 	// REQUIRED; The resource id of the application linked to HTTP Route resource.
 	Application *string `json:"application,omitempty"`
 
+	// Targetport of the root service. Used for TrafficSplit only
+	ContainerPort *int32 `json:"containerPort,omitempty"`
+
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
 	Hostname *string `json:"hostname,omitempty"`
 
 	// The port number for the HTTP Route. Defaults to 80. Readonly.
 	Port *int32 `json:"port,omitempty"`
+
+	// Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of JSON objects that each only have two keys: destination and
+// weight
+	Routes []*HTTPRoutePropertiesRoutesItem `json:"routes,omitempty"`
 
 	// The scheme used for traffic. Readonly.
 	Scheme *string `json:"scheme,omitempty"`
@@ -965,9 +972,11 @@ func (h HTTPRouteProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	h.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", h.Application)
+	populate(objectMap, "containerPort", h.ContainerPort)
 	populate(objectMap, "hostname", h.Hostname)
 	populate(objectMap, "port", h.Port)
 	populate(objectMap, "provisioningState", h.ProvisioningState)
+	populate(objectMap, "routes", h.Routes)
 	populate(objectMap, "scheme", h.Scheme)
 	populate(objectMap, "url", h.URL)
 	return json.Marshal(objectMap)
@@ -985,6 +994,9 @@ func (h *HTTPRouteProperties) UnmarshalJSON(data []byte) error {
 		case "application":
 				err = unpopulate(val, &h.Application)
 				delete(rawMsg, key)
+		case "containerPort":
+				err = unpopulate(val, &h.ContainerPort)
+				delete(rawMsg, key)
 		case "hostname":
 				err = unpopulate(val, &h.Hostname)
 				delete(rawMsg, key)
@@ -993,6 +1005,9 @@ func (h *HTTPRouteProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &h.ProvisioningState)
+				delete(rawMsg, key)
+		case "routes":
+				err = unpopulate(val, &h.Routes)
 				delete(rawMsg, key)
 		case "scheme":
 				err = unpopulate(val, &h.Scheme)
@@ -1009,6 +1024,14 @@ func (h *HTTPRouteProperties) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+type HTTPRoutePropertiesRoutesItem struct {
+	// REQUIRED
+	Destination *string `json:"destination,omitempty"`
+
+	// REQUIRED
+	Weight *int32 `json:"weight,omitempty"`
 }
 
 // HTTPRouteResource - Radius HTTP Route Resource.
