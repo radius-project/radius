@@ -12,38 +12,6 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sb-publisher'
-  location: location
-  properties: {
-    application: app.id
-    connections: {
-      daprpubsub: {
-        source: pubsub.id
-      }
-    }
-    container: {
-      image: magpieimage
-      env: {
-        BINDING_DAPRPUBSUB_NAME: pubsub.name
-        BINDING_DAPRPUBSUB_TOPIC: pubsub.properties.topic
-      }
-      readinessProbe:{
-        kind: 'httpGet'
-        containerPort: 3000
-        path: '/healthz'
-      }
-    }
-    extensions: [
-      {
-        kind: 'daprSidecar'
-        appId: 'sb-pubsub'
-        appPort: 3000
-      }
-    ]
-  }
-}
-
 resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privatepreview' = {
   name: 'sb-pubsub'
   location: location
@@ -56,7 +24,7 @@ resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privateprev
 }
 
 resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
-  name: 'ns-${guid(resourceGroup().name)}'
+  name: 'ns-kachawla'
   location: location
   tags: {
     radiustest: 'corerp-resources-dapr-pubsub-servicebus'
