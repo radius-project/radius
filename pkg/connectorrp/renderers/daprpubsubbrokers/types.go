@@ -11,17 +11,16 @@ import (
 )
 
 const (
-	ResourceType = "Applications.Connector/daprPubSubBrokers"
+	ResourceType     = "Applications.Connector/daprPubSubBrokers"
+	TopicNameKey     = "topic"
+	NamespaceNameKey = "namespace"
+	PubSubNameKey    = "pubSubName"
 )
 
-var TopicResourceType = resources.KnownType{
+var NamespaceResourceType = resources.KnownType{
 	Types: []resources.TypeSegment{
 		{
 			Type: azresources.ServiceBusNamespaces,
-			Name: "*",
-		},
-		{
-			Type: azresources.ServiceBusNamespacesTopics,
 			Name: "*",
 		},
 	},

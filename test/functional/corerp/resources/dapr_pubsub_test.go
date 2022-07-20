@@ -50,7 +50,6 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 }
 
 func Test_DaprPubSubServiceBus(t *testing.T) {
-	t.Skip()
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"
 

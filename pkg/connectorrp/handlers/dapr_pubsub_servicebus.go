@@ -23,7 +23,6 @@ import (
 
 const (
 	ServiceBusNamespaceIDKey   = "servicebusid"
-	ServiceBusTopicIDKey       = "servicebustopicid"
 	RootManageSharedAccessKey  = "RootManageSharedAccessKey"
 	ServiceBusTopicNameKey     = "servicebustopic"
 	ServiceBusNamespaceNameKey = "servicebusnamespace"
@@ -53,7 +52,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 	}
 
 	// This assertion is important so we don't start creating/modifying a resource
-	err = ValidateResourceIDsForResource(properties, ServiceBusNamespaceIDKey, ServiceBusTopicIDKey)
+	err = ValidateResourceIDsForResource(properties, ServiceBusNamespaceIDKey)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -66,16 +65,8 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	var topic *servicebus.SBTopic
-
-	// This is mostly called for the side-effect of verifying that the servicebus queue exists.
-	topic, err = handler.GetTopicByID(ctx, properties[ServiceBusTopicIDKey])
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
-	}
-
-	// Use the identity of the topic as the thing to monitor.
-	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *topic.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
+	// Use the identity of the namespace as the thing to monitor.
+	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.Name)
 	if err != nil {
@@ -172,22 +163,6 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 	}
 
 	return &namespace, nil
-}
-
-func (handler *daprPubSubServiceBusBaseHandler) GetTopicByID(ctx context.Context, id string) (*servicebus.SBTopic, error) {
-	parsed, err := resources.Parse(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
-	}
-
-	tc := clients.NewTopicsClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
-
-	topic, err := tc.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name, parsed.TypeSegments()[1].Name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get servicebus queue: %w", err)
-	}
-
-	return &topic, nil
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.Context, namespaceName string) (*string, error) {

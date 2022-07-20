@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/providers"
@@ -30,7 +31,7 @@ import (
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
 	output := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureServiceBusTopic,
+		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Provider: providers.ProviderAzure,
@@ -43,21 +44,20 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 
 			// Truncate the topic part of the ID to make an ID for the namespace
 			handlers.ServiceBusNamespaceIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
-			handlers.ServiceBusTopicIDKey:       "test-namespace",
-			handlers.ServiceBusNamespaceNameKey: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
+			handlers.ServiceBusNamespaceNameKey: "test-namespace",
 			handlers.ServiceBusTopicNameKey:     "test-topic",
 		},
 	}
 	values := map[string]renderers.ComputedValueReference{
-		"namespace": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+		daprpubsubbrokers.NamespaceNameKey: {
+			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ServiceBusNamespaceNameKey,
 		},
-		"pubSubName": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+		daprpubsubbrokers.PubSubNameKey: {
+			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ResourceName,
 		},
-		"topic": {
+		daprpubsubbrokers.TopicNameKey: {
 			Value: "test-topic",
 		},
 	}
@@ -70,7 +70,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	deploymentOutput := deployment.DeploymentOutput{
 		Resources: []outputresource.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureServiceBusTopic,
+				LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 					Provider: providers.ProviderAzure,
@@ -78,7 +78,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 			},
 		},
 		ComputedValues: map[string]interface{}{
-			"topic": rendererOutput.ComputedValues["topic"].Value,
+			daprpubsubbrokers.TopicNameKey: rendererOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].Value,
 		},
 	}
 

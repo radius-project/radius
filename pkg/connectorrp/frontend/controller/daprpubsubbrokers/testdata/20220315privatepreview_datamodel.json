@@ -14,7 +14,7 @@
     "properties": {
         "status": {
             "outputResources": [{
-                "LocalID": "AzureServiceBusTopic",
+                "LocalID": "AzureServiceBusNamespace",
                 "Dependencies": null,
                 "ResourceType": {
                   "type": "pubsub.azure.servicebus",
@@ -27,7 +27,7 @@
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "kind": "pubsub.azure.servicebus",
         "daprPubSubAzureServiceBus": {
-          "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async/topics/test-topic"
+          "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async"
         },
         "topic": "test-topic"
     },
