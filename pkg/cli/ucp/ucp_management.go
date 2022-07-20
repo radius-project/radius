@@ -7,6 +7,7 @@ package ucp
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -135,7 +136,14 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 
 	g, groupCtx := errgroup.WithContext(ctx)
 
+	sceneResources := map[string]string{}
+
 	for _, resource := range resourcesWithApplication {
+		if sceneResources[*resource.ID] != "" {
+			fmt.Println("OH NOOOOOOOOOOOOOOOO Resource with ID:", *resource.ID, "already exists in scene:", sceneResources[*resource.ID])
+		}
+		sceneResources[*resource.ID] = *resource.Name
+		fmt.Println("Deleting resource: ", *resource.ID, "with resource name:", *resource.Name)
 		resource := resource
 		g.Go(func() error {
 			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.Name)
