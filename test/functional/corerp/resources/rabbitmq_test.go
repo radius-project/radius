@@ -30,19 +30,19 @@ func Test_RabbitMQ(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "webapp",
+						Name: "rmq-app-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "rmq-ctr",
+						Name: "rmq-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "rmq-route",
+						Name: "rmq-rte",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "rmq",
+						Name: "rmq-rmq",
 						Type: validation.RabbitMQMessageQueuesResource,
 					},
 				},
@@ -50,9 +50,9 @@ func Test_RabbitMQ(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "webapp"),
-						validation.NewK8sPodForResource(name, "rmq-ctr"),
-						validation.NewK8sServiceForResource(name, "rmq-route"),
+						validation.NewK8sPodForResource(name, "rmq-app-ctnr"),
+						validation.NewK8sPodForResource(name, "rmq-ctnr"),
+						validation.NewK8sServiceForResource(name, "rmq-rte"),
 					},
 				},
 			},
