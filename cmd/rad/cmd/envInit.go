@@ -69,6 +69,11 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
+	reinstall, err := cmd.Flags().GetBool("reinstall")
+	if err != nil {
+		return err
+	}
+
 	namespace, err := selectNamespace(cmd, "default", interactive)
 	if err != nil {
 		return err
@@ -190,6 +195,11 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	var workspace *workspaces.Workspace
+
+	if !isEmpty(chartArgs) && foundExisting && !reinstall {
+		return fmt.Errorf("chart arg is not empty for existing workspace. Specify '--reinstall' for the new arguments to take effect")
+	}
+
 	if foundExisting {
 		workspace, err = cli.GetWorkspace(config, workspaceName)
 		if err != nil {
@@ -391,4 +401,9 @@ func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		}
 	}
 	return val, nil
+}
+
+func isEmpty(chartArgs *setup.ChartArgs) bool {
+	var emptyChartArgs setup.ChartArgs
+	return (chartArgs != nil && *chartArgs == emptyChartArgs)
 }
