@@ -272,11 +272,11 @@ type DaprPubSubBrokerProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// Topic name of the Azure ServiceBus resource
+	Topic *string `json:"topic,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprPubSubBroker connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Topic name of the Azure ServiceBus resource
-	Topic *string `json:"topic,omitempty" azure:"ro"`
 }
 
 // GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type DaprPubSubBrokerProperties.
