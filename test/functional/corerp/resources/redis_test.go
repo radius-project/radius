@@ -30,19 +30,19 @@ func Test_Redis(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "todoapp",
+						Name: "rds-app-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "redis",
+						Name: "rds-ctnr",
 						Type: validation.ContainersResource,
 					},
 					{
-						Name: "redis-route",
+						Name: "rds-rte",
 						Type: validation.HttpRoutesResource,
 					},
 					{
-						Name: "redis",
+						Name: "rds-rds",
 						Type: validation.RedisCachesResource,
 					},
 				},
@@ -50,9 +50,9 @@ func Test_Redis(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "webapp"),
-						validation.NewK8sPodForResource(name, "redis"),
-						validation.NewK8sServiceForResource(name, "redis-route"),
+						validation.NewK8sPodForResource(name, "rds-app-ctnr"),
+						validation.NewK8sPodForResource(name, "rds-ctnr"),
+						validation.NewK8sServiceForResource(name, "rds-rte"),
 					},
 				},
 			},

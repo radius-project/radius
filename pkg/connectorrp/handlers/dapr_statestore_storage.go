@@ -78,7 +78,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]string)
+	properties := resource.Resource.(map[string]interface{})
 
 	err := handler.deleteDaprStateStore(ctx, properties)
 	if err != nil {
@@ -156,7 +156,7 @@ func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Con
 	return nil, fmt.Errorf("listkeys contained keys, but none of them have full access")
 }
 
-func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, properties map[string]string) error {
+func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, properties map[string]interface{}) error {
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],
