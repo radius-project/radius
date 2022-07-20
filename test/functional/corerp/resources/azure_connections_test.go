@@ -14,7 +14,6 @@ import (
 )
 
 func Test_AzureConnections(t *testing.T) {
-	t.Skip()
 	name := "corerp-azure-connection-database-service"
 	containerResourceName := "db-service"
 	template := "testdata/corerp-azure-connection-database-service.bicep"
