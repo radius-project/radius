@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
@@ -131,9 +132,20 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.R
 	logger := radlogger.GetLogger(ctx)
 	logger.V(radlogger.Debug).Error(err, "unhandled error")
 
+	var code string
 	// Try to use the ARM format to send back the error info
+	switch err {
+	case &conv.ErrModelConversion{}:
+		fallthrough
+	case conv.ErrInvalidModelConversion:
+		code = armerrors.HTTPRequestPayloadAPISpecValidationFailed
+	default:
+		code = armerrors.Internal
+	}
+
 	body := armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
+			Code:    code,
 			Message: err.Error(),
 		},
 	}

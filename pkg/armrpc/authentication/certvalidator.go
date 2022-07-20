@@ -57,6 +57,7 @@ func handleErr(ctx context.Context, w http.ResponseWriter, req *http.Request) {
 		// Responds with an HTTP 500
 		body := armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
+				Code:    armerrors.InvalidAuthenticationInfo,
 				Message: err.Error(),
 			},
 		}
