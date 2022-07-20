@@ -72,6 +72,7 @@ func Test_Render_Success(t *testing.T) {
 			Value: int32(1234),
 		},
 	}
+
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 	require.Equal(t, "/primaryKey", output.SecretValues[renderers.PasswordStringHolder].ValueSelector)
 	require.Equal(t, "listKeys", output.SecretValues[renderers.PasswordStringHolder].Action)

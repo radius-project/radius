@@ -55,6 +55,7 @@ type RedisCacheResponseProperties struct {
 	Resource          string               `json:"resource,omitempty"`
 	Host              string               `json:"host,omitempty"`
 	Port              int32                `json:"port,omitempty"`
+	Username          string               `json:"username,omitempty"`
 }
 
 type RedisCacheProperties struct {

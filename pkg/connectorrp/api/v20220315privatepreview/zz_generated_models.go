@@ -487,6 +487,9 @@ type DaprSecretStoreProperties struct {
 
 	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the Dapr Secret Store.
+	SecretStoreName *string `json:"secretStoreName,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreProperties.
@@ -498,6 +501,7 @@ func (d DaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "kind", d.Kind)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "secretStoreName", d.SecretStoreName)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
 	return json.Marshal(objectMap)
@@ -526,6 +530,9 @@ func (d *DaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "secretStoreName":
+				err = unpopulate(val, &d.SecretStoreName)
 				delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, &d.Type)
@@ -738,6 +745,9 @@ type DaprStateStoreProperties struct {
 
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the Dapr State Store
+	StateStoreName *string `json:"stateStoreName,omitempty" azure:"ro"`
 }
 
 // GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type DaprStateStoreProperties.
@@ -759,6 +769,7 @@ func (d DaprStateStoreProperties) marshalInternal(objectMap map[string]interface
 	d.Kind = &discValue
 	objectMap["kind"] = d.Kind
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "stateStoreName", d.StateStoreName)
 }
 
 func (d *DaprStateStoreProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
@@ -776,6 +787,9 @@ func (d *DaprStateStoreProperties) unmarshalInternal(rawMsg map[string]json.RawM
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "stateStoreName":
+				err = unpopulate(val, &d.StateStoreName)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1314,6 +1328,9 @@ type MongoDatabaseResponseProperties struct {
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
 
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the mongo database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
@@ -1337,6 +1354,7 @@ func (m *MongoDatabaseResponseProperties) UnmarshalJSON(data []byte) error {
 func (m MongoDatabaseResponseProperties) marshalInternal(objectMap map[string]interface{}) {
 	m.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", m.Application)
+	populate(objectMap, "database", m.Database)
 	populate(objectMap, "environment", m.Environment)
 	populate(objectMap, "host", m.Host)
 	populate(objectMap, "port", m.Port)
@@ -1350,6 +1368,9 @@ func (m *MongoDatabaseResponseProperties) unmarshalInternal(rawMsg map[string]js
 		switch key {
 		case "application":
 				err = unpopulate(val, &m.Application)
+				delete(rawMsg, key)
+		case "database":
+				err = unpopulate(val, &m.Database)
 				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, &m.Environment)
@@ -1822,6 +1843,9 @@ type RedisCacheResponseProperties struct {
 
 	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; The username for redis
+	Username *string `json:"username,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisCacheResponseProperties.
@@ -1848,6 +1872,7 @@ func (r RedisCacheResponseProperties) marshalInternal(objectMap map[string]inter
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "resource", r.Resource)
+	populate(objectMap, "username", r.Username)
 }
 
 func (r *RedisCacheResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
@@ -1871,6 +1896,9 @@ func (r *RedisCacheResponseProperties) unmarshalInternal(rawMsg map[string]json.
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &r.Resource)
+				delete(rawMsg, key)
+		case "username":
+				err = unpopulate(val, &r.Username)
 				delete(rawMsg, key)
 		}
 		if err != nil {

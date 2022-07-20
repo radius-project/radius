@@ -32,7 +32,8 @@
           "username": "testUser",
           "password": "testPassword",
           "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
-        }
+        },
+        "database": "db"
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",
     "subscriptionId": "00000000-0000-0000-0000-000000000000",

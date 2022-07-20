@@ -143,7 +143,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		}
 
 		updatedOutputResources = append(updatedOutputResources, outputResource)
-		computedValues = deployedComputedValues
+
+		for k, computedValue := range deployedComputedValues {
+			if computedValue != nil {
+				computedValues[k] = computedValue
+			}
+		}
 	}
 
 	// Update static values for connections

@@ -52,6 +52,12 @@ func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, req *http.Request
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
+	if server, ok := deploymentOutput.ComputedValues["server"].(string); ok {
+		newResource.Properties.Server = server
+	}
+	if database, ok := deploymentOutput.ComputedValues["database"].(string); ok {
+		newResource.Properties.Database = database
+	}
 	// Read existing resource info from the data store
 	existingResource := &datamodel.SqlDatabase{}
 	etag, err := sql.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)

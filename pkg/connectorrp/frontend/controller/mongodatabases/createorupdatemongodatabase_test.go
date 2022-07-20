@@ -213,6 +213,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				},
 			},
 		},
+		ComputedValues: map[string]interface{}{
+			"database": rendererOutput.ComputedValues["database"].Value,
+		},
 	}
 
 	return rendererOutput, deploymentOutput
