@@ -141,7 +141,7 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
-				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup",
 			}},
 			err: nil,
 		},
