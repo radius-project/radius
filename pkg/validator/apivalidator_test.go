@@ -279,7 +279,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 					Details: []armerrors.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
-							Message: "environmentName in path should be at most 128 chars long",
+							Message: "environmentName in path should be at most 63 chars long",
 						},
 					},
 				},
@@ -302,7 +302,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 					Details: []armerrors.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
-							Message: "environmentName in path should be at most 128 chars long",
+							Message: "environmentName in path should be at most 63 chars long",
 						},
 					},
 				},
