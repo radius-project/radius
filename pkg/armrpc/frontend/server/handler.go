@@ -134,8 +134,8 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	var code string
 	// Try to use the ARM format to send back the error info
-	switch err {
-	case &conv.ErrModelConversion{}:
+	switch t := err.(type) {
+	case *conv.ErrModelConversion:
 		fallthrough
 	case conv.ErrInvalidModelConversion:
 		code = armerrors.HTTPRequestPayloadAPISpecValidationFailed
