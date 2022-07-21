@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -241,6 +242,7 @@ func NewAsyncOperationResponse(body interface{}, location string, code int, oper
 }
 
 func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	log := logr.FromContextOrDiscard(ctx)
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -250,13 +252,13 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
 	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
+	log.Info("###### Location header: " + locationHeader)
 	if err == nil {
-		fmt.Printf("###### location: %s", locationHeader)
 		w.Header().Add("Location", locationHeader)
 	}
 	azureAsyncOpHeader, err := r.getAsyncLocationPath(req, "operationStatuses")
+	log.Info("###### Azure-AsyncOperation header: " + azureAsyncOpHeader)
 	if err == nil {
-		fmt.Printf("###### azureAsyncOpHeader: %s", azureAsyncOpHeader)
 		w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
 	}
 
