@@ -240,12 +240,13 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
 	}
 
-	// As per https://github.com/golang/go/issues/28940#issuecomment-441749380, the way to check
-	// for http vs https is check the TLS field
+	// // // As per https://github.com/golang/go/issues/28940#issuecomment-441749380, the way to check
+	// // // for http vs https is check the TLS field
 	httpScheme := "http"
 	if r.TLS != nil {
 		httpScheme = "https"
 	}
+	fmt.Printf("@@@@ using httpscheme: %s\n", httpScheme)
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
@@ -265,6 +266,8 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	// Preserving the query strings on the incoming url on the newly constructed url
 	url.RawQuery = incomingURL.Query().Encode()
 	r.URL = url
+	r.Header.Set("X-Forwarded-Proto", httpScheme)
+
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
