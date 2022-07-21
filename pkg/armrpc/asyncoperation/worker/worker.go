@@ -261,7 +261,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			logger.Info("Cancelling async operation.")
 
 			opCancel()
-			errMessage := fmt.Sprintf("Operation timed out. Type: %s, Timeout duration: %f s", asyncReq.OperationType, asyncReq.Timeout().Seconds())
+			errMessage := fmt.Sprintf("Operation (%s) has timed out because it was processing longer than %f s.", asyncReq.OperationType, asyncReq.Timeout().Seconds())
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
