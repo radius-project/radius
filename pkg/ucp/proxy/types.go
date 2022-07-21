@@ -139,8 +139,13 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	if requestInfo.PlaneURL == "" {
 		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
 	}
-	if strings.TrimSuffix(requestInfo.PlaneURL, "/") != strings.TrimSuffix(key, "/") {
-		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", requestInfo.PlaneURL, headerName)
+
+	// Match the Plane URL but without the HTTP Scheme since the RP can return a https location/azure-asyncoperation header
+	// based on the protocol scheme
+	requestInfoPlaneID := strings.TrimSuffix(strings.Split(requestInfo.PlaneURL, "//")[1], "/")
+	headerPlaneID := strings.TrimSuffix(strings.Split(key, "//")[1], "/")
+	if !strings.EqualFold(requestInfoPlaneID, headerPlaneID) {
+		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header: %s", requestInfo.PlaneURL, headerName, header[0])
 	}
 
 	if requestInfo.UCPHost == "" {
