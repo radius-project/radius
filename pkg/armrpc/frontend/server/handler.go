@@ -158,7 +158,6 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 					Message: err.Error(),
 				},
 			})
-			code = armerrors.Internal
 		}
 	}
 	err = response.Apply(ctx, w, req)
