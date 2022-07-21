@@ -11,12 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -54,11 +53,6 @@ var (
 
 	// HostHeader is the standard http header Host used to indicate the target host name.
 	HostHeader = "Host"
-
-	// RefererHeader is the full URI that the client connected to (which will be different than the RP URI, since it will have the public
-	// hostname instead of the RP hostname). This value can be used in generating FQDN for Location headers or other requests since RPs
-	// should not reference their endpoint name.
-	RefererHeader = "Referer"
 
 	// ContentTypeHeader is the standard http header Content-Type.
 	ContentTypeHeader = "Content-Type"
@@ -165,16 +159,12 @@ type ARMRequestContext struct {
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
-	refererUri := r.Header.Get(RefererHeader)
-	refererURL, err := url.Parse(refererUri)
-	if refererUri == "" || err != nil {
-		refererURL = r.URL
-	}
+	refererUri := r.Header.Get(middleware.RefererHeader)
+	resourcePath := r.Header.Get(middleware.XRawResourcePathHeader)
 	log.Info("##### Referer URL in RP: " + refererUri)
-	path := strings.TrimPrefix(refererURL.Path, pathBase)
-	rID, err := resources.ParseByMethod(path, r.Method)
+	rID, err := resources.ParseByMethod(resourcePath, r.Method)
 	if err != nil {
-		log.V(radlogger.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
+		log.V(radlogger.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", resourcePath))
 		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
