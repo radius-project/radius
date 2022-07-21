@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -226,38 +227,36 @@ type AsyncOperationResponse struct {
 	Body        interface{}
 	Location    string
 	Code        int
-	ResourceID  resources.ID
 	OperationID uuid.UUID
-	APIVersion  string
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string) Response {
+func NewAsyncOperationResponse(body interface{}, location string, code int, operationID uuid.UUID) Response {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,
 		Code:        code,
-		ResourceID:  resourceID,
 		OperationID: operationID,
-		APIVersion:  apiVersion,
 	}
 }
 
 func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	// Write Body
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	locationHeader := r.getAsyncLocationPath(req, "operationResults")
-	azureAsyncOpHeader := r.getAsyncLocationPath(req, "operationStatuses")
-
 	// Write Headers
 	w.Header().Add("Content-Type", "application/json")
-	w.Header().Add("Location", locationHeader)
-	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
+	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
+	if err == nil {
+		w.Header().Add("Location", locationHeader)
+	}
+	azureAsyncOpHeader, err := r.getAsyncLocationPath(req, "operationStatuses")
+	if err == nil {
+		w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
+	}
 
 	w.WriteHeader(r.Code)
 
@@ -269,30 +268,44 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	return nil
 }
 
-// getAsyncLocationPath returns the async operation location path for the given resource type.
-func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) string {
+// getAsyncLocationPath returns the async operation location path.
+func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) (string, error) {
+	refererHeader := req.Header.Get("Referer")
+	baseIndex := 0
+	refererURL, err := url.Parse(refererHeader)
+	if err == nil && refererURL.Path != "" {
+		baseIndex = getBaseIndex(refererURL.Path)
+	}
+
+	base := refererURL.Path[:baseIndex]
+	rid, err := resources.Parse(refererURL.Path[baseIndex:])
+	if err != nil {
+		return "", err
+	}
+
 	dest := url.URL{
-		Host:   req.Host,
-		Scheme: req.URL.Scheme,
-		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", r.ResourceID.PlaneScope(),
-			r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
+		Host:   refererURL.Host,
+		Scheme: refererURL.Scheme,
+		Path: fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", base, rid.PlaneScope(),
+			rid.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
+		RawQuery: refererURL.Query().Encode(),
 	}
 
-	query := url.Values{}
-	query.Add("api-version", r.APIVersion)
-	dest.RawQuery = query.Encode()
+	return dest.String(), nil
+}
 
-	// In production this is the header we get from app service for the 'real' protocol
-	protocol := req.Header.Get("X-Forwarded-Proto")
-	if protocol != "" {
-		dest.Scheme = protocol
+func getBaseIndex(path string) int {
+	normalized := strings.ToLower(path)
+	idx := strings.Index(normalized, "/planes/")
+	if idx >= 0 {
+		return idx
 	}
-
-	if dest.Scheme == "" {
-		dest.Scheme = "http"
+	idx = strings.Index(normalized, "/subscriptions/")
+	if idx >= 0 {
+		return idx
 	}
+	return 0
 
-	return dest.String()
 }
 
 // NoContentResponse represents an HTTP 204.

@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 func Test_AggregateResourceHealth_HealthyAndNotApplicableIsHealthy(t *testing.T) {
@@ -533,55 +532,51 @@ func TestGetAsyncLocationPath(t *testing.T) {
 	operationID := uuid.New()
 
 	testCases := []struct {
-		desc string
-		base string
-		rID  string
-		loc  string
-		opID uuid.UUID
-		av   string
-		or   string
-		os   string
+		desc       string
+		base       string
+		refererURL string
+		loc        string
+		opID       uuid.UUID
+		or         string
+		os         string
 	}{
 		{
 			"ucp-test-headers",
-			"https://ucp.dev",
-			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"https://ucp.dev/apis/api.ucp.dev/v1alpha3",
+			"https://ucp.dev/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0?api-version=2022-03-15privatepreview",
 			"global",
 			operationID,
-			"2022-03-15-privatepreview",
-			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
-			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s?api-version=2022-03-15privatepreview", operationID.String()),
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s?api-version=2022-03-15privatepreview", operationID.String()),
 		},
 		{
 			"arm-test-headers",
-			"https://azure.dev",
-			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"https://management.azure.com",
+			"https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0?api-version=2022-03-15privatepreview",
 			"global",
 			operationID,
-			"2022-03-15-privatepreview",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s?api-version=2022-03-15privatepreview", operationID.String()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationStatuses/%s?api-version=2022-03-15privatepreview", operationID.String()),
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			resourceID, err := resources.Parse(tt.rID)
-			require.NoError(t, err)
-
 			body := &datamodel.ContainerResource{}
-			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av)
+			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, tt.opID)
 
 			req := httptest.NewRequest("GET", tt.base, nil)
+			req.Header.Set("Referer", tt.refererURL)
+
 			w := httptest.NewRecorder()
-			err = r.Apply(context.Background(), w, req)
+			err := r.Apply(context.Background(), w, req)
 			require.NoError(t, err)
 
 			require.NotNil(t, w.Header().Get("Location"))
-			require.Equal(t, tt.base+tt.or+"?api-version="+tt.av, w.Header().Get("Location"))
+			require.Equal(t, tt.base+tt.or, w.Header().Get("Location"))
 
-			require.NotNil(t, w.Header().Get("Azure-AsyncHeader"))
-			require.Equal(t, tt.base+tt.os+"?api-version="+tt.av, w.Header().Get("Azure-AsyncOperation"))
+			require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
+			require.Equal(t, tt.base+tt.os, w.Header().Get("Azure-AsyncOperation"))
 		})
 	}
 }

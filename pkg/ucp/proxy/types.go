@@ -6,14 +6,9 @@
 package proxy
 
 import (
-	"context"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strings"
-
-	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
 type UCPRequestInfo struct {
@@ -103,74 +98,5 @@ func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 }
 
 func (p *armProxy) processAsyncResponse(resp *http.Response) error {
-	ctx := resp.Request.Context()
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
-		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
-		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
-		if azureAsyncOperationHeader, ok := resp.Header[AzureAsyncOperationHeader]; ok {
-			// This is an Async Response with a Azure-AsyncOperation Header
-			err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, azureAsyncOperationHeader, resp)
-			if err != nil {
-				return err
-			}
-		} else if locationHeader, ok := resp.Header[LocationHeader]; ok {
-			// This is an Async Response with a Location Header
-			err := convertHeaderToUCPIDs(ctx, LocationHeader, locationHeader, resp)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []string, resp *http.Response) error {
-	segments := strings.Split(strings.TrimSuffix(strings.TrimPrefix(header[0], "/"), "/"), "/")
-	// segment 0 -> http
-	// segment 1 -> ""
-	// segment 2 -> hostname + port
-	key := segments[0] + "//" + segments[2]
-
-	if ctx.Value(UCPRequestInfoField) == nil {
-		return fmt.Errorf("Could not find ucp request data in %s header", headerName)
-	}
-	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
-	// Doing a reverse lookup of the URL of the responding server to find the corresponding plane ID
-	if requestInfo.PlaneURL == "" {
-		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
-	}
-	if strings.TrimSuffix(requestInfo.PlaneURL, "/") != strings.TrimSuffix(key, "/") {
-		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header", requestInfo.PlaneURL, headerName)
-	}
-
-	if requestInfo.UCPHost == "" {
-		return fmt.Errorf("UCP Host Address unknown. Cannot convert response header")
-	}
-
-	if requestInfo.PlaneKind == "" {
-		return fmt.Errorf("Plane Kind unknown. Cannot convert response header")
-	}
-
-	var planeID string
-	if requestInfo.PlaneKind != rest.PlaneKindUCPNative {
-		if requestInfo.PlaneID == "" {
-			return fmt.Errorf("Could not find plane ID data in %s header", headerName)
-		}
-		// Doing this only for non UCP Native planes. For UCP Native planes, the request URL will have the plane ID in it and therefore no need to
-		// add the plane ID
-		planeID = requestInfo.PlaneID
-	}
-
-	if requestInfo.HTTPScheme == "" {
-		return fmt.Errorf("Could not find http scheme data in %s header", headerName)
-	}
-
-	// Found a plane matching the URL in the location header
-	// Convert to UCP ID using the planeID corresponding to the URL of the server from where the response was received
-	val := requestInfo.HTTPScheme + "://" + requestInfo.UCPHost + planeID + "/" + strings.Join(segments[3:], "/")
-
-	// Replace the header with the computed value.
-	// Do not use the Del/Set methods on header as it can change the header casing to canonical form
-	resp.Header[headerName] = []string{val}
 	return nil
 }
