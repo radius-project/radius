@@ -172,7 +172,10 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	if err != nil {
 		body := armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
+<<<<<<< HEAD
 				Code:    armerrors.Internal,
+=======
+>>>>>>> c3920266 (fix lint error)
 				Message: err.Error(),
 			},
 		}
