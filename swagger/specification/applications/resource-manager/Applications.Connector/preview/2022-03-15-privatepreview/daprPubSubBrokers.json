@@ -353,8 +353,8 @@
       "in": "path",
       "required": true,
       "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-      "maxLength": 128,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method"
     }
   }
