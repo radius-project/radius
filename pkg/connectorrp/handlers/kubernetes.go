@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	osm "github.com/openservicemesh/osm/pkg/constants"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -92,7 +93,11 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 			"metadata": map[string]interface{}{
 				"name": namespace,
 				"labels": map[string]interface{}{
-					kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+					kubernetes.LabelManagedBy:            kubernetes.LabelManagedByRadiusRP,
+					osm.OSMKubeResourceMonitorAnnotation: "osm",
+				},
+				"annotations": map[string]interface{}{
+					osm.SidecarInjectionAnnotation: "enabled",
 				},
 			},
 		},
